@@ -267,6 +267,15 @@ async def get_company_detail(
                 status_code=404,
                 detail="Company not found or not accessible",
             )
+        # Map snake_case → camelCase for frontend PortalCompany type
+        data["isPrimary"] = data.get("ownership", {}).get("is_primary", False)
+        data["aktaNo"] = data.pop("akta_no", None)
+        data["aktaDate"] = data.pop("akta_date", None)
+        data["skNumber"] = data.pop("sk_number", None)
+        data["taxOffice"] = data.pop("tax_office", None)
+        data["companyStatus"] = data.pop("company_status", None)
+        data["investmentType"] = data.pop("investment_type", None)
+        data["authorizedCapital"] = data.pop("authorized_capital", None)
         return {
             "success": True,
             "data": data,
