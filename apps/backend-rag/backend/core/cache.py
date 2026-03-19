@@ -116,7 +116,7 @@ class LRUCache:
 
     def clear_pattern(self, pattern: str) -> int:
         """Clear keys matching pattern."""
-        keys_to_delete = [k for k in self.cache.keys() if pattern.replace("*", "") in k]
+        keys_to_delete = [k for k in self.cache if pattern.replace("*", "") in k]
         for key in keys_to_delete:
             del self.cache[key]
         return len(keys_to_delete)

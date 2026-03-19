@@ -228,7 +228,7 @@ class KGEnhancedRetrieval:
         async with self.db_pool.acquire() as conn:
             frontier = entity_ids
 
-            for depth in range(max_depth):
+            for _depth in range(max_depth):
                 if not frontier:
                     break
 
@@ -1162,9 +1162,8 @@ class KGEnhancedRetrieval:
 
         for route_id, keywords in self.ROUTE_KEYWORDS.items():
             match_count = sum(1 for kw in keywords if kw in query_lower)
-            if match_count > 0:
-                if best_match is None or match_count > best_match[1]:
-                    best_match = (route_id, match_count)
+            if match_count > 0 and (best_match is None or match_count > best_match[1]):
+                best_match = (route_id, match_count)
 
         if best_match and best_match[0] in self.GOLDEN_ROUTES:
             route = self.GOLDEN_ROUTES[best_match[0]]

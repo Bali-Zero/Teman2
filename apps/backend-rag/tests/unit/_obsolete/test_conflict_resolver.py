@@ -46,7 +46,7 @@ class TestConflictResolverInitialization:
 
         caplog.set_level(logging.INFO)
 
-        resolver = ConflictResolver()
+        ConflictResolver()
 
         assert "ConflictResolver initialized" in caplog.text
 

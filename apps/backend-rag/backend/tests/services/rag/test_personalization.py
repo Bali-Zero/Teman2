@@ -146,15 +146,11 @@ class TestPersonalizedResponses:
             {"query_text": "visa extension", "timestamp": "2026-02-05"},
         ]
 
-        current_query = "visa application timeline"
 
         # Check if related to previous queries
         is_follow_up = any("visa" in q["query_text"] for q in user_history)
 
-        if is_follow_up:
-            context_note = "Based on your previous visa-related questions..."
-        else:
-            context_note = ""
+        context_note = "Based on your previous visa-related questions..." if is_follow_up else ""
 
         assert is_follow_up is True
         assert "previous visa-related questions" in context_note
@@ -177,10 +173,7 @@ class TestPersonalizedResponses:
         """Test generating response in user's preferred language"""
         user_preferences = {"language": "it"}
 
-        if user_preferences["language"] == "it":
-            greeting = "Ciao"
-        else:
-            greeting = "Hello"
+        greeting = "Ciao" if user_preferences["language"] == "it" else "Hello"
 
         assert greeting == "Ciao"
 
@@ -231,10 +224,7 @@ class TestAdaptiveBehavior:
         )
 
         # If precision is high, can use lower threshold (more confident)
-        if precision >= 0.8:
-            confidence_threshold = 0.7
-        else:
-            confidence_threshold = 0.85
+        confidence_threshold = 0.7 if precision >= 0.8 else 0.85
 
         assert confidence_threshold == 0.7
 
@@ -251,7 +241,6 @@ class TestAdaptiveBehavior:
         question_count = sum(1 for q in user_history if q["style"] == "question")
         command_count = sum(1 for q in user_history if q["style"] == "command")
 
-        preferred_style = "question" if question_count > command_count else "command"
 
         assert question_count == 2
         assert command_count == 2

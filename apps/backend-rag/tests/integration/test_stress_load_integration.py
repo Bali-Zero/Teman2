@@ -112,7 +112,7 @@ class TestHighConcurrencyIntegration:
 
         async def acquire_connection(pool, conn_id):
             """Acquire and hold connection"""
-            async with pool.acquire() as conn:
+            async with pool.acquire():
                 connections_acquired.append(conn_id)
                 await asyncio.sleep(0.1)  # Hold connection briefly
                 return conn_id

@@ -467,7 +467,7 @@ class TestPromptEngineering:
                 # Truncate message
                 words = message.split()
                 truncated_words = words[: int(max_context / 1.5)]
-                truncated_message = " ".join(truncated_words) + "... [truncated]"
+                " ".join(truncated_words) + "... [truncated]"
                 response = f"Processed truncated message ({len(truncated_words)} words)"
             else:
                 response = f"Processed full message ({len(message.split())} words)"
@@ -748,7 +748,6 @@ class TestAIEthicsAndBias:
 
     def test_fairness_metrics(self, ethics_gateway):
         """Test fairness metrics and evaluation."""
-        gateway = ethics_gateway
 
         fairness_metrics = {
             "demographic_parity": 0.0,

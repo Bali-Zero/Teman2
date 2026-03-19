@@ -369,7 +369,7 @@ async def create_audit_log_table(pool: asyncpg.Pool | None = None):
                 timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             );
-            
+
             CREATE INDEX IF NOT EXISTS idx_crm_audit_entity ON crm_audit_log(entity_type, entity_id);
             CREATE INDEX IF NOT EXISTS idx_crm_audit_user ON crm_audit_log(user_email);
             CREATE INDEX IF NOT EXISTS idx_crm_audit_timestamp ON crm_audit_log(timestamp);

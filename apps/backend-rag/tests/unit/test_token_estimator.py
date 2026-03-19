@@ -2,7 +2,6 @@
 Unit tests for TokenEstimator
 """
 
-from pathlib import Path
 
 import pytest
 

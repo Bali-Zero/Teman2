@@ -112,7 +112,6 @@ class TestMultiToolExecutionFlow:
 
         # Extract cost from search result
         # (In real scenario, this would be parsed from search_result)
-        cost_from_search = "17-19 million"
 
         # Step 2: Get official pricing
         pricing_result, _ = await execute_tool(

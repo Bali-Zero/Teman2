@@ -13,7 +13,6 @@ Missing lines: 71-72 (debug logging when client not found)
 """
 
 from datetime import datetime, timedelta
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
@@ -673,7 +672,7 @@ class TestClientScoringService:
     @pytest.mark.asyncio
     async def test_calculate_client_score_whitespace_id(self, service):
         """Test that whitespace-only client_id is handled as empty"""
-        result = await service.calculate_client_score("   ")
+        await service.calculate_client_score("   ")
         # "   " is truthy in Python, so it will attempt DB query
         # But we test the behavior - if it's not in DB, should return None
         # This tests the actual behavior, not what might be ideal

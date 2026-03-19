@@ -5,6 +5,7 @@ Handles Prometheus metrics and OpenTelemetry tracing setup.
 Supports both local Jaeger (gRPC) and Grafana Cloud (HTTP with auth).
 """
 
+import contextlib
 import logging
 
 from fastapi import FastAPI
@@ -20,7 +21,6 @@ OTEL_HTTP_AVAILABLE = False
 
 try:
     from opentelemetry import trace
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -38,12 +38,10 @@ try:
         pass
 
     # Check for gRPC exporter (needed for local Jaeger)
-    try:
+    with contextlib.suppress(ImportError):
         from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
             OTLPSpanExporter as OTLPGrpcSpanExporter,
         )
-    except ImportError:
-        pass
 
 except ImportError:
     pass  # OpenTelemetry not installed - skip tracing

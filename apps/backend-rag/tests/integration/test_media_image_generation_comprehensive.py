@@ -32,7 +32,7 @@ class TestImageGenerationRouter:
     @pytest.mark.asyncio
     async def test_image_generation_service_initialization(self):
         """Test ImageGenerationService initialization"""
-        with patch("backend.services.image_generation_service.OpenAI") as mock_openai:
+        with patch("backend.services.image_generation_service.OpenAI"):
             from backend.services.image_generation_service import ImageGenerationService
 
             service = ImageGenerationService()
@@ -67,7 +67,7 @@ class TestImageGenerationRouter:
         """Test image generation error handling"""
         with patch(
             "backend.services.image_generation_service.ImageGenerationService"
-        ) as mock_service:
+        ):
             mock_service_instance = MagicMock()
             mock_service_instance.generate_image = AsyncMock(
                 return_value={

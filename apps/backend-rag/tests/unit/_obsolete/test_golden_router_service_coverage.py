@@ -354,7 +354,7 @@ async def test_route_match_found():
         }
     ]
     # Create embeddings matrix - same embedding for query and route (high similarity)
-    query_emb = np.array([0.1, 0.2, 0.3])
+    np.array([0.1, 0.2, 0.3])
     route_emb = np.array([[0.1, 0.2, 0.3]])  # Same = cosine similarity = 1.0
     service.route_embeddings = route_emb
 
@@ -382,7 +382,7 @@ async def test_route_below_threshold():
         }
     ]
     # Create embeddings matrix - orthogonal vectors (cosine similarity = 0)
-    query_emb = np.array([1.0, 0.0, 0.0])
+    np.array([1.0, 0.0, 0.0])
     route_emb = np.array([[0.0, 1.0, 0.0]])  # Orthogonal = cosine similarity = 0
     service.route_embeddings = route_emb
 

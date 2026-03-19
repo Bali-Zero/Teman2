@@ -106,7 +106,6 @@ class TestMetricsCollectionAndAggregation:
 
     def test_metrics_aggregation_and_rollup(self, metrics_gateway):
         """Test metrics aggregation and rollup."""
-        gateway = metrics_gateway
 
         # Simulate time-series data
         time_series_data = []
@@ -366,7 +365,6 @@ class TestDistributedTracing:
 
     def test_trace_performance_impact(self, tracing_gateway):
         """Test tracing performance impact."""
-        gateway = tracing_gateway
 
         def create_lightweight_span(trace_id, operation_name):
             """Create a lightweight span for performance testing."""

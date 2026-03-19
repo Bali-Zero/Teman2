@@ -47,12 +47,11 @@ def verify_debug_access(
         HTTPException: If access denied
     """
     # Allow in production only if ADMIN_API_KEY is configured (security check)
-    if settings.environment.lower() == "production":
-        if not settings.admin_api_key:
-            raise HTTPException(
-                status_code=403,
-                detail="Debug endpoints are not available in production without ADMIN_API_KEY",
-            )
+    if settings.environment.lower() == "production" and not settings.admin_api_key:
+        raise HTTPException(
+            status_code=403,
+            detail="Debug endpoints are not available in production without ADMIN_API_KEY",
+        )
         # In production, require ADMIN_API_KEY (checked below)
 
     # Check API key or JWT token

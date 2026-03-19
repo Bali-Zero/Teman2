@@ -67,7 +67,7 @@ def apply_migration():
             FROM information_schema.tables
             WHERE table_schema = 'public'
             AND table_name IN (
-                'companies', 'client_company_links', 
+                'companies', 'client_company_links',
                 'company_documents', 'tax_records', 'tax_documents'
             )
             ORDER BY table_name
@@ -79,10 +79,10 @@ def apply_migration():
         # Verify indexes
         cursor.execute(
             """
-            SELECT indexname 
-            FROM pg_indexes 
+            SELECT indexname
+            FROM pg_indexes
             WHERE tablename IN (
-                'companies', 'client_company_links', 
+                'companies', 'client_company_links',
                 'company_documents', 'tax_records', 'tax_documents'
             )
             ORDER BY tablename, indexname

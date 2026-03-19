@@ -21,7 +21,6 @@ logger.debug(f"sys.path[0] = {sys.path[0]}")
 logger.debug(f"sys.path[1] = {sys.path[1]}")
 
 try:
-    from backend.app.core.config import settings
     from backend.app.core.database import db
     from backend.services.rag.agentic import create_agentic_rag
 except ImportError:

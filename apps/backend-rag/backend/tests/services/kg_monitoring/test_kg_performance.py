@@ -44,7 +44,7 @@ class TestQueryPerformance:
         mock_kg.query = slow_query
 
         start = time.time()
-        result = await mock_kg.query("MATCH (n)-[r*1..3]->(m) RETURN n,r,m")
+        await mock_kg.query("MATCH (n)-[r*1..3]->(m) RETURN n,r,m")
         duration = time.time() - start
 
         # Complex queries can be slower but should have threshold
@@ -129,10 +129,7 @@ class TestQueryOptimization:
         query = "MATCH (n) RETURN n"
         default_limit = 100
 
-        if "LIMIT" not in query:
-            optimized_query = f"{query} LIMIT {default_limit}"
-        else:
-            optimized_query = query
+        optimized_query = f"{query} LIMIT {default_limit}" if "LIMIT" not in query else query
 
         assert "LIMIT" in optimized_query
         assert str(default_limit) in optimized_query
@@ -156,10 +153,7 @@ class TestQueryOptimization:
         query = "MATCH (n)-[r*]->(m) RETURN n,r,m"  # Unbounded path
 
         # Rewrite with bounded path
-        if "[r*]" in query:
-            optimized_query = query.replace("[r*]", "[r*1..3]")
-        else:
-            optimized_query = query
+        optimized_query = query.replace("[r*]", "[r*1..3]") if "[r*]" in query else query
 
         assert "[r*1..3]" in optimized_query
         assert "[r*]" not in optimized_query
@@ -342,7 +336,7 @@ class TestBatchOperations:
         times_ms = [150, 200, 250, 400, 800]
 
         # Find batch size with best throughput (items/ms)
-        throughputs = [size / time for size, time in zip(batch_sizes, times_ms)]
+        throughputs = [size / time for size, time in zip(batch_sizes, times_ms, strict=False)]
         optimal_idx = throughputs.index(max(throughputs))
         optimal_batch_size = batch_sizes[optimal_idx]
 

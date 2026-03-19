@@ -37,7 +37,6 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
 from fastapi.testclient import TestClient
 from jose import jwt
 
@@ -239,32 +238,32 @@ def create_mock_orchestrator_response(
     # Generate context-appropriate response
     responses: dict[str, str] = {
         "pricing": (
-            f"The KITAS Investor visa costs approximately IDR 15-20 million "
-            f"($950-$1,250 USD) including government fees and agent services. "
-            f"Processing takes 4-6 weeks. This includes the main applicant; "
-            f"dependents add approximately IDR 5 million each."
+            "The KITAS Investor visa costs approximately IDR 15-20 million "
+            "($950-$1,250 USD) including government fees and agent services. "
+            "Processing takes 4-6 weeks. This includes the main applicant; "
+            "dependents add approximately IDR 5 million each."
         ),
         "kbli": (
-            f"For restaurants, the relevant KBLI codes are: 56101 "
-            f"(Restoran/Restaurant) and 56102 (Restoran Bergerak/Mobile Restaurant). "
-            f"56101 is for permanent restaurants with seating, while 56102 "
-            f"covers food trucks and mobile catering businesses."
+            "For restaurants, the relevant KBLI codes are: 56101 "
+            "(Restoran/Restaurant) and 56102 (Restoran Bergerak/Mobile Restaurant). "
+            "56101 is for permanent restaurants with seating, while 56102 "
+            "covers food trucks and mobile catering businesses."
         ),
         "company_setup": (
-            f"To set up a PT PMA (Foreign Investment Company) in Indonesia: "
-            f"1. Minimum paid-up capital of IDR 10 billion (~$650,000 USD). "
-            f"2. At least 2 shareholders (can be foreign). "
-            f"3. 1 Commissioner and 1 Director (can be same person). "
-            f"4. Business location in Indonesia. "
-            f"5. BKPM approval required. Timeline: 2-3 months."
+            "To set up a PT PMA (Foreign Investment Company) in Indonesia: "
+            "1. Minimum paid-up capital of IDR 10 billion (~$650,000 USD). "
+            "2. At least 2 shareholders (can be foreign). "
+            "3. 1 Commissioner and 1 Director (can be same person). "
+            "4. Business location in Indonesia. "
+            "5. BKPM approval required. Timeline: 2-3 months."
         ),
         "property": (
-            f"For property rental in Bali as a foreigner: "
-            f"1. Valid passport and KITAS/KITAP if applicable. "
-            f"2. Lease agreement (Hak Sewa) typically 25-30 years. "
-            f"3. Local agent recommended for negotiations. "
-            f"4. Due diligence on land certificates (SHM/HGB). "
-            f"5. Payment terms: usually 1-2 years upfront."
+            "For property rental in Bali as a foreigner: "
+            "1. Valid passport and KITAS/KITAP if applicable. "
+            "2. Lease agreement (Hak Sewa) typically 25-30 years. "
+            "3. Local agent recommended for negotiations. "
+            "4. Due diligence on land certificates (SHM/HGB). "
+            "5. Payment terms: usually 1-2 years upfront."
         ),
     }
 

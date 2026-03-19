@@ -83,7 +83,7 @@ def parse_gold_content_ts(filepath: Path) -> dict[str, dict]:
 
     positions = [(m.group(1), m.start(), m.end()) for m in code_pattern.finditer(obj_str)]
 
-    for i, (code, _, brace_start) in enumerate(positions):
+    for _i, (code, _, brace_start) in enumerate(positions):
         # Find the matching closing brace for this entry
         # Count braces from brace_start-1 (the opening {)
         depth = 1
@@ -172,7 +172,7 @@ def build_embedding_text(code: str, gold: dict, base: dict) -> str:
     Matches the [CONTEXT: ...] prefix pattern used by existing kbli_2025_final points.
     """
     judul = base.get("judul", "")
-    sektor = base.get("sektor_id", "")
+    base.get("sektor_id", "")
 
     parts = [
         f"[CONTEXT: KBLI 2025 - Gold Editorial - Kode {code} - {judul}]",
@@ -377,7 +377,7 @@ async def main():
 
     # Build Qdrant points (named vectors: "dense" for this hybrid collection)
     qdrant_points = []
-    for point, emb in zip(all_points, embeddings):
+    for point, emb in zip(all_points, embeddings, strict=False):
         qdrant_points.append(
             {
                 "id": point["id"],

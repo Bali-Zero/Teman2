@@ -714,7 +714,7 @@ class TestSingleton:
             eval_module._ragas_evaluator = None
 
             mock_client = MagicMock()
-            evaluator = get_ragas_evaluator(llm_client=mock_client, enable_cache=False)
+            get_ragas_evaluator(llm_client=mock_client, enable_cache=False)
 
             mock_cls.assert_called_once_with(
                 llm_client=mock_client,

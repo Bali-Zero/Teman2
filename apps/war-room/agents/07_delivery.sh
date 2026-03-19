@@ -3,8 +3,8 @@
 set -euo pipefail
 
 TOPIC="${1:-Unknown}"
-MASTER_DIR="${2:-$HOME/war_room/output/master}"
-WAR_ROOM="$HOME/war_room"
+WAR_ROOM="$(cd "$(dirname "$0")/.." && pwd)"
+MASTER_DIR="${2:-$WAR_ROOM/output/master}"
 
 # Parse named args
 for i in "$@"; do
@@ -25,10 +25,13 @@ ARCHIVE="$WAR_ROOM/output/balizero_warroom_$(date +%Y%m%d_%H%M%S).zip"
 zip -r "$ARCHIVE" "$MASTER_DIR" 2>/dev/null
 
 echo "☁️  Upload Google Drive..."
-# Use gog CLI to upload
-DRIVE_LINK=$(gog --account=zero@balizero.com drive upload "$ARCHIVE" --folder-id "1zbPAWG6rOJjNTV3F_mbMtS-1L4XgkMJr" --json 2>/dev/null | \
-  python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('webViewLink', '$DRIVE_FOLDER'))" 2>/dev/null || \
-  echo "$DRIVE_FOLDER")
+# Use rclone to upload (configured with gdrive remote for zero@balizero.com)
+GDRIVE_REMOTE="${GDRIVE_REMOTE:-gdrive}"
+GDRIVE_FOLDER_ID="${GDRIVE_FOLDER_ID:-1zbPAWG6rOJjNTV3F_mbMtS-1L4XgkMJr}"
+ARCHIVE_NAME="$(basename "$ARCHIVE")"
+rclone copy "$ARCHIVE" "${GDRIVE_REMOTE}:balizero_warroom/" --drive-root-folder-id "$GDRIVE_FOLDER_ID" 2>/dev/null \
+  && DRIVE_LINK="https://drive.google.com/drive/folders/${GDRIVE_FOLDER_ID}" \
+  || DRIVE_LINK="$DRIVE_FOLDER"
 
 echo "   Drive link: $DRIVE_LINK"
 

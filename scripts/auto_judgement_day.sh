@@ -23,6 +23,9 @@ EXIT_CODE=$?
 # Report handling
 REPORT_FILE="$EVAL_DIR/red_team_report.md"
 
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-7849498029:AAEjuP_uPt6KqD23Y8tVXVKnygJX8_TzW2g}"
+TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-1125336968}"
+
 if [ $EXIT_CODE -eq 0 ]; then
     echo "[$DATE] ✅ Evaluation completed." >> "$LOG_FILE"
     
@@ -35,6 +38,10 @@ if [ $EXIT_CODE -eq 0 ]; then
     fi
 else
     echo "[$DATE] ❌ Evaluation FAILED with exit code $EXIT_CODE." >> "$LOG_FILE"
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${TELEGRAM_CHAT_ID}" \
+        -d "text=🚨 *Air Judgement Day FAILED* (exit $EXIT_CODE)%0ACheck: ~/Projects/nuzantara/apps/evaluator/red_team_report.md" \
+        -d "parse_mode=Markdown" > /dev/null 2>&1 || true
 fi
 
 echo "----------------------------------------" >> "$LOG_FILE"

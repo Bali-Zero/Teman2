@@ -72,7 +72,7 @@ async def test_ingest_documents_empty_list(mock_search_service):
     # Pydantic will validate min_items=1 before reaching the endpoint
     # So we test that Pydantic validation works
     with pytest.raises(Exception):  # Pydantic validation error
-        request = IngestRequest(
+        IngestRequest(
             collection="legal_intelligence",
             documents=[],  # This will fail Pydantic validation
         )

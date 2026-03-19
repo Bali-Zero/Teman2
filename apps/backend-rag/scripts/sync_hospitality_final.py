@@ -1,9 +1,11 @@
 import asyncio
-import logging
 import json
+import logging
 import time
 from pathlib import Path
+
 import asyncpg
+
 from backend.app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
@@ -87,7 +89,7 @@ async def sync_postgres():
 
 def sync_json():
     data_path = Path("../../source_documents/KBLI_2025_FINAL_CLEAN.json")
-    with open(data_path, 'r') as f:
+    with open(data_path) as f:
         full_data = json.load(f)
     updated = 0
     for item in full_data['data']:

@@ -50,8 +50,8 @@ class TestCulturalRAGServiceIntegration:
     async def test_cultural_query_processing(self, qdrant_client):
         """Test cultural query processing"""
         with (
-            patch("backend.services.cultural_rag_service.SearchService") as mock_search,
-            patch("backend.services.cultural_rag_service.ZantaraAIClient") as mock_ai,
+            patch("backend.services.cultural_rag_service.SearchService"),
+            patch("backend.services.cultural_rag_service.ZantaraAIClient"),
         ):
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(

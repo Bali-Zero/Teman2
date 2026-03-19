@@ -16,9 +16,8 @@ backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.middleware.request_tracing import RequestTracingMiddleware
-
 from backend.app.routers import debug
+from backend.middleware.request_tracing import RequestTracingMiddleware
 
 
 @pytest.fixture
@@ -125,7 +124,7 @@ class TestDebugUtilitiesIntegration:
 
         # Simulate RAG pipeline steps
         with debugger.step("embedding"):
-            embedding = [0.1] * 1536
+            pass
 
         with debugger.step("search"):
             results = [{"id": "1", "text": "doc1", "score": 0.9}]

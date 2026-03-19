@@ -5,6 +5,7 @@ Provides helpers for concurrent execution, batching, and resource management.
 """
 
 import asyncio
+import contextlib
 from collections.abc import Callable, Coroutine
 from typing import Any, TypeVar
 
@@ -229,7 +230,5 @@ class Debouncer:
         self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
     ) -> None:
         await asyncio.sleep(self.delay)
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await func(*args, **kwargs)
-        except asyncio.CancelledError:
-            pass

@@ -210,10 +210,7 @@ class TestE2ERoutingFallback:
             confidence = mock_confidence_instance.calculate_confidence(query, "visa_oracle")
 
             # Route based on confidence
-            if confidence > 0.7:
-                collection = "visa_oracle"
-            else:
-                collection = "legal_unified"
+            collection = "visa_oracle" if confidence > 0.7 else "legal_unified"
 
             # Verify routing decision
             assert collection == "visa_oracle"
@@ -265,10 +262,7 @@ class TestE2ERoutingFallback:
             # Check for priority override
             override_collection = mock_priority_instance.get_override_collection(query)
 
-            if override_collection:
-                collection = override_collection
-            else:
-                collection = query_router.route(query)
+            collection = override_collection or query_router.route(query)
 
             # Verify priority override applied
             assert collection == "visa_oracle"

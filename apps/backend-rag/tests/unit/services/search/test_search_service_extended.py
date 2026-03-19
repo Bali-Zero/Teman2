@@ -394,7 +394,7 @@ class TestHybridSearch:
 
         search_service.search = AsyncMock(side_effect=mock_search)
 
-        results = await search_service.hybrid_search(
+        await search_service.hybrid_search(
             query="test query",
             user_level=1,
             limit=5,

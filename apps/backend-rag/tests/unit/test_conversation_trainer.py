@@ -12,14 +12,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import asyncpg
 import pytest
 
-# Patch settings BEFORE importing any modules that use it
-from tests.conftest import create_mock_settings
 import backend.app.core.config
+from tests.conftest import create_mock_settings
 
-# Replace settings with a proper test instance
+# Patch settings BEFORE importing any modules that use it
 backend.app.core.config.settings = create_mock_settings()
 
-# Import the class to test
 from backend.agents.agents.conversation_trainer import ConversationTrainer
 
 
@@ -55,38 +53,40 @@ class TestConversationTrainer:
     @pytest.mark.asyncio
     async def test_get_db_pool_from_app_state(self):
         """Test: _get_db_pool gets pool from backend.app.state when instance pool is None"""
+        import sys
+        import types
+
         mock_pool = MagicMock()
         mock_app = MagicMock()
         mock_app.state.db_pool = mock_pool
 
         trainer = ConversationTrainer(db_pool=None)
 
-        # Use the proper Settings class to avoid MagicMock issues
-        from tests.conftest import create_mock_settings
-        mock_settings = create_mock_settings()
+        mock_module = types.ModuleType("backend.app.main_cloud")
+        mock_module.app = mock_app
 
-        with patch("backend.app.main_cloud.app", mock_app):
-            with patch("backend.app.core.config.settings", mock_settings):
-                result = await trainer._get_db_pool()
+        with patch.dict(sys.modules, {"backend.app.main_cloud": mock_module}):
+            result = await trainer._get_db_pool()
 
         assert result == mock_pool
 
     @pytest.mark.asyncio
     async def test_get_db_pool_error_when_not_available(self):
         """Test: _get_db_pool raises RuntimeError when pool not available"""
+        import sys
+        import types
+
         trainer = ConversationTrainer(db_pool=None)
 
         mock_app = MagicMock()
         mock_app.state.db_pool = None
 
-        # Use the proper Settings class to avoid MagicMock issues
-        from tests.conftest import create_mock_settings
-        mock_settings = create_mock_settings()
+        mock_module = types.ModuleType("backend.app.main_cloud")
+        mock_module.app = mock_app
 
-        with patch("backend.app.main_cloud.app", mock_app):
-            with patch("backend.app.core.config.settings", mock_settings):
-                with pytest.raises(RuntimeError) as exc_info:
-                    await trainer._get_db_pool()
+        with patch.dict(sys.modules, {"backend.app.main_cloud": mock_module}):
+            with pytest.raises(RuntimeError) as exc_info:
+                await trainer._get_db_pool()
 
         assert "Database pool not available" in str(exc_info.value)
 

@@ -6,12 +6,10 @@ Returns a list of ValidationAlert (green/yellow/red) per field.
 """
 
 import logging
-from typing import Any
 
 import asyncpg
 
 from backend.app.models.lkpm import (
-    InvestmentRealization,
     LKPMClientConfig,
     LKPMDraft,
     LKPMValidationResult,

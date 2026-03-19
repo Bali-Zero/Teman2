@@ -1,16 +1,18 @@
 import asyncio
-import asyncpg
 import json
+
+import asyncpg
+
 
 async def run():
     conn = await asyncpg.connect('postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara')
-    
+
     expert_data = [
         # TRASPORTI & LOGISTICA
         {"code": "49422", "name": "Noleggio Auto/Moto", "bab": "X (Trasporti)", "risk": "Menengah Tinggi", "pb_umku": ["Izin Penyelenggaraan Angkutan Orang", "Standard Sicurezza Veicoli"]},
         {"code": "49431", "name": "Trasporto Merci", "bab": "X (Trasporti)", "pb_umku": ["Izin Trasporto Merci"]},
         {"code": "52291", "name": "Logistica / Freight Forwarding", "bab": "X (Trasporti)", "pb_umku": ["Izin Jasa Pengurusan Transportasi (JPT)"]},
-        
+
         # EDUCAZIONE & TRAINING
         {"code": "85491", "name": "Corsi di Lingua", "bab": "XI (Education)", "pb_umku": ["Izin Lembaga Kursus dan Pelatihan (LKP)"]},
         {"code": "85492", "name": "Workshop & Training (Yoga/Cucina)", "bab": "XI (Education)", "risk": "Menengah Tinggi", "pb_umku": ["Izin LKP", "Certificazioni Istruttori Professionisti"]},
@@ -21,7 +23,7 @@ async def run():
         entity_id = f"kbli:{item['code']}"
         row = await conn.fetchrow("SELECT properties FROM kg_nodes WHERE entity_id = $1", entity_id)
         current_props = json.loads(row['properties']) if row and row['properties'] else {"kode": item['code']}
-        
+
         current_props['expert_legal'] = {
             "regulation": "PP 28/2025",
             "bab": item['bab'],
@@ -39,7 +41,7 @@ async def run():
         sql = """
             INSERT INTO kg_nodes (entity_id, entity_type, name, description, properties)
             VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (entity_id) DO UPDATE 
+            ON CONFLICT (entity_id) DO UPDATE
             SET properties = EXCLUDED.properties, updated_at = CURRENT_TIMESTAMP
         """
         name = f"KBLI {item['code']}: {item['name']}"

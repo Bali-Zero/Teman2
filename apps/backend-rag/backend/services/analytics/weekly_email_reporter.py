@@ -6,6 +6,7 @@ with individual team member email activities.
 """
 
 import asyncio
+import contextlib
 import logging
 import smtplib
 from datetime import datetime, timedelta
@@ -54,10 +55,8 @@ class WeeklyEmailReporter:
         self.running = False
         if self.task:
             self.task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.task
-            except asyncio.CancelledError:
-                pass
         logger.info("🛑 Weekly email reporter stopped")
 
     async def _scheduler_loop(self) -> None:

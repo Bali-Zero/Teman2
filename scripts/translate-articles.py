@@ -34,7 +34,7 @@ LANG_NAMES = {
 
 VALID_CATEGORIES = [
     "immigration", "business", "tax-legal", "tax", "property",
-    "lifestyle", "digital-nomad", "tech",
+    "lifestyle", "digital-nomad", "tech", "bali_news", "business_regulations",
 ]
 
 # ── Logging ────────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ def patch_frontmatter_locale(fm_block: str, locale: str) -> str:
     return fm_block.rstrip().rsplit("---", 1)[0] + f'locale: "{locale}"\n---\n'
 
 
-def call_ollama(prompt: str, timeout: float = 600) -> str:
+def call_ollama(prompt: str, timeout: float = None) -> str:
     """Call Ollama chat API. Returns the generated text."""
     payload = {
         "model": MODEL,
@@ -106,7 +106,7 @@ def call_ollama(prompt: str, timeout: float = 600) -> str:
             "num_predict": 16384,
         },
     }
-    with httpx.Client(timeout=httpx.Timeout(timeout, connect=30)) as client:
+    with httpx.Client(timeout=httpx.Timeout(timeout, connect=30) if timeout else None) as client:
         resp = client.post(f"{OLLAMA_URL}/api/chat", json=payload)
         resp.raise_for_status()
         data = resp.json()
@@ -214,6 +214,8 @@ def main():
                         help="Target language(s): id, it, ru, fr, both (id+it), all (id+it+ru+fr)")
     parser.add_argument("--category", default="all",
                         help="Article category folder (e.g., immigration, business, all)")
+    parser.add_argument("--slug", default=None,
+                        help="Translate only this specific article slug")
     parser.add_argument("--limit", type=int, default=0,
                         help="Max articles to translate (0=unlimited)")
     parser.add_argument("--dry-run", action="store_true",
@@ -243,6 +245,13 @@ def main():
     if not articles:
         logger.error("No articles found. Check ARTICLES_DIR path.")
         sys.exit(1)
+
+    # Filter by slug if specified
+    if args.slug:
+        articles = [a for a in articles if a["slug"] == args.slug]
+        if not articles:
+            logger.error(f"Slug '{args.slug}' not found in category '{args.category}'")
+            sys.exit(1)
 
     if args.limit > 0:
         articles = articles[:args.limit]

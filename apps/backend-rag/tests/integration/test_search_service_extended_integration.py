@@ -66,7 +66,7 @@ class TestSearchServiceExtendedIntegration:
     def test_build_search_filter(self):
         """Test _build_search_filter method"""
         with (
-            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.core.embeddings.create_embeddings_generator"),
             patch("backend.services.collection_manager.CollectionManager") as mock_collection,
             patch(
                 "backend.services.query_router_integration.QueryRouterIntegration"

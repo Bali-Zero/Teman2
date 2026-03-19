@@ -31,18 +31,22 @@ except ImportError:
     # Fallback if secure_subprocess not available
     import subprocess
 
-    safe_git_checkout_new = lambda branch, cwd=None: subprocess.run(
-        ["git", "checkout", "-b", branch], cwd=cwd, check=True, capture_output=True
-    )
-    safe_git_checkout = lambda branch, cwd=None: subprocess.run(
-        ["git", "checkout", branch], cwd=cwd, check=False, capture_output=True
-    )
-    safe_git_add = lambda files, cwd=None: subprocess.run(
-        ["git", "add"] + files, cwd=cwd, check=True, timeout=10.0
-    )
-    safe_git_commit = lambda message, cwd=None: subprocess.run(
-        ["git", "commit", "-m", message], cwd=cwd, check=True, timeout=10.0
-    )
+    def safe_git_checkout_new(branch, cwd=None):
+        return subprocess.run(
+            ["git", "checkout", "-b", branch], cwd=cwd, check=True, capture_output=True
+        )
+    def safe_git_checkout(branch, cwd=None):
+        return subprocess.run(
+            ["git", "checkout", branch], cwd=cwd, check=False, capture_output=True
+        )
+    def safe_git_add(files, cwd=None):
+        return subprocess.run(
+            ["git", "add"] + files, cwd=cwd, check=True, timeout=10.0
+        )
+    def safe_git_commit(message, cwd=None):
+        return subprocess.run(
+            ["git", "commit", "-m", message], cwd=cwd, check=True, timeout=10.0
+        )
 
 logger = logging.getLogger(__name__)
 

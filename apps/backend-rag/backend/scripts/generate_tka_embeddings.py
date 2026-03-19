@@ -357,7 +357,7 @@ async def main():
     logger.info("=" * 50)
 
     points = []
-    for i, (kbli, embedding) in enumerate(zip(kbli_list, embeddings)):
+    for _i, (kbli, embedding) in enumerate(zip(kbli_list, embeddings, strict=False)):
         point = create_qdrant_point(kbli, embedding)
         points.append(point)
 

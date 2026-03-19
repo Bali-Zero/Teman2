@@ -170,7 +170,7 @@ async def grade_node(state: WorkflowState) -> WorkflowState:
             filtered_docs = []
             relevance_scores = []
 
-            for doc, score in zip(documents, retrieved_scores):
+            for doc, score in zip(documents, retrieved_scores, strict=False):
                 if score >= threshold:
                     filtered_docs.append(doc)
                     relevance_scores.append(score)
@@ -195,7 +195,7 @@ async def grade_node(state: WorkflowState) -> WorkflowState:
         doc_list = "\n\n".join(
             [
                 f"Document {i + 1} (score: {score:.3f}):\n{doc[:500]}..."
-                for i, (doc, score) in enumerate(zip(documents, retrieved_scores))
+                for i, (doc, score) in enumerate(zip(documents, retrieved_scores, strict=False))
             ]
         )
 
@@ -262,7 +262,7 @@ Your response (JSON array only):"""
         filtered_docs = []
         filtered_scores = []
 
-        for doc, score in zip(documents, relevance_scores):
+        for doc, score in zip(documents, relevance_scores, strict=False):
             if score >= threshold:
                 filtered_docs.append(doc)
                 filtered_scores.append(score)

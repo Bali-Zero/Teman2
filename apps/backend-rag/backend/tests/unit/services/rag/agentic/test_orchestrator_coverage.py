@@ -1395,7 +1395,7 @@ class TestStreamEventValidation:
     async def test_stream_fatal_error_handling(self, orchestrator_setup):
         """Test fatal error handling in stream_query"""
         orch = orchestrator_setup["orchestrator"]
-        mocks = orchestrator_setup["mocks"]
+        orchestrator_setup["mocks"]
 
         async def mock_stream_gen():
             raise RuntimeError("Fatal error")

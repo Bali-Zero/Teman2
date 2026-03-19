@@ -4,7 +4,6 @@ Unit tests for Memory Vector Router
 Testing all 8 endpoints with mocking, error handling, and edge cases
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

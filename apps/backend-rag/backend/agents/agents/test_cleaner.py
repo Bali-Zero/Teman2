@@ -148,22 +148,21 @@ class TestAnalyzer:
         for node in ast.walk(tree):
             if isinstance(node, ast.Assert):
                 count += 1
-            elif isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Attribute):
-                    if node.func.attr in [
-                        "assert_equal",
-                        "assert_not_equal",
-                        "assert_true",
-                        "assert_false",
-                        "assert_in",
-                        "assert_not_in",
-                        "assert_raises",
-                        "assert_is_none",
-                        "assert_is_not_none",
-                        "assert_greater",
-                        "assert_less",
-                    ]:
-                        count += 1
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                if node.func.attr in [
+                    "assert_equal",
+                    "assert_not_equal",
+                    "assert_true",
+                    "assert_false",
+                    "assert_in",
+                    "assert_not_in",
+                    "assert_raises",
+                    "assert_is_none",
+                    "assert_is_not_none",
+                    "assert_greater",
+                    "assert_less",
+                ]:
+                    count += 1
         return count
 
     def _calculate_complexity(self, tree: ast.AST) -> dict[str, int]:
@@ -392,7 +391,7 @@ class OrphanDetector:
             tree = ast.parse(content)
 
             # Extract potential source module references
-            imports = self._extract_imports(tree)
+            self._extract_imports(tree)
             referenced_modules = self._extract_referenced_modules(content, tree)
 
             missing_modules = []
@@ -420,9 +419,8 @@ class OrphanDetector:
             if isinstance(node, ast.Import):
                 for name in node.names:
                     imports.append(name.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.append(node.module)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imports.append(node.module)
         return imports
 
     def _extract_referenced_modules(self, content: str, tree: ast.AST) -> list[str]:

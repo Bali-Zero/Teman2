@@ -433,13 +433,11 @@ class TestSearchService:
         """Test BM25 initialization when disabled"""
         # Save original state
         original_enable = search_service._bm25_enabled
-        original_settings = None
 
         try:
             # Temporarily disable BM25 in settings
             import backend.app.core.config as config_module
 
-            original_settings_value = config_module.settings.enable_bm25
 
             # Patch settings.enable_bm25
             with patch.object(config_module.settings, "enable_bm25", False):
@@ -945,7 +943,6 @@ class TestSearchService:
     async def test_hybrid_search_error_fallback(self, search_service):
         """Test hybrid_search falls back to regular search on error"""
         # Make _prepare_search_context raise an exception
-        original_prepare = search_service._prepare_search_context
 
         def failing_prepare(*args, **kwargs):
             raise RuntimeError("Prepare failed")
@@ -956,7 +953,7 @@ class TestSearchService:
             with patch.object(search_service, "search") as mock_search:
                 mock_search.return_value = {"results": [], "query": "test"}
 
-                result = await search_service.hybrid_search(query="test", user_level=1, limit=5)
+                await search_service.hybrid_search(query="test", user_level=1, limit=5)
                 mock_search.assert_called_once()
 
     @pytest.mark.asyncio

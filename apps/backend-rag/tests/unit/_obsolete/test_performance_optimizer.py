@@ -576,7 +576,7 @@ async def test_connection_pool_get_connection_after_max_created(connection_pool)
 
     # Create max connections
     conn1 = await connection_pool.get_connection()
-    conn2 = await connection_pool.get_connection()
+    await connection_pool.get_connection()
 
     assert connection_pool.created_connections == 2
 
@@ -584,7 +584,7 @@ async def test_connection_pool_get_connection_after_max_created(connection_pool)
     await connection_pool.return_connection(conn1)
 
     # Next get should retrieve from pool (not create new)
-    conn3 = await connection_pool.get_connection()
+    await connection_pool.get_connection()
     assert connection_pool.created_connections == 2  # No new connection created
 
 
@@ -600,7 +600,7 @@ async def test_connection_pool_return_connection_queue_full(connection_pool):
     await connection_pool.return_connection(conn)
 
     # Get another connection
-    conn2 = await connection_pool.get_connection()
+    await connection_pool.get_connection()
 
     # Now queue is full, try to return a connection (would be closed)
     # Create a mock connection to test aclose
@@ -681,7 +681,7 @@ async def test_connection_pool_wait_for_available():
     await pool.return_connection(conn1)
 
     # Now get should retrieve from queue
-    conn2 = await pool.get_connection()
+    await pool.get_connection()
     assert pool.created_connections == 1  # Still 1, reused from queue
 
 
@@ -801,7 +801,7 @@ async def test_connection_pool_wait_branch():
     await pool.return_connection(conn1)
 
     # Get it again (from queue, not creating new)
-    conn2 = await pool.get_connection()
+    await pool.get_connection()
     assert pool.created_connections == 1
 
 

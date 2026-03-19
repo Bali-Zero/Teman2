@@ -125,7 +125,7 @@ async def benchmark_bfs_traversal(pool: asyncpg.Pool, n: int = 10) -> dict:
             frontier = [eid]
             visited: set[str] = set()
 
-            for depth in range(3):
+            for _depth in range(3):
                 unvisited = [e for e in frontier if e not in visited]
                 if not unvisited:
                     break

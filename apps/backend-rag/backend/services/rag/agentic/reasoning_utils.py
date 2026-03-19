@@ -415,10 +415,7 @@ def calculate_evidence_score(
     # Calculate keyword match ratio - how many query keywords appear in context
     keyword_hits = sum(1 for kw in query_keywords if kw in context_text)
 
-    if query_keywords:
-        keyword_match_ratio = keyword_hits / len(query_keywords)
-    else:
-        keyword_match_ratio = 0.0
+    keyword_match_ratio = keyword_hits / len(query_keywords) if query_keywords else 0.0
 
     # Check for specific entity type mismatches (e.g., KITAS query returning KBLI)
     # This catches cases where the topic is completely wrong
@@ -433,12 +430,12 @@ def calculate_evidence_score(
         query_has_visa = any(kw in visa_keywords for kw in query_keywords)
         query_has_kbli = any(kw in kbli_keywords for kw in query_keywords)
         query_has_tax = any(kw in tax_keywords for kw in query_keywords)
-        query_has_company = any(kw in company_keywords for kw in query_keywords)
+        any(kw in company_keywords for kw in query_keywords)
 
         context_has_visa = any(kw in context_text for kw in visa_keywords)
         context_has_kbli = any(kw in context_text for kw in kbli_keywords)
         context_has_tax = any(kw in context_text for kw in tax_keywords)
-        context_has_company = any(kw in context_text for kw in company_keywords)
+        any(kw in context_text for kw in company_keywords)
 
         # Detect mismatch: query about X but context about Y (where X != Y)
         # Only flag if context clearly belongs to a different category

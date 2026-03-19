@@ -533,7 +533,7 @@ def test_get_research_stats(autonomous_research_service):
         result = await service.research("Complex query", user_level=3)
 
         # Should have searched multiple collections
-        collections_searched = set(step.collection for step in result.research_steps)
+        collections_searched = {step.collection for step in result.research_steps}
         assert len(collections_searched) > 1
 
     @pytest.mark.asyncio

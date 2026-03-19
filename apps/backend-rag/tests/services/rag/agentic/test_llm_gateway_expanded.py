@@ -60,7 +60,6 @@ class TestAdvancedErrorScenarios:
 
         # Simulate cascading failures
         failure_count = 0
-        original_call = gateway._send_with_fallback
 
         async def failing_call(*args, **kwargs):
             nonlocal failure_count
@@ -84,7 +83,6 @@ class TestAdvancedErrorScenarios:
         gateway = gateway_with_errors
 
         call_count = 0
-        original_call = gateway._send_with_fallback
 
         async def intermittent_call(*args, **kwargs):
             nonlocal call_count
@@ -249,7 +247,6 @@ class TestResourceExhaustion:
         gateway = resource_gateway
 
         # Mock expensive responses to trigger depth limit
-        original_call = gateway._send_with_fallback
 
         async def depth_limited_call(*args, **kwargs):
             query_cost_tracker = kwargs.get("query_cost_tracker", {})
@@ -343,7 +340,6 @@ class TestNetworkFailureSimulation:
             await asyncio.sleep(0.1)  # Simulate delay
             return ("Slow response", "gemini-3-flash-preview", Mock(), MockTokenUsage())
 
-        original_call = gateway._send_with_fallback
         gateway._send_with_fallback = slow_response
 
         start_time = time.time()
@@ -536,7 +532,6 @@ class TestIntegrationScenarios:
 
         # Mock failures for higher tiers
         call_count = 0
-        original_call = gateway._send_with_fallback
 
         async def tier_fallback_call(*args, **kwargs):
             nonlocal call_count

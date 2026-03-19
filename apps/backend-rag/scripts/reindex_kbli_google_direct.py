@@ -7,6 +7,7 @@ Da eseguire DIRETTAMENTE sul server Fly.io via SSH.
 import asyncio
 import json
 import os
+
 import httpx
 
 # Lista completa articoli KBLI
@@ -55,32 +56,32 @@ ARTICLES = [
 
 async def main():
     print("🔑 Autenticazione Google...")
-    
+
     creds_json = os.getenv('GOOGLE_INDEXING_CREDENTIALS')
     if not creds_json:
         print("❌ GOOGLE_INDEXING_CREDENTIALS non trovato!")
         return
-    
-    from google.oauth2 import service_account
+
     from google.auth.transport.requests import Request
-    
+    from google.oauth2 import service_account
+
     creds_data = json.loads(creds_json)
     credentials = service_account.Credentials.from_service_account_info(
         creds_data,
         scopes=['https://www.googleapis.com/auth/indexing'],
     )
     credentials.refresh(Request())
-    
-    print(f"✅ Token ottenuto!")
+
+    print("✅ Token ottenuto!")
     print(f"📧 Service Account: {creds_data.get('client_email')}")
     print()
     print(f"📤 Invio {len(ARTICLES)} URL a Google Indexing API...")
     print("   (Rate limit: ~200/giorno, attendi 2s tra chiamate)")
     print()
-    
+
     success = 0
     failed = 0
-    
+
     for i, slug in enumerate(ARTICLES, 1):
         url = f'https://balizero.com/business/{slug}'
         try:
@@ -102,11 +103,11 @@ async def main():
         except Exception as e:
             print(f'❌ [{i:2d}/{len(ARTICLES)}] Errore: {str(e)[:50]} - {slug}')
             failed += 1
-        
+
         # Rate limiting
         if i < len(ARTICLES):
             await asyncio.sleep(2)
-    
+
     print()
     print('=' * 60)
     print('🎉 RE-INDEXING GOOGLE COMPLETATO!')

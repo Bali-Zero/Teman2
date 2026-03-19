@@ -290,8 +290,8 @@ class MigrationManager:
                 tables_exist = await conn.fetchval(
                     """
                     SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_schema = 'public' 
+                        SELECT FROM information_schema.tables
+                        WHERE table_schema = 'public'
                         AND table_name = 'clients'
                     );
                 """

@@ -4,7 +4,6 @@ Tests tool execution functionality
 """
 
 import os
-from pathlib import Path
 
 import pytest
 
