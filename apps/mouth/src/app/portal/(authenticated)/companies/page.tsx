@@ -158,7 +158,13 @@ function CompanyCard({
           </div>
 
           {/* Quick Stats */}
-          <div className="flex items-center gap-4 mt-3 text-xs">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs" style={{ color: "var(--bz-text-2)" }}>
+            {company.nib && (
+              <span>NIB: {company.nib}</span>
+            )}
+            {company.kbli && (
+              <span>KBLI: {company.kbli}</span>
+            )}
             {company.licenses &&
               company.licenses.length > 0 &&
               licenseStatus && (
@@ -166,7 +172,7 @@ function CompanyCard({
                   <licenseStatus.icon
                     className={cn("w-3.5 h-3.5", licenseStatus.className)}
                   />
-                  <span style={{ color: "var(--bz-text-2)" }}>
+                  <span>
                     {company.licenses.length} license
                     {company.licenses.length !== 1 ? "s" : ""}
                   </span>
@@ -174,12 +180,10 @@ function CompanyCard({
               )}
 
             {company.directors && company.directors.length > 0 && (
-              <div className="flex items-center gap-1.5" style={{ color: "var(--bz-text-2)" }}>
-                <span>
-                  {company.directors.length} director
-                  {company.directors.length !== 1 ? "s" : ""}
-                </span>
-              </div>
+              <span>
+                {company.directors.length} director
+                {company.directors.length !== 1 ? "s" : ""}
+              </span>
             )}
 
             {compliance && (
