@@ -342,7 +342,7 @@ class CrossEncoderReranker:
 
                 # Attach scores to documents
                 reranked_docs = []
-                for doc, score in zip(valid_docs, scores):
+                for doc, score in zip(valid_docs, scores, strict=False):
                     # Create a copy to avoid mutating original
                     doc_copy = doc.copy()
 
@@ -417,7 +417,7 @@ class CrossEncoderReranker:
             )
 
         # Run all reranks concurrently
-        tasks = [self.rerank(query, docs, top_k) for query, docs in zip(queries, documents_list)]
+        tasks = [self.rerank(query, docs, top_k) for query, docs in zip(queries, documents_list, strict=False)]
 
         return await asyncio.gather(*tasks)
 

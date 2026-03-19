@@ -6,6 +6,7 @@ with team check-in status.
 """
 
 import asyncio
+import contextlib
 import logging
 import smtplib
 from datetime import datetime
@@ -51,10 +52,8 @@ class DailyCheckinNotifier:
         self.running = False
         if self.task:
             self.task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.task
-            except asyncio.CancelledError:
-                pass
         logger.info("🛑 Daily check-in notifier stopped")
 
     async def _scheduler_loop(self) -> None:

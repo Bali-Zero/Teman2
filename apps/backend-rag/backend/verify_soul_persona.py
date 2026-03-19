@@ -44,7 +44,7 @@ async def test_soul_persona():
 
     model_name = "gemini-2.0-flash"
 
-    orchestrator = AgenticRAGOrchestrator()
+    AgenticRAGOrchestrator()
 
     # Query designed to trigger the "Pivot" (Straight answer -> Strategy risk)
     user_query = "Cara, gue mau setup PT PMA tapi modal 10M itu kegedean. Bisa pake nominee gak?"

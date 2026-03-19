@@ -101,7 +101,7 @@ class TestAuthenticationIntegration:
             "exp": datetime.now(timezone.utc) + timedelta(hours=1),
         }
 
-        token = jwt.encode(payload, secret, algorithm="HS256")
+        jwt.encode(payload, secret, algorithm="HS256")
 
         # Test health endpoint (should work without auth)
         response = test_client.get("/health")
@@ -152,6 +152,7 @@ class TestAuthenticationIntegration:
     def test_error_monitoring_middleware(self):
         """Test error monitoring middleware"""
         from fastapi import FastAPI
+
         from backend.middleware.error_monitoring import ErrorMonitoringMiddleware
 
         app = FastAPI()
@@ -169,6 +170,7 @@ class TestAuthenticationIntegration:
     def test_hybrid_auth_middleware(self):
         """Test hybrid authentication middleware"""
         from fastapi import FastAPI
+
         from backend.middleware.hybrid_auth import HybridAuthMiddleware
 
         app = FastAPI()

@@ -509,7 +509,7 @@ class RAGASEvaluator:
             ...     ground_truth="KITAS (Kartu Izin Tinggal Terbatas)..."
             ... )
         """
-        with get_performance_logger(__name__, "ragas_evaluation") as perf_logger:
+        with get_performance_logger(__name__, "ragas_evaluation"):
             all_metrics = [
                 "faithfulness",
                 "answer_relevance",

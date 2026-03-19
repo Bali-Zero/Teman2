@@ -166,7 +166,6 @@ class TestCrossOracleSynthesisIntegration:
     ):
         """Test synthesis using user context for personalization"""
         query = "Piano per il mio business"
-        user_id = "marco@example.com"
 
         # Mock user context
         user_context = {

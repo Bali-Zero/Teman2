@@ -5,6 +5,7 @@ Replaces Node.js websocket.ts
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 from typing import Any
@@ -179,10 +180,8 @@ async def websocket_endpoint(websocket: WebSocket) -> Any:
         await manager.disconnect(websocket, user_id)
     finally:
         heartbeat_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await heartbeat_task
-        except asyncio.CancelledError:
-            pass
 
 
 async def send_heartbeat(websocket: WebSocket, interval: int = 15) -> None:

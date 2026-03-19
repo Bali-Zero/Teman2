@@ -203,7 +203,7 @@ def build_fix_prompt(
 
     # Choose fix target based on error type
     if is_mock_fix:
-        fix_target = first["test_file"]
+        first["test_file"]
         fix_instructions = f"""## Instructions (TEST MOCK FIX)
 1. Read the error carefully. The root cause is an INCOMPLETE MOCK in the test fixture.
 2. The test file has a fixture (often `autouse=True`) that replaces real modules in
@@ -226,7 +226,7 @@ def build_fix_prompt(
    git add {first["test_file"]} && git commit -m "fix(auto): mock - {group_key}"
    ```"""
     else:
-        fix_target = first["file_path"]
+        first["file_path"]
         fix_instructions = f"""## Instructions
 1. Read the error carefully. Identify the ROOT CAUSE.
 2. Fix the SOURCE code (in `{first["file_path"]}`), NOT the test file.

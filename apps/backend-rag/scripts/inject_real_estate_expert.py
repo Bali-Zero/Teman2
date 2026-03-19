@@ -1,15 +1,17 @@
 import asyncio
-import asyncpg
 import json
+
+import asyncpg
+
 
 async def run():
     # Database connection with local credentials
     conn = await asyncpg.connect('postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara')
-    
+
     real_estate_data = [
         {
-            "code": "68111", 
-            "name": "Real Estat Dimiliki/Disewa", 
+            "code": "68111",
+            "name": "Real Estat Dimiliki/Disewa",
             "desc": "Aktivitas real estat che sono di proprietà o in affitto, include lo sviluppo e la vendita di proprietà.",
             "expert_legal": {
                 "regulation": "PP 28/2025",
@@ -29,8 +31,8 @@ async def run():
             }
         },
         {
-            "code": "68112", 
-            "name": "Real Estat Berdasarkan Balas Jasa", 
+            "code": "68112",
+            "name": "Real Estat Berdasarkan Balas Jasa",
             "desc": "Aktivitas real estat su commissione (fee basis), es. Property Management.",
             "expert_legal": {
                 "regulation": "PP 28/2025",
@@ -49,8 +51,8 @@ async def run():
             }
         },
         {
-            "code": "68210", 
-            "name": "Broker Real Estat", 
+            "code": "68210",
+            "name": "Broker Real Estat",
             "desc": "Servizi di intermediazione e pialang immobiliare (nuovo codice KBLI 2025).",
             "expert_legal": {
                 "regulation": "PP 28/2025",
@@ -68,11 +70,11 @@ async def run():
             }
         }
     ]
-    
+
     sql = """
         INSERT INTO kg_nodes (entity_id, entity_type, name, description, properties)
         VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (entity_id) DO UPDATE 
+        ON CONFLICT (entity_id) DO UPDATE
         SET properties = EXCLUDED.properties, description = EXCLUDED.description, updated_at = CURRENT_TIMESTAMP
     """
 
@@ -84,7 +86,7 @@ async def run():
             'pma_status': 'TERBUKA',
             'expert_legal': item['expert_legal']
         }
-        
+
         await conn.execute(sql, entity_id, 'kbli', f"KBLI {item['code']}: {item['name']}", item['desc'], json.dumps(props))
         print(f"✅ Arricchito {entity_id}: Real Estate Expert Data")
 

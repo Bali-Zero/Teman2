@@ -4,7 +4,6 @@ Unit tests for API Key Authentication Service
 """
 
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -86,7 +85,7 @@ def test_init_key_stats_structure(api_key_auth):
 def test_init_logs_initialization(fresh_api_key_auth):
     """Test that initialization logs correct message"""
     with patch("backend.app.services.api_key_auth.logger") as mock_logger:
-        service = APIKeyAuth()
+        APIKeyAuth()
         mock_logger.info.assert_called_once()
         assert "API Key service initialized" in mock_logger.info.call_args[0][0]
         assert "2 valid keys" in mock_logger.info.call_args[0][0]

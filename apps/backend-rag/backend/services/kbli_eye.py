@@ -72,13 +72,9 @@ class KBLIEye:
 
         # Gestione dati per_skala (può essere una lista o un dict a seconda del cleanup)
         per_skala = kbli.get("per_skala", [{}])
-        if isinstance(per_skala, list) and len(per_skala) > 0:
-            primary_skala = per_skala[0]
-        else:
-            primary_skala = {}
+        primary_skala = per_skala[0] if isinstance(per_skala, list) and len(per_skala) > 0 else {}
 
         oss_risk = primary_skala.get("kategori_risiko", "Unknown")
-        is_low_risk = oss_risk in ["Rendah", "Menengah Rendah"]
 
         # 3. Matrice di Decisione (Determinismo puro)
         resolved_code = kbli["kode_kbli_2025"]

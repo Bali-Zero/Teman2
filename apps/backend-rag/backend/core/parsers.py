@@ -136,7 +136,7 @@ def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
                             pdf_bytes = f.read()
                         # Check if we're in an async context
                         try:
-                            loop = asyncio.get_running_loop()
+                            asyncio.get_running_loop()
                             # We're in async context, can't use asyncio.run()
                             logger.warning("Cannot use vision model in async context - OCR skipped")
                         except RuntimeError:
@@ -196,7 +196,7 @@ async def extract_text_from_pdf_ocr_async(file_path: str) -> str:
         logger.info(f"Processing {total_pages} pages with Gemini Vision OCR...")
 
         # OCR prompt optimized for text extraction
-        ocr_prompt = """Extract all text from this page. 
+        ocr_prompt = """Extract all text from this page.
 Preserve the original formatting, line breaks, paragraphs, and structure.
 Return only the extracted text, no descriptions or explanations.
 If the page contains tables, preserve the table structure.
@@ -274,7 +274,7 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
                             f"OCR not available for page {page_num}, trying alternative extraction"
                         )
                         # Convert page to image and use vision model as fallback
-                        pix = page.get_pixmap()
+                        page.get_pixmap()
                         # For now, return empty - can be enhanced with vision model
                         text = ""
 

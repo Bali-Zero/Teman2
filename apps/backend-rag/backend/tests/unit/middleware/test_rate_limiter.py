@@ -63,7 +63,7 @@ class TestRateLimiter:
         rl_module._rate_limit_storage.clear()
 
         # Make requests up to limit
-        for i in range(10):
+        for _i in range(10):
             allowed, info = limiter.is_allowed("test-key-2", limit=10, window=60)
 
         # Next request should be denied

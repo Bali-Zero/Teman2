@@ -454,7 +454,7 @@ async def main():
     # Step 4: Build final Qdrant points and upsert
     logger.info(f"\nStep 4: Upserting {len(all_points)} points...")
     qdrant_points = []
-    for point, emb, sparse in zip(all_points, embeddings, sparse_vectors):
+    for point, emb, sparse in zip(all_points, embeddings, sparse_vectors, strict=False):
         qdrant_points.append(
             {
                 "id": point["id"],

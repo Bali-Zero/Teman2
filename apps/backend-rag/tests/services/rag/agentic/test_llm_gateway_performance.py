@@ -60,8 +60,8 @@ class TestLoadTestingAndCapacity:
             start_time = time.time()
 
             # Simulate request processing
-            circuit = gateway._get_circuit_breaker(f"load-model-{request_id % 5}")
-            chain = gateway._get_fallback_chain(TIER_FLASH)
+            gateway._get_circuit_breaker(f"load-model-{request_id % 5}")
+            gateway._get_fallback_chain(TIER_FLASH)
 
             # Simulate processing time
             time.sleep(0.01)  # 10ms processing time
@@ -109,8 +109,8 @@ class TestLoadTestingAndCapacity:
                 start_time = time.time()
 
                 # Process request
-                circuit = gateway._get_circuit_breaker(f"burst-model-{burst_id}")
-                chain = gateway._get_fallback_chain(TIER_PRO)
+                gateway._get_circuit_breaker(f"burst-model-{burst_id}")
+                gateway._get_fallback_chain(TIER_PRO)
 
                 # Simulate variable processing time
                 time.sleep(0.005 + (i % 3) * 0.005)  # 5-15ms
@@ -164,8 +164,8 @@ class TestLoadTestingAndCapacity:
 
             # Process requests at this level
             for i in range(level["requests"]):
-                circuit = gateway._get_circuit_breaker(f"capacity-model-{i % 10}")
-                chain = gateway._get_fallback_chain(TIER_FLASH)
+                gateway._get_circuit_breaker(f"capacity-model-{i % 10}")
+                gateway._get_fallback_chain(TIER_FLASH)
                 time.sleep(0.001)  # 1ms processing
 
             end_time = time.time()
@@ -283,10 +283,9 @@ class TestMemoryOptimization:
 
     def test_garbage_collection_efficiency(self, memory_gateway):
         """Test garbage collection efficiency."""
-        gateway = memory_gateway
 
         # Monitor GC statistics
-        initial_gc_stats = gc.get_stats() if hasattr(gc, "get_stats") else []
+        gc.get_stats() if hasattr(gc, "get_stats") else []
         initial_collections = gc.collect()
 
         # Create objects that need collection
@@ -315,7 +314,7 @@ class TestMemoryOptimization:
 
         # Create more objects and test again
         for i in range(3000):
-            obj = {"large_data": "x" * 1000, "id": i}
+            pass
             # Add to list then clear to test collection
         gc.collect()
 
@@ -373,7 +372,7 @@ class TestCPUOptimization:
                     future = executor.submit(cpu_intensive_task, i)
                     futures.append(future)
 
-                results = [future.result() for future in futures]
+                [future.result() for future in futures]
 
             end_time = time.time()
             execution_time = end_time - start_time
@@ -402,7 +401,6 @@ class TestCPUOptimization:
 
     def test_thread_pool_efficiency(self, cpu_gateway):
         """Test thread pool efficiency and sizing."""
-        gateway = cpu_gateway
 
         def simulated_request(request_id, processing_time=0.01):
             """Simulate a request with processing time."""
@@ -424,7 +422,7 @@ class TestCPUOptimization:
                     future = executor.submit(simulated_request, i)
                     futures.append(future)
 
-                results = [future.result() for future in futures]
+                [future.result() for future in futures]
 
             end_time = time.time()
             total_time = end_time - start_time
@@ -443,7 +441,6 @@ class TestCPUOptimization:
 
     def test_async_vs_sync_performance(self, cpu_gateway):
         """Test async vs sync performance comparison."""
-        gateway = cpu_gateway
 
         # Synchronous processing
         def sync_processing(request_id):
@@ -498,7 +495,6 @@ class TestNetworkOptimization:
 
     def test_network_latency_simulation(self, network_gateway):
         """Test network latency handling."""
-        gateway = network_gateway
 
         def simulate_network_request(request_id, latency_ms):
             """Simulate network request with latency."""
@@ -541,7 +537,6 @@ class TestNetworkOptimization:
 
     def test_connection_pool_efficiency(self, network_gateway):
         """Test connection pool efficiency."""
-        gateway = network_gateway
 
         # Simulate connection pool
         class MockConnectionPool:
@@ -612,7 +607,6 @@ class TestNetworkOptimization:
 
     def test_throughput_optimization(self, network_gateway):
         """Test network throughput optimization."""
-        gateway = network_gateway
 
         def simulate_data_transfer(data_size_kb, transfer_time_ms):
             """Simulate data transfer."""
@@ -705,7 +699,7 @@ class TestPerformanceRegression:
                     future = executor.submit(simulate_request, i, response_time)
                     futures.append(future)
 
-                results = [future.result() for future in futures]
+                [future.result() for future in futures]
 
             end_time = time.time()
             actual_response_time = (end_time - start_time) / 50 * 1000  # Average in ms
@@ -744,7 +738,7 @@ class TestPerformanceRegression:
                     future = executor.submit(lambda: time.sleep(processing_time_ms / 1000.0))
                     futures.append(future)
 
-                results = [future.result() for future in futures]
+                [future.result() for future in futures]
 
             end_time = time.time()
             actual_throughput = num_requests / (end_time - start_time)

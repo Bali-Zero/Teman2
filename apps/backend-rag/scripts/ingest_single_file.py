@@ -7,7 +7,6 @@ Usage:
     cd apps/backend-rag && python scripts/ingest_single_file.py training-data/business/business_033_kbli_foreign_ownership.md
 """
 
-import asyncio
 import hashlib
 import logging
 import os
@@ -23,6 +22,7 @@ backend_rag_root = script_dir.parent
 sys.path.insert(0, str(backend_rag_root / "backend"))
 
 from dotenv import load_dotenv
+
 load_dotenv(backend_rag_root / ".env")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

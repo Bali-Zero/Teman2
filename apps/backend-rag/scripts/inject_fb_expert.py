@@ -1,14 +1,16 @@
 import asyncio
-import asyncpg
 import json
+
+import asyncpg
+
 
 async def run():
     conn = await asyncpg.connect('postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara')
-    
+
     fb_data = [
         {
-            "code": "56101", 
-            "name": "Restoran", 
+            "code": "56101",
+            "name": "Restoran",
             "desc": "Aktivitas penyediaan layanan makanan di bangunan tetap.",
             "expert_legal": {
                 "regulation": "PP 28/2025",
@@ -30,8 +32,8 @@ async def run():
             }
         },
         {
-            "code": "56301", 
-            "name": "Bar", 
+            "code": "56301",
+            "name": "Bar",
             "desc": "Aktivitas penyediaan minuman beralkohol e accompagnamenti leggeri.",
             "expert_legal": {
                 "regulation": "PP 28/2025",
@@ -52,8 +54,8 @@ async def run():
             }
         },
         {
-            "code": "56303", 
-            "name": "Rumah Minum/Kafe", 
+            "code": "56303",
+            "name": "Rumah Minum/Kafe",
             "desc": "Aktivitas penyediaan minuman (caffè, tè, ecc.) e snack in edifici fissi.",
             "expert_legal": {
                 "regulation": "PP 28/2025",
@@ -73,11 +75,11 @@ async def run():
             }
         }
     ]
-    
+
     sql = """
         INSERT INTO kg_nodes (entity_id, entity_type, name, description, properties)
         VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (entity_id) DO UPDATE 
+        ON CONFLICT (entity_id) DO UPDATE
         SET properties = EXCLUDED.properties, description = EXCLUDED.description, updated_at = CURRENT_TIMESTAMP
     """
 
@@ -88,7 +90,7 @@ async def run():
             'pma_status': 'TERBUKA',
             'expert_legal': item['expert_legal']
         }
-        
+
         await conn.execute(sql, entity_id, 'kbli', f"KBLI {item['code']}: {item['name']}", item['desc'], json.dumps(props))
         print(f"✅ Arricchito {entity_id}: F&B Expert Data")
 

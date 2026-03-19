@@ -691,10 +691,10 @@ async def create_evaluation_tables() -> None:
                 comparison JSONB
             );
 
-            CREATE INDEX IF NOT EXISTS idx_eval_runs_name 
+            CREATE INDEX IF NOT EXISTS idx_eval_runs_name
             ON rag_evaluation_runs(name);
-            
-            CREATE INDEX IF NOT EXISTS idx_eval_runs_timestamp 
+
+            CREATE INDEX IF NOT EXISTS idx_eval_runs_timestamp
             ON rag_evaluation_runs(timestamp DESC);
         """
         )

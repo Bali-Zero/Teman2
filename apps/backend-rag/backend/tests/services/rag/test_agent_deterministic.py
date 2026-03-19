@@ -1,21 +1,22 @@
 import pytest
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
+
 class NPWPValidationSchema(BaseModel):
     """Schema deterministico per il tool Pydantic di estrazione NPWP."""
     npwp_number: str = Field(..., description="15 or 16 digit Indonesian NPWP")
     status: str = Field(..., description="Extracted status of NPWP")
-    
+
     @field_validator('npwp_number')
     @classmethod
     def validate_npwp(cls, v: str) -> str:
         cleaned = v.replace(".", "").replace("-", "")
         if not cleaned.isdigit():
             raise ValueError("NPWP must contain only numbers.")
-        
+
         if len(cleaned) not in [15, 16]:
             raise ValueError(f"NPWP must be 15 or 16 digits long. Got {len(cleaned)} digits.")
-            
+
         return cleaned
 
 class KBLIMatchingSchema(BaseModel):
@@ -29,7 +30,7 @@ class KBLIMatchingSchema(BaseModel):
         if not v.isdigit() or len(v) != 5:
             raise ValueError("KBLI code must be exactly 5 digits.")
         return v
-        
+
     @field_validator('confidence_score')
     @classmethod
     def validate_confidence(cls, v: float) -> float:

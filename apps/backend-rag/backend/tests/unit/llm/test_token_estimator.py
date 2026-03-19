@@ -35,7 +35,7 @@ class TestTokenEstimator:
                 mock_encoding = MagicMock()
                 mock_tiktoken.get_encoding.return_value = mock_encoding
 
-                estimator = TokenEstimator("gemini-pro")
+                TokenEstimator("gemini-pro")
                 mock_tiktoken.get_encoding.assert_called_with("cl100k_base")
 
     def test_init_without_tiktoken(self):

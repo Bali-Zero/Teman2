@@ -141,7 +141,7 @@ class TestQdrantEdgeCases:
 
         # Try to search non-existent collection
         try:
-            results = await qdrant_client.search(
+            await qdrant_client.search(
                 collection_name="non_existent_collection",
                 query_vector=[0.1] * 1536,
                 limit=10,

@@ -164,7 +164,6 @@ class TestAutonomousResearchIntegration:
     ):
         """Test research using Memory context for personalization"""
         query = "Qual è il miglior visto per me?"
-        user_id = "marco@example.com"
 
         # Mock memory context
         memory_context = {

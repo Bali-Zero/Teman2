@@ -556,7 +556,7 @@ class TestAgenticQueryResponse:
 
             # The error is raised before the generator is created
             with pytest.raises(HTTPException) as exc_info:
-                response = await stream_agentic_rag(
+                await stream_agentic_rag(
                     request_body=request_data,
                     http_request=mock_request,
                     current_user=mock_current_user,

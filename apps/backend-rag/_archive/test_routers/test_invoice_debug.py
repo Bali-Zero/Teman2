@@ -56,7 +56,6 @@ async def test_trigger_sending_invoice_debug(practice_id: int = 47):
                 practice_type=practice_row.get("practice_type_code", "SERVICE"),
                 quoted_price=float(practice_row.get("quoted_price", 0)),
             )
-            pdf_generated = True
         except Exception as e:
             return {
                 "error": "PDF generation failed",

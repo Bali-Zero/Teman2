@@ -89,7 +89,7 @@ class VisaService:
             row = await conn.fetchrow(
                 """
                     INSERT INTO visa_records
-                    (client_id, visa_type, status, issue_date, expiry_date, 
+                    (client_id, visa_type, status, issue_date, expiry_date,
                      visa_number, sponsor_name, sponsor_type, practice_id)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     RETURNING *

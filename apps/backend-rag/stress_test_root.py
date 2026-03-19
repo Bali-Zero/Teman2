@@ -65,7 +65,7 @@ async def run_stress_test():
     session_id = f"stress_sess_{int(time.time())}"
     conversation_history = []
     consecutive_errors = 0
-    total_start_time = time.time()
+    time.time()
     results = []
 
     logger.info("\n" + "=" * 60)

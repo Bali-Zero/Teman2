@@ -18,6 +18,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+import contextlib
+
 from backend.app.setup.service_initializer import (
     _database_health_check_loop,
     _init_critical_services,
@@ -58,8 +60,8 @@ def test_is_transient_error():
 @pytest.mark.asyncio
 async def test_init_critical_services_success(mock_app):
     with (
-        patch("backend.services.search.search_service.SearchService") as MockSearch,
-        patch("backend.llm.zantara_ai_client.ZantaraAIClient") as MockAI,
+        patch("backend.services.search.search_service.SearchService"),
+        patch("backend.llm.zantara_ai_client.ZantaraAIClient"),
         patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
         patch("backend.services.ingestion.collection_manager.CollectionManager"),
         patch("backend.services.routing.conflict_resolver.ConflictResolver"),
@@ -81,8 +83,8 @@ async def test_init_critical_services_search_failure_generic(mock_app):
         patch(
             "backend.services.search.search_service.SearchService",
             side_effect=RuntimeError("Unexpected"),
-        ) as MockSearch,
-        patch("backend.llm.zantara_ai_client.ZantaraAIClient") as MockAI,
+        ),
+        patch("backend.llm.zantara_ai_client.ZantaraAIClient"),
         patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
         patch("backend.services.ingestion.collection_manager.CollectionManager"),
     ):
@@ -104,7 +106,7 @@ async def test_init_critical_services_ai_failure_generic(mock_app):
         patch(
             "backend.llm.zantara_ai_client.ZantaraAIClient",
             side_effect=RuntimeError("UnexpectedAI"),
-        ) as MockAI,
+        ),
         patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
         patch("backend.services.ingestion.collection_manager.CollectionManager"),
         patch("backend.services.routing.conflict_resolver.ConflictResolver"),
@@ -133,7 +135,7 @@ async def test_init_tool_stack_mcp_success(mock_app):
             "backend.services.misc.mcp_client_service.initialize_mcp_client",
             new_callable=AsyncMock,
         ) as mock_mcp_init,
-        patch("backend.services.misc.tool_executor.ToolExecutor") as MockExecutor,
+        patch("backend.services.misc.tool_executor.ToolExecutor"),
         patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
     ):
         mock_mcp_client = MagicMock()
@@ -284,7 +286,7 @@ async def test_database_health_check_loop_exception_recovery():
     with (
         patch(
             "backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock
-        ) as mock_sleep,
+        ),
         patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
     ):
         task = asyncio.create_task(_database_health_check_loop(mock_pool))
@@ -292,10 +294,8 @@ async def test_database_health_check_loop_exception_recovery():
         await asyncio.sleep(0.01)
 
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
 
         mock_registry.register.assert_any_call(
             "database", ServiceStatus.DEGRADED, error="Connection failed"

@@ -11,17 +11,17 @@ from typing import Any
 async def apply(conn: Any) -> None:
     # 1. Add source_chunk_ids to kg_nodes
     await conn.execute("""
-        ALTER TABLE kg_nodes 
+        ALTER TABLE kg_nodes
         ADD COLUMN IF NOT EXISTS source_chunk_ids TEXT[] DEFAULT '{}';
-        
+
         CREATE INDEX IF NOT EXISTS idx_kg_nodes_chunks ON kg_nodes USING GIN(source_chunk_ids);
     """)
 
     # 2. Add source_chunk_ids to kg_edges
     await conn.execute("""
-        ALTER TABLE kg_edges 
+        ALTER TABLE kg_edges
         ADD COLUMN IF NOT EXISTS source_chunk_ids TEXT[] DEFAULT '{}';
-        
+
         CREATE INDEX IF NOT EXISTS idx_kg_edges_chunks ON kg_edges USING GIN(source_chunk_ids);
     """)
 

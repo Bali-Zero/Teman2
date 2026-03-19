@@ -4,6 +4,7 @@ Force Upload to Qdrant via REST API (Battering Ram Approach)
 Uploads prepared payloads from ready_to_curl.json using curl subprocess.
 """
 
+import contextlib
 import json
 import os
 import subprocess
@@ -49,7 +50,7 @@ def create_collection(collection_name: str) -> bool:
         if result.returncode == 0 and "error" not in result.stdout.lower():
             print(f"✅ Collection {collection_name} already exists")
             return True
-    except:
+    except Exception:
         pass
 
     # Create collection
@@ -92,10 +93,8 @@ def create_collection(collection_name: str) -> bool:
         print(f"❌ Error creating collection: {e}")
         return False
     finally:
-        try:
+        with contextlib.suppress(BaseException):
             os.unlink(tmp_path)
-        except:
-            pass
 
 
 def main():
@@ -185,10 +184,8 @@ def main():
             failed_count += len(batch)
         finally:
             # Clean up temp file
-            try:
+            with contextlib.suppress(BaseException):
                 os.unlink(tmp_path)
-            except:
-                pass
 
     print()
     print("=" * 60)

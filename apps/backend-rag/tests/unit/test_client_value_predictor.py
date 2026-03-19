@@ -158,13 +158,13 @@ class TestClientValuePredictorSimple:
                 ) as mock_scoring,
                 patch(
                     "backend.agents.agents.client_value_predictor.ClientSegmentationService"
-                ) as mock_segmentation,
+                ),
                 patch(
                     "backend.agents.agents.client_value_predictor.NurturingMessageService"
-                ) as mock_message,
+                ),
                 patch(
                     "backend.agents.agents.client_value_predictor.WhatsAppNotificationService"
-                ) as mock_whatsapp,
+                ),
                 patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_app.state = MagicMock()
@@ -219,10 +219,10 @@ class TestClientValuePredictorSimple:
             with (
                 patch(
                     "backend.agents.agents.client_value_predictor.ClientScoringService"
-                ) as mock_scoring,
+                ),
                 patch(
                     "backend.agents.agents.client_value_predictor.ClientSegmentationService"
-                ) as mock_segmentation,
+                ),
                 patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
                 patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
                 patch("backend.app.core.config.settings") as mock_settings,
@@ -302,10 +302,10 @@ class TestClientValuePredictorSimple:
             with (
                 patch(
                     "backend.agents.agents.client_value_predictor.ClientScoringService"
-                ) as mock_scoring,
+                ),
                 patch(
                     "backend.agents.agents.client_value_predictor.ClientSegmentationService"
-                ) as mock_segmentation,
+                ),
                 patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
                 patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
                 patch("backend.app.core.config.settings") as mock_settings,

@@ -36,8 +36,6 @@ def orchestrator():
 @pytest.mark.asyncio
 async def test_stream_handles_none_events(orchestrator):
     """Test that None events are handled gracefully."""
-    correlation_id = "test-correlation-id"
-    user_id = "test-user"
 
     # Mock stream to yield None events
     async def mock_stream():

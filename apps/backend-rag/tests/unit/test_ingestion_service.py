@@ -3,7 +3,6 @@ Unit tests for Ingestion Service
 100% coverage target with comprehensive mocking
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest

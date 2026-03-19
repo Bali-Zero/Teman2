@@ -122,11 +122,6 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(agentic_rag.router)
     api.include_router(kg_agentic.router)
 
-    # Generals Multi-Agent System router
-    from backend.generals.task_coordinator import router as generals_router
-
-    api.include_router(generals_router)
-
     # Conversation & Memory routers
     api.include_router(conversations.router)
     api.include_router(session.router)

@@ -34,7 +34,7 @@ class TestIngestionServiceIntegration:
     @pytest.mark.asyncio
     async def test_ingestion_service_initialization(self, qdrant_client):
         """Test IngestionService initialization"""
-        with patch("backend.services.ingestion_service.QdrantClient") as mock_qdrant:
+        with patch("backend.services.ingestion_service.QdrantClient"):
             from backend.services.ingestion.ingestion_service import IngestionService
 
             service = IngestionService()
@@ -109,7 +109,7 @@ class TestLegalIngestionServiceIntegration:
     @pytest.mark.asyncio
     async def test_legal_ingestion_service_initialization(self, qdrant_client):
         """Test LegalIngestionService initialization"""
-        with patch("backend.services.legal_ingestion_service.QdrantClient") as mock_qdrant:
+        with patch("backend.services.legal_ingestion_service.QdrantClient"):
             from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
             service = LegalIngestionService()

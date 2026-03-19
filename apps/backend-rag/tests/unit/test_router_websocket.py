@@ -13,7 +13,6 @@ Coverage:
 
 import asyncio
 import json
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -547,7 +546,7 @@ class TestRedisListener:
         mock_manager_instance.register_component = MagicMock()
 
         with (
-            patch("backend.app.routers.websocket.RedisManager", create=True) as MockRM,
+            patch("backend.app.routers.websocket.RedisManager", create=True),
             patch("backend.core.redis_manager.RedisManager.get_instance", return_value=mock_manager_instance),
             patch("backend.app.routers.websocket.logger") as mock_logger,
         ):
@@ -600,7 +599,7 @@ class TestRedisListener:
             raise asyncio.CancelledError()
 
         mock_pubsub.listen = mock_listen
-        mock_mgr = self._make_redis_manager_mock(mock_client)
+        self._make_redis_manager_mock(mock_client)
 
         with (
 
@@ -632,7 +631,7 @@ class TestRedisListener:
             raise asyncio.CancelledError()
 
         mock_pubsub.listen = mock_listen
-        mock_mgr = self._make_redis_manager_mock(mock_client)
+        self._make_redis_manager_mock(mock_client)
 
         with (
 
@@ -662,7 +661,7 @@ class TestRedisListener:
             raise asyncio.CancelledError()
 
         mock_pubsub.listen = mock_listen
-        mock_mgr = self._make_redis_manager_mock(mock_client)
+        self._make_redis_manager_mock(mock_client)
 
         with (
 
@@ -693,7 +692,7 @@ class TestRedisListener:
             raise asyncio.CancelledError()
 
         mock_pubsub.listen = mock_listen
-        mock_mgr = self._make_redis_manager_mock(mock_client)
+        self._make_redis_manager_mock(mock_client)
 
         with (
 
@@ -718,7 +717,7 @@ class TestRedisListener:
             raise Exception("Redis connection lost")
 
         mock_pubsub.listen = mock_listen
-        mock_mgr = self._make_redis_manager_mock(mock_client)
+        self._make_redis_manager_mock(mock_client)
 
         with (
 

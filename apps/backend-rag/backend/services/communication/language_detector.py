@@ -149,7 +149,7 @@ def get_language_instruction(language: str) -> str:
         "it": """
 <language_instruction>
     **LINGUA OBBLIGATORIA: ITALIANO**
-    Tu sei ZANTARA, consulente esperto di Bali Zero. 
+    Tu sei ZANTARA, consulente esperto di Bali Zero.
     Il tuo tono è professionale, diretto e orientato alla soluzione.
     Inizia sempre con la risposta diretta.
 </language_instruction>

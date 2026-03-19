@@ -89,8 +89,8 @@ class TestWorkSessionService:
         )
 
         with (
-            patch.object(work_session_service, "_write_to_log") as mock_log,
-            patch.object(work_session_service, "_notify_zero") as mock_notify,
+            patch.object(work_session_service, "_write_to_log"),
+            patch.object(work_session_service, "_notify_zero"),
         ):
             result = await work_session_service.start_session(
                 "user1", "Test User", "test@example.com"
@@ -138,8 +138,8 @@ class TestWorkSessionService:
         )
 
         with (
-            patch.object(work_session_service, "_write_to_log") as mock_log,
-            patch.object(work_session_service, "_notify_zero") as mock_notify,
+            patch.object(work_session_service, "_write_to_log"),
+            patch.object(work_session_service, "_notify_zero"),
         ):
             result = await work_session_service.end_session("user1")
             assert "status" in result or "error" in result

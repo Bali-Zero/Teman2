@@ -77,8 +77,8 @@ class TestMainCloudIntegration:
         with (
             patch("backend.app.main_cloud.SearchService") as mock_search,
             patch("backend.app.main_cloud.ZantaraAIClient") as mock_ai,
-            patch("backend.app.main_cloud.CollectionManager") as mock_collection,
-            patch("backend.app.main_cloud.create_embeddings_generator") as mock_embedder,
+            patch("backend.app.main_cloud.CollectionManager"),
+            patch("backend.app.main_cloud.create_embeddings_generator"),
             patch("backend.app.main_cloud.app") as mock_app,
         ):
             mock_app.state = MagicMock()

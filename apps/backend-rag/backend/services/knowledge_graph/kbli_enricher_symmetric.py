@@ -75,8 +75,8 @@ class KBLIEnricher:
                         # 3. Update node
                         await conn.execute(
                             """
-                            UPDATE kg_nodes 
-                            SET properties = $1, updated_at = NOW() 
+                            UPDATE kg_nodes
+                            SET properties = $1, updated_at = NOW()
                             WHERE entity_id = $2
                             """,
                             json.dumps(updated_props),

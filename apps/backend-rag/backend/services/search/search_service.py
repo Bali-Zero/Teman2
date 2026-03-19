@@ -19,11 +19,21 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import httpx
+from qdrant_client.http import exceptions as qdrant_exceptions
+
+from backend.app.core.config import settings
+from backend.app.models import TierLevel
+from backend.core.cache import cached
+from backend.services.ingestion.collection_manager import CollectionManager
+from backend.services.ingestion.collection_warmup_service import CollectionWarmupService
+from backend.services.misc.cultural_insights_service import CulturalInsightsService
+from backend.services.misc.result_formatter import format_search_results
+from backend.services.routing.conflict_resolver import ConflictResolver
+from backend.services.search.query_expander import QueryExpander
+from backend.services.search.search_filters import build_search_filter
 
 if TYPE_CHECKING:
-    # Avoid circular imports at runtime
     pass
-from qdrant_client.http import exceptions as qdrant_exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -44,19 +54,6 @@ except ImportError:
     METRICS_AVAILABLE = False
     logger.warning("Performance metrics not available")
     metrics_collector = None
-
-from backend.app.core.config import settings
-from backend.app.models import TierLevel
-from backend.core.cache import cached
-from backend.services.ingestion.collection_manager import CollectionManager
-from backend.services.ingestion.collection_warmup_service import CollectionWarmupService
-from backend.services.misc.cultural_insights_service import CulturalInsightsService
-from backend.services.misc.result_formatter import format_search_results
-
-# Hybrid search integration
-from backend.services.routing.conflict_resolver import ConflictResolver
-from backend.services.search.query_expander import QueryExpander
-from backend.services.search.search_filters import build_search_filter
 
 # from backend.services.routing.query_router_integration import QueryRouterIntegration
 
@@ -454,7 +451,6 @@ class SearchService:
         """
         try:
             # Query Expansion - translate to multiple languages for better matching
-            original_query = query
             expanded_query = await self.query_expander.expand(query)
             search_query = expanded_query  # Use expanded query for embedding
 

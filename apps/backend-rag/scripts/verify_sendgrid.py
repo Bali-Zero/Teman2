@@ -26,10 +26,10 @@ import aiohttp
 async def verify_sendgrid_config(test_email: str | None = None):
     """Verify SendGrid configuration."""
     api_key = os.getenv("SENDGRID_API_KEY")
-    
+
     print("🔍 Verifying SendGrid configuration...")
     print()
-    
+
     # Check environment variables
     print("1️⃣ Checking environment variables...")
     if not api_key:
@@ -39,33 +39,32 @@ async def verify_sendgrid_config(test_email: str | None = None):
     else:
         masked_key = api_key[:10] + "..." + api_key[-4:] if len(api_key) > 14 else "***"
         print(f"   ✅ SENDGRID_API_KEY: {masked_key}")
-    
+
     email_provider = os.getenv("EMAIL_PROVIDER", "sendgrid")
     print(f"   ✅ EMAIL_PROVIDER: {email_provider}")
     print()
-    
+
     # Test API connectivity
     print("2️⃣ Testing SendGrid API connectivity...")
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "https://api.sendgrid.com/v3/user/profile",
-                headers={"Authorization": f"Bearer {api_key}"}
-            ) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    print(f"   ✅ API connection successful")
-                    print(f"   📧 Account: {data.get('email', 'N/A')}")
-                else:
-                    error = await response.text()
-                    print(f"   ❌ API error (status {response.status}): {error}")
-                    return False
+        async with aiohttp.ClientSession() as session, session.get(
+            "https://api.sendgrid.com/v3/user/profile",
+            headers={"Authorization": f"Bearer {api_key}"}
+        ) as response:
+            if response.status == 200:
+                data = await response.json()
+                print("   ✅ API connection successful")
+                print(f"   📧 Account: {data.get('email', 'N/A')}")
+            else:
+                error = await response.text()
+                print(f"   ❌ API error (status {response.status}): {error}")
+                return False
     except Exception as e:
         print(f"   ❌ Connection failed: {e}")
         return False
-    
+
     print()
-    
+
     # Test email sending (if test email provided)
     if test_email:
         print(f"3️⃣ Sending test email to {test_email}...")
@@ -87,30 +86,29 @@ async def verify_sendgrid_config(test_email: str | None = None):
                     }
                 ]
             }
-            
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    "https://api.sendgrid.com/v3/mail/send",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json"
-                    },
-                    json=payload
-                ) as response:
-                    if response.status == 202:
-                        print(f"   ✅ Test email sent successfully!")
-                        print(f"   📨 Check your inbox at {test_email}")
-                    else:
-                        error = await response.text()
-                        print(f"   ❌ Send failed (status {response.status}): {error}")
-                        return False
+
+            async with aiohttp.ClientSession() as session, session.post(
+                "https://api.sendgrid.com/v3/mail/send",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json=payload
+            ) as response:
+                if response.status == 202:
+                    print("   ✅ Test email sent successfully!")
+                    print(f"   📨 Check your inbox at {test_email}")
+                else:
+                    error = await response.text()
+                    print(f"   ❌ Send failed (status {response.status}): {error}")
+                    return False
         except Exception as e:
             print(f"   ❌ Send failed: {e}")
             return False
     else:
         print("3️⃣ Skipping email test (no test email provided)")
         print("   💡 Run with test email: python verify_sendgrid.py test@example.com")
-    
+
     print()
     print("=" * 50)
     print("✅ SendGrid configuration verified successfully!")

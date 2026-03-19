@@ -333,7 +333,7 @@ class TestQueryBuilderIntegration:
         assert "SELECT COUNT(*)" in count_sql
 
         # Build data query
-        count_params = list(result.params)  # Save for count query
+        list(result.params)  # Save for count query
         lo = result.limit_offset_clause(limit_val, offset_val)
         data_sql = f"SELECT * FROM clients {result.where_clause} ORDER BY created_at DESC {lo}"
 

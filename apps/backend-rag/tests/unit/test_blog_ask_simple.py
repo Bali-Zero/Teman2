@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import backend.app.routers.blog_ask as app_blog_ask
+
 
 @pytest.mark.unit
 class TestBlogAskRouterSimple:
@@ -175,7 +177,7 @@ class TestBlogAskRouterSimple:
             # Set global orchestrator
             mock_orchestrator = MagicMock()
 
-            app.routers.blog_ask._blog_orchestrator = mock_orchestrator
+            app_blog_ask._blog_orchestrator = mock_orchestrator
 
             # Mock request
             mock_request = MagicMock()

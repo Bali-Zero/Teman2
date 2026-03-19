@@ -34,7 +34,7 @@ class TestPricingServiceIntegration:
     @pytest.mark.asyncio
     async def test_pricing_service_initialization(self, qdrant_client):
         """Test PricingService initialization"""
-        with patch("backend.services.pricing_service.QdrantClient") as mock_qdrant:
+        with patch("backend.services.pricing_service.QdrantClient"):
             from backend.services.pricing.pricing_service import PricingService
 
             service = PricingService()

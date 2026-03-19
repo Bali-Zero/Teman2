@@ -60,21 +60,20 @@ class AudioService:
         try:
             # Read audio data
             if isinstance(file_path_or_buffer, str):
-                file_obj = open(file_path_or_buffer, "rb")
+                with open(file_path_or_buffer, "rb") as file_obj:
+                    transcript = await self.openai_client.audio.transcriptions.create(
+                        model=model, file=file_obj, language=language
+                    )
+                    return transcript.text
             else:
-                file_obj = file_path_or_buffer
-
-            transcript = await self.openai_client.audio.transcriptions.create(
-                model=model, file=file_obj, language=language
-            )
-            return transcript.text
+                transcript = await self.openai_client.audio.transcriptions.create(
+                    model=model, file=file_path_or_buffer, language=language
+                )
+                return transcript.text
 
         except Exception as e:
             logger.error(f"Audio transcription failed: {e}")
             raise e
-        finally:
-            if isinstance(file_path_or_buffer, str) and "file_obj" in locals():
-                file_obj.close()
 
     async def generate_speech(
         self,

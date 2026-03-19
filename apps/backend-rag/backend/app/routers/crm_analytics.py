@@ -123,7 +123,7 @@ async def get_client_overview(
             # New this month
             month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             new_month_query = f"""
-                SELECT COUNT(*) FROM clients 
+                SELECT COUNT(*) FROM clients
                 {where_clause}
                 {"AND" if where_clause else "WHERE"} created_at >= $2
             """
@@ -134,7 +134,7 @@ async def get_client_overview(
             week_start = datetime.now() - timedelta(days=datetime.now().weekday())
             week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
             new_week_query = f"""
-                SELECT COUNT(*) FROM clients 
+                SELECT COUNT(*) FROM clients
                 {where_clause}
                 {"AND" if where_clause else "WHERE"} created_at >= $2
             """
@@ -143,8 +143,8 @@ async def get_client_overview(
 
             # By status
             status_query = f"""
-                SELECT status, COUNT(*) as count 
-                FROM clients 
+                SELECT status, COUNT(*) as count
+                FROM clients
                 {where_clause}
                 GROUP BY status
             """
@@ -153,8 +153,8 @@ async def get_client_overview(
 
             # By nationality (top 10)
             nat_query = f"""
-                SELECT nationality, COUNT(*) as count 
-                FROM clients 
+                SELECT nationality, COUNT(*) as count
+                FROM clients
                 {where_clause}
                 GROUP BY nationality
                 ORDER BY count DESC
@@ -208,7 +208,7 @@ async def get_team_performance(
                 )
                 members = [row["assigned_to"] for row in member_rows if row["assigned_to"]]
 
-            period_start = datetime.now() - timedelta(days=period_days)
+            datetime.now() - timedelta(days=period_days)
             results = []
 
             for member in members:
@@ -303,7 +303,7 @@ async def get_revenue_summary(
 
             # Total metrics
             totals_query = f"""
-                SELECT 
+                SELECT
                     COALESCE(SUM(p.quoted_price), 0) as total_quoted,
                     COALESCE(SUM(p.actual_price), 0) as total_actual,
                     COALESCE(SUM(CASE WHEN p.payment_status = 'paid' THEN p.actual_price ELSE 0 END), 0) as total_paid
@@ -328,7 +328,7 @@ async def get_revenue_summary(
                 month_label = month_start.strftime("%Y-%m")
 
                 month_query = f"""
-                    SELECT 
+                    SELECT
                         COALESCE(SUM(p.actual_price), 0) as revenue,
                         COALESCE(SUM(CASE WHEN p.payment_status = 'paid' THEN p.actual_price ELSE 0 END), 0) as paid
                     FROM practices p
@@ -393,7 +393,7 @@ async def get_processes_by_type(
                 params = [user_email]
 
             query = f"""
-                SELECT 
+                SELECT
                     pt.code as practice_type_code,
                     pt.name as practice_type_name,
                     COUNT(*) as total_cases,

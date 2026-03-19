@@ -392,7 +392,7 @@ Example output: ["variant 1", "variant 2"]"""
             return variants
 
         target_langs = ", ".join(
-            [{"id": "Indonesian", "en": "English"}.get(l, l) for l in languages]
+            [{"id": "Indonesian", "en": "English"}.get(lang, lang) for lang in languages]
         )
 
         prompt = f"""Translate this query to {target_langs}.
@@ -550,7 +550,7 @@ Return ONLY a JSON object with language codes as keys:
             return query
 
         relaxed = query
-        query_lower = query.lower()
+        query.lower()
 
         # Remove filter keywords
         for keyword in FILTER_KEYWORDS:
@@ -590,7 +590,7 @@ Return ONLY a JSON object with language codes as keys:
         elapsed_ms = (time.time() - start_time) * 1000
 
         # Combine all unique variants
-        all_variants = set([query])
+        all_variants = {query}
         all_variants.update(synonym_variants)
         all_variants.update(translation_variants)
         all_variants.update(llm_variants)

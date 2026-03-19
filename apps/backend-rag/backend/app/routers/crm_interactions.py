@@ -151,7 +151,7 @@ async def create_interaction(
     - phone: Phone call
     - in_person: Face-to-face meeting
     """
-    user_email = current_user.get("email", "").lower()
+    current_user.get("email", "").lower()
 
     # RBAC REMOVED: All authenticated users can create interactions for any client
     try:

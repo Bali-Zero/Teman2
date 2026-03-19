@@ -19,9 +19,7 @@ import json
 import logging
 import os
 import re
-import sys
 import time
-from pathlib import Path
 from typing import Any
 
 from google.oauth2.credentials import Credentials
@@ -335,7 +333,7 @@ def main(dry_run: bool, limit: int, start_idx: int) -> None:
             stats["errors"] += result["errors"]
 
             if result["created_folders"] == 0 and result["moved_files"] == 0 and result["merged_folders"] == 0:
-                logger.info(f"    ✓ Already organized")
+                logger.info("    ✓ Already organized")
             else:
                 logger.info(
                     f"    ✓ {result['created_folders']} folders created, "

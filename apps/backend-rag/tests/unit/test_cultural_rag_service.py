@@ -4,7 +4,6 @@ Tests cultural RAG service functionality
 """
 
 import os
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

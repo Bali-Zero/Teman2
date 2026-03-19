@@ -108,7 +108,7 @@ class IngestionCLI:
             # Upsert to Qdrant
             points = [
                 {"id": id_val, "vector": emb, "payload": meta}
-                for id_val, emb, meta in zip(ids, embeddings, metadatas)
+                for id_val, emb, meta in zip(ids, embeddings, metadatas, strict=False)
             ]
 
             result = qdrant.upsert_points(points)
@@ -170,7 +170,7 @@ class IngestionCLI:
             metadatas = []
             ids = []
 
-            for idx, conv in enumerate(conversations):
+            for _idx, conv in enumerate(conversations):
                 # Build text from conversation
                 if "messages" in conv:
                     text = "\n".join(
@@ -192,7 +192,7 @@ class IngestionCLI:
             # Upsert to Qdrant
             points = [
                 {"id": id_val, "vector": emb, "payload": meta}
-                for id_val, emb, meta in zip(ids, embeddings, metadatas)
+                for id_val, emb, meta in zip(ids, embeddings, metadatas, strict=False)
             ]
 
             result = qdrant.upsert_points(points)
@@ -336,7 +336,7 @@ async def main():
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # List command
-    list_parser = subparsers.add_parser("list", help="List available ingestion types")
+    subparsers.add_parser("list", help="List available ingestion types")
 
     # Ingest command
     ingest_parser = subparsers.add_parser("ingest", help="Ingest data")

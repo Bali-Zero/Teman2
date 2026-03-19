@@ -386,7 +386,7 @@ def test_sentence_transformers_model_from_settings():
     with patch(
         "sentence_transformers.SentenceTransformer", return_value=mock_transformer
     ) as mock_st:
-        generator = EmbeddingsGenerator(provider="sentence-transformers", settings=mock_settings)
+        EmbeddingsGenerator(provider="sentence-transformers", settings=mock_settings)
         # Verify it used the model from settings
         mock_st.assert_called_once_with("sentence-transformers/paraphrase-MiniLM-L6-v2")
 
@@ -403,7 +403,7 @@ def test_sentence_transformers_default_model():
     with patch(
         "sentence_transformers.SentenceTransformer", return_value=mock_transformer
     ) as mock_st:
-        generator = EmbeddingsGenerator(provider="sentence-transformers", settings=mock_settings)
+        EmbeddingsGenerator(provider="sentence-transformers", settings=mock_settings)
         # Should use default model
         mock_st.assert_called_once_with("sentence-transformers/all-MiniLM-L6-v2")
 
@@ -451,7 +451,7 @@ def test_api_key_from_settings(mock_openai_client):
     mock_settings.api_keys = "test-api-key"
 
     with patch("openai.AsyncOpenAI", return_value=mock_openai_client) as mock_openai_init:
-        generator = EmbeddingsGenerator(provider="openai", settings=mock_settings)
+        EmbeddingsGenerator(provider="openai", settings=mock_settings)
         # Verify it used the API key from settings
         mock_openai_init.assert_called_once_with(api_key="settings-api-key")
 

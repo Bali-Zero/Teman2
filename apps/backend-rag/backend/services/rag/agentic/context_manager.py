@@ -264,7 +264,7 @@ async def get_user_context(
     # Always check in-memory cache for entities first (most recent)
     if user_id and user_id != "anonymous":
         try:
-            mem_cache = get_memory_cache()
+            get_memory_cache()
             # Get entities from cache
             # We don't have conversation_id here easily, so we might need to rely on what we have
             # For now, let's try to get entities if we can find a recent conversation for this user

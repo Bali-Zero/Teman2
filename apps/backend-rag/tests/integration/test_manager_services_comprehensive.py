@@ -90,7 +90,7 @@ class TestPromptManager:
     @pytest.mark.asyncio
     async def test_prompt_manager_initialization(self):
         """Test PromptManager initialization"""
-        with patch("backend.llm.prompt_manager.PromptManager") as mock_prompt:
+        with patch("backend.llm.prompt_manager.PromptManager"):
             from backend.llm.prompt_manager import PromptManager
 
             manager = PromptManager()
@@ -128,7 +128,7 @@ class TestMigrationManager:
     @pytest.mark.asyncio
     async def test_migration_manager_initialization(self, db_pool):
         """Test MigrationManager initialization"""
-        with patch("backend.db.migration_manager.asyncpg") as mock_asyncpg:
+        with patch("backend.db.migration_manager.asyncpg"):
             from backend.db.migration_manager import MigrationManager
 
             manager = MigrationManager(db_pool=db_pool)

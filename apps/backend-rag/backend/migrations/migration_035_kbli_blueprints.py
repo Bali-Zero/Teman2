@@ -23,7 +23,7 @@ async def apply(conn: Any) -> None:
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
-        
+
         CREATE INDEX IF NOT EXISTS idx_kbli_blueprints_risk ON kbli_blueprints(risk_level);
     """)
 

@@ -273,7 +273,7 @@ class CoreferenceResolver:
             return "No entities in cache."
 
         lines = ["Known entities:"]
-        for cid, cluster in self.entity_cache.items():
+        for _cid, cluster in self.entity_cache.items():
             mentions = ", ".join(cluster.mentions[:3])
             lines.append(f"  - {cluster.canonical_name} [{cluster.entity_type.value}]: {mentions}")
 
