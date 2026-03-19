@@ -16,10 +16,17 @@ cd "$PROJECT_DIR"
 ./sentinel >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-7849498029:AAEjuP_uPt6KqD23Y8tVXVKnygJX8_TzW2g}"
+TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-1125336968}"
+
 if [ $EXIT_CODE -eq 0 ]; then
     echo "[$DATE] ✅ Sentinel PASSED." >> "$LOG_FILE"
 else
     echo "[$DATE] ❌ Sentinel FAILED with exit code $EXIT_CODE." >> "$LOG_FILE"
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${TELEGRAM_CHAT_ID}" \
+        -d "text=🚨 *Air Sentinel FAILED* (exit $EXIT_CODE)%0ACheck: ~/Projects/nuzantara/logs/sentinel_nightly.log" \
+        -d "parse_mode=Markdown" > /dev/null 2>&1 || true
 fi
 
 echo "----------------------------------------" >> "$LOG_FILE"
