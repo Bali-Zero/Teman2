@@ -22,20 +22,30 @@ export async function GET() {
     // Fetch all articles (cached, revalidates every 60s)
     const { articles } = await getAllArticles({ limit: 200 });
 
-    const heroArticles = slugOrder.map((slug) => {
-      const found = articles.find((a) => a.slug === slug);
-      if (!found) return null;
-      return {
-        slug: found.slug,
-        title: found.title,
-        category: found.category,
-        cover_image: found.coverImage || null,
-        href: `https://balizero.com/articles/${found.category}/${found.slug}`,
-      };
+    const toHeroItem = (a: (typeof articles)[0]) => ({
+      slug: a.slug,
+      title: a.title,
+      category: a.category,
+      cover_image: a.coverImage || null,
+      href: `https://balizero.com/articles/${a.category}/${a.slug}`,
     });
 
+    // Pin configured slugs first (in order), then fill remaining slots with
+    // the most recent articles that have a cover image, up to 7 total.
+    const pinned = slugOrder
+      .map((slug) => articles.find((a) => a.slug === slug))
+      .filter(Boolean) as (typeof articles)[0][];
+
+    const pinnedSlugs = new Set(pinned.map((a) => a.slug));
+
+    const fillers = articles
+      .filter((a) => a.coverImage && !pinnedSlugs.has(a.slug))
+      .slice(0, 7 - pinned.length);
+
+    const heroArticles = [...pinned, ...fillers].slice(0, 7).map(toHeroItem);
+
     return NextResponse.json(
-      { articles: heroArticles.filter(Boolean) },
+      { articles: heroArticles },
       {
         headers: {
           "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
