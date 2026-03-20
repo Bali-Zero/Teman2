@@ -52,26 +52,32 @@ CRON_LOG_FILE = AGENT_DIR / "cron_guardian.log"
 
 
 def find_fixable_candidates() -> list[dict]:
-    """Run Scout analysis and return candidates that have deterministic fixers."""
+    """Scan all violations and return candidates that have deterministic fixers.
+    Unlike Scout (top 20), this scans ALL violations to find every fixable file.
+    """
     violations = run_ruff_json()
     if not violations:
         return []
 
-    ranked = analyze_violations(violations)
+    # Group by (code, filename) — no limit
+    from collections import Counter
+    groups: dict[tuple[str, str], int] = Counter()
+    for v in violations:
+        code = v.get("code", "UNKNOWN")
+        filepath = v.get("filename", "unknown")
+        groups[(code, filepath)] += 1
 
-    # Filter: SAFE classification + has a deterministic fixer + low count (easiest first)
+    # Filter: has deterministic fixer + not in tests + not untouchable
+    from scout import is_untouchable
     candidates = []
     seen_files = set()
-    for item in ranked:
-        code = item["code"]
-        filepath = item["file"]
+    for (code, filepath), count in groups.items():
         if (
-            item["classification"] == "SAFE"
-            and code in DETERMINISTIC_FIXERS
+            code in DETERMINISTIC_FIXERS
             and filepath not in seen_files
             and "/tests/" not in filepath
+            and not is_untouchable(filepath)
         ):
-            # Convert absolute path to relative (from apps/backend-rag/)
             rel_path = filepath
             if "apps/backend-rag/" in filepath:
                 rel_path = filepath.split("apps/backend-rag/")[1]
@@ -79,7 +85,7 @@ def find_fixable_candidates() -> list[dict]:
                 "code": code,
                 "file": rel_path,
                 "abs_file": filepath,
-                "count": item["count"],
+                "count": count,
             })
             seen_files.add(filepath)
 
