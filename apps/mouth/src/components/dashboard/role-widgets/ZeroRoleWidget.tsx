@@ -1,15 +1,18 @@
 "use client";
 import React from "react";
 import type { ZeroMetrics, RoleAlert } from "@/types/dashboard-role.types";
+import {
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
+  Server,
+  FileWarning,
+} from "lucide-react";
 
-interface Props { metrics: ZeroMetrics; alerts: RoleAlert[]; }
-
-const ALERT_STYLE: Record<RoleAlert["type"], string> = {
-  critical: "bg-[rgba(196,92,120,0.09)] border-[rgba(196,92,120,0.22)] text-[#c45c78]",
-  warning:  "bg-[rgba(184,154,64,0.09)]  border-[rgba(184,154,64,0.22)]  text-[#b89a40]",
-  ok:       "bg-[rgba(92,184,138,0.08)]  border-[rgba(92,184,138,0.20)]  text-[#5cb88a]",
-  info:     "bg-[rgba(74,142,196,0.08)]  border-[rgba(74,142,196,0.20)]  text-[#4a8ec4]",
-};
+interface Props {
+  metrics: ZeroMetrics;
+  alerts: RoleAlert[];
+}
 
 function formatRevenue(rp: number): string {
   if (rp >= 1_000_000_000) return `Rp ${(rp / 1_000_000_000).toFixed(2)}B`;
@@ -19,29 +22,72 @@ function formatRevenue(rp: number): string {
 }
 
 export function ZeroRoleWidget({ metrics }: Props) {
+  const hasAlerts = metrics.visti_scadenza > 0 || metrics.fatture_overdue > 0;
+
   return (
-    <div className="flex flex-col gap-2.5">
-      <span className="text-[9px] font-bold text-[#9880d8]/85 tracking-[.12em]">REVENUE · MTD</span>
-      <span className="text-2xl font-black text-white leading-none tracking-tight">{formatRevenue(metrics.revenue_mtd)}</span>
-      <span className="text-[10px] font-medium text-[#5cb88a]">▲ +12% vs last month</span>
+    <div className="flex flex-col h-full gap-3">
+      {/* Revenue block */}
+      <div>
+        <span className="text-[9px] font-bold text-[#9880d8]/70 tracking-[.12em] uppercase">
+          Revenue · MTD
+        </span>
+        <div className="mt-1.5 flex items-end gap-2">
+          <span className="text-[28px] font-black text-white leading-none tracking-tight">
+            {formatRevenue(metrics.revenue_mtd)}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 mt-1">
+          <TrendingUp size={10} className="text-[#5cb88a]" />
+          <span className="text-[9px] font-semibold text-[#5cb88a]">
+            +12% vs last month
+          </span>
+        </div>
+      </div>
+
+      {/* Divider */}
       <div className="h-px bg-white/[0.06]" />
-      {metrics.visti_scadenza > 0 && (
-        <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[9px] font-semibold ${ALERT_STYLE.critical}`}>
-          🚨 {metrics.visti_scadenza} visti &lt;7gg
+
+      {/* Alert rows */}
+      <div className="flex flex-col gap-1.5 flex-1">
+        {metrics.visti_scadenza > 0 && (
+          <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(196,92,120,0.07)] border border-[rgba(196,92,120,0.18)]">
+            <AlertTriangle size={11} className="text-[#c45c78] flex-shrink-0" />
+            <span className="text-[10px] font-semibold text-[#c45c78]">
+              {metrics.visti_scadenza} visti &lt; 7gg
+            </span>
+          </div>
+        )}
+
+        {metrics.fatture_overdue > 0 && (
+          <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(184,154,64,0.07)] border border-[rgba(184,154,64,0.18)]">
+            <FileWarning size={11} className="text-[#b89a40] flex-shrink-0" />
+            <span className="text-[10px] font-semibold text-[#b89a40]">
+              {metrics.fatture_overdue}{" "}
+              {metrics.fatture_overdue === 1 ? "fattura" : "fatture"} overdue
+            </span>
+          </div>
+        )}
+
+        {!hasAlerts && (
+          <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(92,184,138,0.06)] border border-[rgba(92,184,138,0.16)]">
+            <CheckCircle2 size={11} className="text-[#5cb88a] flex-shrink-0" />
+            <span className="text-[10px] font-semibold text-[#5cb88a]">
+              No critical alerts
+            </span>
+          </div>
+        )}
+
+        {/* System status */}
+        <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(74,142,196,0.06)] border border-[rgba(74,142,196,0.16)]">
+          <Server size={11} className="text-[#4a8ec4] flex-shrink-0" />
+          <span className="text-[10px] font-semibold text-[#4a8ec4]">
+            Fly.io {metrics.fly_uptime}%
+          </span>
+          <span
+            className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#5cb88a]"
+            style={{ boxShadow: "0 0 4px rgba(92,184,138,0.8)" }}
+          />
         </div>
-      )}
-      {metrics.fatture_overdue > 0 && (
-        <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[9px] font-semibold ${ALERT_STYLE.warning}`}>
-          ⚠️ {metrics.fatture_overdue} fatture overdue
-        </div>
-      )}
-      {metrics.fatture_overdue === 0 && metrics.visti_scadenza === 0 && (
-        <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[9px] font-semibold ${ALERT_STYLE.ok}`}>
-          ✓ No critical alerts
-        </div>
-      )}
-      <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[9px] font-semibold ${ALERT_STYLE.info}`}>
-        🚀 Fly.io {metrics.fly_uptime}%
       </div>
     </div>
   );
