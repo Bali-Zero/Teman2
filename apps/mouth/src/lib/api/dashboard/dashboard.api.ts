@@ -8,6 +8,7 @@ import type { TimelineResponse } from "@/lib/api/types/timeline.types";
 export interface DashboardStats {
   activeCases: number;
   criticalDeadlines: number;
+  pendingInvoices: number;
   whatsappUnread: number;
   emailUnread: number;
   hoursWorked: string;
