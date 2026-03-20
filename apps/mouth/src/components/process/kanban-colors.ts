@@ -83,8 +83,19 @@ export function getStatusColumn(status: string): CaseStatus {
   if (status === "sending_invoice") return "sending_invoice";
   if (status === "on_process" || status === "active") return "on_process";
   if (status === "completed" || status === "done") return "completed";
-  if (status === "waiting_payment" || status === "payment_pending") return "sending_invoice";
-  if (status === "submitted_to_gov" || status === "approved" || status === "in_progress") return "on_process";
-  if (status === "quotation_sent" || status === "quote" || status === "quotation") return "sending_invoice";
+  if (status === "waiting_payment" || status === "payment_pending")
+    return "sending_invoice";
+  if (
+    status === "submitted_to_gov" ||
+    status === "approved" ||
+    status === "in_progress"
+  )
+    return "on_process";
+  if (
+    status === "quotation_sent" ||
+    status === "quote" ||
+    status === "quotation"
+  )
+    return "sending_invoice";
   return "inquiry";
 }
