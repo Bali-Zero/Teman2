@@ -155,7 +155,7 @@ def create_agentic_rag(
     # IMPORTANT: vector_search comes first to be the default tool
     # ZANTARA LEAN STRATEGY (Dec 2025): Reduced to essential tools only.
     tools = [
-        VectorSearchTool(retriever),  # FIRST: Primary tool for knowledge base search
+        VectorSearchTool(retriever, user_level=3),  # FIRST: Primary tool for knowledge base search
         PricingTool(),  # SECOND: Official Pricing
         TeamKnowledgeTool(db_pool),  # THIRD: Team member queries
         KnowledgeGraphTool(kg_builder),  # FOURTH: Structured Knowledge Graph (NEW)

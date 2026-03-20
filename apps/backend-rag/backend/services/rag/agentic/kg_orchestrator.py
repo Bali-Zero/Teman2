@@ -112,7 +112,7 @@ class KGAgenticOrchestrator:
         logger.info("✅ KGEnhancedRetrieval initialized")
 
         # Initialize Vector Search Tool
-        self.vector_tool = VectorSearchTool(retriever=retriever)
+        self.vector_tool = VectorSearchTool(retriever=retriever, user_level=3)
         logger.info("✅ VectorSearchTool initialized")
 
         # Initialize LLM Gateway
