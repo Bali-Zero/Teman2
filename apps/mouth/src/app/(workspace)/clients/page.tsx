@@ -283,7 +283,17 @@ function ClientsListContent() {
   // Stats hook
   const { data: stats } = useCrmStats();
 
-  // Infinite scroll is handled by VirtualizedClientGrid.onNearBottom
+  // Infinite scroll — window scroll (the overflow-auto div doesn't actually scroll)
+  useEffect(() => {
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+      if (scrollHeight - scrollTop - clientHeight < 600 && hasMore && !isLoading && !isLoadingMore) {
+        loadMore();
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
   // Handle status change
   const handleStatusChange = useCallback(
