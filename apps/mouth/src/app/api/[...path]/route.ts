@@ -281,35 +281,41 @@ async function proxy(req: NextRequest): Promise<Response> {
         const jwt = bodyJson?.data?.token;
         const csrf = bodyJson?.data?.csrfToken;
         if (jwt) {
-          const cookieDomain = (
-            process.env.COOKIE_DOMAIN || ".balizero.com"
-          ).replace(/\s+/g, "");
+          const isLocalhost =
+            url.hostname === "localhost" || url.hostname === "127.0.0.1";
+          const cookieDomain = isLocalhost
+            ? null
+            : (process.env.COOKIE_DOMAIN || ".balizero.com").replace(
+                /\s+/g,
+                "",
+              );
           const maxAge = 86400; // 24h
           // CRITICAL: Strip upstream Set-Cookie headers — they carry SameSite=none
           // which Chrome 130+ rejects without Partitioned. We re-set cookies manually
           // using raw header strings to bypass Vercel Edge Runtime restrictions.
           respHeaders.delete("set-cookie");
           // Build raw Set-Cookie strings — Vercel Edge forwards these reliably
-          const tokenCookie = [
+          // On localhost, omit Domain so the browser accepts the cookie
+          const tokenParts = [
             `nz_access_token=${jwt}`,
-            `Domain=${cookieDomain}`,
+            ...(cookieDomain ? [`Domain=${cookieDomain}`] : []),
             `HttpOnly`,
             `Max-Age=${maxAge}`,
             `Path=/`,
             `SameSite=Lax`,
-            `Secure`,
-          ].join("; ");
-          respHeaders.append("set-cookie", tokenCookie);
+            ...(isLocalhost ? [] : [`Secure`]),
+          ];
+          respHeaders.append("set-cookie", tokenParts.join("; "));
           if (csrf) {
-            const csrfCookie = [
+            const csrfParts = [
               `nz_csrf_token=${csrf}`,
-              `Domain=${cookieDomain}`,
+              ...(cookieDomain ? [`Domain=${cookieDomain}`] : []),
               `Max-Age=${maxAge}`,
               `Path=/`,
               `SameSite=Lax`,
-              `Secure`,
-            ].join("; ");
-            respHeaders.append("set-cookie", csrfCookie);
+              ...(isLocalhost ? [] : [`Secure`]),
+            ];
+            respHeaders.append("set-cookie", csrfParts.join("; "));
           }
           return new Response(bodyBuffer, {
             status: upstream.status,
