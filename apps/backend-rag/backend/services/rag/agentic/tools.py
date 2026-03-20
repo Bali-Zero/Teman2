@@ -53,8 +53,9 @@ class VectorSearchTool(BaseTool):
     If no collection specified, searches ALL collections (federated).
     """
 
-    def __init__(self, retriever):
+    def __init__(self, retriever, user_level: int = 1):
         self.retriever = retriever
+        self.user_level = user_level
 
     @property
     def name(self) -> str:
@@ -146,14 +147,14 @@ class VectorSearchTool(BaseTool):
                         if hasattr(self.retriever, "search_with_reranking"):
                             res = await self.retriever.search_with_reranking(
                                 query=query,
-                                user_level=1,
+                                user_level=self.user_level,
                                 limit=5 if len(target_collections) > 1 else top_k,
                                 collection_override=target_col,
                             )
                         else:
                             res = await self.retriever.search(
                                 query=query,
-                                user_level=1,
+                                user_level=self.user_level,
                                 limit=5 if len(target_collections) > 1 else top_k,
                                 collection_override=target_col,
                             )
