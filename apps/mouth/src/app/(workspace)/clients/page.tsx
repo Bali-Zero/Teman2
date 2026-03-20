@@ -76,6 +76,7 @@ function VirtualizedClientGrid({
   hasMore,
   totalClients,
   isMounted,
+  onNearBottom,
 }: {
   clients: Client[];
   loadMoreRef: React.RefObject<HTMLDivElement | null>;
@@ -83,6 +84,7 @@ function VirtualizedClientGrid({
   hasMore: boolean;
   totalClients: number;
   isMounted: boolean;
+  onNearBottom?: () => void;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const shouldVirtualize = clients.length > VIRTUALIZATION_THRESHOLD;
@@ -147,8 +149,16 @@ function VirtualizedClientGrid({
 
   const virtualRows = virtualizer.getVirtualItems();
 
+  const handleScroll = useCallback(() => {
+    const el = parentRef.current;
+    if (!el || !onNearBottom) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 500) {
+      onNearBottom();
+    }
+  }, [onNearBottom]);
+
   return (
-    <div ref={parentRef} className="flex-1 overflow-auto pb-4 min-h-[400px]">
+    <div ref={parentRef} onScroll={handleScroll} className="flex-1 overflow-auto pb-4 min-h-[400px]">
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -225,7 +235,6 @@ function ClientsListContent() {
   const [isMounted, setIsMounted] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Load current user profile
   useEffect(() => {
@@ -269,23 +278,7 @@ function ClientsListContent() {
   // Stats hook
   const { data: stats } = useCrmStats();
 
-  // Infinite scroll observer — uses scroll container as root
-  useEffect(() => {
-    const el = loadMoreRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          loadMore();
-        }
-      },
-      { threshold: 0.1, rootMargin: "400px", root: scrollContainerRef.current },
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasMore, isLoading, isLoadingMore, loadMore, clients.length]);
+  // Infinite scroll is handled by VirtualizedClientGrid.onNearBottom
 
   // Handle status change
   const handleStatusChange = useCallback(
@@ -608,7 +601,7 @@ function ClientsListContent() {
           <CRMSkeleton count={6} />
         </div>
       ) : filteredClients.length > 0 ? (
-        <div ref={scrollContainerRef} className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto">
           {viewMode === "list" ? (
             <VirtualizedClientGrid
               clients={filteredClients}
@@ -617,6 +610,7 @@ function ClientsListContent() {
               hasMore={hasMore}
               totalClients={clients.length}
               isMounted={isMounted}
+              onNearBottom={() => { if (hasMore && !isLoading && !isLoadingMore) loadMore(); }}
             />
           ) : (
             <ClientKanban
