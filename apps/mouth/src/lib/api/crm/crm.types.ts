@@ -1,3 +1,8 @@
+export interface StatusTransition {
+  status: string;
+  at: string; // ISO timestamp
+}
+
 export interface Practice {
   id: number;
   uuid?: string;
@@ -21,6 +26,7 @@ export interface Practice {
   notes?: string;
   created_at: string;
   updated_at?: string;
+  status_transitions?: StatusTransition[];
 }
 
 import type { JsonObject } from "../../types/common";
