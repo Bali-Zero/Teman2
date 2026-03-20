@@ -107,8 +107,7 @@ export class CrmApi {
     if (params.limit) queryParams.append("limit", params.limit.toString());
     if (params.offset) queryParams.append("offset", params.offset.toString());
     if (params.month) queryParams.append("month", params.month);
-    if (params.include_history)
-      queryParams.append("include_history", "true");
+    if (params.include_history) queryParams.append("include_history", "true");
 
     const queryString = queryParams.toString();
     const url = `/api/crm/practices${queryString ? `?${queryString}` : ""}`;
