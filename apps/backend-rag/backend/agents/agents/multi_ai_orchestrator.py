@@ -30,7 +30,7 @@ class MultiAIOrchestrator:
     - Cursor: Code editing
     """
 
-    def __init__(self, project_root: Path):
+    def __init__(self, project_root: Path) -> None:
         self.project_root = project_root
         self.multi_ai = get_multi_ai_adapter()
 
