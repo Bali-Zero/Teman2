@@ -40,9 +40,13 @@ const logError = (...args: unknown[]) => {
 export function useCrmClients(options: UseCrmClientsOptions = {}) {
   const { status, assigned_to, search, limit = 50, enabled = true } = options;
   const queryClient = useQueryClient();
+  const [allClients, setAllClients] = useState<Client[]>([]);
   const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const queryKey = ["crm", "clients", { status, assigned_to, search, offset }];
+  // Base query key (without offset — we accumulate results)
+  const queryKey = ["crm", "clients", { status, assigned_to, search }];
 
   const {
     data,
@@ -51,45 +55,66 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
     error: queryError,
     refetch,
   } = useQuery({
-    queryKey,
-    queryFn: async (): Promise<ClientsResponse> => {
-      const clients = await api.crm.getClients({
+    queryKey: [...queryKey, offset],
+    queryFn: async (): Promise<Client[]> => {
+      return api.crm.getClients({
         search: search || undefined,
         limit,
         offset,
       });
-
-      return {
-        clients,
-        total: clients.length, // Backend doesn't return total, estimate
-        hasMore: clients.length === limit,
-      };
     },
     enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
+  // Accumulate results when new data arrives
+  useEffect(() => {
+    if (data) {
+      if (offset === 0) {
+        setAllClients(data);
+      } else {
+        setAllClients((prev) => {
+          const existingIds = new Set(prev.map((c) => c.id));
+          const newClients = data.filter((c) => !existingIds.has(c.id));
+          return [...prev, ...newClients];
+        });
+      }
+      setHasMore(data.length === limit);
+      setIsLoadingMore(false);
+    }
+  }, [data, offset, limit]);
+
+  // Reset when filters change
+  useEffect(() => {
+    setOffset(0);
+    setAllClients([]);
+    setHasMore(true);
+  }, [status, assigned_to, search]);
+
   const loadMore = useCallback(() => {
-    if (data?.hasMore && !isLoading) {
+    if (hasMore && !isLoading && !isLoadingMore) {
+      setIsLoadingMore(true);
       setOffset((prev) => prev + limit);
     }
-  }, [data?.hasMore, isLoading, limit]);
+  }, [hasMore, isLoading, isLoadingMore, limit]);
 
   const reset = useCallback(() => {
     setOffset(0);
+    setAllClients([]);
+    setHasMore(true);
     refetch();
   }, [refetch]);
 
   return {
-    clients: data?.clients || [],
-    total: data?.total || 0,
-    isLoading,
+    clients: allClients,
+    total: allClients.length,
+    isLoading: isLoading && offset === 0,
     isError,
     error: queryError,
     loadMore,
-    hasMore: data?.hasMore || false,
-    isLoadingMore: isLoading && offset > 0,
+    hasMore,
+    isLoadingMore,
     reset,
     refetch,
   };
