@@ -14,24 +14,25 @@
 
 ## File Map
 
-| Action | File | Responsibility |
-|--------|------|----------------|
-| Modify | `apps/backend-rag/backend/app/routers/crm_practices.py` | Add `month` + `include_history` params, status transitions query |
-| Modify | `apps/mouth/src/lib/api/crm/crm.types.ts` | Add `StatusTransition` interface, extend `Practice` |
-| Modify | `apps/mouth/src/lib/api/crm/crm.api.ts` | Add `month` + `include_history` to `getPractices` |
-| Create | `apps/mouth/src/components/process/MonthPillTabs.tsx` | Month navigation component |
-| Create | `apps/mouth/src/components/process/GhostCard.tsx` | Minimal ghost card component |
-| Create | `apps/mouth/src/components/process/kanban-colors.ts` | Column color config (gradients, tints, borders) |
-| Modify | `apps/mouth/src/app/(workspace)/process/page.tsx` | Integrate all new components, column styling, ghost logic |
-| Create | `apps/backend-rag/backend/tests/unit/app/routers/test_crm_practices_month.py` | Backend month filter + history tests |
-| Create | `apps/mouth/src/components/process/__tests__/MonthPillTabs.test.tsx` | Month tabs unit tests |
-| Create | `apps/mouth/src/components/process/__tests__/GhostCard.test.tsx` | Ghost card unit tests |
+| Action | File                                                                          | Responsibility                                                   |
+| ------ | ----------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Modify | `apps/backend-rag/backend/app/routers/crm_practices.py`                       | Add `month` + `include_history` params, status transitions query |
+| Modify | `apps/mouth/src/lib/api/crm/crm.types.ts`                                     | Add `StatusTransition` interface, extend `Practice`              |
+| Modify | `apps/mouth/src/lib/api/crm/crm.api.ts`                                       | Add `month` + `include_history` to `getPractices`                |
+| Create | `apps/mouth/src/components/process/MonthPillTabs.tsx`                         | Month navigation component                                       |
+| Create | `apps/mouth/src/components/process/GhostCard.tsx`                             | Minimal ghost card component                                     |
+| Create | `apps/mouth/src/components/process/kanban-colors.ts`                          | Column color config (gradients, tints, borders)                  |
+| Modify | `apps/mouth/src/app/(workspace)/process/page.tsx`                             | Integrate all new components, column styling, ghost logic        |
+| Create | `apps/backend-rag/backend/tests/unit/app/routers/test_crm_practices_month.py` | Backend month filter + history tests                             |
+| Create | `apps/mouth/src/components/process/__tests__/MonthPillTabs.test.tsx`          | Month tabs unit tests                                            |
+| Create | `apps/mouth/src/components/process/__tests__/GhostCard.test.tsx`              | Ghost card unit tests                                            |
 
 ---
 
 ### Task 1: Backend — Add month filter and status history
 
 **Files:**
+
 - Modify: `apps/backend-rag/backend/app/routers/crm_practices.py:311-411`
 - Create: `apps/backend-rag/backend/tests/unit/app/routers/test_crm_practices_month.py`
 
@@ -333,6 +334,7 @@ git commit --no-verify -m "feat(backend): add month filter + status history to p
 ### Task 2: Frontend types and API layer
 
 **Files:**
+
 - Modify: `apps/mouth/src/lib/api/crm/crm.types.ts`
 - Modify: `apps/mouth/src/lib/api/crm/crm.api.ts:93-112`
 
@@ -397,6 +399,7 @@ git commit --no-verify -m "feat(types): add StatusTransition type and month filt
 ### Task 3: Kanban column color config
 
 **Files:**
+
 - Create: `apps/mouth/src/components/process/kanban-colors.ts`
 
 - [ ] **Step 1: Create the color config file**
@@ -495,9 +498,20 @@ export function getStatusColumn(status: string): CaseStatus {
   if (status === "on_process" || status === "active") return "on_process";
   if (status === "completed" || status === "done") return "completed";
   // Legacy states
-  if (status === "waiting_payment" || status === "payment_pending") return "sending_invoice";
-  if (status === "submitted_to_gov" || status === "approved" || status === "in_progress") return "on_process";
-  if (status === "quotation_sent" || status === "quote" || status === "quotation") return "sending_invoice";
+  if (status === "waiting_payment" || status === "payment_pending")
+    return "sending_invoice";
+  if (
+    status === "submitted_to_gov" ||
+    status === "approved" ||
+    status === "in_progress"
+  )
+    return "on_process";
+  if (
+    status === "quotation_sent" ||
+    status === "quote" ||
+    status === "quotation"
+  )
+    return "sending_invoice";
   return "inquiry";
 }
 ```
@@ -515,6 +529,7 @@ git commit --no-verify -m "feat(process): add kanban column color config"
 ### Task 4: MonthPillTabs component
 
 **Files:**
+
 - Create: `apps/mouth/src/components/process/MonthPillTabs.tsx`
 - Create: `apps/mouth/src/components/process/__tests__/MonthPillTabs.test.tsx`
 
@@ -723,6 +738,7 @@ git commit --no-verify -m "feat(process): add MonthPillTabs component with tests
 ### Task 5: GhostCard component
 
 **Files:**
+
 - Create: `apps/mouth/src/components/process/GhostCard.tsx`
 - Create: `apps/mouth/src/components/process/__tests__/GhostCard.test.tsx`
 
@@ -860,6 +876,7 @@ git commit --no-verify -m "feat(process): add GhostCard component with tests"
 ### Task 6: Integrate everything into page.tsx
 
 **Files:**
+
 - Modify: `apps/mouth/src/app/(workspace)/process/page.tsx`
 
 This is the largest task — it wires together MonthPillTabs, column colors, ghost cards, and completed glow into the existing page.
@@ -872,7 +889,12 @@ At top of `page.tsx`, add imports:
 import { useSearchParams, usePathname } from "next/navigation";
 import { MonthPillTabs } from "@/components/process/MonthPillTabs";
 import { GhostCard } from "@/components/process/GhostCard";
-import { COLUMN_COLORS, COLUMN_ORDER, getStatusColumn, type CaseStatus } from "@/components/process/kanban-colors";
+import {
+  COLUMN_COLORS,
+  COLUMN_ORDER,
+  getStatusColumn,
+  type CaseStatus,
+} from "@/components/process/kanban-colors";
 import { CheckCircle } from "lucide-react"; // add to existing lucide imports
 import type { StatusTransition } from "@/lib/api/crm/crm.types";
 ```
@@ -888,17 +910,20 @@ const pathname = usePathname();
 const now = new Date();
 const currentMonthDefault = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 const [selectedMonth, setSelectedMonth] = useState(
-  searchParams.get("month") || currentMonthDefault
+  searchParams.get("month") || currentMonthDefault,
 );
 
-const handleMonthChange = useCallback((month: string) => {
-  setSelectedMonth(month);
-  setListPageNumber(1);
-  // Update URL without navigation
-  const params = new URLSearchParams(searchParams.toString());
-  params.set("month", month);
-  window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
-}, [searchParams, pathname]);
+const handleMonthChange = useCallback(
+  (month: string) => {
+    setSelectedMonth(month);
+    setListPageNumber(1);
+    // Update URL without navigation
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("month", month);
+    window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+  },
+  [searchParams, pathname],
+);
 ```
 
 - [ ] **Step 2: Update data loading to use month param**
@@ -947,9 +972,13 @@ const getGhostPractices = useCallback(
     return practices.filter((p) => {
       const currentColumn = getStatusColumn(p.status);
       if (currentColumn === columnStatus) return false;
-      const transitions = (p as any).status_transitions as StatusTransition[] | undefined;
+      const transitions = (p as any).status_transitions as
+        | StatusTransition[]
+        | undefined;
       if (!transitions || transitions.length === 0) return false;
-      return transitions.some((t) => getStatusColumn(t.status) === columnStatus);
+      return transitions.some(
+        (t) => getStatusColumn(t.status) === columnStatus,
+      );
     });
   },
   [practices],
@@ -961,11 +990,13 @@ const getGhostPractices = useCallback(
 After the header `<div>` and before the search bar `<div>`, add:
 
 ```tsx
-{/* Month Navigation */}
+{
+  /* Month Navigation */
+}
 <MonthPillTabs
   selectedMonth={selectedMonth}
   onMonthChange={handleMonthChange}
-/>
+/>;
 ```
 
 - [ ] **Step 5: Replace kanban column rendering with new styling**
@@ -983,142 +1014,160 @@ The column `div` becomes:
 Add page-level state for ghost expansion (inside `PratichePage`, alongside other state):
 
 ```typescript
-const [expandedGhosts, setExpandedGhosts] = useState<Record<string, boolean>>({});
+const [expandedGhosts, setExpandedGhosts] = useState<Record<string, boolean>>(
+  {},
+);
 ```
 
 Then in the kanban board section:
 
 ```tsx
-{COLUMN_ORDER.map((statusKey) => {
-  const colors = COLUMN_COLORS[statusKey];
-  const columnPractices = practicesByStatus[statusKey] || [];
-  const ghosts = getGhostPractices(statusKey);
-  const showAllGhosts = expandedGhosts[statusKey] ?? false;
-  const visibleGhosts = showAllGhosts ? ghosts : ghosts.slice(0, 2);
-  const hiddenGhostCount = ghosts.length - 2;
+{
+  COLUMN_ORDER.map((statusKey) => {
+    const colors = COLUMN_COLORS[statusKey];
+    const columnPractices = practicesByStatus[statusKey] || [];
+    const ghosts = getGhostPractices(statusKey);
+    const showAllGhosts = expandedGhosts[statusKey] ?? false;
+    const visibleGhosts = showAllGhosts ? ghosts : ghosts.slice(0, 2);
+    const hiddenGhostCount = ghosts.length - 2;
 
-  return (
-    <div
-      key={statusKey}
-      className="rounded-xl p-4 flex flex-col h-full min-h-[500px] min-w-[280px] overflow-hidden"
-      style={{
-        background: colors.tintBg,
-        border: `1px solid ${colors.tintBorder}`,
-      }}
-    >
-      {/* Top bar gradient */}
+    return (
       <div
-        className="h-[3px] -mx-4 -mt-4 mb-4 rounded-t-xl"
+        key={statusKey}
+        className="rounded-xl p-4 flex flex-col h-full min-h-[500px] min-w-[280px] overflow-hidden"
         style={{
-          background: `linear-gradient(90deg, ${colors.gradientStart}, ${colors.gradientEnd})`,
+          background: colors.tintBg,
+          border: `1px solid ${colors.tintBorder}`,
         }}
-      />
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <span
-          className="font-semibold text-sm"
-          style={{ color: colors.textColor }}
-        >
-          {colors.label}
-        </span>
-        <span
-          className="text-xs px-2 py-1 rounded-full"
+      >
+        {/* Top bar gradient */}
+        <div
+          className="h-[3px] -mx-4 -mt-4 mb-4 rounded-t-xl"
           style={{
-            background: colors.badgeBg,
-            color: colors.textColor,
+            background: `linear-gradient(90deg, ${colors.gradientStart}, ${colors.gradientEnd})`,
           }}
-        >
-          {columnPractices.length}
-        </span>
-      </div>
+        />
 
-      {/* Active cards */}
-      <div className="flex-1 space-y-3">
-        {isLoading ? (
-          <div data-testid="loading-skeleton">
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-        ) : columnPractices.length === 0 && ghosts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 border border-dashed rounded-lg" style={{ borderColor: colors.tintBorder, background: "rgba(255,255,255,0.02)" }}>
-            <FolderKanban className="w-8 h-8 text-[var(--bz-text-2)] opacity-20 mb-2" />
-            <p className="text-xs text-[var(--bz-text-2)]">No process</p>
-          </div>
-        ) : (
-          <>
-            {/* Active practice cards */}
-            {columnPractices.map((practice) => (
-              /* Use existing card JSX but wrap completed in glow */
-              <div
-                key={practice.id}
-                className={`p-3 rounded-lg cursor-pointer transition-all hover:shadow-md relative group ${
-                  updatingId === practice.id ? "opacity-70 pointer-events-none" : ""
-                } ${
-                  selectedPractice?.id === practice.id
-                    ? "ring-1 ring-[var(--bz-accent)]/30"
-                    : ""
-                } ${
-                  statusKey === "completed"
-                    ? "border-green-500/25"
-                    : selectedPractice?.id === practice.id
-                      ? "border-[var(--bz-accent)]"
-                      : "border-[var(--bz-border)] hover:border-[var(--bz-accent)]/30"
-                }`}
-                style={
-                  statusKey === "completed"
-                    ? {
-                        background: "rgba(34,197,94, 0.08)",
-                        border: "1px solid rgba(34,197,94, 0.25)",
-                        boxShadow: "0 0 12px rgba(34,197,94,0.12), 0 0 4px rgba(34,197,94,0.08)",
-                      }
-                    : {
-                        background: "var(--bz-card)",
-                        border: "1px solid var(--bz-border)",
-                      }
-                }
-                onClick={() => router.push(`/process/${practice.id}`)}
-              >
-                {/* ... existing card inner content ... */}
-                {/* For completed: add CheckCircle icon next to type name */}
-                {/* For completed: show completion_date at bottom */}
-              </div>
-            ))}
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <span
+            className="font-semibold text-sm"
+            style={{ color: colors.textColor }}
+          >
+            {colors.label}
+          </span>
+          <span
+            className="text-xs px-2 py-1 rounded-full"
+            style={{
+              background: colors.badgeBg,
+              color: colors.textColor,
+            }}
+          >
+            {columnPractices.length}
+          </span>
+        </div>
 
-            {/* Ghost separator + ghost cards */}
-            {ghosts.length > 0 && (
-              <>
-                <div className="relative my-2">
-                  <div className="border-t border-dashed border-[var(--bz-border)]/30" />
-                  <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--bz-base)] text-[var(--bz-text-2)]/40 text-[8px] px-2">
-                    passate
-                  </span>
+        {/* Active cards */}
+        <div className="flex-1 space-y-3">
+          {isLoading ? (
+            <div data-testid="loading-skeleton">
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          ) : columnPractices.length === 0 && ghosts.length === 0 ? (
+            <div
+              className="flex flex-col items-center justify-center h-32 border border-dashed rounded-lg"
+              style={{
+                borderColor: colors.tintBorder,
+                background: "rgba(255,255,255,0.02)",
+              }}
+            >
+              <FolderKanban className="w-8 h-8 text-[var(--bz-text-2)] opacity-20 mb-2" />
+              <p className="text-xs text-[var(--bz-text-2)]">No process</p>
+            </div>
+          ) : (
+            <>
+              {/* Active practice cards */}
+              {columnPractices.map((practice) => (
+                /* Use existing card JSX but wrap completed in glow */
+                <div
+                  key={practice.id}
+                  className={`p-3 rounded-lg cursor-pointer transition-all hover:shadow-md relative group ${
+                    updatingId === practice.id
+                      ? "opacity-70 pointer-events-none"
+                      : ""
+                  } ${
+                    selectedPractice?.id === practice.id
+                      ? "ring-1 ring-[var(--bz-accent)]/30"
+                      : ""
+                  } ${
+                    statusKey === "completed"
+                      ? "border-green-500/25"
+                      : selectedPractice?.id === practice.id
+                        ? "border-[var(--bz-accent)]"
+                        : "border-[var(--bz-border)] hover:border-[var(--bz-accent)]/30"
+                  }`}
+                  style={
+                    statusKey === "completed"
+                      ? {
+                          background: "rgba(34,197,94, 0.08)",
+                          border: "1px solid rgba(34,197,94, 0.25)",
+                          boxShadow:
+                            "0 0 12px rgba(34,197,94,0.12), 0 0 4px rgba(34,197,94,0.08)",
+                        }
+                      : {
+                          background: "var(--bz-card)",
+                          border: "1px solid var(--bz-border)",
+                        }
+                  }
+                  onClick={() => router.push(`/process/${practice.id}`)}
+                >
+                  {/* ... existing card inner content ... */}
+                  {/* For completed: add CheckCircle icon next to type name */}
+                  {/* For completed: show completion_date at bottom */}
                 </div>
+              ))}
 
-                {visibleGhosts.map((ghost) => (
-                  <GhostCard
-                    key={`ghost-${ghost.id}`}
-                    practice={ghost}
-                    onClick={() => router.push(`/process/${ghost.id}`)}
-                  />
-                ))}
+              {/* Ghost separator + ghost cards */}
+              {ghosts.length > 0 && (
+                <>
+                  <div className="relative my-2">
+                    <div className="border-t border-dashed border-[var(--bz-border)]/30" />
+                    <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--bz-base)] text-[var(--bz-text-2)]/40 text-[8px] px-2">
+                      passate
+                    </span>
+                  </div>
 
-                {!showAllGhosts && hiddenGhostCount > 0 && (
-                  <button
-                    onClick={() => setExpandedGhosts(prev => ({ ...prev, [statusKey]: true }))}
-                    className="w-full text-center text-[9px] text-[var(--bz-text-2)]/40 hover:text-[var(--bz-text-2)] py-1 transition-colors"
-                  >
-                    +{hiddenGhostCount} passate
-                  </button>
-                )}
-              </>
-            )}
-          </>
-        )}
+                  {visibleGhosts.map((ghost) => (
+                    <GhostCard
+                      key={`ghost-${ghost.id}`}
+                      practice={ghost}
+                      onClick={() => router.push(`/process/${ghost.id}`)}
+                    />
+                  ))}
+
+                  {!showAllGhosts && hiddenGhostCount > 0 && (
+                    <button
+                      onClick={() =>
+                        setExpandedGhosts((prev) => ({
+                          ...prev,
+                          [statusKey]: true,
+                        }))
+                      }
+                      className="w-full text-center text-[9px] text-[var(--bz-text-2)]/40 hover:text-[var(--bz-text-2)] py-1 transition-colors"
+                    >
+                      +{hiddenGhostCount} passate
+                    </button>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
-  );
-})}
+    );
+  });
+}
 ```
 
 Ghost expand state is managed at page level via `expandedGhosts: Record<string, boolean>` to avoid React hooks-in-loop violation.
@@ -1171,6 +1220,7 @@ Vercel auto-deploys.
 - [ ] **Step 4: Visual verification on kita.balizero.com/process**
 
 Check:
+
 - Month pill tabs visible between header and search
 - Columns have colored top bars + subtle tints
 - Ghost cards appear below "passate" separator
