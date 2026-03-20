@@ -95,6 +95,7 @@ export function useDashboardData() {
   const stats = data?.stats || {
     activeCases: 0,
     criticalDeadlines: 0,
+    pendingInvoices: 0,
     whatsappUnread: 0,
     emailUnread: 0,
     hoursWorked: "0h 0m",

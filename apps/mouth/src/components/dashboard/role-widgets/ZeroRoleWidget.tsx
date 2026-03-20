@@ -11,12 +11,18 @@ const ALERT_STYLE: Record<RoleAlert["type"], string> = {
   info:     "bg-[rgba(74,142,196,0.08)]  border-[rgba(74,142,196,0.20)]  text-[#4a8ec4]",
 };
 
+function formatRevenue(rp: number): string {
+  if (rp >= 1_000_000_000) return `Rp ${(rp / 1_000_000_000).toFixed(2)}B`;
+  if (rp >= 1_000_000) return `Rp ${(rp / 1_000_000).toFixed(1)}M`;
+  if (rp >= 1_000) return `Rp ${(rp / 1_000).toFixed(0)}K`;
+  return `Rp ${rp.toFixed(0)}`;
+}
+
 export function ZeroRoleWidget({ metrics }: Props) {
-  const revenueK = (metrics.revenue_mtd / 1000).toFixed(1);
   return (
     <div className="flex flex-col gap-2.5">
       <span className="text-[9px] font-bold text-[#9880d8]/85 tracking-[.12em]">REVENUE · MTD</span>
-      <span className="text-2xl font-black text-white leading-none tracking-tight">${revenueK}K</span>
+      <span className="text-2xl font-black text-white leading-none tracking-tight">{formatRevenue(metrics.revenue_mtd)}</span>
       <span className="text-[10px] font-medium text-[#5cb88a]">▲ +12% vs last month</span>
       <div className="h-px bg-white/[0.06]" />
       {metrics.visti_scadenza > 0 && (
