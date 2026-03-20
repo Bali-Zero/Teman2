@@ -451,12 +451,14 @@ class IntelPipeline:
                     scored.append(art)
 
                 # Log batch results
-                batch_scores = [a['quality_score'] for a in batch]
+                batch_scores = [a.get('quality_score', 50) for a in batch]
                 self.log(f'  Batch {batch_num}/{total_batches}: {len(results)}/{len(batch)} scored '
                          f'(avg={sum(batch_scores)/len(batch_scores):.0f})')
                 for art in batch:
-                    if art['quality_score'] != 50:  # Only log actually scored articles
-                        self.log(f'    {art["quality_score"]:3d}/100 [{art["tier"]}] {art["title"][:60]}')
+                    score = art.get('quality_score', 50)
+                    tier = art.get('tier', 'unknown')
+                    if score != 50:  # Only log actually scored articles
+                        self.log(f'    {score:3d}/100 [{tier}] {art["title"][:60]}')
 
             except Exception as e:
                 self.log(f'  Batch {batch_num} error: {e}', 'WARN')
@@ -1096,8 +1098,9 @@ IMPORTANT:
         except Exception as e:
             self.log(f'Warning: could not reload state after images: {e}', 'WARN')
 
-        images_count = sum(1 for a in self.state.get('articles', []) if a.get('image_path'))
-        self.log(f'Images generated: {images_count}/{len(enriched)}')
+        all_articles = self.state.get('articles', [])
+        images_count = sum(1 for a in all_articles if a.get('image_path'))
+        self.log(f'Images generated: {images_count}/{len(published)}')
 
         # Upload cover images sugli articoli già pubblicati
         import asyncio as _asyncio2, httpx as _httpx2, base64 as _b64, os as _os2

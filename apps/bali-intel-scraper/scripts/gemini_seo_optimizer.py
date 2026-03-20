@@ -73,7 +73,8 @@ class SEOOptimizer:
         """Generate SOTA SEO + GEO metadata using Gemini or Ollama."""
 
         title = article.get("title", "")
-        summary = article.get("enrichment", {}).get("executive_brief", "")
+        enr = article.get("enrichment", {})
+        summary = enr.get("the_facts", enr.get("executive_brief", ""))
         content = article.get("content", "")[:1500]
         category = article.get("category", "")
         source = article.get("source", "")
