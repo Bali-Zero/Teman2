@@ -64,7 +64,7 @@ def run_ruff_json() -> list[dict]:
     rules_str = ",".join(RUFF_RULES)
     cmd = [
         str(VENV_PYTHON), "-m", "ruff", "check",
-        "backend/services/", "backend/app/",
+        "backend/services/", "backend/app/", "backend/agents/",
         "--select", rules_str,
         "--output-format=json",
     ]

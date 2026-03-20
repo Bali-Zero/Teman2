@@ -681,16 +681,24 @@ def deterministic_fix_ANN204(worktree_path: Path, target_file: str) -> bool:
     content = file_path.read_text()
     original = content
 
-    # Match: def __init__(self, ...) :  (without -> None)
-    # Handles single-line and multi-line signatures ending with ):
-    content = re.sub(
-        r'(def __init__\([^)]*\))\s*:',
-        r'\1 -> None:',
-        content,
-    )
-
-    # Don't double-add: remove "-> None -> None:" if somehow produced
-    content = content.replace('-> None -> None:', '-> None:')
+    # Find "def __init__(" then the matching "):" line and add -> None
+    # Line-by-line approach handles nested parens like Path("...") in defaults
+    lines = content.split('\n')
+    i = 0
+    while i < len(lines):
+        if 'def __init__(' in lines[i] and '-> None' not in lines[i]:
+            # Find the closing ): on this or subsequent lines
+            j = i
+            while j < len(lines):
+                stripped = lines[j].rstrip()
+                if stripped.endswith('):') and '-> None' not in lines[j]:
+                    lines[j] = lines[j].replace('):', ') -> None:', 1)
+                    break
+                elif '-> None:' in lines[j]:
+                    break  # Already annotated
+                j += 1
+        i += 1
+    content = '\n'.join(lines)
 
     if content == original:
         logger.warning(f"No __init__ without -> None found in {target_file}")
