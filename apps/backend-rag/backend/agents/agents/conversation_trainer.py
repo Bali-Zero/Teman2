@@ -67,7 +67,7 @@ class ConversationTrainer:
 
     def __init__(
         self, db_pool: asyncpg.Pool | None = None, zantara_client: ZantaraAIClient | None = None
-    ):
+    ) -> None:
         """
         Initialize ConversationTrainer with dependencies.
 
