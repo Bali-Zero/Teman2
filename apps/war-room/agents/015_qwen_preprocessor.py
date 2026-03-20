@@ -1,21 +1,51 @@
 #!/usr/bin/env python3
 """
 FASE 1.5 — Qwen3.5-27B Pre-Processor
-Runs Qwen3.5-27B via Ollama locale (MacBook Pro M4 48GB)
+Runs Qwen3.5-27B via Ollama REST API (localhost:11434)
+Uses think:false to suppress chain-of-thought and get fast JSON output.
 Zero cost — locale
 """
-import json, argparse, sys, subprocess
+import json, argparse, sys, urllib.request, urllib.error
 from pathlib import Path
 
-def run_qwen_on_pro(prompt: str) -> str:
-    """Chiama Qwen3.5:27b via Ollama locale — siamo sul Pro M4 48GB."""
-    result = subprocess.run(
-        ["ollama", "run", "qwen3.5:27b", "--nowordwrap"],
-        input=prompt, capture_output=True, text=True, timeout=300
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Qwen3.5 error: {result.stderr}")
-    return result.stdout.strip()
+
+def run_qwen_api(prompt: str) -> str:
+    """Chiama Qwen3.5 via Ollama REST API — think:false, streaming, fast."""
+    for model, timeout in [("qwen3.5:27b", 120), ("qwen3.5:9b", 90), ("gemma3:12b", 90)]:
+        try:
+            print(f"  Trying {model} via REST API (timeout={timeout}s)...", file=sys.stderr)
+            payload = json.dumps({
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "think": False,
+                "options": {
+                    "num_predict": 2048,
+                    "temperature": 0.1,
+                },
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                "http://localhost:11434/api/generate",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text = data.get("response", "").strip()
+                if text:
+                    print(f"  {model} OK ({len(text)} chars)", file=sys.stderr)
+                    return text
+                print(f"  {model} empty response", file=sys.stderr)
+        except urllib.error.URLError as e:
+            print(f"  {model} connection error: {e}", file=sys.stderr)
+        except TimeoutError:
+            print(f"  {model} timeout — trying fallback", file=sys.stderr)
+        except Exception as e:
+            print(f"  {model} error: {e}", file=sys.stderr)
+    raise RuntimeError("All Qwen/Gemma models failed via REST API")
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -31,24 +61,48 @@ def main():
     prompt_path = Path(__file__).parent.parent / "config" / "prompts.json"
     prompts = json.loads(prompt_path.read_text())
 
-    prompt = "/no_think\n" + prompts["qwen_preprocessor"] + f"""
+    # Tronca input per evitare prompt troppo lunghi
+    facts_input = manus_data.get("facts", manus_data) if isinstance(manus_data, dict) else manus_data
+    facts_trimmed = facts_input[:15] if isinstance(facts_input, list) else facts_input
+    grok_trimmed = grok_data[:8] if isinstance(grok_data, list) else grok_data
+
+    prompt = prompts["qwen_preprocessor"] + f"""
 
 RAW GROK DATA:
-{json.dumps(grok_data, ensure_ascii=False, indent=2)}
+{json.dumps(grok_trimmed, ensure_ascii=False, indent=2)}
 
-MANUS LEGAL FACTS:
-{json.dumps(manus_data, ensure_ascii=False, indent=2)}
+FACTS:
+{json.dumps(facts_trimmed, ensure_ascii=False, indent=2)}
 
-Output ONLY valid JSON. No markdown, no prose."""
+Output ONLY valid JSON. No markdown, no prose, no explanation."""
 
-    print("🔄 Qwen3.5-27B pre-processor (Ollama locale Pro M4 48GB)...", file=sys.stderr)
-    response = run_qwen_on_pro(prompt)
+    print("🔄 Qwen3.5-27B pre-processor (Ollama REST API, think:false)...", file=sys.stderr)
+
+    try:
+        response = run_qwen_api(prompt)
+    except RuntimeError as e:
+        print(f"  All models failed: {e} — using passthrough fallback", file=sys.stderr)
+        result = {
+            "facts": manus_data.get("facts", []) if isinstance(manus_data, dict) else manus_data,
+            "sentiment": manus_data.get("sentiment", []) if isinstance(manus_data, dict) else [],
+            "topics": manus_data.get("topics", []) if isinstance(manus_data, dict) else [],
+            "fallback": True,
+        }
+        Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2))
+        print(f"✅ Passthrough dump → {args.output}", file=sys.stderr)
+        return
 
     # Extract JSON from response
     if "```json" in response:
         response = response.split("```json")[1].split("```")[0].strip()
     elif "```" in response:
         response = response.split("```")[1].split("```")[0].strip()
+
+    # Strip any <think>...</think> block if model ignores think:false
+    if "<think>" in response:
+        end_think = response.rfind("</think>")
+        if end_think != -1:
+            response = response[end_think + len("</think>"):].strip()
 
     # Find JSON boundaries
     if "{" in response:
@@ -59,11 +113,41 @@ Output ONLY valid JSON. No markdown, no prose."""
     try:
         result = json.loads(response)
     except json.JSONDecodeError as e:
-        print(f"Qwen output invalid JSON ({e}) — falling back to raw manus_data", file=sys.stderr)
-        result = {"facts": manus_data if isinstance(manus_data, list) else manus_data.get("facts", []),
-                  "sentiment": [], "topics": [], "fallback": True}
+        print(f"Qwen output invalid JSON ({e}) — passthrough fallback", file=sys.stderr)
+        result = None
+
+    # Normalize: ensure expected keys exist (model may use different schema)
+    if result is not None:
+        src = manus_data if isinstance(manus_data, dict) else {}
+        # Remap alternative key names to expected schema
+        if "facts" not in result:
+            # Try common alternative keys the model might use
+            for alt in ("top_15_representative_posts", "legal_facts", "posts", "items", "data"):
+                if alt in result:
+                    result["facts"] = result.pop(alt)
+                    break
+            if "facts" not in result:
+                result["facts"] = src.get("facts", [])
+        if "sentiment" not in result:
+            for alt in ("deduplicated_posts", "sentiment_posts", "classified_posts"):
+                if alt in result:
+                    result["sentiment"] = result.pop(alt)
+                    break
+            if "sentiment" not in result:
+                result["sentiment"] = src.get("sentiment", [])
+        if "topics" not in result:
+            result["topics"] = src.get("topics", [])
+    else:
+        result = {
+            "facts": manus_data.get("facts", []) if isinstance(manus_data, dict) else manus_data,
+            "sentiment": manus_data.get("sentiment", []) if isinstance(manus_data, dict) else [],
+            "topics": manus_data.get("topics", []) if isinstance(manus_data, dict) else [],
+            "fallback": True,
+        }
+
     Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2))
     print(f"✅ Pre-processed dump → {args.output}", file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()

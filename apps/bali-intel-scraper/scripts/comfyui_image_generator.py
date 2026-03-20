@@ -214,8 +214,8 @@ def generate_image_pollinations(prompt: str, output_path: Path,
     """Fallback: generate via Pollinations.ai (free, no auth).
     Tries each available model in order until one succeeds.
     Used when ComfyUI is not available (e.g. machine off, cold start)."""
-    # Models in preference order (quality → speed)
-    models = ["sana", "turbo", "zimage"]
+    # Models in preference order (quality → speed) — verified working 2026-03-20
+    models = ["flux", "schnell", "sana", "turbo"]
     encoded = urllib.parse.quote(prompt)
     seed = int(time.time()) % 99999
 
@@ -223,7 +223,7 @@ def generate_image_pollinations(prompt: str, output_path: Path,
         url = f"{POLLINATIONS_URL}/{encoded}?width={width}&height={height}&seed={seed}&nologo=true&model={model}"
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "BaliZero-IntelScraper/1.0"})
-            resp = urllib.request.urlopen(req, timeout=90)
+            resp = urllib.request.urlopen(req, timeout=150)
             if resp.status != 200:
                 print(f"  Pollinations [{model}]: HTTP {resp.status}", file=sys.stderr)
                 continue
@@ -234,6 +234,8 @@ def generate_image_pollinations(prompt: str, output_path: Path,
             output_path.write_bytes(data)
             print(f"  Saved via Pollinations [{model}]: {output_path} ({len(data) // 1024}KB)", file=sys.stderr)
             return True
+        except TimeoutError:
+            print(f"  Pollinations [{model}]: timeout — trying next", file=sys.stderr)
         except Exception as e:
             print(f"  Pollinations [{model}] error: {e}", file=sys.stderr)
 

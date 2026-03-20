@@ -26,7 +26,12 @@ log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 die() { log "❌ FATAL: $*"; exit 1; }
 
 # Load env vars (API keys)
-[[ -f "$WAR_ROOM/.env" ]] && source "$WAR_ROOM/.env"
+# Load and export all env vars (set -a = auto-export)
+if [[ -f "$WAR_ROOM/.env" ]]; then
+  set -a
+  source "$WAR_ROOM/.env"
+  set +a
+fi
 
 log "🚨 BALI ZERO WAR ROOM AVVIATA"
 log "🕐 Start: $(date)"
@@ -184,6 +189,7 @@ log "🎬 Claude director — copy + JSON slides..."
 if ! $DRY_RUN; then
   $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/04_claude_director.py" \
     --concepts "$OUTPUT/strategy/gemini_concepts.json" \
+    --topic    "$TOPIC" \
     --output   "$OUTPUT/strategy/claude_slides.json"
   log "✅ Copy + JSON slides pronti"
 fi
@@ -223,7 +229,7 @@ fi
 log ""
 log "━━━ FASE 5: DELIVERY (T+10:00) ━━━"
 if ! $DRY_RUN; then
-  bash "$WAR_ROOM/agents/07_delivery.sh" \
+  zsh "$WAR_ROOM/agents/07_delivery.sh" \
     --topic  "$TOPIC" \
     --master "$OUTPUT/master/"
   log "✅ Upload Google Drive + notifica team inviata"
