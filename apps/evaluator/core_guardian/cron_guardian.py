@@ -13,7 +13,7 @@ Flow:
 5. If successful, pick next candidate (max 3 per run)
 
 Safety:
-- MAX_FIXES_PER_RUN = 3 (don't overwhelm the repo)
+- MAX_FIXES_PER_RUN = 10 (don't overwhelm the repo)
 - Only SAFE codes with deterministic fixers
 - Surgeon has its own circuit breaker (3 fails → 24h stop)
 - No git push — branches stay local for review
@@ -47,7 +47,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("guardian")
 
-MAX_FIXES_PER_RUN = 3
+MAX_FIXES_PER_RUN = 10
 CRON_LOG_FILE = AGENT_DIR / "cron_guardian.log"
 
 
