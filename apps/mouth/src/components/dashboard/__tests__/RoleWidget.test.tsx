@@ -24,7 +24,7 @@ describe("RoleWidget", () => {
 
   it("renders REVENUE label for Zero role", () => {
     render(<RoleWidget role="zero" userId="user-1" />);
-    expect(screen.getByText("REVENUE · MTD")).toBeInTheDocument();
+    expect(screen.getByText("Revenue · MTD")).toBeInTheDocument();
   });
 
   it("renders skeleton when loading", () => {
