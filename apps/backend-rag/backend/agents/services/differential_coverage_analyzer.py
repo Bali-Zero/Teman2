@@ -59,7 +59,7 @@ class DifferentialCoverageAnalyzer:
     - Improvement tracking
     """
 
-    def __init__(self, project_root: Path, baseline_dir: Path | None = None):
+    def __init__(self, project_root: Path, baseline_dir: Path | None = None) -> None:
         self.project_root = project_root
         self.baseline_dir = baseline_dir or (project_root / "coverage_baselines")
         self.baseline_dir.mkdir(exist_ok=True)
