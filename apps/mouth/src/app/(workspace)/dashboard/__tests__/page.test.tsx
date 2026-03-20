@@ -130,12 +130,26 @@ vi.mock("@/components/dashboard", () => ({
   ZantaraPortalCard: () => (
     <div data-testid="zantara-portal-card">Zantara AI</div>
   ),
-  DashboardStatCard: ({ label, value }: { label: string; value: string | number }) => (
-    <div data-testid={`dash-stat-card-${label.toLowerCase().replaceAll(" ", "-")}`}>
+  DashboardStatCard: ({
+    label,
+    value,
+  }: {
+    label: string;
+    value: string | number;
+  }) => (
+    <div
+      data-testid={`dash-stat-card-${label.toLowerCase().replaceAll(" ", "-")}`}
+    >
       {label}: {value}
     </div>
   ),
-  LiveActivityFeed: ({ events, isLoading }: { events: unknown[]; isLoading: boolean }) => (
+  LiveActivityFeed: ({
+    events,
+    isLoading,
+  }: {
+    events: unknown[];
+    isLoading: boolean;
+  }) => (
     <div data-testid="live-activity-feed">
       {isLoading ? "Loading..." : `${events.length} events`}
     </div>
@@ -218,6 +232,8 @@ describe("DashboardPage - Unit Tests", () => {
     isHealthy: true,
     revenue: null,
     revenueGrowth: 0,
+    totalClients: null,
+    totalPractices: null,
     refetch: vi.fn(),
     ...overrides,
   });
