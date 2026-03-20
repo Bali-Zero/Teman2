@@ -89,21 +89,7 @@ if [[ -f "$INTEL_LATEST" ]]; then
     INTEL_FRESH=true
     log "✅ Intel Scraper output fresco (${INTEL_AGE}s fa)"
 
-    if [[ -z "$TOPIC" ]]; then
-      TOPIC=$(python3 -c "
-import json
-d = json.load(open('$INTEL_LATEST'))
-arts = [a for a in d.get('articles', []) if a.get('enrichment')]
-if not arts:
-    arts = d.get('articles', [])
-arts.sort(key=lambda a: a.get('qwen_score', 0), reverse=True)
-best = arts[0] if arts else {}
-title = best.get('title', '')[:60]
-print(title if title else 'Indonesia Business Intelligence')
-" 2>/dev/null || echo "Indonesia Business Intelligence")
-      log "📌 Topic auto-estratto dall'intel: $TOPIC"
-    fi
-
+    # Pre-seed intel facts (sempre, indipendentemente dal topic)
     python3 -c "
 import json
 with open('$INTEL_LATEST') as f: d = json.load(f)
@@ -119,6 +105,44 @@ print(json.dumps(intel, ensure_ascii=False, indent=2))
 
     INTEL_COUNT=$(python3 -c "import json; d=json.load(open('$INTEL_LATEST')); print(len([a for a in d.get('articles',[]) if a.get('enrichment')]))" 2>/dev/null || echo "?")
     log "   📂 Intel pre-seed → $INTEL_COUNT enriched articles"
+
+    # ── FASE 0: Topic Selector (Gemini + Google Trends) ──────
+    if [[ -z "$TOPIC" ]]; then
+      log ""
+      log "━━━ FASE 0: TOPIC SELECTOR (Gemini + Google Trends) ━━━"
+      SELECTED_TOPIC_FILE="$OUTPUT/strategy/selected_topic.json"
+      mkdir -p "$OUTPUT/strategy"
+
+      TOPIC=$(run_phase "topic_selector" 240 \
+        $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/00_topic_selector.py" \
+        --intel  "$INTEL_LATEST" \
+        --output "$SELECTED_TOPIC_FILE" \
+        2>>"$LOG_FILE" && \
+        python3 -c "import json; print(json.load(open('$SELECTED_TOPIC_FILE'))['topic'])" 2>/dev/null \
+        || echo "")
+
+      if [[ -n "$TOPIC" ]]; then
+        TOPIC_ANGLE=$(python3 -c "import json; print(json.load(open('$SELECTED_TOPIC_FILE')).get('angle',''))" 2>/dev/null || echo "")
+        TOPIC_TREND=$(python3 -c "import json; print(json.load(open('$SELECTED_TOPIC_FILE')).get('trend_signal',''))" 2>/dev/null || echo "")
+        log "✅ Topic selezionato: $TOPIC"
+        [[ -n "$TOPIC_ANGLE" ]] && log "   Angle: $TOPIC_ANGLE"
+        [[ -n "$TOPIC_TREND" ]] && log "   Trend: $TOPIC_TREND"
+      else
+        # Fallback: titolo articolo con score più alto
+        TOPIC=$(python3 -c "
+import json
+d = json.load(open('$INTEL_LATEST'))
+arts = [a for a in d.get('articles', []) if a.get('enrichment')]
+if not arts: arts = d.get('articles', [])
+arts.sort(key=lambda a: a.get('qwen_score', 0), reverse=True)
+best = arts[0] if arts else {}
+print(best.get('title', 'Indonesia Business Intelligence')[:60])
+" 2>/dev/null || echo "Indonesia Business Intelligence")
+        log "⚠️  Topic selector fallito — fallback: $TOPIC"
+      fi
+    else
+      log "📌 Topic manuale: $TOPIC"
+    fi
   else
     log "⏰ Intel output vecchio (${INTEL_AGE}s)"
   fi
