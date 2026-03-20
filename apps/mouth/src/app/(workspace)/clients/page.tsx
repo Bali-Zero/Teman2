@@ -61,7 +61,7 @@ interface Filters {
   assigned_to: string;
 }
 
-const PAGE_SIZE = 200;
+const PAGE_SIZE = 50;
 const ESTIMATED_CARD_HEIGHT = 200;
 const VIRTUALIZATION_THRESHOLD = 30;
 const SEARCH_DEBOUNCE_MS = 300;

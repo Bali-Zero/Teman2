@@ -149,13 +149,23 @@ export const ClientCard = React.memo(
                   src={client.avatar_url}
                   alt={client.full_name}
                   className="w-full h-full rounded-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
-              ) : countryFlag ? (
-                <div className="w-full h-full rounded-full bg-[var(--background)] flex items-center justify-center text-2xl">
-                  {countryFlag}
+              ) : null}
+              {!client.avatar_url && (
+                <div className="w-full h-full rounded-full bg-[var(--background)] flex items-center justify-center">
+                  {countryFlag ? (
+                    <span className="text-lg leading-none">{countryFlag}</span>
+                  ) : (
+                    <span className="text-xs font-bold text-[var(--foreground)] opacity-60">
+                      {client.full_name
+                        ?.split(" ")
+                        .slice(0, 2)
+                        .map((n) => n[0]?.toUpperCase())
+                        .join("") || "?"}
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <div className="w-full h-full rounded-full bg-white dark:bg-gray-300" />
               )}
 
               {/* Status Dot */}
