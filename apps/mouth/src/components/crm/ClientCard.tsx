@@ -101,10 +101,20 @@ const NATIONALITY_FLAGS: Record<string, string> = {
   Singapore: "🇸🇬",
 };
 
-// Get flag emoji from nationality
+// Get flag emoji from nationality (case-insensitive)
 const getCountryFlag = (nationality: string | undefined): string | null => {
   if (!nationality) return null;
-  return NATIONALITY_FLAGS[nationality] || null;
+  // Direct match
+  if (NATIONALITY_FLAGS[nationality]) return NATIONALITY_FLAGS[nationality];
+  // Case-insensitive: try Title Case
+  const titleCase = nationality.charAt(0).toUpperCase() + nationality.slice(1).toLowerCase();
+  if (NATIONALITY_FLAGS[titleCase]) return NATIONALITY_FLAGS[titleCase];
+  // Try each key
+  const lower = nationality.toLowerCase();
+  for (const [key, flag] of Object.entries(NATIONALITY_FLAGS)) {
+    if (key.toLowerCase() === lower) return flag;
+  }
+  return null;
 };
 
 export const ClientCard = React.memo(
