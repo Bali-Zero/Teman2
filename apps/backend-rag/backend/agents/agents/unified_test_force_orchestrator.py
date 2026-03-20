@@ -55,7 +55,7 @@ class UnifiedTestForceOrchestrator:
     - Provides unified reporting
     """
 
-    def __init__(self, project_root: Path, llm_provider: str = "local"):
+    def __init__(self, project_root: Path, llm_provider: str = "local") -> None:
         self.project_root = project_root
         self.llm_provider = llm_provider
 
