@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   FolderKanban,
   Search,
@@ -23,6 +23,7 @@ import {
   Phone,
   FileText,
   MoreVertical,
+  CheckCircle,
   CheckCircle2,
   ArrowUpDown,
   ArrowUp,
@@ -35,6 +36,15 @@ import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 import type { Practice } from "@/lib/api/crm/crm.types";
+import type { StatusTransition } from "@/lib/api/crm/crm.types";
+import { MonthPillTabs } from "@/components/process/MonthPillTabs";
+import { GhostCard } from "@/components/process/GhostCard";
+import {
+  COLUMN_COLORS,
+  COLUMN_ORDER,
+  getStatusColumn,
+  type CaseStatus,
+} from "@/components/process/kanban-colors";
 import {
   trackViewModeChange,
   trackFilterApplied,
@@ -54,13 +64,6 @@ import {
 //
 // LEGACY STATUS (for backward compatibility):
 // quotation_sent, payment_pending, waiting_payment, in_progress, submitted_to_gov, approved
-
-type CaseStatus =
-  | "inquiry"
-  | "waiting_documents"
-  | "sending_invoice"
-  | "on_process"
-  | "completed";
 
 // Backend status values mapped to frontend display names and kanban columns
 // Simplified 5-step workflow
@@ -160,6 +163,35 @@ export default function PratichePage() {
   const [listPageNumber, setListPageNumber] = useState(1);
   const itemsPerPage = 25;
 
+  // Month navigation
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const now = new Date();
+  const currentMonthDefault = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [selectedMonth, setSelectedMonth] = useState(
+    searchParams.get("month") || currentMonthDefault,
+  );
+  const [expandedGhosts, setExpandedGhosts] = useState<
+    Record<string, boolean>
+  >({});
+
+  const handleMonthChange = useCallback(
+    (month: string) => {
+      setSelectedMonth(month);
+      setListPageNumber(1);
+      setExpandedGhosts({});
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("month", month);
+      window.history.replaceState(
+        null,
+        "",
+        `${pathname}?${params.toString()}`,
+      );
+    },
+    [searchParams, pathname],
+  );
+
   useEffect(() => {
     // Initialize analytics on component mount
     initializeAnalytics();
@@ -167,7 +199,11 @@ export default function PratichePage() {
     const loadPractices = async () => {
       setIsLoading(true);
       try {
-        const data = await api.crm.getPractices({ limit: 100 });
+        const data = await api.crm.getPractices({
+          limit: 200,
+          month: selectedMonth,
+          include_history: true,
+        });
         setPractices(data);
       } catch (error) {
         logger.error(
@@ -182,7 +218,7 @@ export default function PratichePage() {
     };
 
     loadPractices();
-  }, []);
+  }, [selectedMonth]);
 
   // Track view mode changes
   useEffect(() => {
@@ -291,35 +327,6 @@ export default function PratichePage() {
     router.push("/process/new");
   };
 
-  const getStatusColumn = (status: string): CaseStatus => {
-    // Simplified 5-step workflow
-    if (status === "inquiry" || status === "request") return "inquiry";
-    if (status === "waiting_documents") return "waiting_documents";
-    if (status === "sending_invoice") return "sending_invoice";
-    if (status === "on_process" || status === "active") return "on_process";
-    if (status === "completed" || status === "done") return "completed";
-
-    // Legacy/internal states mapped to simplified workflow
-    // waiting_payment, payment_pending → sending_invoice (payment follow-up)
-    if (status === "waiting_payment" || status === "payment_pending") {
-      return "sending_invoice";
-    }
-    // submitted_to_gov, approved, in_progress → on_process (government work)
-    if (
-      status === "submitted_to_gov" ||
-      status === "approved" ||
-      status === "in_progress"
-    ) {
-      return "on_process";
-    }
-    // quote, quotation → sending_invoice
-    if (status === "quotation_sent" || status === "quote" || status === "quotation") {
-      return "sending_invoice";
-    }
-
-    return "inquiry";
-  };
-
   const clearFilters = () => {
     setFilters({ status: "", type: "", assigned_to: "" });
   };
@@ -335,6 +342,23 @@ export default function PratichePage() {
       }
     });
   }, []);
+
+  const getGhostPractices = useCallback(
+    (columnStatus: CaseStatus) => {
+      return practices.filter((p) => {
+        const currentColumn = getStatusColumn(p.status);
+        if (currentColumn === columnStatus) return false;
+        const transitions = (p as any).status_transitions as
+          | StatusTransition[]
+          | undefined;
+        if (!transitions || transitions.length === 0) return false;
+        return transitions.some(
+          (t) => getStatusColumn(t.status) === columnStatus,
+        );
+      });
+    },
+    [practices],
+  );
 
   const activeFiltersCount = Object.values(filters).filter(Boolean).length;
 
@@ -481,6 +505,12 @@ export default function PratichePage() {
           New Process
         </Button>
       </div>
+
+      {/* Month Navigation */}
+      <MonthPillTabs
+        selectedMonth={selectedMonth}
+        onMonthChange={handleMonthChange}
+      />
 
       {/* Search & Filter Bar */}
       <div className="flex flex-col gap-3">
@@ -640,176 +670,245 @@ export default function PratichePage() {
       {/* Kanban Board View - Simplified 5-Step Workflow */}
       {viewMode === "kanban" && (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 overflow-x-auto">
-          {(
-            [
-              "Inquiry",
-              "Waiting Documents",
-              "Sending Invoice",
-              "On Process",
-              "Completed",
-            ] as const
-          ).map((column, idx) => {
-            const statusKey = [
-              "inquiry",
-              "waiting_documents",
-              "sending_invoice",
-              "on_process",
-              "completed",
-            ][idx] as CaseStatus;
+          {COLUMN_ORDER.map((statusKey) => {
+            const colors = COLUMN_COLORS[statusKey];
             const columnPractices = practicesByStatus[statusKey] || [];
-
-            // Color coding for each step (5-step workflow)
-            const stepColors = [
-              "bg-gray-400", // Inquiry
-              "bg-orange-400", // Waiting Documents
-              "bg-yellow-400", // Sending Invoice (includes payment follow-up)
-              "bg-blue-500", // On Process (includes submitted/approved)
-              "bg-green-500", // Completed
-            ];
+            const ghosts = getGhostPractices(statusKey);
+            const isExpanded = expandedGhosts[statusKey] ?? false;
+            const visibleGhosts = isExpanded ? ghosts : ghosts.slice(0, 2);
+            const hiddenGhostCount = ghosts.length - 2;
+            const isCompleted = statusKey === "completed";
 
             return (
               <div
-                key={column}
-                className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-4 flex flex-col h-full min-h-[500px] min-w-[280px]"
+                key={statusKey}
+                className="rounded-xl flex flex-col h-full min-h-[500px] min-w-[280px] overflow-hidden"
+                style={{
+                  background: colors.tintBg,
+                  border: `1px solid ${colors.tintBorder}`,
+                }}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`w-2 h-2 rounded-full ${stepColors[idx]}`}
-                    />
-                    <h3 className="font-semibold text-[var(--bz-text-1)] text-sm">
-                      {column}
-                    </h3>
-                  </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-[var(--bz-card)] text-[var(--bz-text-2)]">
-                    {columnPractices.length}
-                  </span>
-                </div>
+                {/* Gradient top bar */}
+                <div
+                  className="h-[3px] w-full"
+                  style={{
+                    background: `linear-gradient(90deg, ${colors.gradientStart}, ${colors.gradientEnd})`,
+                  }}
+                />
 
-                <div className="flex-1 space-y-3">
-                  {isLoading ? (
-                    <div data-testid="loading-skeleton">
-                      <SkeletonCard />
-                      <SkeletonCard />
-                      <SkeletonCard />
-                    </div>
-                  ) : columnPractices.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--bz-border)] rounded-lg bg-[var(--bz-card)]/30">
-                      <FolderKanban className="w-8 h-8 text-[var(--bz-text-2)] opacity-20 mb-2" />
-                      <p className="text-xs text-[var(--bz-text-2)]">
-                        No process
-                      </p>
-                    </div>
-                  ) : (
-                    columnPractices.map((practice) => (
-                      <div
-                        key={practice.id}
-                        className={`p-3 rounded-lg border bg-[var(--bz-card)] cursor-pointer transition-all hover:shadow-md relative group ${
-                          updatingId === practice.id
-                            ? "opacity-70 pointer-events-none"
-                            : ""
-                        } ${
-                          selectedPractice?.id === practice.id
-                            ? "border-[var(--bz-accent)] ring-1 ring-[var(--bz-accent)]/30"
-                            : "border-[var(--bz-border)] hover:border-[var(--bz-accent)]/30"
-                        }`}
-                        onClick={() => router.push(`/process/${practice.id}`)}
+                <div className="p-4 flex flex-col flex-1">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${colors.dotColor}`}
+                      />
+                      <h3
+                        className="font-semibold text-sm"
+                        style={{ color: colors.textColor }}
                       >
-                        {updatingId === practice.id && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-[var(--bz-card)]/80 rounded-lg z-10">
-                            <Loader2 className="w-5 h-5 animate-spin text-[var(--bz-accent)]" />
-                          </div>
-                        )}
+                        {colors.label}
+                      </h3>
+                    </div>
+                    <span
+                      className="text-xs px-2 py-1 rounded-full font-medium"
+                      style={{
+                        background: colors.badgeBg,
+                        color: colors.textColor,
+                      }}
+                    >
+                      {columnPractices.length}
+                    </span>
+                  </div>
 
-                        {/* Card Header */}
-                        <div className="flex items-start justify-between mb-1">
-                          <p className="text-sm font-medium text-[var(--bz-text-1)] line-clamp-2 pr-6">
-                            {practice.practice_type_code
-                              ?.toUpperCase()
-                              .replace(/_/g, " ") || "Process"}
-                          </p>
-
-                          {/* 3-Dot Menu Trigger */}
-                          <button
-                            className="absolute top-3 right-2 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-surface)] opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => handleMenuClick(e, practice)}
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <p className="text-xs text-[var(--bz-text-2)] truncate mb-2">
-                          {practice.client_name || "Unknown Client"}
-                        </p>
-
-                        <div className="flex items-center justify-between">
-                          {practice.client_lead ? (
-                            <div className="flex items-center gap-1.5 bg-[var(--bz-accent)]/10 px-2 py-0.5 rounded text-[var(--bz-accent)]">
-                              <User className="w-3 h-3" />
-                              <p className="text-[10px] font-medium truncate max-w-[80px]">
-                                {practice.client_lead.split("@")[0]}
-                              </p>
-                            </div>
-                          ) : (
-                            <div />
-                          )}
-                          <span className="text-[10px] text-[var(--bz-text-2)]">
-                            #{practice.id}
-                          </span>
-                        </div>
-
-                        {/* Quick Actions */}
-                        <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--bz-border)]">
-                          {practice.client_phone && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const phone = practice.client_phone?.replace(
-                                  /\D/g,
-                                  "",
-                                );
-                                window.open(
-                                  `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
-                                  "_blank",
-                                );
-                              }}
-                              className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
-                              title="WhatsApp"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {practice.client_email && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(
-                                  `mailto:${practice.client_email}`,
-                                  "_blank",
-                                );
-                              }}
-                              className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
-                              title="Email"
-                            >
-                              <Mail className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(
-                                `/clients/${practice.client_id}?tab=documents`,
-                              );
-                            }}
-                            className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
-                            title="View Documents"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                  <div className="flex-1 space-y-3">
+                    {isLoading ? (
+                      <div data-testid="loading-skeleton">
+                        <SkeletonCard />
+                        <SkeletonCard />
+                        <SkeletonCard />
                       </div>
-                    ))
-                  )}
+                    ) : columnPractices.length === 0 && ghosts.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--bz-border)] rounded-lg bg-[var(--bz-card)]/30">
+                        <FolderKanban className="w-8 h-8 text-[var(--bz-text-2)] opacity-20 mb-2" />
+                        <p className="text-xs text-[var(--bz-text-2)]">
+                          No process
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {columnPractices.map((practice) => {
+                          const cardIsCompleted =
+                            getStatusColumn(practice.status) === "completed";
+
+                          return (
+                            <div
+                              key={practice.id}
+                              className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md relative group ${
+                                updatingId === practice.id
+                                  ? "opacity-70 pointer-events-none"
+                                  : ""
+                              } ${
+                                selectedPractice?.id === practice.id
+                                  ? "border-[var(--bz-accent)] ring-1 ring-[var(--bz-accent)]/30"
+                                  : cardIsCompleted
+                                    ? "border-green-500/30"
+                                    : "border-[var(--bz-border)] hover:border-[var(--bz-accent)]/30"
+                              }`}
+                              style={
+                                cardIsCompleted
+                                  ? {
+                                      background:
+                                        "rgba(34, 197, 94, 0.06)",
+                                      boxShadow:
+                                        "0 0 12px rgba(34, 197, 94, 0.1)",
+                                    }
+                                  : {
+                                      background: "var(--bz-card)",
+                                    }
+                              }
+                              onClick={() =>
+                                router.push(`/process/${practice.id}`)
+                              }
+                            >
+                              {updatingId === practice.id && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-[var(--bz-card)]/80 rounded-lg z-10">
+                                  <Loader2 className="w-5 h-5 animate-spin text-[var(--bz-accent)]" />
+                                </div>
+                              )}
+
+                              {/* Card Header */}
+                              <div className="flex items-start justify-between mb-1">
+                                <p className="text-sm font-medium text-[var(--bz-text-1)] line-clamp-2 pr-6 flex items-center gap-1.5">
+                                  {cardIsCompleted && (
+                                    <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                                  )}
+                                  {practice.practice_type_code
+                                    ?.toUpperCase()
+                                    .replace(/_/g, " ") || "Process"}
+                                </p>
+
+                                {/* 3-Dot Menu Trigger */}
+                                <button
+                                  className="absolute top-3 right-2 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-surface)] opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) =>
+                                    handleMenuClick(e, practice)
+                                  }
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              <p className="text-xs text-[var(--bz-text-2)] truncate mb-2">
+                                {practice.client_name || "Unknown Client"}
+                              </p>
+
+                              <div className="flex items-center justify-between">
+                                {practice.client_lead ? (
+                                  <div className="flex items-center gap-1.5 bg-[var(--bz-accent)]/10 px-2 py-0.5 rounded text-[var(--bz-accent)]">
+                                    <User className="w-3 h-3" />
+                                    <p className="text-[10px] font-medium truncate max-w-[80px]">
+                                      {practice.client_lead.split("@")[0]}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div />
+                                )}
+                                <span className="text-[10px] text-[var(--bz-text-2)]">
+                                  #{practice.id}
+                                </span>
+                              </div>
+
+                              {/* Quick Actions */}
+                              <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--bz-border)]">
+                                {practice.client_phone && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const phone =
+                                        practice.client_phone?.replace(
+                                          /\D/g,
+                                          "",
+                                        );
+                                      window.open(
+                                        `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
+                                        "_blank",
+                                      );
+                                    }}
+                                    className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
+                                    title="WhatsApp"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                {practice.client_email && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(
+                                        `mailto:${practice.client_email}`,
+                                        "_blank",
+                                      );
+                                    }}
+                                    className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
+                                    title="Email"
+                                  >
+                                    <Mail className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(
+                                      `/clients/${practice.client_id}?tab=documents`,
+                                    );
+                                  }}
+                                  className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
+                                  title="View Documents"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Ghost section */}
+                        {ghosts.length > 0 && (
+                          <>
+                            <div className="flex items-center gap-2 py-1">
+                              <div className="flex-1 border-t border-dashed border-[var(--bz-border)]" />
+                              <span className="text-[9px] uppercase tracking-wider text-[var(--bz-text-2)]/50 font-medium">
+                                passate
+                              </span>
+                              <div className="flex-1 border-t border-dashed border-[var(--bz-border)]" />
+                            </div>
+                            {visibleGhosts.map((gp) => (
+                              <GhostCard
+                                key={`ghost-${gp.id}`}
+                                practice={gp}
+                                onClick={() =>
+                                  router.push(`/process/${gp.id}`)
+                                }
+                              />
+                            ))}
+                            {!isExpanded && hiddenGhostCount > 0 && (
+                              <button
+                                onClick={() =>
+                                  setExpandedGhosts((prev) => ({
+                                    ...prev,
+                                    [statusKey]: true,
+                                  }))
+                                }
+                                className="w-full text-center text-[10px] text-[var(--bz-text-2)]/60 hover:text-[var(--bz-text-2)] py-1 transition-colors"
+                              >
+                                +{hiddenGhostCount} passate
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             );
