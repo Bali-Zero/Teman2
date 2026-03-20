@@ -33,7 +33,7 @@ class ExpiryChecker:
     VISA_CRITICAL_DAYS = 60  # ~2 months
 
     def __init__(self) -> None:
-        self.today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        self.today = datetime.now(tz=timezone.utc).replace(tzinfo=None).replace(hour=0, minute=0, second=0, microsecond=0)
 
     def check_all_clients(self, clients: list[ClientInfo]) -> list[ClientAlert]:
         """Check all clients and return list of alerts to send."""
