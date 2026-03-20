@@ -28,7 +28,7 @@ def create_task(api_key: str, prompt: str) -> dict:
         headers={
             "accept": "application/json",
             "content-type": "application/json",
-            "API_KEY": api_key,
+            "x-api-key": api_key,
         },
         json={"prompt": prompt},
         timeout=30,
@@ -44,7 +44,7 @@ def get_task(api_key: str, task_id: str) -> dict:
         f"{MANUS_API_URL}/tasks",
         headers={
             "accept": "application/json",
-            "API_KEY": api_key,
+            "x-api-key": api_key,
         },
         timeout=30,
     )
@@ -149,7 +149,9 @@ def main():
 
     try:
         task_info = create_task(api_key, task_prompt)
-        task_id = task_info.get("task_id", "")
+        task_id = task_info.get("id", task_info.get("task_id", ""))
+        if not task_id:
+            raise RuntimeError(f"No task ID in creation response: {task_info}")
         print(f"Task creato: {task_id} — {task_info.get('task_url', '')}", file=sys.stderr)
 
         completed = wait_for_completion(api_key, task_id)

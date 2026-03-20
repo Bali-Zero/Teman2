@@ -130,15 +130,19 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
                         <span
                           className={cn(
                             "text-xs flex items-center gap-1",
-                            pratica.daysRemaining <= 3
+                            pratica.daysRemaining <= 0
                               ? "text-[var(--error)]"
-                              : pratica.daysRemaining <= 7
-                                ? "text-[var(--warning)]"
-                                : "text-[var(--foreground-muted)]",
+                              : pratica.daysRemaining <= 3
+                                ? "text-[var(--error)]"
+                                : pratica.daysRemaining <= 7
+                                  ? "text-[var(--warning)]"
+                                  : "text-[var(--foreground-muted)]",
                           )}
                         >
                           <Clock className="w-3 h-3" />
-                          {pratica.daysRemaining} days
+                          {pratica.daysRemaining <= 0
+                            ? "Expired"
+                            : `${pratica.daysRemaining}d`}
                         </span>
                       )}
                     {pratica.status === "completed" && pratica.completedAt && (

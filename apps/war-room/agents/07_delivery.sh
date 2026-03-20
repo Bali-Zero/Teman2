@@ -6,19 +6,23 @@ TOPIC="${1:-Unknown}"
 WAR_ROOM="$(cd "$(dirname "$0")/.." && pwd)"
 MASTER_DIR="${2:-$WAR_ROOM/output/master}"
 
-# Parse named args
-for i in "$@"; do
-  case $i in
-    --topic=*) TOPIC="${i#*=}" ;;
-    --topic) shift; TOPIC="$1" ;;
-    --master=*) MASTER_DIR="${i#*=}" ;;
-    --master) shift; MASTER_DIR="$1" ;;
+# Parse named args (use while+shift to correctly handle --flag value pattern)
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --topic=*) TOPIC="${1#*=}"; shift ;;
+    --topic) TOPIC="$2"; shift 2 ;;
+    --master=*) MASTER_DIR="${1#*=}"; shift ;;
+    --master) MASTER_DIR="$2"; shift 2 ;;
+    *) shift ;;
   esac
 done
 
+PYTHON="$WAR_ROOM/.venv/bin/python3"
+[[ -x "$PYTHON" ]] || PYTHON=python3
+
 BRAND_FILE="$WAR_ROOM/config/brand.json"
-DRIVE_FOLDER=$(python3 -c "import json; print(json.load(open('$BRAND_FILE'))['delivery']['google_drive_folder'])")
-TONE=$(cat "$WAR_ROOM/output/strategy/claude_slides.json" 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('tone', 'N/A'))" 2>/dev/null || echo "N/A")
+DRIVE_FOLDER=$("$PYTHON" -c "import json; print(json.load(open('$BRAND_FILE'))['delivery']['google_drive_folder'])")
+TONE=$(cat "$WAR_ROOM/output/strategy/claude_slides.json" 2>/dev/null | "$PYTHON" -c "import json,sys; print(json.load(sys.stdin).get('tone', 'N/A'))" 2>/dev/null || echo "N/A")
 
 echo "📦 Comprimo master archive..."
 ARCHIVE="$WAR_ROOM/output/balizero_warroom_$(date +%Y%m%d_%H%M%S).zip"
@@ -35,21 +39,21 @@ rclone copy "$ARCHIVE" "${GDRIVE_REMOTE}:balizero_warroom/" --drive-root-folder-
 
 echo "   Drive link: $DRIVE_LINK"
 
-echo "📱 Invio notifica WhatsApp..."
-# Extract caption for notification
-CAPTION_FILE="$MASTER_DIR/instagram_caption.txt"
+echo "📱 Invio notifica Telegram..."
+CAPTION=$(cat "$MASTER_DIR/instagram_caption.txt" 2>/dev/null | head -c 500 || echo "")
 
 MSG="🚨 *Bali Zero War Room conclusa.*
 | Argomento: $TOPIC.
 | Tono: $TONE.
 | Creatività approvata, zero allucinazioni lette.
 | Master su Google Drive: $DRIVE_LINK.
-| In attesa di review per la pubblicazione."
+| In attesa di review per la pubblicazione.
+${CAPTION:+| Caption: $CAPTION}"
 
 # Notifica: Telegram Bot API diretta (affidabile, no middleware)
 BOT_TOKEN="${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN env var}"
-CHAT_ID="${TELEGRAM_GROUP_ID:--1003826235564}"
-python3 -c "
+CHAT_ID="${TELEGRAM_GROUP_ID:?Set TELEGRAM_GROUP_ID env var}"
+"$PYTHON" -c "
 import urllib.request, urllib.parse, json, sys
 token='$BOT_TOKEN'; chat='$CHAT_ID'
 msg=sys.stdin.read()

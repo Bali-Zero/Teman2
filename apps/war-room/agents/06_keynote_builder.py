@@ -33,7 +33,7 @@ H = 1350
 
 # -- Colori brand (AppleScript: 0-65535) -------------------------------------
 BG_RGB    = (55, 61, 66)       # #373D42 — confermato da Zero
-GOLD_AS   = f"{{{232*257}, {185*257}, {74*257}}}"    # #E8B94A
+GOLD_AS   = f"{{{244*257}, {160*257}, {28*257}}}"    # #F4A01C — matches brand.json text_accent
 WHITE_AS  = f"{{{217*257}, {217*257}, {217*257}}}"   # #D9D9D9
 PWHITE_AS = f"{{{255*257}, {255*257}, {255*257}}}"
 
@@ -279,7 +279,10 @@ def build(slides, image_map, out_dir, keynote_dir):
     ]
 
     script = "\n".join(sc)
-    sp = Path(tempfile.mktemp(suffix=".applescript"))
+    import os as _os
+    fd, _tmp = tempfile.mkstemp(suffix=".applescript")
+    sp = Path(_tmp)
+    _os.close(fd)
     sp.write_text(script, encoding="utf-8")
 
     print(f"  AppleScript: {len(sc)} righe", file=sys.stderr)

@@ -73,7 +73,7 @@ from pathlib import Path
 with open('$INTEL_LATEST') as f: d = json.load(f)
 arts = d.get('articles', [])
 intel = {
-  'facts': [{'title': a.get('title',''), 'brief': str(a.get('enrichment',{}).get('executive_brief', a.get('enrichment',{}).get('the_facts',''))), 'category': a.get('qwen_category',''), 'source': a.get('url','')} for a in arts if a.get('enrichment')],
+  'facts': [{'title': a.get('title',''), 'brief': str(a.get('enrichment',{}).get('the_facts', a.get('enrichment',{}).get('executive_brief',''))), 'category': a.get('qwen_category',''), 'source': a.get('url','')} for a in arts if a.get('enrichment')],
   'topics': list(set(a.get('qwen_category','') for a in arts if a.get('qwen_category'))),
   'generated_at': d.get('generated_at',''),
   'source': 'intel_scraper'
