@@ -35,7 +35,7 @@ def run_chatgpt(prompt: str, timeout: int = 120) -> str:
 
     try:
         result = subprocess.run(
-            ["npx", "chatgpt", "-m", "gpt-5.4", "--no-store", prompt],
+            ["npx", "chatgpt", "-m", "gpt-4o", "--no-store", prompt],
             capture_output=True, text=True, timeout=timeout, env=env
         )
         if result.returncode == 0 and result.stdout.strip():

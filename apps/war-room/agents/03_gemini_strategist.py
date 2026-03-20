@@ -27,8 +27,9 @@ def main():
     prompt_path = Path(__file__).parent.parent / "config" / "prompts.json"
     prompts = json.loads(prompt_path.read_text())
 
-    grok_str  = json.dumps(dump_data.get("grok_summary", dump_data), ensure_ascii=False, indent=2)
-    manus_str = json.dumps(dump_data.get("manus_summary", {}), ensure_ascii=False, indent=2)
+    # Keys match 015_qwen_preprocessor.py output schema
+    grok_str  = json.dumps(dump_data.get("sentiment", dump_data.get("grok_summary", [])), ensure_ascii=False, indent=2)
+    manus_str = json.dumps(dump_data.get("facts", dump_data.get("manus_summary", [])), ensure_ascii=False, indent=2)
     prompt = (
         prompts["gemini_strategist"]
         .replace("{grok_dump}",  grok_str)
@@ -46,11 +47,15 @@ def main():
         end = response.rfind("]") + 1
         response = response[start:end]
 
-    concepts = json.loads(response)
+    try:
+        concepts = json.loads(response)
+    except json.JSONDecodeError as e:
+        print(f"Gemini returned invalid JSON: {e}\nRaw: {response[:500]}", file=sys.stderr)
+        sys.exit(1)
 
     output = {
         "topic": args.topic,
-        "model": "gemini-3.1-pro",
+        "model": "gemini-2.5-pro",
         "concepts": concepts,
         "count": len(concepts)
     }

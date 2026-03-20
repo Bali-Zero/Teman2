@@ -7,11 +7,8 @@ Uses gemini CLI (Google Ultra, $0)
 import json, argparse, sys, subprocess
 from pathlib import Path
 
-def call_claude(prompt: str, system: str = "") -> str:
-    """
-    Chiama Gemini via CLI (gemini -p "prompt", $0).
-    Nota: rinominata call_claude per retrocompatibilità col resto del file.
-    """
+def call_gemini(prompt: str, system: str = "") -> str:
+    """Chiama Gemini via CLI (gemini -p "prompt", $0)."""
     full_prompt = (system + "\n\n" + prompt) if system else prompt
     result = subprocess.run(
         ["gemini", "-p", full_prompt],
@@ -44,8 +41,8 @@ def main():
         .replace("{gemini_concepts}", gemini_str)
     ) + f"\n\nTOPIC: {args.topic}\n\nBRAND RULES: {json.dumps(brand, ensure_ascii=False)}"
 
-    print("🎬 Gemini 3.1 Pro (direttore) — generando copy + JSON slides...", file=sys.stderr)
-    response = call_claude(prompt)
+    print("🎬 Gemini (direttore) — generando copy + JSON slides...", file=sys.stderr)
+    response = call_gemini(prompt)
 
     # Extract JSON from response
     if "```json" in response:
@@ -55,7 +52,11 @@ def main():
         end = response.rfind("}") + 1
         response = response[start:end]
 
-    slides_data = json.loads(response)
+    try:
+        slides_data = json.loads(response)
+    except json.JSONDecodeError as e:
+        print(f"Gemini returned invalid JSON: {e}\nRaw: {response[:500]}", file=sys.stderr)
+        sys.exit(1)
 
     # Ensure hallucination_check field exists
     if "hallucination_check" not in slides_data:

@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { RefreshCw, ExternalLink } from "lucide-react";
 import {
   PratichePreview,
   LiveActivityFeed,
@@ -15,7 +16,7 @@ import type { PraticaPreview } from "@/components/dashboard";
 import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useRealtime } from "@/lib/realtime";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { normalizeDashboardRole } from "@/lib/dashboard-role";
 import type {
   LiveActivityEvent,
@@ -23,7 +24,44 @@ import type {
 } from "@/types/dashboard-role.types";
 import { logger } from "@/lib/logger";
 
+const CATEGORY_COLOR: Record<string, string> = {
+  immigration: "#4a8ec4",
+  business: "#5cb88a",
+  "tax-legal": "#b89a40",
+  property: "#9880d8",
+  lifestyle: "#d4845a",
+  bali_news: "#c45c78",
+  emerging_trends: "#4ab8c4",
+};
+
+function getCategoryColor(cat: string): string {
+  return CATEGORY_COLOR[cat] ?? "#9880d8";
+}
+
+interface IntelArticle {
+  slug: string;
+  title: string;
+  category: string;
+  publishedAt: string;
+  excerpt?: string;
+}
+
+function useIntelFeed() {
+  return useQuery<IntelArticle[]>({
+    queryKey: ["intel-feed"],
+    queryFn: async () => {
+      const res = await fetch("/api/blog/articles?limit=6&offset=0");
+      if (!res.ok) throw new Error("Failed to fetch intel");
+      const data = await res.json();
+      return (data.articles ?? []).slice(0, 6) as IntelArticle[];
+    },
+    staleTime: 5 * 60_000,
+    refetchInterval: 10 * 60_000,
+  });
+}
+
 export default function DashboardPage() {
+  const { data: intelArticles, isLoading: intelLoading } = useIntelFeed();
   const {
     user,
     stats,
@@ -345,26 +383,63 @@ export default function DashboardPage() {
                 isLoading={isLoading}
               />
 
-              {/* Right: Intel Normativo */}
-              <div className="glass-base glass-blue p-3.5">
-                <h4 className="text-[9px] font-bold text-[#4a8ec4]/65 tracking-[.1em] mb-2.5">
-                  REGULATORY INTEL
-                </h4>
-                <div className="flex flex-col gap-2">
-                  {[
-                    "New immigration circular KITAS B211A",
-                    "PPh deadline March 31 — 8 clients",
-                    "KBLI 2025 — 3 cases to update",
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className="flex gap-2 text-[10px] text-white/55 leading-snug border-b border-white/[0.04] pb-1.5 last:border-0"
-                    >
-                      <span className="text-[#4a8ec4] flex-shrink-0">📌</span>
-                      <span>{item}</span>
-                    </div>
-                  ))}
+              {/* Right: Intel Feed — articoli reali dal sistema */}
+              <div className="glass-base glass-blue p-3.5 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[9px] font-bold text-[#4a8ec4]/65 tracking-[.1em]">
+                    INTEL FEED
+                  </h4>
+                  <Link
+                    href="/intelligence"
+                    className="flex items-center gap-1 text-[9px] text-[#4a8ec4]/50 hover:text-[#4a8ec4] transition-colors"
+                  >
+                    All <ExternalLink className="w-2.5 h-2.5" />
+                  </Link>
                 </div>
+
+                {intelLoading && (
+                  <div className="flex flex-col gap-2">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="h-8 rounded-md bg-white/[0.03] animate-pulse" />
+                    ))}
+                  </div>
+                )}
+
+                {!intelLoading && (!intelArticles || intelArticles.length === 0) && (
+                  <p className="text-[10px] text-white/30 italic">Nessun articolo recente.</p>
+                )}
+
+                {!intelLoading && intelArticles && intelArticles.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    {intelArticles.map((article) => {
+                      const color = getCategoryColor(article.category);
+                      const catLabel = article.category.replace(/-/g, " ").replace(/_/g, " ").toUpperCase();
+                      const href = `/${article.category}/${article.slug}`;
+                      return (
+                        <Link
+                          key={article.slug}
+                          href={href}
+                          className="group flex flex-col gap-0.5 px-2 py-1.5 rounded-md hover:bg-white/[0.04] transition-colors border border-transparent hover:border-white/[0.06]"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="text-[8px] font-bold px-1.5 py-0.5 rounded-sm tracking-[.08em] flex-shrink-0"
+                              style={{ color, backgroundColor: `${color}18` }}
+                            >
+                              {catLabel}
+                            </span>
+                            <span className="text-[9px] text-white/35 flex-shrink-0 ml-auto">
+                              {new Date(article.publishedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-white/70 leading-snug group-hover:text-white/90 transition-colors line-clamp-2">
+                            {article.title}
+                          </p>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
