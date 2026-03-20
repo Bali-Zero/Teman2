@@ -19,7 +19,7 @@ import asyncio
 import logging
 from collections import deque
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from prometheus_client import REGISTRY, Counter, Gauge, Histogram
@@ -217,10 +217,10 @@ class RetrievalQualityMonitor:
         self._query_records: deque[QueryMetricsRecord] = deque(maxlen=self.MAX_RECORDS)
         self._alert_thresholds = AlertThresholds()
         self._lock = None  # For thread safety if needed
-        self._initialized_at = datetime.utcnow()
+        self._initialized_at = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         self._db_pool = None  # Set via set_db_pool() after startup
         self._unflushed_count = 0
-        self._last_flush_time = datetime.utcnow()
+        self._last_flush_time = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         self._flush_task: Any = None
 
         logger.info("RetrievalQualityMonitor initialized")
@@ -331,7 +331,7 @@ class RetrievalQualityMonitor:
                     flushed += 1
 
             self._unflushed_count = 0
-            self._last_flush_time = datetime.utcnow()
+            self._last_flush_time = datetime.now(tz=timezone.utc).replace(tzinfo=None)
             logger.info(f"RetrievalQualityMonitor: flushed {flushed} day(s) to PostgreSQL")
             return flushed
 
@@ -378,7 +378,7 @@ class RetrievalQualityMonitor:
         if not self._db_pool:
             return
 
-        elapsed = (datetime.utcnow() - self._last_flush_time).total_seconds()
+        elapsed = (datetime.now(tz=timezone.utc).replace(tzinfo=None) - self._last_flush_time).total_seconds()
         if self._unflushed_count >= self.FLUSH_BATCH_SIZE or elapsed >= self.FLUSH_INTERVAL_SECONDS:
             await self.flush_to_db()
 
@@ -418,7 +418,7 @@ class RetrievalQualityMonitor:
                 retrieval_score = 0.0
 
             record = QueryMetricsRecord(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(tz=timezone.utc).replace(tzinfo=None),
                 query_hash=query_hash,
                 query_text=query[:200],  # Truncate for memory efficiency
                 retrieval_score=retrieval_score,
@@ -493,7 +493,7 @@ class RetrievalQualityMonitor:
 
             # Create a record for this abstain
             record = QueryMetricsRecord(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(tz=timezone.utc).replace(tzinfo=None),
                 query_hash="abstain",
                 query_text="",
                 retrieval_score=0.0,
@@ -587,7 +587,7 @@ class RetrievalQualityMonitor:
         try:
             # Parse time range
             delta = self._parse_time_range(time_range)
-            cutoff_time = datetime.utcnow() - delta
+            cutoff_time = datetime.now(tz=timezone.utc).replace(tzinfo=None) - delta
 
             # Filter records
             filtered_records = [r for r in self._query_records if r.timestamp >= cutoff_time]
@@ -651,7 +651,7 @@ class RetrievalQualityMonitor:
             return {
                 "time_range": time_range,
                 "total_queries": total_queries,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
                 "retrieval_quality": {
                     "average_score": round(avg_score, 4),
                     "p95_score": round(p95_score, 4),
@@ -694,7 +694,7 @@ class RetrievalQualityMonitor:
         """
         try:
             days = max(1, min(30, days))
-            cutoff_time = datetime.utcnow() - timedelta(days=days)
+            cutoff_time = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
             # Group by day
             daily_data: dict[str, list[QueryMetricsRecord]] = {}
@@ -740,7 +740,7 @@ class RetrievalQualityMonitor:
         """
         try:
             days = max(1, min(30, days))
-            cutoff_time = datetime.utcnow() - timedelta(days=days)
+            cutoff_time = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
             abstain_records = [
                 r for r in self._query_records if r.timestamp >= cutoff_time and r.abstained
@@ -790,7 +790,7 @@ class RetrievalQualityMonitor:
         """
         try:
             days = max(1, min(30, days))
-            cutoff_time = datetime.utcnow() - timedelta(days=days)
+            cutoff_time = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
             latencies = [
                 r.latency_ms
@@ -896,7 +896,7 @@ class RetrievalQualityMonitor:
         return {
             "time_range": time_range,
             "total_queries": 0,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
             "retrieval_quality": {
                 "average_score": 0.0,
                 "p95_score": 0.0,
@@ -981,7 +981,7 @@ class RetrievalQualityMonitor:
         self, abstain_records: list[QueryMetricsRecord], days: int
     ) -> list[dict[str, Any]]:
         """Get daily abstain breakdown."""
-        cutoff_time = datetime.utcnow() - timedelta(days=days)
+        cutoff_time = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         # Group by day
         daily: dict[str, dict[str, Any]] = {}
