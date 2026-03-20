@@ -283,17 +283,30 @@ function ClientsListContent() {
   // Stats hook
   const { data: stats } = useCrmStats();
 
-  // Infinite scroll — window scroll (the overflow-auto div doesn't actually scroll)
+  // Infinite scroll — check if near bottom on scroll + interval fallback
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingRef = useRef(isLoading || isLoadingMore);
+  hasMoreRef.current = hasMore;
+  isLoadingRef.current = isLoading || isLoadingMore;
+  const loadMoreRef2 = useRef(loadMore);
+  loadMoreRef2.current = loadMore;
+
   useEffect(() => {
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-      if (scrollHeight - scrollTop - clientHeight < 600 && hasMore && !isLoading && !isLoadingMore) {
-        loadMore();
+    const check = () => {
+      if (!hasMoreRef.current || isLoadingRef.current) return;
+      const d = document.documentElement;
+      if (d.scrollHeight - d.scrollTop - d.clientHeight < 800) {
+        loadMoreRef2.current();
       }
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasMore, isLoading, isLoadingMore, loadMore]);
+    window.addEventListener("scroll", check, { passive: true });
+    // Fallback: check every 2s in case scroll event doesn't fire
+    const interval = setInterval(check, 2000);
+    return () => {
+      window.removeEventListener("scroll", check);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Handle status change
   const handleStatusChange = useCallback(
