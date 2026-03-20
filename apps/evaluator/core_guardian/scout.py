@@ -48,7 +48,7 @@ logger = logging.getLogger("scout")
 SCOUT_REPORTS_DIR = AGENT_DIR / "scout_reports"
 
 # Classificazione per TIPO DI OPERAZIONE (non per path file)
-SAFE_RULES = {"ANN001", "ANN204", "DTZ005"}  # type hints, timezone
+SAFE_RULES = {"ANN001", "ANN204", "DTZ003", "DTZ005"}  # type hints, timezone
 UNSAFE_RULES = {"BLE001", "C901", "TRY400"}  # except handling, logic, error handling
 
 # File intoccabili (indipendentemente dalla regola)
