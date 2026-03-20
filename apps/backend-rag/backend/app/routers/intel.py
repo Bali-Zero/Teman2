@@ -233,7 +233,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
     summary_match = re.search(
         r"## Summary\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
     )
-    ai_summary = summary_match.group(1).strip() if summary_match else title[:280]
+    ai_summary = summary_match.group(1).strip() if summary_match else content[:280]
 
     # Extract Facts section
     facts_match = re.search(r"## Facts\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE)
@@ -243,7 +243,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
     bali_zero_take_match = re.search(
         r"## Bali Zero Take\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
     )
-    bali_zero_take_text = bali_zero_take_match.group(1).strip() if bali_zero_take_match else ""
+    bali_zero_take_text = bali_zero_take_match.group(1).strip() if bali_zero_take_match else content[len(facts):].strip()[:600]
 
     # Parse Bali Zero Take subsections if present
     hidden_insight_match = re.search(
