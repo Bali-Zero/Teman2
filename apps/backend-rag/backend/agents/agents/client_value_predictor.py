@@ -52,7 +52,7 @@ class ClientValuePredictor:
         self,
         db_pool: asyncpg.Pool | None = None,
         ai_client: ZantaraAIClient | None = None,
-    ):
+    ) -> None:
         """
         Initialize ClientValuePredictor with dependencies.
 
