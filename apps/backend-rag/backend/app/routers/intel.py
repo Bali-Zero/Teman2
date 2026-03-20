@@ -237,7 +237,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 
     # Extract Facts section
     facts_match = re.search(r"## Facts\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE)
-    facts = facts_match.group(1).strip() if facts_match else content[:500]
+    facts = facts_match.group(1).strip() if facts_match else content
 
     # Extract Bali Zero Take section
     bali_zero_take_match = re.search(
