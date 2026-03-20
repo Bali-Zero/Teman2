@@ -1,0 +1,99 @@
+{
+  "daily_spend_usd": 0.0,
+  "daily_spend_date": "2026-03-20",
+  "consecutive_failures": 1,
+  "last_failure_at": "2026-03-20T09:54:32.618699+00:00",
+  "breaker_active_until": "",
+  "runs": [
+    {
+      "run_id": "8e723762",
+      "timestamp": "2026-03-20T08:03:47.530719+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "backend/services/compliance/compliance_tracker.py",
+      "outcome": "success",
+      "cost_usd": 2.3039,
+      "error": ""
+    },
+    {
+      "run_id": "e0a926ad",
+      "timestamp": "2026-03-20T08:31:19.959969+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Claude Code failed: exit 1: error: unknown option '--prompt'\n(Did you mean one of --from-pr, --print?)\n"
+    },
+    {
+      "run_id": "1579c04c",
+      "timestamp": "2026-03-20T09:05:18.268536+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Regression: 3916 passed < 3917 baseline"
+    },
+    {
+      "run_id": "5697702b",
+      "timestamp": "2026-03-20T09:14:35.654121+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Test failures: 1"
+    },
+    {
+      "run_id": "e7928572",
+      "timestamp": "2026-03-20T09:20:32.909923+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Test failures: 1"
+    },
+    {
+      "run_id": "0f2fcec9",
+      "timestamp": "2026-03-20T09:39:19.792972+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Test failures: 1"
+    },
+    {
+      "run_id": "9c2f9a00",
+      "timestamp": "2026-03-20T09:44:09.386583+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Test failures: 1 real (+ 0 timeouts ignored)"
+    },
+    {
+      "run_id": "7f19beea",
+      "timestamp": "2026-03-20T09:45:42.747026+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Deterministic fixer produced no changes"
+    },
+    {
+      "run_id": "ec3d3616",
+      "timestamp": "2026-03-20T09:47:41.673928+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Test failures: 1 real (+ 0 timeouts ignored)"
+    },
+    {
+      "run_id": "4eb5a10a",
+      "timestamp": "2026-03-20T09:54:32.618718+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Test failures: 1 real (+ 0 timeouts ignored)"
+    }
+  ]
+}
