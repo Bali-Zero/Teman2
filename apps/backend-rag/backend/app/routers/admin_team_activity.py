@@ -4,7 +4,7 @@ Complete team activity dashboard with messages, timesheet, and CRM actions
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
@@ -648,7 +648,7 @@ async def export_messages(
         csv_content = output.getvalue()
         output.close()
 
-        filename = f"messages_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        filename = f"messages_export_{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}.csv"
 
         return StreamingResponse(
             iter([csv_content]),
