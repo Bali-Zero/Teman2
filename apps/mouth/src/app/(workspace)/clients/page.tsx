@@ -270,26 +270,21 @@ function ClientsListContent() {
 
   // Infinite scroll observer
   useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          hasMore &&
-          !isLoading &&
-          !isLoadingMore
-        ) {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
           loadMore();
         }
       },
-      { threshold: 0.1 },
+      { threshold: 0.1, rootMargin: "200px" },
     );
 
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
-    }
-
+    observer.observe(el);
     return () => observer.disconnect();
-  }, [hasMore, isLoading, isLoadingMore, loadMore]);
+  }, [hasMore, isLoading, isLoadingMore, loadMore, clients.length]);
 
   // Handle status change
   const handleStatusChange = useCallback(
