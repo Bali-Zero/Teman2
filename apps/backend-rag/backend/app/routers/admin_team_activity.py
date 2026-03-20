@@ -528,6 +528,60 @@ async def get_crm_actions(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/practice-stats")
+async def get_practice_stats(
+    _admin: dict = Depends(verify_admin),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Get completed/active practice counts per team member via client.assigned_to"""
+    try:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch("""
+                WITH email_normalized AS (
+                    -- Normalise legacy/alias emails to canonical team_members email
+                    SELECT
+                        p.id AS practice_id,
+                        p.status,
+                        p.actual_price,
+                        COALESCE(tm.email, c.assigned_to) AS canonical_email
+                    FROM practices p
+                    JOIN clients c ON p.client_id = c.id
+                    LEFT JOIN team_members tm
+                        ON tm.email ILIKE c.assigned_to
+                        OR (
+                            -- handle bare-username aliases like "ari" → "ari.firda@balizero.com"
+                            c.assigned_to NOT LIKE '%@%'
+                            AND tm.name ILIKE c.assigned_to
+                        )
+                        OR (
+                            -- handle old-format aliases like "ari@balizero.com" → "ari.firda@balizero.com"
+                            c.assigned_to LIKE '%@%'
+                            AND tm.name ILIKE SPLIT_PART(c.assigned_to, '@', 1)
+                        )
+                    WHERE c.assigned_to IS NOT NULL
+                      AND c.assigned_to != ''
+                      AND c.deleted_at IS NULL
+                )
+                SELECT
+                    canonical_email                                              AS email,
+                    COUNT(*) FILTER (WHERE status = 'completed')                AS completed,
+                    COUNT(*) FILTER (WHERE status = 'in_progress')              AS in_progress,
+                    COUNT(*) FILTER (WHERE status NOT IN ('completed','inquiry','quotation')) AS active,
+                    COALESCE(SUM(actual_price) FILTER (WHERE status = 'completed'), 0)       AS revenue
+                FROM email_normalized
+                WHERE canonical_email IS NOT NULL
+                GROUP BY canonical_email
+                ORDER BY completed DESC
+            """)
+        return {
+            "success": True,
+            "practice_stats": [dict(r) for r in rows],
+        }
+    except Exception as e:
+        logger.error(f"Failed to get practice stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/export/messages")
 async def export_messages(
     user_id: str | None = Query(None),

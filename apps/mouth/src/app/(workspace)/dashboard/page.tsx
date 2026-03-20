@@ -2,28 +2,37 @@
 
 import React from "react";
 import Link from "next/link";
-import { RefreshCw, ExternalLink } from "lucide-react";
 import {
-  PratichePreview,
+  ExternalLink,
+  ArrowUpRight,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  TrendingUp,
+} from "lucide-react";
+import {
   LiveActivityFeed,
   RoleWidget,
-  DashboardStatCard,
   ZantaraPortalCard,
 } from "@/components/dashboard";
 import { HeroLiveWindow } from "@/components/workspace/HeroLiveWindow";
-import { NusantaraHealthWidget } from "@/components/dashboard/NusantaraHealthWidget";
-import type { PraticaPreview } from "@/components/dashboard";
+import type { PraticaPreview } from "@/components/dashboard/PratichePreview";
 import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
+import { TeamActivityPanel } from "@/components/dashboard/TeamActivityPanel";
+import type {
+  TeamMemberStats,
+  TeamOverview,
+} from "@/components/dashboard/TeamActivityPanel";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useRealtime } from "@/lib/realtime";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { normalizeDashboardRole } from "@/lib/dashboard-role";
-import type {
-  LiveActivityEvent,
-  DashboardStatConfig,
-} from "@/types/dashboard-role.types";
+import type { LiveActivityEvent } from "@/types/dashboard-role.types";
 import { logger } from "@/lib/logger";
+import { RefreshCw } from "lucide-react";
 
+// ── Category colors ────────────────────────────────────────
 const CATEGORY_COLOR: Record<string, string> = {
   immigration: "#4a8ec4",
   business: "#5cb88a",
@@ -33,7 +42,6 @@ const CATEGORY_COLOR: Record<string, string> = {
   bali_news: "#c45c78",
   emerging_trends: "#4ab8c4",
 };
-
 function getCategoryColor(cat: string): string {
   return CATEGORY_COLOR[cat] ?? "#9880d8";
 }
@@ -50,18 +58,287 @@ function useIntelFeed() {
   return useQuery<IntelArticle[]>({
     queryKey: ["intel-feed"],
     queryFn: async () => {
-      const res = await fetch("/api/blog/articles?limit=6&offset=0");
+      const res = await fetch("/api/blog/articles?limit=8&offset=0");
       if (!res.ok) throw new Error("Failed to fetch intel");
       const data = await res.json();
-      return (data.articles ?? []).slice(0, 6) as IntelArticle[];
+      return (data.articles ?? []).slice(0, 8) as IntelArticle[];
     },
     staleTime: 5 * 60_000,
     refetchInterval: 10 * 60_000,
   });
 }
 
+// ── Team stats hook ────────────────────────────────────────
+interface TeamStatsResult {
+  members: TeamMemberStats[];
+  overview: TeamOverview | null;
+}
+
+function useTeamStats(enabled: boolean) {
+  return useQuery<TeamStatsResult>({
+    queryKey: ["team-stats"],
+    enabled,
+    queryFn: async () => {
+      const [membersRes, overviewRes, practiceRes] = await Promise.all([
+        fetch("/api/admin/team-activity/team-stats"),
+        fetch("/api/admin/team-activity/overview"),
+        fetch("/api/admin/team-activity/practice-stats"),
+      ]);
+      const membersJson = membersRes.ok ? await membersRes.json() : {};
+      const rawMembers: TeamMemberStats[] = Array.isArray(membersJson)
+        ? membersJson
+        : Array.isArray(membersJson.team_stats)
+          ? membersJson.team_stats
+          : [];
+
+      // Merge practice stats by email
+      const practiceJson = practiceRes.ok ? await practiceRes.json() : {};
+      const practiceMap = new Map<
+        string,
+        { completed: number; active: number; revenue: number }
+      >();
+      if (Array.isArray(practiceJson?.practice_stats)) {
+        for (const p of practiceJson.practice_stats) {
+          practiceMap.set(p.email, {
+            completed: p.completed ?? 0,
+            active: p.active ?? 0,
+            revenue: p.revenue ?? 0,
+          });
+        }
+      }
+
+      const members: TeamMemberStats[] = rawMembers.map((m) => {
+        const ps = practiceMap.get(m.email);
+        return {
+          ...m,
+          practices_completed: ps?.completed ?? 0,
+          practices_active: ps?.active ?? 0,
+          practices_revenue: ps?.revenue ?? 0,
+        };
+      });
+
+      const overviewJson = overviewRes.ok ? await overviewRes.json() : null;
+      const overview: TeamOverview | null =
+        overviewJson?.stats ?? overviewJson ?? null;
+      return { members, overview };
+    },
+    staleTime: 3 * 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
+// ── Status config for practices ───────────────────────────
+const STATUS_CONFIG = {
+  inquiry: { label: "Inquiry", dot: "#9ca3af" },
+  quotation: { label: "Quotation", dot: "#b89a40" },
+  in_progress: { label: "In Progress", dot: "#4a8ec4" },
+  documents: { label: "Documents", dot: "#b89a40" },
+  completed: { label: "Completed", dot: "#5cb88a" },
+} as const;
+
+// ── Formatters ─────────────────────────────────────────────
+function formatRevenue(rp: number): string {
+  if (rp >= 1_000_000_000) return `Rp ${(rp / 1_000_000_000).toFixed(2)}B`;
+  if (rp >= 1_000_000) return `Rp ${(rp / 1_000_000).toFixed(1)}M`;
+  if (rp >= 1_000) return `Rp ${(rp / 1_000).toFixed(0)}K`;
+  return `Rp ${rp.toFixed(0)}`;
+}
+
+// ── Metric Bar item ────────────────────────────────────────
+function MetricItem({
+  label,
+  value,
+  sub,
+  accent,
+  href,
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  accent: string;
+  href?: string;
+}) {
+  const inner = (
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <span className="text-[9px] font-semibold text-white/30 tracking-[.10em] uppercase">
+        {label}
+      </span>
+      <span
+        className="text-[22px] font-black leading-none tracking-tight"
+        style={{ color: accent }}
+      >
+        {value}
+      </span>
+      {sub && (
+        <span className="text-[9px] text-white/35 font-medium">{sub}</span>
+      )}
+    </div>
+  );
+  if (href)
+    return (
+      <Link href={href} className="hover:opacity-80 transition-opacity">
+        {inner}
+      </Link>
+    );
+  return inner;
+}
+
+// ── Pipeline row ───────────────────────────────────────────
+function PipelineRow({ p }: { p: PraticaPreview }) {
+  const cfg = STATUS_CONFIG[p.status];
+  const isUrgent =
+    p.daysRemaining !== undefined &&
+    p.daysRemaining <= 3 &&
+    p.status !== "completed";
+  const isExpired =
+    p.daysRemaining !== undefined &&
+    p.daysRemaining <= 0 &&
+    p.status !== "completed";
+
+  return (
+    <Link
+      href={`/process/${p.id}`}
+      className="group grid items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors"
+      style={{ gridTemplateColumns: "1fr auto auto" }}
+    >
+      {/* Left: client + title */}
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold text-white/80 truncate group-hover:text-white transition-colors">
+          {p.client}
+        </p>
+        <p className="text-[10px] text-white/35 truncate">{p.title}</p>
+      </div>
+
+      {/* Status badge */}
+      <span
+        className="flex items-center gap-1.5 text-[9px] font-semibold tracking-wide whitespace-nowrap"
+        style={{ color: cfg.dot }}
+      >
+        <span
+          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+          style={{ backgroundColor: cfg.dot }}
+        />
+        {cfg.label}
+      </span>
+
+      {/* Deadline */}
+      <span
+        className="text-[9px] font-semibold tabular-nums whitespace-nowrap flex items-center gap-1"
+        style={{
+          color: isExpired
+            ? "#c45c78"
+            : isUrgent
+              ? "#b89a40"
+              : "rgba(255,255,255,0.25)",
+        }}
+      >
+        {p.status === "completed" ? (
+          <CheckCircle2 size={10} className="opacity-60" />
+        ) : isExpired ? (
+          <>
+            <AlertTriangle size={9} />
+            Expired
+          </>
+        ) : p.daysRemaining !== undefined ? (
+          <>
+            <Clock size={9} />
+            {p.daysRemaining}d
+          </>
+        ) : null}
+      </span>
+    </Link>
+  );
+}
+
+// ── Intel article row ──────────────────────────────────────
+function IntelRow({ article }: { article: IntelArticle }) {
+  const color = getCategoryColor(article.category);
+  const catLabel = article.category.replace(/[-_]/g, " ").toUpperCase();
+  const href = `/${article.category}/${article.slug}`;
+  const date = new Date(article.publishedAt).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+  });
+
+  return (
+    <Link
+      href={href}
+      className="group flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors"
+    >
+      {/* Color stripe */}
+      <span
+        className="flex-shrink-0 w-0.5 self-stretch rounded-full mt-0.5"
+        style={{ backgroundColor: color, opacity: 0.6 }}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span
+            className="text-[8px] font-bold tracking-[.08em]"
+            style={{ color, opacity: 0.9 }}
+          >
+            {catLabel}
+          </span>
+          <span className="ml-auto text-[8px] text-white/25 flex-shrink-0">
+            {date}
+          </span>
+        </div>
+        <p className="text-[10px] text-white/60 leading-snug line-clamp-2 group-hover:text-white/80 transition-colors">
+          {article.title}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+// ── Section header ─────────────────────────────────────────
+function SectionHeader({
+  label,
+  href,
+  count,
+}: {
+  label: string;
+  href?: string;
+  count?: number;
+}) {
+  return (
+    <div className="flex items-center justify-between px-3 pb-1">
+      <span className="text-[9px] font-bold text-white/25 tracking-[.12em] uppercase">
+        {label}
+      </span>
+      <div className="flex items-center gap-2">
+        {count !== undefined && (
+          <span className="text-[9px] text-white/20">{count}</span>
+        )}
+        {href && (
+          <Link
+            href={href}
+            className="flex items-center gap-0.5 text-[9px] text-white/20 hover:text-white/50 transition-colors"
+          >
+            All <ArrowUpRight size={9} />
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Divider ────────────────────────────────────────────────
+function Divider() {
+  return <div className="h-px mx-3 bg-white/[0.05]" />;
+}
+
+// ── Main page ──────────────────────────────────────────────
 export default function DashboardPage() {
   const { data: intelArticles, isLoading: intelLoading } = useIntelFeed();
+
+  // Team stats — loaded lazily after main data resolves
+  const [teamEnabled, setTeamEnabled] = React.useState(false);
+  React.useEffect(() => {
+    const t = setTimeout(() => setTeamEnabled(true), 800);
+    return () => clearTimeout(t);
+  }, []);
+  const { data: teamData, isLoading: teamLoading } = useTeamStats(teamEnabled);
+
   const {
     user,
     stats,
@@ -69,15 +346,16 @@ export default function DashboardPage() {
     isZero,
     isLoading,
     isError,
-    error: _error,
     refetch,
+    revenue,
+    totalClients,
+    totalPractices,
   } = useDashboardData();
 
   const realtime = useRealtime();
   const queryClient = useQueryClient();
   const role = normalizeDashboardRole(user?.role, user?.is_admin ?? false);
 
-  // Bridge WebSocket → React Query invalidation
   React.useEffect(() => {
     const unsubscribe = realtime.subscribe("dashboard_update", () => {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
@@ -85,7 +363,6 @@ export default function DashboardPage() {
     return unsubscribe;
   }, [realtime, queryClient]);
 
-  // Connect WebSocket on user load
   React.useEffect(() => {
     if (user?.email && !isLoading) {
       realtime.connect(user.email, user.email);
@@ -97,7 +374,7 @@ export default function DashboardPage() {
     }
   }, [user?.email, isLoading]);
 
-  // ── Build live feed events from practices ─────────────────────
+  // Live events from practices
   const liveEvents: LiveActivityEvent[] = React.useMemo(() => {
     return practices.slice(0, 8).map(
       (p): LiveActivityEvent => ({
@@ -136,187 +413,22 @@ export default function DashboardPage() {
     );
   }, [practices, user?.email]);
 
-  // ── Build stat cards per role ─────────────────────────────────
-  const statCards: DashboardStatConfig[] = React.useMemo(() => {
-    if (isZero) {
-      return [
-        {
-          icon: "📁",
-          value: stats.activeCases,
-          label: "Active Cases",
-          trend: "▲ team",
-          colorVariant: "green",
-        },
-        {
-          icon: "⏰",
-          value: stats.criticalDeadlines,
-          label: "Critical Deadlines",
-          trend: "active alerts",
-          colorVariant: "red",
-        },
-        {
-          icon: "💰",
-          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "—",
-          label: "Pending Invoices",
-          trend: stats.pendingInvoices > 0 ? "awaiting payment" : "all clear",
-          colorVariant: "yellow",
-        },
-        {
-          icon: "🤖",
-          value: "96",
-          label: "MCP Tools",
-          trend: "100% uptime",
-          colorVariant: "blue",
-        },
-      ];
-    }
-    if (role === "accounting") {
-      return [
-        {
-          icon: "✅",
-          value: "—",
-          label: "Paid MTD",
-          trend: "see metrics",
-          colorVariant: "green",
-        },
-        {
-          icon: "🔴",
-          value: "—",
-          label: "Overdue",
-          trend: "urgent",
-          colorVariant: "red",
-        },
-        {
-          icon: "⏳",
-          value: "—",
-          label: "Pending",
-          trend: "awaiting",
-          colorVariant: "yellow",
-        },
-        {
-          icon: "💶",
-          value: "—",
-          label: "Revenue MTD",
-          trend: "current month",
-          colorVariant: "blue",
-        },
-      ];
-    }
-    if (role === "tax") {
-      return [
-        {
-          icon: "✅",
-          value: "—",
-          label: "Compliant Clients",
-          trend: "up to date",
-          colorVariant: "green",
-        },
-        {
-          icon: "⏰",
-          value: "—",
-          label: "Due <7 days",
-          trend: "urgent",
-          colorVariant: "red",
-        },
-        {
-          icon: "📋",
-          value: "—",
-          label: "Pending Filings",
-          trend: "queued",
-          colorVariant: "yellow",
-        },
-        {
-          icon: "📌",
-          value: "—",
-          label: "Tax Alerts",
-          trend: "to verify",
-          colorVariant: "blue",
-        },
-      ];
-    }
-    if (role === "marketing") {
-      return [
-        {
-          icon: "📝",
-          value: "—",
-          label: "Published Articles",
-          trend: "this month",
-          colorVariant: "green",
-        },
-        {
-          icon: "✍️",
-          value: "—",
-          label: "In Review",
-          trend: "queued",
-          colorVariant: "red",
-        },
-        {
-          icon: "📧",
-          value: "—",
-          label: "Newsletter Subs",
-          trend: "delta",
-          colorVariant: "yellow",
-        },
-        {
-          icon: "🎯",
-          value: "—",
-          label: "New Leads",
-          trend: "this week",
-          colorVariant: "blue",
-        },
-      ];
-    }
-    // Default: team
-    return [
-      {
-        icon: "📁",
-        value: stats.activeCases,
-        label: "My Cases",
-        trend: "assigned",
-        colorVariant: "green",
-      },
-      {
-        icon: "⏰",
-        value: stats.criticalDeadlines,
-        label: "Stalled >14d",
-        trend: "to unblock",
-        colorVariant: "red",
-      },
-      {
-        icon: "📄",
-        value: "—",
-        label: "Missing Docs",
-        trend: "to upload",
-        colorVariant: "yellow",
-      },
-      {
-        icon: "👥",
-        value: "—",
-        label: "Assigned Clients",
-        trend: "active",
-        colorVariant: "blue",
-      },
-    ];
-  }, [isZero, role, stats]);
-
-  // ── Loading skeleton ──────────────────────────────────────────
+  // Loading skeleton
   if (isLoading) {
     return (
-      <div className="p-2.5 grid grid-cols-4 gap-2">
-        <div className="col-span-4 h-[240px] rounded-xl bg-white/[0.025] animate-pulse mb-2" />
-        <div className="col-span-3 h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
-        <div className="col-span-1 h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
-        {[1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className="h-20 rounded-xl bg-white/[0.025] animate-pulse"
-          />
-        ))}
+      <div className="p-2.5 space-y-2">
+        <div className="h-[240px] rounded-xl bg-white/[0.025] animate-pulse" />
+        <div className="h-12 rounded-xl bg-white/[0.025] animate-pulse" />
+        <div className="grid grid-cols-4 gap-2">
+          <div className="col-span-3 h-[220px] rounded-xl bg-white/[0.025] animate-pulse" />
+          <div className="h-[220px] rounded-xl bg-white/[0.025] animate-pulse" />
+        </div>
+        <div className="h-[320px] rounded-xl bg-white/[0.025] animate-pulse" />
       </div>
     );
   }
 
-  // ── Error state ───────────────────────────────────────────────
+  // Error state
   if (isError) {
     return (
       <div className="p-4 rounded-xl border border-[#c45c78]/25 bg-[rgba(196,92,120,0.06)]">
@@ -335,112 +447,256 @@ export default function DashboardPage() {
     );
   }
 
+  // Stat values
+  const statItems = isZero
+    ? [
+        {
+          label: "Revenue · MTD",
+          value: revenue?.total_revenue
+            ? formatRevenue(revenue.total_revenue)
+            : "—",
+          sub: revenue?.paid_revenue
+            ? `${formatRevenue(revenue.paid_revenue)} incassato`
+            : "—",
+          accent: "#9880d8",
+        },
+        {
+          label: "Outstanding",
+          value: revenue?.outstanding_revenue
+            ? formatRevenue(revenue.outstanding_revenue)
+            : "—",
+          sub: "da incassare",
+          accent: "#d4845a",
+        },
+        {
+          label: "Clienti",
+          value: totalClients != null ? totalClients.toLocaleString() : "—",
+          sub: "registrati",
+          accent: "#4a8ec4",
+          href: "/clients",
+        },
+        {
+          label: "Processi",
+          value: totalPractices != null ? totalPractices : "—",
+          sub: `${stats.activeCases} attivi · ${stats.criticalDeadlines} critici`,
+          accent: "#5cb88a",
+          href: "/process",
+        },
+        {
+          label: "Fatture",
+          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "✓",
+          sub: stats.pendingInvoices > 0 ? "in attesa" : "tutte pagate",
+          accent: "#b89a40",
+        },
+      ]
+    : [
+        {
+          label: "My Cases",
+          value: stats.activeCases,
+          sub: "assigned",
+          accent: "#5cb88a",
+          href: "/process",
+        },
+        {
+          label: "Stalled",
+          value: stats.criticalDeadlines,
+          sub: ">14 days",
+          accent: "#c45c78",
+        },
+        {
+          label: "Invoices",
+          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "—",
+          sub: "pending",
+          accent: "#b89a40",
+        },
+        {
+          label: "Unread",
+          value: stats.whatsappUnread + stats.emailUnread,
+          sub: "messages",
+          accent: "#4a8ec4",
+        },
+      ];
+
   return (
     <DashboardErrorBoundary>
-      {/* Liquid background */}
       <div className="relative dash-liquid-bg">
-        <div className="p-2.5 space-y-3">
-          {/* ── ROW 0: Website Live Cover (Full Width) ── */}
+        <div className="p-2.5 space-y-2">
+          {/* ROW 0: Hero */}
           <HeroLiveWindow />
 
-          {/* ── Zantara AI Portal Card ── */}
+          {/* ROW 1: Zantara AI portal */}
           <ZantaraPortalCard />
 
+          {/* ROW 2: Metric bar */}
+          <div
+            className="rounded-xl px-6 py-4 flex items-stretch"
+            style={{
+              background: "rgba(255,255,255,0.025)",
+              border: "1px solid rgba(255,255,255,0.07)",
+            }}
+          >
+            {statItems.map((s, i) => (
+              <React.Fragment key={s.label}>
+                <div className="flex-1 min-w-0">
+                  <MetricItem {...s} />
+                </div>
+                {i < statItems.length - 1 && (
+                  <div
+                    className="w-px flex-shrink-0 mx-6 self-stretch"
+                    style={{ background: "rgba(255,255,255,0.10)" }}
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* ROW 3: Team Activity — admin sees all, team member sees own row only */}
+          {teamEnabled && (
+            <TeamActivityPanel
+              members={
+                isZero
+                  ? (teamData?.members ?? [])
+                  : (teamData?.members ?? []).filter(
+                      (m) => m.email === user?.email,
+                    )
+              }
+              overview={isZero ? (teamData?.overview ?? null) : null}
+              isLoading={teamLoading || !teamEnabled}
+            />
+          )}
+
+          {/* ROW 4: Pipeline + Intel + LiveActivity/RoleWidget */}
           <div
             className="grid gap-2"
-            style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}
+            style={{ gridTemplateColumns: "1.5fr 1fr 1fr" }}
           >
-            {/* ── ROW 1: Live Activity (3/4) + Role Widget (1/4) ── */}
-            <LiveActivityFeed events={liveEvents} isLoading={isLoading} />
-
-            <RoleWidget role={role} userId={user?.email ?? ""} />
-
-            {/* ── ROW 2: 4 Stat Cards ── */}
-            {statCards.map((card) => (
-              <DashboardStatCard key={card.label} {...card} />
-            ))}
-
-            {/* ── ROW 3: Pratiche (1.6fr) + Intel (1fr) ── */}
+            {/* Pipeline panel */}
             <div
-              className="col-span-4 grid gap-2"
-              style={{ gridTemplateColumns: "1.6fr 1fr" }}
+              className="rounded-xl overflow-hidden flex flex-col"
+              style={{
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                minHeight: 320,
+              }}
             >
-              {/* Pratiche Pipeline */}
-              <PratichePreview
-                pratiche={practices.map(
-                  (p): PraticaPreview => ({
-                    id: p.id,
-                    title: p.title || "Unknown",
-                    client: p.client || "Unknown Client",
-                    status: p.status,
-                    daysRemaining: p.daysRemaining,
-                    completedAt:
-                      p.status === "completed"
-                        ? new Date().toLocaleDateString()
-                        : undefined,
-                  }),
-                )}
-                isLoading={isLoading}
-              />
-
-              {/* Right: Intel Feed — articoli reali dal sistema */}
-              <div className="glass-base glass-blue p-3.5 flex flex-col gap-2.5">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-[9px] font-bold text-[#4a8ec4]/65 tracking-[.1em]">
-                    INTEL FEED
-                  </h4>
-                  <Link
-                    href="/intelligence"
-                    className="flex items-center gap-1 text-[9px] text-[#4a8ec4]/50 hover:text-[#4a8ec4] transition-colors"
-                  >
-                    All <ExternalLink className="w-2.5 h-2.5" />
-                  </Link>
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+                <div className="flex items-center gap-2">
+                  <FileText size={12} className="text-white/30" />
+                  <span className="text-[11px] font-semibold text-white/60">
+                    Process Pipeline
+                  </span>
                 </div>
+                <Link
+                  href="/process"
+                  className="flex items-center gap-1 text-[9px] text-white/25 hover:text-white/55 transition-colors"
+                >
+                  View all <ArrowUpRight size={9} />
+                </Link>
+              </div>
 
+              {/* Column headers */}
+              <div
+                className="grid px-3 py-1.5 border-b border-white/[0.04]"
+                style={{ gridTemplateColumns: "1fr auto auto" }}
+              >
+                <span className="text-[8px] font-semibold text-white/20 uppercase tracking-widest">
+                  Client
+                </span>
+                <span className="text-[8px] font-semibold text-white/20 uppercase tracking-widest">
+                  Status
+                </span>
+                <span className="text-[8px] font-semibold text-white/20 uppercase tracking-widest ml-3">
+                  Due
+                </span>
+              </div>
+
+              {/* Rows */}
+              <div className="flex flex-col py-1 flex-1">
+                {practices.length === 0 ? (
+                  <div className="flex items-center justify-center py-10 text-[11px] text-white/20">
+                    No processes assigned
+                  </div>
+                ) : (
+                  practices.map((p) => (
+                    <PipelineRow
+                      key={p.id}
+                      p={{
+                        id: p.id,
+                        title: p.title || "Unknown",
+                        client: p.client || "Unknown Client",
+                        status: p.status,
+                        daysRemaining: p.daysRemaining,
+                        completedAt:
+                          p.status === "completed"
+                            ? new Date().toLocaleDateString()
+                            : undefined,
+                      }}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Intel panel */}
+            <div
+              className="rounded-xl overflow-hidden flex flex-col"
+              style={{
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                minHeight: 320,
+              }}
+            >
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
+                <div className="flex items-center gap-2">
+                  <TrendingUp size={12} className="text-white/30" />
+                  <span className="text-[11px] font-semibold text-white/60">
+                    Intelligence Feed
+                  </span>
+                </div>
+                <Link
+                  href="/intelligence"
+                  className="flex items-center gap-1 text-[9px] text-white/25 hover:text-white/55 transition-colors"
+                >
+                  All <ExternalLink size={9} />
+                </Link>
+              </div>
+
+              {/* Articles */}
+              <div className="flex flex-col py-1 flex-1">
                 {intelLoading && (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1 p-3">
                     {[1, 2, 3, 4, 5].map((i) => (
-                      <div key={i} className="h-8 rounded-md bg-white/[0.03] animate-pulse" />
+                      <div
+                        key={i}
+                        className="h-10 rounded-lg bg-white/[0.03] animate-pulse"
+                      />
                     ))}
                   </div>
                 )}
-
-                {!intelLoading && (!intelArticles || intelArticles.length === 0) && (
-                  <p className="text-[10px] text-white/30 italic">Nessun articolo recente.</p>
-                )}
-
-                {!intelLoading && intelArticles && intelArticles.length > 0 && (
-                  <div className="flex flex-col gap-1.5">
-                    {intelArticles.map((article) => {
-                      const color = getCategoryColor(article.category);
-                      const catLabel = article.category.replace(/-/g, " ").replace(/_/g, " ").toUpperCase();
-                      const href = `/${article.category}/${article.slug}`;
-                      return (
-                        <Link
-                          key={article.slug}
-                          href={href}
-                          className="group flex flex-col gap-0.5 px-2 py-1.5 rounded-md hover:bg-white/[0.04] transition-colors border border-transparent hover:border-white/[0.06]"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className="text-[8px] font-bold px-1.5 py-0.5 rounded-sm tracking-[.08em] flex-shrink-0"
-                              style={{ color, backgroundColor: `${color}18` }}
-                            >
-                              {catLabel}
-                            </span>
-                            <span className="text-[9px] text-white/35 flex-shrink-0 ml-auto">
-                              {new Date(article.publishedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-white/70 leading-snug group-hover:text-white/90 transition-colors line-clamp-2">
-                            {article.title}
-                          </p>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
+                {!intelLoading &&
+                  (!intelArticles || intelArticles.length === 0) && (
+                    <div className="flex items-center justify-center py-10 text-[11px] text-white/20">
+                      No recent articles
+                    </div>
+                  )}
+                {!intelLoading &&
+                  intelArticles &&
+                  intelArticles.length > 0 &&
+                  intelArticles.map((article, i) => (
+                    <React.Fragment key={article.slug}>
+                      <IntelRow article={article} />
+                      {i < intelArticles.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
               </div>
+            </div>
+
+            {/* Right column: LiveActivityFeed + RoleWidget stacked */}
+            <div className="flex flex-col gap-2">
+              <LiveActivityFeed events={liveEvents} isLoading={isLoading} />
+              <RoleWidget role={role} userId={user?.email ?? ""} />
             </div>
           </div>
         </div>
