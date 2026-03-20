@@ -53,7 +53,7 @@ async def run_stress_test():
         # Initialize orchestrator directly
         # Note: create_agentic_rag handles tool loading internally usually,
         # or we pass None and it loads defaults.
-        orchestrator = create_agentic_rag(retriever=None, db_pool=db.pool, web_search_client=None)
+        orchestrator = create_agentic_rag(retriever=None, db_pool=db.pool, _web_search_client=None)
 
         # If create_agentic_rag returns a factory function or needs init
         # Check implementation of create_agentic_rag
