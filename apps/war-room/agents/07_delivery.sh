@@ -23,6 +23,7 @@ PYTHON="$WAR_ROOM/.venv/bin/python3"
 BRAND_FILE="$WAR_ROOM/config/brand.json"
 DRIVE_FOLDER=$("$PYTHON" -c "import json; print(json.load(open('$BRAND_FILE'))['delivery']['google_drive_folder'])")
 TONE=$(cat "$WAR_ROOM/output/strategy/claude_slides.json" 2>/dev/null | "$PYTHON" -c "import json,sys; print(json.load(sys.stdin).get('tone', 'N/A'))" 2>/dev/null || echo "N/A")
+CANVA_URL=$("$PYTHON" -c "import json; d=json.load(open('$WAR_ROOM/output/canva/carousel_canva.json')); print(d.get('design_url',''))" 2>/dev/null || echo "")
 
 echo "📦 Comprimo master archive..."
 ARCHIVE="$WAR_ROOM/output/balizero_warroom_$(date +%Y%m%d_%H%M%S).zip"
@@ -47,6 +48,7 @@ MSG="🚨 *Bali Zero War Room conclusa.*
 | Tono: $TONE.
 | Creatività approvata, zero allucinazioni lette.
 | Master su Google Drive: $DRIVE_LINK.
+${CANVA_URL:+| Canva carousel: $CANVA_URL.}
 | In attesa di review per la pubblicazione.
 ${CAPTION:+| Caption: $CAPTION}"
 
