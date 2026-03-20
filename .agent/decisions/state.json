@@ -2,7 +2,7 @@
   "daily_spend_usd": 0.0,
   "daily_spend_date": "2026-03-20",
   "consecutive_failures": 1,
-  "last_failure_at": "2026-03-20T10:19:25.662347+00:00",
+  "last_failure_at": "2026-03-20T10:55:31.852439+00:00",
   "breaker_active_until": "",
   "runs": [
     {
@@ -148,6 +148,42 @@
       "outcome": "failed",
       "cost_usd": 0,
       "error": "Test failures: 2 real (+ 0 known/flaky ignored)"
+    },
+    {
+      "run_id": "6c036e4f",
+      "timestamp": "2026-03-20T10:28:38.528576+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "backend/app/modules/notifications/checker.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "25169060",
+      "timestamp": "2026-03-20T10:30:21.592135+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Test failures: 2 real (+ 0 known/flaky ignored)"
+    },
+    {
+      "run_id": "5992cd1f",
+      "timestamp": "2026-03-20T10:34:07.872028+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "backend/app/routers/crm_clients.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "0b8e24e3",
+      "timestamp": "2026-03-20T10:55:31.852474+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "pytest did not generate report (exit_code=-15)"
     }
   ]
 }
