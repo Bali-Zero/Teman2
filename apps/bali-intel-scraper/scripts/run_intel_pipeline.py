@@ -1402,13 +1402,13 @@ IMPORTANT:
             # Build full article from new enrichment structure
             sections = []
             if enr.get("the_facts"):
-                sections.append(enr["the_facts"])
+                sections.append("## Facts\n\n" + enr["the_facts"])
             if enr.get("bali_zero_take"):
-                sections.append(enr["bali_zero_take"])
+                sections.append("## Bali Zero Take\n\n" + enr["bali_zero_take"])
             if enr.get("in_practice"):
-                sections.append(enr["in_practice"])
+                sections.append("## In Practice\n\n" + enr["in_practice"])
             if enr.get("next_steps"):
-                sections.append(enr["next_steps"])
+                sections.append("## Next Steps\n\n" + enr["next_steps"])
             # Fallback to legacy format
             if not sections:
                 brief = enr.get("executive_brief", "")
