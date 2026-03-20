@@ -149,12 +149,17 @@ function VirtualizedClientGrid({
 
   const virtualRows = virtualizer.getVirtualItems();
 
+  const scrollTimer = useRef<NodeJS.Timeout | null>(null);
   const handleScroll = useCallback(() => {
-    const el = parentRef.current;
-    if (!el || !onNearBottom) return;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 500) {
-      onNearBottom();
-    }
+    if (scrollTimer.current) return;
+    scrollTimer.current = setTimeout(() => {
+      scrollTimer.current = null;
+      const el = parentRef.current;
+      if (!el || !onNearBottom) return;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 500) {
+        onNearBottom();
+      }
+    }, 300);
   }, [onNearBottom]);
 
   return (
