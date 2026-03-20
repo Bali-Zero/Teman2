@@ -11,7 +11,7 @@ Agents:
 import logging
 
 # Import autonomous agents
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
@@ -66,7 +66,7 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> A
             agent_executions[execution_id].update(
                 {
                     "status": "completed",
-                    "completed_at": datetime.now().isoformat(),
+                    "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
                     "result": {"message": "No high-rated conversations found"},
                 }
             )
@@ -81,7 +81,7 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> A
         agent_executions[execution_id].update(
             {
                 "status": "completed",
-                "completed_at": datetime.now().isoformat(),
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
                 "result": {
                     "insights_found": len(analysis),
                     "improved_prompt_chars": len(improved_prompt),
@@ -96,7 +96,7 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> A
     except Exception as e:
         logger.error(f"❌ Conversation Trainer failed: {e}", exc_info=True)
         agent_executions[execution_id].update(
-            {"status": "failed", "completed_at": datetime.now().isoformat(), "error": str(e)}
+            {"status": "failed", "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(), "error": str(e)}
         )
 
 
@@ -116,13 +116,13 @@ async def run_conversation_trainer(
     Returns:
         Execution status (agent runs in background)
     """
-    execution_id = f"conv_trainer_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+    execution_id = f"conv_trainer_{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S_%f')}"
 
     agent_executions[execution_id] = {
         "agent_name": "conversation_trainer",
         "status": "started",
         "message": f"Conversation Trainer started (analyzing last {days_back} days)",
-        "started_at": datetime.now().isoformat(),
+        "started_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
         "days_back": days_back,
     }
 
@@ -161,7 +161,7 @@ async def _run_client_value_predictor_task(execution_id: str) -> None:
         agent_executions[execution_id].update(
             {
                 "status": "completed",
-                "completed_at": datetime.now().isoformat(),
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
                 "result": {
                     "vip_nurtured": results["vip_nurtured"],
                     "high_risk_contacted": results["high_risk_contacted"],
@@ -177,7 +177,7 @@ async def _run_client_value_predictor_task(execution_id: str) -> None:
     except Exception as e:
         logger.error(f"❌ Client Value Predictor failed: {e}", exc_info=True)
         agent_executions[execution_id].update(
-            {"status": "failed", "completed_at": datetime.now().isoformat(), "error": str(e)}
+            {"status": "failed", "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(), "error": str(e)}
         )
 
 
@@ -193,13 +193,13 @@ async def run_client_value_predictor(background_tasks: BackgroundTasks) -> Agent
     Returns:
         Execution status (agent runs in background)
     """
-    execution_id = f"client_predictor_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+    execution_id = f"client_predictor_{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S_%f')}"
 
     agent_executions[execution_id] = {
         "agent_name": "client_value_predictor",
         "status": "started",
         "message": "Client Value Predictor started (calculating LTV scores)",
-        "started_at": datetime.now().isoformat(),
+        "started_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
     }
 
     # Run agent in background
@@ -247,7 +247,7 @@ async def _run_knowledge_graph_builder_task(
         agent_executions[execution_id].update(
             {
                 "status": "completed",
-                "completed_at": datetime.now().isoformat(),
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
                 "result": {
                     "top_entities_count": len(insights["top_entities"]),
                     "hubs_count": len(insights["hubs"]),
@@ -264,7 +264,7 @@ async def _run_knowledge_graph_builder_task(
     except Exception as e:
         logger.error(f"❌ Knowledge Graph Builder failed: {e}", exc_info=True)
         agent_executions[execution_id].update(
-            {"status": "failed", "completed_at": datetime.now().isoformat(), "error": str(e)}
+            {"status": "failed", "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(), "error": str(e)}
         )
 
 
@@ -286,13 +286,13 @@ async def run_knowledge_graph_builder(
     Returns:
         Execution status (agent runs in background)
     """
-    execution_id = f"kg_builder_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+    execution_id = f"kg_builder_{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S_%f')}"
 
     agent_executions[execution_id] = {
         "agent_name": "knowledge_graph_builder",
         "status": "started",
         "message": f"Knowledge Graph Builder started (processing last {days_back} days)",
-        "started_at": datetime.now().isoformat(),
+        "started_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
         "days_back": days_back,
         "init_schema": init_schema,
     }
@@ -675,7 +675,7 @@ async def get_autonomous_agents_status() -> dict[str, Any]:
         "total_agents": 3,
         "agents": agents_data,
         "recent_executions": len(agent_executions),
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
     }
 
 
@@ -745,14 +745,14 @@ async def get_scheduler_status() -> dict[str, Any]:
         return {
             "success": True,
             "scheduler": status,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
         }
     except Exception as e:
         logger.error(f"Failed to get scheduler status: {e}")
         return {
             "success": False,
             "error": str(e),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
         }
 
 
