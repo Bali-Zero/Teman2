@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class ClientScoringService:
     """Service for calculating client LTV scores"""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         """
         Initialize ClientScoringService.
 
