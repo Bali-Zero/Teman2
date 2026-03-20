@@ -43,7 +43,14 @@ WORKFLOW_TEMPLATE = {
     "10": {
         "class_type": "CLIPTextEncode",
         "inputs": {
-            "text": "",  # filled at runtime
+            "text": "",  # filled at runtime with positive prompt
+            "clip": ["6", 0]
+        }
+    },
+    "11": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+            "text": "blurry, watermark, text, low quality, distorted",
             "clip": ["6", 0]
         }
     },
@@ -73,7 +80,7 @@ WORKFLOW_TEMPLATE = {
             "denoise": 1.0,
             "model": ["3", 0],
             "positive": ["14", 0],
-            "negative": ["10", 0],
+            "negative": ["11", 0],
             "latent_image": ["13", 0]
         }
     },

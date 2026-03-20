@@ -91,7 +91,7 @@ def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
         env.pop('ANTHROPIC_API_KEY', None)
         
         result = subprocess.run(
-            ['claude', '--print', '--model', 'sonnet', prompt],
+            ['claude', '--print', '--model', 'claude-sonnet-4-6', prompt],
             capture_output=True,
             text=True,
             timeout=180,  # 180s timeout

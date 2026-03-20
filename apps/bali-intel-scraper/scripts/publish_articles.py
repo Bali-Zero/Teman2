@@ -5,12 +5,13 @@ Publish articles to Intelligence/News Room backend
 
 import asyncio
 import json
+import os
 import aiohttp
 from pathlib import Path
 from loguru import logger
 
 BACKEND_URL = "https://nuzantara-rag.fly.dev"
-API_KEY = "zantara-secret-2024"
+API_KEY = os.environ.get("SCRAPER_API_KEY", "")
 
 
 async def publish_article(article_file: Path, main_news_position: int = None):
@@ -23,14 +24,14 @@ async def publish_article(article_file: Path, main_news_position: int = None):
     # Prepare payload
     payload = {
         "title": article["title"],
-        "content": article["enriched_content"],
+        "content": article.get("enriched_content", article.get("content", "")),
         "category": article["category"],
-        "source": article["source"],
+        "source_name": article.get("source_name", article.get("source", "Unknown")),
         "source_url": article["source_url"],
-        "image_url": article["image_url"],
-        "relevance_score": article["relevance_score"],
-        "published_at": article["published_at"],
-        "seo_metadata": article["seo_metadata"],
+        "image_url": article.get("image_url", ""),
+        "relevance_score": article.get("relevance_score", 50),
+        "published_at": article.get("published_at"),
+        "seo_metadata": article.get("seo_metadata", {}),
     }
 
     # Add main news position if specified
@@ -43,8 +44,12 @@ async def publish_article(article_file: Path, main_news_position: int = None):
     else:
         logger.info("  → Generic (no main slot)")
 
+    if not API_KEY:
+        logger.error("SCRAPER_API_KEY env var not set — aborting publish")
+        return None
+
     # Send to backend
-    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+    headers = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
     async with aiohttp.ClientSession() as session:
         async with session.post(

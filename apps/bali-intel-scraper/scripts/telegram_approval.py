@@ -1025,7 +1025,7 @@ if __name__ == "__main__":
 
     async def test_approval():
         approval = TelegramApproval(
-            preview_base_url="file:///Users/antonellosiano/Desktop/nuzantara/apps/bali-intel-scraper/scripts/data/previews"
+            preview_base_url=f"file://{Path(__file__).parent}/data/previews"
         )
 
         # Test article with real Unsplash image

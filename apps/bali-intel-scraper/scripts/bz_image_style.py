@@ -133,7 +133,7 @@ def _prompt_via_claude(title: str, category: str, summary: str) -> str:
         # Strip ANTHROPIC_API_KEY from env — claude CLI uses OAuth (Max subscription)
         env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
         result = subprocess.run(
-            ["claude", "--print", "--model", "haiku", prompt],
+            ["claude", "--print", "--model", "claude-haiku-4-5-20251001", prompt],
             capture_output=True, text=True, timeout=30, env=env
         )
         if result.returncode == 0 and result.stdout.strip():
