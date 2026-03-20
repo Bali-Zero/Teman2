@@ -225,6 +225,7 @@ function ClientsListContent() {
   const [isMounted, setIsMounted] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Load current user profile
   useEffect(() => {
@@ -268,7 +269,7 @@ function ClientsListContent() {
   // Stats hook
   const { data: stats } = useCrmStats();
 
-  // Infinite scroll observer
+  // Infinite scroll observer — uses scroll container as root
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el) return;
@@ -279,7 +280,7 @@ function ClientsListContent() {
           loadMore();
         }
       },
-      { threshold: 0.1, rootMargin: "200px" },
+      { threshold: 0.1, rootMargin: "400px", root: scrollContainerRef.current },
     );
 
     observer.observe(el);
@@ -607,7 +608,7 @@ function ClientsListContent() {
           <CRMSkeleton count={6} />
         </div>
       ) : filteredClients.length > 0 ? (
-        <div className="flex-1 overflow-auto">
+        <div ref={scrollContainerRef} className="flex-1 overflow-auto">
           {viewMode === "list" ? (
             <VirtualizedClientGrid
               clients={filteredClients}
