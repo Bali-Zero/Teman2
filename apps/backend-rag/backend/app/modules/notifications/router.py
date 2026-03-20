@@ -11,7 +11,7 @@ Endpoints:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
@@ -141,7 +141,7 @@ async def run_expiry_check(
                 success=True,
                 alerts_generated=0,
                 message="No active clients found",
-                timestamp=datetime.now(),
+                timestamp=datetime.now(tz=timezone.utc).replace(tzinfo=None),
             )
 
         # Run check
@@ -181,7 +181,7 @@ async def run_expiry_check(
             success=True,
             alerts_generated=len(alerts),
             message=f"Check completed. {len(alerts)} alerts generated.",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(tz=timezone.utc).replace(tzinfo=None),
         )
 
     except Exception as e:
