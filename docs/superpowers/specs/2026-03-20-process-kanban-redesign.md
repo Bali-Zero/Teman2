@@ -7,20 +7,21 @@
 ## Summary
 
 Two enhancements to the `/process` kanban board:
+
 1. **Visual progression** — colored top bars per column + ghost cards showing practice journey
 2. **Monthly navigation** — pill tabs to browse practices by month with cross-month visibility
 
 ## Design Decisions
 
-| Decision | Choice | Alternatives Considered |
-|----------|--------|------------------------|
-| Column coloring | 3px top bar gradient + subliminal tint (3-4% opacity bg + 7-8% border) | Tinted bg at 8-10% (too heavy), neutral bg only (too flat), card left-border (noisy) |
-| Month navigation | Pill tabs with arrows (Jan \| Feb \| **Mar** \| Apr) | Underline tabs with counts, inline selector in title |
-| Cross-month practices | Ghost cards in traversed columns | Show in creation month only, show in current month only |
-| Completed cards | Glow effect (green shadow + checkmark) | Same as active, green tint only |
-| Ghost overflow | Collapse after 2, show "+N passate" | Show all (clutters), hide all (loses context) |
-| Badge counter | Current-status cards only (excludes ghosts) | Including ghosts (misleading) |
-| Status history source | `activity_log` table (`changes` JSONB) | `timeline_events` (lacks raw status values), new column (unnecessary migration) |
+| Decision              | Choice                                                                 | Alternatives Considered                                                              |
+| --------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Column coloring       | 3px top bar gradient + subliminal tint (3-4% opacity bg + 7-8% border) | Tinted bg at 8-10% (too heavy), neutral bg only (too flat), card left-border (noisy) |
+| Month navigation      | Pill tabs with arrows (Jan \| Feb \| **Mar** \| Apr)                   | Underline tabs with counts, inline selector in title                                 |
+| Cross-month practices | Ghost cards in traversed columns                                       | Show in creation month only, show in current month only                              |
+| Completed cards       | Glow effect (green shadow + checkmark)                                 | Same as active, green tint only                                                      |
+| Ghost overflow        | Collapse after 2, show "+N passate"                                    | Show all (clutters), hide all (loses context)                                        |
+| Badge counter         | Current-status cards only (excludes ghosts)                            | Including ghosts (misleading)                                                        |
+| Status history source | `activity_log` table (`changes` JSONB)                                 | `timeline_events` (lacks raw status values), new column (unnecessary migration)      |
 
 ## Architecture
 
@@ -154,6 +155,7 @@ UI: ◀ Jan | Feb | [Mar] | Apr ▶
 - Arrows scroll the window by 1 month
 
 When month changes:
+
 - Re-fetch `getPractices({ month: selectedMonth, include_history: true })`
 - Preserve current search query and filters (do NOT reset)
 - Reset list view pagination to page 1
@@ -165,10 +167,14 @@ Both kanban and list views respect the month filter.
 Replace current `stepColors` dot system. Each column gets:
 
 ```tsx
-<div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${colorStart}, ${colorEnd})` }} />
+<div
+  className="h-[3px]"
+  style={{ background: `linear-gradient(90deg, ${colorStart}, ${colorEnd})` }}
+/>
 ```
 
 Colors (same as current, just applied as gradient bar):
+
 - Inquiry: `#6b7280 → #9ca3af`
 - Waiting Docs: `#fb923c → #f97316`
 - Invoice: `#facc15 → #eab308`
@@ -176,6 +182,7 @@ Colors (same as current, just applied as gradient bar):
 - Completed: `#22c55e → #16a34a`
 
 Column background: subliminal tint at 3-4% opacity of the column's color, with border tinted at 7-8%:
+
 - Inquiry: `bg: rgba(156,163,175, 0.035)` / `border: rgba(156,163,175, 0.08)`
 - Waiting Docs: `bg: rgba(251,146,60, 0.035)` / `border: rgba(251,146,60, 0.08)`
 - Invoice: `bg: rgba(250,204,21, 0.03)` / `border: rgba(250,204,21, 0.07)`
@@ -189,12 +196,15 @@ Badge counter: colored background matching column (`rgba(color, 0.12)`), counts 
 For each column, split cards into two groups:
 
 **Active zone** (top): practices whose **current** status maps to this column.
+
 - Full opacity, current card styling unchanged.
 
 **Separator**: dashed line with centered "passate" label.
+
 - Only render if ghost cards exist for this column.
 
 **Ghost zone** (below separator): practices that **transitioned through** this column but are now elsewhere.
+
 - `opacity: 0.35`
 - `background: rgba(255,255,255, 0.02)`
 - `border: 1px solid rgba(255,255,255, 0.04)`
@@ -252,18 +262,16 @@ Reuses existing `getStatusColumn()` function at `page.tsx:294`.
 ```typescript
 function getGhostPractices(
   allPractices: PracticeWithHistory[],
-  columnStatus: CaseStatus
+  columnStatus: CaseStatus,
 ): PracticeWithHistory[] {
-  return allPractices.filter(p => {
+  return allPractices.filter((p) => {
     // Current status is NOT this column
     const currentColumn = getStatusColumn(p.status);
     if (currentColumn === columnStatus) return false;
 
     // But practice passed through this column (has a transition with this column's status)
     const transitions = p.status_transitions || [];
-    return transitions.some(t =>
-      getStatusColumn(t.status) === columnStatus
-    );
+    return transitions.some((t) => getStatusColumn(t.status) === columnStatus);
   });
 }
 ```
@@ -288,13 +296,13 @@ function getGhostPractices(
 
 ## Edge Cases
 
-| Case | Behavior |
-|------|----------|
-| Practice created in Feb, still "on_process" in Mar | Appears in both months. Active in On Process, ghost in columns it transitioned through |
-| Practice completed in Feb, viewing Mar | Does NOT appear in Mar. Completed practices appear in all months they were active (creation through completion), but not in months after completion |
-| Practice with no status changes (just created) | No ghosts, no `status_transitions`, appears only in creation column |
-| Brand new month (no practices yet) | Empty kanban with "No process" placeholders, month tabs still navigable |
-| Very old months (Jan 2025) | Arrows allow scrolling indefinitely, API handles any YYYY-MM |
-| Cancelled practices | Excluded from query (`p.status != 'cancelled'`), never shown |
-| Practice created in Jan, completed in Mar, viewing Jan | Appears in Jan as ghost in Inquiry (or whatever its first status was), with indicator showing "completata" |
-| No `month` param (backward compat) | Returns current behavior — all non-cancelled practices, no history, `limit` applies |
+| Case                                                   | Behavior                                                                                                                                            |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Practice created in Feb, still "on_process" in Mar     | Appears in both months. Active in On Process, ghost in columns it transitioned through                                                              |
+| Practice completed in Feb, viewing Mar                 | Does NOT appear in Mar. Completed practices appear in all months they were active (creation through completion), but not in months after completion |
+| Practice with no status changes (just created)         | No ghosts, no `status_transitions`, appears only in creation column                                                                                 |
+| Brand new month (no practices yet)                     | Empty kanban with "No process" placeholders, month tabs still navigable                                                                             |
+| Very old months (Jan 2025)                             | Arrows allow scrolling indefinitely, API handles any YYYY-MM                                                                                        |
+| Cancelled practices                                    | Excluded from query (`p.status != 'cancelled'`), never shown                                                                                        |
+| Practice created in Jan, completed in Mar, viewing Jan | Appears in Jan as ghost in Inquiry (or whatever its first status was), with indicator showing "completata"                                          |
+| No `month` param (backward compat)                     | Returns current behavior — all non-cancelled practices, no history, `limit` applies                                                                 |
