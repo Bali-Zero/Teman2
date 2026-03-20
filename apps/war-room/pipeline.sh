@@ -308,16 +308,10 @@ print(json.dumps(prompts, ensure_ascii=False, indent=2))
   log "   🖼️  Slide con image_prompt: $IMG_COUNT"
 
   if (( IMG_COUNT > 0 )); then
-    run_phase "comfyui_images" 900 \
-      $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/05_comfyui_images.py" \
-      --slides "$OUTPUT/strategy/claude_slides.json" \
-      --topic  "$TOPIC" \
-      --output "$OUTPUT/images/" \
-      || log "⚠️  Immagini fallite — slide testuali rimangono senza foto (non bloccante)"
-  else
-    log "   ℹ️  Nessuna image_prompt nelle slides — step saltato"
+    log "   ℹ️  $IMG_COUNT image_prompt nelle slides — annotazioni testuali, nessuna generazione"
+    log "   💡 I prompt sono embedded nel testo Canva per il designer"
   fi
-  log "✅ Step immagini completato"
+  log "✅ Step immagini completato (solo annotazioni)"
 fi
 
 # ══════════════════════════════════════════════════════════
