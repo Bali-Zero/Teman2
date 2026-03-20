@@ -1092,6 +1092,7 @@ async def publish_staging_item(
         published_url = f"{settings.balizero_website_url}/{category}/{item_id}"
         github_commit_sha = None
         mdx_path = None
+        article_slug = item_id  # fallback: use item_id if GitHub publish fails
 
         try:
             from backend.app.routers.article_composer import (
@@ -1219,11 +1220,18 @@ async def publish_staging_item(
                 github_commit_sha = publish_result.commit_sha
                 mdx_path = publish_result.mdx_path
 
+                # Derive real MDX slug (e.g. "my-slug.mdx" -> "my-slug")
+                if publish_result.mdx_path:
+                    article_slug = publish_result.mdx_path.rsplit("/", 1)[-1].replace(".mdx", "")
+                elif publish_result.article_url:
+                    article_slug = publish_result.article_url.rstrip("/").rsplit("/", 1)[-1]
+
                 logger.info(
                     "✅ Article published to GitHub/Vercel",
                     extra={
                         "type": type,
                         "item_id": item_id,
+                        "article_slug": article_slug,
                         "title": title,
                         "published_url": published_url,
                         "commit_sha": github_commit_sha,
@@ -1234,14 +1242,6 @@ async def publish_staging_item(
                 publish_position = body.position if body else "latest"
                 if publish_position != "latest" and publish_position in VALID_HOMEPAGE_POSITIONS:
                     try:
-                        # Derive slug from mdx_path (e.g. "src/content/articles/business/my-slug.mdx" -> "my-slug")
-                        article_slug = item_id
-                        if publish_result.mdx_path:
-                            article_slug = publish_result.mdx_path.rsplit("/", 1)[-1].replace(
-                                ".mdx", ""
-                            )
-                        elif publish_result.article_url:
-                            article_slug = publish_result.article_url.rstrip("/").rsplit("/", 1)[-1]
                         await update_homepage_layout(
                             slug=article_slug,
                             position=publish_position,
@@ -1348,15 +1348,15 @@ async def publish_staging_item(
         # Step 4b: Enqueue for post-processing (translate + image) — non-blocking
         try:
             async with _post_publish_lock:
-                if not any(item["slug"] == item_id for item in _post_publish_queue):
+                if not any(item["slug"] == article_slug for item in _post_publish_queue):
                     _post_publish_queue.append({
-                        "slug": item_id,
+                        "slug": article_slug,
                         "category": category,
                         "queued_at": datetime.utcnow().isoformat(),
                     })
             logger.info(
                 "📥 Enqueued for post-processing",
-                extra={"slug": item_id, "category": category},
+                extra={"slug": article_slug, "category": category},
             )
         except Exception as e:
             logger.warning(f"Failed to enqueue post-processing (non-blocking): {e}")
