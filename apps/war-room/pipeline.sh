@@ -17,8 +17,7 @@ for arg in "$@"; do
   case $arg in
     --dry-run) DRY_RUN=true ;;
     --auto)    AUTO_MODE=true ;;
-    # compat flags (ignored — Manus/Grok removed)
-    --skip-manus|--skip-grok) true ;;
+    --skip-manus|--skip-grok) true ;;  # legacy flags, ignored
   esac
 done
 
@@ -151,18 +150,17 @@ merged = {
     'merged_at': __import__('datetime').datetime.now().isoformat(),
 }
 print(json.dumps(merged, ensure_ascii=False, indent=2))
-" > "$OUTPUT/raw/manus_dump.json"
-log "   ✅ Merged: $(python3 -c "import json; print(', '.join(json.load(open('$OUTPUT/raw/manus_dump.json')).get('sources_used',[])))" 2>/dev/null || echo '?') → $(python3 -c "import json; print(len(json.load(open('$OUTPUT/raw/manus_dump.json')).get('facts',[])))" 2>/dev/null || echo '?') facts totali"
+" > "$OUTPUT/raw/merged_dump.json"
+log "   ✅ Merged: $(python3 -c "import json; print(', '.join(json.load(open('$OUTPUT/raw/merged_dump.json')).get('sources_used',[])))" 2>/dev/null || echo '?') → $(python3 -c "import json; print(len(json.load(open('$OUTPUT/raw/merged_dump.json')).get('facts',[])))" 2>/dev/null || echo '?') facts totali"
 
 # ── FASE 1.5: Pre-processing con Qwen3.5-27B (locale, gratis) ──
 log ""
 log "━━━ FASE 1.5: QWEN3.5 PRE-PROCESSOR (locale) ━━━"
 if ! $DRY_RUN; then
-  # grok_dump.json = sentiment output from chatgpt researcher
   [[ ! -f "$OUTPUT/raw/grok_dump.json" ]] && echo '{"data":[]}' > "$OUTPUT/raw/grok_dump.json"
   $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/015_qwen_preprocessor.py" \
     --grok   "$OUTPUT/raw/grok_dump.json" \
-    --manus  "$OUTPUT/raw/manus_dump.json" \
+    --manus  "$OUTPUT/raw/merged_dump.json" \
     --output "$OUTPUT/raw/processed_dump.json"
   log "✅ Pre-processing completato"
 fi
