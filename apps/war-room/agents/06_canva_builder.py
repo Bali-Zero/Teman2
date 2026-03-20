@@ -182,10 +182,15 @@ def run_claude_bridge(prompt: str, timeout: int = 300) -> Optional[dict]:
             env={**os.environ, "ANTHROPIC_MODEL": "claude-haiku-4-5-20251001"}
         )
 
-        if result.returncode != 0:
+        # rc=1 can come from SessionEnd hooks (claude-mem) crashing after output is written
+        # Only fail if stdout is also empty
+        if result.returncode != 0 and not result.stdout.strip():
             print(f"  ❌ claude -p failed (rc={result.returncode}): {result.stderr[:200]}",
                   file=sys.stderr)
             return None
+        if result.returncode != 0:
+            print(f"  ⚠️  claude -p rc={result.returncode} (hook error, ignoring — stdout present)",
+                  file=sys.stderr)
 
         # Parse output: cerca JSON nell'output
         output = result.stdout.strip()
