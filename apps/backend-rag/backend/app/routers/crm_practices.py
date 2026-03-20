@@ -6,7 +6,8 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
 import asyncio
-from datetime import date, datetime, timedelta
+import json
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -308,6 +309,40 @@ async def create_practice(
         raise handle_database_error(e)
 
 
+def _parse_month_param(month: str | None) -> tuple[datetime, datetime] | None:
+    """Parse 'YYYY-MM' string into (start_of_month, start_of_next_month) datetimes."""
+    if not month:
+        return None
+    try:
+        parts = month.split("-")
+        year, m = int(parts[0]), int(parts[1])
+        start = datetime(year, m, 1, tzinfo=timezone.utc)
+        if m == 12:
+            end = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            end = datetime(year, m + 1, 1, tzinfo=timezone.utc)
+        return start, end
+    except (ValueError, IndexError):
+        return None
+
+
+def _build_status_transitions(rows: list[dict]) -> dict[int, list[dict]]:
+    """Group activity_log rows into {practice_id: [{status, at}]} dict."""
+    result: dict[int, list[dict]] = {}
+    for row in rows:
+        pid = row["entity_id"]
+        changes = row["changes"]
+        if isinstance(changes, str):
+            changes = json.loads(changes)
+        status = changes.get("status")
+        if not status:
+            continue
+        if pid not in result:
+            result[pid] = []
+        result[pid].append({"status": status, "at": str(row["performed_at"])})
+    return result
+
+
 @router.get("/", response_model=list[dict])
 async def list_practices(
     request: Any = None,
@@ -316,6 +351,8 @@ async def list_practices(
     assigned_to: str | None = Query(None, description="Filter by assigned team member"),
     practice_type: str | None = Query(None, description="Filter by practice type code"),
     priority: str | None = Query(None, description="Filter by priority"),
+    month: str | None = Query(None, description="Filter by month YYYY-MM"),
+    include_history: bool = Query(False, description="Include status transition history"),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -344,6 +381,8 @@ async def list_practices(
     assigned_to = resolve_query_param(assigned_to)
     practice_type = resolve_query_param(practice_type)
     priority = resolve_query_param(priority)
+    month = resolve_query_param(month)
+    include_history = resolve_query_param(include_history, False)
     limit = resolve_query_param(limit, DEFAULT_LIMIT)
     offset = resolve_query_param(offset, 0)
 
@@ -395,6 +434,26 @@ async def list_practices(
                 params.append(priority)
                 param_index += 1
 
+            # Month filter
+            month_range = _parse_month_param(month)
+            if month_range:
+                month_start, month_end = month_range
+                query_parts[0] = query_parts[0].replace(
+                    "WHERE 1=1",
+                    """LEFT JOIN activity_log al ON al.entity_type = 'practice'
+                        AND al.entity_id = p.id
+                        AND al.action = 'updated'
+                    WHERE 1=1"""
+                )
+                query_parts.append(
+                    f" AND p.status != 'cancelled'"
+                    f" AND ((p.created_at >= ${param_index} AND p.created_at < ${param_index + 1})"
+                    f" OR (al.performed_at >= ${param_index} AND al.performed_at < ${param_index + 1}))"
+                )
+                params.extend([month_start, month_end])
+                param_index += 2
+                query_parts[0] = query_parts[0].replace("SELECT\n", "SELECT DISTINCT\n", 1)
+
             query_parts.append(
                 f" ORDER BY p.created_at DESC LIMIT ${param_index} OFFSET ${param_index + 1}"
             )
@@ -403,7 +462,30 @@ async def list_practices(
             query = " ".join(query_parts)
             rows = await conn.fetch(query, *params)
 
-            return [dict(row) for row in rows]
+            practices = [dict(row) for row in rows]
+
+            # Enrich with status transitions if requested
+            if include_history and practices:
+                practice_ids = [p["id"] for p in practices]
+                history_rows = await conn.fetch(
+                    """
+                    SELECT entity_id, changes, performed_at
+                    FROM activity_log
+                    WHERE entity_type = 'practice'
+                      AND action = 'updated'
+                      AND changes::text LIKE '%"status"%'
+                      AND entity_id = ANY($1)
+                    ORDER BY performed_at ASC
+                    """,
+                    practice_ids,
+                )
+                transitions = _build_status_transitions(
+                    [dict(r) for r in history_rows]
+                )
+                for p in practices:
+                    p["status_transitions"] = transitions.get(p["id"], [])
+
+            return practices
 
     except HTTPException:
         raise
