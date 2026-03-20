@@ -20,7 +20,7 @@ class GoogleCloudShellAdapter:
     - gcloud CLI (se installato)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.gcloud_cmd = "gcloud"
         self.available = self._check_availability()
 
