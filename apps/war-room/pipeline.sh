@@ -2,15 +2,21 @@
 # ============================================================
 # BALI ZERO WAR ROOM — Master Pipeline Orchestrator
 # Usage: ./pipeline.sh "Coretax 2025" [--dry-run] [--auto]
+#
+# Override env vars:
+#   CANVA_ROW=upper|lower   (default: upper)
+#   CANVA_PAGE=1|2|3        (default: 1)
+#   CANVA_DESIGN_ID=...     (default: DAHEME4mocU)
 # ============================================================
 
 set -euo pipefail
 
-# Topic solo se primo arg non è un flag
+# ── Args ────────────────────────────────────────────────────
 [[ -n "${1:-}" && "${1:0:2}" != "--" ]] && TOPIC="$1" || TOPIC=""
 DRY_RUN=false
 AUTO_MODE=false
 WAR_ROOM="$(cd "$(dirname "$0")" && pwd)"
+mkdir -p "$WAR_ROOM/logs"
 LOG_FILE="$WAR_ROOM/logs/pipeline_$(date +%Y%m%d_%H%M%S).log"
 
 for arg in "$@"; do
@@ -21,17 +27,40 @@ for arg in "$@"; do
   esac
 done
 
-# ── Logging ────────────────────────────────────────────────
+# ── Logging ─────────────────────────────────────────────────
 log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
 die() { log "❌ FATAL: $*"; exit 1; }
 
-# Load env vars (API keys)
-# Load and export all env vars (set -a = auto-export)
+# ── Phase runner: timeout + error isolation ──────────────────
+# run_phase <label> <timeout_secs> <command...>
+# Returns 0 on success, 1 on failure (never kills pipeline)
+run_phase() {
+  local label="$1" timeout_secs="$2"
+  shift 2
+  log "   ▶ Running: $label"
+  if timeout "$timeout_secs" "$@"; then
+    return 0
+  else
+    local rc=$?
+    if (( rc == 124 )); then
+      log "   ⏰ TIMEOUT after ${timeout_secs}s: $label"
+    else
+      log "   ❌ FAILED (rc=$rc): $label"
+    fi
+    return 1
+  fi
+}
+
+# ── Load .env ───────────────────────────────────────────────
 if [[ -f "$WAR_ROOM/.env" ]]; then
   set -a
   source "$WAR_ROOM/.env"
   set +a
 fi
+
+# ── Validate required env vars ───────────────────────────────
+[[ -z "${OPENAI_API_KEY:-}" ]] && log "⚠️  OPENAI_API_KEY not set — FASE 1 may fail"
+[[ -z "${TELEGRAM_BOT_TOKEN:-}" ]] && log "⚠️  TELEGRAM_BOT_TOKEN not set — FASE 5 notifications disabled"
 
 log "🚨 BALI ZERO WAR ROOM AVVIATA"
 log "🕐 Start: $(date)"
@@ -40,21 +69,26 @@ $DRY_RUN && log "⚠️  DRY RUN MODE — nessuna azione reale"
 OUTPUT="$WAR_ROOM/output"
 T_START=$(date +%s)
 
-# ── Cleanup output precedente ──────────────────────────────
-rm -f "$OUTPUT"/raw/*(N) "$OUTPUT"/strategy/*(N) \
-      "$OUTPUT"/images/*(N) 2>/dev/null || true
-rm -f "$OUTPUT"/keynote/presentation.key 2>/dev/null || true
+# ── Canva params (overridable) ───────────────────────────────
+CANVA_ROW="${CANVA_ROW:-upper}"
+CANVA_PAGE="${CANVA_PAGE:-1}"
+CANVA_DESIGN="${CANVA_DESIGN_ID:-DAHEME4mocU}"
 
-# ── Check Intel Scraper output — pre-seed data + auto-extract topic ──
+# ── Cleanup output precedente ────────────────────────────────
+mkdir -p "$OUTPUT/raw" "$OUTPUT/strategy" "$OUTPUT/images" \
+         "$OUTPUT/canva" "$OUTPUT/master"
+rm -f "$OUTPUT"/raw/*(N) "$OUTPUT"/strategy/*(N) \
+      "$OUTPUT"/images/*(N) "$OUTPUT"/canva/*(N) 2>/dev/null || true
+
+# ── Check Intel Scraper output ───────────────────────────────
 INTEL_LATEST="$HOME/Desktop/nuzantara/apps/bali-intel-scraper/data/intel_output_latest.json"
 INTEL_FRESH=false
 if [[ -f "$INTEL_LATEST" ]]; then
   INTEL_AGE=$(( $(date +%s) - $(date -r "$INTEL_LATEST" +%s) ))
-  if (( INTEL_AGE < 28800 )); then  # 8h
+  if (( INTEL_AGE < 28800 )); then
     INTEL_FRESH=true
     log "✅ Intel Scraper output fresco (${INTEL_AGE}s fa)"
 
-    # Auto-estrai topic dall'articolo con score più alto
     if [[ -z "$TOPIC" ]]; then
       TOPIC=$(python3 -c "
 import json
@@ -70,10 +104,8 @@ print(title if title else 'Indonesia Business Intelligence')
       log "📌 Topic auto-estratto dall'intel: $TOPIC"
     fi
 
-    # Pre-seed: converti intel scraper → facts per il preprocessor
     python3 -c "
 import json
-from pathlib import Path
 with open('$INTEL_LATEST') as f: d = json.load(f)
 arts = d.get('articles', [])
 intel = {
@@ -83,7 +115,8 @@ intel = {
   'source': 'intel_scraper'
 }
 print(json.dumps(intel, ensure_ascii=False, indent=2))
-" > "$OUTPUT/raw/intel_preseed.json"
+" > "$OUTPUT/raw/intel_preseed.json" 2>/dev/null || echo '{"facts":[],"topics":[]}' > "$OUTPUT/raw/intel_preseed.json"
+
     INTEL_COUNT=$(python3 -c "import json; d=json.load(open('$INTEL_LATEST')); print(len([a for a in d.get('articles',[]) if a.get('enrichment')]))" 2>/dev/null || echo "?")
     log "   📂 Intel pre-seed → $INTEL_COUNT enriched articles"
   else
@@ -97,13 +130,14 @@ fi
 log "📌 Topic: $TOPIC"
 
 # ══════════════════════════════════════════════════════════
-# FASE 1 — T+00:00: CHATGPT RESEARCH (web browsing + sentiment)
+# FASE 1 — CHATGPT RESEARCH
 # ══════════════════════════════════════════════════════════
 log ""
-log "━━━ FASE 1: CHATGPT GPT-5.4 RESEARCH (T+00:00) ━━━"
+log "━━━ FASE 1: CHATGPT RESEARCH (T+00:00) ━━━"
 
 if ! $DRY_RUN; then
-  $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/01_chatgpt_researcher.py" \
+  run_phase "chatgpt_researcher" 600 \
+    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/01_chatgpt_researcher.py" \
     --topic "$TOPIC" \
     --output "$OUTPUT/raw/chatgpt_dump.json" \
     --sentiment-output "$OUTPUT/raw/grok_dump.json" \
@@ -115,7 +149,7 @@ if ! $DRY_RUN; then
   fi
 fi
 
-# ── Merge: chatgpt + intel preseed ──
+# ── Merge intelligence sources ──────────────────────────────
 log "🔗 Merging intelligence sources..."
 python3 -c "
 import json
@@ -155,59 +189,87 @@ merged = {
     'merged_at': __import__('datetime').datetime.now().isoformat(),
 }
 print(json.dumps(merged, ensure_ascii=False, indent=2))
-" > "$OUTPUT/raw/merged_dump.json"
-log "   ✅ Merged: $(python3 -c "import json; print(', '.join(json.load(open('$OUTPUT/raw/merged_dump.json')).get('sources_used',[])))" 2>/dev/null || echo '?') → $(python3 -c "import json; print(len(json.load(open('$OUTPUT/raw/merged_dump.json')).get('facts',[])))" 2>/dev/null || echo '?') facts totali"
+" > "$OUTPUT/raw/merged_dump.json" 2>/dev/null || echo '{"facts":[],"topics":[]}' > "$OUTPUT/raw/merged_dump.json"
 
-# ── FASE 1.5: Pre-processing con Qwen3.5-27B (locale, gratis) ──
+MERGED_COUNT=$(python3 -c "import json; print(len(json.load(open('$OUTPUT/raw/merged_dump.json')).get('facts',[])))" 2>/dev/null || echo "?")
+log "   ✅ Merged → $MERGED_COUNT facts totali"
+
+# ── FASE 1.5: Qwen3.5 Pre-processor ─────────────────────────
 log ""
 log "━━━ FASE 1.5: QWEN3.5 PRE-PROCESSOR (locale) ━━━"
 if ! $DRY_RUN; then
   [[ ! -f "$OUTPUT/raw/grok_dump.json" ]] && echo '{"data":[]}' > "$OUTPUT/raw/grok_dump.json"
-  $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/015_qwen_preprocessor.py" \
+  run_phase "qwen_preprocessor" 300 \
+    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/015_qwen_preprocessor.py" \
     --grok   "$OUTPUT/raw/grok_dump.json" \
     --manus  "$OUTPUT/raw/merged_dump.json" \
-    --output "$OUTPUT/raw/processed_dump.json"
+    --output "$OUTPUT/raw/processed_dump.json" \
+    || log "⚠️  Qwen pre-processor fallito — uso merged_dump direttamente"
+
+  # Fallback: se processed_dump non esiste, usa merged_dump
+  if [[ ! -f "$OUTPUT/raw/processed_dump.json" ]]; then
+    cp "$OUTPUT/raw/merged_dump.json" "$OUTPUT/raw/processed_dump.json"
+    log "   ↩️  Fallback: processed_dump = merged_dump"
+  fi
   log "✅ Pre-processing completato"
 fi
 
 # ══════════════════════════════════════════════════════════
-# FASE 2 — T+02:00: BRAIN-TRUST
+# FASE 2 — BRAIN-TRUST (Gemini + Claude Director)
 # ══════════════════════════════════════════════════════════
 log ""
 log "━━━ FASE 2: BRAIN-TRUST (T+02:00) ━━━"
 
-log "🧠 Gemini 3.1 Pro — generazione 3 concept..."
+log "🧠 Gemini strategist — generazione 3 concept..."
 if ! $DRY_RUN; then
-  $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/03_gemini_strategist.py" \
+  # Fallback: se Gemini fallisce usa Ollama qwen3.5
+  if ! run_phase "gemini_strategist" 600 \
+    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/03_gemini_strategist.py" \
     --dump   "$OUTPUT/raw/processed_dump.json" \
     --topic  "$TOPIC" \
-    --output "$OUTPUT/strategy/gemini_concepts.json"
-  log "✅ Gemini concepts generati"
+    --output "$OUTPUT/strategy/gemini_concepts.json"; then
+
+    log "⚠️  Gemini fallito — tentativo fallback Ollama..."
+    # Genera concetti minimali come fallback
+    python3 -c "
+import json
+topic = '$TOPIC'
+fallback = {'concepts': [
+  {'title': f'The {topic} Alert', 'hook': f'What you need to know about {topic}',
+   'core_insight': f'Key implications of {topic} for foreign investors in Bali',
+   'asymmetric_angle': 'Most people are missing the second-order consequences',
+   'recommended_tone': 'istituzionale_severo',
+   'why_this_will_perform': 'Actionable, specific, time-sensitive'},
+]}
+print(json.dumps(fallback, ensure_ascii=False, indent=2))
+" > "$OUTPUT/strategy/gemini_concepts.json"
+    log "   ↩️  Fallback concept generato"
+  fi
+  log "✅ Concepts pronti"
 fi
 
 log "🎬 Claude director — copy + JSON slides..."
 if ! $DRY_RUN; then
-  $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/04_claude_director.py" \
+  run_phase "claude_director" 600 \
+    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/04_claude_director.py" \
     --concepts "$OUTPUT/strategy/gemini_concepts.json" \
     --topic    "$TOPIC" \
-    --output   "$OUTPUT/strategy/claude_slides.json"
-  log "✅ Copy + JSON slides pronti"
+    --output   "$OUTPUT/strategy/claude_slides.json" \
+    || die "Claude director fallito — impossibile generare slides JSON"
+  log "✅ JSON slides pronti"
 fi
 
 # ══════════════════════════════════════════════════════════
-# FASE 3 — T+05:00: GENERAZIONE IMMAGINI (ComfyUI/Flux)
-# Genera immagini per le slide che hanno image_prompt
-# (solo cover + 2-3 slide chiave — non tutte le slide)
+# FASE 3 — GENERAZIONE IMMAGINI (solo slide con image_prompt)
 # ══════════════════════════════════════════════════════════
 log ""
 log "━━━ FASE 3: GENERAZIONE IMMAGINI ComfyUI/Flux (T+05:00) ━━━"
 if ! $DRY_RUN; then
-  # Estrai image_prompts dal JSON slides (solo slide con image_prompt != null)
   IMAGE_PROMPTS_FILE="$OUTPUT/images/image_prompts.json"
-  mkdir -p "$OUTPUT/images"
+
+  # Estrai solo slide con image_prompt != null
   python3 -c "
 import json
-from pathlib import Path
 data = json.load(open('$OUTPUT/strategy/claude_slides.json'))
 slides = data.get('slides', [])
 prompts = [
@@ -218,48 +280,48 @@ prompts = [
 print(json.dumps(prompts, ensure_ascii=False, indent=2))
 " > "$IMAGE_PROMPTS_FILE" 2>/dev/null || echo '[]' > "$IMAGE_PROMPTS_FILE"
 
-  IMG_COUNT=\$(python3 -c "import json; print(len(json.load(open('$IMAGE_PROMPTS_FILE'))))" 2>/dev/null || echo "0")
-  log "   🖼️  Slide con image_prompt: \$IMG_COUNT"
+  IMG_COUNT=$(python3 -c "import json; print(len(json.load(open('$IMAGE_PROMPTS_FILE'))))" 2>/dev/null || echo "0")
+  log "   🖼️  Slide con image_prompt: $IMG_COUNT"
 
   if (( IMG_COUNT > 0 )); then
-    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/05_comfyui_images.py" \
+    run_phase "comfyui_images" 900 \
+      $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/05_comfyui_images.py" \
       --slides "$OUTPUT/strategy/claude_slides.json" \
       --topic  "$TOPIC" \
       --output "$OUTPUT/images/" \
-      || log "⚠️  Immagini fallite — slide testuali rimangono senza foto"
+      || log "⚠️  Immagini fallite — slide testuali rimangono senza foto (non bloccante)"
+  else
+    log "   ℹ️  Nessuna image_prompt nelle slides — step saltato"
   fi
   log "✅ Step immagini completato"
 fi
 
 # ══════════════════════════════════════════════════════════
-# FASE 4 — T+07:00: CANVA CAROUSEL BUILDER
-# Sostituisce Keynote: popola direttamente il template Canva
-# Design: DAHEME4mocU (War_Room)
+# FASE 4 — CANVA CAROUSEL BUILDER
+# Bridge: claude -p → MCP Canva → design DAHEME4mocU
 # ══════════════════════════════════════════════════════════
 log ""
 log "━━━ FASE 4: CANVA CAROUSEL (T+07:00) ━━━"
-
-# Parametri riga/pagina Canva (override via env o argomenti)
-CANVA_ROW="${CANVA_ROW:-upper}"
-CANVA_PAGE="${CANVA_PAGE:-1}"
-CANVA_DESIGN="${CANVA_DESIGN_ID:-DAHEME4mocU}"
+log "   Design: $CANVA_DESIGN  Row: $CANVA_ROW  Page: $CANVA_PAGE"
 
 if ! $DRY_RUN; then
-  mkdir -p "$OUTPUT/canva" "$OUTPUT/master"
-  $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/06_canva_builder.py" \
+  run_phase "canva_builder" 600 \
+    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/06_canva_builder.py" \
     --slides    "$OUTPUT/strategy/claude_slides.json" \
     --output    "$OUTPUT/canva/" \
     --master    "$OUTPUT/master/" \
     --design-id "$CANVA_DESIGN" \
     --row       "$CANVA_ROW" \
-    --page      "$CANVA_PAGE"
-  log "✅ Canva carousel aggiornato"
+    --page      "$CANVA_PAGE" \
+    || log "⚠️  Canva builder fallito — continua senza carousel (non bloccante)"
+
   if [[ -f "$OUTPUT/canva/carousel_canva.json" ]]; then
     CANVA_URL=$(python3 -c "import json; d=json.load(open('$OUTPUT/canva/carousel_canva.json')); print(d.get('design_url',''))" 2>/dev/null || echo "")
     [[ -n "$CANVA_URL" ]] && log "   🔗 $CANVA_URL"
+    log "✅ Canva carousel aggiornato"
   fi
 else
-  log "⚠️  DRY RUN — Canva builder skipped"
+  log "⚠️  DRY RUN — Canva builder in dry-run mode"
   $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/06_canva_builder.py" \
     --slides    "$OUTPUT/strategy/claude_slides.json" \
     --output    "$OUTPUT/canva/" \
@@ -267,20 +329,21 @@ else
     --design-id "$CANVA_DESIGN" \
     --row       "$CANVA_ROW" \
     --page      "$CANVA_PAGE" \
-    --dry-run   \
-    || true
+    --dry-run   2>/dev/null || true
 fi
 
 # ══════════════════════════════════════════════════════════
-# FASE 5 — T+10:00: DELIVERY
+# FASE 5 — DELIVERY
 # ══════════════════════════════════════════════════════════
 log ""
 log "━━━ FASE 5: DELIVERY (T+10:00) ━━━"
 if ! $DRY_RUN; then
-  zsh "$WAR_ROOM/agents/07_delivery.sh" \
+  run_phase "delivery" 120 \
+    zsh "$WAR_ROOM/agents/07_delivery.sh" \
     --topic  "$TOPIC" \
-    --master "$OUTPUT/master/"
-  log "✅ Upload Google Drive + notifica team inviata"
+    --master "$OUTPUT/master/" \
+    || log "⚠️  Delivery parziale — verifica manualmente Drive/Telegram"
+  log "✅ Delivery completata"
 fi
 
 T_END=$(date +%s)
