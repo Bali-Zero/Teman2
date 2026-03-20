@@ -4,7 +4,7 @@
  * Hook ottimizzato per gestione clienti CRM con caching e sincronizzazione
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Client, CreateClientParams } from "@/lib/api/crm/crm.types";
@@ -44,6 +44,7 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadingRef = useRef(false);
 
   // Base query key (without offset — we accumulate results)
   const queryKey = ["crm", "clients", { status, assigned_to, search }];
@@ -82,6 +83,7 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
       }
       setHasMore(data.length === limit);
       setIsLoadingMore(false);
+      loadingRef.current = false;
     }
   }, [data, offset, limit]);
 
@@ -93,11 +95,12 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
   }, [status, assigned_to, search]);
 
   const loadMore = useCallback(() => {
-    if (hasMore && !isLoading && !isLoadingMore) {
+    if (hasMore && !isLoading && !loadingRef.current) {
+      loadingRef.current = true;
       setIsLoadingMore(true);
       setOffset((prev) => prev + limit);
     }
-  }, [hasMore, isLoading, isLoadingMore, limit]);
+  }, [hasMore, isLoading, limit]);
 
   const reset = useCallback(() => {
     setOffset(0);
