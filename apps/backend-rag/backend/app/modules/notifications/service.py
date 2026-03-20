@@ -17,7 +17,7 @@ Features:
 
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -401,7 +401,7 @@ class NotificationService:
                     alert.email_subject,
                     alert.email_body,
                     alert.created_at,
-                    datetime.now() if status == AlertStatus.SENT else None,
+                    datetime.now(tz=timezone.utc).replace(tzinfo=None) if status == AlertStatus.SENT else None,
                     error_message,
                 )
                 alert.id = row["id"]
