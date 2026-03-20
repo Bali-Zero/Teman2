@@ -67,7 +67,7 @@ VENV_PYTHON = BACKEND_DIR / ".venv" / "bin" / "python"
 TELEGRAM_CHAT_ID = "1125336968"
 
 # Ruff rules (unified source of truth)
-RUFF_RULES = ["BLE001", "DTZ005", "C901", "TRY400", "ANN001"]
+RUFF_RULES = ["BLE001", "DTZ003", "DTZ005", "C901", "TRY400", "ANN001", "ANN204"]
 
 
 # --- Locking ---

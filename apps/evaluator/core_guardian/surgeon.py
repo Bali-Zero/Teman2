@@ -93,7 +93,7 @@ CIRCUIT_BREAKER_COOLDOWN_HOURS = 24
 # Allow up to N test regressions (flaky test tolerance)
 MAX_TEST_REGRESSION_TOLERANCE = 2
 
-SAFE_RUFF_CODES = {"ANN001", "ANN204", "DTZ005"}
+SAFE_RUFF_CODES = {"ANN001", "ANN204", "DTZ003", "DTZ005"}
 UNSAFE_RUFF_CODES = {"BLE001", "C901", "TRY400"}
 
 # Codes that ruff can auto-fix (no LLM needed)
@@ -669,8 +669,42 @@ def deterministic_fix_DTZ005(worktree_path: Path, target_file: str) -> bool:
     return True
 
 
+def deterministic_fix_ANN204(worktree_path: Path, target_file: str) -> bool:
+    """Fix ANN204: add -> None return type to __init__ methods.
+    Returns True if file was modified.
+    """
+    file_path = worktree_path / target_file
+    if not file_path.exists():
+        logger.error(f"File not found: {file_path}")
+        return False
+
+    content = file_path.read_text()
+    original = content
+
+    # Match: def __init__(self, ...) :  (without -> None)
+    # Handles single-line and multi-line signatures ending with ):
+    content = re.sub(
+        r'(def __init__\([^)]*\))\s*:',
+        r'\1 -> None:',
+        content,
+    )
+
+    # Don't double-add: remove "-> None -> None:" if somehow produced
+    content = content.replace('-> None -> None:', '-> None:')
+
+    if content == original:
+        logger.warning(f"No __init__ without -> None found in {target_file}")
+        return False
+
+    file_path.write_text(content)
+    logger.info(f"ANN204 fix applied to {target_file}")
+    return True
+
+
 DETERMINISTIC_FIXERS: dict[str, callable] = {
     "DTZ005": deterministic_fix_DTZ005,
+    "DTZ003": deterministic_fix_DTZ005,  # Same fixer — handles utcnow() too
+    "ANN204": deterministic_fix_ANN204,
 }
 
 
