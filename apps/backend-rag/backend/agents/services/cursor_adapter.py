@@ -25,7 +25,7 @@ class CursorAdapter:
     - Cursor API (se disponibile in futuro)
     """
 
-    def __init__(self, project_root: Path | None = None):
+    def __init__(self, project_root: Path | None = None) -> None:
         self.cursor_cmd = "cursor"
         self.project_root = project_root or Path.cwd()
         self.cursor_rules_file = self.project_root / ".cursorrules"
