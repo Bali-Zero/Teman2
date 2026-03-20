@@ -6,7 +6,7 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 import asyncpg
@@ -346,7 +346,7 @@ async def create_client(
                         client.lead_source,
                         client.service_interest,
                         client.custom_fields,
-                        datetime.now(),
+                        datetime.now(tz=timezone.utc).replace(tzinfo=None),
                         user_email,
                     )
 
@@ -1380,7 +1380,7 @@ Use null for unclear fields. Return ONLY JSON."""
 
         # Prepare OCR data for storage
         ocr_data = {
-            "extracted_at": datetime.utcnow().isoformat(),
+            "extracted_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
             "raw_response": extracted,
             "file_id": request.file_id,
             "confidence": extracted.get("confidence", 0.0),
