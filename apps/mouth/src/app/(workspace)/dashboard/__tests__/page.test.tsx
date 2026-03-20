@@ -169,6 +169,7 @@ describe("DashboardPage - Unit Tests", () => {
     stats: {
       activeCases: 5,
       criticalDeadlines: 2,
+      pendingInvoices: 0,
       whatsappUnread: 3,
       emailUnread: 1,
       hoursWorked: "5h 30m",

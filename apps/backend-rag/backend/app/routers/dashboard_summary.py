@@ -394,6 +394,7 @@ async def get_dashboard_summary(
             "stats": {
                 "activeCases": practice_stats.get("active_practices", 0),
                 "criticalDeadlines": critical_deadlines,
+                "pendingInvoices": practice_stats.get("by_status", {}).get("sending_invoice", 0),
                 "whatsappUnread": interaction_stats.get("by_type", {}).get("whatsapp", 0),
                 "emailUnread": email_stats.get("unread_count", 0),
                 "hoursWorked": f"{int(hours_worked)}h {int((hours_worked % 1) * 60)}m",
@@ -426,6 +427,7 @@ async def get_dashboard_summary(
             "stats": {
                 "activeCases": 0,
                 "criticalDeadlines": 0,
+                "pendingInvoices": 0,
                 "whatsappUnread": 0,
                 "emailUnread": 0,
                 "hoursWorked": "0h 0m",
