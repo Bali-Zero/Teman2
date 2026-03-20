@@ -5,7 +5,7 @@ Endpoints for querying team activity logs, interactions, and audit trail
 Requires ADMIN_API_KEY for access
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 import asyncpg
@@ -378,7 +378,7 @@ async def get_today_summary(
 
         return {
             "success": True,
-            "date": datetime.now().date().isoformat(),
+            "date": datetime.now(tz=timezone.utc).replace(tzinfo=None).date().isoformat(),
             "team_summary": summary,
         }
 
