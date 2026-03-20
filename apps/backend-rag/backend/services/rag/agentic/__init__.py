@@ -125,7 +125,7 @@ def create_agentic_rag(
     Args:
         retriever: Knowledge base retriever (SearchService/KnowledgeService)
         db_pool: PostgreSQL connection pool for database queries
-        web_search_client: Optional web search client (disabled by default)
+        _web_search_client: Optional web search client (disabled by default)
         semantic_cache: Optional semantic cache for query results
         clarification_service: Optional service for resolving ambiguous queries
 
