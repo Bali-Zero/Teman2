@@ -17,6 +17,9 @@ from pathlib import Path
 # Reuse the ComfyUI/Pollinations client from intel scraper
 SCRIPT_DIR = Path(__file__).parent
 INTEL_SCRIPTS = SCRIPT_DIR.parent.parent / "bali-intel-scraper" / "scripts"
+if not INTEL_SCRIPTS.exists():
+    print(f"ERROR: intel-scraper scripts not found at {INTEL_SCRIPTS}", file=sys.stderr)
+    sys.exit(1)
 sys.path.insert(0, str(INTEL_SCRIPTS))
 from comfyui_image_generator import check_comfyui, generate_image, generate_image_pollinations
 from bz_image_style import build_slide_prompt

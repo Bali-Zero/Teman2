@@ -35,11 +35,13 @@ export function ZeroRoleWidget({ metrics }: Props) {
           ⚠️ {metrics.fatture_overdue} fatture overdue
         </div>
       )}
-      <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[9px] font-semibold ${ALERT_STYLE.ok}`}>
-        ✓ {metrics.agenti_count} agenti attivi
-      </div>
+      {metrics.fatture_overdue === 0 && metrics.visti_scadenza === 0 && (
+        <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[9px] font-semibold ${ALERT_STYLE.ok}`}>
+          ✓ No critical alerts
+        </div>
+      )}
       <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[9px] font-semibold ${ALERT_STYLE.info}`}>
-        📊 Fly.io {metrics.fly_uptime}%
+        🚀 Fly.io {metrics.fly_uptime}%
       </div>
     </div>
   );

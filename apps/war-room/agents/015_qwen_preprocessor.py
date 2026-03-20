@@ -31,7 +31,7 @@ def main():
     prompt_path = Path(__file__).parent.parent / "config" / "prompts.json"
     prompts = json.loads(prompt_path.read_text())
 
-    prompt = prompts["qwen_preprocessor"] + f"""
+    prompt = "/no_think\n" + prompts["qwen_preprocessor"] + f"""
 
 RAW GROK DATA:
 {json.dumps(grok_data, ensure_ascii=False, indent=2)}
@@ -56,7 +56,12 @@ Output ONLY valid JSON. No markdown, no prose."""
         end = response.rfind("}") + 1
         response = response[start:end]
 
-    result = json.loads(response)
+    try:
+        result = json.loads(response)
+    except json.JSONDecodeError as e:
+        print(f"Qwen output invalid JSON ({e}) — falling back to raw manus_data", file=sys.stderr)
+        result = {"facts": manus_data if isinstance(manus_data, list) else manus_data.get("facts", []),
+                  "sentiment": [], "topics": [], "fallback": True}
     Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2))
     print(f"✅ Pre-processed dump → {args.output}", file=sys.stderr)
 
