@@ -196,31 +196,79 @@ fi
 
 # ══════════════════════════════════════════════════════════
 # FASE 3 — T+05:00: GENERAZIONE IMMAGINI (ComfyUI/Flux)
+# Genera immagini per le slide che hanno image_prompt
+# (solo cover + 2-3 slide chiave — non tutte le slide)
 # ══════════════════════════════════════════════════════════
 log ""
 log "━━━ FASE 3: GENERAZIONE IMMAGINI ComfyUI/Flux (T+05:00) ━━━"
 if ! $DRY_RUN; then
-  $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/05_comfyui_images.py" \
-    --slides "$OUTPUT/strategy/claude_slides.json" \
-    --topic  "$TOPIC" \
-    --output "$OUTPUT/images/" \
-    || log "⚠️  Immagini fallite — continuo con placeholder"
+  # Estrai image_prompts dal JSON slides (solo slide con image_prompt != null)
+  IMAGE_PROMPTS_FILE="$OUTPUT/images/image_prompts.json"
+  mkdir -p "$OUTPUT/images"
+  python3 -c "
+import json
+from pathlib import Path
+data = json.load(open('$OUTPUT/strategy/claude_slides.json'))
+slides = data.get('slides', [])
+prompts = [
+  {'slide': s.get('slide_number'), 'is_cover': s.get('is_cover', False),
+   'prompt': s.get('image_prompt'), 'placement': s.get('image_placement', '')}
+  for s in slides if s.get('image_prompt')
+]
+print(json.dumps(prompts, ensure_ascii=False, indent=2))
+" > "$IMAGE_PROMPTS_FILE" 2>/dev/null || echo '[]' > "$IMAGE_PROMPTS_FILE"
+
+  IMG_COUNT=\$(python3 -c "import json; print(len(json.load(open('$IMAGE_PROMPTS_FILE'))))" 2>/dev/null || echo "0")
+  log "   🖼️  Slide con image_prompt: \$IMG_COUNT"
+
+  if (( IMG_COUNT > 0 )); then
+    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/05_comfyui_images.py" \
+      --slides "$OUTPUT/strategy/claude_slides.json" \
+      --topic  "$TOPIC" \
+      --output "$OUTPUT/images/" \
+      || log "⚠️  Immagini fallite — slide testuali rimangono senza foto"
+  fi
   log "✅ Step immagini completato"
 fi
 
 # ══════════════════════════════════════════════════════════
-# FASE 4 — T+07:00: KEYNOTE BUILDER
+# FASE 4 — T+07:00: CANVA CAROUSEL BUILDER
+# Sostituisce Keynote: popola direttamente il template Canva
+# Design: DAHEME4mocU (War_Room)
 # ══════════════════════════════════════════════════════════
 log ""
-log "━━━ FASE 4: KEYNOTE ENGINE (T+07:00) ━━━"
+log "━━━ FASE 4: CANVA CAROUSEL (T+07:00) ━━━"
+
+# Parametri riga/pagina Canva (override via env o argomenti)
+CANVA_ROW="${CANVA_ROW:-upper}"
+CANVA_PAGE="${CANVA_PAGE:-1}"
+CANVA_DESIGN="${CANVA_DESIGN_ID:-DAHEME4mocU}"
+
 if ! $DRY_RUN; then
-  mkdir -p "$OUTPUT/keynote" "$OUTPUT/master"
-  $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/06_keynote_builder.py" \
-    --slides "$OUTPUT/strategy/claude_slides.json" \
-    --images "$OUTPUT/images/" \
-    --output "$OUTPUT/keynote/" \
-    --master "$OUTPUT/master/"
-  log "✅ Keynote esportato + JPG master pronti"
+  mkdir -p "$OUTPUT/canva" "$OUTPUT/master"
+  $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/06_canva_builder.py" \
+    --slides    "$OUTPUT/strategy/claude_slides.json" \
+    --output    "$OUTPUT/canva/" \
+    --master    "$OUTPUT/master/" \
+    --design-id "$CANVA_DESIGN" \
+    --row       "$CANVA_ROW" \
+    --page      "$CANVA_PAGE"
+  log "✅ Canva carousel aggiornato"
+  if [[ -f "$OUTPUT/canva/carousel_canva.json" ]]; then
+    CANVA_URL=$(python3 -c "import json; d=json.load(open('$OUTPUT/canva/carousel_canva.json')); print(d.get('design_url',''))" 2>/dev/null || echo "")
+    [[ -n "$CANVA_URL" ]] && log "   🔗 $CANVA_URL"
+  fi
+else
+  log "⚠️  DRY RUN — Canva builder skipped"
+  $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/06_canva_builder.py" \
+    --slides    "$OUTPUT/strategy/claude_slides.json" \
+    --output    "$OUTPUT/canva/" \
+    --master    "$OUTPUT/master/" \
+    --design-id "$CANVA_DESIGN" \
+    --row       "$CANVA_ROW" \
+    --page      "$CANVA_PAGE" \
+    --dry-run   \
+    || true
 fi
 
 # ══════════════════════════════════════════════════════════
