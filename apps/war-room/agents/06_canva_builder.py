@@ -298,13 +298,13 @@ def main() -> None:
     print(f"  ⏱️  Elapsed: {elapsed:.1f}s", file=sys.stderr)
 
     if not result:
-        print("❌ Canva bridge returned no result", file=sys.stderr)
-        sys.exit(1)
+        print("⚠️  Canva bridge returned no result — skipping carousel update", file=sys.stderr)
+        return
 
     if not result.get("success"):
         err = result.get("error", "unknown error")
-        print(f"❌ Canva bridge reported failure: {err}", file=sys.stderr)
-        sys.exit(1)
+        print(f"⚠️  Canva bridge reported failure: {err} — skipping carousel update", file=sys.stderr)
+        return
 
     print(f"  ✅ {result.get('operations_success', '?')}/{result.get('operations_total', '?')} "
           f"ops — committed: {result.get('committed')}", file=sys.stderr)
