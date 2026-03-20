@@ -59,6 +59,8 @@ export interface DashboardData {
     outstanding_revenue: number;
   };
   revenue_growth?: number;
+  total_clients?: number;
+  total_practices?: number;
 }
 
 export const dashboardApi = {

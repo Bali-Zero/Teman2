@@ -109,6 +109,8 @@ export function useDashboardData() {
   const isHealthy = systemStatus === "healthy";
   const revenue = data?.revenue || null;
   const revenueGrowth = data?.revenue_growth ?? null;
+  const totalClients = data?.total_clients ?? null;
+  const totalPractices = data?.total_practices ?? null;
 
   return {
     // Data
@@ -135,6 +137,8 @@ export function useDashboardData() {
     // Admin-only data
     revenue,
     revenueGrowth,
+    totalClients,
+    totalPractices,
   };
 }
 
