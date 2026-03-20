@@ -175,7 +175,9 @@ def run_claude_bridge(prompt: str, timeout: int = 300) -> Optional[dict]:
         result = subprocess.run(
             [CLAUDE_BIN, "-p", prompt,
              "--output-format", "json",
-             "--model", "claude-haiku-4-5-20251001"],  # Haiku: veloce + economico per task meccanici
+             "--model", "claude-haiku-4-5-20251001",
+             "--no-session-persistence",   # avoid SessionEnd hook crash
+             "--permission-mode", "bypassPermissions"],
             capture_output=True, text=True, timeout=timeout,
             env={**os.environ, "ANTHROPIC_MODEL": "claude-haiku-4-5-20251001"}
         )
