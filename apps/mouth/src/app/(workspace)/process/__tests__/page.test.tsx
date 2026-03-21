@@ -40,6 +40,7 @@ const mockRouter = {
 vi.mock("next/navigation", () => ({
   useRouter: () => mockRouter,
   useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/process",
 }));
 
 vi.mock("@/lib/api", () => ({
@@ -202,7 +203,9 @@ describe("Cases Page", () => {
       render(<PratichePage />);
 
       await waitFor(() => {
-        expect(api.crm.getPractices).toHaveBeenCalledWith({ limit: 100 });
+        expect(api.crm.getPractices).toHaveBeenCalledWith(
+          expect.objectContaining({ limit: 200, include_history: true }),
+        );
       });
     });
 
