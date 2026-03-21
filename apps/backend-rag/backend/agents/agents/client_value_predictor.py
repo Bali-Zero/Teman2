@@ -12,7 +12,7 @@ Refactored to use modular services:
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
@@ -218,7 +218,9 @@ class ClientValuePredictor:
                                     "ltv_score": client_data["ltv_score"],
                                     "segment": client_data["segment"],
                                     "risk_level": client_data["risk_level"],
-                                    "last_score_update": datetime.now().isoformat(),
+                                    "last_score_update": datetime.now(tz=timezone.utc)
+                                    .replace(tzinfo=None)
+                                    .isoformat(),
                                 }
                             ),
                             int(client_id),
