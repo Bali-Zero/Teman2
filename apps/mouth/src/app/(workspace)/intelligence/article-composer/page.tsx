@@ -358,8 +358,14 @@ export default function ArticleComposerPage() {
   if (statusLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent)" }} />
-        <p className="text-[12px] animate-pulse" style={{ color: "var(--bz-text-2)" }}>
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent)" }}
+        />
+        <p
+          className="text-[12px] animate-pulse"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           Initializing Intelligence Center...
         </p>
       </div>
@@ -379,8 +385,14 @@ export default function ArticleComposerPage() {
             style={{ borderColor: "rgba(255,255,255,0.06)" }}
           >
             <div className="flex items-center gap-2.5">
-              <FileText className="w-4 h-4" style={{ color: "var(--bz-accent)" }} />
-              <span className="text-[13px] font-medium" style={{ color: "var(--bz-text-1)" }}>
+              <FileText
+                className="w-4 h-4"
+                style={{ color: "var(--bz-accent)" }}
+              />
+              <span
+                className="text-[13px] font-medium"
+                style={{ color: "var(--bz-text-1)" }}
+              >
                 Raw Content
               </span>
             </div>
@@ -406,7 +418,10 @@ export default function ArticleComposerPage() {
           <div className="flex flex-col gap-4 p-4">
             {/* Title */}
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium" style={{ color: "var(--bz-text-2)" }}>
+              <label
+                className="text-[11px] font-medium"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Article Title <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <input
@@ -422,7 +437,10 @@ export default function ArticleComposerPage() {
 
             {/* Content */}
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium" style={{ color: "var(--bz-text-2)" }}>
+              <label
+                className="text-[11px] font-medium"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Raw Content <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <AutoResizeTextarea
@@ -434,14 +452,20 @@ export default function ArticleComposerPage() {
                 onFocus={() => setFocusedInput("content")}
                 onBlur={() => setFocusedInput(null)}
               />
-              <div className="text-right text-[11px]" style={{ color: "var(--bz-text-2)" }}>
+              <div
+                className="text-right text-[11px]"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 {content.length}/8000 chars
               </div>
             </div>
 
             {/* Category */}
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium" style={{ color: "var(--bz-text-2)" }}>
+              <label
+                className="text-[11px] font-medium"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Category
               </label>
               <select
@@ -463,7 +487,10 @@ export default function ArticleComposerPage() {
             {/* Source URL + Author */}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-medium" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="text-[11px] font-medium"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Source URL
                 </label>
                 <input
@@ -477,7 +504,10 @@ export default function ArticleComposerPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-medium" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="text-[11px] font-medium"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Author
                 </label>
                 <input
@@ -493,7 +523,10 @@ export default function ArticleComposerPage() {
 
             {/* Cover Image */}
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium" style={{ color: "var(--bz-text-2)" }}>
+              <label
+                className="text-[11px] font-medium"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Cover Image (optional)
               </label>
               <input
@@ -509,8 +542,14 @@ export default function ArticleComposerPage() {
                   className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed p-4 text-center transition-colors hover:bg-white/[0.02]"
                   style={{ borderColor: "rgba(255,255,255,0.1)" }}
                 >
-                  <ImageIcon className="h-5 w-5" style={{ color: "var(--bz-text-2)" }} />
-                  <div className="text-[11px]" style={{ color: "var(--bz-text-2)" }}>
+                  <ImageIcon
+                    className="h-5 w-5"
+                    style={{ color: "var(--bz-text-2)" }}
+                  />
+                  <div
+                    className="text-[11px]"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     Click per caricare (1200x630)
                   </div>
                 </div>
@@ -564,10 +603,7 @@ export default function ArticleComposerPage() {
                   loading || !configured
                     ? "none"
                     : "0 8px 24px rgba(212,132,90,0.35)",
-                color:
-                  loading || !configured
-                    ? "var(--bz-text-2)"
-                    : "#fff",
+                color: loading || !configured ? "var(--bz-text-2)" : "#fff",
               }}
             >
               {loading ? (
@@ -575,9 +611,7 @@ export default function ArticleComposerPage() {
               ) : (
                 <Sparkles size={14} />
               )}
-              {loading
-                ? "Enriching with Claude..."
-                : "Compose Executive Brief"}
+              {loading ? "Enriching with Claude..." : "Compose Executive Brief"}
             </button>
           </div>
         </div>
@@ -598,8 +632,14 @@ export default function ArticleComposerPage() {
             style={{ borderColor: "rgba(255,255,255,0.06)" }}
           >
             <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4" style={{ color: "var(--bz-accent)" }} />
-              <span className="text-[13px] font-medium" style={{ color: "var(--bz-text-1)" }}>
+              <Sparkles
+                className="w-4 h-4"
+                style={{ color: "var(--bz-accent)" }}
+              />
+              <span
+                className="text-[13px] font-medium"
+                style={{ color: "var(--bz-text-1)" }}
+              >
                 Executive Brief Preview
               </span>
             </div>
@@ -657,7 +697,10 @@ export default function ArticleComposerPage() {
                   className="mb-4 rounded-full p-4"
                   style={{ background: "rgba(255,255,255,0.04)" }}
                 >
-                  <Sparkles className="h-8 w-8" style={{ color: "var(--bz-text-2)" }} />
+                  <Sparkles
+                    className="h-8 w-8"
+                    style={{ color: "var(--bz-text-2)" }}
+                  />
                 </div>
                 <h3
                   className="text-[14px] font-medium"
@@ -676,15 +719,23 @@ export default function ArticleComposerPage() {
               <>
                 {/* ── Headline & Summary ── */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 text-[12px] font-medium mb-1" style={{ color: "var(--bz-text-2)" }}>
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--bz-accent)" }} />
+                  <div
+                    className="flex items-center gap-1.5 text-[12px] font-medium mb-1"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: "var(--bz-accent)" }}
+                    />
                     Headline & Summary
                   </div>
                   {isEditing ? (
                     <div className="flex flex-col gap-2">
                       <AutoResizeTextarea
                         value={activeArticle.headline}
-                        onChange={(e) => updateEditedField("headline", e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("headline", e.target.value)
+                        }
                         className={`${inputClass} text-[16px] font-bold min-h-[50px] resize-none`}
                         style={getInputStyle("headline")}
                         onFocus={() => setFocusedInput("headline")}
@@ -692,7 +743,9 @@ export default function ArticleComposerPage() {
                       />
                       <AutoResizeTextarea
                         value={activeArticle.ai_summary}
-                        onChange={(e) => updateEditedField("ai_summary", e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("ai_summary", e.target.value)
+                        }
                         className={`${inputClass} min-h-[70px] resize-none`}
                         style={getInputStyle("ai_summary")}
                         onFocus={() => setFocusedInput("ai_summary")}
@@ -701,10 +754,16 @@ export default function ArticleComposerPage() {
                     </div>
                   ) : (
                     <div>
-                      <h2 className="text-[18px] font-semibold leading-[1.2]" style={{ color: "var(--bz-text-1)" }}>
+                      <h2
+                        className="text-[18px] font-semibold leading-[1.2]"
+                        style={{ color: "var(--bz-text-1)" }}
+                      >
                         {activeArticle.headline}
                       </h2>
-                      <p className="mt-1 text-[13px]" style={{ color: "var(--bz-text-2)" }}>
+                      <p
+                        className="mt-1 text-[13px]"
+                        style={{ color: "var(--bz-text-2)" }}
+                      >
                         {activeArticle.ai_summary}
                       </p>
                     </div>
@@ -735,8 +794,14 @@ export default function ArticleComposerPage() {
 
                 {/* ── TL;DR ── */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "var(--bz-text-2)" }}>
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--bz-accent)" }} />
+                  <div
+                    className="flex items-center gap-1.5 text-[12px] font-medium"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: "var(--bz-accent)" }}
+                    />
                     TL;DR
                   </div>
                   {isEditing ? (
@@ -744,7 +809,12 @@ export default function ArticleComposerPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <select
                           value={activeArticle.tldr.should_worry}
-                          onChange={(e) => updateEditedField("tldr.should_worry", e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField(
+                              "tldr.should_worry",
+                              e.target.value,
+                            )
+                          }
                           className={`${inputClass} appearance-none cursor-pointer`}
                           style={getInputStyle("tldr_worry")}
                           onFocus={() => setFocusedInput("tldr_worry")}
@@ -756,7 +826,9 @@ export default function ArticleComposerPage() {
                         </select>
                         <select
                           value={activeArticle.tldr.risk_level}
-                          onChange={(e) => updateEditedField("tldr.risk_level", e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField("tldr.risk_level", e.target.value)
+                          }
                           className={`${inputClass} appearance-none cursor-pointer`}
                           style={getInputStyle("tldr_risk")}
                           onFocus={() => setFocusedInput("tldr_risk")}
@@ -769,7 +841,9 @@ export default function ArticleComposerPage() {
                       </div>
                       <AutoResizeTextarea
                         value={activeArticle.tldr.what}
-                        onChange={(e) => updateEditedField("tldr.what", e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("tldr.what", e.target.value)
+                        }
                         className={`${inputClass} min-h-[60px] resize-none`}
                         style={getInputStyle("tldr_what")}
                         onFocus={() => setFocusedInput("tldr_what")}
@@ -778,7 +852,9 @@ export default function ArticleComposerPage() {
                       />
                       <input
                         value={activeArticle.tldr.who}
-                        onChange={(e) => updateEditedField("tldr.who", e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("tldr.who", e.target.value)
+                        }
                         className={inputClass}
                         style={getInputStyle("tldr_who")}
                         onFocus={() => setFocusedInput("tldr_who")}
@@ -787,7 +863,9 @@ export default function ArticleComposerPage() {
                       />
                       <input
                         value={activeArticle.tldr.when}
-                        onChange={(e) => updateEditedField("tldr.when", e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("tldr.when", e.target.value)
+                        }
                         className={inputClass}
                         style={getInputStyle("tldr_when")}
                         onFocus={() => setFocusedInput("tldr_when")}
@@ -799,7 +877,9 @@ export default function ArticleComposerPage() {
                     <div className="text-[12px]">
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
-                          <span style={{ color: "var(--bz-text-2)" }}>Worry: </span>
+                          <span style={{ color: "var(--bz-text-2)" }}>
+                            Worry:{" "}
+                          </span>
                           <span
                             className={
                               activeArticle.tldr.should_worry === "Yes"
@@ -813,7 +893,9 @@ export default function ArticleComposerPage() {
                           </span>
                         </div>
                         <div>
-                          <span style={{ color: "var(--bz-text-2)" }}>Risk: </span>
+                          <span style={{ color: "var(--bz-text-2)" }}>
+                            Risk:{" "}
+                          </span>
                           <span
                             className={
                               activeArticle.tldr.risk_level === "High"
@@ -829,15 +911,21 @@ export default function ArticleComposerPage() {
                       </div>
                       <div className="space-y-1 text-[13px]">
                         <div>
-                          <strong style={{ color: "var(--bz-text-1)" }}>What:</strong>{" "}
+                          <strong style={{ color: "var(--bz-text-1)" }}>
+                            What:
+                          </strong>{" "}
                           {activeArticle.tldr.what}
                         </div>
                         <div>
-                          <strong style={{ color: "var(--bz-text-1)" }}>Who:</strong>{" "}
+                          <strong style={{ color: "var(--bz-text-1)" }}>
+                            Who:
+                          </strong>{" "}
                           {activeArticle.tldr.who}
                         </div>
                         <div>
-                          <strong style={{ color: "var(--bz-text-1)" }}>When:</strong>{" "}
+                          <strong style={{ color: "var(--bz-text-1)" }}>
+                            When:
+                          </strong>{" "}
                           {activeArticle.tldr.when}
                         </div>
                       </div>
@@ -847,14 +935,22 @@ export default function ArticleComposerPage() {
 
                 {/* ── Facts ── */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "var(--bz-text-2)" }}>
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--bz-accent)" }} />
+                  <div
+                    className="flex items-center gap-1.5 text-[12px] font-medium"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: "var(--bz-accent)" }}
+                    />
                     The Facts
                   </div>
                   {isEditing ? (
                     <AutoResizeTextarea
                       value={activeArticle.facts}
-                      onChange={(e) => updateEditedField("facts", e.target.value)}
+                      onChange={(e) =>
+                        updateEditedField("facts", e.target.value)
+                      }
                       className={`${inputClass} min-h-[120px] resize-none`}
                       style={getInputStyle("facts")}
                       onFocus={() => setFocusedInput("facts")}
@@ -864,15 +960,23 @@ export default function ArticleComposerPage() {
                     <div
                       className="text-[13px] leading-relaxed whitespace-pre-line"
                       style={{ color: "var(--bz-text-1)" }}
-                      dangerouslySetInnerHTML={renderMiniMarkdown(activeArticle.facts)}
+                      dangerouslySetInnerHTML={renderMiniMarkdown(
+                        activeArticle.facts,
+                      )}
                     />
                   )}
                 </div>
 
                 {/* ── Bali Zero Take ── */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "var(--bz-text-2)" }}>
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--bz-accent)" }} />
+                  <div
+                    className="flex items-center gap-1.5 text-[12px] font-medium"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: "var(--bz-accent)" }}
+                    />
                     Bali Zero Take
                   </div>
                   <div className="flex flex-col gap-3 text-[13px]">
@@ -891,7 +995,10 @@ export default function ArticleComposerPage() {
                               <AutoResizeTextarea
                                 value={val}
                                 onChange={(e) =>
-                                  updateEditedField(`bali_zero_take.${key}`, e.target.value)
+                                  updateEditedField(
+                                    `bali_zero_take.${key}`,
+                                    e.target.value,
+                                  )
                                 }
                                 className={`${inputClass} min-h-[60px] resize-none`}
                                 style={getInputStyle(`bzt_${key}`)}
@@ -899,7 +1006,9 @@ export default function ArticleComposerPage() {
                                 onBlur={() => setFocusedInput(null)}
                               />
                             ) : (
-                              <div style={{ color: "var(--bz-text-2)" }}>{val}</div>
+                              <div style={{ color: "var(--bz-text-2)" }}>
+                                {val}
+                              </div>
                             )}
                           </div>
                         );
@@ -910,14 +1019,23 @@ export default function ArticleComposerPage() {
 
                 {/* ── Next Steps ── */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "var(--bz-text-2)" }}>
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--bz-accent)" }} />
+                  <div
+                    className="flex items-center gap-1.5 text-[12px] font-medium"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: "var(--bz-accent)" }}
+                    />
                     Next Steps
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[13px]">
                     {["expat", "investor"].map((type) => (
                       <div key={type}>
-                        <div className="font-medium mb-1 capitalize" style={{ color: "var(--bz-text-1)" }}>
+                        <div
+                          className="font-medium mb-1 capitalize"
+                          style={{ color: "var(--bz-text-1)" }}
+                        >
                           For {type}s
                         </div>
                         {isEditing ? (
@@ -948,7 +1066,9 @@ export default function ArticleComposerPage() {
                                   style={{ background: "var(--bz-accent)" }}
                                 />
                                 <span
-                                  dangerouslySetInnerHTML={renderMiniMarkdown(s)}
+                                  dangerouslySetInnerHTML={renderMiniMarkdown(
+                                    s,
+                                  )}
                                 />
                               </li>
                             ))}
@@ -964,8 +1084,14 @@ export default function ArticleComposerPage() {
                   className="mt-2 pt-3 border-t"
                   style={{ borderColor: "rgba(255,255,255,0.06)" }}
                 >
-                  <div className="flex items-center gap-1.5 text-[12px] font-medium mb-2" style={{ color: "var(--bz-text-2)" }}>
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--bz-accent)" }} />
+                  <div
+                    className="flex items-center gap-1.5 text-[12px] font-medium mb-2"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: "var(--bz-accent)" }}
+                    />
                     AI Tags
                   </div>
                   {isEditing ? (
@@ -1010,18 +1136,31 @@ export default function ArticleComposerPage() {
                       borderColor: "rgba(77,184,122,0.2)",
                     }}
                   >
-                    <div className="flex items-center gap-1.5 text-[13px] font-medium" style={{ color: "var(--bz-text-1)" }}>
-                      <Globe size={14} style={{ color: "var(--bz-green, #4db87a)" }} />
+                    <div
+                      className="flex items-center gap-1.5 text-[13px] font-medium"
+                      style={{ color: "var(--bz-text-1)" }}
+                    >
+                      <Globe
+                        size={14}
+                        style={{ color: "var(--bz-green, #4db87a)" }}
+                      />
                       <span>Publish to Site</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px]" style={{ color: "var(--bz-text-2)" }}>
+                        <label
+                          className="text-[11px]"
+                          style={{ color: "var(--bz-text-2)" }}
+                        >
                           Position
                         </label>
                         <Select
                           value={position}
-                          onValueChange={(v) => setPosition(v as "normal" | "secondary" | "main_featured")}
+                          onValueChange={(v) =>
+                            setPosition(
+                              v as "normal" | "secondary" | "main_featured",
+                            )
+                          }
                           disabled={isEditing}
                         >
                           <SelectTrigger
@@ -1044,7 +1183,10 @@ export default function ArticleComposerPage() {
                         </Select>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px]" style={{ color: "var(--bz-text-2)" }}>
+                        <label
+                          className="text-[11px]"
+                          style={{ color: "var(--bz-text-2)" }}
+                        >
                           Slug
                         </label>
                         <input
@@ -1077,7 +1219,9 @@ export default function ArticleComposerPage() {
                     </button>
                     {publishedUrl && (
                       <div className="text-[11px]">
-                        <span style={{ color: "var(--bz-text-2)" }}>Published: </span>
+                        <span style={{ color: "var(--bz-text-2)" }}>
+                          Published:{" "}
+                        </span>
                         <a
                           href={publishedUrl}
                           target="_blank"

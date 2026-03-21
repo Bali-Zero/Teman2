@@ -26,6 +26,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def get_embedding(text: str) -> list[float]:
     import openai
+
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
     resp = client.embeddings.create(input=text, model="text-embedding-3-small")
     return resp.data[0].embedding
@@ -33,6 +34,7 @@ def get_embedding(text: str) -> list[float]:
 
 def get_bm25_sparse(text: str) -> dict:
     from core.bm25_vectorizer import BM25Vectorizer
+
     bm25 = BM25Vectorizer()
     return bm25.generate_sparse_vector(text)
 
@@ -47,7 +49,11 @@ def search_qdrant(query: str, top_k: int = 5) -> list[dict]:
     data = {
         "prefetch": [
             {"query": dense, "using": "dense", "limit": top_k * 2},
-            {"query": {"indices": sparse["indices"], "values": sparse["values"]}, "using": "bm25", "limit": top_k * 2},
+            {
+                "query": {"indices": sparse["indices"], "values": sparse["values"]},
+                "using": "bm25",
+                "limit": top_k * 2,
+            },
         ],
         "query": {"fusion": "rrf"},
         "limit": top_k,
@@ -65,10 +71,10 @@ def search_qdrant(query: str, top_k: int = 5) -> list[dict]:
 
 def test_query(query: str, expected_keywords: list[str]) -> bool:
     """Test a query and check if results contain expected keywords."""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"QUERY: {query}")
     print(f"Expected keywords: {expected_keywords}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     results = search_qdrant(query, top_k=3)
 
@@ -85,7 +91,7 @@ def test_query(query: str, expected_keywords: list[str]) -> bool:
         source = payload.get("source", "unknown")
         text = payload.get("text", "")[:300]
 
-        print(f"\n  Result {i+1} (score={score:.4f}):")
+        print(f"\n  Result {i + 1} (score={score:.4f}):")
         print(f"    Source: {source}")
         print(f"    Text: {text}...")
 
@@ -153,9 +159,9 @@ def main():
         if test_query(test["query"], test["keywords"]):
             passed += 1
 
-    print(f"\n{'='*70}")
-    print(f"FINAL RESULTS: {passed}/{len(tests)} tests passed ({passed/len(tests)*100:.0f}%)")
-    print(f"{'='*70}")
+    print(f"\n{'=' * 70}")
+    print(f"FINAL RESULTS: {passed}/{len(tests)} tests passed ({passed / len(tests) * 100:.0f}%)")
+    print(f"{'=' * 70}")
 
     if passed / len(tests) >= 0.75:
         print("SUCCESS: Query retrieval meets target (>= 75%)")

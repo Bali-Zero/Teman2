@@ -8,7 +8,10 @@ interface SubAppHeaderProps {
   userInitial?: string;
 }
 
-export function SubAppHeader({ appName, userInitial = "Z" }: SubAppHeaderProps) {
+export function SubAppHeader({
+  appName,
+  userInitial = "Z",
+}: SubAppHeaderProps) {
   return (
     <header
       className="h-[48px] flex items-center px-4 gap-3 border-b flex-shrink-0 sticky top-0 z-10"
@@ -31,10 +34,18 @@ export function SubAppHeader({ appName, userInitial = "Z" }: SubAppHeaderProps) 
       </Link>
 
       {/* Divider */}
-      <span style={{ color: "var(--bz-text-3, #575350)", fontSize: 14 }}>/</span>
+      <span style={{ color: "var(--bz-text-3, #575350)", fontSize: 14 }}>
+        /
+      </span>
 
       {/* App name */}
-      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--bz-text-1, #edeae4)" }}>
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: 500,
+          color: "var(--bz-text-1, #edeae4)",
+        }}
+      >
         {appName}
       </span>
 
@@ -43,7 +54,9 @@ export function SubAppHeader({ appName, userInitial = "Z" }: SubAppHeaderProps) 
       {/* User avatar */}
       <div
         className="w-[26px] h-[26px] rounded-[7px] flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-        style={{ background: "linear-gradient(135deg, #c9a96e 0%, #d4845a 100%)" }}
+        style={{
+          background: "linear-gradient(135deg, #c9a96e 0%, #d4845a 100%)",
+        }}
       >
         {userInitial}
       </div>

@@ -5,7 +5,7 @@ Responsibility: Track compliance items
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class ComplianceItem:
     renewal_process: str | None = None
     source_oracle: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(tz=UTC).isoformat())
 
 
 class ComplianceTrackerService:
@@ -74,7 +74,7 @@ class ComplianceTrackerService:
         Returns:
             ComplianceItem instance
         """
-        item_id = f"{compliance_type}_{client_id}_{int(datetime.now().timestamp())}"
+        item_id = f"{compliance_type}_{client_id}_{int(datetime.now(tz=UTC).timestamp())}"
 
         item = ComplianceItem(
             item_id=item_id,
@@ -129,7 +129,7 @@ class ComplianceTrackerService:
         """
         from datetime import timedelta
 
-        cutoff_date = datetime.now() + timedelta(days=days_ahead)
+        cutoff_date = datetime.now(tz=UTC) + timedelta(days=days_ahead)
 
         upcoming = []
         for item in self.compliance_items.values():

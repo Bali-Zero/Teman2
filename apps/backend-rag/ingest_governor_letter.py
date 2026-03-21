@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import os
@@ -12,6 +11,7 @@ load_dotenv()
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 async def main():
     # Set the file path
@@ -39,7 +39,7 @@ async def main():
         file_path=file_path,
         title="Surat Gubernur Bali tentang Penutupan PMA Risiko Rendah & Menengah Rendah",
         category="peraturan_bali",
-        tier_override=TierLevel.S  # Strategic/Public tier
+        tier_override=TierLevel.S,  # Strategic/Public tier
     )
 
     if result.get("success"):
@@ -52,6 +52,7 @@ async def main():
     else:
         logger.error(f"❌ Ingestion failed: {result.get('message')}")
         logger.error(f"Error: {result.get('error')}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

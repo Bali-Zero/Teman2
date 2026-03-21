@@ -12,7 +12,9 @@ import httpx
 
 BASE_URL = "https://balizero.com"
 GOOGLE_INDEXING_ENDPOINT = "https://indexing.googleapis.com/v3/urlNotifications:publish"
-ARTICLES_DIR = Path(__file__).parent.parent.parent.parent / "apps/mouth/src/content/articles/business"
+ARTICLES_DIR = (
+    Path(__file__).parent.parent.parent.parent / "apps/mouth/src/content/articles/business"
+)
 
 
 def get_kbli_articles() -> list[str]:

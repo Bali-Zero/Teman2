@@ -34,8 +34,12 @@ export default function LKPMPage() {
       setIsLoading(true);
       // Portal context — clientId comes from the authenticated session
       const [historyData, deadlineData] = await Promise.all([
-        api.get<{ success: boolean; items: LKPMDraftSummary[] }>("/api/v1/lkpm/history/me"),
-        api.get<{ success: boolean; deadlines: LKPMDeadline[] }>("/api/v1/lkpm/deadlines"),
+        api.get<{ success: boolean; items: LKPMDraftSummary[] }>(
+          "/api/v1/lkpm/history/me",
+        ),
+        api.get<{ success: boolean; deadlines: LKPMDeadline[] }>(
+          "/api/v1/lkpm/deadlines",
+        ),
       ]);
       setHistory(historyData.items ?? []);
       setDeadlines(deadlineData.deadlines ?? []);
@@ -50,7 +54,10 @@ export default function LKPMPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -88,10 +95,16 @@ export default function LKPMPage() {
       {nextDeadline && (
         <section
           className="rounded-xl border p-6"
-          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <div className="flex items-center gap-2 mb-4">
-            <Calendar className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+            <Calendar
+              className="w-5 h-5"
+              style={{ color: "var(--bz-accent-warm)" }}
+            />
             <h2 className="text-lg font-semibold">Next Deadline</h2>
           </div>
 
@@ -99,10 +112,19 @@ export default function LKPMPage() {
             className="p-4 rounded-lg flex items-center gap-3 border"
             style={
               nextDeadline.days_remaining <= 7
-                ? { background: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.3)" }
+                ? {
+                    background: "rgba(239,68,68,0.08)",
+                    borderColor: "rgba(239,68,68,0.3)",
+                  }
                 : nextDeadline.days_remaining <= 30
-                  ? { background: "rgba(245,158,11,0.08)", borderColor: "rgba(245,158,11,0.3)" }
-                  : { background: "rgba(16,185,129,0.06)", borderColor: "rgba(16,185,129,0.25)" }
+                  ? {
+                      background: "rgba(245,158,11,0.08)",
+                      borderColor: "rgba(245,158,11,0.3)",
+                    }
+                  : {
+                      background: "rgba(16,185,129,0.06)",
+                      borderColor: "rgba(16,185,129,0.25)",
+                    }
             }
           >
             <Calendar
@@ -118,7 +140,8 @@ export default function LKPMPage() {
             />
             <div className="flex-1">
               <p className="text-sm font-semibold">
-                {nextDeadline.quarter} {nextDeadline.year} — {nextDeadline.days_remaining} days remaining
+                {nextDeadline.quarter} {nextDeadline.year} —{" "}
+                {nextDeadline.days_remaining} days remaining
               </p>
               <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
                 Deadline:{" "}
@@ -136,21 +159,32 @@ export default function LKPMPage() {
       {/* Report History */}
       <section
         className="rounded-xl border p-6 space-y-4"
-        style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+          <Clock
+            className="w-5 h-5"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
           <h2 className="text-lg font-semibold">Report History</h2>
         </div>
 
         {history.length === 0 ? (
           <p className="text-sm py-4" style={{ color: "var(--bz-text-2)" }}>
-            No LKPM reports yet. Submit your first quarterly data to get started.
+            No LKPM reports yet. Submit your first quarterly data to get
+            started.
           </p>
         ) : (
           <div className="space-y-3">
             {history.map((report) => (
-              <ReportCard key={report.id} report={report} formatIDR={formatIDR} />
+              <ReportCard
+                key={report.id}
+                report={report}
+                formatIDR={formatIDR}
+              />
             ))}
           </div>
         )}
@@ -159,10 +193,14 @@ export default function LKPMPage() {
       {/* Help Notice */}
       <section
         className="rounded-lg border p-4"
-        style={{ background: "rgba(201,169,110,0.06)", borderColor: "rgba(201,169,110,0.3)" }}
+        style={{
+          background: "rgba(201,169,110,0.06)",
+          borderColor: "rgba(201,169,110,0.3)",
+        }}
       >
         <p className="text-sm" style={{ color: "var(--bz-accent-warm)" }}>
-          LKPM reports must be submitted quarterly to OSS. Contact your account manager for assistance.
+          LKPM reports must be submitted quarterly to OSS. Contact your account
+          manager for assistance.
         </p>
       </section>
     </div>
@@ -202,14 +240,20 @@ function ReportCard({
     },
   };
 
-  const { icon: Icon, label, style } =
-    statusConfig[report.status] ?? statusConfig.draft;
+  const {
+    icon: Icon,
+    label,
+    style,
+  } = statusConfig[report.status] ?? statusConfig.draft;
 
   return (
     <Link href={`/portal/lkpm/${report.quarter}?year=${report.year}`}>
       <div
         className="rounded-lg border p-4 transition-colors hover:border-[var(--bz-accent-warm)]"
-        style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
+        style={{
+          background: "var(--bz-surface)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
@@ -228,7 +272,10 @@ function ReportCard({
               <Icon className="w-3 h-3" />
               {label}
             </span>
-            <ArrowRight className="w-4 h-4" style={{ color: "var(--bz-text-2)" }} />
+            <ArrowRight
+              className="w-4 h-4"
+              style={{ color: "var(--bz-text-2)" }}
+            />
           </div>
         </div>
       </div>

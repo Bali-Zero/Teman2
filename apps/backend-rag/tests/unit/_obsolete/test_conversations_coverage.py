@@ -190,9 +190,9 @@ def _load_module(
 def _make_client(module, pool=None, current_user=None):
     app = FastAPI()
     app.include_router(module.router)
-    app.dependency_overrides[module.get_current_user] = lambda: current_user or {
-        "email": "user@example.com"
-    }
+    app.dependency_overrides[module.get_current_user] = lambda: (
+        current_user or {"email": "user@example.com"}
+    )
     app.dependency_overrides[module.get_database_pool] = lambda: pool
     return TestClient(app)
 

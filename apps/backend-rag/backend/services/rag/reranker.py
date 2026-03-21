@@ -196,7 +196,7 @@ class CrossEncoderReranker:
         Example:
             >>> reranker = CrossEncoderReranker()
             >>> scores = reranker.compute_scores("What is AI?", ["AI is...", "The weather is..."])
-            >>> print(scores)  # [0.95, 0.12]
+            >>> logger.info(scores)  # [0.95, 0.12]
         """
         if not self.enabled or not documents:
             return [0.0] * len(documents)
@@ -417,7 +417,10 @@ class CrossEncoderReranker:
             )
 
         # Run all reranks concurrently
-        tasks = [self.rerank(query, docs, top_k) for query, docs in zip(queries, documents_list, strict=False)]
+        tasks = [
+            self.rerank(query, docs, top_k)
+            for query, docs in zip(queries, documents_list, strict=False)
+        ]
 
         return await asyncio.gather(*tasks)
 

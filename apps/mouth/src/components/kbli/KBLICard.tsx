@@ -17,10 +17,19 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
       className={`group block rounded-2xl border p-5 transition-all duration-300 backdrop-blur-xl
                  hover:-translate-y-1 hover:border-[var(--kbli-accent)]/40 hover:bg-white/5
                  hover:shadow-[0_8px_32px_rgba(220,38,38,0.15)]
-                 ${isGold
-                   ? "border-[rgba(212,132,90,0.2)] bg-[rgba(255,255,255,0.03)]"
-                   : "border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]"}`}
-      style={isGold ? { boxShadow: "inset 0 1px 0 0 rgba(212,132,90,0.12), 0 4px 24px rgba(0,0,0,0.2)" } : { boxShadow: "0 4px 24px rgba(0,0,0,0.2)" }}
+                 ${
+                   isGold
+                     ? "border-[rgba(212,132,90,0.2)] bg-[rgba(255,255,255,0.03)]"
+                     : "border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]"
+                 }`}
+      style={
+        isGold
+          ? {
+              boxShadow:
+                "inset 0 1px 0 0 rgba(212,132,90,0.12), 0 4px 24px rgba(0,0,0,0.2)",
+            }
+          : { boxShadow: "0 4px 24px rgba(0,0,0,0.2)" }
+      }
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">

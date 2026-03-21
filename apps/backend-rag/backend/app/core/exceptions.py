@@ -36,7 +36,9 @@ class AuthenticationError(ZantaraError):
 class AuthorizationError(ZantaraError):
     """Raised when user lacks required permissions."""
 
-    def __init__(self, message: str = "Access denied", details: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, message: str = "Access denied", details: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(message, "AUTHORIZATION_ERROR", details)
 
 
@@ -77,7 +79,9 @@ class ValidationError(ZantaraError):
 class RateLimitError(ZantaraError):
     """Raised when rate limit is exceeded."""
 
-    def __init__(self, message: str = "Rate limit exceeded", retry_after: int | None = None) -> None:
+    def __init__(
+        self, message: str = "Rate limit exceeded", retry_after: int | None = None
+    ) -> None:
         details = {"retry_after": retry_after} if retry_after else {}
         super().__init__(message, "RATE_LIMIT_EXCEEDED", details)
 

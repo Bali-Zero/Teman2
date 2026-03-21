@@ -2,13 +2,10 @@
 
 from datetime import datetime, timezone
 
-import pytest
-
 from backend.app.routers.crm_practices import (
     _build_status_transitions,
     _parse_month_param,
 )
-
 
 # ============================================================
 # _parse_month_param tests
@@ -86,9 +83,7 @@ class TestBuildStatusTransitions:
             }
         ]
         result = _build_status_transitions(rows)
-        assert result == {
-            10: [{"status": "on_process", "at": "2026-03-05 12:00:00+00:00"}]
-        }
+        assert result == {10: [{"status": "on_process", "at": "2026-03-05 12:00:00+00:00"}]}
 
     def test_single_transition_string_changes(self) -> None:
         """When changes comes back as a JSON string (edge case)."""
@@ -100,9 +95,7 @@ class TestBuildStatusTransitions:
             }
         ]
         result = _build_status_transitions(rows)
-        assert result == {
-            20: [{"status": "completed", "at": "2026-03-10 09:30:00+00:00"}]
-        }
+        assert result == {20: [{"status": "completed", "at": "2026-03-10 09:30:00+00:00"}]}
 
     def test_multiple_transitions_same_practice(self) -> None:
         rows = [

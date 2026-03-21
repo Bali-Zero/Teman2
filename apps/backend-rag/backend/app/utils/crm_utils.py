@@ -21,6 +21,14 @@ SUPER_ADMIN_EMAILS: set[str] = {
     "antonellosiano@gmail.com",
 }
 
+# Users who can see ALL practices (admins + accounting)
+# Everyone else sees only practices assigned to them
+PRACTICES_FULL_VIEW_EMAILS: set[str] = {
+    "zero@balizero.com",
+    "antonellosiano@gmail.com",
+    "asya@balizero.com",
+}
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +57,30 @@ def is_crm_admin(user: dict) -> bool:
         logger.debug(f"RBAC: User {email} granted CRM access (role={role})")
 
     return result
+
+
+def can_view_all_practices(user: dict) -> bool:
+    """
+    Check if a user can see ALL practices (admin, super admin, accounting).
+
+    Users not in PRACTICES_FULL_VIEW_EMAILS and not role=admin see only
+    practices where the client is assigned to them.
+    """
+    if not user:
+        return False
+
+    email = user.get("email", "").lower()
+    role = user.get("role", "").lower()
+
+    # Explicit full-view list (admin + accounting)
+    if email in PRACTICES_FULL_VIEW_EMAILS:
+        return True
+
+    # Role-based: admin role always sees everything
+    if role == "admin":
+        return True
+
+    return False
 
 
 def is_super_admin(user: dict) -> bool:

@@ -193,7 +193,9 @@ class TestDataCollector:
     def test_categorize_skips_zero_amount(self) -> None:
         from backend.services.compliance.lkpm_data_collector import LKPMDataCollector
 
-        entries = [{"id": "1", "description": "test", "account_name": "Kas", "debit": 0, "credit": 0}]
+        entries = [
+            {"id": "1", "description": "test", "account_name": "Kas", "debit": 0, "credit": 0}
+        ]
         collector = LKPMDataCollector(db_pool=MagicMock())
         categorized = collector.categorize_transactions(entries)
         assert len(categorized) == 0
@@ -203,16 +205,28 @@ class TestDataCollector:
 
         items = [
             TransactionCategorization(
-                journal_entry_id="1", description="Equipment", amount=100,
-                category="equipment", sub_category="domestic", confidence="deterministic",
+                journal_entry_id="1",
+                description="Equipment",
+                amount=100,
+                category="equipment",
+                sub_category="domestic",
+                confidence="deterministic",
             ),
             TransactionCategorization(
-                journal_entry_id="2", description="Equipment Import", amount=200,
-                category="equipment", sub_category="import", confidence="deterministic",
+                journal_entry_id="2",
+                description="Equipment Import",
+                amount=200,
+                category="equipment",
+                sub_category="import",
+                confidence="deterministic",
             ),
             TransactionCategorization(
-                journal_entry_id="3", description="Land", amount=300,
-                category="land", sub_category="domestic", confidence="deterministic",
+                journal_entry_id="3",
+                description="Land",
+                amount=300,
+                category="land",
+                sub_category="domestic",
+                confidence="deterministic",
             ),
         ]
 
@@ -252,14 +266,17 @@ class TestLKPMValidator:
         validator = LKPMValidator(db_pool=MagicMock())
 
         draft = LKPMDraft(
-            client_id=1, quarter="Q1", year=2026,
+            client_id=1,
+            quarter="Q1",
+            year=2026,
             cumulative=InvestmentRealization(
                 equipment_domestic=50_000_000,
                 building_domestic=100_000_000,
             ),
         )
         config = LKPMClientConfig(
-            client_id=1, company_name="Test PT",
+            client_id=1,
+            company_name="Test PT",
             planned=InvestmentRealization(
                 equipment_domestic=200_000_000,
                 building_domestic=500_000_000,
@@ -276,11 +293,14 @@ class TestLKPMValidator:
         validator = LKPMValidator(db_pool=MagicMock())
 
         draft = LKPMDraft(
-            client_id=1, quarter="Q1", year=2026,
+            client_id=1,
+            quarter="Q1",
+            year=2026,
             cumulative=InvestmentRealization(equipment_domestic=300_000_000),
         )
         config = LKPMClientConfig(
-            client_id=1, company_name="Test PT",
+            client_id=1,
+            company_name="Test PT",
             planned=InvestmentRealization(equipment_domestic=200_000_000),
         )
 
@@ -295,7 +315,9 @@ class TestLKPMValidator:
         validator = LKPMValidator(db_pool=MagicMock())
 
         draft = LKPMDraft(
-            client_id=1, quarter="Q1", year=2026,
+            client_id=1,
+            quarter="Q1",
+            year=2026,
             quarterly_revenue=100_000_000,
         )
 
@@ -308,7 +330,9 @@ class TestLKPMValidator:
         validator = LKPMValidator(db_pool=MagicMock())
 
         draft = LKPMDraft(
-            client_id=1, quarter="Q1", year=2026,
+            client_id=1,
+            quarter="Q1",
+            year=2026,
             has_ai_categorized_items=True,
             ai_categorized_count=5,
         )
@@ -322,7 +346,9 @@ class TestLKPMValidator:
         validator = LKPMValidator(db_pool=MagicMock())
 
         draft = LKPMDraft(
-            client_id=1, quarter="Q1", year=2026,
+            client_id=1,
+            quarter="Q1",
+            year=2026,
             employment=EmploymentData(tki=0, tka=3),
         )
 
@@ -482,8 +508,15 @@ class TestLKPMServiceWithMockedDB:
         # Mock cumulative query (no previous reports)
         conn.fetch.return_value = [
             {
-                "eq_d": 0, "eq_i": 0, "bd_d": 0, "bd_i": 0,
-                "vh_d": 0, "vh_i": 0, "land": 0, "wc": 0, "other": 0,
+                "eq_d": 0,
+                "eq_i": 0,
+                "bd_d": 0,
+                "bd_i": 0,
+                "vh_d": 0,
+                "vh_i": 0,
+                "land": 0,
+                "wc": 0,
+                "other": 0,
             }
         ]
         # Mock save (upsert returns id)

@@ -34,10 +34,12 @@ _db_env = os.getenv("DATABASE_URL", "")
 DB = (
     _db_env.replace("postgres://", "postgresql://")
     if _db_env
-    else "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+    else os.getenv("DATABASE_URL", "postgresql://localhost:5432/nuzantara_rag")
 )
 
-GEMMA_API_KEY = os.getenv("GEMMA_API_KEY", "AIzaSyAYyDrP3M349EfrOVyN8Vh_Pe7aTbANfx8")
+GEMMA_API_KEY = os.getenv("GEMMA_API_KEY")
+if not GEMMA_API_KEY:
+    raise ValueError("GEMMA_API_KEY environment variable not set")
 GEMMA_MODEL = "gemma-3-27b-it"
 GEMMA_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMMA_MODEL}:generateContent"
 
@@ -58,35 +60,38 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".tiff", ".bmp"}
 # --- Prompts per tipo ---
 PROMPTS: dict[str, str] = {
     "akta_pendirian": "Extract from this Indonesian notarial deed (Akta Pendirian/Perubahan). Return ONLY valid JSON, no other text:\n"
-        '{"company_name": "", "notary_name": "", "deed_number": "", "deed_date": "YYYY-MM-DD", '
-        '"directors": [{"name": "", "ownership_pct": 0}], "commissioners": [{"name": "", "ownership_pct": 0}], '
-        '"authorized_capital": 0, "paid_capital": 0, "registered_address": "", "kbli_codes": [], "company_status": "TERTUTUP"}',
-
+    '{"company_name": "", "notary_name": "", "deed_number": "", "deed_date": "YYYY-MM-DD", '
+    '"directors": [{"name": "", "ownership_pct": 0}], "commissioners": [{"name": "", "ownership_pct": 0}], '
+    '"authorized_capital": 0, "paid_capital": 0, "registered_address": "", "kbli_codes": [], "company_status": "TERTUTUP"}',
     "nib": "Extract from this NIB (Nomor Induk Berusaha). Return ONLY valid JSON:\n"
-        '{"nib_number": "", "company_name": "", "kbli_codes": [{"code": "", "description": ""}], "issue_date": "YYYY-MM-DD", "pma_status": "PMA"}',
-
+    '{"nib_number": "", "company_name": "", "kbli_codes": [{"code": "", "description": ""}], "issue_date": "YYYY-MM-DD", "pma_status": "PMA"}',
     "npwp": "Extract from this NPWP document. Return ONLY valid JSON:\n"
-        '{"npwp_number": "", "name": "", "kpp_office": "", "registration_date": "YYYY-MM-DD"}',
-
+    '{"npwp_number": "", "name": "", "kpp_office": "", "registration_date": "YYYY-MM-DD"}',
     "passport": "Extract from this passport. Return ONLY valid JSON:\n"
-        '{"full_name": "", "passport_number": "", "nationality": "", "date_of_birth": "YYYY-MM-DD", '
-        '"date_of_expiry": "YYYY-MM-DD", "sex": "", "place_of_birth": ""}',
-
+    '{"full_name": "", "passport_number": "", "nationality": "", "date_of_birth": "YYYY-MM-DD", '
+    '"date_of_expiry": "YYYY-MM-DD", "sex": "", "place_of_birth": ""}',
     "sk_decree": "Extract from this SK Kemenkumham decree. Return ONLY valid JSON:\n"
-        '{"sk_number": "", "company_name": "", "issue_date": "YYYY-MM-DD", "capital_info": ""}',
-
+    '{"sk_number": "", "company_name": "", "issue_date": "YYYY-MM-DD", "capital_info": ""}',
     "kitas": "Extract from this KITAS/ITAS permit. Return ONLY valid JSON:\n"
-        '{"permit_number": "", "full_name": "", "nationality": "", "sponsor": "", '
-        '"valid_from": "YYYY-MM-DD", "valid_until": "YYYY-MM-DD", "occupation": ""}',
+    '{"permit_number": "", "full_name": "", "nationality": "", "sponsor": "", '
+    '"valid_from": "YYYY-MM-DD", "valid_until": "YYYY-MM-DD", "occupation": ""}',
 }
 
 DEFAULT_PROMPT = "Extract all structured data from this document. Return ONLY valid JSON with key information (names, numbers, dates, addresses)."
 
 DOC_TYPE_ALIASES: dict[str, str] = {
-    "akta": "akta_pendirian", "akta_pendirian": "akta_pendirian", "akta_perubahan": "akta_pendirian",
-    "nib": "nib", "npwp": "npwp", "npwp_personal": "npwp",
-    "passport": "passport", "sk_decree": "sk_decree", "sk_kemenkumham": "sk_decree",
-    "kitas": "kitas", "kitap": "kitas", "company_profile": "akta_pendirian",
+    "akta": "akta_pendirian",
+    "akta_pendirian": "akta_pendirian",
+    "akta_perubahan": "akta_pendirian",
+    "nib": "nib",
+    "npwp": "npwp",
+    "npwp_personal": "npwp",
+    "passport": "passport",
+    "sk_decree": "sk_decree",
+    "sk_kemenkumham": "sk_decree",
+    "kitas": "kitas",
+    "kitap": "kitas",
+    "company_profile": "akta_pendirian",
 }
 
 
@@ -98,10 +103,15 @@ async def get_oauth_token() -> str:
         return _oauth_access_token
 
     async with httpx.AsyncClient() as client:
-        resp = await client.post("https://oauth2.googleapis.com/token", data={
-            "client_id": OAUTH_CLIENT_ID, "client_secret": OAUTH_CLIENT_SECRET,
-            "refresh_token": OAUTH_REFRESH_TOKEN, "grant_type": "refresh_token",
-        })
+        resp = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": OAUTH_CLIENT_ID,
+                "client_secret": OAUTH_CLIENT_SECRET,
+                "refresh_token": OAUTH_REFRESH_TOKEN,
+                "grant_type": "refresh_token",
+            },
+        )
         resp.raise_for_status()
         data = resp.json()
 
@@ -212,7 +222,12 @@ async def call_gemma(prompt: str, images: list[tuple[str, str]]) -> str | None:
                 return None
 
             data = resp.json()
-            text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+            text = (
+                data.get("candidates", [{}])[0]
+                .get("content", {})
+                .get("parts", [{}])[0]
+                .get("text", "")
+            )
             return text.strip() if text else None
 
     except httpx.TimeoutException:
@@ -265,13 +280,18 @@ async def process_document(
 
     if not dry_run:
         await conn.execute(
-            f"UPDATE {table} SET ocr_status = 'processing', updated_at = NOW() WHERE id = $1", doc_id)
+            f"UPDATE {table} SET ocr_status = 'processing', updated_at = NOW() WHERE id = $1",
+            doc_id,
+        )
 
     # 1. Download
     file_bytes = await download_from_drive(drive_file_id)
     if not file_bytes:
         if not dry_run:
-            await conn.execute(f"UPDATE {table} SET ocr_status = 'failed', updated_at = NOW() WHERE id = $1", doc_id)
+            await conn.execute(
+                f"UPDATE {table} SET ocr_status = 'failed', updated_at = NOW() WHERE id = $1",
+                doc_id,
+            )
         return False
 
     # 2. Convert to images (all pages for PDF)
@@ -279,7 +299,10 @@ async def process_document(
     if not images:
         logger.warning("    ✗ Unsupported file type")
         if not dry_run:
-            await conn.execute(f"UPDATE {table} SET ocr_status = 'skipped', updated_at = NOW() WHERE id = $1", doc_id)
+            await conn.execute(
+                f"UPDATE {table} SET ocr_status = 'skipped', updated_at = NOW() WHERE id = $1",
+                doc_id,
+            )
         return False
 
     # 3. Call Gemma
@@ -297,7 +320,9 @@ async def process_document(
         if not dry_run:
             await conn.execute(
                 f"UPDATE {table} SET ocr_status = 'completed', ocr_extracted_data = $1::jsonb, updated_at = NOW() WHERE id = $2",
-                json.dumps(ocr_result), doc_id)
+                json.dumps(ocr_result),
+                doc_id,
+            )
 
             if table == "company_documents":
                 try:
@@ -308,11 +333,16 @@ async def process_document(
     else:
         logger.warning(f"    ✗ {elapsed:.1f}s — no structured data")
         if not dry_run:
-            await conn.execute(f"UPDATE {table} SET ocr_status = 'failed', updated_at = NOW() WHERE id = $1", doc_id)
+            await conn.execute(
+                f"UPDATE {table} SET ocr_status = 'failed', updated_at = NOW() WHERE id = $1",
+                doc_id,
+            )
         return False
 
 
-async def update_company_from_ocr(conn: asyncpg.Connection, doc: dict, ocr: dict, doc_type: str) -> None:
+async def update_company_from_ocr(
+    conn: asyncpg.Connection, doc: dict, ocr: dict, doc_type: str
+) -> None:
     """Update companies table from OCR results."""
     company_id = doc.get("company_id")
     if not company_id:
@@ -329,12 +359,20 @@ async def update_company_from_ocr(conn: asyncpg.Connection, doc: dict, ocr: dict
         if is_date:
             try:
                 d = dt_date.fromisoformat(val)
-                await conn.execute(f"UPDATE companies SET {col} = $1, updated_at = NOW() WHERE id = $2", d, company_id)
+                await conn.execute(
+                    f"UPDATE companies SET {col} = $1, updated_at = NOW() WHERE id = $2",
+                    d,
+                    company_id,
+                )
                 logger.info(f"    → {col} = {val}")
             except ValueError:
                 pass
         else:
-            await conn.execute(f"UPDATE companies SET {col} = $1, updated_at = NOW() WHERE id = $2", val, company_id)
+            await conn.execute(
+                f"UPDATE companies SET {col} = $1, updated_at = NOW() WHERE id = $2",
+                val,
+                company_id,
+            )
             logger.info(f"    → {col} = {val}")
 
     def s(v: Any) -> str:
@@ -355,7 +393,8 @@ async def update_company_from_ocr(conn: asyncpg.Connection, doc: dict, ocr: dict
 async def ensure_ocr_columns(conn: asyncpg.Connection, table: str) -> None:
     """Add OCR columns if missing."""
     existing = await conn.fetch(
-        "SELECT column_name FROM information_schema.columns WHERE table_name = $1", table)
+        "SELECT column_name FROM information_schema.columns WHERE table_name = $1", table
+    )
     cols = {r["column_name"] for r in existing}
     if "ocr_status" not in cols:
         await conn.execute(f"ALTER TABLE {table} ADD COLUMN ocr_status VARCHAR(20) DEFAULT NULL")
@@ -363,9 +402,13 @@ async def ensure_ocr_columns(conn: asyncpg.Connection, table: str) -> None:
         await conn.execute(f"ALTER TABLE {table} ADD COLUMN ocr_extracted_data JSONB DEFAULT NULL")
 
 
-async def main(dry_run: bool, batch_size: int, doc_type: str | None, table: str, pdf_only: bool = False) -> None:
+async def main(
+    dry_run: bool, batch_size: int, doc_type: str | None, table: str, pdf_only: bool = False
+) -> None:
     logger.info(f"{'DRY RUN — ' if dry_run else ''}OCR Pipeline v3 (Gemma 3 27B)")
-    logger.info(f"Table: {table}, Batch: {batch_size}, Type: {doc_type or 'all'}, PDF only: {pdf_only}")
+    logger.info(
+        f"Table: {table}, Batch: {batch_size}, Type: {doc_type or 'all'}, PDF only: {pdf_only}"
+    )
     logger.info(f"Model: {GEMMA_MODEL} (14,400 RPD free tier)")
 
     conn = await asyncpg.connect(DB)
@@ -374,7 +417,10 @@ async def main(dry_run: bool, batch_size: int, doc_type: str | None, table: str,
         await ensure_ocr_columns(conn, table)
 
         # Build query
-        conditions = ["(ocr_status IS NULL OR ocr_status = 'pending')", "google_drive_file_id IS NOT NULL"]
+        conditions = [
+            "(ocr_status IS NULL OR ocr_status = 'pending')",
+            "google_drive_file_id IS NOT NULL",
+        ]
         if table == "company_documents":
             select = "id, company_id, document_type, google_drive_file_id, file_name"
         else:
@@ -391,11 +437,13 @@ async def main(dry_run: bool, batch_size: int, doc_type: str | None, table: str,
                     WHERE (ocr_status IS NULL OR ocr_status = 'pending')
                     AND google_drive_file_id IS NOT NULL
                     AND LOWER(file_name) NOT LIKE '%.pdf'
-                    {f"AND document_type = '{doc_type}'" if doc_type else ''}"""
+                    {f"AND document_type = '{doc_type}'" if doc_type else ""}"""
             )
             logger.info(f"Bulk-skipped non-PDF files: {skipped}")
 
-        query = f"SELECT {select} FROM {table} WHERE {' AND '.join(conditions)} ORDER BY id LIMIT $1"
+        query = (
+            f"SELECT {select} FROM {table} WHERE {' AND '.join(conditions)} ORDER BY id LIMIT $1"
+        )
         docs = await conn.fetch(query, batch_size)
         logger.info(f"Found {len(docs)} documents to process")
 
@@ -419,14 +467,18 @@ async def main(dry_run: bool, batch_size: int, doc_type: str | None, table: str,
             if (i + 1) % 50 == 0:
                 elapsed = time.time() - t_start
                 rate = (i + 1) / elapsed * 60
-                logger.info(f"\n--- {i+1}/{len(docs)} | {stats['ok']} ok, {stats['fail']} fail | {rate:.0f} docs/min ---\n")
+                logger.info(
+                    f"\n--- {i + 1}/{len(docs)} | {stats['ok']} ok, {stats['fail']} fail | {rate:.0f} docs/min ---\n"
+                )
 
         elapsed = time.time() - t_start
         logger.info("\n=== GEMMA OCR SUMMARY ===")
         logger.info(f"  Processed  : {stats['ok'] + stats['fail']}")
         logger.info(f"  Successful : {stats['ok']}")
         logger.info(f"  Failed     : {stats['fail']}")
-        logger.info(f"  Time       : {elapsed/60:.1f} min ({elapsed/(stats['ok']+stats['fail']+0.001):.1f}s/doc)")
+        logger.info(
+            f"  Time       : {elapsed / 60:.1f} min ({elapsed / (stats['ok'] + stats['fail'] + 0.001):.1f}s/doc)"
+        )
         if dry_run:
             logger.info("  (DRY RUN)")
 
@@ -435,13 +487,26 @@ async def main(dry_run: bool, batch_size: int, doc_type: str | None, table: str,
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="OCR Pipeline v3 — Gemma 3 27B (free tier, 14,400 RPD)")
+    parser = argparse.ArgumentParser(
+        description="OCR Pipeline v3 — Gemma 3 27B (free tier, 14,400 RPD)"
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--batch", type=int, default=1000, help="Docs per run (default 1000)")
     parser.add_argument("--type", type=str, default=None, help="Filter by document_type")
-    parser.add_argument("--table", type=str, default="company_documents",
-                        choices=["company_documents", "documents"])
-    parser.add_argument("--pdf-only", action="store_true", help="Only process PDF files (skip JPG/PNG page images)")
+    parser.add_argument(
+        "--table", type=str, default="company_documents", choices=["company_documents", "documents"]
+    )
+    parser.add_argument(
+        "--pdf-only", action="store_true", help="Only process PDF files (skip JPG/PNG page images)"
+    )
     args = parser.parse_args()
 
-    asyncio.run(main(dry_run=args.dry_run, batch_size=args.batch, doc_type=args.type, table=args.table, pdf_only=args.pdf_only))
+    asyncio.run(
+        main(
+            dry_run=args.dry_run,
+            batch_size=args.batch,
+            doc_type=args.type,
+            table=args.table,
+            pdf_only=args.pdf_only,
+        )
+    )

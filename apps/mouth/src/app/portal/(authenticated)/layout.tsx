@@ -10,6 +10,7 @@ import {
 } from "@/components/portal";
 import { ToastProvider } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import { portalNavigation } from "@/types/navigation";
 
 export default function PortalLayout({
@@ -51,7 +52,11 @@ export default function PortalLayout({
         avatar: profile.avatar,
       });
     } catch (error) {
-      console.error("Failed to load profile", error);
+      logger.error(
+        "Failed to load profile",
+        { component: "PortalLayout", action: "loadUserProfile" },
+        error as Error,
+      );
     }
   }, []);
 
@@ -91,7 +96,11 @@ export default function PortalLayout({
     try {
       await api.logout();
     } catch (error) {
-      console.error("Logout error", error);
+      logger.error(
+        "Logout error",
+        { component: "PortalLayout", action: "logout" },
+        error as Error,
+      );
     } finally {
       router.push("/portal/login");
     }
@@ -110,10 +119,21 @@ export default function PortalLayout({
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bz-base)" }}>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--bz-base)" }}
+      >
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--bz-accent-warm)", borderTopColor: "transparent" }} />
-          <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>Loading...</p>
+          <div
+            className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin"
+            style={{
+              borderColor: "var(--bz-accent-warm)",
+              borderTopColor: "transparent",
+            }}
+          />
+          <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+            Loading...
+          </p>
         </div>
       </div>
     );

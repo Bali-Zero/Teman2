@@ -4,8 +4,18 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo } from "react";
 
 const MONTH_LABELS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 interface MonthPillTabsProps {
@@ -30,12 +40,17 @@ function addMonths(month: string, delta: number): string {
   return formatMonth(newYear, newMonth);
 }
 
-export function MonthPillTabs({ selectedMonth, onMonthChange }: MonthPillTabsProps) {
+export function MonthPillTabs({
+  selectedMonth,
+  onMonthChange,
+}: MonthPillTabsProps) {
   const now = new Date();
   const currentMonth = formatMonth(now.getFullYear(), now.getMonth() + 1);
 
   const visibleMonths = useMemo(() => {
-    const totalSelected = parseMonth(selectedMonth).year * 12 + (parseMonth(selectedMonth).month - 1);
+    const totalSelected =
+      parseMonth(selectedMonth).year * 12 +
+      (parseMonth(selectedMonth).month - 1);
     const totalCurrent = now.getFullYear() * 12 + now.getMonth();
 
     let startTotal = totalSelected - 2;

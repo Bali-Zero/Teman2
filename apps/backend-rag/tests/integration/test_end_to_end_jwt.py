@@ -97,7 +97,15 @@ TEST_QUERIES: list[dict[str, Any]] = [
         "query": "What are the requirements for property rental in Bali?",
         "expected_tool": "PropertyTool",
         "domain": "property",
-        "keywords": ["property", "rental", "Bali", "lease", "requirements", "HGB", " Hak Guna Bangunan"],
+        "keywords": [
+            "property",
+            "rental",
+            "Bali",
+            "lease",
+            "requirements",
+            "HGB",
+            " Hak Guna Bangunan",
+        ],
     },
 ]
 
@@ -370,7 +378,9 @@ class TestEndToEndRAGPipeline:
     """
 
     @pytest.mark.asyncio
-    async def test_pricing_query_with_jwt(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    async def test_pricing_query_with_jwt(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """
         Test pricing query (KITAS investor) with JWT authentication.
 
@@ -409,7 +419,9 @@ class TestEndToEndRAGPipeline:
             elapsed_time = time.time() - start_time
 
             # Validate response
-            assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+            assert response.status_code == 200, (
+                f"Expected 200, got {response.status_code}: {response.text}"
+            )
 
             data = response.json()
 
@@ -421,10 +433,15 @@ class TestEndToEndRAGPipeline:
 
             # Validate response content
             answer = data["answer"].lower()
-            assert any(keyword in answer for keyword in ["kitas", "investor", "price", "cost", "idr", "million"])
+            assert any(
+                keyword in answer
+                for keyword in ["kitas", "investor", "price", "cost", "idr", "million"]
+            )
 
             # Validate response time
-            assert elapsed_time < MAX_RESPONSE_TIME_SECONDS, f"Response too slow: {elapsed_time:.2f}s"
+            assert elapsed_time < MAX_RESPONSE_TIME_SECONDS, (
+                f"Response too slow: {elapsed_time:.2f}s"
+            )
 
             # Validate tools were called
             assert data["tools_called"] > 0, "No tools were called"
@@ -433,7 +450,9 @@ class TestEndToEndRAGPipeline:
             logger.info(f"   Answer preview: {data['answer'][:100]}...")
 
     @pytest.mark.asyncio
-    async def test_kbli_query_with_jwt(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    async def test_kbli_query_with_jwt(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """
         Test KBLI code query with JWT authentication.
 
@@ -473,14 +492,18 @@ class TestEndToEndRAGPipeline:
 
             # Validate KBLI-specific content
             answer = data["answer"].lower()
-            assert any(keyword in answer for keyword in ["kbli", "code", "56101", "56102", "restaurant"])
+            assert any(
+                keyword in answer for keyword in ["kbli", "code", "56101", "56102", "restaurant"]
+            )
 
             assert elapsed_time < MAX_RESPONSE_TIME_SECONDS
 
             logger.info(f"✅ KBLI query test passed (time: {elapsed_time:.2f}s)")
 
     @pytest.mark.asyncio
-    async def test_company_setup_query_with_jwt(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    async def test_company_setup_query_with_jwt(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """
         Test company setup (PT PMA) query with JWT authentication.
 
@@ -520,14 +543,18 @@ class TestEndToEndRAGPipeline:
 
             # Validate PT PMA-specific content
             answer = data["answer"].lower()
-            assert any(keyword in answer for keyword in ["pt", "pma", "capital", "shareholders", "bkpm"])
+            assert any(
+                keyword in answer for keyword in ["pt", "pma", "capital", "shareholders", "bkpm"]
+            )
 
             assert elapsed_time < MAX_RESPONSE_TIME_SECONDS
 
             logger.info(f"✅ Company setup query test passed (time: {elapsed_time:.2f}s)")
 
     @pytest.mark.asyncio
-    async def test_property_query_with_jwt(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    async def test_property_query_with_jwt(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """
         Test property rental query with JWT authentication.
 
@@ -567,7 +594,10 @@ class TestEndToEndRAGPipeline:
 
             # Validate property-specific content
             answer = data["answer"].lower()
-            assert any(keyword in answer for keyword in ["property", "bali", "lease", "hak sewa", "agreement"])
+            assert any(
+                keyword in answer
+                for keyword in ["property", "bali", "lease", "hak sewa", "agreement"]
+            )
 
             assert elapsed_time < MAX_RESPONSE_TIME_SECONDS
 
@@ -640,7 +670,9 @@ class TestResponseValidation:
     """Test response quality and validation criteria."""
 
     @pytest.mark.asyncio
-    async def test_response_not_abstain(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    async def test_response_not_abstain(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """
         Test that responses are not ABSTAIN (empty or generic).
 
@@ -677,7 +709,9 @@ class TestResponseValidation:
             logger.info("✅ Response not ABSTAIN test passed")
 
     @pytest.mark.asyncio
-    async def test_response_time_within_limits(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    async def test_response_time_within_limits(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """
         Test that responses are returned within acceptable time limits.
 
@@ -711,10 +745,14 @@ class TestResponseValidation:
                 f"Response time {elapsed_time:.2f}s exceeds limit {MAX_RESPONSE_TIME_SECONDS}s"
             )
 
-            logger.info(f"✅ Response time test passed ({elapsed_time:.2f}s < {MAX_RESPONSE_TIME_SECONDS}s)")
+            logger.info(
+                f"✅ Response time test passed ({elapsed_time:.2f}s < {MAX_RESPONSE_TIME_SECONDS}s)"
+            )
 
     @pytest.mark.asyncio
-    async def test_tools_called_in_response(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    async def test_tools_called_in_response(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """
         Test that the response includes information about tools called.
 
@@ -757,7 +795,9 @@ class TestConversationFlow:
     """Test multi-turn conversation flows with context preservation."""
 
     @pytest.mark.asyncio
-    async def test_conversation_with_history(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    async def test_conversation_with_history(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """
         Test conversation with conversation history.
 
@@ -797,7 +837,9 @@ class TestConversationFlow:
             logger.info("✅ Conversation with history test passed")
 
     @pytest.mark.asyncio
-    async def test_multi_turn_conversation(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    async def test_multi_turn_conversation(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """
         Test a multi-turn conversation covering different domains.
 
@@ -847,7 +889,9 @@ class TestEndToEndSummary:
     """Summary test that runs all scenarios and reports results."""
 
     @pytest.mark.asyncio
-    async def test_complete_e2e_suite(self, client: TestClient, auth_headers: dict[str, str]) -> None:
+    async def test_complete_e2e_suite(
+        self, client: TestClient, auth_headers: dict[str, str]
+    ) -> None:
         """
         Run the complete end-to-end test suite and report results.
 

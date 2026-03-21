@@ -1,6 +1,6 @@
-'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { Badge, Button, Card, CardContent } from '@/components/ui/primitives';
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import { Badge, Button, Card, CardContent } from "@/components/ui/primitives";
 import {
   FileText,
   Search,
@@ -11,8 +11,8 @@ import {
   RefreshCw,
   Filter,
   BookOpen,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface LegalChunk {
   id: string;
@@ -41,8 +41,8 @@ export default function LegalDocumentsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedChunk, setSelectedChunk] = useState<LegalChunk | null>(null);
-  const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState<string>('');
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState<string>("");
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
@@ -50,7 +50,7 @@ export default function LegalDocumentsPage() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('/api/legal/stats');
+      const res = await fetch("/api/legal/stats");
       const data = await res.json();
       if (data.stats) setStats(data.stats);
     } catch (e) {
@@ -67,8 +67,8 @@ export default function LegalDocumentsPage() {
           limit: String(LIMIT),
           offset: String(currentOffset),
         });
-        if (search) params.set('search', search);
-        if (filterType) params.set('regulation_type', filterType);
+        if (search) params.set("search", search);
+        if (filterType) params.set("regulation_type", filterType);
 
         const res = await fetch(`/api/legal/chunks?${params}`);
         const data = await res.json();
@@ -89,7 +89,7 @@ export default function LegalDocumentsPage() {
         setLoading(false);
       }
     },
-    [offset, search, filterType]
+    [offset, search, filterType],
   );
 
   useEffect(() => {
@@ -110,13 +110,19 @@ export default function LegalDocumentsPage() {
 
   const getRegTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      PP: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      PERPRES: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      PERMEN: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      UU: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      PERDA: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      PP: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      PERPRES:
+        "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      PERMEN:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      UU: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      PERDA:
+        "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
     };
-    return colors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+    return (
+      colors[type] ||
+      "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+    );
   };
 
   return (
@@ -126,7 +132,9 @@ export default function LegalDocumentsPage() {
         <div className="p-4 border-b">
           <div className="flex items-center gap-2 mb-4">
             <Scale className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold tracking-tight">Legal Documents</h1>
+            <h1 className="text-xl font-bold tracking-tight">
+              Legal Documents
+            </h1>
           </div>
           <p className="text-xs text-muted-foreground">
             Collection: <code className="font-mono">legal_unified_hybrid</code>
@@ -142,7 +150,7 @@ export default function LegalDocumentsPage() {
               placeholder="Search text..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
           </div>
         </div>
@@ -153,7 +161,9 @@ export default function LegalDocumentsPage() {
             <div className="flex items-center gap-2 text-sm font-medium">
               <Layers className="h-4 w-4" />
               <span>Total Chunks:</span>
-              <Badge variant="secondary">{stats.total_chunks.toLocaleString()}</Badge>
+              <Badge variant="secondary">
+                {stats.total_chunks.toLocaleString()}
+              </Badge>
             </div>
 
             <div>
@@ -162,29 +172,38 @@ export default function LegalDocumentsPage() {
               </div>
               <div className="space-y-1">
                 <button
-                  onClick={() => handleFilterChange('')}
+                  onClick={() => handleFilterChange("")}
                   className={cn(
-                    'w-full text-left px-2 py-1 rounded text-sm hover:bg-muted transition-colors',
-                    filterType === '' && 'bg-primary/10 font-medium'
+                    "w-full text-left px-2 py-1 rounded text-sm hover:bg-muted transition-colors",
+                    filterType === "" && "bg-primary/10 font-medium",
                   )}
                 >
                   All Types
                 </button>
-                {Object.entries(stats.by_regulation_type).map(([type, count]) => (
-                  <button
-                    key={type}
-                    onClick={() => handleFilterChange(type)}
-                    className={cn(
-                      'w-full text-left px-2 py-1 rounded text-sm hover:bg-muted transition-colors flex justify-between items-center',
-                      filterType === type && 'bg-primary/10 font-medium'
-                    )}
-                  >
-                    <span className={cn('px-1.5 py-0.5 rounded text-xs', getRegTypeColor(type))}>
-                      {type}
-                    </span>
-                    <span className="text-muted-foreground text-xs">{count.toLocaleString()}</span>
-                  </button>
-                ))}
+                {Object.entries(stats.by_regulation_type).map(
+                  ([type, count]) => (
+                    <button
+                      key={type}
+                      onClick={() => handleFilterChange(type)}
+                      className={cn(
+                        "w-full text-left px-2 py-1 rounded text-sm hover:bg-muted transition-colors flex justify-between items-center",
+                        filterType === type && "bg-primary/10 font-medium",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "px-1.5 py-0.5 rounded text-xs",
+                          getRegTypeColor(type),
+                        )}
+                      >
+                        {type}
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {count.toLocaleString()}
+                      </span>
+                    </button>
+                  ),
+                )}
               </div>
             </div>
           </div>
@@ -210,9 +229,15 @@ export default function LegalDocumentsPage() {
       <div className="w-1/3 border-r flex flex-col">
         <div className="p-4 border-b bg-background">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{chunks.length} chunks loaded</span>
+            <span className="text-sm font-medium">
+              {chunks.length} chunks loaded
+            </span>
             {hasMore && (
-              <Button variant="ghost" size="sm" onClick={() => fetchChunks(false)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fetchChunks(false)}
+              >
                 Load More
               </Button>
             )}
@@ -225,7 +250,9 @@ export default function LegalDocumentsPage() {
               Loading legal documents...
             </div>
           ) : chunks.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">No documents found.</div>
+            <div className="text-center py-10 text-muted-foreground">
+              No documents found.
+            </div>
           ) : (
             <div className="divide-y">
               {chunks.map((chunk) => (
@@ -233,15 +260,16 @@ export default function LegalDocumentsPage() {
                   key={chunk.id}
                   onClick={() => setSelectedChunk(chunk)}
                   className={cn(
-                    'p-3 cursor-pointer hover:bg-muted/50 transition-all',
-                    selectedChunk?.id === chunk.id && 'bg-primary/5 border-l-2 border-l-primary'
+                    "p-3 cursor-pointer hover:bg-muted/50 transition-all",
+                    selectedChunk?.id === chunk.id &&
+                      "bg-primary/5 border-l-2 border-l-primary",
                   )}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span
                       className={cn(
-                        'px-1.5 py-0.5 rounded text-xs font-medium',
-                        getRegTypeColor(chunk.regulation_type)
+                        "px-1.5 py-0.5 rounded text-xs font-medium",
+                        getRegTypeColor(chunk.regulation_type),
                       )}
                     >
                       {chunk.regulation_type}
@@ -252,12 +280,20 @@ export default function LegalDocumentsPage() {
                   </div>
                   <div className="text-sm font-medium flex items-center gap-1">
                     {chunk.pasal && <span>Pasal {chunk.pasal}</span>}
-                    {chunk.ayat && <span className="text-muted-foreground">({chunk.ayat})</span>}
+                    {chunk.ayat && (
+                      <span className="text-muted-foreground">
+                        ({chunk.ayat})
+                      </span>
+                    )}
                     {chunk.huruf && (
-                      <span className="text-muted-foreground">huruf {chunk.huruf}</span>
+                      <span className="text-muted-foreground">
+                        huruf {chunk.huruf}
+                      </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{chunk.text}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                    {chunk.text}
+                  </p>
                 </div>
               ))}
             </div>
@@ -279,8 +315,8 @@ export default function LegalDocumentsPage() {
               <div className="flex items-center gap-3">
                 <span
                   className={cn(
-                    'px-2 py-1 rounded text-sm font-bold',
-                    getRegTypeColor(selectedChunk.regulation_type)
+                    "px-2 py-1 rounded text-sm font-bold",
+                    getRegTypeColor(selectedChunk.regulation_type),
                   )}
                 >
                   {selectedChunk.regulation_type}
@@ -290,18 +326,23 @@ export default function LegalDocumentsPage() {
                 </span>
               </div>
               {selectedChunk.doc_title && (
-                <p className="text-lg text-muted-foreground">{selectedChunk.doc_title}</p>
+                <p className="text-lg text-muted-foreground">
+                  {selectedChunk.doc_title}
+                </p>
               )}
             </div>
 
             {/* Location */}
             <Card>
               <CardContent className="p-4">
-                <div className="text-sm font-medium text-muted-foreground mb-2">Location</div>
+                <div className="text-sm font-medium text-muted-foreground mb-2">
+                  Location
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {selectedChunk.pasal && (
                     <Badge variant="outline">
-                      <Hash className="h-3 w-3 mr-1" /> Pasal {selectedChunk.pasal}
+                      <Hash className="h-3 w-3 mr-1" /> Pasal{" "}
+                      {selectedChunk.pasal}
                     </Badge>
                   )}
                   {selectedChunk.ayat && (
@@ -311,7 +352,9 @@ export default function LegalDocumentsPage() {
                     <Badge variant="outline">Huruf {selectedChunk.huruf}</Badge>
                   )}
                   {selectedChunk.chunk_type && (
-                    <Badge variant="secondary">{selectedChunk.chunk_type}</Badge>
+                    <Badge variant="secondary">
+                      {selectedChunk.chunk_type}
+                    </Badge>
                   )}
                 </div>
                 {selectedChunk.hierarchy_path && (
@@ -325,27 +368,36 @@ export default function LegalDocumentsPage() {
             {/* Content */}
             <Card>
               <CardContent className="p-4">
-                <div className="text-sm font-medium text-muted-foreground mb-2">Content</div>
+                <div className="text-sm font-medium text-muted-foreground mb-2">
+                  Content
+                </div>
                 <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <p className="whitespace-pre-wrap leading-relaxed">{selectedChunk.text}</p>
+                  <p className="whitespace-pre-wrap leading-relaxed">
+                    {selectedChunk.text}
+                  </p>
                 </div>
               </CardContent>
             </Card>
 
             {/* Metadata */}
-            {selectedChunk.metadata && Object.keys(selectedChunk.metadata).length > 0 && (
-              <Card>
-                <CardContent className="p-4">
-                  <div className="text-sm font-medium text-muted-foreground mb-2">Raw Metadata</div>
-                  <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-[300px]">
-                    {JSON.stringify(selectedChunk.metadata, null, 2)}
-                  </pre>
-                </CardContent>
-              </Card>
-            )}
+            {selectedChunk.metadata &&
+              Object.keys(selectedChunk.metadata).length > 0 && (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                      Raw Metadata
+                    </div>
+                    <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-[300px]">
+                      {JSON.stringify(selectedChunk.metadata, null, 2)}
+                    </pre>
+                  </CardContent>
+                </Card>
+              )}
 
             {/* ID */}
-            <div className="text-xs text-muted-foreground font-mono">ID: {selectedChunk.id}</div>
+            <div className="text-xs text-muted-foreground font-mono">
+              ID: {selectedChunk.id}
+            </div>
           </div>
         )}
       </div>

@@ -2,12 +2,17 @@
 import React from "react";
 import type { MarketingMetrics, RoleAlert } from "@/types/dashboard-role.types";
 
-interface Props { metrics: MarketingMetrics; alerts: RoleAlert[]; }
+interface Props {
+  metrics: MarketingMetrics;
+  alerts: RoleAlert[];
+}
 
 export function MarketingRoleWidget({ metrics }: Props) {
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="text-[9px] font-bold text-white/40 tracking-[.12em]">MARKETING</span>
+      <span className="text-[9px] font-bold text-white/40 tracking-[.12em]">
+        MARKETING
+      </span>
       <span className="text-2xl font-black text-[#4a8ec4] leading-none">
         +{metrics.subscriber_delta}
       </span>

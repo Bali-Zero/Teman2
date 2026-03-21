@@ -1,5 +1,6 @@
-'use client';
-import { useState, useEffect } from 'react';
+"use client";
+import { useState, useEffect } from "react";
+import { error as logError } from "@/lib/logger";
 import {
   Badge,
   Button,
@@ -7,15 +8,18 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/components/ui/primitives';
-import { UserCog, Search, Brain, Fingerprint } from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/primitives";
+import { UserCog, Search, Brain, Fingerprint } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [details, setDetails] = useState<{ facts: any[]; memories: any[] } | null>(null);
+  const [details, setDetails] = useState<{
+    facts: any[];
+    memories: any[];
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
@@ -23,14 +27,14 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async (q = '') => {
+  const fetchUsers = async (q = "") => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/postgres/users${q ? `?search=${q}` : ''}`);
+      const res = await fetch(`/api/postgres/users${q ? `?search=${q}` : ""}`);
       const data = await res.json();
       if (data.users) setUsers(data.users);
     } catch (e) {
-      console.error(e);
+      logError(e as string);
     } finally {
       setLoading(false);
     }
@@ -44,7 +48,7 @@ export default function UsersPage() {
       const data = await res.json();
       setDetails({ facts: data.facts || [], memories: data.memories || [] });
     } catch (e) {
-      console.error(e);
+      logError(e as string);
     } finally {
       setDetailsLoading(false);
     }
@@ -66,29 +70,37 @@ export default function UsersPage() {
               placeholder="Search users..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && fetchUsers(search)}
+              onKeyDown={(e) => e.key === "Enter" && fetchUsers(search)}
             />
           </div>
         </div>
 
         <div className="flex-1 overflow-auto p-2 space-y-2">
           {loading ? (
-            <div className="p-4 text-center text-muted-foreground">Loading...</div>
+            <div className="p-4 text-center text-muted-foreground">
+              Loading...
+            </div>
           ) : (
             users.map((user) => (
               <div
                 key={user.id}
                 onClick={() => selectUser(user)}
                 className={cn(
-                  'p-3 rounded-md border cursor-pointer hover:bg-muted transition-all',
+                  "p-3 rounded-md border cursor-pointer hover:bg-muted transition-all",
                   selectedUser?.id === user.id
-                    ? 'bg-primary/5 border-primary shadow-sm'
-                    : 'bg-card border-transparent'
+                    ? "bg-primary/5 border-primary shadow-sm"
+                    : "bg-card border-transparent",
                 )}
               >
-                <div className="font-semibold">{user.full_name || 'Unnamed User'}</div>
-                <div className="text-xs text-muted-foreground">{user.email}</div>
-                <div className="text-[10px] text-muted-foreground mt-1 font-mono">{user.id}</div>
+                <div className="font-semibold">
+                  {user.full_name || "Unnamed User"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {user.email}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-1 font-mono">
+                  {user.id}
+                </div>
               </div>
             ))
           )}
@@ -107,11 +119,15 @@ export default function UsersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-3xl font-bold">{selectedUser.full_name}</h2>
-                <div className="text-muted-foreground">{selectedUser.email}</div>
+                <div className="text-muted-foreground">
+                  {selectedUser.email}
+                </div>
               </div>
               <div className="text-right">
                 <div className="text-xs text-muted-foreground">User ID</div>
-                <code className="bg-muted px-2 py-1 rounded text-xs">{selectedUser.id}</code>
+                <code className="bg-muted px-2 py-1 rounded text-xs">
+                  {selectedUser.id}
+                </code>
               </div>
             </div>
 
@@ -126,7 +142,9 @@ export default function UsersPage() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {detailsLoading ? (
-                    <div className="text-sm text-muted-foreground">Loading context...</div>
+                    <div className="text-sm text-muted-foreground">
+                      Loading context...
+                    </div>
                   ) : details?.facts.length === 0 ? (
                     <div className="text-sm text-muted-foreground italic">
                       No facts extracted yet.
@@ -157,19 +175,26 @@ export default function UsersPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {detailsLoading ? (
-                    <div className="text-sm text-muted-foreground">Loading memories...</div>
+                    <div className="text-sm text-muted-foreground">
+                      Loading memories...
+                    </div>
                   ) : details?.memories.length === 0 ? (
                     <div className="text-sm text-muted-foreground italic">
                       No memories recorded yet.
                     </div>
                   ) : (
                     details?.memories.map((mem, i) => (
-                      <div key={i} className="bg-muted/30 p-3 rounded-md text-sm">
+                      <div
+                        key={i}
+                        className="bg-muted/30 p-3 rounded-md text-sm"
+                      >
                         <p className="mb-1">{mem.content}</p>
                         <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-2">
-                          <span>{new Date(mem.created_at).toLocaleDateString()}</span>
+                          <span>
+                            {new Date(mem.created_at).toLocaleDateString()}
+                          </span>
                           <Badge variant="outline" className="text-[10px] h-5">
-                            {mem.type || 'general'}
+                            {mem.type || "general"}
                           </Badge>
                         </div>
                       </div>

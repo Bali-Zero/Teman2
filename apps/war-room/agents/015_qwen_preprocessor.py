@@ -49,27 +49,27 @@ def run_qwen_api(prompt: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--grok", required=False, default="")
-    parser.add_argument("--manus", required=True)
+    parser.add_argument("--sentiment", required=False, default="")
+    parser.add_argument("--research", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
-    grok_path = Path(args.grok) if args.grok else None
-    grok_data = json.loads(grok_path.read_text()) if grok_path and grok_path.exists() else []
-    manus_data = json.loads(Path(args.manus).read_text())
+    sentiment_path = Path(args.sentiment) if args.sentiment else None
+    sentiment_data = json.loads(sentiment_path.read_text()) if sentiment_path and sentiment_path.exists() else []
+    research_data = json.loads(Path(args.research).read_text())
 
     prompt_path = Path(__file__).parent.parent / "config" / "prompts.json"
     prompts = json.loads(prompt_path.read_text())
 
     # Tronca input per evitare prompt troppo lunghi
-    facts_input = manus_data.get("facts", manus_data) if isinstance(manus_data, dict) else manus_data
+    facts_input = research_data.get("facts", research_data) if isinstance(research_data, dict) else research_data
     facts_trimmed = facts_input[:15] if isinstance(facts_input, list) else facts_input
-    grok_trimmed = grok_data[:8] if isinstance(grok_data, list) else grok_data
+    sentiment_trimmed = sentiment_data[:8] if isinstance(sentiment_data, list) else sentiment_data
 
     prompt = prompts["qwen_preprocessor"] + f"""
 
-RAW GROK DATA:
-{json.dumps(grok_trimmed, ensure_ascii=False, indent=2)}
+RAW SOCIAL SENTIMENT DATA:
+{json.dumps(sentiment_trimmed, ensure_ascii=False, indent=2)}
 
 FACTS:
 {json.dumps(facts_trimmed, ensure_ascii=False, indent=2)}
@@ -83,9 +83,9 @@ Output ONLY valid JSON. No markdown, no prose, no explanation."""
     except RuntimeError as e:
         print(f"  All models failed: {e} — using passthrough fallback", file=sys.stderr)
         result = {
-            "facts": manus_data.get("facts", []) if isinstance(manus_data, dict) else manus_data,
-            "sentiment": manus_data.get("sentiment", []) if isinstance(manus_data, dict) else [],
-            "topics": manus_data.get("topics", []) if isinstance(manus_data, dict) else [],
+            "facts": research_data.get("facts", []) if isinstance(research_data, dict) else research_data,
+            "sentiment": research_data.get("sentiment", []) if isinstance(research_data, dict) else [],
+            "topics": research_data.get("topics", []) if isinstance(research_data, dict) else [],
             "fallback": True,
         }
         Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2))
@@ -118,7 +118,7 @@ Output ONLY valid JSON. No markdown, no prose, no explanation."""
 
     # Normalize: ensure expected keys exist (model may use different schema)
     if result is not None:
-        src = manus_data if isinstance(manus_data, dict) else {}
+        src = research_data if isinstance(research_data, dict) else {}
         # Remap alternative key names to expected schema
         if "facts" not in result:
             # Try common alternative keys the model might use
@@ -139,9 +139,9 @@ Output ONLY valid JSON. No markdown, no prose, no explanation."""
             result["topics"] = src.get("topics", [])
     else:
         result = {
-            "facts": manus_data.get("facts", []) if isinstance(manus_data, dict) else manus_data,
-            "sentiment": manus_data.get("sentiment", []) if isinstance(manus_data, dict) else [],
-            "topics": manus_data.get("topics", []) if isinstance(manus_data, dict) else [],
+            "facts": research_data.get("facts", []) if isinstance(research_data, dict) else research_data,
+            "sentiment": research_data.get("sentiment", []) if isinstance(research_data, dict) else [],
+            "topics": research_data.get("topics", []) if isinstance(research_data, dict) else [],
             "fallback": True,
         }
 

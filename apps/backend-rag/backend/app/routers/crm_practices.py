@@ -16,7 +16,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Reques
 from pydantic import BaseModel, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.utils.crm_utils import can_view_all_practices, is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
@@ -434,6 +434,14 @@ async def list_practices(
                 params.append(priority)
                 param_index += 1
 
+            # RBAC: non-admin users only see practices assigned to them
+            if not can_view_all_practices(current_user):
+                user_email = current_user.get("email", "").lower()
+                query_parts.append(f" AND c.assigned_to = ${param_index}")
+                params.append(user_email)
+                param_index += 1
+                logger.info(f"RBAC: Filtering practices for {user_email} (assigned_to only)")
+
             # Month filter
             month_range = _parse_month_param(month)
             if month_range:
@@ -443,7 +451,7 @@ async def list_practices(
                     """LEFT JOIN activity_log al ON al.entity_type = 'practice'
                         AND al.entity_id = p.id
                         AND al.action = 'updated'
-                    WHERE 1=1"""
+                    WHERE 1=1""",
                 )
                 query_parts.append(
                     f" AND p.status != 'cancelled'"
@@ -479,9 +487,7 @@ async def list_practices(
                     """,
                     practice_ids,
                 )
-                transitions = _build_status_transitions(
-                    [dict(r) for r in history_rows]
-                )
+                transitions = _build_status_transitions([dict(r) for r in history_rows])
                 for p in practices:
                     p["status_transitions"] = transitions.get(p["id"], [])
 

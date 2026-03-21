@@ -22,7 +22,11 @@ export function ChatLayout({ children, onNewChat }: ChatLayoutProps) {
           <span className="text-sm font-semibold">Nuzantara V6</span>
         </div>
         {onNewChat && (
-          <Button variant="ghost" onClick={onNewChat} className="h-8 gap-1.5 text-xs">
+          <Button
+            variant="ghost"
+            onClick={onNewChat}
+            className="h-8 gap-1.5 text-xs"
+          >
             <Plus className="h-3.5 w-3.5" />
             New Chat
           </Button>

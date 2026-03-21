@@ -66,7 +66,9 @@ def _load_module(monkeypatch, settings_overrides=None):
     backend_path = Path(__file__).resolve().parents[4]
     module_path = backend_path / "backend" / "app" / "routers" / "session.py"
 
-    settings_stub = types.SimpleNamespace(redis_url="redis://custom:6379", api_keys="test_key_1,test_key_2")
+    settings_stub = types.SimpleNamespace(
+        redis_url="redis://custom:6379", api_keys="test_key_1,test_key_2"
+    )
     if settings_overrides:
         for key, value in settings_overrides.items():
             setattr(settings_stub, key, value)

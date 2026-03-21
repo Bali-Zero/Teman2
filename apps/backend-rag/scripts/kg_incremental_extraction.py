@@ -139,8 +139,13 @@ class KGIncrementalExtractor:
     """Extracts KG entities from unprocessed Qdrant chunks."""
 
     def __init__(
-        self, db_pool: asyncpg.Pool, qdrant_url: str, qdrant_api_key: str,
-        gemini_client=None, openai_client=None, provider: str = "gemini"
+        self,
+        db_pool: asyncpg.Pool,
+        qdrant_url: str,
+        qdrant_api_key: str,
+        gemini_client=None,
+        openai_client=None,
+        provider: str = "gemini",
     ):
         self.db_pool = db_pool
         self.qdrant_url = qdrant_url.rstrip("/")
@@ -200,7 +205,10 @@ class KGIncrementalExtractor:
         return [c["name"] for c in result.get("result", {}).get("collections", [])]
 
     def get_collection_chunks(
-        self, collection_name: str, limit: int = None, offset: int = 0  # noqa: ARG002
+        self,
+        collection_name: str,
+        limit: int = None,
+        offset: int = 0,  # noqa: ARG002
     ) -> list:
         """Get chunks from a Qdrant collection using scroll API with pagination."""
         chunks = []
@@ -263,22 +271,11 @@ class KGIncrementalExtractor:
         # Build native filter if document_id provided
         filter_data = None
         if document_id:
-            filter_data = {
-                "must": [
-                    {
-                        "key": "document_id",
-                        "match": {"value": document_id}
-                    }
-                ]
-            }
+            filter_data = {"must": [{"key": "document_id", "match": {"value": document_id}}]}
 
         while True:
             # Build scroll request
-            scroll_data = {
-                "limit": batch_size,
-                "with_payload": True,
-                "with_vectors": False
-            }
+            scroll_data = {"limit": batch_size, "with_payload": True, "with_vectors": False}
             if next_offset is not None:
                 scroll_data["offset"] = next_offset
 
@@ -496,7 +493,11 @@ class KGIncrementalExtractor:
         )
 
     async def save_relationship(
-        self, rel: dict, chunk_id: str, collection: str, new_entity_ids: set = None  # noqa: ARG002
+        self,
+        rel: dict,
+        chunk_id: str,
+        collection: str,
+        new_entity_ids: set = None,  # noqa: ARG002
     ):
         """Save relationship to PostgreSQL."""
         source_id = rel.get("source", "").lower().replace(" ", "_")
@@ -623,11 +624,15 @@ class KGIncrementalExtractor:
             is_local = os.environ.get("OPENAI_BASE_URL", "").startswith("http://localhost")
             batch_size = 1 if is_local else 5
             sleep_between = 0.5 if is_local else 1.0
-            logger.info(f"\nStarting extraction with OpenAI (parallel workers: {batch_size}, local={is_local})...")
+            logger.info(
+                f"\nStarting extraction with OpenAI (parallel workers: {batch_size}, local={is_local})..."
+            )
         else:
             batch_size = 2
             sleep_between = 8.0
-            logger.info(f"\nStarting extraction with Gemini (parallel workers: {batch_size}, Free Tier: 15 RPM)...")
+            logger.info(
+                f"\nStarting extraction with Gemini (parallel workers: {batch_size}, Free Tier: 15 RPM)..."
+            )
 
         for i in range(0, len(chunks_to_process), batch_size):
             batch = chunks_to_process[i : i + batch_size]
@@ -670,8 +675,13 @@ async def main():
     parser.add_argument("--collection", type=str, help="Specific collection to process")
     parser.add_argument("--limit", type=int, help="Limit chunks per collection")
     parser.add_argument("--dry-run", action="store_true", help="Just show what would be processed")
-    parser.add_argument("--provider", type=str, default="openai", choices=["gemini", "openai"],
-                        help="LLM provider for extraction (default: openai)")
+    parser.add_argument(
+        "--provider",
+        type=str,
+        default="openai",
+        choices=["gemini", "openai"],
+        help="LLM provider for extraction (default: openai)",
+    )
     args = parser.parse_args()
 
     # Database connection
@@ -708,9 +718,13 @@ async def main():
                 if openai_base_url:
                     client_kwargs["base_url"] = openai_base_url
                 openai_client = AsyncOpenAI(**client_kwargs)
-                logger.info(f"✅ OpenAI client initialized (model={openai_model}, base_url={openai_base_url or 'default'})")
+                logger.info(
+                    f"✅ OpenAI client initialized (model={openai_model}, base_url={openai_base_url or 'default'})"
+                )
             else:
-                logger.error("OpenAI not available (missing key or package). Install: pip install openai")
+                logger.error(
+                    "OpenAI not available (missing key or package). Install: pip install openai"
+                )
                 await db_pool.close()
                 return
         else:
@@ -725,8 +739,12 @@ async def main():
 
     # Run extraction
     extractor = KGIncrementalExtractor(
-        db_pool, qdrant_url, qdrant_api_key,
-        gemini_client=gemini, openai_client=openai_client, provider=provider
+        db_pool,
+        qdrant_url,
+        qdrant_api_key,
+        gemini_client=gemini,
+        openai_client=openai_client,
+        provider=provider,
     )
 
     collections = [args.collection] if args.collection else None

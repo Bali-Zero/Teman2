@@ -101,9 +101,7 @@ describe("VisaOraclePage", () => {
       expect(screen.getByText("All Caught Up!")).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText(/No pending visa updates/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No pending visa updates/i)).toBeInTheDocument();
   });
 
   it("should display stats bar with correct counts", async () => {

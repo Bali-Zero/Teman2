@@ -2,16 +2,23 @@
 import React from "react";
 import type { TaxMetrics, RoleAlert } from "@/types/dashboard-role.types";
 
-interface Props { metrics: TaxMetrics; alerts: RoleAlert[]; }
+interface Props {
+  metrics: TaxMetrics;
+  alerts: RoleAlert[];
+}
 
 export function TaxRoleWidget({ metrics }: Props) {
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="text-[9px] font-bold text-white/40 tracking-[.12em]">COMPLIANCE</span>
+      <span className="text-[9px] font-bold text-white/40 tracking-[.12em]">
+        COMPLIANCE
+      </span>
       {metrics.prossima_scadenza && (
         <>
           <span className="text-[10px] text-white/50">Prossima scadenza</span>
-          <span className="text-lg font-black text-[#c45c78] leading-none">{metrics.prossima_scadenza}</span>
+          <span className="text-lg font-black text-[#c45c78] leading-none">
+            {metrics.prossima_scadenza}
+          </span>
         </>
       )}
       <div className="h-px bg-white/[0.06]" />

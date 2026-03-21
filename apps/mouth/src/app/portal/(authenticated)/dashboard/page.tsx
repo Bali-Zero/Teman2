@@ -139,7 +139,10 @@ export default function PortalDashboardPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -187,9 +190,15 @@ function TeamMemberCard({
   const assignedTo = profile.assignedTo;
 
   return (
-    <div className="rounded-xl border overflow-hidden flex flex-col" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+    <div
+      className="rounded-xl border overflow-hidden flex flex-col"
+      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+    >
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: "var(--bz-border)" }}>
+      <div
+        className="flex items-center gap-2 px-4 py-3 border-b"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
         <User className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
         <h3 className="font-semibold">Team Member</h3>
       </div>
@@ -197,7 +206,10 @@ function TeamMemberCard({
       {/* Content */}
       <div className="p-4 flex-1 flex flex-col space-y-4">
         {/* Team Member - Small Avatar */}
-        <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: "var(--bz-surface)" }}>
+        <div
+          className="flex items-center gap-3 p-3 rounded-lg"
+          style={{ background: "var(--bz-surface)" }}
+        >
           {assignedTo?.avatarUrl ? (
             <img
               src={assignedTo.avatarUrl}
@@ -205,43 +217,67 @@ function TeamMemberCard({
               className="w-10 h-10 rounded-full object-cover flex-shrink-0"
             />
           ) : (
-            <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(201,169,110,0.15)" }}>
-              <User className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(201,169,110,0.15)" }}
+            >
+              <User
+                className="w-5 h-5"
+                style={{ color: "var(--bz-accent-warm)" }}
+              />
             </div>
           )}
           <div className="min-w-0">
             <p className="font-medium text-sm truncate">
               {assignedTo?.name || "Not assigned"}
             </p>
-            <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>Case Manager</p>
+            <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+              Case Manager
+            </p>
           </div>
         </div>
 
         {/* Client Data Section */}
         <div className="space-y-3 flex-1">
-          <h4 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--bz-text-2)" }}>
+          <h4
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             Your Information
           </h4>
 
           {/* Client Name */}
           <div className="flex items-start gap-2">
-            <User className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "var(--bz-text-2)" }} />
+            <User
+              className="w-4 h-4 mt-0.5 flex-shrink-0"
+              style={{ color: "var(--bz-text-2)" }}
+            />
             <div className="min-w-0">
-              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>Full Name</p>
+              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                Full Name
+              </p>
               <p className="text-sm font-medium truncate">{profile.fullName}</p>
             </div>
           </div>
 
           {/* Email */}
           <div className="flex items-start gap-2">
-            <div className="w-4 h-4 mt-0.5 flex-shrink-0 text-xs" style={{ color: "var(--bz-text-2)" }}>
+            <div
+              className="w-4 h-4 mt-0.5 flex-shrink-0 text-xs"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               @
             </div>
             <div className="min-w-0">
-              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>Email</p>
+              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                Email
+              </p>
               <p className="text-sm truncate">
                 {profile.email || (
-                  <span className="italic" style={{ color: "var(--bz-text-3)" }}>
+                  <span
+                    className="italic"
+                    style={{ color: "var(--bz-text-3)" }}
+                  >
                     Not provided
                   </span>
                 )}
@@ -251,14 +287,22 @@ function TeamMemberCard({
 
           {/* Phone */}
           <div className="flex items-start gap-2">
-            <div className="w-4 h-4 mt-0.5 flex-shrink-0 text-xs" style={{ color: "var(--bz-text-2)" }}>
+            <div
+              className="w-4 h-4 mt-0.5 flex-shrink-0 text-xs"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               📞
             </div>
             <div className="min-w-0">
-              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>Phone</p>
+              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                Phone
+              </p>
               <p className="text-sm">
                 {profile.phone || (
-                  <span className="italic" style={{ color: "var(--bz-text-3)" }}>
+                  <span
+                    className="italic"
+                    style={{ color: "var(--bz-text-3)" }}
+                  >
                     Not provided
                   </span>
                 )}
@@ -268,14 +312,22 @@ function TeamMemberCard({
 
           {/* Nationality */}
           <div className="flex items-start gap-2">
-            <div className="w-4 h-4 mt-0.5 flex-shrink-0 text-xs" style={{ color: "var(--bz-text-2)" }}>
+            <div
+              className="w-4 h-4 mt-0.5 flex-shrink-0 text-xs"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               🌍
             </div>
             <div className="min-w-0">
-              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>Nationality</p>
+              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                Nationality
+              </p>
               <p className="text-sm">
                 {profile.nationality || (
-                  <span className="italic" style={{ color: "var(--bz-text-3)" }}>
+                  <span
+                    className="italic"
+                    style={{ color: "var(--bz-text-3)" }}
+                  >
                     Not provided
                   </span>
                 )}
@@ -292,11 +344,16 @@ function TeamMemberCard({
               )}
               style={isBirthday ? { background: "rgba(251,191,36,0.15)" } : {}}
             >
-              <div className="w-4 h-4 mt-0.5 flex-shrink-0 text-xs" style={{ color: "var(--bz-text-2)" }}>
+              <div
+                className="w-4 h-4 mt-0.5 flex-shrink-0 text-xs"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 {isBirthday ? "🎂" : "📅"}
               </div>
               <div className="min-w-0">
-                <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>Date of Birth</p>
+                <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                  Date of Birth
+                </p>
                 <p
                   className="text-sm font-medium"
                   style={isBirthday ? { color: "#fbbf24" } : {}}
@@ -310,14 +367,22 @@ function TeamMemberCard({
 
           {/* Address */}
           <div className="flex items-start gap-2">
-            <div className="w-4 h-4 mt-0.5 flex-shrink-0 text-xs" style={{ color: "var(--bz-text-2)" }}>
+            <div
+              className="w-4 h-4 mt-0.5 flex-shrink-0 text-xs"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               📍
             </div>
             <div className="min-w-0">
-              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>Address</p>
+              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                Address
+              </p>
               <p className="text-sm">
                 {profile.address || (
-                  <span className="italic" style={{ color: "var(--bz-text-3)" }}>
+                  <span
+                    className="italic"
+                    style={{ color: "var(--bz-text-3)" }}
+                  >
                     Not provided
                   </span>
                 )}
@@ -336,7 +401,12 @@ function TeamMemberCard({
                     ? "text-pink-400"
                     : "",
               )}
-              style={!profile.gender || (profile.gender !== "M" && profile.gender !== "F") ? { color: "var(--bz-text-2)" } : {}}
+              style={
+                !profile.gender ||
+                (profile.gender !== "M" && profile.gender !== "F")
+                  ? { color: "var(--bz-text-2)" }
+                  : {}
+              }
             >
               {profile.gender === "M"
                 ? "♂"
@@ -345,14 +415,19 @@ function TeamMemberCard({
                   : "—"}
             </div>
             <div className="min-w-0">
-              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>Gender</p>
+              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                Gender
+              </p>
               <p className="text-sm">
                 {profile.gender === "M" ? (
                   "Male"
                 ) : profile.gender === "F" ? (
                   "Female"
                 ) : (
-                  <span className="italic" style={{ color: "var(--bz-text-3)" }}>
+                  <span
+                    className="italic"
+                    style={{ color: "var(--bz-text-3)" }}
+                  >
                     Not provided
                   </span>
                 )}
@@ -378,10 +453,19 @@ function PassportCard({
   const hasPassport = !!profile.passportNumber;
 
   return (
-    <div className="rounded-xl border overflow-hidden flex flex-col" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+    <div
+      className="rounded-xl border overflow-hidden flex flex-col"
+      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+    >
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: "var(--bz-border)" }}>
-        <CreditCard className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+      <div
+        className="flex items-center gap-2 px-4 py-3 border-b"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
+        <CreditCard
+          className="w-5 h-5"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
         <h3 className="font-semibold">Passport</h3>
         {profile.gender && (
           <span
@@ -401,16 +485,36 @@ function PassportCard({
       <div className="p-4 flex-1 flex flex-col space-y-4">
         {/* Passport Image Preview */}
         {hasPassport ? (
-          <div className="aspect-[3/2] rounded-lg border flex items-center justify-center overflow-hidden" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}>
+          <div
+            className="aspect-[3/2] rounded-lg border flex items-center justify-center overflow-hidden"
+            style={{
+              background: "var(--bz-surface)",
+              borderColor: "var(--bz-border)",
+            }}
+          >
             {/* TODO: Show actual passport image from Google Drive */}
             <div className="text-center">
-              <CreditCard className="w-12 h-12 mx-auto mb-2" style={{ color: "var(--bz-text-3)" }} />
-              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>Passport document</p>
+              <CreditCard
+                className="w-12 h-12 mx-auto mb-2"
+                style={{ color: "var(--bz-text-3)" }}
+              />
+              <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                Passport document
+              </p>
             </div>
           </div>
         ) : (
-          <div className="aspect-[3/2] rounded-lg border-2 border-dashed flex flex-col items-center justify-center" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}>
-            <CreditCard className="w-10 h-10 mb-2" style={{ color: "var(--bz-text-3)" }} />
+          <div
+            className="aspect-[3/2] rounded-lg border-2 border-dashed flex flex-col items-center justify-center"
+            style={{
+              background: "var(--bz-surface)",
+              borderColor: "var(--bz-border)",
+            }}
+          >
+            <CreditCard
+              className="w-10 h-10 mb-2"
+              style={{ color: "var(--bz-text-3)" }}
+            />
             <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               No passport uploaded
             </span>
@@ -427,13 +531,21 @@ function PassportCard({
 
         {/* OCR Data - Automatically extracted */}
         <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1" style={{ color: "var(--bz-text-2)" }}>
+          <h4
+            className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             <span>Extracted Data (OCR)</span>
           </h4>
 
           {/* Passport Number */}
-          <div className="flex items-center justify-between p-2 rounded-lg" style={{ background: "var(--bz-surface)" }}>
-            <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>Passport No.</span>
+          <div
+            className="flex items-center justify-between p-2 rounded-lg"
+            style={{ background: "var(--bz-surface)" }}
+          >
+            <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+              Passport No.
+            </span>
             <span className="font-mono text-sm font-medium">
               {profile.passportNumber || "—"}
             </span>
@@ -444,17 +556,21 @@ function PassportCard({
             <div
               className={cn(
                 "rounded-lg p-2 text-sm",
-                passportValidity.alertLevel === "critical" && "border border-red-500/40 animate-pulse",
-                passportValidity.alertLevel === "warning" && "border border-yellow-500/30",
+                passportValidity.alertLevel === "critical" &&
+                  "border border-red-500/40 animate-pulse",
+                passportValidity.alertLevel === "warning" &&
+                  "border border-yellow-500/30",
               )}
               style={{
-                background: passportValidity.alertLevel === "expired" || passportValidity.alertLevel === "critical"
-                  ? "rgba(239,68,68,0.08)"
-                  : passportValidity.alertLevel === "warning"
-                  ? "rgba(245,158,11,0.08)"
-                  : passportValidity.alertLevel === "ok"
-                  ? "rgba(16,185,129,0.08)"
-                  : "var(--bz-surface)",
+                background:
+                  passportValidity.alertLevel === "expired" ||
+                  passportValidity.alertLevel === "critical"
+                    ? "rgba(239,68,68,0.08)"
+                    : passportValidity.alertLevel === "warning"
+                      ? "rgba(245,158,11,0.08)"
+                      : passportValidity.alertLevel === "ok"
+                        ? "rgba(16,185,129,0.08)"
+                        : "var(--bz-surface)",
               }}
             >
               <div className="flex items-center justify-between">
@@ -463,7 +579,14 @@ function PassportCard({
                 </span>
                 <span
                   className="font-semibold"
-                  style={{ color: passportValidity.alertLevel === "ok" ? "#34d399" : passportValidity.alertLevel === "warning" ? "#fbbf24" : "#f87171" }}
+                  style={{
+                    color:
+                      passportValidity.alertLevel === "ok"
+                        ? "#34d399"
+                        : passportValidity.alertLevel === "warning"
+                          ? "#fbbf24"
+                          : "#f87171",
+                  }}
                 >
                   {formatDate(profile.passportExpiry)}
                 </span>
@@ -472,7 +595,14 @@ function PassportCard({
                 <span className="text-xs opacity-70">Time remaining</span>
                 <span
                   className="text-xs font-medium"
-                  style={{ color: passportValidity.alertLevel === "ok" ? "#34d399" : passportValidity.alertLevel === "warning" ? "#fbbf24" : "#f87171" }}
+                  style={{
+                    color:
+                      passportValidity.alertLevel === "ok"
+                        ? "#34d399"
+                        : passportValidity.alertLevel === "warning"
+                          ? "#fbbf24"
+                          : "#f87171",
+                  }}
                 >
                   {passportValidity.label}
                 </span>
@@ -507,7 +637,10 @@ function PassportCard({
               )}
             </div>
           ) : (
-            <div className="p-2 rounded-lg text-center" style={{ background: "var(--bz-surface)" }}>
+            <div
+              className="p-2 rounded-lg text-center"
+              style={{ background: "var(--bz-surface)" }}
+            >
               <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
                 No expiry date detected
               </span>
@@ -543,28 +676,51 @@ function VisaProcessCard({
   }
 
   return (
-    <div className="rounded-xl border overflow-hidden flex flex-col" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+    <div
+      className="rounded-xl border overflow-hidden flex flex-col"
+      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+    >
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: "var(--bz-border)" }}>
-        <FileText className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+      <div
+        className="flex items-center gap-2 px-4 py-3 border-b"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
+        <FileText
+          className="w-5 h-5"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
         <h3 className="font-semibold">Actual Visa</h3>
       </div>
 
       {/* Content */}
       <div className="p-4 flex-1 flex flex-col space-y-4">
         {/* Visa Image */}
-        <div className="aspect-[3/2] rounded-lg border flex items-center justify-center" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}>
+        <div
+          className="aspect-[3/2] rounded-lg border flex items-center justify-center"
+          style={{
+            background: "var(--bz-surface)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
           {currentVisa ? (
             <div className="text-center">
-              <Plane className="w-12 h-12 mx-auto mb-2" style={{ color: "var(--bz-text-3)" }} />
+              <Plane
+                className="w-12 h-12 mx-auto mb-2"
+                style={{ color: "var(--bz-text-3)" }}
+              />
               <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
                 {currentVisa.type}
               </p>
             </div>
           ) : (
             <>
-              <FileText className="w-10 h-10 mb-2" style={{ color: "var(--bz-text-3)" }} />
-              <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>No visa</span>
+              <FileText
+                className="w-10 h-10 mb-2"
+                style={{ color: "var(--bz-text-3)" }}
+              />
+              <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+                No visa
+              </span>
             </>
           )}
         </div>
@@ -588,7 +744,11 @@ function VisaProcessCard({
                 "rounded-lg p-2 text-sm",
                 isCritical && "border-2 border-red-500/40 animate-pulse",
               )}
-              style={isCritical ? { background: "rgba(239,68,68,0.1)" } : { background: "var(--bz-surface)" }}
+              style={
+                isCritical
+                  ? { background: "rgba(239,68,68,0.1)" }
+                  : { background: "var(--bz-surface)" }
+              }
             >
               <div className="flex items-center justify-between">
                 <span
@@ -618,9 +778,15 @@ function VisaProcessCard({
             {daysRemaining !== null && (
               <div
                 className="flex items-center justify-between p-2 rounded-lg text-sm"
-                style={{ background: isCritical ? "rgba(239,68,68,0.08)" : "rgba(16,185,129,0.08)" }}
+                style={{
+                  background: isCritical
+                    ? "rgba(239,68,68,0.08)"
+                    : "rgba(16,185,129,0.08)",
+                }}
               >
-                <span style={{ color: "var(--bz-text-2)" }}>Days remaining:</span>
+                <span style={{ color: "var(--bz-text-2)" }}>
+                  Days remaining:
+                </span>
                 <span
                   className="font-semibold"
                   style={{ color: isCritical ? "#f87171" : "#34d399" }}
@@ -639,10 +805,19 @@ function VisaProcessCard({
 // Process Status Card (Initial state)
 function ProcessCard() {
   return (
-    <div className="rounded-xl border overflow-hidden flex flex-col" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+    <div
+      className="rounded-xl border overflow-hidden flex flex-col"
+      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+    >
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: "var(--bz-border)" }}>
-        <FolderOpen className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+      <div
+        className="flex items-center gap-2 px-4 py-3 border-b"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
+        <FolderOpen
+          className="w-5 h-5"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
         <h3 className="font-semibold">Process</h3>
       </div>
 
@@ -674,7 +849,10 @@ function ProcessCard() {
           </div>
         </div>
 
-        <p className="text-xs text-center pt-4" style={{ color: "var(--bz-text-2)" }}>
+        <p
+          className="text-xs text-center pt-4"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           You will be notified when your visa is ready
         </p>
       </div>
@@ -685,23 +863,43 @@ function ProcessCard() {
 // Electronic Visa Card (Intermediate state)
 function ElectronicVisaCard() {
   return (
-    <div className="rounded-xl border overflow-hidden flex flex-col" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+    <div
+      className="rounded-xl border overflow-hidden flex flex-col"
+      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+    >
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: "var(--bz-border)" }}>
-        <FileText className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+      <div
+        className="flex items-center gap-2 px-4 py-3 border-b"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
+        <FileText
+          className="w-5 h-5"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
         <h3 className="font-semibold">Electronic Visa</h3>
       </div>
 
       {/* Content */}
       <div className="p-4 flex-1 flex flex-col space-y-4">
-        <div className="aspect-[3/2] rounded-lg border flex items-center justify-center" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}>
+        <div
+          className="aspect-[3/2] rounded-lg border flex items-center justify-center"
+          style={{
+            background: "var(--bz-surface)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
           <div className="text-center">
             <FileText className="w-12 h-12 text-green-500/70 mx-auto mb-2" />
-            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>E-Visa document</p>
+            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+              E-Visa document
+            </p>
           </div>
         </div>
 
-        <div className="p-3 rounded-lg" style={{ background: "rgba(16,185,129,0.08)" }}>
+        <div
+          className="p-3 rounded-lg"
+          style={{ background: "rgba(16,185,129,0.08)" }}
+        >
           <p className="text-sm text-green-400 flex items-center gap-2">
             <CheckCircle className="w-4 h-4" />
             <span>Electronic visa approved</span>

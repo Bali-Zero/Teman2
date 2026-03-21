@@ -34,10 +34,10 @@ logger = logging.getLogger(__name__)
 # Q3 (Jul-Sep) → due October 15
 # Q4 (Oct-Dec) → due January 15 (next year)
 QUARTER_DEADLINES = {
-    "Q1": (4, 15),   # April 15
-    "Q2": (7, 15),   # July 15
+    "Q1": (4, 15),  # April 15
+    "Q2": (7, 15),  # July 15
     "Q3": (10, 15),  # October 15
-    "Q4": (1, 15),   # January 15 next year
+    "Q4": (1, 15),  # January 15 next year
 }
 
 
@@ -152,9 +152,7 @@ class LKPMService:
     # Draft Generation
     # ------------------------------------------------------------------
 
-    async def generate_draft(
-        self, client_id: int, quarter: str, year: int
-    ) -> LKPMDraft:
+    async def generate_draft(self, client_id: int, quarter: str, year: int) -> LKPMDraft:
         """
         Generate an LKPM draft for a client/quarter.
 
@@ -199,32 +197,47 @@ class LKPMService:
                 return
 
             # Resolve company from CRM
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 SELECT c.company_name, c.npwp_company, c.nib, c.kbli_code
                 FROM client_company_links ccl
                 JOIN companies c ON c.id = ccl.company_id
                 WHERE ccl.client_id = $1 AND ccl.status = 'active'
                 ORDER BY ccl.is_primary DESC NULLS LAST
                 LIMIT 1
-            """, client_id)
+            """,
+                client_id,
+            )
 
             if row:
                 kbli = row["kbli_code"] or ""
-                await conn.execute("""
+                await conn.execute(
+                    """
                     INSERT INTO lkpm_client_config (client_id, company_name, npwp, nib, kbli_codes)
                     VALUES ($1, $2, $3, $4, ARRAY[$5])
                     ON CONFLICT (client_id) DO NOTHING
-                """, client_id, row["company_name"], row["npwp_company"], row["nib"], kbli)
-                logger.info(f"Auto-created lkpm_client_config for client {client_id}: {row['company_name']}")
+                """,
+                    client_id,
+                    row["company_name"],
+                    row["npwp_company"],
+                    row["nib"],
+                    kbli,
+                )
+                logger.info(
+                    f"Auto-created lkpm_client_config for client {client_id}: {row['company_name']}"
+                )
             else:
-                logger.warning(f"No active company found for client {client_id}, cannot auto-create config")
+                logger.warning(
+                    f"No active company found for client {client_id}, cannot auto-create config"
+                )
 
     async def get_history_for_portal_client(self, client_id: int) -> list[LKPMBatchItem]:
         """Get LKPM reports visible to a portal client (all shareholders of same companies)."""
         async with self.db_pool.acquire() as conn:
             # Find all companies this client belongs to, then find all client_ids
             # linked to those companies, and return all their LKPM reports
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT DISTINCT r.*, c.company_name
                 FROM lkpm_reports r
                 JOIN lkpm_client_config c ON r.client_id = c.client_id
@@ -237,12 +250,12 @@ class LKPMService:
                       AND ccl2.status = 'active'
                 )
                 ORDER BY r.year DESC, r.quarter DESC
-            """, client_id)
+            """,
+                client_id,
+            )
         return [self._row_to_batch_item(row) for row in rows]
 
-    async def submit_form_data(
-        self, submission: LKPMClientSubmission
-    ) -> LKPMDraft:
+    async def submit_form_data(self, submission: LKPMClientSubmission) -> LKPMDraft:
         """Process client form submission into a draft."""
         logger.info(
             f"Processing form submission: client={submission.client_id}, "
@@ -274,9 +287,7 @@ class LKPMService:
         draft.id = draft_id
         return draft
 
-    async def sync_jurnal(
-        self, client_id: int, quarter: str, year: int
-    ) -> LKPMDraft:
+    async def sync_jurnal(self, client_id: int, quarter: str, year: int) -> LKPMDraft:
         """Pull data from Jurnal.id and create/update draft."""
         config = await self.get_client_config(client_id)
         if not config:
@@ -329,6 +340,7 @@ class LKPMService:
         # Update draft with validation result
         async with self.db_pool.acquire() as conn:
             import json
+
             await conn.execute(
                 """
                 UPDATE lkpm_reports SET
@@ -416,9 +428,7 @@ class LKPMService:
         logger.info(f"Draft {draft_id} approved by client")
         return {"success": True, "draft_id": draft_id, "status": "approved"}
 
-    async def mark_submitted(
-        self, draft_id: int, submitted_by: str
-    ) -> dict[str, Any]:
+    async def mark_submitted(self, draft_id: int, submitted_by: str) -> dict[str, Any]:
         """Mark LKPM as submitted to OSS."""
         async with self.db_pool.acquire() as conn:
             await conn.execute(
@@ -465,9 +475,7 @@ class LKPMService:
     # Queries
     # ------------------------------------------------------------------
 
-    async def get_draft(
-        self, client_id: int, quarter: str, year: int
-    ) -> LKPMDraft | None:
+    async def get_draft(self, client_id: int, quarter: str, year: int) -> LKPMDraft | None:
         """Get a specific draft."""
         return await self._load_draft(client_id, quarter, year)
 
@@ -520,20 +528,23 @@ class LKPMService:
         alerts = []
         for row in rows:
             import json
+
             validation_alerts = row["validation_alerts"]
             if isinstance(validation_alerts, str):
                 validation_alerts = json.loads(validation_alerts)
             red_count = sum(1 for a in validation_alerts if a.get("severity") == "red")
-            alerts.append({
-                "draft_id": row["id"],
-                "client_id": row["client_id"],
-                "company_name": row["company_name"],
-                "quarter": row["quarter"],
-                "year": row["year"],
-                "red_alerts": red_count,
-                "total_alerts": len(validation_alerts),
-                "status": row["status"],
-            })
+            alerts.append(
+                {
+                    "draft_id": row["id"],
+                    "client_id": row["client_id"],
+                    "company_name": row["company_name"],
+                    "quarter": row["quarter"],
+                    "year": row["year"],
+                    "red_alerts": red_count,
+                    "total_alerts": len(validation_alerts),
+                    "status": row["status"],
+                }
+            )
         return alerts
 
     def get_deadlines(self, days_ahead: int = 30) -> list[LKPMDeadline]:
@@ -567,9 +578,7 @@ class LKPMService:
     # Internal Helpers
     # ------------------------------------------------------------------
 
-    async def _load_draft(
-        self, client_id: int, quarter: str, year: int
-    ) -> LKPMDraft | None:
+    async def _load_draft(self, client_id: int, quarter: str, year: int) -> LKPMDraft | None:
         """Load a draft from DB."""
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -747,6 +756,7 @@ class LKPMService:
             if isinstance(alerts_data, str):
                 alerts_data = json.loads(alerts_data)
             from backend.app.models.lkpm import ValidationAlert
+
             validation = LKPMValidationResult(
                 is_valid=row["validation_status"] == "valid",
                 alerts=[ValidationAlert(**a) for a in alerts_data],
@@ -805,6 +815,7 @@ class LKPMService:
     def _row_to_batch_item(row: Any) -> LKPMBatchItem:
         """Convert DB row to LKPMBatchItem."""
         import json
+
         validation_alerts = row.get("validation_alerts", [])
         if isinstance(validation_alerts, str):
             validation_alerts = json.loads(validation_alerts)
@@ -812,17 +823,19 @@ class LKPMService:
         yellow_count = sum(1 for a in validation_alerts if a.get("severity") == "yellow")
 
         # Compute realized_total from individual columns
-        realized_total = sum([
-            row.get("realized_equipment_domestic", 0) or 0,
-            row.get("realized_equipment_import", 0) or 0,
-            row.get("realized_building_domestic", 0) or 0,
-            row.get("realized_building_import", 0) or 0,
-            row.get("realized_vehicle_domestic", 0) or 0,
-            row.get("realized_vehicle_import", 0) or 0,
-            row.get("realized_land", 0) or 0,
-            row.get("realized_working_capital", 0) or 0,
-            row.get("realized_other", 0) or 0,
-        ])
+        realized_total = sum(
+            [
+                row.get("realized_equipment_domestic", 0) or 0,
+                row.get("realized_equipment_import", 0) or 0,
+                row.get("realized_building_domestic", 0) or 0,
+                row.get("realized_building_import", 0) or 0,
+                row.get("realized_vehicle_domestic", 0) or 0,
+                row.get("realized_vehicle_import", 0) or 0,
+                row.get("realized_land", 0) or 0,
+                row.get("realized_working_capital", 0) or 0,
+                row.get("realized_other", 0) or 0,
+            ]
+        )
 
         return LKPMBatchItem(
             id=row["id"],

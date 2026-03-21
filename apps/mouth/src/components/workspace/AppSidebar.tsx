@@ -105,13 +105,25 @@ export function AppSidebar({
 
     const sharedContent = (
       <>
-        <Icon size={15} className="flex-shrink-0" style={{ opacity: active ? 1 : 0.7 }} />
+        <Icon
+          size={15}
+          className="flex-shrink-0"
+          style={{ opacity: active ? 1 : 0.7 }}
+        />
         <span className="flex-1 leading-relaxed">{item.title}</span>
-        {item.external && <ExternalLink size={9} style={{ color: "var(--bz-text-3)", opacity: 0.5 }} />}
+        {item.external && (
+          <ExternalLink
+            size={9}
+            style={{ color: "var(--bz-text-3)", opacity: 0.5 }}
+          />
+        )}
         {badge && badge > 0 && (
           <span
             className="text-[8px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ background: "rgba(212,132,90,0.18)", color: "var(--bz-accent)" }}
+            style={{
+              background: "rgba(212,132,90,0.18)",
+              color: "var(--bz-accent)",
+            }}
           >
             {badge > 99 ? "99+" : badge}
           </span>
@@ -121,15 +133,26 @@ export function AppSidebar({
 
     if (item.external) {
       return (
-        <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
-           className={sharedClassName} style={sharedStyle}>
+        <a
+          key={item.href}
+          href={item.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={sharedClassName}
+          style={sharedStyle}
+        >
           {sharedContent}
         </a>
       );
     }
 
     return (
-      <Link key={item.href} href={item.href} className={sharedClassName} style={sharedStyle}>
+      <Link
+        key={item.href}
+        href={item.href}
+        className={sharedClassName}
+        style={sharedStyle}
+      >
         {sharedContent}
       </Link>
     );
@@ -150,12 +173,25 @@ export function AppSidebar({
   );
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen flex flex-col border-r"
-           style={{ width: "var(--bz-sidebar-width, 216px)", background: "var(--bz-elevated)", borderColor: "var(--bz-border)" }}>
-
+    <aside
+      className="fixed left-0 top-0 z-40 h-screen flex flex-col border-r transition-all duration-300"
+      style={{
+        width: "var(--bz-sidebar-width, 216px)",
+        background: "rgba(19, 19, 21, 0.65)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderColor: "var(--bz-border)",
+      }}
+    >
       {/* Logo Header — Centered, 2x scale */}
-      <div className="border-b flex items-center justify-center py-4 px-3" style={{ borderColor: "var(--bz-border)" }}>
-        <Link href="/dashboard" className="flex items-center justify-center transition-opacity hover:opacity-80">
+      <div
+        className="border-b flex items-center justify-center py-4 px-3"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
+        <Link
+          href="/dashboard"
+          className="flex items-center justify-center transition-opacity hover:opacity-80"
+        >
           <Image
             src="/static/balizero-logo-clean.png"
             alt="Bali Zero"
@@ -173,38 +209,69 @@ export function AppSidebar({
       </nav>
 
       {/* User Profile Footer */}
-      <div className="border-t p-2.5" style={{ borderColor: "var(--bz-border)" }}>
+      <div
+        className="border-t p-2.5"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
         <div className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-[var(--bz-surface)] cursor-pointer transition-colors">
           <div className="relative flex-shrink-0">
             {user.avatar ? (
-              <Image src={user.avatar} alt={user.name} width={28} height={28}
-                     className="rounded-[8px]" />
+              <Image
+                src={user.avatar}
+                alt={user.name}
+                width={28}
+                height={28}
+                className="rounded-[8px]"
+              />
             ) : (
-              <div className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center text-[10px] font-bold text-white"
-                   style={{ background: "linear-gradient(135deg, #c9a96e 0%, #d4845a 100%)" }}>
+              <div
+                className="w-[28px] h-[28px] rounded-[8px] flex items-center justify-center text-[10px] font-bold text-white"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #c9a96e 0%, #d4845a 100%)",
+                }}
+              >
                 {user.name?.[0]?.toUpperCase() || "U"}
               </div>
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[11.5px] font-semibold uppercase tracking-[0.3px] truncate" style={{ color: "var(--bz-text-1)" }}>
+            <div
+              className="text-[11.5px] font-semibold uppercase tracking-[0.3px] truncate"
+              style={{ color: "var(--bz-text-1)" }}
+            >
               {user.name}
             </div>
-            <div className="text-[9.5px] uppercase tracking-[0.5px]" style={{ color: "var(--bz-text-3)" }}>
+            <div
+              className="text-[9.5px] uppercase tracking-[0.5px]"
+              style={{ color: "var(--bz-text-3)" }}
+            >
               {isPortal ? "Client Portal" : user.role || user.team || "Team"}
             </div>
           </div>
-          <div className="w-[7px] h-[7px] rounded-full flex-shrink-0"
-               style={{
-                 background: user.isOnline ? "var(--bz-green)" : "var(--bz-text-3)",
-                 boxShadow: user.isOnline ? "0 0 6px rgba(77,184,122,0.45)" : "none",
-               }} />
+          <div
+            className="w-[7px] h-[7px] rounded-full flex-shrink-0"
+            style={{
+              background: user.isOnline
+                ? "var(--bz-green)"
+                : "var(--bz-text-3)",
+              boxShadow: user.isOnline
+                ? "0 0 6px rgba(77,184,122,0.45)"
+                : "none",
+            }}
+          />
         </div>
-        <button onClick={onLogout}
-                className="flex items-center gap-2 w-full mt-1 px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.5px] rounded-lg transition-colors"
-                style={{ color: "var(--bz-text-3)" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "var(--bz-text-1)")}
-                onMouseLeave={e => (e.currentTarget.style.color = "var(--bz-text-3)")}>
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-2 w-full mt-1 px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.5px] rounded-lg transition-colors"
+          style={{ color: "var(--bz-text-3)" }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.color = "var(--bz-text-1)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.color = "var(--bz-text-3)")
+          }
+        >
           <LogOut size={13} />
           <span>Logout</span>
         </button>

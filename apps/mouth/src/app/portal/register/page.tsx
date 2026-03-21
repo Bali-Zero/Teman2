@@ -40,7 +40,11 @@ function RegisterContent() {
           setError(result.message || "This invitation is no longer valid.");
         }
       } catch (err) {
-        logger.error("Token validation failed", {}, err instanceof Error ? err : new Error(String(err)));
+        logger.error(
+          "Token validation failed",
+          {},
+          err instanceof Error ? err : new Error(String(err)),
+        );
         setError("Failed to validate invitation. Please try again.");
       } finally {
         setIsValidating(false);
@@ -82,7 +86,11 @@ function RegisterContent() {
         setError(result.message || "Registration failed. Please try again.");
       }
     } catch (err) {
-      logger.error("Registration failed", {}, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        "Registration failed",
+        {},
+        err instanceof Error ? err : new Error(String(err)),
+      );
       setError("Registration failed. Please try again or contact support.");
     } finally {
       setIsSubmitting(false);

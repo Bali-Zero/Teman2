@@ -66,11 +66,7 @@ export function ChatPanel({
 
       {/* Input */}
       <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-        <ChatInput
-          onSend={onSend}
-          onAbort={onAbort}
-          isLoading={isLoading}
-        />
+        <ChatInput onSend={onSend} onAbort={onAbort} isLoading={isLoading} />
       </div>
     </div>
   );
@@ -80,12 +76,10 @@ function WelcomeScreen() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
       <div className="text-4xl">🇮🇩</div>
-      <h1 className="text-2xl font-semibold text-foreground">
-        Nuzantara V6
-      </h1>
+      <h1 className="text-2xl font-semibold text-foreground">Nuzantara V6</h1>
       <p className="max-w-md text-sm text-muted-foreground">
-        Ask about Indonesian business setup, visas, property acquisition,
-        tax compliance, or KBLI codes.
+        Ask about Indonesian business setup, visas, property acquisition, tax
+        compliance, or KBLI codes.
       </p>
       <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
         {[

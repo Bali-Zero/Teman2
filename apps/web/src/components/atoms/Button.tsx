@@ -11,10 +11,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const variantClasses: Record<Variant, string> = {
   primary:
     "bg-accent text-accent-foreground hover:bg-[var(--accent-hover)] disabled:opacity-50",
-  secondary:
-    "bg-muted text-foreground hover:bg-border disabled:opacity-50",
-  ghost:
-    "bg-transparent text-foreground hover:bg-muted disabled:opacity-50",
+  secondary: "bg-muted text-foreground hover:bg-border disabled:opacity-50",
+  ghost: "bg-transparent text-foreground hover:bg-muted disabled:opacity-50",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

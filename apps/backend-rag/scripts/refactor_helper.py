@@ -162,9 +162,11 @@ class RefactoringAnalyzer:
                                 }
                             )
                         # Check for magic numbers (long numeric strings)
-                        elif isinstance(node, ast.Constant) and isinstance(
-                            node.value, (int, float)
-                        ) and abs(node.value) > 1000:  # Large numbers might be magic
+                        elif (
+                            isinstance(node, ast.Constant)
+                            and isinstance(node.value, (int, float))
+                            and abs(node.value) > 1000
+                        ):  # Large numbers might be magic
                             hardcoded.append(
                                 {
                                     "file": str(file_path),

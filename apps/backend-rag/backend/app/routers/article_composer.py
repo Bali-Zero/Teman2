@@ -653,7 +653,9 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     # AI SEO optimization fields
     ai_confidence = getattr(article, "ai_confidence_score", 0.85)
     answer_snippet = getattr(article, "answer_snippet", article.ai_summary)
-    primary_question = getattr(article, "primary_question", f"What does {article.headline} mean for expats in Bali?")
+    primary_question = getattr(
+        article, "primary_question", f"What does {article.headline} mean for expats in Bali?"
+    )
 
     # Entity mentions from enrichment
     entity_mentions_yaml = ""
@@ -663,7 +665,7 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
         for ent in entities[:5]:
             name = ent.get("name", "") if isinstance(ent, dict) else str(ent)
             etype = ent.get("type", "Organization") if isinstance(ent, dict) else "Organization"
-            entity_lines.append(f'    - name: {name}\n      type: {etype}')
+            entity_lines.append(f"    - name: {name}\n      type: {etype}")
         entity_mentions_yaml = "  entityMentions:\n" + "\n".join(entity_lines)
 
     mdx_content = f'''---

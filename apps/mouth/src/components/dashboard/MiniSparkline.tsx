@@ -34,7 +34,9 @@ export const MiniSparkline = React.memo(function MiniSparkline({
     return { x, y };
   });
 
-  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+  const linePath = points
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+    .join(" ");
 
   const fillPath = `${linePath} L${points[points.length - 1].x},${height - padding} L${points[0].x},${height - padding} Z`;
 

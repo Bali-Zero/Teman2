@@ -2,40 +2,40 @@
 """
 FASE 4 — Canva Carousel Builder
 ================================
-Popola il template War_Room (DAHEME4mocU) su Canva con il contenuto
-generato da claude_director.py.
+Prepara le operazioni Canva e le scrive in canva_pending.json.
 
-Architettura: claude -p come bridge MCP
-  Il MCP Canva è un server remoto connesso SOLO alla sessione Claude Code
-  (OAuth, non stdio, non HTTP locale). Non è raggiungibile da processi Python.
-  Soluzione: genera un prompt strutturato e lo esegue via `claude -p`,
-  identico al pattern Surgeon in Core Guardian.
+Il MCP Canva è accessibile SOLO dalla sessione interattiva Claude Code
+(OAuth bound al browser). Non è raggiungibile da subprocess/claude -p.
+
+Soluzione: questo script scrive canva_pending.json con tutte le operazioni
+pronte. La sessione Claude Code legge il file e applica su Canva via MCP.
 
 Workflow:
   1. Legge claude_slides.json
-  2. Costruisce un prompt preciso con le operazioni Canva da eseguire
-  3. Lancia `claude -p "<prompt>"` — Claude Code esegue le MCP calls
-  4. Parsa l'output JSON per verificare il successo
-  5. Scrive carousel_canva.json + image_prompts.json in output/
+  2. Converte slide → lista operazioni replace_text
+  3. Scrive output/canva/canva_pending.json  ← il file che Claude Code legge
+  4. Scrive output/master/canva_pending.json (copia master)
+  5. Notifica via Telegram (se disponibile)
 
-TEMPLATE_SLOTS: element IDs pagina 1 del design DAHEME4mocU (War_Room)
+TEMPLATE_SLOTS: element IDs pagina 1 del design DAHEME4mocU
   upper row (y < 400): slots 0-5 → cover + 5 pannelli
-  lower row (y > 500): slots 0-3 → cover + 3 pannelli (seconda riga)
+  lower row (y > 500): slots 0-3 → 4 pannelli seconda riga
+  Totale: 10 slot disponibili per 6-10 slide
 
-Per pagine 2-3: stesso design, stessi element ID — Canva li espone
-  per pagina tramite page_index nel perform-editing-operations.
-  Passare --page 2 usa page_index=2 ma gli element ID rimangono gli stessi
-  (il design è un template: ogni pagina replica la struttura di pagina 1).
+Numero slide: range decisionale 6-10
+  - Director può generare qualsiasi numero nel range
+  - Slot in eccesso → FINISH marker (slot vuoto pulito)
+  - Slide in eccesso rispetto agli slot → troncate (con warning)
 """
 
 import json
 import sys
 import os
 import argparse
-import subprocess
 import time
 from pathlib import Path
 from typing import Optional
+
 
 # ── Canva Design ──────────────────────────────────────────────────────────────
 DEFAULT_DESIGN_ID = "DAHEME4mocU"
@@ -43,39 +43,55 @@ DEFAULT_DESIGN_ID = "DAHEME4mocU"
 # ── Template element IDs (War_Room design, identici su tutte le pagine) ───────
 # Struttura: (heading_element_id, body_element_id)
 # upper row = riga superiore (y < 400px): cover + 5 pannelli
-# lower row = riga inferiore (y > 500px): cover + 3 pannelli
+# lower row = riga inferiore (y > 500px): 4 pannelli
 TEMPLATE_SLOTS = {
     "upper": [
-        ("PBsLhMw2tzZTd6V7-LBNh3LV9Wpg3J3yh", "PBsLhMw2tzZTd6V7-LBnxWRM9N3TnpjhD"),  # cover
-        ("PBsLhMw2tzZTd6V7-LBHHjHgS87kxWQtR", "PBsLhMw2tzZTd6V7-LBdyFlLnfRvGlLFY"),  # panel 1
-        ("PBsLhMw2tzZTd6V7-LB41FkdMcJjvFVy6", "PBsLhMw2tzZTd6V7-LBBGg07F7zXrT7wv"),  # panel 2
-        ("PBsLhMw2tzZTd6V7-LBZjVnkTKs8G3DmH", "PBsLhMw2tzZTd6V7-LBNqRfkszx0hmt6K"),  # panel 3
-        ("PBsLhMw2tzZTd6V7-LBYYRwyhQKY0Rgsp", "PBsLhMw2tzZTd6V7-LBvdBlbBdzkDQfJQ"),  # panel 4
-        ("PBsLhMw2tzZTd6V7-LBPMtk8fRcwYm3jF", "PBsLhMw2tzZTd6V7-LB7TgRGdpRKVsRLY"),  # panel 5/CTA
+        ("PBsLhMw2tzZTd6V7-LBNh3LV9Wpg3J3yh", "PBsLhMw2tzZTd6V7-LBnxWRM9N3TnpjhD"),  # cover/slide 1
+        ("PBsLhMw2tzZTd6V7-LBHHjHgS87kxWQtR", "PBsLhMw2tzZTd6V7-LBdyFlLnfRvGlLFY"),  # slide 2
+        ("PBsLhMw2tzZTd6V7-LB41FkdMcJjvFVy6", "PBsLhMw2tzZTd6V7-LBBGg07F7zXrT7wv"),  # slide 3
+        ("PBsLhMw2tzZTd6V7-LBZjVnkTKs8G3DmH", "PBsLhMw2tzZTd6V7-LBNqRfkszx0hmt6K"),  # slide 4
+        ("PBsLhMw2tzZTd6V7-LBYYRwyhQKY0Rgsp", "PBsLhMw2tzZTd6V7-LBvdBlbBdzkDQfJQ"),  # slide 5
+        ("PBsLhMw2tzZTd6V7-LBPMtk8fRcwYm3jF", "PBsLhMw2tzZTd6V7-LB7TgRGdpRKVsRLY"),  # slide 6
     ],
     "lower": [
-        ("PBsLhMw2tzZTd6V7-LBpj4gW2zMQ6phJM", "PBsLhMw2tzZTd6V7-LBFGYmXTfF9n1Jkn"),  # cover
-        ("PBsLhMw2tzZTd6V7-LBtqPts7PGJ2kRqT", "PBsLhMw2tzZTd6V7-LBvDCd7CP36nK9dG"),  # panel 1
-        ("PBsLhMw2tzZTd6V7-LBlYBx8wF8NrVWNF", "PBsLhMw2tzZTd6V7-LB1JKgk4QfKBpwVX"),  # panel 2
-        ("PBsLhMw2tzZTd6V7-LBkddNpJPn8G8jzd", "PBsLhMw2tzZTd6V7-LBmS0210M4PRnHdQ"),  # panel 3
+        ("PBsLhMw2tzZTd6V7-LBpj4gW2zMQ6phJM", "PBsLhMw2tzZTd6V7-LBFGYmXTfF9n1Jkn"),  # slide 7
+        ("PBsLhMw2tzZTd6V7-LBtqPts7PGJ2kRqT", "PBsLhMw2tzZTd6V7-LBvDCd7CP36nK9dG"),  # slide 8
+        ("PBsLhMw2tzZTd6V7-LBlYBx8wF8NrVWNF", "PBsLhMw2tzZTd6V7-LB1JKgk4QfKBpwVX"),  # slide 9
+        ("PBsLhMw2tzZTd6V7-LBkddNpJPn8G8jzd", "PBsLhMw2tzZTd6V7-LBmS0210M4PRnHdQ"),  # slide 10
     ],
+    "all": [],  # populated below
 }
+TEMPLATE_SLOTS["all"] = TEMPLATE_SLOTS["upper"] + TEMPLATE_SLOTS["lower"]
 
-FINISH_MARKER = "FINISH FINISH FINISH FINISH FINISH FINISH"
-CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
+FINISH_MARKER = "FINISH"
+MIN_SLIDES = 6
+MAX_SLIDES = 10
 
 
 # ── Slide → operations list ───────────────────────────────────────────────────
 
-def slides_to_operations(slides: list, slots: list) -> list:
+def slides_to_operations(slides: list, page: int = 1) -> list:
     """
     Converte slide JSON in lista di operazioni replace_text per Canva.
-    - body è MOCKUP: nessun limite di lunghezza
-    - image_prompt opzionale: aggiunto come annotazione tra parentesi nel body
-    - Slot in eccesso rispetto alle slide → FINISH_MARKER
+
+    Range decisionale: 6-10 slide.
+    - Slide in eccesso (>10): troncate con warning
+    - Slot in eccesso (slide < slot): FINISH_MARKER (slot vuoto)
+    - image_prompt: annotazione testuale nel body, non generazione immagini
     """
+    slots = TEMPLATE_SLOTS["all"]
+    n_slots = len(slots)  # 10
+
+    if len(slides) > MAX_SLIDES:
+        print(f"  ⚠️  {len(slides)} slide > MAX {MAX_SLIDES} — troncate",
+              file=sys.stderr)
+        slides = slides[:MAX_SLIDES]
+
+    if len(slides) < MIN_SLIDES:
+        print(f"  ⚠️  Solo {len(slides)} slide (min consigliato: {MIN_SLIDES})",
+              file=sys.stderr)
+
     ops = []
-    n_slots = len(slots)
 
     for i, slide in enumerate(slides):
         if i >= n_slots:
@@ -89,13 +105,20 @@ def slides_to_operations(slides: list, slots: list) -> list:
         image_placement = slide.get("image_placement") or ""
         is_cover = slide.get("is_cover", i == 0)
 
-        # Heading: headline + optional subhead (non-cover)
-        heading_text = f"{headline}\n{subhead.upper()}" if (subhead and not is_cover) else headline
+        # Heading: solo headline (cover) o headline + subhead uppercase
+        heading_text = headline
+        if subhead and not is_cover:
+            heading_text = f"{headline}\n{subhead.upper()}"
 
-        # Body: testo + annotazione image prompt se presente
+        # Body: testo principale
         body_parts = []
-        if body:
+        if is_cover and subhead:
+            # Cover: subhead come body (es. "It's in the hands of an algorithm.")
+            body_parts.append(subhead)
+        elif body:
             body_parts.append(body)
+
+        # Annotazione image prompt (non generazione — solo testo per designer)
         if image_prompt:
             note = f"\n(IMAGE PROMPT: {image_prompt}"
             if image_placement:
@@ -103,145 +126,65 @@ def slides_to_operations(slides: list, slots: list) -> list:
             note += ")"
             body_parts.append(note)
 
-        if is_cover and subhead:
-            body_text = subhead
-            if image_prompt:
-                body_text += f"\n(COVER IMAGE PROMPT: {image_prompt}"
-                if image_placement:
-                    body_text += f" — {image_placement}"
-                body_text += ")"
-        else:
-            body_text = "\n".join(body_parts) if body_parts else FINISH_MARKER
+        body_text = "\n".join(body_parts) if body_parts else FINISH_MARKER
 
-        ops.append({"type": "replace_text", "element_id": heading_id, "text": heading_text})
-        ops.append({"type": "replace_text", "element_id": body_id,    "text": body_text})
+        ops.append({
+            "type": "replace_text",
+            "element_id": heading_id,
+            "text": heading_text,
+            "page_index": page,
+        })
+        ops.append({
+            "type": "replace_text",
+            "element_id": body_id,
+            "text": body_text,
+            "page_index": page,
+        })
 
-    # Slot rimanenti → FINISH marker
+    # Slot rimanenti → FINISH marker (slot puliti)
     for j in range(len(slides), n_slots):
         heading_id, body_id = slots[j]
-        ops.append({"type": "replace_text", "element_id": heading_id, "text": FINISH_MARKER})
-        ops.append({"type": "replace_text", "element_id": body_id,    "text": FINISH_MARKER})
+        ops.append({"type": "replace_text", "element_id": heading_id,
+                    "text": FINISH_MARKER, "page_index": page})
+        ops.append({"type": "replace_text", "element_id": body_id,
+                    "text": FINISH_MARKER, "page_index": page})
 
     return ops
 
 
-# ── Claude -p bridge ──────────────────────────────────────────────────────────
-
-def build_claude_prompt(design_id: str, page_index: int, operations: list,
-                        topic: str) -> str:
-    """
-    Costruisce il prompt per `claude -p`.
-    Claude Code ha accesso al MCP Canva — esegue le operazioni e ritorna JSON.
-    """
-    ops_json = json.dumps(operations, ensure_ascii=False, indent=2)
-    return f"""You are executing a Canva carousel update for the War Room pipeline.
-
-TASK: Update Canva design {design_id} with carousel content for topic: "{topic}"
-
-STEPS (execute exactly in order, no confirmation needed):
-1. Call mcp__claude_ai_Canva__start-editing-transaction with design_id="{design_id}"
-2. Call mcp__claude_ai_Canva__perform-editing-operations with:
-   - transaction_id: (from step 1)
-   - page_index: {page_index}
-   - user_intent: "War Room carousel: {topic}"
-   - operations: {ops_json}
-3. Check results — if any operation failed, note it but continue
-4. Call mcp__claude_ai_Canva__commit-editing-transaction with the transaction_id
-
-OUTPUT: After completing all steps, output ONLY this JSON (no other text):
-{{
-  "success": true/false,
-  "transaction_id": "...",
-  "operations_total": {len(operations)},
-  "operations_success": <count of successful operations>,
-  "design_url": "https://www.canva.com/design/{design_id}/edit",
-  "committed": true/false,
-  "error": null or "error message"
-}}
-
-IMPORTANT:
-- Execute all MCP calls immediately, do not ask for confirmation
-- If start-transaction fails, output success:false with error message
-- If commit fails, still output what succeeded
-- Output ONLY the JSON block, nothing else"""
-
-
-def run_claude_bridge(prompt: str, timeout: int = 300) -> Optional[dict]:
-    """
-    Esegue `claude -p "<prompt>"` e parsa il JSON dall'output.
-    Ritorna il dict risultato o None in caso di errore.
-    """
+def notify_telegram(token: str, chat_id: str, message: str) -> bool:
+    """Invia notifica Telegram. Non bloccante."""
+    import urllib.request
+    import urllib.parse
     try:
-        result = subprocess.run(
-            [CLAUDE_BIN, "-p", prompt,
-             "--output-format", "json",
-             "--no-session-persistence",   # avoid SessionEnd hook crash
-             "--permission-mode", "bypassPermissions"],
-            capture_output=True, text=True, timeout=timeout,
-            env=os.environ.copy()
-        )
-
-        # rc=1 can come from SessionEnd hooks (claude-mem) crashing after output is written
-        # Only fail if stdout is also empty
-        if result.returncode != 0 and not result.stdout.strip():
-            print(f"  ❌ claude -p failed (rc={result.returncode}): {result.stderr[:200]}",
-                  file=sys.stderr)
-            return None
-        if result.returncode != 0:
-            print(f"  ⚠️  claude -p rc={result.returncode} (hook error, ignoring — stdout present)",
-                  file=sys.stderr)
-
-        # Parse output: cerca JSON nell'output
-        output = result.stdout.strip()
-        # claude --output-format json wraps in {"result": "..."}
-        try:
-            outer = json.loads(output)
-            # Claude JSON output format: {"type": "result", "result": "...", ...}
-            inner_text = outer.get("result", output) if isinstance(outer, dict) else output
-        except json.JSONDecodeError:
-            inner_text = output
-
-        # Cerca il blocco JSON nella risposta
-        if isinstance(inner_text, str):
-            # Trova l'ultimo { ... } nel testo
-            start = inner_text.rfind("{")
-            end   = inner_text.rfind("}") + 1
-            if start >= 0 and end > start:
-                try:
-                    return json.loads(inner_text[start:end])
-                except json.JSONDecodeError:
-                    pass
-            print(f"  ⚠️  No JSON in claude output: {inner_text[:300]}", file=sys.stderr)
-            return None
-        elif isinstance(inner_text, dict):
-            return inner_text
-
-    except subprocess.TimeoutExpired:
-        print(f"  ❌ claude -p timed out after {timeout}s", file=sys.stderr)
-    except FileNotFoundError:
-        print(f"  ❌ claude binary not found at: {CLAUDE_BIN}", file=sys.stderr)
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        data = urllib.parse.urlencode({
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "HTML",
+        }).encode()
+        with urllib.request.urlopen(url, data=data, timeout=10) as r:
+            return r.status == 200
     except Exception as e:
-        print(f"  ❌ claude bridge error: {e}", file=sys.stderr)
-
-    return None
+        print(f"  ⚠️  Telegram notify failed: {e}", file=sys.stderr)
+        return False
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="War Room — Canva Carousel Builder")
+    ap = argparse.ArgumentParser(description="War Room — Canva Pending Writer")
     ap.add_argument("--slides",    required=True,  help="Path a claude_slides.json")
     ap.add_argument("--output",    required=True,  help="Output dir (es. output/canva/)")
     ap.add_argument("--master",    required=True,  help="Master dir (es. output/master/)")
     ap.add_argument("--design-id", default=DEFAULT_DESIGN_ID)
-    ap.add_argument("--row",       default="upper", choices=["upper", "lower"],
-                    help="Riga template: upper (y<400) o lower (y>500)")
+    ap.add_argument("--row",       default="all",
+                    choices=["upper", "lower", "all"],
+                    help="Slot da usare (default: all = tutte e 10)")
     ap.add_argument("--page",      type=int, default=1,
-                    help="page_index Canva (1=prima pagina, default=1)")
+                    help="page_index Canva (default: 1)")
     ap.add_argument("--dry-run",   action="store_true",
-                    help="Mostra operazioni senza chiamare Canva")
-    ap.add_argument("--timeout",   type=int, default=300,
-                    help="Timeout in secondi per claude -p (default: 300)")
+                    help="Mostra operazioni senza scrivere file")
     args = ap.parse_args()
 
     # ── Validate inputs ──
@@ -263,15 +206,24 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     master_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"\n🎨 Canva Carousel Builder", file=sys.stderr)
+    print(f"\n🎨 Canva Pending Writer", file=sys.stderr)
     print(f"   Design:  {args.design_id}", file=sys.stderr)
     print(f"   Topic:   {topic}", file=sys.stderr)
-    print(f"   Slides:  {len(slides)}", file=sys.stderr)
+    print(f"   Slides:  {len(slides)} (range: {MIN_SLIDES}-{MAX_SLIDES})", file=sys.stderr)
     print(f"   Row:     {args.row}  Page: {args.page}", file=sys.stderr)
 
     # ── Build operations ──
-    slots      = TEMPLATE_SLOTS[args.row]
-    operations = slides_to_operations(slides, slots)
+    # Override slots if specific row requested
+    if args.row != "all":
+        # Monkey-patch per compatibilità
+        original_all = TEMPLATE_SLOTS["all"]
+        TEMPLATE_SLOTS["all"] = TEMPLATE_SLOTS[args.row]
+
+    operations = slides_to_operations(slides, page=args.page)
+
+    if args.row != "all":
+        TEMPLATE_SLOTS["all"] = original_all
+
     print(f"   Ops:     {len(operations)} replace_text", file=sys.stderr)
 
     # ── Dry run ──
@@ -279,7 +231,8 @@ def main() -> None:
         print("\n[DRY RUN] Operations preview:", file=sys.stderr)
         for op in operations:
             txt = op["text"][:70].replace("\n", "↵")
-            print(f"  {op['element_id'][-12:]} → '{txt}'", file=sys.stderr)
+            print(f"  [{op['page_index']}] {op['element_id'][-12:]} → '{txt}'",
+                  file=sys.stderr)
         dry = {
             "design_id": args.design_id,
             "topic": topic,
@@ -294,54 +247,38 @@ def main() -> None:
         print(f"\n✅ Dry-run → {out_dir}/canva_dryrun.json", file=sys.stderr)
         return
 
-    # ── Execute via claude -p bridge ──
-    prompt = build_claude_prompt(args.design_id, args.page, operations, topic)
-
-    print(f"\n  🤖 Running claude -p bridge (timeout={args.timeout}s)...", file=sys.stderr)
-    t0 = time.time()
-    result = run_claude_bridge(prompt, timeout=args.timeout)
-    elapsed = time.time() - t0
-    print(f"  ⏱️  Elapsed: {elapsed:.1f}s", file=sys.stderr)
-
-    if not result:
-        print("⚠️  Canva bridge returned no result — skipping carousel update", file=sys.stderr)
-        return
-
-    if not result.get("success"):
-        err = result.get("error", "unknown error")
-        print(f"⚠️  Canva bridge reported failure: {err} — skipping carousel update", file=sys.stderr)
-        return
-
-    print(f"  ✅ {result.get('operations_success', '?')}/{result.get('operations_total', '?')} "
-          f"ops — committed: {result.get('committed')}", file=sys.stderr)
-
-    # ── Write output metadata ──
-    meta = {
-        "design_id":          args.design_id,
-        "design_url":         result.get("design_url",
-                                         f"https://www.canva.com/design/{args.design_id}/edit"),
-        "topic":              topic,
-        "tone":               data.get("tone"),
-        "row":                args.row,
-        "page":               args.page,
-        "slides_count":       len(slides),
-        "operations_applied": result.get("operations_success", len(operations)),
-        "committed":          result.get("committed", True),
-        "committed_at":       time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "instagram_caption":  data.get("instagram_caption", ""),
-        "slides":             slides,
+    # ── Write canva_pending.json ──
+    pending = {
+        "design_id":         args.design_id,
+        "design_url":        f"https://www.canva.com/design/{args.design_id}/edit",
+        "topic":             topic,
+        "tone":              data.get("tone", ""),
+        "page_index":        args.page,
+        "slides_count":      len(slides),
+        "operations_count":  len(operations),
+        "operations":        operations,
+        "instagram_caption": data.get("instagram_caption", ""),
+        "slides":            slides,
+        "created_at":        time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "status":            "pending",  # → "applied" dopo MCP commit
     }
 
-    out_file = out_dir / "carousel_canva.json"
-    out_file.write_text(json.dumps(meta, ensure_ascii=False, indent=2))
-    (master_dir / "carousel_canva.json").write_text(
-        json.dumps(meta, ensure_ascii=False, indent=2))
+    pending_file = out_dir / "canva_pending.json"
+    pending_file.write_text(json.dumps(pending, ensure_ascii=False, indent=2))
+    (master_dir / "canva_pending.json").write_text(
+        json.dumps(pending, ensure_ascii=False, indent=2))
+
+    print(f"\n✅ canva_pending.json scritto → {pending_file}", file=sys.stderr)
+    print(f"   {len(operations)} operazioni pronte per Claude Code → MCP Canva",
+          file=sys.stderr)
+    print(f"   Design: {pending['design_url']}", file=sys.stderr)
 
     # Instagram caption
     if cap := data.get("instagram_caption"):
         (master_dir / "instagram_caption.txt").write_text(cap)
+        print(f"   📸 Instagram caption salvata", file=sys.stderr)
 
-    # Image prompts per ComfyUI/Pollinations
+    # Image prompts (solo annotazioni testuali)
     image_prompts = [
         {
             "slide":           s.get("slide_number"),
@@ -355,10 +292,21 @@ def main() -> None:
     if image_prompts:
         ip_file = out_dir / "image_prompts.json"
         ip_file.write_text(json.dumps(image_prompts, ensure_ascii=False, indent=2))
-        print(f"  🖼️  {len(image_prompts)} image prompts → {ip_file}", file=sys.stderr)
+        print(f"   🖼️  {len(image_prompts)} image prompts → {ip_file}", file=sys.stderr)
 
-    print(f"\n✅ Canva carousel ready!", file=sys.stderr)
-    print(f"   🔗 {meta['design_url']}", file=sys.stderr)
+    # ── Notifica Telegram ──
+    tg_token   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    tg_chat_id = os.environ.get("TELEGRAM_GROUP_ID", "")
+    if tg_token and tg_chat_id:
+        msg = (
+            f"🎨 <b>War Room — Canva pronto</b>\n"
+            f"Topic: <i>{topic}</i>\n"
+            f"{len(slides)} slide → {len(operations)} operazioni\n\n"
+            f"Apri Claude Code e scrivi:\n"
+            f"<code>applica canva_pending</code>"
+        )
+        if notify_telegram(tg_token, tg_chat_id, msg):
+            print(f"   📱 Telegram notifica inviata", file=sys.stderr)
 
 
 if __name__ == "__main__":

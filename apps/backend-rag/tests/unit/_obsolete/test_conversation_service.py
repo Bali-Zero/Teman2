@@ -59,8 +59,6 @@ def mock_memory_cache():
     return cache
 
 
-
-
 @pytest.fixture
 def conversation_service(mock_db_pool):
     """Create ConversationService instance with mocked DB pool"""
@@ -205,8 +203,6 @@ async def test_save_conversation_with_metadata(
     assert call_args[4] == metadata
 
 
-
-
 # ============================================================================
 # Tests for save_conversation - Failure Cases
 # ============================================================================
@@ -284,8 +280,6 @@ async def test_save_conversation_memory_cache_error(
     assert result["success"] is True
     assert result["conversation_id"] == 25
     assert result["persistence_mode"] == "db"
-
-
 
 
 # ============================================================================

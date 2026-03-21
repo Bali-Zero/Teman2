@@ -2782,9 +2782,7 @@ class TestStreamQueryEdgeCases:
         """Test that recall gate failure falls back to RAG"""
         with (
             patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as mock_ic,
-            patch(
-                "backend.services.rag.agentic.orchestrator.EmotionalAttunementService"
-            ),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
             patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_spb,
             patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
             patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm,

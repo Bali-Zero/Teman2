@@ -148,7 +148,10 @@ function DocumentUploadModal({
           <DialogTitle>Upload Document</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="p-3 rounded-lg" style={{ background: "var(--bz-surface)" }}>
+          <div
+            className="p-3 rounded-lg"
+            style={{ background: "var(--bz-surface)" }}
+          >
             <p className="font-medium">{document.document_label}</p>
             {document.description && (
               <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
@@ -176,7 +179,11 @@ function DocumentUploadModal({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add any notes about this document..."
               className="w-full px-3 py-2 rounded-lg border text-sm min-h-[80px]"
-              style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)", color: "var(--bz-text-1)" }}
+              style={{
+                background: "var(--bz-surface)",
+                borderColor: "var(--bz-border)",
+                color: "var(--bz-text-1)",
+              }}
             />
           </div>
 
@@ -228,14 +235,19 @@ function ProcessCard({
     totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="rounded-xl border shadow-sm overflow-hidden" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+    <div
+      className="rounded-xl border shadow-sm overflow-hidden"
+      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+    >
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full p-4 flex items-center justify-between transition-colors"
         style={{ background: "transparent" }}
-        onMouseEnter={e => (e.currentTarget.style.background = "var(--bz-surface)")}
-        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.background = "var(--bz-surface)")
+        }
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
@@ -254,7 +266,10 @@ function ProcessCard({
             <p className="text-sm font-medium">
               {verifiedCount}/{totalCount} documents
             </p>
-            <div className="w-24 h-1.5 rounded-full mt-1" style={{ background: "var(--bz-surface)" }}>
+            <div
+              className="w-24 h-1.5 rounded-full mt-1"
+              style={{ background: "var(--bz-surface)" }}
+            >
               <div
                 className="h-full bg-[var(--accent)] rounded-full transition-all"
                 style={{ width: `${progress}%` }}
@@ -271,9 +286,15 @@ function ProcessCard({
 
       {/* Documents List */}
       {isExpanded && (
-        <div className="border-t divide-y" style={{ borderColor: "var(--bz-border)" }}>
+        <div
+          className="border-t divide-y"
+          style={{ borderColor: "var(--bz-border)" }}
+        >
           {process.documents.length === 0 ? (
-            <div className="p-6 text-center" style={{ color: "var(--bz-text-2)" }}>
+            <div
+              className="p-6 text-center"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
               <p>No documents required</p>
             </div>
@@ -298,7 +319,10 @@ function ProcessCard({
                     )}
                   </div>
                   {doc.description && (
-                    <p className="text-sm mt-0.5" style={{ color: "var(--bz-text-2)" }}>
+                    <p
+                      className="text-sm mt-0.5"
+                      style={{ color: "var(--bz-text-2)" }}
+                    >
                       {doc.description}
                     </p>
                   )}
@@ -307,7 +331,10 @@ function ProcessCard({
                       status={doc.status as keyof typeof STATUS_CONFIG}
                     />
                     {doc.team_member_notes && (
-                      <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                      <span
+                        className="text-xs"
+                        style={{ color: "var(--bz-text-2)" }}
+                      >
                         Note: {doc.team_member_notes}
                       </span>
                     )}
@@ -448,7 +475,10 @@ export default function PortalProcessPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -466,20 +496,52 @@ export default function PortalProcessPage() {
       {/* Stats Cards */}
       {totalDocs > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="rounded-xl border p-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
-            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>Active Processes</p>
+          <div
+            className="rounded-xl border p-4"
+            style={{
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+            }}
+          >
+            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+              Active Processes
+            </p>
             <p className="text-2xl font-bold">{processGroups.length}</p>
           </div>
-          <div className="rounded-xl border p-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
-            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>Documents Required</p>
+          <div
+            className="rounded-xl border p-4"
+            style={{
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+            }}
+          >
+            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+              Documents Required
+            </p>
             <p className="text-2xl font-bold">{totalDocs}</p>
           </div>
-          <div className="rounded-xl border p-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
-            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>Pending Upload</p>
+          <div
+            className="rounded-xl border p-4"
+            style={{
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+            }}
+          >
+            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+              Pending Upload
+            </p>
             <p className="text-2xl font-bold text-amber-400">{pendingDocs}</p>
           </div>
-          <div className="rounded-xl border p-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
-            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>Completion</p>
+          <div
+            className="rounded-xl border p-4"
+            style={{
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+            }}
+          >
+            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+              Completion
+            </p>
             <p className="text-2xl font-bold text-green-400">
               {completionRate}%
             </p>
@@ -489,8 +551,17 @@ export default function PortalProcessPage() {
 
       {/* Process List */}
       {processGroups.length === 0 ? (
-        <div className="rounded-xl border p-12 text-center" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
-          <FolderOpen className="w-16 h-16 mx-auto mb-4" style={{ color: "var(--bz-text-3)" }} />
+        <div
+          className="rounded-xl border p-12 text-center"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
+          <FolderOpen
+            className="w-16 h-16 mx-auto mb-4"
+            style={{ color: "var(--bz-text-3)" }}
+          />
           <h3 className="text-lg font-medium mb-2">No Active Processes</h3>
           <p className="max-w-md mx-auto" style={{ color: "var(--bz-text-2)" }}>
             You don&apos;t have any active processes at the moment. When your

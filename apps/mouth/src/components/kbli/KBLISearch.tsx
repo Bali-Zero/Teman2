@@ -150,7 +150,9 @@ export function KBLISearch({
                   {result.code}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate text-white">{result.title}</div>
+                  <div className="font-semibold truncate text-white">
+                    {result.title}
+                  </div>
                   <div className="text-sm text-zinc-400 line-clamp-1">
                     {result.description}
                   </div>

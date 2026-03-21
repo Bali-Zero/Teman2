@@ -243,7 +243,11 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
     bali_zero_take_match = re.search(
         r"## Bali Zero Take\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
     )
-    bali_zero_take_text = bali_zero_take_match.group(1).strip() if bali_zero_take_match else content[len(facts):].strip()[:600]
+    bali_zero_take_text = (
+        bali_zero_take_match.group(1).strip()
+        if bali_zero_take_match
+        else content[len(facts) :].strip()[:600]
+    )
 
     # Parse Bali Zero Take subsections if present
     hidden_insight_match = re.search(
@@ -1349,11 +1353,13 @@ async def publish_staging_item(
         try:
             async with _post_publish_lock:
                 if not any(item["slug"] == article_slug for item in _post_publish_queue):
-                    _post_publish_queue.append({
-                        "slug": article_slug,
-                        "category": category,
-                        "queued_at": datetime.utcnow().isoformat(),
-                    })
+                    _post_publish_queue.append(
+                        {
+                            "slug": article_slug,
+                            "category": category,
+                            "queued_at": datetime.utcnow().isoformat(),
+                        }
+                    )
             logger.info(
                 "📥 Enqueued for post-processing",
                 extra={"slug": article_slug, "category": category},
@@ -1423,7 +1429,9 @@ async def enqueue_post_publish(request: Request) -> dict:
     async with _post_publish_lock:
         # avoid duplicates
         if not any(item["slug"] == slug for item in _post_publish_queue):
-            _post_publish_queue.append({"slug": slug, "category": category, "queued_at": datetime.utcnow().isoformat()})
+            _post_publish_queue.append(
+                {"slug": slug, "category": category, "queued_at": datetime.utcnow().isoformat()}
+            )
     logger.info("📥 Post-publish queue: added", extra={"slug": slug, "category": category})
     return {"ok": True, "slug": slug}
 
@@ -1433,7 +1441,7 @@ async def get_pending_queue(x_api_key: str | None = None, request: Request = Non
     """Poller endpoint: returns pending slugs for post-processing."""
     # Simple API key auth
     api_key = (request.headers.get("X-API-Key") if request else None) or x_api_key
-    if api_key != "internal-scraper-key":
+    if api_key != settings.intel_scraper_api_key:
         raise HTTPException(status_code=401, detail="Unauthorized")
     async with _post_publish_lock:
         pending = list(_post_publish_queue)
@@ -1444,7 +1452,7 @@ async def get_pending_queue(x_api_key: str | None = None, request: Request = Non
 async def mark_queue_done(request: Request) -> dict:
     """Poller endpoint: mark slugs as processed and remove from queue."""
     api_key = request.headers.get("X-API-Key")
-    if api_key != "internal-scraper-key":
+    if api_key != settings.intel_scraper_api_key:
         raise HTTPException(status_code=401, detail="Unauthorized")
     body = await request.json()
     slugs = body.get("slugs", [])

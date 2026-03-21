@@ -23,11 +23,15 @@ import asyncpg
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-DB = os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://") or \
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+DB = (
+    os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://")
+    or "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+)
 
 
-async def merge_custom_fields(conn: asyncpg.Connection, company_id: int, new_fields: dict, dry_run: bool) -> bool:
+async def merge_custom_fields(
+    conn: asyncpg.Connection, company_id: int, new_fields: dict, dry_run: bool
+) -> bool:
     current = await conn.fetchval("SELECT custom_fields FROM companies WHERE id = $1", company_id)
     existing = {}
     if current:
@@ -52,7 +56,8 @@ async def merge_custom_fields(conn: asyncpg.Connection, company_id: int, new_fie
     if not dry_run:
         await conn.execute(
             "UPDATE companies SET custom_fields = $1::jsonb, updated_at = NOW() WHERE id = $2",
-            json.dumps(merged), company_id,
+            json.dumps(merged),
+            company_id,
         )
     for k, v in added.items():
         logger.info(f"    → custom_fields.{k} = {str(v)[:60]}")
@@ -62,11 +67,14 @@ async def merge_custom_fields(conn: asyncpg.Connection, company_id: int, new_fie
 async def update_company_fields(conn: asyncpg.Connection, company_id: int, dry_run: bool) -> dict:
     stats = {"fields_updated": 0, "directors_linked": 0}
 
-    docs = await conn.fetch("""
+    docs = await conn.fetch(
+        """
         SELECT id, document_type, file_name, ocr_extracted_data
         FROM company_documents
         WHERE company_id = $1 AND ocr_status = 'completed' AND ocr_extracted_data IS NOT NULL
-    """, company_id)
+    """,
+        company_id,
+    )
 
     if not docs:
         return stats
@@ -117,14 +125,22 @@ async def update_company_fields(conn: asyncpg.Connection, company_id: int, dry_r
                 try:
                     d = dt_date.fromisoformat(val)
                     if not dry_run:
-                        await conn.execute(f"UPDATE companies SET {col} = $1, updated_at = NOW() WHERE id = $2", d, company_id)
+                        await conn.execute(
+                            f"UPDATE companies SET {col} = $1, updated_at = NOW() WHERE id = $2",
+                            d,
+                            company_id,
+                        )
                     logger.info(f"    → {col} = {val}")
                     return True
                 except ValueError:
                     return False
             else:
                 if not dry_run:
-                    await conn.execute(f"UPDATE companies SET {col} = $1, updated_at = NOW() WHERE id = $2", val, company_id)
+                    await conn.execute(
+                        f"UPDATE companies SET {col} = $1, updated_at = NOW() WHERE id = $2",
+                        val,
+                        company_id,
+                    )
                 logger.info(f"    → {col} = {val}")
                 return True
         except asyncpg.exceptions.UniqueViolationError:
@@ -137,7 +153,10 @@ async def update_company_fields(conn: asyncpg.Connection, company_id: int, dry_r
             stats["fields_updated"] += 1
         if await set_if_null("akta_pendirian_date", akta.get("deed_date"), is_date=True):
             stats["fields_updated"] += 1
-        if await set_if_null("registered_address", akta.get("registered_address") or akta.get("Alamat") or akta.get("address")):
+        if await set_if_null(
+            "registered_address",
+            akta.get("registered_address") or akta.get("Alamat") or akta.get("address"),
+        ):
             stats["fields_updated"] += 1
         extra = {}
         cap = akta.get("authorized_capital") or akta.get("Modal Dasar")
@@ -205,11 +224,21 @@ async def update_company_fields(conn: asyncpg.Connection, company_id: int, dry_r
 
     # Profile
     if profile:
-        email = profile.get("email") or profile.get("Official Email") or profile.get("Email") or profile.get("company_email")
+        email = (
+            profile.get("email")
+            or profile.get("Official Email")
+            or profile.get("Email")
+            or profile.get("company_email")
+        )
         if email and "@" in str(email):
             if await set_if_null("company_email", str(email)):
                 stats["fields_updated"] += 1
-        phone = profile.get("phone") or profile.get("Nomor Telepon") or profile.get("phone_number") or profile.get("company_phone")
+        phone = (
+            profile.get("phone")
+            or profile.get("Nomor Telepon")
+            or profile.get("phone_number")
+            or profile.get("company_phone")
+        )
         if phone:
             if await set_if_null("company_phone", str(phone)):
                 stats["fields_updated"] += 1
@@ -228,7 +257,9 @@ async def update_company_fields(conn: asyncpg.Connection, company_id: int, dry_r
             name = person.get("name", "").strip()
             pct = person.get("ownership_pct", 0)
             if name and len(name) > 2:
-                linked = await link_person_to_company(conn, company_id, name, "director", pct, dry_run)
+                linked = await link_person_to_company(
+                    conn, company_id, name, "director", pct, dry_run
+                )
                 if linked:
                     stats["directors_linked"] += 1
 
@@ -237,7 +268,9 @@ async def update_company_fields(conn: asyncpg.Connection, company_id: int, dry_r
             name = person.get("name", "").strip()
             pct = person.get("ownership_pct", 0)
             if name and len(name) > 2:
-                linked = await link_person_to_company(conn, company_id, name, "commissioner", pct, dry_run)
+                linked = await link_person_to_company(
+                    conn, company_id, name, "commissioner", pct, dry_run
+                )
                 if linked:
                     stats["directors_linked"] += 1
 
@@ -246,7 +279,9 @@ async def update_company_fields(conn: asyncpg.Connection, company_id: int, dry_r
             name = person.get("name", "").strip()
             pct = person.get("ownership_pct", 0)
             if name and len(name) > 2:
-                linked = await link_person_to_company(conn, company_id, name, "shareholder", pct, dry_run)
+                linked = await link_person_to_company(
+                    conn, company_id, name, "shareholder", pct, dry_run
+                )
                 if linked:
                     stats["directors_linked"] += 1
 
@@ -254,35 +289,47 @@ async def update_company_fields(conn: asyncpg.Connection, company_id: int, dry_r
 
 
 async def link_person_to_company(conn, company_id, person_name, role, ownership_pct, dry_run):
-    name = re.sub(r'\s+', ' ', person_name).strip()
+    name = re.sub(r"\s+", " ", person_name).strip()
 
     client_id = await conn.fetchval(
-        "SELECT id FROM clients WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($1)) AND deleted_at IS NULL LIMIT 1", name)
+        "SELECT id FROM clients WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($1)) AND deleted_at IS NULL LIMIT 1",
+        name,
+    )
 
     if not client_id:
         parts = name.split()
         if len(parts) >= 2:
             client_id = await conn.fetchval(
                 "SELECT id FROM clients WHERE LOWER(full_name) LIKE $1 AND LOWER(full_name) LIKE $2 AND deleted_at IS NULL LIMIT 1",
-                f"%{parts[0].lower()}%", f"%{parts[-1].lower()}%")
+                f"%{parts[0].lower()}%",
+                f"%{parts[-1].lower()}%",
+            )
 
     if not client_id and len(name.split()) >= 2:
         last = name.split()[-1].lower()
         if len(last) >= 4:
             client_id = await conn.fetchval(
-                "SELECT id FROM clients WHERE LOWER(full_name) LIKE $1 AND deleted_at IS NULL LIMIT 1", f"%{last}%")
+                "SELECT id FROM clients WHERE LOWER(full_name) LIKE $1 AND deleted_at IS NULL LIMIT 1",
+                f"%{last}%",
+            )
 
     if not client_id:
         return False
 
     existing = await conn.fetchval(
-        "SELECT id FROM client_company_links WHERE client_id = $1 AND company_id = $2", client_id, company_id)
+        "SELECT id FROM client_company_links WHERE client_id = $1 AND company_id = $2",
+        client_id,
+        company_id,
+    )
 
     if existing:
         if not dry_run:
             await conn.execute(
                 "UPDATE client_company_links SET role = $1, ownership_percentage = $2, updated_at = NOW() WHERE id = $3",
-                role, ownership_pct if ownership_pct else None, existing)
+                role,
+                ownership_pct if ownership_pct else None,
+                existing,
+            )
         logger.info(f"    ↻ Updated: client {client_id} → company {company_id} ({role})")
         return True
     else:
@@ -290,7 +337,11 @@ async def link_person_to_company(conn, company_id, person_name, role, ownership_
             await conn.execute(
                 """INSERT INTO client_company_links (client_id, company_id, role, ownership_percentage, status, created_at)
                    VALUES ($1, $2, $3, $4, 'active', NOW()) ON CONFLICT DO NOTHING""",
-                client_id, company_id, role, ownership_pct if ownership_pct else None)
+                client_id,
+                company_id,
+                role,
+                ownership_pct if ownership_pct else None,
+            )
         logger.info(f"    + Linked: client {client_id} → company {company_id} ({role})")
         return True
 
@@ -300,7 +351,8 @@ async def main(dry_run: bool, limit: int) -> None:
     conn = await asyncpg.connect(DB)
 
     try:
-        companies = await conn.fetch("""
+        companies = await conn.fetch(
+            """
             SELECT c.id, c.company_name,
                    count(*) FILTER (WHERE LOWER(cd.file_name) LIKE '%.pdf'
                        AND (LOWER(cd.file_name) LIKE '%akta%' OR LOWER(cd.file_name) LIKE '%sk%'
@@ -321,7 +373,9 @@ async def main(dry_run: bool, limit: int) -> None:
                    = count(*) FILTER (WHERE cd.ocr_status = 'completed')
             ORDER BY c.id
             LIMIT $1
-        """, limit)
+        """,
+            limit,
+        )
 
         logger.info(f"Found {len(companies)} fully OCR'd companies")
 
@@ -338,7 +392,7 @@ async def main(dry_run: bool, limit: int) -> None:
             if stats["fields_updated"] > 0 or stats["directors_linked"] > 0:
                 totals["companies"] += 1
 
-        logger.info(f"\n=== SUMMARY ===")
+        logger.info("\n=== SUMMARY ===")
         logger.info(f"  Companies processed : {len(companies)}")
         logger.info(f"  Companies updated   : {totals['companies']}")
         logger.info(f"  Fields populated    : {totals['fields']}")

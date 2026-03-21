@@ -156,15 +156,9 @@ class TestClientValuePredictorSimple:
                 patch(
                     "backend.agents.agents.client_value_predictor.ClientScoringService"
                 ) as mock_scoring,
-                patch(
-                    "backend.agents.agents.client_value_predictor.ClientSegmentationService"
-                ),
-                patch(
-                    "backend.agents.agents.client_value_predictor.NurturingMessageService"
-                ),
-                patch(
-                    "backend.agents.agents.client_value_predictor.WhatsAppNotificationService"
-                ),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+                patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+                patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
                 patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_app.state = MagicMock()
@@ -217,12 +211,8 @@ class TestClientValuePredictorSimple:
             mock_db_pool = MagicMock()
 
             with (
-                patch(
-                    "backend.agents.agents.client_value_predictor.ClientScoringService"
-                ),
-                patch(
-                    "backend.agents.agents.client_value_predictor.ClientSegmentationService"
-                ),
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
                 patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
                 patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
                 patch("backend.app.core.config.settings") as mock_settings,
@@ -300,12 +290,8 @@ class TestClientValuePredictorSimple:
             mock_db_pool = MagicMock()
 
             with (
-                patch(
-                    "backend.agents.agents.client_value_predictor.ClientScoringService"
-                ),
-                patch(
-                    "backend.agents.agents.client_value_predictor.ClientSegmentationService"
-                ),
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
                 patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
                 patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
                 patch("backend.app.core.config.settings") as mock_settings,

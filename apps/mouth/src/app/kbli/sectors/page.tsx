@@ -25,7 +25,8 @@ export default function SectorsPage() {
           KBLI 2025 Sectors
         </h1>
         <p className="mt-3 text-lg text-[var(--foreground-secondary)]">
-          Indonesia&apos;s business classification system organized into {sections.length} economic sectors.
+          Indonesia&apos;s business classification system organized into{" "}
+          {sections.length} economic sectors.
         </p>
       </div>
       <KBLISectorGrid sections={sections} />

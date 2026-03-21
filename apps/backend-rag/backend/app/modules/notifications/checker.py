@@ -12,13 +12,17 @@ import logging
 import random
 from datetime import datetime, timezone
 
-from .models import (
+from backend.app.modules.notifications.models import (
     AlertStatus,
     AlertType,
     ClientAlert,
     ClientInfo,
 )
-from .templates import INDONESIAN_BLESSINGS, format_template, get_template
+from backend.app.modules.notifications.templates import (
+    INDONESIAN_BLESSINGS,
+    format_template,
+    get_template,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +37,11 @@ class ExpiryChecker:
     VISA_CRITICAL_DAYS = 60  # ~2 months
 
     def __init__(self) -> None:
-        self.today = datetime.now(tz=timezone.utc).replace(tzinfo=None).replace(hour=0, minute=0, second=0, microsecond=0)
+        self.today = (
+            datetime.now(tz=timezone.utc)
+            .replace(tzinfo=None)
+            .replace(hour=0, minute=0, second=0, microsecond=0)
+        )
 
     def check_all_clients(self, clients: list[ClientInfo]) -> list[ClientAlert]:
         """Check all clients and return list of alerts to send."""

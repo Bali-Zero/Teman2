@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import os
@@ -35,6 +34,7 @@ from backend.services.ingestion.legal_ingestion_service import LegalIngestionSer
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ingest_komdigi")
 
+
 async def main():
     # Ensure API Key is set for Gemini fallback
     if "GOOGLEAISTUDIO_API_KEY" in os.environ and "GOOGLE_API_KEY" not in os.environ:
@@ -59,7 +59,7 @@ async def main():
         title="Rancangan Peraturan Menteri Komunikasi dan Digital tentang Tata Kelola Penyelenggaraan Sistem Elektronik dalam Pelindungan Anak",
         category="01_tech_social",
         tier_override=TierLevel.C,  # Business/General Knowledge
-        document_id=stable_id
+        document_id=stable_id,
     )
 
     if result.get("success"):
@@ -70,6 +70,7 @@ async def main():
             logger.info(f"KG Extraction: {result['kg_extraction']}")
     else:
         logger.error(f"❌ Ingestion failed: {result.get('error')}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -45,7 +45,10 @@ export default function VisaPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -66,10 +69,19 @@ export default function VisaPage() {
 
       {/* Current Visa */}
       {visaInfo.current ? (
-        <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+        <section
+          className="rounded-xl border p-6 space-y-4"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Plane className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+              <Plane
+                className="w-5 h-5"
+                style={{ color: "var(--bz-accent-warm)" }}
+              />
               <h2 className="text-lg font-semibold">Current Visa</h2>
             </div>
             <StatusBadge status={visaInfo.current.status} />
@@ -83,7 +95,10 @@ export default function VisaPage() {
             />
             <InfoRow label="Sponsor" value={visaInfo.current.sponsor} />
 
-            <div className="pt-3 border-t" style={{ borderColor: "var(--bz-border)" }}>
+            <div
+              className="pt-3 border-t"
+              style={{ borderColor: "var(--bz-border)" }}
+            >
               <InfoRow
                 label="Issue Date"
                 value={new Date(visaInfo.current.issueDate).toLocaleDateString(
@@ -114,28 +129,51 @@ export default function VisaPage() {
             <div
               className={cn(
                 "mt-4 p-4 rounded-lg flex items-start gap-3 border",
-                visaInfo.current.daysRemaining <= 60 && "animate-pulse border-2",
+                visaInfo.current.daysRemaining <= 60 &&
+                  "animate-pulse border-2",
               )}
-              style={visaInfo.current.daysRemaining <= 60
-                ? { background: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.4)" }
-                : { background: "rgba(16,185,129,0.06)", borderColor: "rgba(16,185,129,0.25)" }}
+              style={
+                visaInfo.current.daysRemaining <= 60
+                  ? {
+                      background: "rgba(239,68,68,0.08)",
+                      borderColor: "rgba(239,68,68,0.4)",
+                    }
+                  : {
+                      background: "rgba(16,185,129,0.06)",
+                      borderColor: "rgba(16,185,129,0.25)",
+                    }
+              }
             >
               <Clock
                 className="w-5 h-5 mt-0.5"
-                style={{ color: visaInfo.current.daysRemaining <= 60 ? "#f87171" : "#34d399" }}
+                style={{
+                  color:
+                    visaInfo.current.daysRemaining <= 60
+                      ? "#f87171"
+                      : "#34d399",
+                }}
               />
               <div className="flex-1">
                 <p
                   className="text-sm font-semibold"
-                  style={{ color: visaInfo.current.daysRemaining <= 60 ? "#f87171" : "#34d399" }}
+                  style={{
+                    color:
+                      visaInfo.current.daysRemaining <= 60
+                        ? "#f87171"
+                        : "#34d399",
+                  }}
                 >
                   {visaInfo.current.daysRemaining} days remaining
                 </p>
                 <p
                   className="text-xs mt-1"
                   style={{
-                    color: visaInfo.current.daysRemaining <= 60 ? "#f87171" : "var(--bz-text-2)",
-                    fontWeight: visaInfo.current.daysRemaining <= 60 ? 500 : 400,
+                    color:
+                      visaInfo.current.daysRemaining <= 60
+                        ? "#f87171"
+                        : "var(--bz-text-2)",
+                    fontWeight:
+                      visaInfo.current.daysRemaining <= 60 ? 500 : 400,
                   }}
                 >
                   {visaInfo.current.daysRemaining <= 60
@@ -147,17 +185,37 @@ export default function VisaPage() {
           )}
         </section>
       ) : (
-        <section className="rounded-xl border border-dashed p-8 text-center" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
-          <Plane className="w-12 h-12 mx-auto mb-3 opacity-30" style={{ color: "var(--bz-text-2)" }} />
-          <p style={{ color: "var(--bz-text-2)" }}>No active visa information</p>
+        <section
+          className="rounded-xl border border-dashed p-8 text-center"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
+          <Plane
+            className="w-12 h-12 mx-auto mb-3 opacity-30"
+            style={{ color: "var(--bz-text-2)" }}
+          />
+          <p style={{ color: "var(--bz-text-2)" }}>
+            No active visa information
+          </p>
         </section>
       )}
 
       {/* Documents */}
       {visaInfo.documents && visaInfo.documents.length > 0 && (
-        <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+        <section
+          className="rounded-xl border p-6 space-y-4"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+            <FileText
+              className="w-5 h-5"
+              style={{ color: "var(--bz-accent-warm)" }}
+            />
             <h2 className="text-lg font-semibold">Related Documents</h2>
           </div>
 
@@ -171,9 +229,18 @@ export default function VisaPage() {
 
       {/* History */}
       {visaInfo.history && visaInfo.history.length > 0 && (
-        <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+        <section
+          className="rounded-xl border p-6 space-y-4"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
           <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+            <Calendar
+              className="w-5 h-5"
+              style={{ color: "var(--bz-accent-warm)" }}
+            />
             <h2 className="text-lg font-semibold">Visa History</h2>
           </div>
 
@@ -190,7 +257,10 @@ export default function VisaPage() {
 
 // Sub-components
 function StatusBadge({ status }: { status: "active" | "pending" | "expired" }) {
-  const config: Record<string, { icon: React.ElementType; label: string; style: React.CSSProperties }> = {
+  const config: Record<
+    string,
+    { icon: React.ElementType; label: string; style: React.CSSProperties }
+  > = {
     active: {
       icon: CheckCircle,
       label: "Active",
@@ -224,7 +294,9 @@ function StatusBadge({ status }: { status: "active" | "pending" | "expired" }) {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-2">
-      <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>{label}</span>
+      <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+        {label}
+      </span>
       <span className="text-sm font-medium text-right">{value}</span>
     </div>
   );
@@ -245,10 +317,22 @@ function DocumentCard({ document }: { document: PortalDocument }) {
   };
 
   return (
-    <div className="rounded-lg border p-3 transition-colors" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}>
+    <div
+      className="rounded-lg border p-3 transition-colors"
+      style={{
+        background: "var(--bz-surface)",
+        borderColor: "var(--bz-border)",
+      }}
+    >
       <div className="flex items-center gap-3">
-        <div className="p-2 rounded-md" style={{ background: "rgba(201,169,110,0.1)" }}>
-          <FileText className="w-4 h-4" style={{ color: "var(--bz-accent-warm)" }} />
+        <div
+          className="p-2 rounded-md"
+          style={{ background: "rgba(201,169,110,0.1)" }}
+        >
+          <FileText
+            className="w-4 h-4"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{document.name}</p>
@@ -271,11 +355,19 @@ function DocumentCard({ document }: { document: PortalDocument }) {
 
 function HistoryCard({ item }: { item: VisaHistoryItem }) {
   return (
-    <div className="rounded-lg border p-3" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}>
+    <div
+      className="rounded-lg border p-3"
+      style={{
+        background: "var(--bz-surface)",
+        borderColor: "var(--bz-border)",
+      }}
+    >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium">{item.type}</p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--bz-text-2)" }}>{item.period}</p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--bz-text-2)" }}>
+            {item.period}
+          </p>
         </div>
         <span
           className="text-xs px-2 py-1 rounded-full font-medium"

@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
+
 async def main():
     from backend.core.qdrant_db import QdrantClient
 
@@ -15,12 +16,10 @@ async def main():
     url = "/collections/legal_unified/points/scroll"
     payload = {
         "filter": {
-            "must": [
-                {"key": "metadata.document_id", "match": {"value": "BALI_UNKNOWN_UNKNOWN"}}
-            ]
+            "must": [{"key": "metadata.document_id", "match": {"value": "BALI_UNKNOWN_UNKNOWN"}}]
         },
         "limit": 100,
-        "with_payload": True
+        "with_payload": True,
     }
 
     qclient = await client._get_client()
@@ -35,6 +34,7 @@ async def main():
         ids = [p["id"] for p in points]
         await client.delete(ids=ids)
         print("Deleted " + str(len(ids)) + " bad points.")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

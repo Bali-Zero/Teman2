@@ -116,11 +116,35 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         } catch (error) {
           // Profile load failed = not authenticated → redirect to login
           // Always use kita.balizero.com for login (auth hub), preserving return URL
-          const currentUrl = typeof window !== "undefined" ? window.location.href : "";
+          const currentUrl =
+            typeof window !== "undefined" ? window.location.href : "";
           const loginBase = "https://kita.balizero.com/login";
           const loginUrl = currentUrl
             ? `${loginBase}?redirect=${encodeURIComponent(currentUrl)}`
             : loginBase;
+
+          // --- UI DEV BYPASS ---
+          if (process.env.NODE_ENV === "development") {
+            logger.warn(
+              "[DEV MODE] Bypassing login redirect for local UI inspection",
+              {
+                component: "WorkspaceLayout",
+                action: "authCheck",
+              },
+            );
+            setUser({
+              name: "Zero (Local Dev)",
+              email: "zero@balizero.com",
+              role: "admin",
+              team: "Management",
+              avatar: undefined,
+              isOnline: true,
+              hoursToday: undefined,
+            });
+            setIsLoading(false);
+            return;
+          }
+
           window.location.href = loginUrl;
           return;
         } finally {
@@ -170,10 +194,10 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#2a2a2a]">
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--foreground-muted)]">Loading...</p>
+          <div className="w-10 h-10 border-2 border-[var(--bz-accent)] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-[var(--bz-text-2)]">Loading...</p>
         </div>
       </div>
     );
@@ -181,7 +205,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-[#2a2a2a]">
+      <div className="min-h-screen bg-transparent">
         {/* Desktop Sidebar */}
         <div className="hidden md:block">
           <AppSidebar user={user} unreadWhatsApp={0} onLogout={handleLogout} />
@@ -191,7 +215,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         {isMobileMenuOpen && (
           <>
             <div
-              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden transition-all duration-300"
               onClick={() => setIsMobileMenuOpen(false)}
             />
             <div className="fixed inset-y-0 left-0 z-50 md:hidden">
@@ -205,7 +229,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         )}
 
         {/* Main Content */}
-        <div className="md:ml-60 min-h-screen flex flex-col">
+        <div className="md:ml-[216px] min-h-screen flex flex-col transition-all duration-300">
           {/* Header */}
           <Header
             userName={user.name}

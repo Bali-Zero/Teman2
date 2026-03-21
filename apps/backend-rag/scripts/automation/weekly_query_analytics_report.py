@@ -258,8 +258,12 @@ def format_report_text(report: dict) -> str:
     if report["collection_hit_rates"]:
         lines.append("── COLLECTION HIT RATES ──")
         for c in report["collection_hit_rates"]:
-            bar = "█" * int(c["hit_rate_percent"] / 10) + "░" * (10 - int(c["hit_rate_percent"] / 10))
-            lines.append(f"  {c['collection']:<25} {bar} {c['hit_rate_percent']}% ({c['total_queries']} queries)")
+            bar = "█" * int(c["hit_rate_percent"] / 10) + "░" * (
+                10 - int(c["hit_rate_percent"] / 10)
+            )
+            lines.append(
+                f"  {c['collection']:<25} {bar} {c['hit_rate_percent']}% ({c['total_queries']} queries)"
+            )
         lines.append("")
 
     return "\n".join(lines)
@@ -269,7 +273,9 @@ async def main():
     parser = argparse.ArgumentParser(description="Generate weekly query analytics report")
     parser.add_argument("--days", type=int, default=7, help="Lookback period in days")
     parser.add_argument("--output", type=str, help="Output file path (JSON)")
-    parser.add_argument("--text", action="store_true", help="Output human-readable text instead of JSON")
+    parser.add_argument(
+        "--text", action="store_true", help="Output human-readable text instead of JSON"
+    )
     args = parser.parse_args()
 
     database_url = os.environ.get("DATABASE_URL")

@@ -543,23 +543,35 @@ async def get_role_metrics(
     try:
         async with db_pool.acquire() as conn:
             # Common stats used by multiple roles
-            active_practices = await conn.fetchval(
-                "SELECT COUNT(*) FROM practices WHERE status NOT IN ('completed', 'cancelled')"
-            ) or 0
-            overdue_invoices = await conn.fetchval(
-                "SELECT COUNT(*) FROM practices WHERE payment_status = 'unpaid' AND actual_price IS NOT NULL"
-            ) or 0
-            revenue_mtd = await conn.fetchval(
-                """SELECT COALESCE(SUM(actual_price), 0) FROM practices
+            active_practices = (
+                await conn.fetchval(
+                    "SELECT COUNT(*) FROM practices WHERE status NOT IN ('completed', 'cancelled')"
+                )
+                or 0
+            )
+            overdue_invoices = (
+                await conn.fetchval(
+                    "SELECT COUNT(*) FROM practices WHERE payment_status = 'unpaid' AND actual_price IS NOT NULL"
+                )
+                or 0
+            )
+            revenue_mtd = (
+                await conn.fetchval(
+                    """SELECT COALESCE(SUM(actual_price), 0) FROM practices
                    WHERE payment_status = 'paid'
                    AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE)"""
-            ) or 0
-            expiring_soon = await conn.fetchval(
-                """SELECT COUNT(*) FROM practices
+                )
+                or 0
+            )
+            expiring_soon = (
+                await conn.fetchval(
+                    """SELECT COUNT(*) FROM practices
                    WHERE expiry_date IS NOT NULL
                    AND expiry_date <= CURRENT_DATE + INTERVAL '30 days'
                    AND status NOT IN ('completed', 'cancelled')"""
-            ) or 0
+                )
+                or 0
+            )
 
         if role == "zero":
             metrics = {
@@ -571,17 +583,23 @@ async def get_role_metrics(
             }
         elif role == "team":
             async with db_pool.acquire() as conn:
-                user_practices = await conn.fetchval(
-                    "SELECT COUNT(*) FROM practices WHERE assigned_to = $1 AND status NOT IN ('completed', 'cancelled')",
-                    user_id,
-                ) or 0
-                stalled = await conn.fetchval(
-                    """SELECT COUNT(*) FROM practices
+                user_practices = (
+                    await conn.fetchval(
+                        "SELECT COUNT(*) FROM practices WHERE assigned_to = $1 AND status NOT IN ('completed', 'cancelled')",
+                        user_id,
+                    )
+                    or 0
+                )
+                stalled = (
+                    await conn.fetchval(
+                        """SELECT COUNT(*) FROM practices
                        WHERE assigned_to = $1
                        AND updated_at < CURRENT_DATE - INTERVAL '7 days'
                        AND status NOT IN ('completed', 'cancelled')""",
-                    user_id,
-                ) or 0
+                        user_id,
+                    )
+                    or 0
+                )
                 next_deadline = await conn.fetchval(
                     """SELECT TO_CHAR(MIN(expiry_date), 'DD/MM/YYYY') FROM practices
                        WHERE assigned_to = $1
@@ -606,12 +624,15 @@ async def get_role_metrics(
             }
         elif role == "marketing":
             async with db_pool.acquire() as conn:
-                articles_published = await conn.fetchval(
-                    "SELECT COUNT(*) FROM articles WHERE status = 'published' AND DATE_TRUNC('month', published_at) = DATE_TRUNC('month', CURRENT_DATE)"
-                ) or 0
-                articles_review = await conn.fetchval(
-                    "SELECT COUNT(*) FROM articles WHERE status = 'draft'"
-                ) or 0
+                articles_published = (
+                    await conn.fetchval(
+                        "SELECT COUNT(*) FROM articles WHERE status = 'published' AND DATE_TRUNC('month', published_at) = DATE_TRUNC('month', CURRENT_DATE)"
+                    )
+                    or 0
+                )
+                articles_review = (
+                    await conn.fetchval("SELECT COUNT(*) FROM articles WHERE status = 'draft'") or 0
+                )
             metrics = {
                 "articoli_pubblicati": int(articles_published),
                 "articoli_in_review": int(articles_review),
@@ -620,15 +641,21 @@ async def get_role_metrics(
             }
         elif role == "accounting":
             async with db_pool.acquire() as conn:
-                paid_mtd = await conn.fetchval(
-                    """SELECT COUNT(*) FROM practices
+                paid_mtd = (
+                    await conn.fetchval(
+                        """SELECT COUNT(*) FROM practices
                        WHERE payment_status = 'paid'
                        AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE)"""
-                ) or 0
-                overdue_total = await conn.fetchval(
-                    """SELECT COALESCE(SUM(actual_price - COALESCE(paid_amount, 0)), 0)
+                    )
+                    or 0
+                )
+                overdue_total = (
+                    await conn.fetchval(
+                        """SELECT COALESCE(SUM(actual_price - COALESCE(paid_amount, 0)), 0)
                        FROM practices WHERE payment_status = 'unpaid' AND actual_price IS NOT NULL"""
-                ) or 0
+                    )
+                    or 0
+                )
             metrics = {
                 "fatture_pagate_mtd": int(paid_mtd),
                 "fatture_overdue": int(overdue_invoices),
@@ -651,10 +678,39 @@ async def get_role_metrics(
         logger.warning(f"role-metrics fallback for role={role}: {e}")
         # Return safe defaults per role so frontend never breaks
         defaults: dict[str, Any] = {
-            "zero": {"revenue_mtd": 0, "visti_scadenza": 0, "fatture_overdue": 0, "agenti_count": 0, "fly_uptime": 0},
-            "team": {"pratiche_assegnate": 0, "prossima_scadenza": None, "doc_mancanti": 0, "clienti_assegnati": 0, "stalled_count": 0},
-            "tax": {"clienti_compliant": 0, "scadenze_7gg": 0, "dichiarazioni_pending": 0, "alert_pajak": 0, "prossima_scadenza": None},
-            "marketing": {"articoli_pubblicati": 0, "articoli_in_review": 0, "subscriber_delta": 0, "lead_nuovi": 0},
-            "accounting": {"fatture_pagate_mtd": 0, "fatture_overdue": 0, "fatture_pending": 0, "ricavi_mtd": 0, "overdue_total": 0},
+            "zero": {
+                "revenue_mtd": 0,
+                "visti_scadenza": 0,
+                "fatture_overdue": 0,
+                "agenti_count": 0,
+                "fly_uptime": 0,
+            },
+            "team": {
+                "pratiche_assegnate": 0,
+                "prossima_scadenza": None,
+                "doc_mancanti": 0,
+                "clienti_assegnati": 0,
+                "stalled_count": 0,
+            },
+            "tax": {
+                "clienti_compliant": 0,
+                "scadenze_7gg": 0,
+                "dichiarazioni_pending": 0,
+                "alert_pajak": 0,
+                "prossima_scadenza": None,
+            },
+            "marketing": {
+                "articoli_pubblicati": 0,
+                "articoli_in_review": 0,
+                "subscriber_delta": 0,
+                "lead_nuovi": 0,
+            },
+            "accounting": {
+                "fatture_pagate_mtd": 0,
+                "fatture_overdue": 0,
+                "fatture_pending": 0,
+                "ricavi_mtd": 0,
+                "overdue_total": 0,
+            },
         }
         return {"role": role, "metrics": defaults.get(role, defaults["zero"]), "alerts": []}

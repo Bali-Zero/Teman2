@@ -339,17 +339,35 @@ export function ArticleClient({
                         </h1>
                       ),
                       h2: ({ children }) => {
-                        const id = typeof children === "string" ? children.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-") : "";
+                        const id =
+                          typeof children === "string"
+                            ? children
+                                .toLowerCase()
+                                .replace(/[^a-z0-9\s-]/g, "")
+                                .replace(/\s+/g, "-")
+                            : "";
                         return (
-                          <h2 id={id} className="font-serif text-3xl md:text-4xl font-bold text-white mt-10 mb-4 scroll-mt-24">
+                          <h2
+                            id={id}
+                            className="font-serif text-3xl md:text-4xl font-bold text-white mt-10 mb-4 scroll-mt-24"
+                          >
                             {children}
                           </h2>
                         );
                       },
                       h3: ({ children }) => {
-                        const id = typeof children === "string" ? children.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-") : "";
+                        const id =
+                          typeof children === "string"
+                            ? children
+                                .toLowerCase()
+                                .replace(/[^a-z0-9\s-]/g, "")
+                                .replace(/\s+/g, "-")
+                            : "";
                         return (
-                          <h3 id={id} className="font-serif text-2xl md:text-3xl font-semibold text-white mt-8 mb-3 scroll-mt-24">
+                          <h3
+                            id={id}
+                            className="font-serif text-2xl md:text-3xl font-semibold text-white mt-8 mb-3 scroll-mt-24"
+                          >
                             {children}
                           </h3>
                         );

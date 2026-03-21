@@ -10,6 +10,7 @@ os.environ["QDRANT_URL"] = "http://localhost:6333"
 os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test"
 os.environ["GOOGLE_API_KEY"] = "test_google_api_key"
 
+
 @pytest.mark.asyncio
 async def test_user_context_loaded_before_greeting(monkeypatch):
     """Ensure process_query loads user_context before bypass checks (greetings)."""

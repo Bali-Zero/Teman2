@@ -417,7 +417,10 @@ export default function CaseDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: "var(--bz-accent)" }} />
+          <Loader2
+            className="w-12 h-12 animate-spin mx-auto mb-4"
+            style={{ color: "var(--bz-accent)" }}
+          />
           <p style={{ color: "var(--bz-text-2)" }}>
             Loading process details...
           </p>
@@ -431,7 +434,10 @@ export default function CaseDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2" style={{ color: "var(--bz-text-1)" }}>
+          <h2
+            className="text-2xl font-bold mb-2"
+            style={{ color: "var(--bz-text-1)" }}
+          >
             {error || "Process Not Found"}
           </h2>
           <p className="mb-6" style={{ color: "var(--bz-text-2)" }}>
@@ -478,7 +484,10 @@ export default function CaseDetailPage() {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold" style={{ color: "var(--bz-text-1)" }}>
+              <h1
+                className="text-3xl font-bold"
+                style={{ color: "var(--bz-text-1)" }}
+              >
                 {practice.practice_type_code
                   ?.toUpperCase()
                   .replace(/_/g, " ") || "Process"}{" "}
@@ -512,15 +521,27 @@ export default function CaseDetailPage() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Client Information */}
-          <div className="rounded-xl p-6" style={{ border: "1px solid var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--bz-text-1)" }}>
+          <div
+            className="rounded-xl p-6"
+            style={{
+              border: "1px solid var(--bz-border)",
+              background: "rgba(26,26,30,0.5)",
+            }}
+          >
+            <h2
+              className="text-xl font-semibold mb-4 flex items-center gap-2"
+              style={{ color: "var(--bz-text-1)" }}
+            >
               <User className="w-5 h-5" />
               Client Information
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="text-sm mb-1 block"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Client Name
                 </label>
                 <button
@@ -542,7 +563,10 @@ export default function CaseDetailPage() {
               </div>
 
               <div>
-                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="text-sm mb-1 block"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Client ID
                 </label>
                 <button
@@ -565,7 +589,10 @@ export default function CaseDetailPage() {
 
               {practice.client_email && (
                 <div>
-                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                  <label
+                    className="text-sm mb-1 block"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     Email
                   </label>
                   <a
@@ -589,7 +616,10 @@ export default function CaseDetailPage() {
 
               {practice.client_phone && (
                 <div>
-                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                  <label
+                    className="text-sm mb-1 block"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     Phone
                   </label>
                   <a
@@ -615,10 +645,16 @@ export default function CaseDetailPage() {
 
               {practice.client_lead && (
                 <div>
-                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                  <label
+                    className="text-sm mb-1 block"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     Lead Team Member
                   </label>
-                  <p className="font-medium" style={{ color: "var(--bz-text-1)" }}>
+                  <p
+                    className="font-medium"
+                    style={{ color: "var(--bz-text-1)" }}
+                  >
                     {practice.client_lead}
                   </p>
                 </div>
@@ -626,10 +662,16 @@ export default function CaseDetailPage() {
 
               {practice.assigned_to && (
                 <div>
-                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                  <label
+                    className="text-sm mb-1 block"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     Assigned To
                   </label>
-                  <p className="font-medium" style={{ color: "var(--bz-text-1)" }}>
+                  <p
+                    className="font-medium"
+                    style={{ color: "var(--bz-text-1)" }}
+                  >
                     {practice.assigned_to}
                   </p>
                 </div>
@@ -638,15 +680,27 @@ export default function CaseDetailPage() {
           </div>
 
           {/* Process Details */}
-          <div className="rounded-xl p-6" style={{ border: "1px solid var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--bz-text-1)" }}>
+          <div
+            className="rounded-xl p-6"
+            style={{
+              border: "1px solid var(--bz-border)",
+              background: "rgba(26,26,30,0.5)",
+            }}
+          >
+            <h2
+              className="text-xl font-semibold mb-4 flex items-center gap-2"
+              style={{ color: "var(--bz-text-1)" }}
+            >
               <FileText className="w-5 h-5" />
               Process Details
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="text-sm mb-1 block"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Status
                 </label>
                 <div
@@ -658,43 +712,70 @@ export default function CaseDetailPage() {
               </div>
 
               <div>
-                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="text-sm mb-1 block"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Priority
                 </label>
-                <p className="font-medium capitalize" style={{ color: "var(--bz-text-1)" }}>
+                <p
+                  className="font-medium capitalize"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   {practice.priority || "Normal"}
                 </p>
               </div>
 
               <div>
-                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="text-sm mb-1 block"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Payment Status
                 </label>
-                <p className="font-medium capitalize" style={{ color: "var(--bz-text-1)" }}>
+                <p
+                  className="font-medium capitalize"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   {practice.payment_status || "Not set"}
                 </p>
               </div>
 
               <div>
-                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="text-sm mb-1 block"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Quoted Price
                 </label>
-                <p className="font-medium" style={{ color: "var(--bz-text-1)" }}>
+                <p
+                  className="font-medium"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   {formatCurrency(practice.quoted_price)}
                 </p>
               </div>
 
               <div>
-                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="text-sm mb-1 block"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Actual Price
                 </label>
-                <p className="font-medium" style={{ color: "var(--bz-text-1)" }}>
+                <p
+                  className="font-medium"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   {formatCurrency(practice.actual_price)}
                 </p>
               </div>
 
               <div>
-                <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="text-sm mb-1 block"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Created
                 </label>
                 <p style={{ color: "var(--bz-text-1)" }}>
@@ -704,7 +785,10 @@ export default function CaseDetailPage() {
 
               {practice.start_date && (
                 <div>
-                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                  <label
+                    className="text-sm mb-1 block"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     Start Date
                   </label>
                   <p style={{ color: "var(--bz-text-1)" }}>
@@ -715,7 +799,10 @@ export default function CaseDetailPage() {
 
               {practice.completion_date && (
                 <div>
-                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                  <label
+                    className="text-sm mb-1 block"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     Completion Date
                   </label>
                   <p style={{ color: "var(--bz-text-1)" }}>
@@ -726,7 +813,10 @@ export default function CaseDetailPage() {
 
               {practice.expiry_date && (
                 <div>
-                  <label className="text-sm mb-1 block" style={{ color: "var(--bz-text-2)" }}>
+                  <label
+                    className="text-sm mb-1 block"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     Expiry Date
                   </label>
                   <p style={{ color: "var(--bz-text-1)" }}>
@@ -744,8 +834,17 @@ export default function CaseDetailPage() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Quick Actions */}
-          <div className="rounded-xl p-6" style={{ border: "1px solid var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
-            <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--bz-text-1)" }}>
+          <div
+            className="rounded-xl p-6"
+            style={{
+              border: "1px solid var(--bz-border)",
+              background: "rgba(26,26,30,0.5)",
+            }}
+          >
+            <h3
+              className="text-lg font-semibold mb-4"
+              style={{ color: "var(--bz-text-1)" }}
+            >
               Quick Actions
             </h3>
             <div className="space-y-2">
@@ -815,8 +914,17 @@ export default function CaseDetailPage() {
           {caseId && <RequiredDocumentsCard practiceId={caseId} />}
 
           {/* Timeline Placeholder */}
-          <div className="rounded-xl p-6" style={{ border: "1px solid var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--bz-text-1)" }}>
+          <div
+            className="rounded-xl p-6"
+            style={{
+              border: "1px solid var(--bz-border)",
+              background: "rgba(26,26,30,0.5)",
+            }}
+          >
+            <h3
+              className="text-lg font-semibold mb-4 flex items-center gap-2"
+              style={{ color: "var(--bz-text-1)" }}
+            >
               <Clock className="w-5 h-5" />
               Activity Timeline
             </h3>
@@ -830,9 +938,24 @@ export default function CaseDetailPage() {
       {/* Edit Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" style={{ background: "var(--bz-surface)", border: "1px solid var(--bz-border)" }}>
-            <div className="p-6 flex items-center justify-between sticky top-0 z-10" style={{ borderBottom: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}>
-              <h2 className="text-xl font-bold" style={{ color: "var(--bz-text-1)" }}>
+          <div
+            className="rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
+            style={{
+              background: "var(--bz-surface)",
+              border: "1px solid var(--bz-border)",
+            }}
+          >
+            <div
+              className="p-6 flex items-center justify-between sticky top-0 z-10"
+              style={{
+                borderBottom: "1px solid var(--bz-border)",
+                background: "var(--bz-surface)",
+              }}
+            >
+              <h2
+                className="text-xl font-bold"
+                style={{ color: "var(--bz-text-1)" }}
+              >
                 Edit Process #{practice.id}
               </h2>
               <button
@@ -859,7 +982,10 @@ export default function CaseDetailPage() {
             <div className="p-6 space-y-6">
               {/* Status */}
               <div className="space-y-2">
-                <label className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
+                <label
+                  className="text-sm font-medium"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   Status
                 </label>
                 <select
@@ -868,7 +994,11 @@ export default function CaseDetailPage() {
                     setEditForm((prev) => ({ ...prev, status: e.target.value }))
                   }
                   className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)", color: "var(--bz-text-1)" }}
+                  style={{
+                    border: "1px solid var(--bz-border)",
+                    background: "var(--bz-card)",
+                    color: "var(--bz-text-1)",
+                  }}
                 >
                   <option value="inquiry">Inquiry</option>
                   <option value="waiting_documents">Waiting Documents</option>
@@ -880,7 +1010,10 @@ export default function CaseDetailPage() {
 
               {/* Priority */}
               <div className="space-y-2">
-                <label className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
+                <label
+                  className="text-sm font-medium"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   Priority
                 </label>
                 <select
@@ -892,7 +1025,11 @@ export default function CaseDetailPage() {
                     }))
                   }
                   className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)", color: "var(--bz-text-1)" }}
+                  style={{
+                    border: "1px solid var(--bz-border)",
+                    background: "var(--bz-card)",
+                    color: "var(--bz-text-1)",
+                  }}
                 >
                   <option value="low">Low</option>
                   <option value="normal">Normal</option>
@@ -903,7 +1040,10 @@ export default function CaseDetailPage() {
 
               {/* Payment Status */}
               <div className="space-y-2">
-                <label className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
+                <label
+                  className="text-sm font-medium"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   Payment Status
                 </label>
                 <select
@@ -915,7 +1055,11 @@ export default function CaseDetailPage() {
                     }))
                   }
                   className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)", color: "var(--bz-text-1)" }}
+                  style={{
+                    border: "1px solid var(--bz-border)",
+                    background: "var(--bz-card)",
+                    color: "var(--bz-text-1)",
+                  }}
                 >
                   <option value="unpaid">Unpaid</option>
                   <option value="partial">Partial</option>
@@ -925,7 +1069,10 @@ export default function CaseDetailPage() {
 
               {/* Quoted Price */}
               <div className="space-y-2">
-                <label className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
+                <label
+                  className="text-sm font-medium"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   Quoted Price (USD)
                 </label>
                 <input
@@ -938,7 +1085,11 @@ export default function CaseDetailPage() {
                     }))
                   }
                   className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)", color: "var(--bz-text-1)" }}
+                  style={{
+                    border: "1px solid var(--bz-border)",
+                    background: "var(--bz-card)",
+                    color: "var(--bz-text-1)",
+                  }}
                   placeholder="0.00"
                   step="0.01"
                 />
@@ -946,7 +1097,10 @@ export default function CaseDetailPage() {
 
               {/* Actual Price */}
               <div className="space-y-2">
-                <label className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
+                <label
+                  className="text-sm font-medium"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   Actual Price (USD)
                 </label>
                 <input
@@ -959,14 +1113,24 @@ export default function CaseDetailPage() {
                     }))
                   }
                   className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-card)", color: "var(--bz-text-1)" }}
+                  style={{
+                    border: "1px solid var(--bz-border)",
+                    background: "var(--bz-card)",
+                    color: "var(--bz-text-1)",
+                  }}
                   placeholder="0.00"
                   step="0.01"
                 />
               </div>
             </div>
 
-            <div className="p-6 flex justify-end gap-3 sticky bottom-0" style={{ borderTop: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}>
+            <div
+              className="p-6 flex justify-end gap-3 sticky bottom-0"
+              style={{
+                borderTop: "1px solid var(--bz-border)",
+                background: "var(--bz-surface)",
+              }}
+            >
               <Button
                 variant="outline"
                 onClick={() => setIsEditModalOpen(false)}

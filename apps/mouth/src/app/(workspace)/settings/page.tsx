@@ -64,7 +64,10 @@ export default function SettingsPage() {
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--bz-text-1)" }}>
+        <h1
+          className="text-2xl font-bold"
+          style={{ color: "var(--bz-text-1)" }}
+        >
           Settings
         </h1>
         <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
@@ -79,14 +82,26 @@ export default function SettingsPage() {
             key={section.title}
             onClick={() => handleSettingsClick(section.href)}
             className="p-4 rounded-xl cursor-pointer transition-colors group hover:opacity-90"
-            style={{ border: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}
+            style={{
+              border: "1px solid var(--bz-border)",
+              background: "var(--bz-surface)",
+            }}
           >
             <div className="flex items-start gap-4">
-              <div className="p-2 rounded-lg transition-colors" style={{ background: "var(--bz-card)" }}>
-                <section.icon className="w-5 h-5 transition-colors" style={{ color: "var(--bz-text-2)" }} />
+              <div
+                className="p-2 rounded-lg transition-colors"
+                style={{ background: "var(--bz-card)" }}
+              >
+                <section.icon
+                  className="w-5 h-5 transition-colors"
+                  style={{ color: "var(--bz-text-2)" }}
+                />
               </div>
               <div>
-                <h3 className="font-medium" style={{ color: "var(--bz-text-1)" }}>
+                <h3
+                  className="font-medium"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   {section.title}
                 </h3>
                 <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
@@ -99,10 +114,25 @@ export default function SettingsPage() {
       </div>
 
       {/* Admin Section */}
-      <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}>
-        <div className="p-4" style={{ borderBottom: "1px solid var(--bz-border)", background: "rgba(32,32,36,0.3)" }}>
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{
+          border: "1px solid var(--bz-border)",
+          background: "var(--bz-surface)",
+        }}
+      >
+        <div
+          className="p-4"
+          style={{
+            borderBottom: "1px solid var(--bz-border)",
+            background: "rgba(32,32,36,0.3)",
+          }}
+        >
           <div className="flex items-center gap-2">
-            <Building className="w-5 h-5" style={{ color: "var(--bz-accent)" }} />
+            <Building
+              className="w-5 h-5"
+              style={{ color: "var(--bz-accent)" }}
+            />
             <h2 className="font-semibold" style={{ color: "var(--bz-text-1)" }}>
               Administration
             </h2>
@@ -132,7 +162,10 @@ export default function SettingsPage() {
               className="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors hover:opacity-80"
             >
               <div>
-                <p className="text-sm font-medium" style={{ color: "var(--bz-text-1)" }}>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: "var(--bz-text-1)" }}
+                >
                   {item.label}
                 </p>
                 <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
@@ -163,9 +196,21 @@ export default function SettingsPage() {
       </div>
 
       {/* Info Box */}
-      <div className="rounded-xl border border-dashed p-8 text-center" style={{ borderColor: "var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
-        <Settings className="w-12 h-12 mx-auto mb-3 opacity-50" style={{ color: "var(--bz-text-2)" }} />
-        <p className="text-sm max-w-md mx-auto" style={{ color: "var(--bz-text-2)" }}>
+      <div
+        className="rounded-xl border border-dashed p-8 text-center"
+        style={{
+          borderColor: "var(--bz-border)",
+          background: "rgba(26,26,30,0.5)",
+        }}
+      >
+        <Settings
+          className="w-12 h-12 mx-auto mb-3 opacity-50"
+          style={{ color: "var(--bz-text-2)" }}
+        />
+        <p
+          className="text-sm max-w-md mx-auto"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           Complete settings center to manage profile, security, notifications
           and administrative configurations.
         </p>

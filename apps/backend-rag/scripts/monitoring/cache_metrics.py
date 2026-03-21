@@ -80,7 +80,9 @@ class CacheMetricsExporter:
         logger.info(
             f"  Hit Rate:     {c['hit_rate'] * 100:.2f}%  ({c['hits']} hits / {c['misses']} misses)"
         )
-        logger.info(f"  Size:         {c['size']} / {c['max_size']} ({c['utilization'] * 100:.1f}% full)")
+        logger.info(
+            f"  Size:         {c['size']} / {c['max_size']} ({c['utilization'] * 100:.1f}% full)"
+        )
         logger.info(f"  Est. Savings: ~{p['estimated_ms_saved']}ms total")
         logger.info("=" * 60)
 

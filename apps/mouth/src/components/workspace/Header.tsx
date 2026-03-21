@@ -45,7 +45,10 @@ export function Header({
     isLoading: notifLoading,
     markAsRead,
     markAllAsRead,
-  } = useCrmNotifications({ autoRefresh: true, refreshInterval: 3 * 60 * 1000 });
+  } = useCrmNotifications({
+    autoRefresh: true,
+    refreshInterval: 3 * 60 * 1000,
+  });
 
   // Get page title from pathname
   const getPageTitle = () => {
@@ -78,8 +81,14 @@ export function Header({
 
   return (
     <header
-      className="sticky top-0 z-30 w-full border-b"
-      style={{ height: "var(--bz-header-height, 48px)", background: "var(--bz-elevated)", borderColor: "var(--bz-border)" }}
+      className="sticky top-0 z-30 w-full border-b transition-all duration-300"
+      style={{
+        height: "var(--bz-header-height, 48px)",
+        background: "rgba(19, 19, 21, 0.65)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        borderColor: "var(--bz-border)",
+      }}
     >
       <div className="flex items-center h-full px-5 gap-3">
         {/* Mobile menu */}
@@ -94,10 +103,16 @@ export function Header({
 
         {/* Greeting + Page context */}
         <div className="flex items-baseline gap-2 min-w-0">
-          <h1 className="text-[13px] font-medium truncate" style={{ color: "var(--bz-text-1)" }}>
+          <h1
+            className="text-[13px] font-medium truncate"
+            style={{ color: "var(--bz-text-1)" }}
+          >
             {userName ? `${userName}, ayo!` : getPageTitle()}
           </h1>
-          <span className="hidden lg:inline text-[11px] truncate" style={{ color: "var(--bz-text-3)" }}>
+          <span
+            className="hidden lg:inline text-[11px] truncate"
+            style={{ color: "var(--bz-text-3)" }}
+          >
             We are writing the history!
           </span>
         </div>
@@ -105,18 +120,25 @@ export function Header({
         <div className="flex-1" />
 
         {/* Date chip */}
-        <span className="hidden sm:block text-[11px]" style={{ color: "var(--bz-text-3)" }}>
+        <span
+          className="hidden sm:block text-[11px]"
+          style={{ color: "var(--bz-text-3)" }}
+        >
           {formatDate()}
         </span>
 
         {/* WhatsApp badge */}
         {whatsappUnread > 0 && (
-          <button className="relative p-1.5 rounded-lg transition-colors hidden md:flex"
-                  style={{ color: "var(--bz-text-2)" }}
-                  aria-label={`${whatsappUnread} unread WhatsApp`}>
+          <button
+            className="relative p-1.5 rounded-lg transition-colors hidden md:flex"
+            style={{ color: "var(--bz-text-2)" }}
+            aria-label={`${whatsappUnread} unread WhatsApp`}
+          >
             <MessageCircle size={15} />
-            <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center text-white"
-                  style={{ background: "var(--bz-accent)" }}>
+            <span
+              className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center text-white"
+              style={{ background: "var(--bz-accent)" }}
+            >
               {whatsappUnread > 99 ? "99+" : whatsappUnread}
             </span>
           </button>
@@ -132,21 +154,38 @@ export function Header({
           >
             <Bell size={15} />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center text-white"
-                    style={{ background: "var(--bz-accent)" }}>
+              <span
+                className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center text-white"
+                style={{ background: "var(--bz-accent)" }}
+              >
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
           </button>
           {showNotifications && (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
-              <div className="absolute right-0 top-full mt-2 w-80 z-50 rounded-xl shadow-xl border max-h-[420px] flex flex-col"
-                   style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowNotifications(false)}
+              />
+              <div
+                className="absolute right-0 top-full mt-3 w-80 z-50 rounded-xl shadow-2xl border max-h-[420px] flex flex-col overflow-hidden transition-all duration-300"
+                style={{
+                  background: "rgba(32, 32, 36, 0.75)",
+                  backdropFilter: "blur(24px)",
+                  WebkitBackdropFilter: "blur(24px)",
+                  borderColor: "var(--bz-border)",
+                }}
+              >
                 {/* Header */}
-                <div className="flex items-center justify-between p-3 border-b"
-                     style={{ borderColor: "var(--bz-border)" }}>
-                  <span className="text-[12px] font-semibold" style={{ color: "var(--bz-text-1)" }}>
+                <div
+                  className="flex items-center justify-between p-3 border-b"
+                  style={{ borderColor: "var(--bz-border)" }}
+                >
+                  <span
+                    className="text-[12px] font-semibold"
+                    style={{ color: "var(--bz-text-1)" }}
+                  >
                     Notifications {unreadCount > 0 && `(${unreadCount})`}
                   </span>
                   {unreadCount > 0 && (
@@ -166,11 +205,18 @@ export function Header({
                   {notifLoading ? (
                     <div className="p-4 space-y-3">
                       {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-12 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
+                        <div
+                          key={i}
+                          className="h-12 rounded-lg animate-pulse"
+                          style={{ background: "rgba(255,255,255,0.04)" }}
+                        />
                       ))}
                     </div>
                   ) : notifications.length === 0 ? (
-                    <div className="p-6 text-[11px] text-center" style={{ color: "var(--bz-text-3)" }}>
+                    <div
+                      className="p-6 text-[11px] text-center"
+                      style={{ color: "var(--bz-text-3)" }}
+                    >
                       No notifications
                     </div>
                   ) : (
@@ -178,19 +224,30 @@ export function Header({
                       {notifications.slice(0, 12).map((n) => (
                         <button
                           key={n.id}
-                          onClick={() => handleNotificationClick(n.actionUrl, n.id)}
+                          onClick={() =>
+                            handleNotificationClick(n.actionUrl, n.id)
+                          }
                           className="w-full text-left p-2.5 rounded-lg transition-colors flex gap-2.5 items-start hover:bg-white/[0.04]"
                         >
                           {/* Severity dot */}
                           <span
                             className="w-[6px] h-[6px] rounded-full flex-shrink-0 mt-1.5"
-                            style={{ background: SEVERITY_DOT[n.severity] || SEVERITY_DOT.low }}
+                            style={{
+                              background:
+                                SEVERITY_DOT[n.severity] || SEVERITY_DOT.low,
+                            }}
                           />
                           <div className="min-w-0 flex-1">
-                            <div className="text-[11px] font-medium truncate" style={{ color: "var(--bz-text-1)" }}>
+                            <div
+                              className="text-[11px] font-medium truncate"
+                              style={{ color: "var(--bz-text-1)" }}
+                            >
                               {n.title}
                             </div>
-                            <div className="text-[10px] mt-0.5 truncate" style={{ color: "var(--bz-text-3)" }}>
+                            <div
+                              className="text-[10px] mt-0.5 truncate"
+                              style={{ color: "var(--bz-text-3)" }}
+                            >
                               {n.message}
                             </div>
                           </div>
@@ -202,7 +259,10 @@ export function Header({
 
                 {/* Footer */}
                 {notifications.length > 0 && (
-                  <div className="border-t p-2" style={{ borderColor: "var(--bz-border)" }}>
+                  <div
+                    className="border-t p-2"
+                    style={{ borderColor: "var(--bz-border)" }}
+                  >
                     <button
                       onClick={() => {
                         setShowNotifications(false);
@@ -225,14 +285,32 @@ export function Header({
           <button
             onClick={onToggleClock}
             disabled={isClockLoading}
-            className={cn("hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium transition-all border")}
-            style={isClockIn
-              ? { borderColor: "rgba(77,184,122,0.25)", background: "rgba(77,184,122,0.07)", color: "var(--bz-green)" }
-              : { borderColor: "var(--bz-border)", background: "var(--bz-surface)", color: "var(--bz-text-2)" }
+            className={cn(
+              "hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium transition-all border",
+            )}
+            style={
+              isClockIn
+                ? {
+                    borderColor: "rgba(77,184,122,0.25)",
+                    background: "rgba(77,184,122,0.07)",
+                    color: "var(--bz-green)",
+                  }
+                : {
+                    borderColor: "var(--bz-border)",
+                    background: "var(--bz-surface)",
+                    color: "var(--bz-text-2)",
+                  }
             }
           >
-            <span className={cn("w-[5px] h-[5px] rounded-full", isClockIn && "animate-pulse")}
-                  style={{ background: isClockIn ? "var(--bz-green)" : "var(--bz-text-3)" }} />
+            <span
+              className={cn(
+                "w-[5px] h-[5px] rounded-full",
+                isClockIn && "animate-pulse",
+              )}
+              style={{
+                background: isClockIn ? "var(--bz-green)" : "var(--bz-text-3)",
+              }}
+            />
             {isClockLoading ? "..." : isClockIn ? "Clocked In" : "Clock In"}
           </button>
         )}

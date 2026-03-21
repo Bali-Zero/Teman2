@@ -25,12 +25,14 @@ router = APIRouter(prefix="/api/v1/lkpm", tags=["lkpm"])
 def _get_service(db_pool: asyncpg.Pool) -> Any:
     """Lazy import to avoid circular deps at startup."""
     from backend.services.compliance.lkpm_service import LKPMService
+
     return LKPMService(db_pool)
 
 
 # ------------------------------------------------------------------
 # Client Config
 # ------------------------------------------------------------------
+
 
 @router.post("/config", response_model=dict)
 async def save_client_config(
@@ -51,6 +53,7 @@ async def save_client_config(
 # ------------------------------------------------------------------
 # Data Submission
 # ------------------------------------------------------------------
+
 
 @router.post("/submit-data", response_model=dict)
 async def submit_data(
@@ -106,6 +109,7 @@ async def sync_jurnal(
 # Draft Management
 # ------------------------------------------------------------------
 
+
 @router.get("/draft/{client_id}/{quarter}", response_model=dict)
 async def get_draft(
     client_id: int,
@@ -151,6 +155,7 @@ async def validate_draft(
 # Ready Pack
 # ------------------------------------------------------------------
 
+
 @router.get("/ready-pack/{draft_id}", response_model=dict)
 async def get_ready_pack(
     draft_id: int,
@@ -164,6 +169,7 @@ async def get_ready_pack(
 
         # Generate HTML
         from backend.services.compliance.lkpm_ready_pack import generate_ready_pack_html
+
         html = generate_ready_pack_html(pack)
         pack.html_content = html
 
@@ -181,6 +187,7 @@ async def get_ready_pack(
 # ------------------------------------------------------------------
 # Approval & Submission
 # ------------------------------------------------------------------
+
 
 @router.post("/approve/{draft_id}", response_model=dict)
 async def approve_draft(
@@ -234,6 +241,7 @@ async def upload_receipt(
 # Portal: Shareholder History
 # ------------------------------------------------------------------
 
+
 @router.get("/history/me", response_model=dict)
 async def get_my_history(
     request: Request,
@@ -260,6 +268,7 @@ async def get_my_history(
 # ------------------------------------------------------------------
 # Batch & Queries
 # ------------------------------------------------------------------
+
 
 @router.get("/batch/{quarter}", response_model=dict)
 async def get_batch(

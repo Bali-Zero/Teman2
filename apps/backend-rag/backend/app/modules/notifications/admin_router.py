@@ -75,7 +75,7 @@ class RetryResponse(BaseModel):
     message: str
 
 
-def require_admin(current_user: dict):
+def require_admin(current_user: dict) -> None:
     """Verify user is admin."""
     if not current_user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -392,7 +392,7 @@ async def retry_failed_alerts(
     """
     require_admin(current_user)
 
-    from .service import NotificationService
+    from backend.app.modules.notifications.service import NotificationService
 
     pool = await get_database_pool()
     service = NotificationService(pool)
@@ -425,7 +425,7 @@ async def retry_failed_alerts(
             )
 
         # Import here to avoid circular imports
-        from .models import ClientAlert
+        from backend.app.modules.notifications.models import ClientAlert
 
         alerts = [ClientAlert(**dict(row)) for row in rows]
 

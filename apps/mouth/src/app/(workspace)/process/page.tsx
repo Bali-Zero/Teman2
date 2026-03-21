@@ -172,9 +172,9 @@ export default function PratichePage() {
   const [selectedMonth, setSelectedMonth] = useState(
     searchParams.get("month") || currentMonthDefault,
   );
-  const [expandedGhosts, setExpandedGhosts] = useState<
-    Record<string, boolean>
-  >({});
+  const [expandedGhosts, setExpandedGhosts] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const handleMonthChange = useCallback(
     (month: string) => {
@@ -183,11 +183,7 @@ export default function PratichePage() {
       setExpandedGhosts({});
       const params = new URLSearchParams(searchParams.toString());
       params.set("month", month);
-      window.history.replaceState(
-        null,
-        "",
-        `${pathname}?${params.toString()}`,
-      );
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
     },
     [searchParams, pathname],
   );
@@ -757,8 +753,7 @@ export default function PratichePage() {
                               style={
                                 cardIsCompleted
                                   ? {
-                                      background:
-                                        "rgba(34, 197, 94, 0.06)",
+                                      background: "rgba(34, 197, 94, 0.06)",
                                       boxShadow:
                                         "0 0 12px rgba(34, 197, 94, 0.1)",
                                     }
@@ -790,9 +785,7 @@ export default function PratichePage() {
                                 {/* 3-Dot Menu Trigger */}
                                 <button
                                   className="absolute top-3 right-2 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-surface)] opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) =>
-                                    handleMenuClick(e, practice)
-                                  }
+                                  onClick={(e) => handleMenuClick(e, practice)}
                                 >
                                   <MoreVertical className="w-4 h-4" />
                                 </button>
@@ -886,9 +879,7 @@ export default function PratichePage() {
                               <GhostCard
                                 key={`ghost-${gp.id}`}
                                 practice={gp}
-                                onClick={() =>
-                                  router.push(`/process/${gp.id}`)
-                                }
+                                onClick={() => router.push(`/process/${gp.id}`)}
                               />
                             ))}
                             {!isExpanded && hiddenGhostCount > 0 && (
@@ -1058,9 +1049,7 @@ export default function PratichePage() {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-[var(--bz-text-2)]">
-                            -
-                          </span>
+                          <span className="text-[var(--bz-text-2)]">-</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -1187,9 +1176,7 @@ export default function PratichePage() {
                         },
                       )}
                       {totalPages > 5 && (
-                        <span className="text-[var(--bz-text-2)]">
-                          ...
-                        </span>
+                        <span className="text-[var(--bz-text-2)]">...</span>
                       )}
                     </div>
                     <button

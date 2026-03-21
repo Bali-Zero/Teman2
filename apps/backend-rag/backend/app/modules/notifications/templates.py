@@ -12,7 +12,7 @@ Languages supported:
 import logging
 import re
 
-from .models import AlertType
+from backend.app.modules.notifications.models import AlertType
 
 logger = logging.getLogger(__name__)
 

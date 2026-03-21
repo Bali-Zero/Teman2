@@ -561,12 +561,10 @@ class ChangeDetector:
 
         try:
             async with self.db_pool.acquire() as conn:
-                query = (
-                    f"""
+                query = f"""
                     SELECT * FROM kg_change_events
                     WHERE detected_at > NOW() - INTERVAL '{hours} hours'
                 """
-                )
 
                 params = []
                 if source_id:

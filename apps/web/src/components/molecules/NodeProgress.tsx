@@ -28,7 +28,10 @@ interface NodeProgressProps {
   className?: string;
 }
 
-export function NodeProgress({ currentNode, className = "" }: NodeProgressProps) {
+export function NodeProgress({
+  currentNode,
+  className = "",
+}: NodeProgressProps) {
   if (!currentNode) return null;
 
   const label = NODE_LABELS[currentNode] ?? `Processing: ${currentNode}`;

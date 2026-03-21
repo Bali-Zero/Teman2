@@ -77,9 +77,7 @@ class TestAgentsComprehensiveIntegration:
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance
 
-                ClientJourneyOrchestrator(
-                    db_pool=db_pool, search_service=mock_search_instance
-                )
+                ClientJourneyOrchestrator(db_pool=db_pool, search_service=mock_search_instance)
 
                 # Test journey creation
                 journey_id = await conn.fetchval(
@@ -261,9 +259,7 @@ class TestAgentsComprehensiveIntegration:
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance
 
-                KnowledgeGraphBuilder(
-                    db_pool=db_pool, search_service=mock_search_instance
-                )
+                KnowledgeGraphBuilder(db_pool=db_pool, search_service=mock_search_instance)
 
                 # Create test node
                 node_id = "test_node_1"

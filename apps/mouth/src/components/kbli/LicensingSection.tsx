@@ -39,9 +39,15 @@ type SectionType = "obligations" | "authority" | "pma" | "note" | "default";
 
 function detectSectionType(title: string): SectionType {
   const t = title.toLowerCase();
-  if (t.includes("obligation") || t.includes("key obligation") || t.includes("before you start")) return "obligations";
+  if (
+    t.includes("obligation") ||
+    t.includes("key obligation") ||
+    t.includes("before you start")
+  )
+    return "obligations";
   if (t.includes("authority")) return "authority";
-  if (t === "pma" || t.includes("pma status") || t.includes("foreign")) return "pma";
+  if (t === "pma" || t.includes("pma status") || t.includes("foreign"))
+    return "pma";
   if (t.includes("note") || t.includes("important")) return "note";
   return "default";
 }
@@ -49,7 +55,8 @@ function detectSectionType(title: string): SectionType {
 /** Rename obscure section titles to reader-friendly versions */
 function humanizeTitle(title: string): string {
   const t = title.toLowerCase();
-  if (t === "key obligations" || t === "key obligation") return "Before You Start";
+  if (t === "key obligations" || t === "key obligation")
+    return "Before You Start";
   if (t === "authority chain") return "Who Approves What";
   return title;
 }
@@ -78,7 +85,10 @@ function parseWhatYouNeed(markdown: string) {
   const srcPattern = /\*\*Source Regulation:\*\*[^\n]*/;
   const srcMatch = rest.match(srcPattern);
   if (srcMatch) {
-    source = srcMatch[0].replace(/\*\*/g, "").replace("Source Regulation:", "").trim();
+    source = srcMatch[0]
+      .replace(/\*\*/g, "")
+      .replace("Source Regulation:", "")
+      .trim();
     rest = rest.replace(srcMatch[0], "").trim();
   }
 
@@ -92,7 +102,10 @@ function parseWhatYouNeed(markdown: string) {
     const headerMatch = line.match(/^\*\*([^*]+?):\*\*\s*(.*)/);
     if (headerMatch) {
       if (currentTitle || currentBody.length > 0) {
-        sections.push({ title: currentTitle, body: currentBody.join("\n").trim() });
+        sections.push({
+          title: currentTitle,
+          body: currentBody.join("\n").trim(),
+        });
       }
       currentTitle = headerMatch[1].trim();
       currentBody = headerMatch[2] ? [headerMatch[2]] : [];
@@ -111,12 +124,15 @@ function parseWhatYouNeed(markdown: string) {
 // Section color config
 // =============================================================================
 
-const SECTION_STYLES: Record<SectionType, {
-  accentColor: string;
-  iconBg: string;
-  iconColor: string;
-  topBorder: string;
-}> = {
+const SECTION_STYLES: Record<
+  SectionType,
+  {
+    accentColor: string;
+    iconBg: string;
+    iconColor: string;
+    topBorder: string;
+  }
+> = {
   obligations: {
     accentColor: "var(--kbli-accent)",
     iconBg: "rgba(212, 132, 90, 0.1)",
@@ -240,7 +256,10 @@ function TierTabs({
   if (tiers.length <= 1) return null;
 
   return (
-    <div className="flex gap-1 rounded-lg p-1" style={{ background: "rgba(255,255,255,0.04)" }}>
+    <div
+      className="flex gap-1 rounded-lg p-1"
+      style={{ background: "rgba(255,255,255,0.04)" }}
+    >
       {tiers.map((tier, i) => (
         <button
           key={i}
@@ -273,7 +292,10 @@ function TierDetail({ tier }: { tier: KBLILicenseByScale }) {
               {tier.requirements.length}
             </span>
           </summary>
-          <div className="space-y-2 p-4" style={{ background: "var(--kbli-bg-surface)" }}>
+          <div
+            className="space-y-2 p-4"
+            style={{ background: "var(--kbli-bg-surface)" }}
+          >
             {tier.requirements.map((req, i) => (
               <div
                 key={i}
@@ -309,25 +331,50 @@ function TierDetail({ tier }: { tier: KBLILicenseByScale }) {
               {tier.obligations.length}
             </span>
           </summary>
-          <div className="space-y-1.5 p-4" style={{ background: "var(--kbli-bg-surface)" }}>
+          <div
+            className="space-y-1.5 p-4"
+            style={{ background: "var(--kbli-bg-surface)" }}
+          >
             {tier.obligations.map((obl, i) => (
-              <div key={i} className="flex items-start gap-2.5 rounded-lg px-3 py-2" style={{ background: "var(--kbli-bg-elevated)", border: "1px solid var(--kbli-border)" }}>
+              <div
+                key={i}
+                className="flex items-start gap-2.5 rounded-lg px-3 py-2"
+                style={{
+                  background: "var(--kbli-bg-elevated)",
+                  border: "1px solid var(--kbli-border)",
+                }}
+              >
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--kbli-accent)]/40" />
                 <div>
-                  <span className="text-sm leading-relaxed text-[var(--foreground-secondary)]">{obl}</span>
+                  <span className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+                    {obl}
+                  </span>
                   {/* English translation for common Indonesian obligations */}
                   {obl.toLowerCase().includes("sertifikat laik sehat") && (
-                    <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">→ Obtain Health Feasibility Certificate from Dinas Kesehatan</p>
+                    <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">
+                      → Obtain Health Feasibility Certificate from Dinas
+                      Kesehatan
+                    </p>
                   )}
                   {obl.toLowerCase().includes("laporan kegiatan") && (
-                    <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">→ Submit periodic business activity reports to regulator</p>
+                    <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">
+                      → Submit periodic business activity reports to regulator
+                    </p>
                   )}
-                  {obl.toLowerCase().includes("standar") && obl.toLowerCase().includes("menerapkan") && (
-                    <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">→ Submit documentation of standard implementation compliance</p>
-                  )}
-                  {obl.toLowerCase().includes("penerapan standar") && !obl.toLowerCase().includes("menerapkan") && (
-                    <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">→ Provide evidence of business standard compliance documents</p>
-                  )}
+                  {obl.toLowerCase().includes("standar") &&
+                    obl.toLowerCase().includes("menerapkan") && (
+                      <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">
+                        → Submit documentation of standard implementation
+                        compliance
+                      </p>
+                    )}
+                  {obl.toLowerCase().includes("penerapan standar") &&
+                    !obl.toLowerCase().includes("menerapkan") && (
+                      <p className="mt-0.5 text-xs text-[var(--foreground-muted)]">
+                        → Provide evidence of business standard compliance
+                        documents
+                      </p>
+                    )}
                 </div>
               </div>
             ))}
@@ -341,26 +388,33 @@ function TierDetail({ tier }: { tier: KBLILicenseByScale }) {
 /** Regulatory Alert — high-impact callout */
 function RegulatoryAlert({ markdown }: { markdown: string }) {
   // Split multi-warning alerts into separate visual blocks
-  const warnings = markdown.split(/\n(?=\*\*\d+\.\s)/).filter(w => w.trim());
+  const warnings = markdown.split(/\n(?=\*\*\d+\.\s)/).filter((w) => w.trim());
   const isMultiWarning = warnings.length > 1;
 
   return (
     <div
       className="relative overflow-hidden rounded-xl border px-6 py-5"
       style={{
-        background: "linear-gradient(135deg, rgba(232, 113, 108, 0.08), rgba(232, 168, 73, 0.04), rgba(232, 113, 108, 0.03) 80%)",
+        background:
+          "linear-gradient(135deg, rgba(232, 113, 108, 0.08), rgba(232, 168, 73, 0.04), rgba(232, 113, 108, 0.03) 80%)",
         borderColor: "rgba(232, 113, 108, 0.25)",
       }}
     >
       {/* Glow orb */}
       <div
         className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(232,113,108,0.1) 0%, transparent 70%)" }}
+        style={{
+          background:
+            "radial-gradient(circle, rgba(232,113,108,0.1) 0%, transparent 70%)",
+        }}
       />
       {/* Second glow for emphasis */}
       <div
         className="pointer-events-none absolute -bottom-12 -left-12 h-32 w-32 rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(232,113,108,0.06) 0%, transparent 70%)" }}
+        style={{
+          background:
+            "radial-gradient(circle, rgba(232,113,108,0.06) 0%, transparent 70%)",
+        }}
       />
 
       <div className="relative">
@@ -464,13 +518,41 @@ function AuthorityFlow({ body }: { body: string }) {
 
 /** Step colors — 7 shades cycling through amber→orange→teal palette */
 const STEP_COLORS = [
-  { bg: "rgba(212, 132, 90, 0.12)", border: "rgba(212, 132, 90, 0.25)", num: "var(--kbli-accent)" },
-  { bg: "rgba(212, 132, 90, 0.08)", border: "rgba(212, 132, 90, 0.18)", num: "var(--kbli-accent)" },
-  { bg: "rgba(139, 156, 247, 0.08)", border: "rgba(139, 156, 247, 0.18)", num: "var(--kbli-accent2)" },
-  { bg: "rgba(139, 156, 247, 0.10)", border: "rgba(139, 156, 247, 0.22)", num: "var(--kbli-accent2)" },
-  { bg: "rgba(94, 196, 144, 0.08)", border: "rgba(94, 196, 144, 0.18)", num: "var(--kbli-pma-open)" },
-  { bg: "rgba(94, 196, 144, 0.10)", border: "rgba(94, 196, 144, 0.22)", num: "var(--kbli-pma-open)" },
-  { bg: "rgba(232, 168, 73, 0.08)", border: "rgba(232, 168, 73, 0.20)", num: "var(--kbli-amber)" },
+  {
+    bg: "rgba(212, 132, 90, 0.12)",
+    border: "rgba(212, 132, 90, 0.25)",
+    num: "var(--kbli-accent)",
+  },
+  {
+    bg: "rgba(212, 132, 90, 0.08)",
+    border: "rgba(212, 132, 90, 0.18)",
+    num: "var(--kbli-accent)",
+  },
+  {
+    bg: "rgba(139, 156, 247, 0.08)",
+    border: "rgba(139, 156, 247, 0.18)",
+    num: "var(--kbli-accent2)",
+  },
+  {
+    bg: "rgba(139, 156, 247, 0.10)",
+    border: "rgba(139, 156, 247, 0.22)",
+    num: "var(--kbli-accent2)",
+  },
+  {
+    bg: "rgba(94, 196, 144, 0.08)",
+    border: "rgba(94, 196, 144, 0.18)",
+    num: "var(--kbli-pma-open)",
+  },
+  {
+    bg: "rgba(94, 196, 144, 0.10)",
+    border: "rgba(94, 196, 144, 0.22)",
+    num: "var(--kbli-pma-open)",
+  },
+  {
+    bg: "rgba(232, 168, 73, 0.08)",
+    border: "rgba(232, 168, 73, 0.20)",
+    num: "var(--kbli-amber)",
+  },
 ];
 
 function StepList({ body }: { body: string }) {
@@ -487,7 +569,8 @@ function StepList({ body }: { body: string }) {
       // Everything after **label** — split on em-dash to get parenthetical + desc
       const afterLabel = stepMatch[3].trim();
       const dashIdx = afterLabel.search(/[—–]/);
-      const desc = dashIdx >= 0 ? afterLabel.slice(dashIdx + 1).trim() : afterLabel;
+      const desc =
+        dashIdx >= 0 ? afterLabel.slice(dashIdx + 1).trim() : afterLabel;
       const paren = dashIdx >= 0 ? afterLabel.slice(0, dashIdx).trim() : "";
       steps.push({ num, label: paren ? `${label} ${paren}` : label, desc });
     } else if (line.trim()) {
@@ -511,7 +594,10 @@ function StepList({ body }: { body: string }) {
           <div
             key={step.num}
             className="flex items-start gap-3 rounded-xl px-4 py-3"
-            style={{ background: color.bg, border: `1px solid ${color.border}` }}
+            style={{
+              background: color.bg,
+              border: `1px solid ${color.border}`,
+            }}
           >
             <span
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black mt-0.5"
@@ -520,7 +606,10 @@ function StepList({ body }: { body: string }) {
               {step.num}
             </span>
             <div className="min-w-0">
-              <span className="text-sm font-semibold" style={{ color: color.num }}>
+              <span
+                className="text-sm font-semibold"
+                style={{ color: color.num }}
+              >
                 {step.label}
               </span>
               {step.desc && (
@@ -544,21 +633,33 @@ function StepList({ body }: { body: string }) {
 }
 
 /** Editorial content section with proper visual hierarchy */
-function ContentSection({ title, body, type }: { title: string; body: string; type: SectionType }) {
+function ContentSection({
+  title,
+  body,
+  type,
+}: {
+  title: string;
+  body: string;
+  type: SectionType;
+}) {
   if (!body.trim()) return null;
 
   const style = SECTION_STYLES[type];
   const displayTitle = humanizeTitle(title);
 
   // Detect step-by-step sections
-  const isStepByStep = title.toLowerCase().includes("step") ||
+  const isStepByStep =
+    title.toLowerCase().includes("step") ||
     title.toLowerCase().includes("how to") ||
     /^\d+\.\s+\*\*/.test(body.trim());
 
   // PMA sections are usually one line — render inline, not as a card
   if (type === "pma") {
     return (
-      <div className="flex items-start gap-3 rounded-lg px-4 py-3" style={{ background: "var(--kbli-bg-surface)" }}>
+      <div
+        className="flex items-start gap-3 rounded-lg px-4 py-3"
+        style={{ background: "var(--kbli-bg-surface)" }}
+      >
         <div
           className="mt-0.5 h-4 w-0.5 shrink-0 rounded-full"
           style={{ background: style.accentColor }}
@@ -632,19 +733,32 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
             className="flex cursor-pointer items-center gap-3 px-5 py-3.5 text-xs font-bold uppercase tracking-[0.12em] text-[var(--foreground-muted)] transition-colors hover:text-[var(--foreground-secondary)] [&::-webkit-details-marker]:hidden list-none"
             style={{ background: "var(--kbli-bg-elevated)" }}
           >
-            <svg className="h-4 w-4 shrink-0 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <svg
+              className="h-4 w-4 shrink-0 transition-transform duration-200 group-open:rotate-90"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
               <path d="M6 4l4 4-4 4" />
             </svg>
             <span>PP28/2025 Licensing Data</span>
             <span className="ml-auto rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-medium">
-              {kbli.licensing.length} {kbli.licensing.length === 1 ? "scale" : "scales"}
+              {kbli.licensing.length}{" "}
+              {kbli.licensing.length === 1 ? "scale" : "scales"}
             </span>
           </summary>
-          <div className="space-y-4 p-5" style={{ background: "var(--kbli-bg-surface)" }}>
+          <div
+            className="space-y-4 p-5"
+            style={{ background: "var(--kbli-bg-surface)" }}
+          >
             {/* Tier tabs */}
             {kbli.licensing.length > 1 && (
               <div className="flex items-center gap-4">
-                <span className="text-xs text-[var(--foreground-muted)]">Business scale:</span>
+                <span className="text-xs text-[var(--foreground-muted)]">
+                  Business scale:
+                </span>
                 <TierTabs
                   tiers={kbli.licensing}
                   activeTier={activeTier}
@@ -666,10 +780,14 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
                 <span
                   className="rounded-full px-2.5 py-0.5 text-xs font-medium"
                   style={{
-                    background: currentTier.timeframe.toLowerCase().includes("otomatis")
+                    background: currentTier.timeframe
+                      .toLowerCase()
+                      .includes("otomatis")
                       ? "rgba(94, 196, 144, 0.08)"
                       : "rgba(232, 168, 73, 0.08)",
-                    color: currentTier.timeframe.toLowerCase().includes("otomatis")
+                    color: currentTier.timeframe
+                      .toLowerCase()
+                      .includes("otomatis")
                       ? "var(--kbli-pma-open)"
                       : "var(--kbli-pma-restricted)",
                   }}

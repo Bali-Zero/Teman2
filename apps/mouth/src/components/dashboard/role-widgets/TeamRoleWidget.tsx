@@ -2,13 +2,20 @@
 import React from "react";
 import type { TeamMetrics, RoleAlert } from "@/types/dashboard-role.types";
 
-interface Props { metrics: TeamMetrics; alerts: RoleAlert[]; }
+interface Props {
+  metrics: TeamMetrics;
+  alerts: RoleAlert[];
+}
 
 export function TeamRoleWidget({ metrics }: Props) {
   return (
     <div className="flex flex-col gap-2.5">
-      <span className="text-[9px] font-bold text-white/40 tracking-[.12em]">LE MIE PRATICHE</span>
-      <span className="text-2xl font-black text-[#5cb88a] leading-none">{metrics.pratiche_assegnate}</span>
+      <span className="text-[9px] font-bold text-white/40 tracking-[.12em]">
+        LE MIE PRATICHE
+      </span>
+      <span className="text-2xl font-black text-[#5cb88a] leading-none">
+        {metrics.pratiche_assegnate}
+      </span>
       <span className="text-[10px] text-white/50">pratiche assegnate</span>
       <div className="h-px bg-white/[0.06]" />
       {metrics.prossima_scadenza && (

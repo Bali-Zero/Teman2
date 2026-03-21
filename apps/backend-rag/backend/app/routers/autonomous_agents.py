@@ -96,7 +96,11 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> A
     except Exception as e:
         logger.error(f"❌ Conversation Trainer failed: {e}", exc_info=True)
         agent_executions[execution_id].update(
-            {"status": "failed", "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(), "error": str(e)}
+            {
+                "status": "failed",
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+                "error": str(e),
+            }
         )
 
 
@@ -177,7 +181,11 @@ async def _run_client_value_predictor_task(execution_id: str) -> None:
     except Exception as e:
         logger.error(f"❌ Client Value Predictor failed: {e}", exc_info=True)
         agent_executions[execution_id].update(
-            {"status": "failed", "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(), "error": str(e)}
+            {
+                "status": "failed",
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+                "error": str(e),
+            }
         )
 
 
@@ -264,7 +272,11 @@ async def _run_knowledge_graph_builder_task(
     except Exception as e:
         logger.error(f"❌ Knowledge Graph Builder failed: {e}", exc_info=True)
         agent_executions[execution_id].update(
-            {"status": "failed", "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(), "error": str(e)}
+            {
+                "status": "failed",
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+                "error": str(e),
+            }
         )
 
 

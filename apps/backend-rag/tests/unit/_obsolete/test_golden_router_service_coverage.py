@@ -57,7 +57,8 @@ app_config_module = types.ModuleType("backend.app.core.config")
 
 # Mock settings
 settings_mock = SimpleNamespace(
-    database_url="postgresql://test:test@localhost/test", redis_url="redis://localhost:6379",
+    database_url="postgresql://test:test@localhost/test",
+    redis_url="redis://localhost:6379",
     api_keys="test_key_1,test_key_2",
 )
 app_config_module.settings = settings_mock

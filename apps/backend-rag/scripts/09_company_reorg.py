@@ -77,12 +77,14 @@ def _get_oauth_access_token() -> str:
     if _oauth_access_token and time.time() < _oauth_token_expiry - 60:
         return _oauth_access_token
 
-    data = urllib.parse.urlencode({
-        "client_id": OAUTH_CLIENT_ID,
-        "client_secret": OAUTH_CLIENT_SECRET,
-        "refresh_token": OAUTH_REFRESH_TOKEN,
-        "grant_type": "refresh_token",
-    }).encode()
+    data = urllib.parse.urlencode(
+        {
+            "client_id": OAUTH_CLIENT_ID,
+            "client_secret": OAUTH_CLIENT_SECRET,
+            "refresh_token": OAUTH_REFRESH_TOKEN,
+            "grant_type": "refresh_token",
+        }
+    ).encode()
 
     req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data, method="POST")
     with urllib.request.urlopen(req) as resp:
@@ -175,11 +177,15 @@ def create_folder(service: Any, name: str, parent_id: str, dry_run: bool) -> str
             "mimeType": FOLDER_MIME,
             "parents": [parent_id],
         }
-        folder = service.files().create(
-            body=metadata,
-            fields="id",
-            supportsAllDrives=True,
-        ).execute()
+        folder = (
+            service.files()
+            .create(
+                body=metadata,
+                fields="id",
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
         time.sleep(0.3)  # Rate limit
         return folder["id"]
     except HttpError as e:
@@ -230,7 +236,13 @@ def process_company(
     """Process a single company folder: classify files and move to standard subfolders."""
     company_id = company_folder["id"]
     company_name = company_folder["name"]
-    result = {"name": company_name, "created_folders": 0, "moved_files": 0, "merged_folders": 0, "errors": 0}
+    result = {
+        "name": company_name,
+        "created_folders": 0,
+        "moved_files": 0,
+        "merged_folders": 0,
+        "errors": 0,
+    }
 
     items = list_folder(service, company_id)
     if not items:
@@ -315,9 +327,17 @@ def main(dry_run: bool, limit: int, start_idx: int) -> None:
 
     # Apply start_idx and limit
     to_process = company_folders[start_idx : start_idx + limit]
-    logger.info(f"Processing {len(to_process)} companies (idx {start_idx} → {start_idx + len(to_process) - 1})")
+    logger.info(
+        f"Processing {len(to_process)} companies (idx {start_idx} → {start_idx + len(to_process) - 1})"
+    )
 
-    stats = {"processed": 0, "created_folders": 0, "moved_files": 0, "merged_folders": 0, "errors": 0}
+    stats = {
+        "processed": 0,
+        "created_folders": 0,
+        "moved_files": 0,
+        "merged_folders": 0,
+        "errors": 0,
+    }
     state = load_state()
 
     for i, company in enumerate(to_process):
@@ -332,7 +352,11 @@ def main(dry_run: bool, limit: int, start_idx: int) -> None:
             stats["merged_folders"] += result["merged_folders"]
             stats["errors"] += result["errors"]
 
-            if result["created_folders"] == 0 and result["moved_files"] == 0 and result["merged_folders"] == 0:
+            if (
+                result["created_folders"] == 0
+                and result["moved_files"] == 0
+                and result["merged_folders"] == 0
+            ):
                 logger.info("    ✓ Already organized")
             else:
                 logger.info(
@@ -353,7 +377,9 @@ def main(dry_run: bool, limit: int, start_idx: int) -> None:
 
         # Progress log every 50
         if (i + 1) % 50 == 0:
-            logger.info(f"\n--- Progress: {i + 1}/{len(to_process)} ({stats['processed']} OK, {stats['errors']} errors) ---\n")
+            logger.info(
+                f"\n--- Progress: {i + 1}/{len(to_process)} ({stats['processed']} OK, {stats['errors']} errors) ---\n"
+            )
 
         # Rate limit between companies
         time.sleep(0.5)
@@ -376,10 +402,19 @@ def main(dry_run: bool, limit: int, start_idx: int) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Reorganize company Drive folders into standard structure")
+    parser = argparse.ArgumentParser(
+        description="Reorganize company Drive folders into standard structure"
+    )
     parser.add_argument("--dry-run", action="store_true", help="Preview only, no Drive changes")
-    parser.add_argument("--limit", type=int, default=100, help="Max companies to process (default 100)")
-    parser.add_argument("--start-idx", type=int, default=0, help="Start from this index (default 0, use 1000 to resume)")
+    parser.add_argument(
+        "--limit", type=int, default=100, help="Max companies to process (default 100)"
+    )
+    parser.add_argument(
+        "--start-idx",
+        type=int,
+        default=0,
+        help="Start from this index (default 0, use 1000 to resume)",
+    )
     args = parser.parse_args()
 
     main(dry_run=args.dry_run, limit=args.limit, start_idx=args.start_idx)

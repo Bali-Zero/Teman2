@@ -438,17 +438,23 @@ class TestCreateCommitWithFiles:
             mock_client_instance = AsyncMock()
 
             # Configure responses for each API call
-            mock_client_instance.get = AsyncMock(side_effect=[
-                mock_git_api_responses["ref"],
-                mock_git_api_responses["commit"],
-            ])
-            mock_client_instance.post = AsyncMock(side_effect=[
-                mock_git_api_responses["blob"],
-                mock_git_api_responses["blob"],  # Called twice for 2 files
-                mock_git_api_responses["tree"],
-                mock_git_api_responses["create_commit"],
-            ])
-            mock_client_instance.patch = AsyncMock(return_value=mock_git_api_responses["update_ref"])
+            mock_client_instance.get = AsyncMock(
+                side_effect=[
+                    mock_git_api_responses["ref"],
+                    mock_git_api_responses["commit"],
+                ]
+            )
+            mock_client_instance.post = AsyncMock(
+                side_effect=[
+                    mock_git_api_responses["blob"],
+                    mock_git_api_responses["blob"],  # Called twice for 2 files
+                    mock_git_api_responses["tree"],
+                    mock_git_api_responses["create_commit"],
+                ]
+            )
+            mock_client_instance.patch = AsyncMock(
+                return_value=mock_git_api_responses["update_ref"]
+            )
 
             mock_client.return_value.__aenter__.return_value = mock_client_instance
 

@@ -17,6 +17,8 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 backend_path = Path(__file__).resolve().parents[2]
+
+
 # Minimal mocking - only mock modules that cause import errors
 # The routing modules only depend on backend.app.core.constants
 def mock_problematic_modules():

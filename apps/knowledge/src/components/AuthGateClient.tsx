@@ -8,7 +8,12 @@ function getToken(): string | null {
   const cookies = document.cookie.split(";");
   for (const cookie of cookies) {
     const [name, value] = cookie.trim().split("=");
-    if (name === "nz_access_token" || name === "auth_token" || name === "access_token" || name === "token") {
+    if (
+      name === "nz_access_token" ||
+      name === "auth_token" ||
+      name === "access_token" ||
+      name === "token"
+    ) {
       return decodeURIComponent(value || "");
     }
   }

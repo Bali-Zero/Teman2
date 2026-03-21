@@ -47,10 +47,13 @@ async def verify_sendgrid_config(test_email: str | None = None):
     # Test API connectivity
     print("2️⃣ Testing SendGrid API connectivity...")
     try:
-        async with aiohttp.ClientSession() as session, session.get(
-            "https://api.sendgrid.com/v3/user/profile",
-            headers={"Authorization": f"Bearer {api_key}"}
-        ) as response:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(
+                "https://api.sendgrid.com/v3/user/profile",
+                headers={"Authorization": f"Bearer {api_key}"},
+            ) as response,
+        ):
             if response.status == 200:
                 data = await response.json()
                 print("   ✅ API connection successful")
@@ -82,19 +85,22 @@ async def verify_sendgrid_config(test_email: str | None = None):
                         <p>If you're receiving this, SendGrid is properly configured.</p>
                         <br>
                         <p><strong>Bali Zero Team</strong></p>
-                        """
+                        """,
                     }
-                ]
+                ],
             }
 
-            async with aiohttp.ClientSession() as session, session.post(
-                "https://api.sendgrid.com/v3/mail/send",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json=payload
-            ) as response:
+            async with (
+                aiohttp.ClientSession() as session,
+                session.post(
+                    "https://api.sendgrid.com/v3/mail/send",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                ) as response,
+            ):
                 if response.status == 202:
                     print("   ✅ Test email sent successfully!")
                     print(f"   📨 Check your inbox at {test_email}")

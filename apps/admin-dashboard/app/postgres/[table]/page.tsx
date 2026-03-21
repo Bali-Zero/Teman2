@@ -1,10 +1,14 @@
-'use client';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Button, Badge } from '@/components/ui/primitives';
-import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Button, Badge } from "@/components/ui/primitives";
+import { ArrowLeft, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 
-export default function TableDataPage({ params }: { params: { table: string } }) {
+export default function TableDataPage({
+  params,
+}: {
+  params: { table: string };
+}) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -43,7 +47,10 @@ export default function TableDataPage({ params }: { params: { table: string } })
           <div>
             <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
               {params.table}
-              <Badge variant="outline" className="font-normal text-muted-foreground">
+              <Badge
+                variant="outline"
+                className="font-normal text-muted-foreground"
+              >
                 {data.length} rows visible
               </Badge>
             </h1>
@@ -62,8 +69,14 @@ export default function TableDataPage({ params }: { params: { table: string } })
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm px-2 min-w-[3rem] text-center">Pg {page}</span>
-            <Button variant="ghost" size="icon" onClick={() => setPage(page + 1)}>
+            <span className="text-sm px-2 min-w-[3rem] text-center">
+              Pg {page}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setPage(page + 1)}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -98,13 +111,16 @@ export default function TableDataPage({ params }: { params: { table: string } })
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0 divide-y">
                   {data.map((row, i) => (
-                    <tr key={i} className="border-b transition-colors hover:bg-muted/50">
+                    <tr
+                      key={i}
+                      className="border-b transition-colors hover:bg-muted/50"
+                    >
                       {columns.map((col) => (
                         <td
                           key={`${i}-${col}`}
                           className="p-4 align-middle whitespace-nowrap max-w-[300px] overflow-hidden text-ellipsis"
                         >
-                          {typeof row[col] === 'object'
+                          {typeof row[col] === "object"
                             ? JSON.stringify(row[col])
                             : String(row[col])}
                         </td>

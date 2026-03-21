@@ -36,12 +36,30 @@ export default function KBLIHomePage() {
         {/* Vignette */}
         <div
           className="absolute inset-0"
-          style={{ background: "radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, rgba(20,20,22,0.9) 100%)" }}
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 70% at 50% 50%, transparent 30%, rgba(20,20,22,0.9) 100%)",
+          }}
         />
         {/* Ambient orbs — subtle red and white for Indonesian flag feel */}
-        <div className="absolute top-[-15%] left-[10%] w-[500px] h-[500px] rounded-full opacity-[0.06] blur-[120px]" style={{ background: "radial-gradient(circle, #dc2626, transparent)" }} />
-        <div className="absolute top-[-10%] right-[15%] w-[400px] h-[400px] rounded-full opacity-[0.04] blur-[100px]" style={{ background: "radial-gradient(circle, #ffffff, transparent)" }} />
-        <div className="absolute bottom-[-15%] right-[-5%] w-[350px] h-[350px] rounded-full opacity-[0.05] blur-[100px]" style={{ background: "radial-gradient(circle, #dc2626, transparent)" }} />
+        <div
+          className="absolute top-[-15%] left-[10%] w-[500px] h-[500px] rounded-full opacity-[0.06] blur-[120px]"
+          style={{
+            background: "radial-gradient(circle, #dc2626, transparent)",
+          }}
+        />
+        <div
+          className="absolute top-[-10%] right-[15%] w-[400px] h-[400px] rounded-full opacity-[0.04] blur-[100px]"
+          style={{
+            background: "radial-gradient(circle, #ffffff, transparent)",
+          }}
+        />
+        <div
+          className="absolute bottom-[-15%] right-[-5%] w-[350px] h-[350px] rounded-full opacity-[0.05] blur-[100px]"
+          style={{
+            background: "radial-gradient(circle, #dc2626, transparent)",
+          }}
+        />
 
         <div className="relative z-10 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-12 px-8 py-16 sm:px-12 sm:py-20 lg:px-16 lg:py-24">
           {/* Left column */}
@@ -57,7 +75,9 @@ export default function KBLIHomePage() {
               />
               <div className="text-[13px] font-semibold text-white/80 leading-tight tracking-wide">
                 <span className="block">We don&apos;t sell services.</span>
-                <span className="block text-white/50">We offer intelligence.</span>
+                <span className="block text-white/50">
+                  We offer intelligence.
+                </span>
               </div>
             </div>
 
@@ -68,12 +88,15 @@ export default function KBLIHomePage() {
 
             {/* Subtitle */}
             <p className="mt-5 text-xl sm:text-2xl text-zinc-400 font-light tracking-tight">
-              Your <em className="text-white font-medium not-italic">Indonesian</em> Business Codes
+              Your{" "}
+              <em className="text-white font-medium not-italic">Indonesian</em>{" "}
+              Business Codes
             </p>
 
             {/* Inline stats */}
             <p className="mt-3 text-sm text-zinc-500 tracking-wide">
-              1,563 codes&ensp;&middot;&ensp;22 sectors&ensp;&middot;&ensp;PMA rules
+              1,563 codes&ensp;&middot;&ensp;22 sectors&ensp;&middot;&ensp;PMA
+              rules
             </p>
 
             {/* CTA — glassmorphism button */}
@@ -90,14 +113,19 @@ export default function KBLIHomePage() {
             {/* Glow behind tablet */}
             <div
               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] blur-[80px] pointer-events-none"
-              style={{ background: "radial-gradient(circle, rgba(220,38,38,0.06), transparent 70%)" }}
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(220,38,38,0.06), transparent 70%)",
+              }}
             />
             <div
               className="relative z-10 transition-transform duration-[400ms]"
               style={{
-                transform: "perspective(1000px) rotateY(-12deg) rotateX(4deg) rotate(-3deg)",
+                transform:
+                  "perspective(1000px) rotateY(-12deg) rotateX(4deg) rotate(-3deg)",
                 transformStyle: "preserve-3d",
-                filter: "drop-shadow(0 40px 60px rgba(0,0,0,0.6)) drop-shadow(0 0 30px rgba(220,38,38,0.08))",
+                filter:
+                  "drop-shadow(0 40px 60px rgba(0,0,0,0.6)) drop-shadow(0 0 30px rgba(220,38,38,0.08))",
               }}
             >
               {/* Tablet frame — glassmorphism */}
@@ -110,7 +138,10 @@ export default function KBLIHomePage() {
                   <div className="w-2 h-2 rounded-full bg-white/[0.08]" />
                 </div>
                 {/* Screen with video */}
-                <div className="rounded-[18px] bg-black/60 overflow-hidden" style={{ height: 286 }}>
+                <div
+                  className="rounded-[18px] bg-black/60 overflow-hidden"
+                  style={{ height: 286 }}
+                >
                   <video
                     src="/videos/kbli-demo.mp4"
                     autoPlay
@@ -142,25 +173,36 @@ export default function KBLIHomePage() {
             key={t.label}
             className="text-center px-6 py-4 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:bg-white/[0.05] hover:border-white/[0.1] hover:shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]"
           >
-            <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">{t.num}</div>
-            <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">{t.label}</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              {t.num}
+            </div>
+            <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+              {t.label}
+            </div>
           </div>
         ))}
       </div>
 
       {/* ── SEARCH ── */}
-      <div id="search" className="sticky top-20 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[#141416]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8">
+      <div
+        id="search"
+        className="sticky top-20 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[#141416]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
+      >
         <KBLISearch autoFocus />
         <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
-          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-2">Quick:</span>
-          {["Restaurant", "Tech", "Real Estate", "Retail", "Manufacturing"].map((filter) => (
-            <button
-              key={filter}
-              className="px-3.5 py-1.5 rounded-full text-xs font-medium text-zinc-400 bg-white/[0.04] backdrop-blur-md border border-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-white/[0.07] hover:text-white transition-all duration-300 hover:border-red-500/30 hover:shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]"
-            >
-              {filter}
-            </button>
-          ))}
+          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-2">
+            Quick:
+          </span>
+          {["Restaurant", "Tech", "Real Estate", "Retail", "Manufacturing"].map(
+            (filter) => (
+              <button
+                key={filter}
+                className="px-3.5 py-1.5 rounded-full text-xs font-medium text-zinc-400 bg-white/[0.04] backdrop-blur-md border border-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-white/[0.07] hover:text-white transition-all duration-300 hover:border-red-500/30 hover:shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]"
+              >
+                {filter}
+              </button>
+            ),
+          )}
         </div>
       </div>
 
