@@ -15,6 +15,8 @@ from fastapi.testclient import TestClient
 
 # Add backend to path
 backend_path = Path(__file__).resolve().parents[4]
+
+
 @pytest.fixture
 def mock_orchestrator():
     """Mock AgenticRAGOrchestrator"""

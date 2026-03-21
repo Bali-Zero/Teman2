@@ -127,7 +127,10 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -143,27 +146,38 @@ export default function ProfilePage() {
       {/* Header */}
       <section>
         <h1 className="text-2xl font-bold tracking-tight">Your Profile</h1>
-        <p style={{ color: "var(--bz-text-2)" }}>View your personal information</p>
+        <p style={{ color: "var(--bz-text-2)" }}>
+          View your personal information
+        </p>
       </section>
 
       {/* Profile Card */}
-      <section className="rounded-xl border p-6 space-y-6" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+      <section
+        className="rounded-xl border p-6 space-y-6"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
+      >
         {/* Avatar */}
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
             <div
               className={cn(
                 "w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500",
-                isBirthday && "bg-gradient-to-br from-yellow-300 via-amber-300 to-yellow-400 animate-pulse shadow-[0_0_30px_rgba(255,215,0,0.6)]",
+                isBirthday &&
+                  "bg-gradient-to-br from-yellow-300 via-amber-300 to-yellow-400 animate-pulse shadow-[0_0_30px_rgba(255,215,0,0.6)]",
               )}
-              style={!isBirthday ? { background: "rgba(201,169,110,0.15)" } : {}}
+              style={
+                !isBirthday ? { background: "rgba(201,169,110,0.15)" } : {}
+              }
             >
               <User
                 className={cn(
                   "w-10 h-10 transition-colors",
                   isBirthday ? "text-yellow-700" : "",
                 )}
-              style={!isBirthday ? { color: "var(--bz-accent-warm)" } : {}}
+                style={!isBirthday ? { color: "var(--bz-accent-warm)" } : {}}
               />
             </div>
             {/* Birthday Badge */}
@@ -196,7 +210,10 @@ export default function ProfilePage() {
               })}
             </p>
             {isBirthday && (
-              <p className="text-sm font-medium mt-1 animate-pulse" style={{ color: "#fbbf24" }}>
+              <p
+                className="text-sm font-medium mt-1 animate-pulse"
+                style={{ color: "#fbbf24" }}
+              >
                 🎉 Happy Birthday! 🎉
               </p>
             )}
@@ -204,7 +221,10 @@ export default function ProfilePage() {
         </div>
 
         {/* Info Fields */}
-        <div className="space-y-4 pt-4 border-t" style={{ borderColor: "var(--bz-border)" }}>
+        <div
+          className="space-y-4 pt-4 border-t"
+          style={{ borderColor: "var(--bz-border)" }}
+        >
           <ProfileField icon={Mail} label="Email" value={profile.email} />
 
           {profile.phone && (
@@ -231,11 +251,22 @@ export default function ProfilePage() {
           {profile.dateOfBirth && (
             <div
               className="flex items-start gap-3 p-3 rounded-lg transition-all duration-500"
-              style={isBirthday ? { background: "rgba(251,191,36,0.15)", boxShadow: "0 0 20px rgba(255,215,0,0.3)" } : {}}
+              style={
+                isBirthday
+                  ? {
+                      background: "rgba(251,191,36,0.15)",
+                      boxShadow: "0 0 20px rgba(255,215,0,0.3)",
+                    }
+                  : {}
+              }
             >
               <div
                 className="p-2 rounded-md"
-                style={isBirthday ? { background: "rgba(251,191,36,0.25)" } : { background: "var(--bz-surface)" }}
+                style={
+                  isBirthday
+                    ? { background: "rgba(251,191,36,0.25)" }
+                    : { background: "var(--bz-surface)" }
+                }
               >
                 <Calendar
                   className={cn("w-4 h-4", isBirthday && "text-yellow-400")}
@@ -243,11 +274,17 @@ export default function ProfilePage() {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs mb-0.5" style={{ color: "var(--bz-text-2)" }}>
+                <p
+                  className="text-xs mb-0.5"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Date of Birth
                 </p>
                 <p
-                  className={cn("text-sm font-medium break-words", isBirthday && "font-bold")}
+                  className={cn(
+                    "text-sm font-medium break-words",
+                    isBirthday && "font-bold",
+                  )}
                   style={isBirthday ? { color: "#fbbf24" } : {}}
                 >
                   {formatDate(profile.dateOfBirth)}
@@ -274,26 +311,29 @@ export default function ProfilePage() {
                 passportValidity.alertLevel === "critical" && "animate-pulse",
               )}
               style={{
-                background: passportValidity.alertLevel === "ok"
-                  ? "rgba(16,185,129,0.06)"
-                  : passportValidity.alertLevel === "warning"
-                  ? "rgba(245,158,11,0.06)"
-                  : "rgba(239,68,68,0.08)",
-                borderColor: passportValidity.alertLevel === "ok"
-                  ? "rgba(16,185,129,0.25)"
-                  : passportValidity.alertLevel === "warning"
-                  ? "rgba(245,158,11,0.3)"
-                  : "rgba(239,68,68,0.35)",
+                background:
+                  passportValidity.alertLevel === "ok"
+                    ? "rgba(16,185,129,0.06)"
+                    : passportValidity.alertLevel === "warning"
+                      ? "rgba(245,158,11,0.06)"
+                      : "rgba(239,68,68,0.08)",
+                borderColor:
+                  passportValidity.alertLevel === "ok"
+                    ? "rgba(16,185,129,0.25)"
+                    : passportValidity.alertLevel === "warning"
+                      ? "rgba(245,158,11,0.3)"
+                      : "rgba(239,68,68,0.35)",
               }}
             >
               <div
                 className="p-2 rounded-md"
                 style={{
-                  background: passportValidity.alertLevel === "ok"
-                    ? "rgba(16,185,129,0.12)"
-                    : passportValidity.alertLevel === "warning"
-                    ? "rgba(245,158,11,0.12)"
-                    : "rgba(239,68,68,0.15)",
+                  background:
+                    passportValidity.alertLevel === "ok"
+                      ? "rgba(16,185,129,0.12)"
+                      : passportValidity.alertLevel === "warning"
+                        ? "rgba(245,158,11,0.12)"
+                        : "rgba(239,68,68,0.15)",
                 }}
               >
                 {passportValidity.alertLevel === "ok" ? (
@@ -301,17 +341,32 @@ export default function ProfilePage() {
                 ) : (
                   <AlertTriangle
                     className="w-4 h-4"
-                    style={{ color: passportValidity.alertLevel === "warning" ? "#fbbf24" : "#f87171" }}
+                    style={{
+                      color:
+                        passportValidity.alertLevel === "warning"
+                          ? "#fbbf24"
+                          : "#f87171",
+                    }}
                   />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs mb-0.5" style={{ color: "var(--bz-text-2)" }}>
+                <p
+                  className="text-xs mb-0.5"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Passport Expiry
                 </p>
                 <p
                   className="text-sm font-medium break-words"
-                  style={{ color: passportValidity.alertLevel === "ok" ? "#34d399" : passportValidity.alertLevel === "warning" ? "#fbbf24" : "#f87171" }}
+                  style={{
+                    color:
+                      passportValidity.alertLevel === "ok"
+                        ? "#34d399"
+                        : passportValidity.alertLevel === "warning"
+                          ? "#fbbf24"
+                          : "#f87171",
+                  }}
                 >
                   {formatDate(profile.passportExpiry)}
                   <span className="ml-2 text-xs">
@@ -356,7 +411,13 @@ export default function ProfilePage() {
       </section>
 
       {/* Info Notice */}
-      <section className="rounded-lg border p-4" style={{ borderColor: "rgba(201,169,110,0.3)", background: "rgba(201,169,110,0.06)" }}>
+      <section
+        className="rounded-lg border p-4"
+        style={{
+          borderColor: "rgba(201,169,110,0.3)",
+          background: "rgba(201,169,110,0.06)",
+        }}
+      >
         <p className="text-sm" style={{ color: "var(--bz-accent-warm)" }}>
           To update your profile information, please contact your account
           manager or send us a message through the Chat.
@@ -381,11 +442,16 @@ function ProfileField({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="p-2 rounded-md" style={{ background: "var(--bz-surface)" }}>
+      <div
+        className="p-2 rounded-md"
+        style={{ background: "var(--bz-surface)" }}
+      >
         <Icon className="w-4 h-4" style={{ color: "var(--bz-text-2)" }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs mb-0.5" style={{ color: "var(--bz-text-2)" }}>{label}</p>
+        <p className="text-xs mb-0.5" style={{ color: "var(--bz-text-2)" }}>
+          {label}
+        </p>
         <p className="text-sm font-medium break-words">{value}</p>
       </div>
     </div>

@@ -83,9 +83,7 @@ class LKPMDataCollector:
         self.db_pool = db_pool
         self.jurnal_service = jurnal_service or JurnalService()
 
-    def collect_from_form(
-        self, submission: LKPMClientSubmission
-    ) -> LKPMDraft:
+    def collect_from_form(self, submission: LKPMClientSubmission) -> LKPMDraft:
         """Convert client form submission into an LKPM draft."""
         logger.info(
             f"Collecting form data for client {submission.client_id}, "
@@ -131,9 +129,7 @@ class LKPMDataCollector:
         company_id: str | None = None,
     ) -> LKPMDraft:
         """Pull data from Jurnal.id and categorize into LKPM format."""
-        logger.info(
-            f"Collecting Jurnal data for client {client_id}, {quarter} {year}"
-        )
+        logger.info(f"Collecting Jurnal data for client {client_id}, {quarter} {year}")
 
         start_date, end_date = self._quarter_dates(quarter, year)
 
@@ -189,9 +185,7 @@ class LKPMDataCollector:
                 continue
 
             # Deterministic mapping: try account name patterns
-            category, sub_category, is_deterministic = self._map_account(
-                account_name, description
-            )
+            category, sub_category, is_deterministic = self._map_account(account_name, description)
 
             categorized.append(
                 TransactionCategorization(
@@ -214,9 +208,7 @@ class LKPMDataCollector:
         )
         return categorized
 
-    def _map_account(
-        self, account_name: str, description: str
-    ) -> tuple[str, str, bool]:
+    def _map_account(self, account_name: str, description: str) -> tuple[str, str, bool]:
         """
         Map account name to LKPM category using deterministic rules.
 
@@ -294,6 +286,7 @@ class LKPMDataCollector:
                 tki = 0
                 if client_row and client_row["custom_fields"]:
                     import json
+
                     fields = client_row["custom_fields"]
                     if isinstance(fields, str):
                         fields = json.loads(fields)

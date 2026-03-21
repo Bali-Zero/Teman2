@@ -259,7 +259,8 @@ export function DriveToolbarOptimized({
           <Button
             onClick={onCreateClick}
             size="sm"
-            className="text-white gap-1.5" style={{ background: "var(--bz-accent)" }}
+            className="text-white gap-1.5"
+            style={{ background: "var(--bz-accent)" }}
           >
             <span className="hidden sm:inline">New</span>
             <span className="sm:hidden">+</span>

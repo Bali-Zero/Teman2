@@ -2,7 +2,6 @@
 Unit tests for TokenEstimator
 """
 
-
 import pytest
 
 from backend.llm.token_estimator import TokenEstimator  # noqa: E402

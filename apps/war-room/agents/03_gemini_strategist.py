@@ -58,12 +58,12 @@ def main():
     prompts = json.loads(prompt_path.read_text())
 
     # Keys match 015_qwen_preprocessor.py output schema
-    grok_str  = json.dumps(dump_data.get("sentiment", dump_data.get("grok_summary", [])), ensure_ascii=False, indent=2)
-    manus_str = json.dumps(dump_data.get("facts", dump_data.get("manus_summary", [])), ensure_ascii=False, indent=2)
+    sentiment_str = json.dumps(dump_data.get("sentiment", dump_data.get("social_summary", [])), ensure_ascii=False, indent=2)
+    legal_str     = json.dumps(dump_data.get("facts", dump_data.get("legal_summary", [])), ensure_ascii=False, indent=2)
     prompt = (
         prompts["gemini_strategist"]
-        .replace("{grok_dump}",  grok_str)
-        .replace("{manus_dump}", manus_str)
+        .replace("{social_dump}", sentiment_str)
+        .replace("{legal_dump}",  legal_str)
     ) + f"\n\nTOPIC FOCUS: {args.topic}\n\nOutput ONLY valid JSON array of 3 concepts."
 
     print(f"🧠 Gemini 3.1 Pro thinking...", file=sys.stderr)

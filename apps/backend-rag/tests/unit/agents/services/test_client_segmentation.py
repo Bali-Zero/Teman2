@@ -7,7 +7,6 @@ risk levels based on LTV scores and activity patterns.
 Target Coverage: 90%+
 """
 
-
 import pytest
 
 from backend.agents.services.client_segmentation import (

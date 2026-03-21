@@ -2,7 +2,7 @@
 """
 FASE 1 — Exa AI Researcher
 API-based search: news Indonesia, legal/gov sources, deep research.
-Runs in parallel with Grok + Manus. Zero browser automation = 100% reliable.
+Runs standalone or in parallel with ChatGPT researcher. Zero browser automation = 100% reliable.
 
 Usage:
     python 09_exa_researcher.py --topic "Coretax 2025" --output output/raw/exa_dump.json

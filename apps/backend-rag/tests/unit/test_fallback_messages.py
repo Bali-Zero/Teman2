@@ -2,7 +2,6 @@
 Unit tests for Fallback Messages
 """
 
-
 from backend.llm.fallback_messages import FALLBACK_MESSAGES, get_fallback_message
 
 

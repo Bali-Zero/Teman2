@@ -32,7 +32,9 @@ describe("DashboardStatCard", () => {
   });
 
   it("applies correct color class for each variant", () => {
-    const { container, rerender } = render(<DashboardStatCard {...baseProps} colorVariant="red" />);
+    const { container, rerender } = render(
+      <DashboardStatCard {...baseProps} colorVariant="red" />,
+    );
     expect(container.firstChild).toHaveClass("glass-red");
 
     rerender(<DashboardStatCard {...baseProps} colorVariant="yellow" />);

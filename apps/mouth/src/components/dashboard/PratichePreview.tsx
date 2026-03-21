@@ -55,7 +55,10 @@ const statusConfig = {
 export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
+      <div
+        className="rounded-xl border border-[var(--border)] p-5 shadow-xl backdrop-blur-xl"
+        style={{ background: "rgba(35, 35, 40, 0.65)" }}
+      >
         <div className="flex items-center justify-between mb-4">
           <div className="h-5 w-32 bg-[var(--background-elevated)] rounded animate-pulse" />
           <div className="h-4 w-20 bg-[var(--background-elevated)] rounded animate-pulse" />
@@ -73,7 +76,10 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
+    <div
+      className="rounded-xl border border-[var(--border)] p-5 shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
+      style={{ background: "rgba(35, 35, 40, 0.65)" }}
+    >
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-[var(--foreground)]">
           My Process

@@ -29,7 +29,12 @@ const apps = [
   { name: "Mail", href: "https://mail.balizero.com", emoji: "✉️" },
   { name: "Calendar", href: "https://calendar.balizero.com", emoji: "📅" },
   { name: "Drive", href: "https://drive.balizero.com", emoji: "💾" },
-  { name: "Knowledge", href: "https://knowledge.balizero.com", emoji: "📚", active: true },
+  {
+    name: "Knowledge",
+    href: "https://knowledge.balizero.com",
+    emoji: "📚",
+    active: true,
+  },
 ];
 
 export default async function RootLayout({
@@ -49,12 +54,47 @@ export default async function RootLayout({
     <html lang="en">
       <body className="bg-[var(--background)] text-[var(--foreground)] min-h-screen">
         {/* Top bar */}
-        <header style={{ height: "48px", display: "flex", alignItems: "center", padding: "0 16px", gap: "8px", borderBottom: "1px solid var(--bz-border)", background: "var(--bz-elevated)", position: "sticky", top: 0, zIndex: 40 }}>
-          <a href="https://kita.balizero.com" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+        <header
+          style={{
+            height: "48px",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 16px",
+            gap: "8px",
+            borderBottom: "1px solid var(--bz-border)",
+            background: "var(--bz-elevated)",
+            position: "sticky",
+            top: 0,
+            zIndex: 40,
+          }}
+        >
+          <a
+            href="https://kita.balizero.com"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              textDecoration: "none",
+            }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/static/balizero-logo-clean.png" alt="Bali Zero" width={22} height={22} style={{ borderRadius: "50%", flexShrink: 0 }} />
+            <img
+              src="/static/balizero-logo-clean.png"
+              alt="Bali Zero"
+              width={22}
+              height={22}
+              style={{ borderRadius: "50%", flexShrink: 0 }}
+            />
             <span style={{ color: "var(--bz-text-3)", fontSize: 14 }}>/</span>
-            <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--bz-text-1)" }}>Knowledge</span>
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "var(--bz-text-1)",
+              }}
+            >
+              Knowledge
+            </span>
           </a>
           <div style={{ flex: 1 }} />
 

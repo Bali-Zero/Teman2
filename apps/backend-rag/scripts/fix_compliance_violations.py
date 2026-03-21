@@ -32,6 +32,7 @@ DEFAULT_PARAM_TYPE = "Any"
 
 # ========== HELPERS ==========
 
+
 def get_python_files(directory: Path) -> list[Path]:
     """Get all Python files, excluding __pycache__ and __init__.py."""
     files = []
@@ -42,6 +43,7 @@ def get_python_files(directory: Path) -> list[Path]:
 
 
 # ========== FIX #1: ADD TYPE HINTS ==========
+
 
 def add_type_hints_to_file(file_path: Path, dry_run: bool = False) -> dict[str, Any]:
     """
@@ -88,9 +90,9 @@ def add_type_hints_to_file(file_path: Path, dry_run: bool = False) -> dict[str, 
 
             for i in range(func_line_idx, min(func_line_idx + 10, len(lines))):
                 for char in lines[i]:
-                    if char == '(':
+                    if char == "(":
                         paren_count += 1
-                    elif char == ')':
+                    elif char == ")":
                         paren_count -= 1
                         if paren_count == 0:
                             end_line_idx = i
@@ -110,9 +112,9 @@ def add_type_hints_to_file(file_path: Path, dry_run: bool = False) -> dict[str, 
 
                     if close_paren_pos != -1 and colon_pos != -1:
                         new_line = (
-                            end_line[:close_paren_pos + 1] +
-                            f" -> {DEFAULT_RETURN_TYPE}" +
-                            end_line[colon_pos:]
+                            end_line[: close_paren_pos + 1]
+                            + f" -> {DEFAULT_RETURN_TYPE}"
+                            + end_line[colon_pos:]
                         )
                         lines[end_line_idx] = new_line
                         modified = True
@@ -132,14 +134,14 @@ def add_type_hints_to_file(file_path: Path, dry_run: bool = False) -> dict[str, 
                     line = lines[i]
 
                     # Match parameter name (not in string, not as substring)
-                    pattern = rf'\b{re.escape(arg.arg)}\b(?!\s*:)'
+                    pattern = rf"\b{re.escape(arg.arg)}\b(?!\s*:)"
                     if re.search(pattern, line):
                         # Add type hint
                         new_line = re.sub(
-                            rf'\b{re.escape(arg.arg)}\b',
+                            rf"\b{re.escape(arg.arg)}\b",
                             f"{arg.arg}: {DEFAULT_PARAM_TYPE}",
                             line,
-                            count=1
+                            count=1,
                         )
                         lines[i] = new_line
                         modified = True
@@ -165,7 +167,9 @@ def add_type_hints_to_file(file_path: Path, dry_run: bool = False) -> dict[str, 
                         insert_line = i + 1
                     else:
                         in_docstring = True
-                elif not in_docstring and (stripped.startswith("import ") or stripped.startswith("from ")):
+                elif not in_docstring and (
+                    stripped.startswith("import ") or stripped.startswith("from ")
+                ):
                     insert_line = i
                     break
 
@@ -179,6 +183,7 @@ def add_type_hints_to_file(file_path: Path, dry_run: bool = False) -> dict[str, 
 
 
 # ========== FIX #2: CONVERT RELATIVE IMPORTS TO ABSOLUTE ==========
+
 
 def fix_relative_imports_in_file(file_path: Path, dry_run: bool = False) -> dict[str, Any]:
     """
@@ -203,7 +208,7 @@ def fix_relative_imports_in_file(file_path: Path, dry_run: bool = False) -> dict
         stripped = line.strip()
 
         # Match relative imports: from .module or from ..module
-        match = re.match(r'^from\s+(\.+)([.\w]*)\s+import\s+(.+)$', stripped)
+        match = re.match(r"^from\s+(\.+)([.\w]*)\s+import\s+(.+)$", stripped)
         if not match:
             continue
 
@@ -228,16 +233,11 @@ def fix_relative_imports_in_file(file_path: Path, dry_run: bool = False) -> dict
         absolute_module = ".".join(absolute_parts)
 
         # Reconstruct import statement
-        new_line = line.replace(
-            f"from {dots}{module_suffix}",
-            f"from {absolute_module}"
-        )
+        new_line = line.replace(f"from {dots}{module_suffix}", f"from {absolute_module}")
 
         lines[i] = new_line
         modified = True
-        changes.append(
-            f"Line {i + 1}: {dots}{module_suffix} → {absolute_module}"
-        )
+        changes.append(f"Line {i + 1}: {dots}{module_suffix} → {absolute_module}")
 
     if modified and not dry_run:
         new_content = "\n".join(lines)
@@ -248,6 +248,7 @@ def fix_relative_imports_in_file(file_path: Path, dry_run: bool = False) -> dict
 
 
 # ========== MAIN ==========
+
 
 def main():
     parser = argparse.ArgumentParser(description="Fix Golden Rules compliance violations")
@@ -296,10 +297,14 @@ def main():
     print("=" * 60)
 
     if not args.imports_only:
-        print(f"Type Hints: {type_hints_stats['changes']} fixes in {type_hints_stats['files']} files")
+        print(
+            f"Type Hints: {type_hints_stats['changes']} fixes in {type_hints_stats['files']} files"
+        )
 
     if not args.type_hints_only:
-        print(f"Relative Imports: {imports_stats['changes']} fixes in {imports_stats['files']} files")
+        print(
+            f"Relative Imports: {imports_stats['changes']} fixes in {imports_stats['files']} files"
+        )
 
     print()
 

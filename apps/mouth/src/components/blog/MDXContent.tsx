@@ -26,9 +26,7 @@ function headingId(children: React.ReactNode): string {
     typeof children === "string"
       ? children
       : Array.isArray(children)
-        ? children
-            .map((c) => (typeof c === "string" ? c : ""))
-            .join("")
+        ? children.map((c) => (typeof c === "string" ? c : "")).join("")
         : "";
   return text
     .toLowerCase()

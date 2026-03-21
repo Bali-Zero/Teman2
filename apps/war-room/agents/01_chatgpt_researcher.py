@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FASE 1 — ChatGPT Research Agent (replaces 01_grok_scraper + 02_manus_launcher)
+FASE 1 — ChatGPT Research Agent (replaces 01_exa_scraper + legacy research launchers)
 Target: web research via GPT-5.4 (browsing + reasoning)
 Output: raw research JSON with facts, sentiment, gov sources
 
@@ -137,7 +137,7 @@ def main() -> None:
     facts = research_facts(args.topic)
     sentiment = research_sentiment(args.topic)
 
-    # Combined output (replaces both grok_dump.json and manus_dump.json)
+    # Combined output: facts (research) + sentiment (social scraping)
     output = {
         "topic": args.topic,
         "scraped_at": datetime.now().isoformat(),

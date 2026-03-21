@@ -114,12 +114,21 @@ export function ZantaraPortalCard() {
 
       <style jsx>{`
         @keyframes lotusPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(212,132,90,0.35); }
-          50%       { box-shadow: 0 0 0 5px rgba(212,132,90,0); }
+          0%,
+          100% {
+            box-shadow: 0 0 0 0 rgba(212, 132, 90, 0.35);
+          }
+          50% {
+            box-shadow: 0 0 0 5px rgba(212, 132, 90, 0);
+          }
         }
         @keyframes liquidShift {
-          0%   { transform: scale(1) translate(0, 0); }
-          100% { transform: scale(1.06) translate(2%, 1%); }
+          0% {
+            transform: scale(1) translate(0, 0);
+          }
+          100% {
+            transform: scale(1.06) translate(2%, 1%);
+          }
         }
       `}</style>
     </a>

@@ -534,9 +534,7 @@ class TestBuildSystemPromptCaching:
         context = {"facts": ["Fact 1"]}
 
         # First call
-        builder.build_system_prompt(
-            user_id="test@example.com", context=context, query="Test"
-        )
+        builder.build_system_prompt(user_id="test@example.com", context=context, query="Test")
 
         # Second call after TTL expiry
         with patch("time.time", return_value=time.time() + 400):  # Beyond 300s TTL

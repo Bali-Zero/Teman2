@@ -20,12 +20,12 @@ async def test_key() -> None:
     client = genai.Client(api_key=key)
     try:
         response = client.models.generate_content(
-            model="models/gemini-2.0-flash",
-            contents="Hello, respond with 'OK' if you can hear me."
+            model="models/gemini-2.0-flash", contents="Hello, respond with 'OK' if you can hear me."
         )
         logger.info("Response: %s", response.text)
     except Exception as exc:
         logger.exception("Gemini key prefix test failed: %s", exc)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

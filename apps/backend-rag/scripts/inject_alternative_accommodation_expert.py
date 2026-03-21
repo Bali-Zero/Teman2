@@ -5,7 +5,9 @@ import asyncpg
 
 
 async def run():
-    conn = await asyncpg.connect('postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara')
+    conn = await asyncpg.connect(
+        "postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara"
+    )
 
     accommodation_data = [
         {
@@ -20,14 +22,14 @@ async def run():
                 "pb_umku": [
                     "Sertifikat Laik Sehat (Health Eligibility)",
                     "Tanda Daftar Usaha Pariwisata (TDUP) - per attività turistiche",
-                    "Persetujuan Bangunan Gedung (PBG) - funzione alloggio"
+                    "Persetujuan Bangunan Gedung (PBG) - funzione alloggio",
                 ],
                 "obligations": [
                     "Laporan LKPM (Laporan Kegiatan Penanaman Modal) trimestrale",
-                    "Self-assessment kesiapan penerapan standar usaha Vila"
+                    "Self-assessment kesiapan penerapan standar usaha Vila",
                 ],
-                "pma_implications": "TERBUKA (100% Foreign Ownership allowed) se operata tramite PT PMA. Attenzione: affitto giornaliero richiede licenze specifiche e conformità alla zona turistica."
-            }
+                "pma_implications": "TERBUKA (100% Foreign Ownership allowed) se operata tramite PT PMA. Attenzione: affitto giornaliero richiede licenze specifiche e conformità alla zona turistica.",
+            },
         },
         {
             "code": "55106",
@@ -41,14 +43,14 @@ async def run():
                 "pb_umku": [
                     "Sertifikat Laik Sehat (Health Eligibility)",
                     "Sertifikasi Usaha Hotel via LSPr (obbligatorio per PMA)",
-                    "SKPL A/B/C (se presente vendita alcolici)"
+                    "SKPL A/B/C (se presente vendita alcolici)",
                 ],
                 "obligations": [
                     "Laporan LKPM trimestrale",
-                    "Monitoraggio standard qualitativi alberghieri"
+                    "Monitoraggio standard qualitativi alberghieri",
                 ],
-                "pma_implications": "TERBUKA (100% Foreign Ownership allowed). Richiede investimenti minimi di capitale (PT PMA)."
-            }
+                "pma_implications": "TERBUKA (100% Foreign Ownership allowed). Richiede investimenti minimi di capitale (PT PMA).",
+            },
         },
         {
             "code": "55201",
@@ -59,17 +61,14 @@ async def run():
                 "bab": "IV (Sektor Pariwisata)",
                 "pasal": "Paragraf 1 (Usaha Pondok Wisata)",
                 "lampiran": "II (Standar Usaha Pondok Wisata)",
-                "pb_umku": [
-                    "Sertifikat Laik Sehat (SLS)",
-                    "TDUP - Tanda Daftar Usaha Pariwisata"
-                ],
+                "pb_umku": ["Sertifikat Laik Sehat (SLS)", "TDUP - Tanda Daftar Usaha Pariwisata"],
                 "obligations": [
                     "Conformità alle norme di sicurezza locali",
-                    "Registrazione ospiti per fini statistici e di sicurezza"
+                    "Registrazione ospiti per fini statistici e di sicurezza",
                 ],
-                "pma_implications": "ATTENZIONE: Solitamente riservato a micro e piccole imprese locali (UMKM). Per gli stranieri (PT PMA), lo status è TERBATAS o richiede requisiti speciali di capitale."
-            }
-        }
+                "pma_implications": "ATTENZIONE: Solitamente riservato a micro e piccole imprese locali (UMKM). Per gli stranieri (PT PMA), lo status è TERBATAS o richiede requisiti speciali di capitale.",
+            },
+        },
     ]
 
     sql = """
@@ -82,15 +81,23 @@ async def run():
     for item in accommodation_data:
         entity_id = f"kbli:{item['code']}"
         props = {
-            'kode': item['code'],
-            'pma_status': 'TERBUKA' if item['code'] != "55201" else 'TERBATAS',
-            'expert_legal': item['expert_legal']
+            "kode": item["code"],
+            "pma_status": "TERBUKA" if item["code"] != "55201" else "TERBATAS",
+            "expert_legal": item["expert_legal"],
         }
 
-        await conn.execute(sql, entity_id, 'kbli', f"KBLI {item['code']}: {item['name']}", item['desc'], json.dumps(props))
+        await conn.execute(
+            sql,
+            entity_id,
+            "kbli",
+            f"KBLI {item['code']}: {item['name']}",
+            item["desc"],
+            json.dumps(props),
+        )
         print(f"✅ Arricchito {entity_id}: Accommodation Expert Data")
 
     await conn.close()
+
 
 if __name__ == "__main__":
     asyncio.run(run())

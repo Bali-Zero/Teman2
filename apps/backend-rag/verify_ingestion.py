@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
+
 async def main():
     from backend.core.embeddings import create_embeddings_generator
     from backend.core.qdrant_db import QdrantClient
@@ -23,6 +24,7 @@ async def main():
         print(f"RESULT: {doc[:200]}...")
         print(f"METADATA: {results.get('metadatas', [])[i]}")
         print("-" * 50)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

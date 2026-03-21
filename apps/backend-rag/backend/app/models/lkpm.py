@@ -65,11 +65,7 @@ class InvestmentRealization(BaseModel):
 
     @property
     def total_import(self) -> int:
-        return (
-            self.equipment_import
-            + self.building_import
-            + self.vehicle_import
-        )
+        return self.equipment_import + self.building_import + self.vehicle_import
 
     @property
     def grand_total(self) -> int:

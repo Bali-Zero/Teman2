@@ -22,10 +22,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user, get_database_pool
-
-from .checker import ExpiryChecker
-from .models import AlertType, ClientInfo
-from .service import NotificationService
+from backend.app.modules.notifications.checker import ExpiryChecker
+from backend.app.modules.notifications.models import AlertType, ClientInfo
+from backend.app.modules.notifications.service import NotificationService
 
 logger = logging.getLogger(__name__)
 

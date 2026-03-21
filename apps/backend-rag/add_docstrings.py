@@ -10,7 +10,7 @@ from pathlib import Path
 
 def analyze_method_signature(line: str) -> dict:
     """Extract method name and parameters from a def line."""
-    match = re.match(r'^\s+def ([a-z][a-z0-9_]*)\s*\((.*?)\)\s*(?:->.*?)?:', line)
+    match = re.match(r"^\s+def ([a-z][a-z0-9_]*)\s*\((.*?)\)\s*(?:->.*?)?:", line)
     if not match:
         return None
 
@@ -18,111 +18,107 @@ def analyze_method_signature(line: str) -> dict:
     params = match.group(2).strip()
 
     # Skip __init__ and private methods
-    if method_name.startswith('_'):
+    if method_name.startswith("_"):
         return None
 
-    return {
-        'name': method_name,
-        'params': params,
-        'indent': len(line) - len(line.lstrip())
-    }
+    return {"name": method_name, "params": params, "indent": len(line) - len(line.lstrip())}
 
 
 def generate_docstring(method_name: str, params: str) -> str:
     """Generate a concise one-line docstring based on method name."""
     # Common patterns
-    if method_name.startswith('get_'):
-        obj = method_name[4:].replace('_', ' ')
+    if method_name.startswith("get_"):
+        obj = method_name[4:].replace("_", " ")
         return f'"""Get {obj}."""'
-    elif method_name.startswith('set_'):
-        obj = method_name[4:].replace('_', ' ')
+    elif method_name.startswith("set_"):
+        obj = method_name[4:].replace("_", " ")
         return f'"""Set {obj}."""'
-    elif method_name.startswith('create_'):
-        obj = method_name[7:].replace('_', ' ')
+    elif method_name.startswith("create_"):
+        obj = method_name[7:].replace("_", " ")
         return f'"""Create {obj}."""'
-    elif method_name.startswith('update_'):
-        obj = method_name[7:].replace('_', ' ')
+    elif method_name.startswith("update_"):
+        obj = method_name[7:].replace("_", " ")
         return f'"""Update {obj}."""'
-    elif method_name.startswith('delete_'):
-        obj = method_name[7:].replace('_', ' ')
+    elif method_name.startswith("delete_"):
+        obj = method_name[7:].replace("_", " ")
         return f'"""Delete {obj}."""'
-    elif method_name.startswith('list_'):
-        obj = method_name[5:].replace('_', ' ')
+    elif method_name.startswith("list_"):
+        obj = method_name[5:].replace("_", " ")
         return f'"""List {obj}."""'
-    elif method_name.startswith('search_'):
-        obj = method_name[7:].replace('_', ' ')
+    elif method_name.startswith("search_"):
+        obj = method_name[7:].replace("_", " ")
         return f'"""Search {obj}."""'
-    elif method_name.startswith('find_'):
-        obj = method_name[5:].replace('_', ' ')
+    elif method_name.startswith("find_"):
+        obj = method_name[5:].replace("_", " ")
         return f'"""Find {obj}."""'
-    elif method_name.startswith('load_'):
-        obj = method_name[5:].replace('_', ' ')
+    elif method_name.startswith("load_"):
+        obj = method_name[5:].replace("_", " ")
         return f'"""Load {obj}."""'
-    elif method_name.startswith('save_'):
-        obj = method_name[5:].replace('_', ' ')
+    elif method_name.startswith("save_"):
+        obj = method_name[5:].replace("_", " ")
         return f'"""Save {obj}."""'
-    elif method_name.startswith('validate_'):
-        obj = method_name[9:].replace('_', ' ')
+    elif method_name.startswith("validate_"):
+        obj = method_name[9:].replace("_", " ")
         return f'"""Validate {obj}."""'
-    elif method_name.startswith('check_'):
-        obj = method_name[6:].replace('_', ' ')
+    elif method_name.startswith("check_"):
+        obj = method_name[6:].replace("_", " ")
         return f'"""Check {obj}."""'
-    elif method_name.startswith('build_'):
-        obj = method_name[6:].replace('_', ' ')
+    elif method_name.startswith("build_"):
+        obj = method_name[6:].replace("_", " ")
         return f'"""Build {obj}."""'
-    elif method_name.startswith('generate_'):
-        obj = method_name[9:].replace('_', ' ')
+    elif method_name.startswith("generate_"):
+        obj = method_name[9:].replace("_", " ")
         return f'"""Generate {obj}."""'
-    elif method_name.startswith('calculate_'):
-        obj = method_name[10:].replace('_', ' ')
+    elif method_name.startswith("calculate_"):
+        obj = method_name[10:].replace("_", " ")
         return f'"""Calculate {obj}."""'
-    elif method_name.startswith('process_'):
-        obj = method_name[8:].replace('_', ' ')
+    elif method_name.startswith("process_"):
+        obj = method_name[8:].replace("_", " ")
         return f'"""Process {obj}."""'
-    elif method_name.startswith('execute_'):
-        obj = method_name[8:].replace('_', ' ')
+    elif method_name.startswith("execute_"):
+        obj = method_name[8:].replace("_", " ")
         return f'"""Execute {obj}."""'
-    elif method_name.startswith('run_'):
-        obj = method_name[4:].replace('_', ' ')
+    elif method_name.startswith("run_"):
+        obj = method_name[4:].replace("_", " ")
         return f'"""Run {obj}."""'
-    elif method_name.startswith('start_'):
-        obj = method_name[6:].replace('_', ' ')
+    elif method_name.startswith("start_"):
+        obj = method_name[6:].replace("_", " ")
         return f'"""Start {obj}."""'
-    elif method_name.startswith('stop_'):
-        obj = method_name[5:].replace('_', ' ')
+    elif method_name.startswith("stop_"):
+        obj = method_name[5:].replace("_", " ")
         return f'"""Stop {obj}."""'
-    elif method_name.startswith('is_'):
-        obj = method_name[3:].replace('_', ' ')
+    elif method_name.startswith("is_"):
+        obj = method_name[3:].replace("_", " ")
         return f'"""Check if {obj}."""'
-    elif method_name.startswith('has_'):
-        obj = method_name[4:].replace('_', ' ')
+    elif method_name.startswith("has_"):
+        obj = method_name[4:].replace("_", " ")
         return f'"""Check if has {obj}."""'
-    elif method_name.startswith('add_'):
-        obj = method_name[4:].replace('_', ' ')
+    elif method_name.startswith("add_"):
+        obj = method_name[4:].replace("_", " ")
         return f'"""Add {obj}."""'
-    elif method_name.startswith('remove_'):
-        obj = method_name[7:].replace('_', ' ')
+    elif method_name.startswith("remove_"):
+        obj = method_name[7:].replace("_", " ")
         return f'"""Remove {obj}."""'
-    elif method_name.startswith('register_'):
-        obj = method_name[9:].replace('_', ' ')
+    elif method_name.startswith("register_"):
+        obj = method_name[9:].replace("_", " ")
         return f'"""Register {obj}."""'
-    elif method_name.startswith('enable_'):
-        obj = method_name[7:].replace('_', ' ')
+    elif method_name.startswith("enable_"):
+        obj = method_name[7:].replace("_", " ")
         return f'"""Enable {obj}."""'
-    elif method_name.startswith('disable_'):
-        obj = method_name[8:].replace('_', ' ')
+    elif method_name.startswith("disable_"):
+        obj = method_name[8:].replace("_", " ")
         return f'"""Disable {obj}."""'
-    elif 'status' in method_name:
+    elif "status" in method_name:
         return '"""Return status information."""'
-    elif 'stats' in method_name:
+    elif "stats" in method_name:
         return '"""Return statistics."""'
-    elif 'count' in method_name:
+    elif "count" in method_name:
         return '"""Count items."""'
-    elif 'metrics' in method_name:
+    elif "metrics" in method_name:
         return '"""Return metrics."""'
     else:
         # Generic fallback
-        readable = method_name.replace('_', ' ').capitalize()
+        readable = method_name.replace("_", " ").capitalize()
         return f'"""{readable}."""'
 
 
@@ -157,11 +153,11 @@ def process_file(file_path: Path, dry_run: bool = False) -> tuple[int, list[str]
                 next_line = lines[j].strip()
                 if not (next_line.startswith('"""') or next_line.startswith("'''")):
                     # No docstring found - add one
-                    indent = ' ' * (method_info['indent'] + 4)
-                    docstring = generate_docstring(method_info['name'], method_info['params'])
+                    indent = " " * (method_info["indent"] + 4)
+                    docstring = generate_docstring(method_info["name"], method_info["params"])
                     modified_lines.append(f"{indent}{docstring}\n")
                     added_count += 1
-                    changes.append(f"  L{i+1}: Added docstring to {method_info['name']}()")
+                    changes.append(f"  L{i + 1}: Added docstring to {method_info['name']}()")
 
             i = j
             continue
@@ -171,7 +167,7 @@ def process_file(file_path: Path, dry_run: bool = False) -> tuple[int, list[str]
     # Write back if changes were made
     if added_count > 0 and not dry_run:
         try:
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 f.writelines(modified_lines)
         except Exception as e:
             return 0, [f"Error writing {file_path}: {e}"]
@@ -183,8 +179,8 @@ def main():
     """Main entry point."""
     import sys
 
-    dry_run = '--dry-run' in sys.argv
-    base_dir = Path('backend/services')
+    dry_run = "--dry-run" in sys.argv
+    base_dir = Path("backend/services")
 
     if not base_dir.exists():
         print(f"Error: {base_dir} not found")
@@ -195,8 +191,8 @@ def main():
 
     print(f"{'DRY RUN - ' if dry_run else ''}Processing backend/services/...\n")
 
-    for py_file in sorted(base_dir.rglob('*.py')):
-        if '__pycache__' in str(py_file) or '__init__' in py_file.name:
+    for py_file in sorted(base_dir.rglob("*.py")):
+        if "__pycache__" in str(py_file) or "__init__" in py_file.name:
             continue
 
         added, changes = process_file(py_file, dry_run=dry_run)
@@ -211,7 +207,9 @@ def main():
             if len(changes) > 5:
                 print(f"  ... and {len(changes) - 5} more")
 
-    print(f"\n{'Would add' if dry_run else 'Added'} {total_added} docstrings across {total_files} files")
+    print(
+        f"\n{'Would add' if dry_run else 'Added'} {total_added} docstrings across {total_files} files"
+    )
 
     if dry_run:
         print("\nRun without --dry-run to apply changes")
@@ -219,5 +217,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     exit(main())

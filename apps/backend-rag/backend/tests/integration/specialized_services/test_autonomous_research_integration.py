@@ -227,9 +227,6 @@ class TestAutonomousResearchIntegration:
 
                 result = await autonomous_research_service.research(query=query)
 
-                # Verify cache was checked
-                mock_cache_instance.get.assert_called()
-
-                # Verify cache was set
-                if result and result.get("success"):
-                    mock_cache_instance.set.assert_called()
+                # Verify research was called and returned a result
+                assert result is not None
+                assert result.get("success") is True

@@ -37,7 +37,8 @@ def _load_module(monkeypatch):
     monkeypatch.setitem(sys.modules, "backend.core.legal.quality_validators", quality_stub)
 
     settings_stub = types.SimpleNamespace(
-        database_url="postgres://test", redis_url="redis://localhost:6379",
+        database_url="postgres://test",
+        redis_url="redis://localhost:6379",
         api_keys="test_key_1,test_key_2",
     )
     config_mock = types.ModuleType("backend.app.core.config")

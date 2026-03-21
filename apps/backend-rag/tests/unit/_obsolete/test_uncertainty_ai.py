@@ -251,10 +251,7 @@ class TestAbstainPolicy:
             )
 
         # Should have ABSTAIN message
-        assert (
-            "non ho informazioni verificate sufficienti"
-            in result_state.final_answer.lower()
-        )
+        assert "non ho informazioni verificate sufficienti" in result_state.final_answer.lower()
         assert result_state.evidence_score < 0.3
 
     @pytest.mark.asyncio

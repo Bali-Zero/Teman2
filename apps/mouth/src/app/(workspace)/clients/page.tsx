@@ -131,8 +131,14 @@ function VirtualizedClientGrid({
           className="h-10 flex items-center justify-center"
         >
           {isLoadingMore && (
-            <div className="flex items-center gap-2 text-sm" style={{ color: "var(--bz-text-2)" }}>
-              <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--bz-accent)" }} />
+            <div
+              className="flex items-center gap-2 text-sm"
+              style={{ color: "var(--bz-text-2)" }}
+            >
+              <div
+                className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                style={{ borderColor: "var(--bz-accent)" }}
+              />
               Loading more clients...
             </div>
           )}
@@ -163,7 +169,11 @@ function VirtualizedClientGrid({
   }, [onNearBottom]);
 
   return (
-    <div ref={parentRef} onScroll={handleScroll} className="flex-1 overflow-auto pb-4 min-h-[400px]">
+    <div
+      ref={parentRef}
+      onScroll={handleScroll}
+      className="flex-1 overflow-auto pb-4 min-h-[400px]"
+    >
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,
@@ -203,8 +213,14 @@ function VirtualizedClientGrid({
       </div>
       <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
         {isLoadingMore && (
-          <div className="flex items-center gap-2 text-sm" style={{ color: "var(--bz-text-2)" }}>
-            <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--bz-accent)" }} />
+          <div
+            className="flex items-center gap-2 text-sm"
+            style={{ color: "var(--bz-text-2)" }}
+          >
+            <div
+              className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+              style={{ borderColor: "var(--bz-accent)" }}
+            />
             Loading more clients...
           </div>
         )}
@@ -388,7 +404,13 @@ function ClientsListContent() {
   // Error state
   if (isError) {
     return (
-      <div className="rounded-xl p-8 text-center" style={{ border: "1px solid rgba(217,95,90,0.3)", background: "rgba(217,95,90,0.1)" }}>
+      <div
+        className="rounded-xl p-8 text-center"
+        style={{
+          border: "1px solid rgba(217,95,90,0.3)",
+          background: "rgba(217,95,90,0.1)",
+        }}
+      >
         <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
         <h2 className="text-lg font-semibold text-red-400 mb-2">
           Error loading clients
@@ -410,7 +432,10 @@ function ClientsListContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--bz-text-1)" }}>
+          <h1
+            className="text-2xl font-bold"
+            style={{ color: "var(--bz-text-1)" }}
+          >
             Clients
           </h1>
           <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
@@ -429,11 +454,21 @@ function ClientsListContent() {
         </div>
         <div className="flex items-center gap-2">
           {/* View Toggle */}
-          <div className="p-1 rounded-lg flex" style={{ background: "var(--bz-surface)", border: "1px solid var(--bz-border)" }}>
+          <div
+            className="p-1 rounded-lg flex"
+            style={{
+              background: "var(--bz-surface)",
+              border: "1px solid var(--bz-border)",
+            }}
+          >
             <button
               onClick={() => setViewMode("list")}
               className="p-2 rounded-md transition-all"
-              style={viewMode === "list" ? { background: "var(--bz-card)", color: "var(--bz-text-1)" } : { color: "var(--bz-text-2)" }}
+              style={
+                viewMode === "list"
+                  ? { background: "var(--bz-card)", color: "var(--bz-text-1)" }
+                  : { color: "var(--bz-text-2)" }
+              }
               title="List View"
               aria-label="Switch to list view"
             >
@@ -442,7 +477,11 @@ function ClientsListContent() {
             <button
               onClick={() => setViewMode("kanban")}
               className="p-2 rounded-md transition-all"
-              style={viewMode === "kanban" ? { background: "var(--bz-card)", color: "var(--bz-text-1)" } : { color: "var(--bz-text-2)" }}
+              style={
+                viewMode === "kanban"
+                  ? { background: "var(--bz-card)", color: "var(--bz-text-1)" }
+                  : { color: "var(--bz-text-2)" }
+              }
               title="Kanban Board"
               aria-label="Switch to kanban board view"
             >
@@ -470,14 +509,24 @@ function ClientsListContent() {
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--bz-text-2)" }} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+              style={{ color: "var(--bz-text-2)" }}
+            />
             <input
               type="text"
               placeholder="Search clients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2"
-              style={{ border: "1px solid var(--bz-border)", background: "var(--bz-surface)", color: "var(--bz-text-1)", "--tw-ring-color": "rgba(212,132,90,0.5)" } as React.CSSProperties}
+              style={
+                {
+                  border: "1px solid var(--bz-border)",
+                  background: "var(--bz-surface)",
+                  color: "var(--bz-text-1)",
+                  "--tw-ring-color": "rgba(212,132,90,0.5)",
+                } as React.CSSProperties
+              }
             />
             {searchQuery && (
               <button
@@ -498,7 +547,10 @@ function ClientsListContent() {
             <Filter className="w-4 h-4" />
             Filters
             {activeFiltersCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full text-white" style={{ background: "var(--bz-accent)" }}>
+              <span
+                className="ml-1 px-1.5 py-0.5 text-xs rounded-full text-white"
+                style={{ background: "var(--bz-accent)" }}
+              >
                 {activeFiltersCount}
               </span>
             )}
@@ -507,9 +559,17 @@ function ClientsListContent() {
 
         {/* Expanded Filters Panel */}
         {showFilters && (
-          <div className="p-4 rounded-lg space-y-4" style={{ border: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}>
+          <div
+            className="p-4 rounded-lg space-y-4"
+            style={{
+              border: "1px solid var(--bz-border)",
+              background: "var(--bz-surface)",
+            }}
+          >
             <div className="flex items-center justify-between">
-              <h3 className="font-medium" style={{ color: "var(--bz-text-1)" }}>Filters</h3>
+              <h3 className="font-medium" style={{ color: "var(--bz-text-1)" }}>
+                Filters
+              </h3>
               {activeFiltersCount > 0 && (
                 <button
                   onClick={clearFilters}
@@ -524,7 +584,10 @@ function ClientsListContent() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Status
                 </label>
                 <select
@@ -533,7 +596,11 @@ function ClientsListContent() {
                     setFilters({ ...filters, status: e.target.value })
                   }
                   className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-base)", color: "var(--bz-text-1)" }}
+                  style={{
+                    border: "1px solid var(--bz-border)",
+                    background: "var(--bz-base)",
+                    color: "var(--bz-text-1)",
+                  }}
                 >
                   <option value="">All statuses</option>
                   {CLIENT_STATUSES.map(({ value, label }) => (
@@ -544,7 +611,10 @@ function ClientsListContent() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Nationality
                 </label>
                 <select
@@ -553,7 +623,11 @@ function ClientsListContent() {
                     setFilters({ ...filters, nationality: e.target.value })
                   }
                   className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-base)", color: "var(--bz-text-1)" }}
+                  style={{
+                    border: "1px solid var(--bz-border)",
+                    background: "var(--bz-base)",
+                    color: "var(--bz-text-1)",
+                  }}
                 >
                   <option value="">All nationalities</option>
                   {COMMON_NATIONALITIES.map((nat) => (
@@ -564,7 +638,10 @@ function ClientsListContent() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--bz-text-2)" }}>
+                <label
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Assigned To
                 </label>
                 <select
@@ -573,7 +650,11 @@ function ClientsListContent() {
                     setFilters({ ...filters, assigned_to: e.target.value })
                   }
                   className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{ border: "1px solid var(--bz-border)", background: "var(--bz-base)", color: "var(--bz-text-1)" }}
+                  style={{
+                    border: "1px solid var(--bz-border)",
+                    background: "var(--bz-base)",
+                    color: "var(--bz-text-1)",
+                  }}
                 >
                   <option value="">All team members</option>
                   {uniqueAssignees.map((assignee) => (
@@ -606,9 +687,17 @@ function ClientsListContent() {
                 key={field}
                 onClick={() => toggleSort(field)}
                 className="px-3 py-1 rounded-full flex items-center gap-1 transition-colors"
-                style={sortField === field
-                  ? { background: "rgba(212,132,90,0.2)", color: "var(--bz-accent)" }
-                  : { background: "var(--bz-surface)", color: "var(--bz-text-2)" }}
+                style={
+                  sortField === field
+                    ? {
+                        background: "rgba(212,132,90,0.2)",
+                        color: "var(--bz-accent)",
+                      }
+                    : {
+                        background: "var(--bz-surface)",
+                        color: "var(--bz-text-2)",
+                      }
+                }
               >
                 {label}
                 {sortField === field &&
@@ -625,7 +714,13 @@ function ClientsListContent() {
 
       {/* CONTENT AREA */}
       {isLoading && !clients.length ? (
-        <div className="rounded-xl p-12 text-center" style={{ border: "1px solid var(--bz-border)", background: "var(--bz-surface)" }}>
+        <div
+          className="rounded-xl p-12 text-center"
+          style={{
+            border: "1px solid var(--bz-border)",
+            background: "var(--bz-surface)",
+          }}
+        >
           <CRMSkeleton count={6} />
         </div>
       ) : filteredClients.length > 0 ? (
@@ -638,7 +733,9 @@ function ClientsListContent() {
               hasMore={hasMore}
               totalClients={clients.length}
               isMounted={isMounted}
-              onNearBottom={() => { if (hasMore && !isLoading && !isLoadingMore) loadMore(); }}
+              onNearBottom={() => {
+                if (hasMore && !isLoading && !isLoadingMore) loadMore();
+              }}
             />
           ) : (
             <ClientKanban
@@ -648,12 +745,27 @@ function ClientsListContent() {
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed p-12 text-center" style={{ borderColor: "var(--bz-border)", background: "rgba(26,26,30,0.5)" }}>
-          <Users className="w-16 h-16 mx-auto mb-4 opacity-50" style={{ color: "var(--bz-text-2)" }} />
-          <h2 className="text-lg font-semibold mb-2" style={{ color: "var(--bz-text-1)" }}>
+        <div
+          className="rounded-xl border border-dashed p-12 text-center"
+          style={{
+            borderColor: "var(--bz-border)",
+            background: "rgba(26,26,30,0.5)",
+          }}
+        >
+          <Users
+            className="w-16 h-16 mx-auto mb-4 opacity-50"
+            style={{ color: "var(--bz-text-2)" }}
+          />
+          <h2
+            className="text-lg font-semibold mb-2"
+            style={{ color: "var(--bz-text-1)" }}
+          >
             No clients found
           </h2>
-          <p className="text-sm max-w-md mx-auto mb-6" style={{ color: "var(--bz-text-2)" }}>
+          <p
+            className="text-sm max-w-md mx-auto mb-6"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             {searchQuery
               ? "No clients match your search. Try different keywords."
               : activeFiltersCount > 0

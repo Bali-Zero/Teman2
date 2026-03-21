@@ -34,14 +34,14 @@ _search_service = None
 _llm_gateway = None
 
 
-def set_search_service(service):
+def set_search_service(service: Any) -> None:
     """Set SearchService instance for nodes to use."""
     global _search_service
     _search_service = service
     logger.info("[GRAPH] SearchService injected")
 
 
-def set_llm_gateway(gateway):
+def set_llm_gateway(gateway: Any) -> None:
     """Set LLMGateway instance for nodes to use."""
     global _llm_gateway
     _llm_gateway = gateway

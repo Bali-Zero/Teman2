@@ -57,13 +57,13 @@ export function MessageBubble({ message, isLast = false }: MessageBubbleProps) {
   }, [message.content, message.isStreaming, isUser, isLast, message.timestamp]);
 
   return (
-    <div
-      className={`flex gap-3 px-4 py-3 ${isUser ? "flex-row-reverse" : ""}`}
-    >
+    <div className={`flex gap-3 px-4 py-3 ${isUser ? "flex-row-reverse" : ""}`}>
       {/* Avatar */}
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-          isUser ? "bg-accent text-accent-foreground" : "bg-muted text-foreground"
+          isUser
+            ? "bg-accent text-accent-foreground"
+            : "bg-muted text-foreground"
         }`}
       >
         {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
@@ -90,20 +90,22 @@ export function MessageBubble({ message, isLast = false }: MessageBubbleProps) {
         )}
 
         {/* Sources */}
-        {!message.isStreaming && message.sources && message.sources.length > 0 && (
-          <div className="mt-2 border-t border-border/50 pt-2">
-            <p className="text-xs font-medium text-muted-foreground">
-              Sources:
-            </p>
-            <ul className="mt-1 space-y-0.5">
-              {message.sources.slice(0, 5).map((src, i) => (
-                <li key={i} className="text-xs text-muted-foreground">
-                  {(src.title as string) || `Source ${i + 1}`}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {!message.isStreaming &&
+          message.sources &&
+          message.sources.length > 0 && (
+            <div className="mt-2 border-t border-border/50 pt-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                Sources:
+              </p>
+              <ul className="mt-1 space-y-0.5">
+                {message.sources.slice(0, 5).map((src, i) => (
+                  <li key={i} className="text-xs text-muted-foreground">
+                    {(src.title as string) || `Source ${i + 1}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
       </div>
     </div>
   );

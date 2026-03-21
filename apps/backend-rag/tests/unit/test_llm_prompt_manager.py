@@ -180,6 +180,7 @@ class TestPromptManager:
     def test_zantara_core_module_exists(self):
         """Test that zantara_core module is importable and contains ZANTARA_MASTER_TEMPLATE"""
         from backend.prompts.zantara_core import ZANTARA_MASTER_TEMPLATE
+
         assert isinstance(ZANTARA_MASTER_TEMPLATE, str)
         assert len(ZANTARA_MASTER_TEMPLATE) > 100
 

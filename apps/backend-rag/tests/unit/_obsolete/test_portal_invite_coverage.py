@@ -76,7 +76,8 @@ def _load_module(monkeypatch, invite_service=None, email_service=None):
         "backend.app.core.config",
         types.SimpleNamespace(
             settings=types.SimpleNamespace(
-                frontend_url="https://front", redis_url="redis://localhost:6379",
+                frontend_url="https://front",
+                redis_url="redis://localhost:6379",
                 api_keys="test_key_1,test_key_2",
             )
         ),

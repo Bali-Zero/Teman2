@@ -34,12 +34,12 @@ from backend.services.rag.agentic.tools import (
 def mock_search_service():
     """Mock SearchService"""
     service = MagicMock()
-    service.search = AsyncMock(
-        return_value={
-            "results": [{"id": "doc1", "text": "E33G costs Rp 17-19 million", "score": 0.9}],
-            "total": 1,
-        }
-    )
+    _search_result = {
+        "results": [{"id": "doc1", "text": "E33G costs Rp 17-19 million", "score": 0.9}],
+        "total": 1,
+    }
+    service.search = AsyncMock(return_value=_search_result)
+    service.search_with_reranking = AsyncMock(return_value=_search_result)
     return service
 
 
@@ -96,8 +96,8 @@ class TestMultiToolExecutionFlow:
         assert tool2_result is not None
         assert tool3_result is not None
 
-        # Verify search was called
-        mock_search_service.search.assert_called()
+        # Verify search was called (VectorSearchTool uses search_with_reranking when available)
+        assert mock_search_service.search.called or mock_search_service.search_with_reranking.called
 
     @pytest.mark.asyncio
     async def test_tool_chaining(self, tool_map, mock_search_service):

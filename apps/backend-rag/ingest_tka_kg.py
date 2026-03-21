@@ -23,6 +23,7 @@ def get_database_url():
     db = os.getenv("PGDATABASE", "nuzantara")
     # Use current system user if PGUSER is postgres (which may not exist)
     import getpass
+
     current_user = getpass.getuser()
     user = os.getenv("PGUSER", current_user)
     if user == "postgres":
@@ -98,7 +99,7 @@ async def ingest_sql_file(conn, sql_file_path):
         return False
 
     file_size = os.path.getsize(sql_file_path)
-    print(f"  File size: {file_size:,} bytes ({file_size/1024:.1f} KB)")
+    print(f"  File size: {file_size:,} bytes ({file_size / 1024:.1f} KB)")
 
     # Read and execute SQL
     with open(sql_file_path) as f:
@@ -127,11 +128,11 @@ async def get_post_ingestion_counts(conn):
     """)
 
     print("  Nodes by type:")
-    expected = {'KBLI': 246, 'Jabatan': 59, 'KepmenCategory': 12, 'ISCOGroup': 8}
+    expected = {"KBLI": 246, "Jabatan": 59, "KepmenCategory": 12, "ISCOGroup": 8}
 
     for row in node_counts:
-        entity_type = row['entity_type']
-        count = row['count']
+        entity_type = row["entity_type"]
+        count = row["count"]
         exp = expected.get(entity_type, 0)
         status = "✅" if count >= exp else "⚠️"
         print(f"    {status} {entity_type}: {count} (expected: ~{exp})")
@@ -201,17 +202,15 @@ async def run_sample_queries(conn):
 
 async def generate_report(conn, start_time, end_time):
     """Generate final verification report."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("📋 TKA KNOWLEDGE GRAPH INGESTION REPORT")
-    print("="*60)
+    print("=" * 60)
 
     print(f"\n⏱️  Execution time: {(end_time - start_time).total_seconds():.2f} seconds")
     print(f"🕐 Timestamp: {end_time.isoformat()}")
 
     # Final counts
-    kbli_count = await conn.fetchval(
-        "SELECT COUNT(*) FROM kg_nodes WHERE entity_type = 'KBLI';"
-    )
+    kbli_count = await conn.fetchval("SELECT COUNT(*) FROM kg_nodes WHERE entity_type = 'KBLI';")
     jabatan_count = await conn.fetchval(
         "SELECT COUNT(*) FROM kg_nodes WHERE entity_type = 'Jabatan';"
     )
@@ -260,14 +259,16 @@ async def main():
     sql_file = "/Users/nuzantara/Desktop/TKA_KG_INSERTS.sql"
 
     start_time = datetime.now()
-    print("="*60)
+    print("=" * 60)
     print("🚀 TKA KNOWLEDGE GRAPH INGESTION")
-    print("="*60)
+    print("=" * 60)
     print(f"Started at: {start_time.isoformat()}")
 
     # Get database URL
     db_url = get_database_url()
-    masked_url = db_url.replace(db_url.split('@')[0].split('://')[1], '***') if '@' in db_url else db_url
+    masked_url = (
+        db_url.replace(db_url.split("@")[0].split("://")[1], "***") if "@" in db_url else db_url
+    )
     print(f"\n🔌 Database URL: {masked_url}")
 
     # Connect to database

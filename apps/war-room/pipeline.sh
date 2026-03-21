@@ -23,7 +23,7 @@ for arg in "$@"; do
   case $arg in
     --dry-run) DRY_RUN=true ;;
     --auto)    AUTO_MODE=true ;;
-    --skip-manus|--skip-grok) true ;;  # legacy flags, ignored
+    --skip-legacy) true ;;  # legacy flag, ignored
   esac
 done
 
@@ -164,7 +164,7 @@ if ! $DRY_RUN; then
     $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/01_chatgpt_researcher.py" \
     --topic "$TOPIC" \
     --output "$OUTPUT/raw/chatgpt_dump.json" \
-    --sentiment-output "$OUTPUT/raw/grok_dump.json" \
+    --sentiment-output "$OUTPUT/raw/social_dump.json" \
     || log "⚠️  ChatGPT research fallito — continuo con intel pre-seed"
 
   if [[ -f "$OUTPUT/raw/chatgpt_dump.json" ]]; then
@@ -222,11 +222,11 @@ log "   ✅ Merged → $MERGED_COUNT facts totali"
 log ""
 log "━━━ FASE 1.5: QWEN3.5 PRE-PROCESSOR (locale) ━━━"
 if ! $DRY_RUN; then
-  [[ ! -f "$OUTPUT/raw/grok_dump.json" ]] && echo '{"data":[]}' > "$OUTPUT/raw/grok_dump.json"
+  [[ ! -f "$OUTPUT/raw/social_dump.json" ]] && echo '{"data":[]}' > "$OUTPUT/raw/social_dump.json"
   run_phase "qwen_preprocessor" 300 \
     $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/015_qwen_preprocessor.py" \
-    --grok   "$OUTPUT/raw/grok_dump.json" \
-    --manus  "$OUTPUT/raw/merged_dump.json" \
+    --sentiment "$OUTPUT/raw/social_dump.json" \
+    --research "$OUTPUT/raw/merged_dump.json" \
     --output "$OUTPUT/raw/processed_dump.json" \
     || log "⚠️  Qwen pre-processor fallito — uso merged_dump direttamente"
 

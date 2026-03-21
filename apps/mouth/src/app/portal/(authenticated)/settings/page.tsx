@@ -71,7 +71,10 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -89,9 +92,18 @@ export default function SettingsPage() {
       </section>
 
       {/* Notifications Section */}
-      <section className="rounded-xl border p-6 space-y-6" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+      <section
+        className="rounded-xl border p-6 space-y-6"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
+      >
         <div className="flex items-center gap-2">
-          <Bell className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+          <Bell
+            className="w-5 h-5"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
           <h2 className="text-lg font-semibold">Notifications</h2>
         </div>
 
@@ -115,9 +127,18 @@ export default function SettingsPage() {
       </section>
 
       {/* Regional Settings (Read-only) */}
-      <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+      <section
+        className="rounded-xl border p-6 space-y-4"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
+      >
         <div className="flex items-center gap-2">
-          <Globe className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+          <Globe
+            className="w-5 h-5"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
           <h2 className="text-lg font-semibold">Regional Settings</h2>
         </div>
 
@@ -129,7 +150,10 @@ export default function SettingsPage() {
           <ReadOnlyField label="Timezone" value={preferences.timezone} />
         </div>
 
-        <p className="text-xs pt-2 border-t" style={{ color: "var(--bz-text-2)", borderColor: "var(--bz-border)" }}>
+        <p
+          className="text-xs pt-2 border-t"
+          style={{ color: "var(--bz-text-2)", borderColor: "var(--bz-border)" }}
+        >
           To change language or timezone, please contact support.
         </p>
       </section>
@@ -177,15 +201,26 @@ function ToggleSetting({
   return (
     <div
       className="flex items-center justify-between gap-4 p-4 rounded-lg border transition-colors"
-      style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
+      style={{
+        background: "var(--bz-surface)",
+        borderColor: "var(--bz-border)",
+      }}
     >
       <div className="flex items-start gap-3 flex-1 min-w-0">
-        <div className="p-2 rounded-md mt-0.5" style={{ background: "rgba(201,169,110,0.1)" }}>
-          <Icon className="w-4 h-4" style={{ color: "var(--bz-accent-warm)" }} />
+        <div
+          className="p-2 rounded-md mt-0.5"
+          style={{ background: "rgba(201,169,110,0.1)" }}
+        >
+          <Icon
+            className="w-4 h-4"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm">{label}</p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--bz-text-2)" }}>{description}</p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--bz-text-2)" }}>
+            {description}
+          </p>
         </div>
       </div>
 
@@ -214,8 +249,13 @@ function ToggleSetting({
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg" style={{ background: "var(--bz-surface)" }}>
-      <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>{label}</span>
+    <div
+      className="flex items-center justify-between p-3 rounded-lg"
+      style={{ background: "var(--bz-surface)" }}
+    >
+      <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+        {label}
+      </span>
       <span className="text-sm font-medium">{value}</span>
     </div>
   );

@@ -7,6 +7,7 @@ Usage:
     source .venv/bin/activate
     PYTHONPATH=. python scripts/scrape_rdtr_gistaru.py [--dry-run] [--district tabanan|denpasar|all]
 """
+
 import argparse
 import asyncio
 import json
@@ -20,12 +21,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 PROXY = "https://gistaru.atrbpn.go.id/proxy_mobile/run.ashx"
-BASE  = "https://gistaru.atrbpn.go.id/arcgis/rest/services/060_RDTR_PROVINSI_BALI"
+BASE = "https://gistaru.atrbpn.go.id/arcgis/rest/services/060_RDTR_PROVINSI_BALI"
 PAGE_SIZE = 500
 
 # Official RDTR layers per district
 LAYERS = {
-
     "bangli": [
         {
             "service": "_RDTR_51C3_WP_GEOPARK_BATUR",
@@ -52,7 +52,7 @@ LAYERS = {
             "district": "Buleleng",
             "subdistrict": "Batuampar",
             "perda": "2023",
-        }
+        },
     ],
     "karangasem": [
         {
@@ -78,7 +78,7 @@ LAYERS = {
             "district": "Karangasem",
             "subdistrict": "Abang",
             "perda": "2023",
-        }
+        },
     ],
     "jembrana": [
         {
@@ -110,9 +110,8 @@ LAYERS = {
             "district": "Jembrana",
             "subdistrict": "Perancak",
             "perda": "2023",
-        }
+        },
     ],
-
     "badung": [
         {
             "service": "_RDTR_51A1_KECAMATAN_KUTA_SELATAN_2023",
@@ -137,9 +136,8 @@ LAYERS = {
             "district": "Badung",
             "subdistrict": "Mengwi",
             "perda": "2023",
-        }
+        },
     ],
-
     "gianyar": [
         {
             "service": "_RDTR_51B1_KECAMATAN_UBUD",
@@ -182,7 +180,7 @@ LAYERS = {
             "district": "Gianyar",
             "subdistrict": "Tampaksiring",
             "perda": "2023",
-        }
+        },
     ],
     "tabanan": [
         {
@@ -286,12 +284,33 @@ ZONE_CODE_MAP: dict[str, str] = {
 }
 
 ZONE_COLORS: dict[str, str] = {
-    "K-1": "#E8472A", "K-2": "#E8472A", "K-3": "#E8472A", "K": "#E8472A",
-    "W": "#D4845A", "R": "#93C5FD", "R-2": "#60A5FA", "R-3": "#93C5FD", "R-4": "#BFDBFE",
-    "P-1": "#86EFAC", "P-2": "#4ADE80", "P-3": "#22C55E",
-    "RTH": "#166534", "RTH-2": "#15803D", "RTH-5": "#16A34A", "RTH-7": "#14532D", "RTH-8": "#166534",
-    "SPU": "#A78BFA", "SPU-1": "#8B5CF6", "SPU-2": "#A78BFA", "SPU-3": "#C4B5FD", "SPU-4": "#DDD6FE",
-    "KT": "#FCD34D", "PS": "#94A3B8", "BA": "#7DD3FC", "BJ": "#6B7280", "C": "#F9A8D4",
+    "K-1": "#E8472A",
+    "K-2": "#E8472A",
+    "K-3": "#E8472A",
+    "K": "#E8472A",
+    "W": "#D4845A",
+    "R": "#93C5FD",
+    "R-2": "#60A5FA",
+    "R-3": "#93C5FD",
+    "R-4": "#BFDBFE",
+    "P-1": "#86EFAC",
+    "P-2": "#4ADE80",
+    "P-3": "#22C55E",
+    "RTH": "#166534",
+    "RTH-2": "#15803D",
+    "RTH-5": "#16A34A",
+    "RTH-7": "#14532D",
+    "RTH-8": "#166534",
+    "SPU": "#A78BFA",
+    "SPU-1": "#8B5CF6",
+    "SPU-2": "#A78BFA",
+    "SPU-3": "#C4B5FD",
+    "SPU-4": "#DDD6FE",
+    "KT": "#FCD34D",
+    "PS": "#94A3B8",
+    "BA": "#7DD3FC",
+    "BJ": "#6B7280",
+    "C": "#F9A8D4",
 }
 
 
@@ -388,11 +407,13 @@ async def scrape_layer(layer: dict, dry_run: bool, db_pool) -> int:
         # Delete existing rows for this subdistrict to allow re-runs
         deleted = await conn.fetchval(
             "SELECT COUNT(*) FROM bali_zoning_layers WHERE district_name=$1 AND subdistrict_name=$2",
-            district, subdistrict,
+            district,
+            subdistrict,
         )
         await conn.execute(
             "DELETE FROM bali_zoning_layers WHERE district_name=$1 AND subdistrict_name=$2",
-            district, subdistrict,
+            district,
+            subdistrict,
         )
         logger.info(f"  Deleted {deleted or 0} existing rows for {subdistrict}")
 
@@ -456,7 +477,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--district",
         default="all",
-        choices=["badung", "gianyar", "tabanan", "denpasar", "bangli", "buleleng", "karangasem", "jembrana", "all"],
+        choices=[
+            "badung",
+            "gianyar",
+            "tabanan",
+            "denpasar",
+            "bangli",
+            "buleleng",
+            "karangasem",
+            "jembrana",
+            "all",
+        ],
         help="Which district to scrape",
     )
     args = parser.parse_args()

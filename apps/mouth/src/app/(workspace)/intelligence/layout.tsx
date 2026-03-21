@@ -5,6 +5,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Shield, Newspaper, PenTool } from "lucide-react";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { logger } from "@/lib/logger";
 
 const tabs = [
   {
@@ -99,7 +100,10 @@ export default function IntelligenceLayout({
           </div>
 
           {/* Status indicator */}
-          <div className="flex items-center gap-1.5" aria-label="Intelligence services: Active">
+          <div
+            className="flex items-center gap-1.5"
+            aria-label="Intelligence services: Active"
+          >
             <div
               aria-hidden="true"
               className="w-[6px] h-[6px] rounded-full animate-pulse"
@@ -119,10 +123,10 @@ export default function IntelligenceLayout({
       <div className="flex-1 overflow-auto">
         <ErrorBoundary
           onError={(error, errorInfo) => {
-            console.error(
-              "[Intelligence] Error caught:",
-              error.message,
-              errorInfo.componentStack,
+            logger.error(
+              "[Intelligence] Error caught: " + error.message,
+              { component: "IntelligenceLayout", note: errorInfo.componentStack || undefined },
+              error,
             );
           }}
         >

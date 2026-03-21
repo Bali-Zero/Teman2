@@ -438,7 +438,6 @@ class TestSearchService:
             # Temporarily disable BM25 in settings
             import backend.app.core.config as config_module
 
-
             # Patch settings.enable_bm25
             with patch.object(config_module.settings, "enable_bm25", False):
                 # The method checks settings.enable_bm25 first

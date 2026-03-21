@@ -146,7 +146,6 @@ class TestPersonalizedResponses:
             {"query_text": "visa extension", "timestamp": "2026-02-05"},
         ]
 
-
         # Check if related to previous queries
         is_follow_up = any("visa" in q["query_text"] for q in user_history)
 
@@ -240,7 +239,6 @@ class TestAdaptiveBehavior:
         # Count query styles
         question_count = sum(1 for q in user_history if q["style"] == "question")
         command_count = sum(1 for q in user_history if q["style"] == "command")
-
 
         assert question_count == 2
         assert command_count == 2

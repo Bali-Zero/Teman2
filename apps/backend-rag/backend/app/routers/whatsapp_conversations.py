@@ -30,6 +30,7 @@ _RATE_LIMIT_WINDOW = 3600  # 1 hour in seconds
 
 class SendWhatsAppRequest(BaseModel):
     """Validated request for outbound WhatsApp messages."""
+
     phone: str = Field(..., description="Recipient phone with country code, e.g. +6281234567890")
     message: str = Field(..., min_length=1, max_length=4096, description="Message text")
 
@@ -40,6 +41,7 @@ def _check_rate_limit(phone: str) -> bool:
     # Clean old entries
     _outbound_rate[phone] = [t for t in _outbound_rate[phone] if now - t < _RATE_LIMIT_WINDOW]
     return len(_outbound_rate[phone]) < _RATE_LIMIT_MAX
+
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
 

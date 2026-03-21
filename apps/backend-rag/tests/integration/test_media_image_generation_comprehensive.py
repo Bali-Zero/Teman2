@@ -65,9 +65,7 @@ class TestImageGenerationRouter:
     @pytest.mark.asyncio
     async def test_image_generation_error_handling(self):
         """Test image generation error handling"""
-        with patch(
-            "backend.services.image_generation_service.ImageGenerationService"
-        ):
+        with patch("backend.services.image_generation_service.ImageGenerationService"):
             mock_service_instance = MagicMock()
             mock_service_instance.generate_image = AsyncMock(
                 return_value={

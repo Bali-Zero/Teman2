@@ -1136,7 +1136,9 @@ class PortalService:
                 "email": company["company_email"],
                 "phone": company["company_phone"],
                 "akta_no": company["akta_pendirian_no"],
-                "akta_date": company["akta_pendirian_date"].isoformat() if company["akta_pendirian_date"] else None,
+                "akta_date": company["akta_pendirian_date"].isoformat()
+                if company["akta_pendirian_date"]
+                else None,
                 "sk_number": company["sk_menhumkam_no"],
                 "tax_office": custom.get("tax_office"),
                 "company_status": custom.get("company_status"),

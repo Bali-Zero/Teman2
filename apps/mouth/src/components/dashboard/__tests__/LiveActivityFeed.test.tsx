@@ -4,9 +4,33 @@ import { LiveActivityFeed } from "../LiveActivityFeed";
 import type { LiveActivityEvent } from "@/types/dashboard-role.types";
 
 const mockEvents: LiveActivityEvent[] = [
-  { id: "1", type: "critical", icon: "🚨", text: "KITAS scade in 5 giorni", tag: "CRITICO", timestamp: "14:52", userId: "user-1" },
-  { id: "2", type: "ok",       icon: "✅", text: "Fattura pagata",          tag: "PAGATO",  timestamp: "14:48", userId: "user-1" },
-  { id: "3", type: "info",     icon: "📄", text: "Documento caricato",      tag: "DOC",     timestamp: "14:32", userId: "user-2" },
+  {
+    id: "1",
+    type: "critical",
+    icon: "🚨",
+    text: "KITAS scade in 5 giorni",
+    tag: "CRITICO",
+    timestamp: "14:52",
+    userId: "user-1",
+  },
+  {
+    id: "2",
+    type: "ok",
+    icon: "✅",
+    text: "Fattura pagata",
+    tag: "PAGATO",
+    timestamp: "14:48",
+    userId: "user-1",
+  },
+  {
+    id: "3",
+    type: "info",
+    icon: "📄",
+    text: "Documento caricato",
+    tag: "DOC",
+    timestamp: "14:32",
+    userId: "user-2",
+  },
 ];
 
 describe("LiveActivityFeed", () => {
@@ -28,8 +52,12 @@ describe("LiveActivityFeed", () => {
   });
 
   it("renders skeleton when isLoading", () => {
-    const { container } = render(<LiveActivityFeed events={[]} isLoading={true} />);
-    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    const { container } = render(
+      <LiveActivityFeed events={[]} isLoading={true} />,
+    );
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("renders tag badges", () => {

@@ -49,9 +49,7 @@ class JurnalService:
 
         Returns dict with 'entries' list and 'pagination' info.
         """
-        logger.info(
-            f"Fetching Jurnal entries: {start_date} to {end_date}, page={page}"
-        )
+        logger.info(f"Fetching Jurnal entries: {start_date} to {end_date}, page={page}")
 
         params: dict[str, Any] = {
             "start_date": start_date.isoformat(),
@@ -63,9 +61,7 @@ class JurnalService:
             params["company_id"] = company_id
 
         try:
-            async with httpx.AsyncClient(
-                timeout=HttpTimeoutConstants.JURNAL_TIMEOUT
-            ) as client:
+            async with httpx.AsyncClient(timeout=HttpTimeoutConstants.JURNAL_TIMEOUT) as client:
                 response = await client.get(
                     f"{self.api_url}/journal_entries",
                     headers=self._headers(api_key),
@@ -76,9 +72,7 @@ class JurnalService:
                     logger.error(
                         f"Jurnal API error: {response.status_code} — {response.text[:200]}"
                     )
-                    raise ValueError(
-                        f"Jurnal API returned {response.status_code}"
-                    )
+                    raise ValueError(f"Jurnal API returned {response.status_code}")
 
                 data = response.json()
                 entries = data.get("journal_entries", data.get("data", []))
@@ -141,9 +135,7 @@ class JurnalService:
             params["company_id"] = company_id
 
         try:
-            async with httpx.AsyncClient(
-                timeout=HttpTimeoutConstants.JURNAL_TIMEOUT
-            ) as client:
+            async with httpx.AsyncClient(timeout=HttpTimeoutConstants.JURNAL_TIMEOUT) as client:
                 response = await client.get(
                     f"{self.api_url}/chart_of_accounts",
                     headers=self._headers(api_key),
@@ -154,9 +146,7 @@ class JurnalService:
                     logger.error(
                         f"Jurnal CoA error: {response.status_code} — {response.text[:200]}"
                     )
-                    raise ValueError(
-                        f"Jurnal API returned {response.status_code}"
-                    )
+                    raise ValueError(f"Jurnal API returned {response.status_code}")
 
                 data = response.json()
                 accounts = data.get("chart_of_accounts", data.get("data", []))

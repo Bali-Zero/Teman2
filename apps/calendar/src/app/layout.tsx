@@ -26,7 +26,12 @@ async function getSession(): Promise<boolean> {
 const apps = [
   { name: "Kita", href: "https://kita.balizero.com", emoji: "🏠" },
   { name: "Mail", href: "https://mail.balizero.com", emoji: "✉️" },
-  { name: "Calendar", href: "https://calendar.balizero.com", emoji: "📅", active: true },
+  {
+    name: "Calendar",
+    href: "https://calendar.balizero.com",
+    emoji: "📅",
+    active: true,
+  },
   { name: "Drive", href: "https://drive.balizero.com", emoji: "💾" },
   { name: "Knowledge", href: "https://knowledge.balizero.com", emoji: "📚" },
 ];
@@ -81,7 +86,15 @@ export default async function RootLayout({
               style={{ borderRadius: "50%", flexShrink: 0 }}
             />
             <span style={{ color: "var(--bz-text-3)", fontSize: 14 }}>/</span>
-            <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--bz-text-1)" }}>Calendar</span>
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "var(--bz-text-1)",
+              }}
+            >
+              Calendar
+            </span>
           </a>
 
           {/* Center: spacer */}
@@ -101,7 +114,12 @@ export default async function RootLayout({
               title="Switch app"
             >
               {/* 3x3 grid icon */}
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+              <svg
+                width="20"
+                height="20"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <rect x="3" y="3" width="4" height="4" rx="0.5" />
                 <rect x="10" y="3" width="4" height="4" rx="0.5" />
                 <rect x="17" y="3" width="4" height="4" rx="0.5" />
@@ -144,7 +162,9 @@ export default async function RootLayout({
                     fontSize: "14px",
                     textDecoration: "none",
                     color: app.active ? "#fff" : "rgba(255,255,255,0.6)",
-                    backgroundColor: app.active ? "rgba(255,255,255,0.1)" : "transparent",
+                    backgroundColor: app.active
+                      ? "rgba(255,255,255,0.1)"
+                      : "transparent",
                   }}
                 >
                   <span>{app.emoji}</span>

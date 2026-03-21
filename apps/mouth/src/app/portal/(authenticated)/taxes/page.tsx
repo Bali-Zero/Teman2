@@ -45,7 +45,10 @@ export default function TaxesPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -71,18 +74,32 @@ export default function TaxesPage() {
       </section>
 
       {/* Summary Card */}
-      <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+      <section
+        className="rounded-xl border p-6 space-y-4"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+            <DollarSign
+              className="w-5 h-5"
+              style={{ color: "var(--bz-accent-warm)" }}
+            />
             <h2 className="text-lg font-semibold">Tax Status</h2>
           </div>
           <StatusBadge status={taxData.summary.status} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 rounded-lg" style={{ background: "var(--bz-surface)" }}>
-            <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>Total Due</p>
+          <div
+            className="p-4 rounded-lg"
+            style={{ background: "var(--bz-surface)" }}
+          >
+            <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
+              Total Due
+            </p>
             <p className="text-lg font-bold">
               {taxData.summary.totalDue > 0
                 ? formatCurrency(taxData.summary.totalDue)
@@ -90,8 +107,13 @@ export default function TaxesPage() {
             </p>
           </div>
 
-          <div className="p-4 rounded-lg" style={{ background: "var(--bz-surface)" }}>
-            <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>Next Deadline</p>
+          <div
+            className="p-4 rounded-lg"
+            style={{ background: "var(--bz-surface)" }}
+          >
+            <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
+              Next Deadline
+            </p>
             <p className="text-lg font-bold">
               {taxData.summary.nextDeadline
                 ? new Date(taxData.summary.nextDeadline).toLocaleDateString(
@@ -110,15 +132,33 @@ export default function TaxesPage() {
         {taxData.summary.daysToDeadline !== null && (
           <div
             className="mt-4 p-4 rounded-lg flex items-center gap-3 border"
-            style={taxData.summary.daysToDeadline <= 7
-              ? { background: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.3)" }
-              : taxData.summary.daysToDeadline <= 30
-                ? { background: "rgba(245,158,11,0.08)", borderColor: "rgba(245,158,11,0.3)" }
-                : { background: "rgba(16,185,129,0.06)", borderColor: "rgba(16,185,129,0.25)" }}
+            style={
+              taxData.summary.daysToDeadline <= 7
+                ? {
+                    background: "rgba(239,68,68,0.08)",
+                    borderColor: "rgba(239,68,68,0.3)",
+                  }
+                : taxData.summary.daysToDeadline <= 30
+                  ? {
+                      background: "rgba(245,158,11,0.08)",
+                      borderColor: "rgba(245,158,11,0.3)",
+                    }
+                  : {
+                      background: "rgba(16,185,129,0.06)",
+                      borderColor: "rgba(16,185,129,0.25)",
+                    }
+            }
           >
             <Calendar
               className="w-5 h-5"
-              style={{ color: taxData.summary.daysToDeadline <= 7 ? "#f87171" : taxData.summary.daysToDeadline <= 30 ? "#fbbf24" : "#34d399" }}
+              style={{
+                color:
+                  taxData.summary.daysToDeadline <= 7
+                    ? "#f87171"
+                    : taxData.summary.daysToDeadline <= 30
+                      ? "#fbbf24"
+                      : "#34d399",
+              }}
             />
             <div className="flex-1">
               <p className="text-sm font-semibold">
@@ -138,9 +178,18 @@ export default function TaxesPage() {
 
       {/* Current Obligations */}
       {taxData.obligations && taxData.obligations.length > 0 && (
-        <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+        <section
+          className="rounded-xl border p-6 space-y-4"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+            <FileText
+              className="w-5 h-5"
+              style={{ color: "var(--bz-accent-warm)" }}
+            />
             <h2 className="text-lg font-semibold">Current Obligations</h2>
           </div>
 
@@ -158,9 +207,18 @@ export default function TaxesPage() {
 
       {/* Tax History */}
       {taxData.history && taxData.history.length > 0 && (
-        <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+        <section
+          className="rounded-xl border p-6 space-y-4"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
           <div className="flex items-center gap-2">
-            <Clock className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+            <Clock
+              className="w-5 h-5"
+              style={{ color: "var(--bz-accent-warm)" }}
+            />
             <h2 className="text-lg font-semibold">Filing History</h2>
           </div>
 
@@ -177,7 +235,13 @@ export default function TaxesPage() {
       )}
 
       {/* Help Notice */}
-      <section className="rounded-lg border p-4" style={{ background: "rgba(201,169,110,0.06)", borderColor: "rgba(201,169,110,0.3)" }}>
+      <section
+        className="rounded-lg border p-4"
+        style={{
+          background: "rgba(201,169,110,0.06)",
+          borderColor: "rgba(201,169,110,0.3)",
+        }}
+      >
         <p className="text-sm" style={{ color: "var(--bz-accent-warm)" }}>
           Need help with your taxes? Contact your account manager or reach out
           via Chat for assistance.
@@ -193,7 +257,10 @@ function StatusBadge({
 }: {
   status: "compliant" | "attention" | "overdue";
 }) {
-  const config: Record<string, { icon: React.ElementType; label: string; style: React.CSSProperties }> = {
+  const config: Record<
+    string,
+    { icon: React.ElementType; label: string; style: React.CSSProperties }
+  > = {
     compliant: {
       icon: CheckCircle,
       label: "Compliant",
@@ -245,7 +312,13 @@ function ObligationCard({
   };
 
   return (
-    <div className="rounded-lg border p-4 transition-colors" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}>
+    <div
+      className="rounded-lg border p-4 transition-colors"
+      style={{
+        background: "var(--bz-surface)",
+        borderColor: "var(--bz-border)",
+      }}
+    >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm">{obligation.name}</h3>
@@ -261,8 +334,14 @@ function ObligationCard({
         </span>
       </div>
 
-      <div className="flex items-center justify-between pt-2 border-t" style={{ borderColor: "var(--bz-border)" }}>
-        <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--bz-text-2)" }}>
+      <div
+        className="flex items-center justify-between pt-2 border-t"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
+        <div
+          className="flex items-center gap-1.5 text-xs"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           <Calendar className="w-3.5 h-3.5" />
           Due:{" "}
           {new Date(obligation.dueDate).toLocaleDateString("en-US", {
@@ -289,7 +368,13 @@ function HistoryCard({
   formatCurrency: (amount: number) => string;
 }) {
   return (
-    <div className="rounded-lg border p-3" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}>
+    <div
+      className="rounded-lg border p-3"
+      style={{
+        background: "var(--bz-surface)",
+        borderColor: "var(--bz-border)",
+      }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{item.name}</p>

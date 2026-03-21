@@ -27,12 +27,10 @@ load_dotenv(BACKEND_PATH / ".env", override=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(PROJECT_ROOT / "ingestion_desktop.log")
-    ]
+    handlers=[logging.StreamHandler(), logging.FileHandler(PROJECT_ROOT / "ingestion_desktop.log")],
 )
 logger = logging.getLogger("ingest_desktop_laws")
+
 
 async def run_ingestion():
     try:
@@ -61,15 +59,15 @@ async def run_ingestion():
     # Ensure collection exists with hybrid support
     logger.info(f"Ensuring collection '{COLLECTION_NAME}' exists...")
     await service.vector_db.create_collection(
-        vector_size=1536, # OpenAI
-        enable_sparse=True
+        vector_size=1536,  # OpenAI
+        enable_sparse=True,
     )
 
     results = []
     start_all = time.time()
 
     for i, file_path in enumerate(files):
-        logger.info(f"--- [{i+1}/{len(files)}] Processing: {file_path.name} ---")
+        logger.info(f"--- [{i + 1}/{len(files)}] Processing: {file_path.name} ---")
         try:
             # Step 1: Ingest into Qdrant + Drive + Metadata + BAB + BM25 + KG
             result = await service.ingest_legal_document(
@@ -103,7 +101,7 @@ async def run_ingestion():
     logger.info(f"Total Files: {len(files)}")
     logger.info(f"Successful: {success_count}")
     logger.info(f"Failed: {len(files) - success_count}")
-    logger.info(f"Total Time: {total_duration/60:.2f} minutes")
+    logger.info(f"Total Time: {total_duration / 60:.2f} minutes")
     logger.info("=" * 50)
 
     # Post-Ingestion Verification (Rerank2 check)
@@ -115,17 +113,15 @@ async def run_ingestion():
 
             test_query = "peraturan terbaru tahun 2026"
             search_results = await hybrid_service.search_hybrid(
-                query=test_query,
-                collection=COLLECTION_NAME,
-                limit=10
+                query=test_query, collection=COLLECTION_NAME, limit=10
             )
 
             if search_results["results"]:
-                logger.info(f"   Found {len(search_results['results'])} candidates via Hybrid Search (BM25 + Dense)")
+                logger.info(
+                    f"   Found {len(search_results['results'])} candidates via Hybrid Search (BM25 + Dense)"
+                )
                 reranked = await reranker.rerank(
-                    query=test_query,
-                    documents=search_results["results"],
-                    top_k=3
+                    query=test_query, documents=search_results["results"], top_k=3
                 )
                 logger.info(f"   Rerank2 Top Result: {reranked[0]['text'][:100]}...")
                 logger.info("✅ Post-ingestion pipeline verified (Hybrid + Rerank2 operational)")
@@ -133,6 +129,7 @@ async def run_ingestion():
                 logger.warning("   No results found for verification query.")
         except Exception as e:
             logger.warning(f"⚠️ Post-ingestion verification failed: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(run_ingestion())

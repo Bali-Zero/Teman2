@@ -26,7 +26,7 @@ from email.mime.text import MIMEText
 import aiohttp
 import aiosmtplib
 
-from .models import (
+from backend.app.modules.notifications.models import (
     AlertStatus,
     AlertType,
     ClientAlert,
@@ -401,7 +401,9 @@ class NotificationService:
                     alert.email_subject,
                     alert.email_body,
                     alert.created_at,
-                    datetime.now(tz=timezone.utc).replace(tzinfo=None) if status == AlertStatus.SENT else None,
+                    datetime.now(tz=timezone.utc).replace(tzinfo=None)
+                    if status == AlertStatus.SENT
+                    else None,
                     error_message,
                 )
                 alert.id = row["id"]

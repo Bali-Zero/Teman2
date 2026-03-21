@@ -14,8 +14,6 @@ Run:
 import argparse
 import asyncio
 import logging
-import os
-import re
 import time
 
 import httpx
@@ -38,10 +36,15 @@ async def get_token(client: httpx.AsyncClient) -> str:
     global _token, _token_expiry
     if _token and time.time() < _token_expiry - 60:
         return _token
-    resp = await client.post("https://oauth2.googleapis.com/token", data={
-        "client_id": OAUTH_CLIENT_ID, "client_secret": OAUTH_CLIENT_SECRET,
-        "refresh_token": OAUTH_REFRESH_TOKEN, "grant_type": "refresh_token",
-    })
+    resp = await client.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "client_id": OAUTH_CLIENT_ID,
+            "client_secret": OAUTH_CLIENT_SECRET,
+            "refresh_token": OAUTH_REFRESH_TOKEN,
+            "grant_type": "refresh_token",
+        },
+    )
     resp.raise_for_status()
     data = resp.json()
     _token = data["access_token"]
@@ -57,13 +60,16 @@ async def list_files(client: httpx.AsyncClient, folder_id: str) -> list[dict]:
     while True:
         params = {
             "q": f"'{folder_id}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
-            "supportsAllDrives": "true", "includeItemsFromAllDrives": "true",
+            "supportsAllDrives": "true",
+            "includeItemsFromAllDrives": "true",
             "fields": "nextPageToken,files(id,name,modifiedTime,size)",
             "pageSize": "500",
         }
         if pt:
             params["pageToken"] = pt
-        r = await client.get("https://www.googleapis.com/drive/v3/files", headers=headers, params=params)
+        r = await client.get(
+            "https://www.googleapis.com/drive/v3/files", headers=headers, params=params
+        )
         r.raise_for_status()
         d = r.json()
         files.extend(d.get("files", []))
@@ -76,11 +82,17 @@ async def list_files(client: httpx.AsyncClient, folder_id: str) -> list[dict]:
 async def list_subfolders(client: httpx.AsyncClient, folder_id: str) -> dict[str, str]:
     """Return {name: id} of subfolders."""
     headers = {"Authorization": f"Bearer {await get_token(client)}"}
-    r = await client.get("https://www.googleapis.com/drive/v3/files", headers=headers, params={
-        "q": f"'{folder_id}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
-        "supportsAllDrives": "true", "includeItemsFromAllDrives": "true",
-        "fields": "files(id,name)", "pageSize": "50",
-    })
+    r = await client.get(
+        "https://www.googleapis.com/drive/v3/files",
+        headers=headers,
+        params={
+            "q": f"'{folder_id}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+            "supportsAllDrives": "true",
+            "includeItemsFromAllDrives": "true",
+            "fields": "files(id,name)",
+            "pageSize": "50",
+        },
+    )
     r.raise_for_status()
     return {f["name"]: f["id"] for f in r.json().get("files", [])}
 
@@ -88,14 +100,23 @@ async def list_subfolders(client: httpx.AsyncClient, folder_id: str) -> dict[str
 async def create_folder(client: httpx.AsyncClient, name: str, parent_id: str) -> str:
     """Create a subfolder, return its ID."""
     headers = {"Authorization": f"Bearer {await get_token(client)}"}
-    r = await client.post("https://www.googleapis.com/drive/v3/files", headers=headers,
+    r = await client.post(
+        "https://www.googleapis.com/drive/v3/files",
+        headers=headers,
         params={"supportsAllDrives": "true"},
-        json={"name": name, "mimeType": "application/vnd.google-apps.folder", "parents": [parent_id]})
+        json={
+            "name": name,
+            "mimeType": "application/vnd.google-apps.folder",
+            "parents": [parent_id],
+        },
+    )
     r.raise_for_status()
     return r.json()["id"]
 
 
-async def move_file(client: httpx.AsyncClient, file_id: str, old_parent: str, new_parent: str) -> None:
+async def move_file(
+    client: httpx.AsyncClient, file_id: str, old_parent: str, new_parent: str
+) -> None:
     """Move file from old_parent to new_parent."""
     headers = {"Authorization": f"Bearer {await get_token(client)}"}
     r = await client.patch(
@@ -128,7 +149,7 @@ async def process_folder(client: httpx.AsyncClient, folder: dict, dry_run: bool)
     """Process one client folder. Returns stats."""
     stats = {"moved": 0, "dedup": 0, "created_subs": 0}
     folder_id = folder["id"]
-    folder_name = folder["name"]
+    folder["name"]
 
     # Get subfolders
     subs = await list_subfolders(client, folder_id)
@@ -166,8 +187,14 @@ async def process_folder(client: httpx.AsyncClient, folder: dict, dry_run: bool)
             sources.append((sub_id, sub_files))
 
     # Also scan files already in standard subs (for dedup)
-    existing_in_profile = await list_files(client, profile_id) if profile_id and not profile_id.startswith("DRY") else []
-    existing_in_immigration = await list_files(client, immigration_id) if immigration_id and not immigration_id.startswith("DRY") else []
+    existing_in_profile = (
+        await list_files(client, profile_id)
+        if profile_id and not profile_id.startswith("DRY")
+        else []
+    )
+    await list_files(client, immigration_id) if immigration_id and not immigration_id.startswith(
+        "DRY"
+    ) else []
 
     # Classify all source files
     passports: list[tuple[str, dict]] = []  # (parent_id, file)
@@ -188,7 +215,9 @@ async def process_folder(client: httpx.AsyncClient, folder: dict, dry_run: bool)
                 others.append((parent_id, f))
 
     # Also check existing in profile/immigration for dedup counting
-    existing_passport_count = sum(1 for f in existing_in_profile if classify(f["name"]) == "passport")
+    existing_passport_count = sum(
+        1 for f in existing_in_profile if classify(f["name"]) == "passport"
+    )
     existing_photo_count = sum(1 for f in existing_in_profile if classify(f["name"]) == "photo")
 
     # PASSPORT: keep 1 (newest by modifiedTime), rest to 99_Misc
@@ -263,12 +292,16 @@ async def main(dry_run: bool, limit: int) -> None:
             headers = {"Authorization": f"Bearer {await get_token(client)}"}
             params = {
                 "q": f"'{INDIVIDUAL_CRM_ID}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
-                "supportsAllDrives": "true", "includeItemsFromAllDrives": "true",
-                "fields": "nextPageToken,files(id,name)", "pageSize": "1000",
+                "supportsAllDrives": "true",
+                "includeItemsFromAllDrives": "true",
+                "fields": "nextPageToken,files(id,name)",
+                "pageSize": "1000",
             }
             if pt:
                 params["pageToken"] = pt
-            r = await client.get("https://www.googleapis.com/drive/v3/files", headers=headers, params=params)
+            r = await client.get(
+                "https://www.googleapis.com/drive/v3/files", headers=headers, params=params
+            )
             r.raise_for_status()
             d = r.json()
             all_folders.extend(d.get("files", []))
@@ -294,19 +327,23 @@ async def main(dry_run: bool, limit: int) -> None:
 
                     action_count = stats["moved"] + stats["dedup"]
                     if action_count > 0:
-                        logger.info(f"  [{i+1}/{total}] {folder['name'][:45]}: +{stats['moved']} moved, {stats['dedup']} dedup")
+                        logger.info(
+                            f"  [{i + 1}/{total}] {folder['name'][:45]}: +{stats['moved']} moved, {stats['dedup']} dedup"
+                        )
                 except Exception as e:
                     totals["errors"] += 1
-                    logger.warning(f"  [{i+1}/{total}] {folder['name'][:45]}: ERROR {e}")
+                    logger.warning(f"  [{i + 1}/{total}] {folder['name'][:45]}: ERROR {e}")
 
         # Process in batches of 100
         folders_to_process = all_folders[:limit]
         for batch_start in range(0, len(folders_to_process), 100):
-            batch = folders_to_process[batch_start:batch_start + 100]
+            batch = folders_to_process[batch_start : batch_start + 100]
             await asyncio.gather(*[do_folder(batch_start + j, f) for j, f in enumerate(batch)])
-            logger.info(f"\n--- {min(batch_start + 100, total)}/{total} | moved={totals['moved']} dedup={totals['dedup']} errors={totals['errors']} ---\n")
+            logger.info(
+                f"\n--- {min(batch_start + 100, total)}/{total} | moved={totals['moved']} dedup={totals['dedup']} errors={totals['errors']} ---\n"
+            )
 
-        logger.info(f"\n{'='*50}")
+        logger.info(f"\n{'=' * 50}")
         logger.info(f"Individual_CRM Reorg {'(DRY RUN)' if dry_run else 'COMPLETE'}")
         logger.info(f"  Processed  : {totals['processed']}")
         logger.info(f"  Files moved: {totals['moved']}")

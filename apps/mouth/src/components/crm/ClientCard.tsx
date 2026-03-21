@@ -142,7 +142,8 @@ const getCountryFlag = (nationality: string | undefined): string | null => {
   // Direct match
   if (NATIONALITY_FLAGS[nationality]) return NATIONALITY_FLAGS[nationality];
   // Case-insensitive: try Title Case
-  const titleCase = nationality.charAt(0).toUpperCase() + nationality.slice(1).toLowerCase();
+  const titleCase =
+    nationality.charAt(0).toUpperCase() + nationality.slice(1).toLowerCase();
   if (NATIONALITY_FLAGS[titleCase]) return NATIONALITY_FLAGS[titleCase];
   // Try each key
   const lower = nationality.toLowerCase();
@@ -194,7 +195,9 @@ export const ClientCard = React.memo(
                   src={client.avatar_url}
                   alt={client.full_name}
                   className="w-full h-full rounded-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
                 />
               ) : null}
               {!client.avatar_url && (

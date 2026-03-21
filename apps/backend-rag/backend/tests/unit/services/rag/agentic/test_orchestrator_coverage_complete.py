@@ -76,9 +76,7 @@ def orchestrator(mock_db_pool):
     """Create AgenticRAGOrchestrator instance with all dependencies mocked"""
     with (
         patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
-        patch(
-            "backend.services.rag.agentic.orchestrator.EmotionalAttunementService"
-        ),
+        patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
         patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder") as mock_prompt,
         patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
         patch("backend.services.rag.agentic.orchestrator.LLMGateway"),

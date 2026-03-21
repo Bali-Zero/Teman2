@@ -23,38 +23,39 @@ ENRICHED_DATA = {
         "bali_nuance": "Intermediazione digitale tra coltivatori rurali e hotel di lusso. Gestione flussi dati filiera corta.",
         "operational_hurdles": "Assenza totale di proprietà necessaria per evitare sanzioni OSS. Riconciliazione commissioni sotto CoreTax.",
         "strategic_roi": "Alta scalabilità, rischio inventario zero. ROI guidato dall'automazione AI del matching domanda-offerta.",
-        "legacy_bridge": "Corrisponde alla logica di intermediazione pura del 2020, ora più rigida nella separazione dal possesso fisico."
+        "legacy_bridge": "Corrisponde alla logica di intermediazione pura del 2020, ora più rigida nella separazione dal possesso fisico.",
     },
     "46201": {
         "market_sentiment_2026": "Settore strategico per sicurezza alimentare (Sembako). Margini compressi da prezzi massimi (HET) e intervento BULOG.",
         "bali_nuance": "Dipendenza da catene di approvvigionamento di Giava a causa della conversione delle Green Zones in Pink Zones.",
         "operational_hurdles": "Necessità di vaste infrastrutture di stoccaggio a secco. Logistica 'just-in-time' resa difficile dai colli di bottiglia di Gilimanuk.",
         "strategic_roi": "Bassi margini unitari, profitto basato esclusivamente su economie di scala astronomiche e volumi.",
-        "legacy_bridge": "Migrazione stabile dal 2020, ma con controlli fiscali CoreTax raddoppiati sulle giacenze."
+        "legacy_bridge": "Migrazione stabile dal 2020, ma con controlli fiscali CoreTax raddoppiati sulle giacenze.",
     },
     "46203": {
         "market_sentiment_2026": "Esplosione della domanda per design scultoreo botanico. Trend 'Regency Revival' e palette 'Faded Petal'.",
         "bali_nuance": "Mercato nuziale ed eventi di Bali 2026. Richiede serre climatizzate vicine ai distretti alberghieri (Pink Zones).",
         "operational_hurdles": "Estrema deperibilità. Necessità di catena del freddo impeccabile per minimizzare danni da trasporto locale.",
         "strategic_roi": "ROI Eccezionale per operatori 'Smart Luxury'. Prezzo non è il fattore discriminante, ma l'affidabilità e l'estetica.",
-        "legacy_bridge": "Evoluzione del vecchio commercio fiori, ora iper-specializzato per il mercato del lusso e del benessere."
+        "legacy_bridge": "Evoluzione del vecchio commercio fiori, ora iper-specializzato per il mercato del lusso e del benessere.",
     },
     "46206": {
         "market_sentiment_2026": "Leader mondiale in pesci ornamentali. Acquariofilia in ascesa globale.",
         "bali_nuance": "Hub centrale a Denpasar. Successo legato alla vicinanza con l'aeroporto Ngurah Rai per export intercontinentale.",
         "operational_hurdles": "Stress da spedizione e mortalità >30% se non gestiti con tecnologie di filtraggio e stazioni di quarantena hi-tech.",
         "strategic_roi": "Alto per chi investe in bioseurezza e tracciabilità etica richiesta dai mercati occidentali.",
-        "legacy_bridge": "Separazione netta nel 2025: questo codice ESCLUDE il consumo umano, a differenza di versioni passate più ambigue."
+        "legacy_bridge": "Separazione netta nel 2025: questo codice ESCLUDE il consumo umano, a differenza di versioni passate più ambigue.",
     },
     "46207": {
         "market_sentiment_2026": "Boom del 'Bamboo-Core' e bio-edilizia. Sostituzione del cemento con materiali a basse emissioni.",
         "bali_nuance": "Infrastruttura materiale per villa resort eco-boutique. Domanda inelastica per bambù ingegnerizzato e legnami nobili.",
         "operational_hurdles": "Interruzioni logistiche stagionali durante i monsoni (trasporto marittimo Pelni/ASDP).",
         "strategic_roi": "Molto redditizio nello sviluppo immobiliare di fascia alta. Controllo della fornitura garantisce flussi di cassa solidi.",
-        "legacy_bridge": "Consolidamento di vari codici di estrazione forestale in un unico pilastro per la bio-architettura."
-    }
+        "legacy_bridge": "Consolidamento di vari codici di estrazione forestale in un unico pilastro per la bio-architettura.",
+    },
     # Altri codici (46202, 46204, 46205, 46208, 46209) verranno mappati con logica simile nel loop
 }
+
 
 async def fuse_intelligence():
     # FORZATURA CREDENZIALI PRODUZIONE (Pragmatic Fix)
@@ -85,8 +86,8 @@ async def fuse_intelligence():
             scroll_filter=models.Filter(
                 must=[models.FieldCondition(key="kode_kbli", match=models.MatchValue(value=code))]
             ),
-            limit=10, # Potrebbero esserci più chunk per lo stesso codice
-            with_payload=True
+            limit=10,  # Potrebbero esserci più chunk per lo stesso codice
+            with_payload=True,
         )
 
         points = search_result[0]
@@ -109,17 +110,16 @@ async def fuse_intelligence():
                 "is_enriched": True,
                 "last_enriched_at": int(time.time()),
                 "evidence_score": 0.98,
-                "source": "Gemini 3 PRO Deep Research"
+                "source": "Gemini 3 PRO Deep Research",
             }
 
             # 3. Overwrite Payload
             qdrant.overwrite_payload(
-                collection_name=collection,
-                payload=updated_payload,
-                points=[point_id]
+                collection_name=collection, payload=updated_payload, points=[point_id]
             )
 
         logger.info(f"✅ KBLI {code} successfully enriched ({len(points)} chunks).")
+
 
 if __name__ == "__main__":
     asyncio.run(fuse_intelligence())

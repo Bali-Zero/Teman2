@@ -141,7 +141,7 @@ GET /api/prime/zoning?lat={lat}&lng={lng}
 ## Maps API Key
 
 ```
-AIzaSyCWPZb1_aSV_NVvS9ZSR0Mlq9El8qO8uLQ
+`GEMINI_API_KEY` (placeholder)
 ```
 
 Nota: la `l` in `Mlq9El8` è minuscola (comune fonte di errori di copia).

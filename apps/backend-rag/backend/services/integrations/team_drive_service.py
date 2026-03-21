@@ -311,7 +311,9 @@ class TeamDriveService:
 
             if creds_json:
                 # Write to temp file
-                with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp_file:
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".json", delete=False
+                ) as temp_file:
                     temp_file.write(creds_json)
                     return temp_file.name
 

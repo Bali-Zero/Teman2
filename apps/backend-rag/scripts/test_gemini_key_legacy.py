@@ -24,6 +24,7 @@ def test_key() -> None:
     except Exception as exc:
         logger.exception("Legacy Gemini key test failed: %s", exc)
 
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     test_key()

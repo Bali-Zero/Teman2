@@ -4,10 +4,11 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 class NPWPValidationSchema(BaseModel):
     """Schema deterministico per il tool Pydantic di estrazione NPWP."""
+
     npwp_number: str = Field(..., description="15 or 16 digit Indonesian NPWP")
     status: str = Field(..., description="Extracted status of NPWP")
 
-    @field_validator('npwp_number')
+    @field_validator("npwp_number")
     @classmethod
     def validate_npwp(cls, v: str) -> str:
         cleaned = v.replace(".", "").replace("-", "")
@@ -19,26 +20,31 @@ class NPWPValidationSchema(BaseModel):
 
         return cleaned
 
+
 class KBLIMatchingSchema(BaseModel):
     """Schema deterministico per il matching di KBLI."""
+
     code: str = Field(..., description="5 digit KBLI exactly")
     confidence_score: float = Field(..., description="AI confidence score for the match")
 
-    @field_validator('code')
+    @field_validator("code")
     @classmethod
     def validate_code(cls, v: str) -> str:
         if not v.isdigit() or len(v) != 5:
             raise ValueError("KBLI code must be exactly 5 digits.")
         return v
 
-    @field_validator('confidence_score')
+    @field_validator("confidence_score")
     @classmethod
     def validate_confidence(cls, v: float) -> float:
         if v < 0.0 or v > 1.0:
             raise ValueError("Confidence score must be between 0.0 and 1.0.")
         if v < 0.60:
-            raise ValueError("Confidence < 0.60 requires manual review or fallback. Discarding deterministic match.")
+            raise ValueError(
+                "Confidence < 0.60 requires manual review or fallback. Discarding deterministic match."
+            )
         return v
+
 
 @pytest.mark.asyncio
 async def test_deterministic_npwp_validation():
@@ -51,7 +57,8 @@ async def test_deterministic_npwp_validation():
     # TEST FAIL: Stringa non numerica
     invalid_data = {"npwp_number": "01.ABC.567.8-901", "status": "Active"}
     with pytest.raises(ValidationError):
-         NPWPValidationSchema(**invalid_data)
+        NPWPValidationSchema(**invalid_data)
+
 
 @pytest.mark.asyncio
 async def test_deterministic_kbli_validation():
@@ -65,5 +72,3 @@ async def test_deterministic_kbli_validation():
     invalid_data = {"code": "47911", "confidence_score": 0.45}
     with pytest.raises(ValidationError):
         KBLIMatchingSchema(**invalid_data)
-
-

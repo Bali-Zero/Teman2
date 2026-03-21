@@ -378,7 +378,9 @@ class RetrievalQualityMonitor:
         if not self._db_pool:
             return
 
-        elapsed = (datetime.now(tz=timezone.utc).replace(tzinfo=None) - self._last_flush_time).total_seconds()
+        elapsed = (
+            datetime.now(tz=timezone.utc).replace(tzinfo=None) - self._last_flush_time
+        ).total_seconds()
         if self._unflushed_count >= self.FLUSH_BATCH_SIZE or elapsed >= self.FLUSH_INTERVAL_SECONDS:
             await self.flush_to_db()
 

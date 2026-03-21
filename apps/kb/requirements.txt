@@ -1,19 +1,22 @@
 # KB Tools Dependencies
 
 # Web Automation (shared by all spiders)
-playwright==1.40.0
+# Security: playwright>=1.45.0 includes browser security patches
+playwright>=1.45.0
 
 # HTTP Clients
 aiohttp>=3.11.18
-httpx>=0.25.0
+# Security: httpx>=0.27.0 fixes GHSA-9x7f-gwxq-6f2c (SSRF on redirects)
+httpx>=0.27.0
 
 # Utilities
-fake-useragent==1.4.0
-loguru==0.7.2
+fake-useragent>=1.4.0
+loguru>=0.7.2
 python-dotenv>=1.0.0
 
 # Google Gemini AI (for IntelligentVisaAgent)
-google-genai>=0.2.0
+# Security: use 1.x stable API with security fixes
+google-genai>=1.0.0
 
 # Installation:
 # pip install -r requirements.txt

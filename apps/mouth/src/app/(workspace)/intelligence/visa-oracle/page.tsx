@@ -511,7 +511,10 @@ export default function VisaOraclePage() {
               {filteredAndSortedItems.length} of {items.length} pending
             </span>
           </div>
-          <div className="h-3 w-px" style={{ background: "var(--bz-border)" }} />
+          <div
+            className="h-3 w-px"
+            style={{ background: "var(--bz-border)" }}
+          />
           <span className="text-[11px]" style={{ color: "var(--bz-text-2)" }}>
             {items.filter((i) => i.detection_type === "NEW").length} new ·{" "}
             {items.filter((i) => i.detection_type === "UPDATED").length} updated
@@ -690,7 +693,10 @@ export default function VisaOraclePage() {
             }}
           >
             {/* Card header */}
-            <div className="px-4 py-4" style={{ background: "rgba(255,255,255,0.02)" }}>
+            <div
+              className="px-4 py-4"
+              style={{ background: "rgba(255,255,255,0.02)" }}
+            >
               <div className="flex items-start gap-3">
                 <button
                   onClick={() => toggleSelectItem(item.id)}
@@ -703,7 +709,10 @@ export default function VisaOraclePage() {
                       style={{ color: "var(--bz-accent)" }}
                     />
                   ) : (
-                    <Square className="w-4 h-4" style={{ color: "var(--bz-text-3)" }} />
+                    <Square
+                      className="w-4 h-4"
+                      style={{ color: "var(--bz-text-3)" }}
+                    />
                   )}
                 </button>
                 <div className="flex-1 space-y-1.5">
@@ -843,7 +852,8 @@ export default function VisaOraclePage() {
               >
                 {processing === item.id ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Ingesting...
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
+                    Ingesting...
                   </>
                 ) : (
                   <>

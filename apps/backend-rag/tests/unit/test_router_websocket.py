@@ -547,7 +547,10 @@ class TestRedisListener:
 
         with (
             patch("backend.app.routers.websocket.RedisManager", create=True),
-            patch("backend.core.redis_manager.RedisManager.get_instance", return_value=mock_manager_instance),
+            patch(
+                "backend.core.redis_manager.RedisManager.get_instance",
+                return_value=mock_manager_instance,
+            ),
             patch("backend.app.routers.websocket.logger") as mock_logger,
         ):
             from backend.app.routers.websocket import redis_listener
@@ -555,7 +558,9 @@ class TestRedisListener:
             await redis_listener()
 
             mock_logger.warning.assert_called()
-            mock_manager_instance.register_component.assert_called_with("websocket_pubsub", "disabled")
+            mock_manager_instance.register_component.assert_called_with(
+                "websocket_pubsub", "disabled"
+            )
 
     @pytest.fixture
     def mock_redis_client_with_pubsub(self):
@@ -571,6 +576,7 @@ class TestRedisListener:
     def _make_redis_manager_mock(self, mock_client):
         """Helper: create a mock RedisManager that returns given client, installed as singleton"""
         from backend.core.redis_manager import RedisManager
+
         mock_mgr = MagicMock()
         mock_mgr.get_async_client.return_value = mock_client
         mock_mgr.register_component = MagicMock()
@@ -581,6 +587,7 @@ class TestRedisListener:
     def _patch_redis_manager_singleton(self):
         """Save/restore RedisManager singleton around each test"""
         from backend.core.redis_manager import RedisManager
+
         original = RedisManager._instance
         yield
         RedisManager._instance = original
@@ -602,8 +609,9 @@ class TestRedisListener:
         self._make_redis_manager_mock(mock_client)
 
         with (
-
-            patch("backend.app.routers.websocket.manager", new_callable=AsyncMock) as mock_ws_manager,
+            patch(
+                "backend.app.routers.websocket.manager", new_callable=AsyncMock
+            ) as mock_ws_manager,
             patch("backend.app.routers.websocket.logger"),
         ):
             mock_ws_manager.send_personal_message = AsyncMock()
@@ -634,8 +642,9 @@ class TestRedisListener:
         self._make_redis_manager_mock(mock_client)
 
         with (
-
-            patch("backend.app.routers.websocket.manager", new_callable=AsyncMock) as mock_ws_manager,
+            patch(
+                "backend.app.routers.websocket.manager", new_callable=AsyncMock
+            ) as mock_ws_manager,
             patch("backend.app.routers.websocket.logger"),
         ):
             mock_ws_manager.send_personal_message = AsyncMock()
@@ -664,8 +673,9 @@ class TestRedisListener:
         self._make_redis_manager_mock(mock_client)
 
         with (
-
-            patch("backend.app.routers.websocket.manager", new_callable=AsyncMock) as mock_ws_manager,
+            patch(
+                "backend.app.routers.websocket.manager", new_callable=AsyncMock
+            ) as mock_ws_manager,
             patch("backend.app.routers.websocket.logger"),
         ):
             mock_ws_manager.broadcast = AsyncMock()
@@ -695,8 +705,9 @@ class TestRedisListener:
         self._make_redis_manager_mock(mock_client)
 
         with (
-
-            patch("backend.app.routers.websocket.manager", new_callable=AsyncMock) as mock_ws_manager,
+            patch(
+                "backend.app.routers.websocket.manager", new_callable=AsyncMock
+            ) as mock_ws_manager,
             patch("backend.app.routers.websocket.logger"),
         ):
             mock_ws_manager.send_personal_message = AsyncMock()
@@ -720,7 +731,6 @@ class TestRedisListener:
         self._make_redis_manager_mock(mock_client)
 
         with (
-
             patch("backend.app.routers.websocket.logger") as mock_logger,
         ):
             from backend.app.routers.websocket import redis_listener

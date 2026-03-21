@@ -2,6 +2,7 @@
 """
 Migration runner for 054_practice_required_documents
 """
+
 import asyncio
 import os
 import sys
@@ -84,6 +85,7 @@ COMMENT ON COLUMN practice_required_documents.document_type IS 'Type of document
 COMMENT ON COLUMN practice_required_documents.status IS 'Document status: pending, uploaded, verified, rejected';
 """
 
+
 async def run_migration():
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
@@ -111,6 +113,7 @@ async def run_migration():
         sys.exit(1)
     finally:
         await conn.close()
+
 
 if __name__ == "__main__":
     asyncio.run(run_migration())

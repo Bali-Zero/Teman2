@@ -20,7 +20,6 @@ import logging
 import os
 import re
 import time
-from typing import Any
 
 import asyncpg
 import httpx
@@ -28,8 +27,10 @@ import httpx
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
 
-DB = os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://") or \
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+DB = (
+    os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://")
+    or "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+)
 
 OAUTH_CLIENT_ID = "930328104463-m3g4gq72095rip08269kvt8s7et9ev12.apps.googleusercontent.com"
 OAUTH_CLIENT_SECRET = "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"
@@ -39,7 +40,7 @@ OPENAI_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 
 PASSPORT_PROMPT = (
-    'Extract from this passport. Return ONLY valid JSON:\n'
+    "Extract from this passport. Return ONLY valid JSON:\n"
     '{"full_name": "", "passport_number": "", "nationality": "", '
     '"date_of_birth": "YYYY-MM-DD", "date_of_expiry": "YYYY-MM-DD", '
     '"sex": "", "place_of_birth": ""}'
@@ -53,10 +54,15 @@ async def get_oauth_token(client: httpx.AsyncClient) -> str:
     global _oauth_token, _oauth_expiry
     if _oauth_token and time.time() < _oauth_expiry - 60:
         return _oauth_token
-    resp = await client.post("https://oauth2.googleapis.com/token", data={
-        "client_id": OAUTH_CLIENT_ID, "client_secret": OAUTH_CLIENT_SECRET,
-        "refresh_token": OAUTH_REFRESH_TOKEN, "grant_type": "refresh_token",
-    })
+    resp = await client.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "client_id": OAUTH_CLIENT_ID,
+            "client_secret": OAUTH_CLIENT_SECRET,
+            "refresh_token": OAUTH_REFRESH_TOKEN,
+            "grant_type": "refresh_token",
+        },
+    )
     resp.raise_for_status()
     data = resp.json()
     _oauth_token = data["access_token"]
@@ -69,21 +75,33 @@ async def find_passport_file(client: httpx.AsyncClient, client_drive_id: str) ->
     headers = {"Authorization": f"Bearer {await get_oauth_token(client)}"}
 
     # Find 00_Profile
-    r = await client.get("https://www.googleapis.com/drive/v3/files", headers=headers, params={
-        "q": f"'{client_drive_id}' in parents and name = '00_Profile' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
-        "supportsAllDrives": "true", "includeItemsFromAllDrives": "true",
-        "fields": "files(id)", "pageSize": "1",
-    })
+    r = await client.get(
+        "https://www.googleapis.com/drive/v3/files",
+        headers=headers,
+        params={
+            "q": f"'{client_drive_id}' in parents and name = '00_Profile' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+            "supportsAllDrives": "true",
+            "includeItemsFromAllDrives": "true",
+            "fields": "files(id)",
+            "pageSize": "1",
+        },
+    )
     profiles = r.json().get("files", [])
     if not profiles:
         return None
 
     # Find passport file
-    r2 = await client.get("https://www.googleapis.com/drive/v3/files", headers=headers, params={
-        "q": f"'{profiles[0]['id']}' in parents and trashed = false",
-        "supportsAllDrives": "true", "includeItemsFromAllDrives": "true",
-        "fields": "files(id,name,mimeType)", "pageSize": "50",
-    })
+    r2 = await client.get(
+        "https://www.googleapis.com/drive/v3/files",
+        headers=headers,
+        params={
+            "q": f"'{profiles[0]['id']}' in parents and trashed = false",
+            "supportsAllDrives": "true",
+            "includeItemsFromAllDrives": "true",
+            "fields": "files(id,name,mimeType)",
+            "pageSize": "50",
+        },
+    )
     files = r2.json().get("files", [])
 
     for f in files:
@@ -97,7 +115,8 @@ async def download_file(client: httpx.AsyncClient, file_id: str) -> bytes | None
     try:
         r = await client.get(
             f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media&supportsAllDrives=true",
-            headers=headers, timeout=30,
+            headers=headers,
+            timeout=30,
         )
         if r.status_code == 200:
             return r.content
@@ -119,13 +138,15 @@ async def ocr_passport(client: httpx.AsyncClient, image_data: bytes, mime_type: 
             headers={"Authorization": f"Bearer {OPENAI_KEY}"},
             json={
                 "model": "gpt-4o-mini",
-                "messages": [{
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": PASSPORT_PROMPT},
-                        {"type": "image_url", "image_url": {"url": data_url, "detail": "low"}},
-                    ],
-                }],
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": PASSPORT_PROMPT},
+                            {"type": "image_url", "image_url": {"url": data_url, "detail": "low"}},
+                        ],
+                    }
+                ],
                 "max_tokens": 300,
                 "temperature": 0.1,
             },
@@ -140,13 +161,18 @@ async def ocr_passport(client: httpx.AsyncClient, image_data: bytes, mime_type: 
                 headers={"Authorization": f"Bearer {OPENAI_KEY}"},
                 json={
                     "model": "gpt-4o-mini",
-                    "messages": [{
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": PASSPORT_PROMPT},
-                            {"type": "image_url", "image_url": {"url": data_url, "detail": "low"}},
-                        ],
-                    }],
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": PASSPORT_PROMPT},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": data_url, "detail": "low"},
+                                },
+                            ],
+                        }
+                    ],
                     "max_tokens": 300,
                     "temperature": 0.1,
                 },
@@ -168,10 +194,10 @@ async def ocr_passport(client: httpx.AsyncClient, image_data: bytes, mime_type: 
         return json.loads(text)
 
     except json.JSONDecodeError:
-        logger.warning(f"    JSON parse failed")
+        logger.warning("    JSON parse failed")
         return None
     except httpx.TimeoutException:
-        logger.warning(f"    Timeout")
+        logger.warning("    Timeout")
         return None
     except Exception as e:
         logger.warning(f"    OCR error: {e}")
@@ -217,14 +243,23 @@ async def update_client(conn: asyncpg.Connection, client_id: int, data: dict, dr
         if not dry_run:
             if is_date:
                 from datetime import date as dt_date
+
                 try:
                     d = dt_date.fromisoformat(val)
-                    await conn.execute(f"UPDATE clients SET {col} = $1, updated_at = NOW() WHERE id = $2", d, client_id)
+                    await conn.execute(
+                        f"UPDATE clients SET {col} = $1, updated_at = NOW() WHERE id = $2",
+                        d,
+                        client_id,
+                    )
                     updated += 1
                 except ValueError:
                     pass
             else:
-                await conn.execute(f"UPDATE clients SET {col} = $1, updated_at = NOW() WHERE id = $2", str(val).strip(), client_id)
+                await conn.execute(
+                    f"UPDATE clients SET {col} = $1, updated_at = NOW() WHERE id = $2",
+                    str(val).strip(),
+                    client_id,
+                )
                 updated += 1
         else:
             updated += 1
@@ -239,7 +274,8 @@ async def main(dry_run: bool, limit: int, test: int) -> None:
 
     try:
         # Get clients with Drive folder but no passport
-        clients = await conn.fetch("""
+        clients = await conn.fetch(
+            """
             SELECT id, full_name, google_drive_folder_id
             FROM clients
             WHERE deleted_at IS NULL
@@ -249,7 +285,9 @@ async def main(dry_run: bool, limit: int, test: int) -> None:
               AND LENGTH(full_name) > 3
             ORDER BY id
             LIMIT $1
-        """, limit)
+        """,
+            limit,
+        )
 
         logger.info(f"Clients without passport: {len(clients)}")
 
@@ -257,7 +295,14 @@ async def main(dry_run: bool, limit: int, test: int) -> None:
             clients = clients[:test]
             logger.info(f"TEST MODE: processing only {test}")
 
-        totals = {"processed": 0, "ocr_ok": 0, "fields": 0, "no_passport_file": 0, "ocr_failed": 0, "errors": 0}
+        totals = {
+            "processed": 0,
+            "ocr_ok": 0,
+            "fields": 0,
+            "no_passport_file": 0,
+            "ocr_failed": 0,
+            "errors": 0,
+        }
 
         async with httpx.AsyncClient(timeout=60) as http:
             await get_oauth_token(http)
@@ -285,6 +330,7 @@ async def main(dry_run: bool, limit: int, test: int) -> None:
                     if mime == "application/pdf":
                         # Convert PDF first page to image
                         import fitz
+
                         doc = fitz.open(stream=file_data, filetype="pdf")
                         pix = doc[0].get_pixmap(matrix=fitz.Matrix(2, 2))
                         file_data = pix.tobytes("png")
@@ -299,7 +345,7 @@ async def main(dry_run: bool, limit: int, test: int) -> None:
                         extracted = await ocr_passport(http, file_data, mime)
                     if not extracted or not extracted.get("passport_number"):
                         totals["ocr_failed"] += 1
-                        logger.info(f"  [{i+1}] {name[:35]:35s} ✗ OCR failed")
+                        logger.info(f"  [{i + 1}] {name[:35]:35s} ✗ OCR failed")
                         continue
 
                     # Update DB
@@ -308,16 +354,20 @@ async def main(dry_run: bool, limit: int, test: int) -> None:
                     totals["fields"] += fields
                     totals["processed"] += 1
 
-                    logger.info(f"  [{i+1}] {name[:35]:35s} ✓ {extracted['passport_number']} +{fields} fields")
+                    logger.info(
+                        f"  [{i + 1}] {name[:35]:35s} ✓ {extracted['passport_number']} +{fields} fields"
+                    )
 
                 except Exception as e:
                     totals["errors"] += 1
-                    logger.warning(f"  [{i+1}] {name[:35]:35s} ERROR: {e}")
+                    logger.warning(f"  [{i + 1}] {name[:35]:35s} ERROR: {e}")
 
                 if (i + 1) % 50 == 0:
-                    logger.info(f"\n--- {i+1}/{len(clients)} | ok={totals['ocr_ok']} fields={totals['fields']} ---\n")
+                    logger.info(
+                        f"\n--- {i + 1}/{len(clients)} | ok={totals['ocr_ok']} fields={totals['fields']} ---\n"
+                    )
 
-        logger.info(f"\n{'='*50}")
+        logger.info(f"\n{'=' * 50}")
         logger.info(f"Batch Passport OCR {'(DRY RUN)' if dry_run else 'COMPLETE'}")
         logger.info(f"  Processed  : {totals['processed']}")
         logger.info(f"  OCR success: {totals['ocr_ok']}")

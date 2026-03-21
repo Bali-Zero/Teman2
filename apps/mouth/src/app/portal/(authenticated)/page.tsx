@@ -41,8 +41,14 @@ export default function PortalHomePage() {
     return (
       <div className="space-y-8">
         <section>
-          <div className="h-8 rounded w-48 mb-2 animate-pulse" style={{ background: "var(--bz-surface)" }} />
-          <div className="h-4 rounded w-64 animate-pulse" style={{ background: "var(--bz-surface)" }} />
+          <div
+            className="h-8 rounded w-48 mb-2 animate-pulse"
+            style={{ background: "var(--bz-surface)" }}
+          />
+          <div
+            className="h-4 rounded w-64 animate-pulse"
+            style={{ background: "var(--bz-surface)" }}
+          />
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -52,7 +58,10 @@ export default function PortalHomePage() {
         </section>
 
         <section className="space-y-4">
-          <div className="h-6 rounded w-32 animate-pulse" style={{ background: "var(--bz-surface)" }} />
+          <div
+            className="h-6 rounded w-32 animate-pulse"
+            style={{ background: "var(--bz-surface)" }}
+          />
           <PortalListSkeleton count={5} />
         </section>
       </div>
@@ -114,7 +123,10 @@ export default function PortalHomePage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Welcome Section */}
       <section>
-        <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--bz-text-1)" }}>
+        <h1
+          className="text-2xl font-bold tracking-tight"
+          style={{ color: "var(--bz-text-1)" }}
+        >
           Welcome Back
         </h1>
         <p style={{ color: "var(--bz-text-2)" }}>
@@ -164,7 +176,10 @@ export default function PortalHomePage() {
       {/* Action Items */}
       {defaultDashboard.actions.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold" style={{ color: "var(--bz-text-1)" }}>
+          <h2
+            className="text-lg font-semibold"
+            style={{ color: "var(--bz-text-1)" }}
+          >
             Action Required
           </h2>
           <div className="space-y-2">
@@ -194,12 +209,21 @@ export default function PortalHomePage() {
 
       {/* The Timeline */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold flex items-center gap-2" style={{ color: "var(--bz-text-1)" }}>
-          <Clock className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+        <h2
+          className="text-lg font-semibold flex items-center gap-2"
+          style={{ color: "var(--bz-text-1)" }}
+        >
+          <Clock
+            className="w-5 h-5"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
           Timeline
         </h2>
 
-        <div className="relative border-l-2 ml-3 space-y-8 pb-10" style={{ borderColor: "var(--bz-border)" }}>
+        <div
+          className="relative border-l-2 ml-3 space-y-8 pb-10"
+          style={{ borderColor: "var(--bz-border)" }}
+        >
           {timeline.map((entry: TimelineEntry, index: number) => (
             <TimelineItem
               key={entry.id}
@@ -209,7 +233,10 @@ export default function PortalHomePage() {
           ))}
 
           {timeline.length === 0 && (
-            <div className="pl-6 py-4 italic" style={{ color: "var(--bz-text-2)" }}>
+            <div
+              className="pl-6 py-4 italic"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               No activity yet. Your journey starts here.
             </div>
           )}
@@ -252,15 +279,31 @@ function StatusCard({
     switch (s) {
       case "active":
       case "compliant":
-        return { background: "rgba(16,185,129,0.08)", color: "#34d399", borderColor: "rgba(16,185,129,0.2)" };
+        return {
+          background: "rgba(16,185,129,0.08)",
+          color: "#34d399",
+          borderColor: "rgba(16,185,129,0.2)",
+        };
       case "warning":
       case "attention":
-        return { background: "rgba(245,158,11,0.08)", color: "#fbbf24", borderColor: "rgba(245,158,11,0.2)" };
+        return {
+          background: "rgba(245,158,11,0.08)",
+          color: "#fbbf24",
+          borderColor: "rgba(245,158,11,0.2)",
+        };
       case "expired":
       case "overdue":
-        return { background: "rgba(239,68,68,0.08)", color: "#f87171", borderColor: "rgba(239,68,68,0.2)" };
+        return {
+          background: "rgba(239,68,68,0.08)",
+          color: "#f87171",
+          borderColor: "rgba(239,68,68,0.2)",
+        };
       default:
-        return { background: "var(--bz-surface)", color: "var(--bz-text-2)", borderColor: "var(--bz-border)" };
+        return {
+          background: "var(--bz-surface)",
+          color: "var(--bz-text-2)",
+          borderColor: "var(--bz-border)",
+        };
     }
   };
 
@@ -339,8 +382,7 @@ function TimelineItem({
   };
 
   const getBgColor = () => {
-    if (isFuture)
-      return "bg-amber-900/30 text-amber-400";
+    if (isFuture) return "bg-amber-900/30 text-amber-400";
     switch (entry.type) {
       case "message":
         return "bg-blue-900/30 text-blue-400";
@@ -352,11 +394,15 @@ function TimelineItem({
   };
 
   const getDotStyle = (): React.CSSProperties => {
-    if (isFuture) return { background: "rgba(245,158,11,0.25)", color: "#fbbf24" };
+    if (isFuture)
+      return { background: "rgba(245,158,11,0.25)", color: "#fbbf24" };
     switch (entry.type) {
-      case "message": return { background: "rgba(59,130,246,0.25)", color: "#60a5fa" };
-      case "deadline": return { background: "rgba(239,68,68,0.25)", color: "#f87171" };
-      default: return { background: "var(--bz-surface)", color: "var(--bz-text-2)" };
+      case "message":
+        return { background: "rgba(59,130,246,0.25)", color: "#60a5fa" };
+      case "deadline":
+        return { background: "rgba(239,68,68,0.25)", color: "#f87171" };
+      default:
+        return { background: "var(--bz-surface)", color: "var(--bz-text-2)" };
     }
   };
 
@@ -378,7 +424,10 @@ function TimelineItem({
       >
         <div className="flex items-center gap-2 mb-1">
           <div className={cn("p-1 rounded-md", getBgColor())}>{getIcon()}</div>
-          <span className="text-xs font-medium" style={{ color: "var(--bz-text-2)" }}>
+          <span
+            className="text-xs font-medium"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             {new Date(entry.occurredAt).toLocaleDateString(undefined, {
               month: "short",
               day: "numeric",
@@ -389,12 +438,18 @@ function TimelineItem({
         </div>
 
         <h3 className="font-semibold text-sm">{entry.title}</h3>
-        <p className="text-sm mt-0.5 line-clamp-2" style={{ color: "var(--bz-text-2)" }}>
+        <p
+          className="text-sm mt-0.5 line-clamp-2"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           {entry.description}
         </p>
 
         {entry.type === "message" && entry.status === "team_to_client" && (
-          <div className="mt-2 text-xs font-medium flex items-center" style={{ color: "var(--bz-accent-warm)" }}>
+          <div
+            className="mt-2 text-xs font-medium flex items-center"
+            style={{ color: "var(--bz-accent-warm)" }}
+          >
             Reply <ChevronRight className="w-3 h-3 ml-0.5" />
           </div>
         )}

@@ -733,12 +733,16 @@ class TestIntegration:
 
     @pytest.mark.asyncio
     async def test_end_to_end_evaluation(self):
-        """Test end-to-end evaluation with real dependencies."""
-        # This test requires real LLM client - skip if not available
-        try:
-            evaluator = get_ragas_evaluator()
-        except Exception:
-            pytest.skip("Real LLM client not available")
+        """Test end-to-end evaluation with mocked LLM client."""
+        mock_client = MagicMock()
+        mock_client.generate = AsyncMock(
+            return_value=LLMResponse(
+                content=json.dumps({"score": 0.85, "reasoning": "Test reasoning"}),
+                model="test-model",
+                provider="test",
+            )
+        )
+        evaluator = RAGASEvaluator(llm_client=mock_client, enable_cache=False)
 
         query = "Apa itu KITAS?"
         context = ["KITAS adalah izin tinggal untuk WNA."]

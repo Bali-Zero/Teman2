@@ -64,7 +64,11 @@ async def test_llm_gateway():
         )
 
         print(f"   Model used: {model_used}")
-        print(f"   Response: '{response_text[:100]}...' " if len(response_text) > 100 else f"   Response: '{response_text}'")
+        print(
+            f"   Response: '{response_text[:100]}...' "
+            if len(response_text) > 100
+            else f"   Response: '{response_text}'"
+        )
         print(f"   Tokens: {usage.prompt_tokens} prompt, {usage.completion_tokens} completion")
         print(f"   Cost: ${usage.cost_usd:.6f}")
 
@@ -78,6 +82,7 @@ async def test_llm_gateway():
     except Exception as e:
         print(f"\n❌ ERROR: {type(e).__name__}: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -99,7 +104,7 @@ async def test_kbli_explanation():
                 description="Retail trade of various goods in supermarkets...",
                 score=0.95,
                 pma_status="TERBATAS",
-                risk_category="High"
+                risk_category="High",
             ),
             KBLISearchResult(
                 code="56101",
@@ -107,15 +112,19 @@ async def test_kbli_explanation():
                 description="Restaurant activities...",
                 score=0.87,
                 pma_status="TERBUKA",
-                risk_category="Medium"
-            )
+                risk_category="Medium",
+            ),
         ]
 
         print("   Testing with query: 'voglio aprire un ristorante'")
         answer = await _generate_kbli_explanation("voglio aprire un ristorante", mock_results)
 
         print(f"   Answer length: {len(answer)} characters")
-        print(f"   Answer preview: '{answer[:150]}...'" if len(answer) > 150 else f"   Answer: '{answer}'")
+        print(
+            f"   Answer preview: '{answer[:150]}...'"
+            if len(answer) > 150
+            else f"   Answer: '{answer}'"
+        )
 
         if not answer or not answer.strip():
             print("\n❌ CRITICAL: Answer is empty!")
@@ -131,6 +140,7 @@ async def test_kbli_explanation():
     except Exception as e:
         print(f"\n❌ ERROR: {type(e).__name__}: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -183,13 +193,15 @@ def check_environment():
             print(f"   ✅ {var}: {masked} ({description})")
         else:
             print(f"   ❌ {var}: NOT SET ({description})")
-            if var not in ["GOOGLE_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS"]:  # At least one needed
+            if var not in [
+                "GOOGLE_API_KEY",
+                "GOOGLE_APPLICATION_CREDENTIALS",
+            ]:  # At least one needed
                 missing.append(var)
 
     # Check if at least one Google auth method is available
     has_google_auth = bool(
-        os.environ.get("GOOGLE_API_KEY") or
-        os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
     )
     if not has_google_auth:
         print("\n   ❌ CRITICAL: No Google authentication configured!")

@@ -136,7 +136,7 @@ async def get_drive_access_token(conn: asyncpg.Connection) -> str:
 
     row = await conn.fetchrow(
         "SELECT access_token, refresh_token, expires_at FROM google_drive_tokens WHERE user_id = $1",
-        "SYSTEM"
+        "SYSTEM",
     )
     if not row:
         raise ValueError("No SYSTEM Drive token in DB")
@@ -157,7 +157,7 @@ async def get_drive_access_token(conn: asyncpg.Connection) -> str:
                 "client_secret": client_secret,
                 "refresh_token": row["refresh_token"],
                 "grant_type": "refresh_token",
-            }
+            },
         )
 
     if resp.status_code != 200:
@@ -169,7 +169,9 @@ async def get_drive_access_token(conn: asyncpg.Connection) -> str:
 
     await conn.execute(
         "UPDATE google_drive_tokens SET access_token=$1, expires_at=$2, updated_at=NOW() WHERE user_id=$3",
-        token, expires_at, "SYSTEM"
+        token,
+        expires_at,
+        "SYSTEM",
     )
     return token
 
@@ -198,12 +200,14 @@ def _get_oauth_access_token() -> str:
     if _oauth_access_token and time.time() < _oauth_token_expiry - 60:
         return _oauth_access_token
 
-    data = urllib.parse.urlencode({
-        "client_id": OAUTH_CLIENT_ID,
-        "client_secret": OAUTH_CLIENT_SECRET,
-        "refresh_token": OAUTH_REFRESH_TOKEN,
-        "grant_type": "refresh_token",
-    }).encode()
+    data = urllib.parse.urlencode(
+        {
+            "client_id": OAUTH_CLIENT_ID,
+            "client_secret": OAUTH_CLIENT_SECRET,
+            "refresh_token": OAUTH_REFRESH_TOKEN,
+            "grant_type": "refresh_token",
+        }
+    ).encode()
 
     req = urllib.request.Request(
         "https://oauth2.googleapis.com/token",
@@ -235,6 +239,7 @@ def build_drive_service(_access_token: str | None = None) -> Any:
         logger.warning(f"  OAuth failed ({e}), falling back to SA")
         if os.path.exists(SA_PATH):
             import json as _json
+
             creds = service_account.Credentials.from_service_account_info(
                 _json.load(open(SA_PATH)),
                 scopes=["https://www.googleapis.com/auth/drive.readonly"],
@@ -328,13 +333,10 @@ def is_photo(file: dict) -> bool:
 
 
 def is_company_folder(file: dict) -> bool:
-    return (
-        file["mimeType"] == "application/vnd.google-apps.folder"
-        and (
-            file["name"].lower().strip() in COMPANY_FOLDER_NAMES
-            or file["name"].strip().startswith("02_")
-            or file["name"].strip().startswith("02 ")
-        )
+    return file["mimeType"] == "application/vnd.google-apps.folder" and (
+        file["name"].lower().strip() in COMPANY_FOLDER_NAMES
+        or file["name"].strip().startswith("02_")
+        or file["name"].strip().startswith("02 ")
     )
 
 
@@ -356,7 +358,15 @@ async def process_client(
     cid = client["id"]
     name = client["full_name"]
     folder_id = client["google_drive_folder_id"]
-    result = {"id": cid, "name": name, "address": False, "photo": False, "company": False, "docs": 0, "personal_docs": 0}
+    result = {
+        "id": cid,
+        "name": name,
+        "address": False,
+        "photo": False,
+        "company": False,
+        "docs": 0,
+        "personal_docs": 0,
+    }
 
     logger.info(f"[{cid}] {name} — folder {folder_id}")
 
@@ -373,7 +383,9 @@ async def process_client(
     photo_updated = False
 
     # Find standard subfolders
-    profile_folder = next((f for f in files if f["name"].strip() in ("00_Profile", "00Profile")), None)
+    profile_folder = next(
+        (f for f in files if f["name"].strip() in ("00_Profile", "00Profile")), None
+    )
     company_folder = next((f for f in files if is_company_folder(f)), None)
 
     # 1. Scan root for alamat/photo (legacy structure)
@@ -386,7 +398,9 @@ async def process_client(
                 if text:
                     logger.info(f"  → address (root txt): {text[:80]}")
                     if not dry_run:
-                        await conn.execute("UPDATE clients SET address = $1 WHERE id = $2", text, cid)
+                        await conn.execute(
+                            "UPDATE clients SET address = $1 WHERE id = $2", text, cid
+                        )
                     address_updated = True
                     result["address"] = True
         elif is_photo(f) and not photo_updated and not client["avatar_url"]:
@@ -412,7 +426,9 @@ async def process_client(
                         if text:
                             logger.info(f"  → address (txt): {text[:80]}")
                             if not dry_run:
-                                await conn.execute("UPDATE clients SET address = $1 WHERE id = $2", text, cid)
+                                await conn.execute(
+                                    "UPDATE clients SET address = $1 WHERE id = $2", text, cid
+                                )
                             address_updated = True
                             result["address"] = True
                     else:
@@ -420,7 +436,9 @@ async def process_client(
                         url = f.get("webViewLink", "")
                         logger.info(f"  → address (img link): {fname}")
                         if not dry_run:
-                            await conn.execute("UPDATE clients SET address = $1 WHERE id = $2", url, cid)
+                            await conn.execute(
+                                "UPDATE clients SET address = $1 WHERE id = $2", url, cid
+                            )
                         address_updated = True
                         result["address"] = True
 
@@ -431,7 +449,9 @@ async def process_client(
                     url = f.get("webViewLink") or f.get("webContentLink", "")
                     logger.info(f"  → avatar: {fname}")
                     if not dry_run:
-                        await conn.execute("UPDATE clients SET avatar_url = $1 WHERE id = $2", url, cid)
+                        await conn.execute(
+                            "UPDATE clients SET avatar_url = $1 WHERE id = $2", url, cid
+                        )
                     photo_updated = True
                     result["photo"] = True
 
@@ -450,14 +470,24 @@ async def process_client(
     }
     for section, name_variants in personal_folders.items():
         folder = next(
-            (f for f in files if f["mimeType"] == FOLDER_MIME and f["name"].strip() in name_variants),
+            (
+                f
+                for f in files
+                if f["mimeType"] == FOLDER_MIME and f["name"].strip() in name_variants
+            ),
             None,
         )
         if folder:
             folder_files = list_folder(service, folder["id"])
             if folder_files:
                 added = await ingest_personal_docs(
-                    conn, service, cid, folder["id"], section, folder_files, dry_run,
+                    conn,
+                    service,
+                    cid,
+                    folder["id"],
+                    section,
+                    folder_files,
+                    dry_run,
                 )
                 result["personal_docs"] += added
 
@@ -468,7 +498,13 @@ async def process_client(
             if f["mimeType"] == FOLDER_MIME:
                 sub = list_folder(service, f["id"])
                 added = await ingest_personal_docs(
-                    conn, service, cid, f["id"], f["name"], sub, dry_run,
+                    conn,
+                    service,
+                    cid,
+                    f["id"],
+                    f["name"],
+                    sub,
+                    dry_run,
                 )
                 result["personal_docs"] += added
                 continue
@@ -482,7 +518,8 @@ async def process_client(
             # Ingest as personal doc
             existing = await conn.fetchval(
                 "SELECT id FROM documents WHERE client_id = $1 AND file_name = $2",
-                cid, f["name"],
+                cid,
+                f["name"],
             )
             if not existing:
                 doc_type, doc_cat = guess_personal_category(f["name"], "00_Profile")
@@ -497,7 +534,12 @@ async def process_client(
                             storage_type, uploaded_by, status, created_at
                         ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW())
                         ON CONFLICT DO NOTHING""",
-                        cid, doc_type, doc_cat, f["name"], file_id, url,
+                        cid,
+                        doc_type,
+                        doc_cat,
+                        f["name"],
+                        file_id,
+                        url,
                     )
                 result["personal_docs"] += 1
 
@@ -515,7 +557,8 @@ async def process_client(
         # Check if already ingested
         existing = await conn.fetchval(
             "SELECT id FROM documents WHERE client_id = $1 AND file_name = $2",
-            cid, fname,
+            cid,
+            fname,
         )
         if existing:
             continue
@@ -531,7 +574,12 @@ async def process_client(
                     storage_type, uploaded_by, status, created_at
                 ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW())
                 ON CONFLICT DO NOTHING""",
-                cid, doc_type, doc_cat, fname, file_id, url,
+                cid,
+                doc_type,
+                doc_cat,
+                fname,
+                file_id,
+                url,
             )
         result["personal_docs"] += 1
 
@@ -561,9 +609,14 @@ async def ingest_personal_docs(
         if f["mimeType"] == FOLDER_MIME:
             sub_files = list_folder(service, f["id"])
             added += await ingest_personal_docs(
-                conn, service, client_id, f["id"],
+                conn,
+                service,
+                client_id,
+                f["id"],
                 f["name"],  # pass subfolder name as context
-                sub_files, dry_run, depth + 1,
+                sub_files,
+                dry_run,
+                depth + 1,
             )
             continue
 
@@ -579,7 +632,8 @@ async def ingest_personal_docs(
         # Dedup check
         existing = await conn.fetchval(
             "SELECT id FROM documents WHERE client_id = $1 AND file_name = $2",
-            client_id, name,
+            client_id,
+            name,
         )
         if existing:
             continue
@@ -597,7 +651,12 @@ async def ingest_personal_docs(
                     storage_type, uploaded_by, status, created_at
                 ) VALUES ($1, $2, $3, $4, $5, $6, 'google_drive', 'bulk_population', 'active', NOW())
                 ON CONFLICT DO NOTHING""",
-                client_id, doc_type, doc_category, name, file_id, url,
+                client_id,
+                doc_type,
+                doc_category,
+                name,
+                file_id,
+                url,
             )
         added += 1
 
@@ -664,7 +723,9 @@ async def process_company(
         )
 
     if not company_id:
-        logger.info(f"    ⚠️  no matching company found for '{pt_name}' — skipping (not creating placeholder)")
+        logger.info(
+            f"    ⚠️  no matching company found for '{pt_name}' — skipping (not creating placeholder)"
+        )
         return False
     else:
         logger.info(f"    found existing company id={company_id}")
@@ -673,7 +734,8 @@ async def process_company(
     if company_id and company_id != -1:
         existing_link = await conn.fetchval(
             "SELECT id FROM client_company_links WHERE client_id = $1 AND company_id = $2",
-            cid, company_id,
+            cid,
+            company_id,
         )
         if not existing_link:
             logger.info(f"    linking client {cid} → company {company_id} (role=shareholder)")
@@ -682,12 +744,15 @@ async def process_company(
                     """INSERT INTO client_company_links (client_id, company_id, role, is_primary, created_at)
                        VALUES ($1, $2, 'shareholder', false, NOW())
                        ON CONFLICT DO NOTHING""",
-                    cid, company_id,
+                    cid,
+                    company_id,
                 )
 
     # company_documents — recurse into subfolders
     docs_added = 0
-    docs_added += await ingest_company_docs(conn, service, company_id, company_folder["id"], company_files, dry_run)
+    docs_added += await ingest_company_docs(
+        conn, service, company_id, company_folder["id"], company_files, dry_run
+    )
     result["docs"] += docs_added
     return True
 
@@ -727,7 +792,8 @@ async def ingest_company_docs(
         # Check if already in company_documents
         existing = await conn.fetchval(
             "SELECT id FROM company_documents WHERE company_id = $1 AND file_name = $2",
-            company_id, name,
+            company_id,
+            name,
         )
         if existing:
             continue
@@ -742,7 +808,11 @@ async def ingest_company_docs(
                     storage_type, uploaded_by, created_at
                 ) VALUES ($1, $2, $3, $4, $5, 'google_drive', 'bulk_population', NOW())
                 ON CONFLICT DO NOTHING""",
-                company_id, category, name, file_id, url,
+                company_id,
+                category,
+                name,
+                file_id,
+                url,
             )
         added += 1
 
@@ -777,7 +847,8 @@ async def main(dry_run: bool, limit: int, client_id: int | None, min_id: int = 0
                    AND id >= $2
                    ORDER BY id
                    LIMIT $1""",
-                limit, min_id,
+                limit,
+                min_id,
             )
 
         logger.info(f"Processing {len(clients)} clients")
@@ -818,7 +889,11 @@ if __name__ == "__main__":
     parser.add_argument("--dry-run", action="store_true", help="Preview only, no DB writes")
     parser.add_argument("--limit", type=int, default=50, help="Max clients to process (default 50)")
     parser.add_argument("--client-id", type=int, default=None, help="Process single client by ID")
-    parser.add_argument("--min-id", type=int, default=0, help="Start from this client ID (inclusive)")
+    parser.add_argument(
+        "--min-id", type=int, default=0, help="Start from this client ID (inclusive)"
+    )
     args = parser.parse_args()
 
-    asyncio.run(main(dry_run=args.dry_run, limit=args.limit, client_id=args.client_id, min_id=args.min_id))
+    asyncio.run(
+        main(dry_run=args.dry_run, limit=args.limit, client_id=args.client_id, min_id=args.min_id)
+    )
