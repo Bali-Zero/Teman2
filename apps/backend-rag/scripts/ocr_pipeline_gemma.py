@@ -37,7 +37,7 @@ DB = (
     else "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
 )
 
-GEMMA_API_KEY = os.getenv("GEMMA_API_KEY", "")
+GEMMA_API_KEY = os.getenv("GEMMA_API_KEY", "AIzaSyAYyDrP3M349EfrOVyN8Vh_Pe7aTbANfx8")
 GEMMA_MODEL = "gemma-3-27b-it"
 GEMMA_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMMA_MODEL}:generateContent"
 
@@ -135,8 +135,8 @@ async def download_from_drive(file_id: str) -> bytes | None:
         return None
 
 
-def file_to_base64_image(file_bytes: bytes, file_name: str) -> tuple[str, str] | None:
-    """Convert file to base64 image. Returns (base64, mime_type) or None."""
+def file_to_base64_images(file_bytes: bytes, file_name: str) -> list[tuple[str, str]]:
+    """Convert file to list of (base64, mime_type) tuples. PDFs return ALL pages."""
     ext = Path(file_name).suffix.lower()
     is_pdf = ext == ".pdf" or file_bytes[:4] == b"%PDF"
     is_image = ext in IMAGE_EXTENSIONS
@@ -144,26 +144,26 @@ def file_to_base64_image(file_bytes: bytes, file_name: str) -> tuple[str, str] |
     if is_pdf:
         try:
             doc = fitz.open(stream=file_bytes, filetype="pdf")
-            # Check if text PDF first
-            doc[0].get_text().strip() if len(doc) > 0 else ""
-
-            # Adaptive zoom
             size_mb = len(file_bytes) / (1024 * 1024)
             zoom = 1.0 if size_mb > 5 else (1.5 if size_mb > 2 else 2.0)
-
-            pix = doc[0].get_pixmap(matrix=fitz.Matrix(zoom, zoom))
-            img_bytes = pix.tobytes("png")
+            pages = []
+            for page in doc:
+                pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
+                img_bytes = pix.tobytes("png")
+                pages.append((base64.b64encode(img_bytes).decode(), "image/png"))
             doc.close()
-            return base64.b64encode(img_bytes).decode(), "image/png"
+            if len(pages) > 1:
+                logger.info(f"    PDF → {len(pages)} pages")
+            return pages
         except Exception as e:
             logger.warning(f"PDF conversion failed: {e}")
-            return None
+            return []
 
     elif is_image:
         mime = "image/jpeg" if ext in (".jpg", ".jpeg") else f"image/{ext.lstrip('.')}"
-        return base64.b64encode(file_bytes).decode(), mime
+        return [(base64.b64encode(file_bytes).decode(), mime)]
 
-    return None
+    return []
 
 
 async def rate_limit():
@@ -182,15 +182,16 @@ async def rate_limit():
     RPM_WINDOW.append(time.time())
 
 
-async def call_gemma(prompt: str, image_b64: str, mime_type: str) -> str | None:
-    """Call Gemma 3 27B via Google AI API with image."""
+async def call_gemma(prompt: str, images: list[tuple[str, str]]) -> str | None:
+    """Call Gemini with prompt + one or more images [(b64, mime), ...]."""
     await rate_limit()
 
+    parts: list[dict] = [{"text": prompt}]
+    for img_b64, mime_type in images:
+        parts.append({"inline_data": {"mime_type": mime_type, "data": img_b64}})
+
     payload = {
-        "contents": [{"parts": [
-            {"text": prompt},
-            {"inline_data": {"mime_type": mime_type, "data": image_b64}},
-        ]}],
+        "contents": [{"parts": parts}],
         "generationConfig": {
             "temperature": 0.1,
             "maxOutputTokens": 4096,
@@ -198,7 +199,7 @@ async def call_gemma(prompt: str, image_b64: str, mime_type: str) -> str | None:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(f"{GEMMA_URL}?key={GEMMA_API_KEY}", json=payload)
 
             if resp.status_code == 429:
@@ -215,7 +216,7 @@ async def call_gemma(prompt: str, image_b64: str, mime_type: str) -> str | None:
             return text.strip() if text else None
 
     except httpx.TimeoutException:
-        logger.warning("    Gemma timeout (30s)")
+        logger.warning("    Gemma timeout (120s)")
         return None
     except Exception as e:
         logger.error(f"    Gemma error: {e}")
@@ -273,22 +274,20 @@ async def process_document(
             await conn.execute(f"UPDATE {table} SET ocr_status = 'failed', updated_at = NOW() WHERE id = $1", doc_id)
         return False
 
-    # 2. Convert to image
-    result = file_to_base64_image(file_bytes, file_name)
-    if not result:
+    # 2. Convert to images (all pages for PDF)
+    images = file_to_base64_images(file_bytes, file_name)
+    if not images:
         logger.warning("    ✗ Unsupported file type")
         if not dry_run:
             await conn.execute(f"UPDATE {table} SET ocr_status = 'skipped', updated_at = NOW() WHERE id = $1", doc_id)
         return False
-
-    img_b64, mime = result
 
     # 3. Call Gemma
     normalized = DOC_TYPE_ALIASES.get(doc_type.lower(), doc_type.lower())
     prompt = PROMPTS.get(normalized, DEFAULT_PROMPT)
 
     t0 = time.time()
-    raw = await call_gemma(prompt, img_b64, mime)
+    raw = await call_gemma(prompt, images)
     elapsed = time.time() - t0
 
     ocr_result = parse_json_response(raw)
