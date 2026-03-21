@@ -520,7 +520,10 @@ class TestFinalAnswerGeneration:
         )
 
         # Stub response should be replaced with fallback (in English)
-        assert "sorry" in result_state.final_answer.lower() or "understand" in result_state.final_answer.lower()
+        assert (
+            "sorry" in result_state.final_answer.lower()
+            or "understand" in result_state.final_answer.lower()
+        )
 
 
 # ============================================================================

@@ -5,7 +5,9 @@ import asyncpg
 
 
 async def run():
-    conn = await asyncpg.connect('postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara')
+    conn = await asyncpg.connect(
+        "postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara"
+    )
 
     fb_data = [
         {
@@ -21,15 +23,15 @@ async def run():
                     "Label Higiene Sanitasi Pangan (HSP)",
                     "Sertifikat Laik Sehat (SLS)",
                     "SKPL A/B/C - per vendita alcolici (se applicabile)",
-                    "Sertifikasi Halal (obbligatorio secondo scadenze governative)"
+                    "Sertifikasi Halal (obbligatorio secondo scadenze governative)",
                 ],
                 "obligations": [
                     "Laporan LKPM trimestrale",
                     "Conformità agli standard di sicurezza alimentare",
-                    "Sertifikasi Usaha Restoran via LSPr (per PMA)"
+                    "Sertifikasi Usaha Restoran via LSPr (per PMA)",
                 ],
-                "pma_implications": "TERBUKA (100% Foreign Ownership allowed). Investimento minimo 10 Miliar IDR (escluso terreno/edifici) richiesto per PT PMA."
-            }
+                "pma_implications": "TERBUKA (100% Foreign Ownership allowed). Investimento minimo 10 Miliar IDR (escluso terreno/edifici) richiesto per PT PMA.",
+            },
         },
         {
             "code": "56301",
@@ -43,15 +45,15 @@ async def run():
                 "pb_umku": [
                     "Surat Keterangan Penjualan Langsung (SKPL) - Obbligatorio",
                     "Label Higiene Sanitasi Pangan (HSP)",
-                    "Izin Gangguan (UUG/HO) - spesso richiesto a livello locale"
+                    "Izin Gangguan (UUG/HO) - spesso richiesto a livello locale",
                 ],
                 "obligations": [
                     "Laporan LKPM trimestrale",
                     "Restrizioni su zone di vendita (distanza da luoghi di culto/scuole)",
-                    "Monitoraggio dell'età dei clienti (min. 21 anni per alcolici)"
+                    "Monitoraggio dell'età dei clienti (min. 21 anni per alcolici)",
                 ],
-                "pma_implications": "TERBUKA (100% Foreign Ownership allowed). Soggetto a tassazione specifica (Pajak Barang dan Jasa Tertentu - PBJT)."
-            }
+                "pma_implications": "TERBUKA (100% Foreign Ownership allowed). Soggetto a tassazione specifica (Pajak Barang dan Jasa Tertentu - PBJT).",
+            },
         },
         {
             "code": "56303",
@@ -65,15 +67,15 @@ async def run():
                 "pb_umku": [
                     "Label Higiene Sanitasi Pangan (HSP)",
                     "Sertifikat Laik Sehat (SLS)",
-                    "Sertifikasi Halal"
+                    "Sertifikasi Halal",
                 ],
                 "obligations": [
                     "Laporan LKPM trimestrale",
-                    "Mantenimento degli standard di servizio e pulizia"
+                    "Mantenimento degli standard di servizio e pulizia",
                 ],
-                "pma_implications": "TERBUKA (100% Foreign Ownership allowed). Spesso utilizzato per modelli di business più agili rispetto al ristorante."
-            }
-        }
+                "pma_implications": "TERBUKA (100% Foreign Ownership allowed). Spesso utilizzato per modelli di business più agili rispetto al ristorante.",
+            },
+        },
     ]
 
     sql = """
@@ -86,15 +88,23 @@ async def run():
     for item in fb_data:
         entity_id = f"kbli:{item['code']}"
         props = {
-            'kode': item['code'],
-            'pma_status': 'TERBUKA',
-            'expert_legal': item['expert_legal']
+            "kode": item["code"],
+            "pma_status": "TERBUKA",
+            "expert_legal": item["expert_legal"],
         }
 
-        await conn.execute(sql, entity_id, 'kbli', f"KBLI {item['code']}: {item['name']}", item['desc'], json.dumps(props))
+        await conn.execute(
+            sql,
+            entity_id,
+            "kbli",
+            f"KBLI {item['code']}: {item['name']}",
+            item["desc"],
+            json.dumps(props),
+        )
         print(f"✅ Arricchito {entity_id}: F&B Expert Data")
 
     await conn.close()
+
 
 if __name__ == "__main__":
     asyncio.run(run())

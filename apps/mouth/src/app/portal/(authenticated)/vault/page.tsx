@@ -13,6 +13,7 @@ import {
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import type { PortalDocument } from "@/lib/api/portal/portal.types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,11 @@ export default function VaultPage() {
       setDocuments(docs);
     } catch (err) {
       error("Failed to load documents", "Please try again later");
-      console.error(err);
+      logger.error(
+        "Failed to load documents",
+        { component: "VaultPage", action: "loadDocuments" },
+        err as Error,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +89,11 @@ export default function VaultPage() {
       e.target.value = "";
     } catch (err) {
       error("Upload failed", "Could not upload document. Please try again.");
-      console.error(err);
+      logger.error(
+        "Upload failed",
+        { component: "VaultPage", action: "handleFileUpload" },
+        err as Error,
+      );
     } finally {
       setIsUploading(false);
     }
@@ -106,7 +115,10 @@ export default function VaultPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -116,19 +128,33 @@ export default function VaultPage() {
       {/* Header */}
       <section>
         <h1 className="text-2xl font-bold tracking-tight">Document Vault</h1>
-        <p style={{ color: "var(--bz-text-2)" }}>Manage your important documents</p>
+        <p style={{ color: "var(--bz-text-2)" }}>
+          Manage your important documents
+        </p>
       </section>
 
       {/* Upload Section */}
-      <section className="rounded-lg border border-dashed p-6 text-center" style={{ borderColor: "rgba(201,169,110,0.4)", background: "rgba(201,169,110,0.05)" }}>
+      <section
+        className="rounded-lg border border-dashed p-6 text-center"
+        style={{
+          borderColor: "rgba(201,169,110,0.4)",
+          background: "rgba(201,169,110,0.05)",
+        }}
+      >
         <label
           htmlFor="file-upload"
           className="flex flex-col items-center gap-2 cursor-pointer"
         >
           {isUploading ? (
-            <Loader2 className="w-10 h-10 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+            <Loader2
+              className="w-10 h-10 animate-spin"
+              style={{ color: "var(--bz-accent-warm)" }}
+            />
           ) : (
-            <Upload className="w-10 h-10" style={{ color: "var(--bz-accent-warm)" }} />
+            <Upload
+              className="w-10 h-10"
+              style={{ color: "var(--bz-accent-warm)" }}
+            />
           )}
           <div className="text-sm font-medium">
             {isUploading ? "Uploading..." : "Click to upload document"}
@@ -163,9 +189,14 @@ export default function VaultPage() {
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors"
-              style={selectedCategory === cat
-                ? { background: "var(--bz-accent-warm)", color: "#0c0c0e" }
-                : { background: "var(--bz-surface)", color: "var(--bz-text-2)" }}
+              style={
+                selectedCategory === cat
+                  ? { background: "var(--bz-accent-warm)", color: "#0c0c0e" }
+                  : {
+                      background: "var(--bz-surface)",
+                      color: "var(--bz-text-2)",
+                    }
+              }
             >
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
             </button>
@@ -176,7 +207,10 @@ export default function VaultPage() {
       {/* Documents List */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold" style={{ color: "var(--bz-text-2)" }}>
+          <h2
+            className="text-sm font-semibold"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             {filteredDocs.length} Document{filteredDocs.length !== 1 ? "s" : ""}
           </h2>
           {(searchQuery || selectedCategory !== "all") && (
@@ -195,7 +229,10 @@ export default function VaultPage() {
         </div>
 
         {filteredDocs.length === 0 ? (
-          <div className="text-center py-12" style={{ color: "var(--bz-text-2)" }}>
+          <div
+            className="text-center py-12"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p>No documents found</p>
           </div>
@@ -205,11 +242,20 @@ export default function VaultPage() {
               <div
                 key={doc.id}
                 className="rounded-lg border p-4 transition-colors"
-                style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+                style={{
+                  background: "var(--bz-card)",
+                  borderColor: "var(--bz-border)",
+                }}
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-md" style={{ background: "rgba(201,169,110,0.12)" }}>
-                    <FileText className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+                  <div
+                    className="p-2 rounded-md"
+                    style={{ background: "rgba(201,169,110,0.12)" }}
+                  >
+                    <FileText
+                      className="w-5 h-5"
+                      style={{ color: "var(--bz-accent-warm)" }}
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-sm truncate">
@@ -222,19 +268,36 @@ export default function VaultPage() {
                       >
                         {doc.status}
                       </span>
-                      <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                      <span
+                        className="text-xs"
+                        style={{ color: "var(--bz-text-2)" }}
+                      >
                         {doc.category}
                       </span>
-                      <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>•</span>
-                      <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                      <span
+                        className="text-xs"
+                        style={{ color: "var(--bz-text-2)" }}
+                      >
+                        •
+                      </span>
+                      <span
+                        className="text-xs"
+                        style={{ color: "var(--bz-text-2)" }}
+                      >
                         {doc.size}
                       </span>
                     </div>
-                    <p className="text-xs mt-1" style={{ color: "var(--bz-text-2)" }}>
+                    <p
+                      className="text-xs mt-1"
+                      style={{ color: "var(--bz-text-2)" }}
+                    >
                       Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
                     </p>
                     {doc.expiryDate && (
-                      <p className="text-xs mt-0.5" style={{ color: "#fbbf24" }}>
+                      <p
+                        className="text-xs mt-0.5"
+                        style={{ color: "#fbbf24" }}
+                      >
                         Expires: {new Date(doc.expiryDate).toLocaleDateString()}
                       </p>
                     )}

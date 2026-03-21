@@ -1,8 +1,15 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { Badge, Button, Card, CardContent, CardTitle } from '@/components/ui/primitives';
-import { Activity, RefreshCcw, Terminal } from 'lucide-react';
-import { cn } from '@/lib/utils';
+"use client";
+import { useState, useEffect } from "react";
+import { error as logError } from "@/lib/logger";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardTitle,
+} from "@/components/ui/primitives";
+import { Activity, RefreshCcw, Terminal } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function ActivityPage() {
   const [activities, setActivities] = useState<any[]>([]);
@@ -13,7 +20,7 @@ export default function ActivityPage() {
   const fetchActivity = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/postgres/activity');
+      const res = await fetch("/api/postgres/activity");
       const data = await res.json();
       if (data.activities) {
         setActivities(data.activities);
@@ -24,8 +31,8 @@ export default function ActivityPage() {
       }
       setLastUpdated(new Date());
     } catch (e) {
-      console.error(e);
-      setError('Failed to fetch activity');
+      logError(e as string);
+      setError("Failed to fetch activity");
     } finally {
       setLoading(false);
     }
@@ -47,16 +54,18 @@ export default function ActivityPage() {
             Agent Activity Stream
           </h1>
           <p className="text-muted-foreground mt-2">
-            Live monitoring of agent actions, decisions, and tool executions. Auto-refreshes every
-            5s.
+            Live monitoring of agent actions, decisions, and tool executions.
+            Auto-refreshes every 5s.
           </p>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-xs text-muted-foreground">
-            Updated: {lastUpdated?.toLocaleTimeString() ?? '...'}
+            Updated: {lastUpdated?.toLocaleTimeString() ?? "..."}
           </span>
           <Button variant="outline" size="sm" onClick={fetchActivity}>
-            <RefreshCcw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
+            <RefreshCcw
+              className={cn("h-4 w-4 mr-2", loading && "animate-spin")}
+            />
             Refresh
           </Button>
         </div>
@@ -68,7 +77,8 @@ export default function ActivityPage() {
           <h3 className="text-lg font-medium">No Activity Log Found</h3>
           <p className="text-muted-foreground mt-2">{error}</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Ensure the <code>activity_log</code> table exists in your PostgreSQL database.
+            Ensure the <code>activity_log</code> table exists in your PostgreSQL
+            database.
           </p>
         </div>
       ) : (
@@ -80,7 +90,10 @@ export default function ActivityPage() {
           )}
 
           {activities.map((act, i) => (
-            <Card key={act.id || i} className="overflow-hidden border-l-4 border-l-primary/50">
+            <Card
+              key={act.id || i}
+              className="overflow-hidden border-l-4 border-l-primary/50"
+            >
               <CardContent className="p-4 flex items-start gap-4">
                 <div className="min-w-[120px] text-sm text-muted-foreground">
                   {new Date(act.created_at).toLocaleTimeString()}
@@ -88,17 +101,25 @@ export default function ActivityPage() {
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold text-sm flex items-center gap-2">
-                      {act.agent_name || 'System'}
-                      <Badge variant={act.status === 'ERROR' ? 'destructive' : 'secondary'}>
-                        {act.action || 'Unknown'}
+                      {act.agent_name || "System"}
+                      <Badge
+                        variant={
+                          act.status === "ERROR" ? "destructive" : "secondary"
+                        }
+                      >
+                        {act.action || "Unknown"}
                       </Badge>
                     </h4>
                     {act.duration_ms && (
-                      <span className="text-xs font-mono">{act.duration_ms}ms</span>
+                      <span className="text-xs font-mono">
+                        {act.duration_ms}ms
+                      </span>
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap font-mono bg-muted/30 p-2 rounded">
-                    {typeof act.details === 'object' ? JSON.stringify(act.details) : act.details}
+                    {typeof act.details === "object"
+                      ? JSON.stringify(act.details)
+                      : act.details}
                   </p>
                 </div>
               </CardContent>

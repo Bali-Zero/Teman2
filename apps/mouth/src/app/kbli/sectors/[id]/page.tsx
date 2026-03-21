@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getSections, getCodesBySection, getSectionMeta } from "@/lib/kbli-data";
+import {
+  getSections,
+  getCodesBySection,
+  getSectionMeta,
+} from "@/lib/kbli-data";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { KBLICard } from "@/components/kbli/KBLICard";
 
@@ -68,7 +72,8 @@ export default async function SectorDetailPage({
           </div>
         </div>
         <p className="mt-3 text-lg text-[var(--foreground-secondary)]">
-          {meta.description} — {codes.length} business codes in Section {id.toUpperCase()}.
+          {meta.description} — {codes.length} business codes in Section{" "}
+          {id.toUpperCase()}.
         </p>
       </div>
 

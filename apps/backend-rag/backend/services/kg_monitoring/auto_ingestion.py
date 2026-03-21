@@ -595,12 +595,10 @@ Full Text:
 
         try:
             async with self.db_pool.acquire() as conn:
-                query = (
-                    f"""
+                query = f"""
                     SELECT * FROM kg_ingestion_results
                     WHERE started_at > NOW() - INTERVAL '{hours} hours'
                 """
-                )
 
                 if status:
                     query += f" AND status = '{status.value}'"

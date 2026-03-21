@@ -17,11 +17,12 @@ def generate_token(secret: str, user_email: str = "test@nuzantara.com", expires_
         "email": user_email,
         "iat": datetime.utcnow(),
         "exp": datetime.utcnow() + timedelta(hours=expires_hours),
-        "type": "access"
+        "type": "access",
     }
 
     token = jwt.encode(payload, secret, algorithm="HS256")
     return token
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

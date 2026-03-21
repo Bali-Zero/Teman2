@@ -74,13 +74,21 @@ def fallback_manager():
 
 @pytest.fixture
 def routing_stats():
-    """Create RoutingStatsService mock"""
+    """Create stateful RoutingStatsService mock"""
+    state: dict = {"total_routings": 0, "collection_stats": {}, "failed_routings": 0}
     stats = MagicMock()
-    stats.record_routing = MagicMock()
-    stats.record_fallback = MagicMock()
-    stats.get_stats = MagicMock(
-        return_value={"total_routings": 0, "collection_stats": {}, "failed_routings": 0}
-    )
+
+    def _record_routing(*args: object, **kwargs: object) -> None:
+        state["total_routings"] += 1
+        coll = kwargs.get("collection", "unknown")
+        state["collection_stats"].setdefault(coll, 0)
+        state["collection_stats"][coll] += 1
+        if not kwargs.get("success", True):
+            state["failed_routings"] += 1
+
+    stats.record_routing.side_effect = _record_routing
+    stats.record_fallback.side_effect = lambda *a, **kw: None
+    stats.get_stats.side_effect = lambda: dict(state)
     return stats
 
 

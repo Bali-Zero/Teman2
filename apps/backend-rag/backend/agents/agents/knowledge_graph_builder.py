@@ -15,9 +15,9 @@ from typing import Any
 
 import asyncpg
 
-from ..services.kg_extractors import EntityExtractor, RelationshipExtractor
-from ..services.kg_repository import KnowledgeGraphRepository
-from ..services.kg_schema import KnowledgeGraphSchema
+from backend.agents.services.kg_extractors import EntityExtractor, RelationshipExtractor
+from backend.agents.services.kg_repository import KnowledgeGraphRepository
+from backend.agents.services.kg_schema import KnowledgeGraphSchema
 
 try:
     from backend.llm.zantara_ai_client import ZantaraAIClient

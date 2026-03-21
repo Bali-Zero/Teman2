@@ -30,7 +30,9 @@ from dotenv import load_dotenv
 load_dotenv(BACKEND_PATH / ".env", override=True)
 
 # Ensure GOOGLE_API_KEY is set for Gemini Vision (re-check after dotenv)
-if not os.environ.get("GOOGLE_API_KEY") or "your-google-api-key" in os.environ.get("GOOGLE_API_KEY"):
+if not os.environ.get("GOOGLE_API_KEY") or "your-google-api-key" in os.environ.get(
+    "GOOGLE_API_KEY"
+):
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if gemini_key:
         os.environ["GOOGLE_API_KEY"] = gemini_key
@@ -38,6 +40,7 @@ if not os.environ.get("GOOGLE_API_KEY") or "your-google-api-key" in os.environ.g
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("reingest_kepmen_ocr")
+
 
 async def run_reingestion():
     try:
@@ -60,7 +63,9 @@ async def run_reingestion():
     logger.info(f"✅ OCR completed: {len(raw_text)} characters extracted in {duration_ocr:.2f}s")
 
     if len(raw_text) < 10000:
-        logger.warning(f"⚠️ Extracted text still seems small ({len(raw_text)} chars). Check PDF quality.")
+        logger.warning(
+            f"⚠️ Extracted text still seems small ({len(raw_text)} chars). Check PDF quality."
+        )
 
     # 2. Use LegalIngestionService but we'll patch the text if needed or just use it normally
     # Actually, LegalIngestionService.ingest_legal_document calls auto_detect_and_parse.
@@ -85,11 +90,15 @@ async def run_reingestion():
     document_title = metadata.get("full_title", "Kepmen 228 Tahun 2019")
 
     # c. Tier
-    tier = service.classifier.classify_book_tier(document_title, "Pemerintah Indonesia", cleaned_text[:2000])
+    tier = service.classifier.classify_book_tier(
+        document_title, "Pemerintah Indonesia", cleaned_text[:2000]
+    )
     min_level = service.classifier.get_min_access_level(tier)
 
     # d. Hierarchical Indexing
-    doc_id = f"{metadata.get('type_abbrev', 'Kepmen')}_{metadata.get('number', '228')}_{metadata.get('year', '2019')}".replace(" ", "_").replace("/", "_")
+    doc_id = f"{metadata.get('type_abbrev', 'Kepmen')}_{metadata.get('number', '228')}_{metadata.get('year', '2019')}".replace(
+        " ", "_"
+    ).replace("/", "_")
 
     base_metadata = {
         "book_title": document_title,
@@ -108,7 +117,7 @@ async def run_reingestion():
         "number": metadata.get("number"),
         "year": metadata.get("year"),
         "topic": metadata.get("topic"),
-        "document_id": doc_id # For KG filtering
+        "document_id": doc_id,  # For KG filtering
     }
 
     indexing_result = await service.indexer.index_legal_document(
@@ -117,7 +126,10 @@ async def run_reingestion():
 
     logger.info("✅ Re-ingestion complete!")
     logger.info(f"   - Chunks: {indexing_result['chunks_indexed']}")
-    logger.info(f"   - Structure: {indexing_result['total_bab']} BAB, {indexing_result['total_pasal']} Pasal")
+    logger.info(
+        f"   - Structure: {indexing_result['total_bab']} BAB, {indexing_result['total_pasal']} Pasal"
+    )
+
 
 if __name__ == "__main__":
     asyncio.run(run_reingestion())

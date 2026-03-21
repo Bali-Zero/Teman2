@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
+
 class TestRateLimiter:
     """Unit tests for RateLimiter"""
 

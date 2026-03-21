@@ -498,9 +498,9 @@ _auto_crm_instance: AutoCRMService | None = None
 
 
 def get_auto_crm_service(
-    ai_client: Any=None,
+    ai_client: Any = None,
     db_pool: "asyncpg.Pool | None" = None,
-    telegram_service: Any=None,
+    telegram_service: Any = None,
 ) -> AutoCRMService:
     """
     Get or create singleton auto-CRM service instance

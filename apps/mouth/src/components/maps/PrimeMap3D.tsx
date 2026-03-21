@@ -554,7 +554,13 @@ export default function PrimeMap3D() {
     if (map3DElement && layers.zoneColors) {
       toggleZoneColors(true, layers.extrusion, highlightedZones);
     }
-  }, [map3DElement, toggleZoneColors, layers.extrusion, layers.zoneColors, highlightedZones]);
+  }, [
+    map3DElement,
+    toggleZoneColors,
+    layers.extrusion,
+    layers.zoneColors,
+    highlightedZones,
+  ]);
 
   useEffect(() => {
     if (!isLoaded || !mapContainerRef.current) return;

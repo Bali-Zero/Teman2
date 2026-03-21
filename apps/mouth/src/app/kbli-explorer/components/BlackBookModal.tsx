@@ -2,7 +2,14 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Lock, CheckCircle2, Send, ShieldCheck, FileText } from "lucide-react";
+import {
+  X,
+  Lock,
+  CheckCircle2,
+  Send,
+  ShieldCheck,
+  FileText,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface BlackBookModalProps {
@@ -11,7 +18,11 @@ interface BlackBookModalProps {
   detectedCode?: string;
 }
 
-export default function BlackBookModal({ isOpen, onClose, detectedCode }: BlackBookModalProps) {
+export default function BlackBookModal({
+  isOpen,
+  onClose,
+  detectedCode,
+}: BlackBookModalProps) {
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsApp] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -26,7 +37,7 @@ export default function BlackBookModal({ isOpen, onClose, detectedCode }: BlackB
 
     setIsLoading(true);
     // Simulate API call to CRM
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsLoading(false);
     setSubmitted(true);
     toast.success("Intelligence Dossier sent to your inbox.");
@@ -60,7 +71,10 @@ export default function BlackBookModal({ isOpen, onClose, detectedCode }: BlackB
                   Intelligence Briefing: RESTRICTED
                 </span>
               </div>
-              <button onClick={onClose} className="text-[#555] hover:text-white transition-colors">
+              <button
+                onClick={onClose}
+                className="text-[#555] hover:text-white transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -73,8 +87,12 @@ export default function BlackBookModal({ isOpen, onClose, detectedCode }: BlackB
                       {/* Black Book Cover Mini representation */}
                       <div className="absolute inset-0 bg-[#050507] border border-[#D4B483]/40 rounded-sm shadow-2xl transform -rotate-3" />
                       <div className="absolute inset-0 bg-[#0A0C10] border border-[#D4B483]/20 rounded-sm shadow-xl flex flex-col items-center justify-center p-2 text-center">
-                        <div className="text-[6px] uppercase tracking-[0.2em] text-[#D4B483] mb-1">KBLI 2025</div>
-                        <div className="text-[8px] font-serif text-white leading-tight">BLACK BOOK</div>
+                        <div className="text-[6px] uppercase tracking-[0.2em] text-[#D4B483] mb-1">
+                          KBLI 2025
+                        </div>
+                        <div className="text-[8px] font-serif text-white leading-tight">
+                          BLACK BOOK
+                        </div>
                         <div className="mt-2 w-8 h-[1px] bg-[#D4B483]/30" />
                       </div>
                     </div>
@@ -82,14 +100,20 @@ export default function BlackBookModal({ isOpen, onClose, detectedCode }: BlackB
                       Unlock the Black Book.
                     </h2>
                     <p className="text-sm text-[#888] leading-relaxed">
-                      We have identified {detectedCode ? `issues with KBLI ${detectedCode}` : "critical vulnerabilities"} in your current NIB. 
-                      Unlock our restricted dossier on the 2025 migration successor codes and compliance moats.
+                      We have identified{" "}
+                      {detectedCode
+                        ? `issues with KBLI ${detectedCode}`
+                        : "critical vulnerabilities"}{" "}
+                      in your current NIB. Unlock our restricted dossier on the
+                      2025 migration successor codes and compliance moats.
                     </p>
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-[10px] uppercase tracking-widest text-[#555] mb-2 px-1">Business Email</label>
+                      <label className="block text-[10px] uppercase tracking-widest text-[#555] mb-2 px-1">
+                        Business Email
+                      </label>
                       <input
                         type="email"
                         required
@@ -100,7 +124,9 @@ export default function BlackBookModal({ isOpen, onClose, detectedCode }: BlackB
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-widest text-[#555] mb-2 px-1">WhatsApp Number</label>
+                      <label className="block text-[10px] uppercase tracking-widest text-[#555] mb-2 px-1">
+                        WhatsApp Number
+                      </label>
                       <input
                         type="tel"
                         required
@@ -126,7 +152,8 @@ export default function BlackBookModal({ isOpen, onClose, detectedCode }: BlackB
                     </button>
                   </form>
                   <p className="text-[9px] text-[#444] text-center mt-6 uppercase tracking-wider leading-relaxed">
-                    By requesting access, you agree to a compliance audit by Bali Zero. <br />
+                    By requesting access, you agree to a compliance audit by
+                    Bali Zero. <br />
                     Intelligence is delivered via secure email.
                   </p>
                 </>
@@ -139,10 +166,13 @@ export default function BlackBookModal({ isOpen, onClose, detectedCode }: BlackB
                   <div className="w-16 h-16 bg-[#D4B483]/10 border border-[#D4B483]/20 rounded-full flex items-center justify-center mx-auto mb-6 text-[#D4B483]">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h2 className="text-2xl font-serif text-white mb-4">Dossier Unlocked.</h2>
+                  <h2 className="text-2xl font-serif text-white mb-4">
+                    Dossier Unlocked.
+                  </h2>
                   <p className="text-[#888] text-sm leading-relaxed mb-8">
-                    The KBLI 2025 Black Book has been dispatched to <span className="text-[#D4B483]">{email}</span>. 
-                    Our team is also reviewing the status of your company codes.
+                    The KBLI 2025 Black Book has been dispatched to{" "}
+                    <span className="text-[#D4B483]">{email}</span>. Our team is
+                    also reviewing the status of your company codes.
                   </p>
                   <div className="space-y-3">
                     <button

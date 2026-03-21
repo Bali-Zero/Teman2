@@ -172,7 +172,8 @@ const KBLIInspector = ({
         {data.intel && (
           <section className="space-y-6">
             <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
-              <Activity size={12} className="text-blue-400" /> 2026 Business Intelligence
+              <Activity size={12} className="text-blue-400" /> 2026 Business
+              Intelligence
             </h3>
 
             <div className="grid grid-cols-1 gap-4">

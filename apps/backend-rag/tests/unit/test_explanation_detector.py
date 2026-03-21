@@ -6,7 +6,6 @@ Tests the detection of explanation level (simple/expert/standard) and alternativ
 Note: Uses try/except for imports to gracefully handle conflicts with other tests.
 """
 
-
 import pytest
 
 # Attempt to import communication utilities

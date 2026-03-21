@@ -35,18 +35,18 @@ except ImportError:
         return subprocess.run(
             ["git", "checkout", "-b", branch], cwd=cwd, check=True, capture_output=True
         )
+
     def safe_git_checkout(branch, cwd=None):
         return subprocess.run(
             ["git", "checkout", branch], cwd=cwd, check=False, capture_output=True
         )
+
     def safe_git_add(files, cwd=None):
-        return subprocess.run(
-            ["git", "add"] + files, cwd=cwd, check=True, timeout=10.0
-        )
+        return subprocess.run(["git", "add"] + files, cwd=cwd, check=True, timeout=10.0)
+
     def safe_git_commit(message, cwd=None):
-        return subprocess.run(
-            ["git", "commit", "-m", message], cwd=cwd, check=True, timeout=10.0
-        )
+        return subprocess.run(["git", "commit", "-m", message], cwd=cwd, check=True, timeout=10.0)
+
 
 logger = logging.getLogger(__name__)
 

@@ -1,23 +1,86 @@
 {
-  "generated_at": "2026-03-16",
+  "generated_at": "2026-03-21",
   "date_range": {
-    "start": "2026-03-09",
-    "end": "2026-03-16"
+    "start": "2026-03-14",
+    "end": "2026-03-21"
   },
   "site_url": "https://balizero.com",
   "data_sources": {
-    "gsc": "demo",
-    "analytics": "skipped"
+    "gsc": "real",
+    "analytics": "real"
   },
   "gsc_summary": {
-    "total_queries": 1,
+    "total_queries": 19,
     "top_queries": [
       {
-        "query": "bali company registration",
-        "clicks": 120,
-        "impressions": 800,
-        "ctr": 0.15,
-        "position": 3.2
+        "query": "bali zero",
+        "clicks": 3,
+        "impressions": 23,
+        "ctr": 0.1304,
+        "position": 1.9
+      },
+      {
+        "query": "balizero",
+        "clicks": 1,
+        "impressions": 2,
+        "ctr": 0.5,
+        "position": 1.5
+      },
+      {
+        "query": "\"constitutional ai 2.0\" anthropic",
+        "clicks": 0,
+        "impressions": 11,
+        "ctr": 0,
+        "position": 5.6
+      },
+      {
+        "query": "alcohol license",
+        "clicks": 0,
+        "impressions": 5,
+        "ctr": 0,
+        "position": 26.4
+      },
+      {
+        "query": "alcohol license for restaurant",
+        "clicks": 0,
+        "impressions": 4,
+        "ctr": 0,
+        "position": 63.5
+      },
+      {
+        "query": "balazuocom",
+        "clicks": 0,
+        "impressions": 2,
+        "ctr": 0,
+        "position": 2
+      },
+      {
+        "query": "bali visa agency",
+        "clicks": 0,
+        "impressions": 1,
+        "ctr": 0,
+        "position": 48
+      },
+      {
+        "query": "bali zero visa",
+        "clicks": 0,
+        "impressions": 3,
+        "ctr": 0,
+        "position": 1.7
+      },
+      {
+        "query": "business establishment services",
+        "clicks": 0,
+        "impressions": 1,
+        "ctr": 0,
+        "position": 17
+      },
+      {
+        "query": "business license indonesia",
+        "clicks": 0,
+        "impressions": 11,
+        "ctr": 0,
+        "position": 39.2
       }
     ],
     "kbli_related_queries": []
@@ -32,7 +95,85 @@
       "01115"
     ]
   },
-  "critical_gaps": [],
+  "critical_gaps": [
+    {
+      "query": "alcohol license",
+      "clicks": 0,
+      "impressions": 5,
+      "ctr": 0,
+      "position": 26.4
+    },
+    {
+      "query": "alcohol license for restaurant",
+      "clicks": 0,
+      "impressions": 4,
+      "ctr": 0,
+      "position": 63.5
+    },
+    {
+      "query": "bali visa agency",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 48
+    },
+    {
+      "query": "business establishment services",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 17
+    },
+    {
+      "query": "business license indonesia",
+      "clicks": 0,
+      "impressions": 11,
+      "ctr": 0,
+      "position": 39.2
+    },
+    {
+      "query": "company registration bali",
+      "clicks": 0,
+      "impressions": 5,
+      "ctr": 0,
+      "position": 13
+    },
+    {
+      "query": "foreign driving license conversion indonesia",
+      "clicks": 0,
+      "impressions": 5,
+      "ctr": 0,
+      "position": 11.2
+    },
+    {
+      "query": "indonesia business license",
+      "clicks": 0,
+      "impressions": 8,
+      "ctr": 0,
+      "position": 39.9
+    },
+    {
+      "query": "indonesia citizenship by investment 2026",
+      "clicks": 0,
+      "impressions": 3,
+      "ctr": 0,
+      "position": 10.3
+    },
+    {
+      "query": "license holder in indonesia",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 59
+    },
+    {
+      "query": "suwung landfill",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 11
+    }
+  ],
   "action_items": [
     {
       "priority": "HIGH",
@@ -46,7 +187,7 @@
     },
     {
       "priority": "MEDIUM",
-      "action": "Fix 0 queries with position >10 and 0 clicks",
+      "action": "Fix 11 queries with position >10 and 0 clicks",
       "reason": "High impression / zero click = metadata or content gap"
     },
     {
@@ -54,5 +195,27 @@
       "action": "Update llms.txt with latest service pricing",
       "reason": "AI crawlers (GPT, Gemini) reference llms.txt for structured answers"
     }
-  ]
+  ],
+  "analytics_data": {
+    "dimensionHeaders": [
+      {
+        "name": "pagePath"
+      }
+    ],
+    "metricHeaders": [
+      {
+        "name": "sessions",
+        "type": "TYPE_INTEGER"
+      },
+      {
+        "name": "bounceRate",
+        "type": "TYPE_FLOAT"
+      }
+    ],
+    "metadata": {
+      "currencyCode": "USD",
+      "timeZone": "Etc/GMT-8"
+    },
+    "kind": "analyticsData#runReport"
+  }
 }

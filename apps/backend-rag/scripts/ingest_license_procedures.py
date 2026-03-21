@@ -230,14 +230,18 @@ async def ingest_files():
     for query in test_queries:
         logger.info(f"\n🔍 Query: '{query}'")
         result = await search_test(query, embedder, bm25)
-        points = result.get("result", {}).get("points", []) if isinstance(result.get("result"), dict) else result.get("result", [])
+        points = (
+            result.get("result", {}).get("points", [])
+            if isinstance(result.get("result"), dict)
+            else result.get("result", [])
+        )
         if points:
             for i, point in enumerate(points[:3]):
                 payload = point.get("payload", {})
                 score = point.get("score", 0)
                 title = payload.get("title", "N/A")
                 text_preview = payload.get("text", "")[:150].replace("\n", " ")
-                logger.info(f"  #{i+1} [score={score:.4f}] {title}")
+                logger.info(f"  #{i + 1} [score={score:.4f}] {title}")
                 logger.info(f"      {text_preview}...")
         else:
             logger.info("  ❌ No results found")

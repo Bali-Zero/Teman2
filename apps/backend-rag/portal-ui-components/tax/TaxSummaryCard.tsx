@@ -10,14 +10,14 @@
  * - Auto-refresh every 5 minutes
  */
 
-'use client';
+"use client";
 
-import React from 'react';
-import useSWR from 'swr';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { AlertCircle, FileText, DollarSign } from 'lucide-react';
-import { formatCurrency } from '@/lib/formatters';
+import React from "react";
+import useSWR from "swr";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, FileText, DollarSign } from "lucide-react";
+import { formatCurrency } from "@/lib/formatters";
 
 interface TaxSummary {
   total_obligations: number;
@@ -35,10 +35,10 @@ interface TaxSummaryCardProps {
 const fetcher = (url: string) =>
   fetch(url, {
     headers: {
-      Authorization: `Bearer ${localStorage.getItem('portal_jwt')}`,
+      Authorization: `Bearer ${localStorage.getItem("portal_jwt")}`,
     },
   }).then((res) => {
-    if (!res.ok) throw new Error('Failed to fetch tax summary');
+    if (!res.ok) throw new Error("Failed to fetch tax summary");
     return res.json();
   });
 
@@ -49,7 +49,7 @@ export function TaxSummaryCard({
   const { data, error, isLoading } = useSWR<TaxSummary>(
     `${apiUrl}/api/portal/taxes/summary`,
     fetcher,
-    { refreshInterval: 300000 } // 5 minutes
+    { refreshInterval: 300000 }, // 5 minutes
   );
 
   if (isLoading) {
@@ -96,10 +96,11 @@ export function TaxSummaryCard({
         {/* Total Amount */}
         <div>
           <p className="text-2xl font-bold text-[var(--foreground)]">
-            {formatCurrency(data.total_amount, 'IDR')}
+            {formatCurrency(data.total_amount, "IDR")}
           </p>
           <p className="text-sm text-[var(--foreground-muted)]">
-            {data.total_obligations} obligation{data.total_obligations !== 1 ? 's' : ''}
+            {data.total_obligations} obligation
+            {data.total_obligations !== 1 ? "s" : ""}
           </p>
         </div>
 
@@ -129,7 +130,7 @@ export function TaxSummaryCard({
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
             <p className="text-sm text-red-800 font-medium">
               Action Required: {data.overdue_count} overdue obligation
-              {data.overdue_count !== 1 ? 's' : ''}
+              {data.overdue_count !== 1 ? "s" : ""}
             </p>
           </div>
         )}

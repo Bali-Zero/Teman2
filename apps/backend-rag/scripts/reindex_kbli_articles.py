@@ -13,7 +13,9 @@ import httpx
 BASE_URL = "https://balizero.com"
 INDEXNOW_KEY = "2633309a0003ec408c59ec48c952604f"
 INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow"
-ARTICLES_DIR = Path(__file__).parent.parent.parent.parent / "apps/mouth/src/content/articles/business"
+ARTICLES_DIR = (
+    Path(__file__).parent.parent.parent.parent / "apps/mouth/src/content/articles/business"
+)
 
 
 def get_kbli_articles() -> list[str]:
@@ -72,7 +74,7 @@ async def main():
     BATCH_SIZE = 10000
 
     for i in range(0, len(articles), BATCH_SIZE):
-        batch = articles[i:i + BATCH_SIZE]
+        batch = articles[i : i + BATCH_SIZE]
         batch_num = (i // BATCH_SIZE) + 1
         total_batches = (len(articles) + BATCH_SIZE - 1) // BATCH_SIZE
 

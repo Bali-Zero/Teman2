@@ -200,7 +200,6 @@ class TestSaveConversation:
             assert result["conversation_id"] == 0
 
 
-
 class TestGetHistory:
     """Tests for get_history method"""
 

@@ -85,9 +85,7 @@ describe("NewsRoomPage", () => {
   it("should show loading state initially", () => {
     render(<NewsRoomPage />);
 
-    expect(
-      screen.getByText("Gathering Intelligence..."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Gathering Intelligence...")).toBeInTheDocument();
   });
 
   it("should load and display pending news items", async () => {

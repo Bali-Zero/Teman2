@@ -43,7 +43,7 @@ async def search_kbli(q: str = Query(..., min_length=2)) -> dict[str, Any]:
             query=f"zonasi peruntukan bisnis {q}",
             collection="legal_unified_hybrid_hybrid",
             limit=5,
-            alpha=0.5
+            alpha=0.5,
         )
 
         matching_zones = set()
@@ -58,20 +58,20 @@ async def search_kbli(q: str = Query(..., min_length=2)) -> dict[str, Any]:
         if any(x in q_lower for x in ["hotel", "villa", "pariwisata", "resort"]):
             matching_zones.add("W-1")
             matching_zones.add("W-2")
-        elif any(x in q_lower for x in ["gym", "fitness", "toko", "shop", "commercial", "restoran", "restaurant"]):
+        elif any(
+            x in q_lower
+            for x in ["gym", "fitness", "toko", "shop", "commercial", "restoran", "restaurant"]
+        ):
             matching_zones.add("K-1")
             matching_zones.add("K-2")
             matching_zones.add("K-3")
 
         logger.info(f"🔍 [Prime/KBLI] Search for '{q}' returned zones: {list(matching_zones)}")
-        return {
-            "query": q,
-            "matching_zone_codes": list(matching_zones),
-            "status": "success"
-        }
+        return {"query": q, "matching_zone_codes": list(matching_zones), "status": "success"}
     except Exception as e:
         logger.error(f"❌ [Prime/KBLI] Search failed: {e}", exc_info=True)
         return {"status": "error", "message": str(e), "matching_zone_codes": []}
+
 
 # =============================================================================
 # BUILDING CODES — loaded once at import time from JSON
@@ -992,7 +992,7 @@ async def get_zones_geojson() -> dict[str, Any]:
                         "color": color,
                         "max_floors": max_floors,
                         "max_height_meters": max_height,
-                        "kdb": kdb
+                        "kdb": kdb,
                     },
                 }
             )

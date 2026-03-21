@@ -529,10 +529,10 @@ export default function DashboardPage() {
 
           {/* ROW 2: Metric bar */}
           <div
-            className="rounded-xl px-6 py-4 flex items-stretch"
+            className="rounded-xl px-6 py-4 flex items-stretch shadow-2xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
             style={{
-              background: "rgba(255,255,255,0.025)",
-              border: "1px solid rgba(255,255,255,0.07)",
+              background: "rgba(35, 35, 40, 0.65)",
+              border: "1px solid rgba(255,255,255,0.08)",
             }}
           >
             {statItems.map((s, i) => (
@@ -572,10 +572,10 @@ export default function DashboardPage() {
           >
             {/* Pipeline panel */}
             <div
-              className="rounded-xl overflow-hidden flex flex-col"
+              className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
               style={{
-                background: "rgba(255,255,255,0.025)",
-                border: "1px solid rgba(255,255,255,0.07)",
+                background: "rgba(35, 35, 40, 0.65)",
+                border: "1px solid rgba(255,255,255,0.08)",
                 minHeight: 320,
               }}
             >
@@ -640,10 +640,10 @@ export default function DashboardPage() {
 
             {/* Intel panel */}
             <div
-              className="rounded-xl overflow-hidden flex flex-col"
+              className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
               style={{
-                background: "rgba(255,255,255,0.025)",
-                border: "1px solid rgba(255,255,255,0.07)",
+                background: "rgba(35, 35, 40, 0.65)",
+                border: "1px solid rgba(255,255,255,0.08)",
                 minHeight: 320,
               }}
             >

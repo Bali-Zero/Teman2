@@ -54,9 +54,9 @@ def test_endpoint(endpoint_key: str, endpoint_path: str, token: str) -> dict:
     url = f"{BASE_URL}{endpoint_path}"
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Testing: {colorize(endpoint_key, 'blue')} - {endpoint_path}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     try:
         response = requests.get(url, headers=headers, timeout=30)
@@ -100,9 +100,7 @@ def test_endpoint(endpoint_key: str, endpoint_path: str, token: str) -> dict:
                 if endpoint_key == "tax_full":
                     assert "summary" in data, "Missing 'summary' key"
                     assert "obligations" in data, "Missing 'obligations' key"
-                    print(
-                        f"\n✅ Found {len(data['obligations'])} tax obligations"
-                    )
+                    print(f"\n✅ Found {len(data['obligations'])} tax obligations")
                     print(f"✅ Summary status: {data['summary'].get('status', 'N/A')}")
 
                 elif endpoint_key == "tax_summary":
@@ -122,9 +120,7 @@ def test_endpoint(endpoint_key: str, endpoint_path: str, token: str) -> dict:
                 elif endpoint_key == "visa_summary":
                     assert "has_active_visa" in data, "Missing 'has_active_visa' key"
                     assert "status" in data, "Missing 'status' key"
-                    print(
-                        f"\n✅ Has active visa: {data.get('has_active_visa', False)}"
-                    )
+                    print(f"\n✅ Has active visa: {data.get('has_active_visa', False)}")
                     print(f"✅ Status: {data.get('status', 'N/A')}")
 
             except json.JSONDecodeError:
@@ -151,9 +147,9 @@ def test_endpoint(endpoint_key: str, endpoint_path: str, token: str) -> dict:
 
 def main():
     """Main test execution."""
-    print(f"\n{colorize('='*80, 'blue')}")
+    print(f"\n{colorize('=' * 80, 'blue')}")
     print(colorize("NUZANTARA Portal Endpoints - Manual Test Suite", "blue"))
-    print(f"{colorize('='*80, 'blue')}\n")
+    print(f"{colorize('=' * 80, 'blue')}\n")
 
     # Check arguments
     if len(sys.argv) < 2:
@@ -189,9 +185,9 @@ def main():
         results.append(result)
 
     # Summary
-    print(f"\n{colorize('='*80, 'blue')}")
+    print(f"\n{colorize('=' * 80, 'blue')}")
     print(colorize("TEST SUMMARY", "blue"))
-    print(f"{colorize('='*80, 'blue')}\n")
+    print(f"{colorize('=' * 80, 'blue')}\n")
 
     success_count = sum(1 for r in results if r.get("success", False))
     total_count = len(results)

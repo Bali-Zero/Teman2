@@ -65,7 +65,6 @@ OCR_PROMPTS: dict[str, str] = {
   "kbli_codes": [],
   "company_status": "TERTUTUP"
 }""",
-
     "nib": """Extract from this NIB (Nomor Induk Berusaha). Return ONLY valid JSON, no other text:
 {
   "nib_number": "",
@@ -74,7 +73,6 @@ OCR_PROMPTS: dict[str, str] = {
   "issue_date": "YYYY-MM-DD",
   "pma_status": "PMA"
 }""",
-
     "npwp": """Extract from this NPWP document. Return ONLY valid JSON, no other text:
 {
   "npwp_number": "",
@@ -82,7 +80,6 @@ OCR_PROMPTS: dict[str, str] = {
   "kpp_office": "",
   "registration_date": "YYYY-MM-DD"
 }""",
-
     "passport": """Extract from this passport. Return ONLY valid JSON, no other text:
 {
   "full_name": "",
@@ -93,7 +90,6 @@ OCR_PROMPTS: dict[str, str] = {
   "sex": "",
   "place_of_birth": ""
 }""",
-
     "sk_decree": """Extract from this SK Kemenkumham decree. Return ONLY valid JSON, no other text:
 {
   "sk_number": "",
@@ -101,7 +97,6 @@ OCR_PROMPTS: dict[str, str] = {
   "issue_date": "YYYY-MM-DD",
   "capital_info": ""
 }""",
-
     "kitas": """Extract from this KITAS/ITAS permit. Return ONLY valid JSON, no other text:
 {
   "permit_number": "",
@@ -112,7 +107,6 @@ OCR_PROMPTS: dict[str, str] = {
   "valid_until": "YYYY-MM-DD",
   "occupation": ""
 }""",
-
     "company_profile": """Extract from this company profile document. Return ONLY valid JSON, no other text:
 {
   "company_name": "",
@@ -200,6 +194,7 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     """Extract text from PDF using PyMuPDF (fitz). Returns empty string if scanned/image PDF."""
     try:
         import fitz
+
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         text_parts = []
         for page in doc:
@@ -403,7 +398,9 @@ async def process_document(
         if len(text) > 100:
             # Good text content — render first page as image for vision OCR
             # (vision model can extract structured data better from the visual layout)
-            logger.info(f"    PDF text extracted: {len(text)} chars — using first page image for structure")
+            logger.info(
+                f"    PDF text extracted: {len(text)} chars — using first page image for structure"
+            )
             images = pdf_to_images(file_bytes, max_pages=2)
             if images:
                 llm_response = await ocr_via_ollama(prompt, images[0])
@@ -530,17 +527,20 @@ async def update_company_from_ocr(
                     # asyncpg requires datetime.date, not str
                     try:
                         from datetime import date as dt_date
+
                         date_val = dt_date.fromisoformat(val)
                         await conn.execute(
                             f"UPDATE companies SET {col} = $1, updated_at = NOW() WHERE id = $2",
-                            date_val, company_id,
+                            date_val,
+                            company_id,
                         )
                     except (ValueError, TypeError) as e:
                         logger.warning(f"    ⚠ Invalid date '{val}' for {col}: {e}")
                 else:
                     await conn.execute(
                         f"UPDATE companies SET {col} = $1, updated_at = NOW() WHERE id = $2",
-                        val, company_id,
+                        val,
+                        company_id,
                     )
 
 
@@ -562,7 +562,9 @@ async def ensure_ocr_columns(conn: asyncpg.Connection, table: str) -> None:
 
     if "ocr_completed_at" not in cols:
         logger.info(f"Adding ocr_completed_at column to {table}")
-        await conn.execute(f"ALTER TABLE {table} ADD COLUMN ocr_completed_at TIMESTAMPTZ DEFAULT NULL")
+        await conn.execute(
+            f"ALTER TABLE {table} ADD COLUMN ocr_completed_at TIMESTAMPTZ DEFAULT NULL"
+        )
 
 
 async def main(
@@ -654,13 +656,25 @@ async def main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="OCR Pipeline — extract structured data from CRM documents")
+    parser = argparse.ArgumentParser(
+        description="OCR Pipeline — extract structured data from CRM documents"
+    )
     parser.add_argument("--dry-run", action="store_true", help="Preview only, no DB writes")
-    parser.add_argument("--batch", type=int, default=50, help="Number of documents per run (default 50)")
-    parser.add_argument("--type", type=str, default=None, help="Filter by document_type (e.g., akta_pendirian, nib)")
-    parser.add_argument("--table", type=str, default="company_documents",
-                        choices=["company_documents", "documents"],
-                        help="Which table to process (default: company_documents)")
+    parser.add_argument(
+        "--batch", type=int, default=50, help="Number of documents per run (default 50)"
+    )
+    parser.add_argument(
+        "--type", type=str, default=None, help="Filter by document_type (e.g., akta_pendirian, nib)"
+    )
+    parser.add_argument(
+        "--table",
+        type=str,
+        default="company_documents",
+        choices=["company_documents", "documents"],
+        help="Which table to process (default: company_documents)",
+    )
     args = parser.parse_args()
 
-    asyncio.run(main(dry_run=args.dry_run, batch_size=args.batch, doc_type=args.type, table=args.table))
+    asyncio.run(
+        main(dry_run=args.dry_run, batch_size=args.batch, doc_type=args.type, table=args.table)
+    )

@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Loader2,
-  ArrowLeft,
-  Printer,
-  CheckCircle,
-  Upload,
-} from "lucide-react";
+import { Loader2, ArrowLeft, Printer, CheckCircle, Upload } from "lucide-react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
@@ -37,7 +31,11 @@ export default function LKPMReadyPackPage() {
       setPack(data);
     } catch (err) {
       error("Failed to load ready pack", "Please try again");
-      logger.error(`Failed to load LKPM ready pack ${draftId}`, {}, err as Error);
+      logger.error(
+        `Failed to load LKPM ready pack ${draftId}`,
+        {},
+        err as Error,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +82,10 @@ export default function LKPMReadyPackPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -92,7 +93,11 @@ export default function LKPMReadyPackPage() {
   if (!pack) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
-        <Link href="/lkpm" className="flex items-center gap-2 text-sm" style={{ color: "var(--bz-text-2)" }}>
+        <Link
+          href="/lkpm"
+          className="flex items-center gap-2 text-sm"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           <ArrowLeft className="w-4 h-4" /> Back to LKPM
         </Link>
         <p style={{ color: "var(--bz-text-2)" }}>Ready pack not found.</p>
@@ -106,20 +111,29 @@ export default function LKPMReadyPackPage() {
       <section className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="/lkpm">
-            <ArrowLeft className="w-5 h-5" style={{ color: "var(--bz-text-2)" }} />
+            <ArrowLeft
+              className="w-5 h-5"
+              style={{ color: "var(--bz-text-2)" }}
+            />
           </Link>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
               {pack.company_name} — {pack.quarter} {pack.year}
             </h1>
-            <p style={{ color: "var(--bz-text-2)" }}>Ready Pack for OSS submission</p>
+            <p style={{ color: "var(--bz-text-2)" }}>
+              Ready Pack for OSS submission
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrint}
             className="px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
-            style={{ background: "var(--bz-surface)", color: "var(--bz-text-2)", border: "1px solid var(--bz-border)" }}
+            style={{
+              background: "var(--bz-surface)",
+              color: "var(--bz-text-2)",
+              border: "1px solid var(--bz-border)",
+            }}
           >
             <Printer className="w-4 h-4" />
             Print
@@ -152,10 +166,16 @@ export default function LKPMReadyPackPage() {
       {showReceiptForm && (
         <section
           className="rounded-xl border p-4 flex items-end gap-3"
-          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <div className="flex-1">
-            <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
+            <label
+              className="block text-xs mb-1"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               OSS Receipt Number
             </label>
             <input
@@ -164,7 +184,10 @@ export default function LKPMReadyPackPage() {
               onChange={(e) => setReceiptNumber(e.target.value)}
               placeholder="e.g., LKPM-2026-Q1-001"
               className="w-full rounded-lg border px-3 py-2 text-sm"
-              style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}
+              style={{
+                background: "var(--bz-surface)",
+                borderColor: "var(--bz-border)",
+              }}
             />
           </div>
           <button
@@ -182,7 +205,10 @@ export default function LKPMReadyPackPage() {
         {/* Ready Pack HTML */}
         <section
           className="rounded-xl border overflow-hidden"
-          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <div
             className="p-6 prose prose-sm max-w-none"
@@ -194,12 +220,17 @@ export default function LKPMReadyPackPage() {
         <aside className="space-y-4">
           <div
             className="rounded-xl border p-4 space-y-3"
-            style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+            style={{
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+            }}
           >
             <h3 className="text-sm font-semibold">Validation</h3>
 
             <div className="flex items-center justify-between">
-              <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>Status</span>
+              <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                Status
+              </span>
               <span
                 className="px-2 py-0.5 rounded-full text-xs font-medium"
                 style={
@@ -215,34 +246,55 @@ export default function LKPMReadyPackPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full" style={{ background: "#f87171" }} />
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: "#f87171" }}
+                  />
                   Red
                 </div>
-                <span className="font-medium">{pack.validation_summary.red_count}</span>
+                <span className="font-medium">
+                  {pack.validation_summary.red_count}
+                </span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full" style={{ background: "#fbbf24" }} />
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: "#fbbf24" }}
+                  />
                   Yellow
                 </div>
-                <span className="font-medium">{pack.validation_summary.yellow_count}</span>
+                <span className="font-medium">
+                  {pack.validation_summary.yellow_count}
+                </span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full" style={{ background: "#34d399" }} />
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: "#34d399" }}
+                  />
                   Green
                 </div>
-                <span className="font-medium">{pack.validation_summary.green_count}</span>
+                <span className="font-medium">
+                  {pack.validation_summary.green_count}
+                </span>
               </div>
             </div>
           </div>
 
           <div
             className="rounded-xl border p-4 space-y-2"
-            style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+            style={{
+              background: "var(--bz-card)",
+              borderColor: "var(--bz-border)",
+            }}
           >
             <h3 className="text-sm font-semibold">Quick Info</h3>
-            <div className="text-xs space-y-1" style={{ color: "var(--bz-text-2)" }}>
+            <div
+              className="text-xs space-y-1"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               <p>
                 <span className="font-medium">Grand Total:</span>{" "}
                 {new Intl.NumberFormat("id-ID", {

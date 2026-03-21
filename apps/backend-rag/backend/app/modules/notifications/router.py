@@ -17,10 +17,9 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
-
-from .checker import ExpiryChecker
-from .models import ClientInfo
-from .service import NotificationService
+from backend.app.modules.notifications.checker import ExpiryChecker
+from backend.app.modules.notifications.models import ClientInfo
+from backend.app.modules.notifications.service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -265,11 +264,11 @@ async def send_pending_alerts(
 import os
 
 if os.getenv("ENVIRONMENT", "development").lower() != "production":
-    from .test_endpoint import router as test_router
+    from backend.app.modules.notifications.test_endpoint import router as test_router
 
     router.include_router(test_router)
 
 # Include admin router
-from .admin_router import router as admin_router
+from backend.app.modules.notifications.admin_router import router as admin_router
 
 router.include_router(admin_router)

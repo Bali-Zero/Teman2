@@ -30,7 +30,7 @@ export function ZantaraChat({
   const [sessionId] = useState(() =>
     typeof window !== "undefined"
       ? localStorage.getItem("kbli-chat-session") || crypto.randomUUID()
-      : ""
+      : "",
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -80,7 +80,10 @@ export function ZantaraChat({
           data.response ||
           "I couldn't find an answer. Try rephrasing your question.";
 
-        setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: answer },
+        ]);
       } catch (err) {
         const errorMsg =
           err instanceof DOMException && err.name === "TimeoutError"
@@ -95,12 +98,11 @@ export function ZantaraChat({
         inputRef.current?.focus();
       }
     },
-    [loading, codeContext, sessionId]
+    [loading, codeContext, sessionId],
   );
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#1c1c1e]/60 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all duration-500 hover:shadow-[0_8px_32px_rgba(212,132,90,0.1)] flex flex-col">
-      
       {/* Subtle background glow effect inside the container */}
       <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-[#d4845a]/10 blur-[80px] pointer-events-none z-0" />
       <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-[#3b82f6]/10 blur-[80px] pointer-events-none z-0" />
@@ -121,8 +123,12 @@ export function ZantaraChat({
         </div>
         {codeContext && (
           <div className="ml-auto flex flex-col items-end">
-             <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Context</span>
-             <span className="text-xs font-semibold text-zinc-300 bg-white/5 px-2 py-0.5 rounded-md border border-white/10">{codeContext.code}</span>
+            <span className="text-[10px] text-zinc-500 uppercase tracking-wider">
+              Context
+            </span>
+            <span className="text-xs font-semibold text-zinc-300 bg-white/5 px-2 py-0.5 rounded-md border border-white/10">
+              {codeContext.code}
+            </span>
           </div>
         )}
       </div>
@@ -140,8 +146,8 @@ export function ZantaraChat({
         )}
 
         {messages.map((msg, i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className={`flex animate-fade-in-up ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             style={{ animationDelay: `${Math.min(i * 50, 300)}ms` }}
           >
@@ -152,7 +158,7 @@ export function ZantaraChat({
                 </div>
               </div>
             )}
-            
+
             <div
               className={
                 msg.role === "user"
@@ -178,9 +184,18 @@ export function ZantaraChat({
             </div>
             <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-transparent px-2 py-3">
               <div className="flex space-x-1">
-                <div className="w-1.5 h-1.5 bg-[#d4845a]/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-1.5 h-1.5 bg-[#d4845a]/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-1.5 h-1.5 bg-[#d4845a]/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div
+                  className="w-1.5 h-1.5 bg-[#d4845a]/60 rounded-full animate-bounce"
+                  style={{ animationDelay: "0ms" }}
+                />
+                <div
+                  className="w-1.5 h-1.5 bg-[#d4845a]/60 rounded-full animate-bounce"
+                  style={{ animationDelay: "150ms" }}
+                />
+                <div
+                  className="w-1.5 h-1.5 bg-[#d4845a]/60 rounded-full animate-bounce"
+                  style={{ animationDelay: "300ms" }}
+                />
               </div>
             </div>
           </div>

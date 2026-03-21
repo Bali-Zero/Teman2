@@ -36,7 +36,9 @@ import type { ReactNode } from "react";
 
 async function AuthGate({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
-  const token = cookieStore.get("nz_access_token")?.value || cookieStore.get("nz_auth_token")?.value;
+  const token =
+    cookieStore.get("nz_access_token")?.value ||
+    cookieStore.get("nz_auth_token")?.value;
 
   if (!token) {
     const redirectUrl = encodeURIComponent(
@@ -52,7 +54,12 @@ const apps = [
   { name: "Kita", href: "https://kita.balizero.com", emoji: "🏠" },
   { name: "Mail", href: "https://mail.balizero.com", emoji: "✉️" },
   { name: "Calendar", href: "https://calendar.balizero.com", emoji: "📅" },
-  { name: "Drive", href: "https://drive.balizero.com", emoji: "💾", active: true },
+  {
+    name: "Drive",
+    href: "https://drive.balizero.com",
+    emoji: "💾",
+    active: true,
+  },
   { name: "Knowledge", href: "https://knowledge.balizero.com", emoji: "📚" },
 ];
 
@@ -75,11 +82,35 @@ function AppShell({ children }: { children: ReactNode }) {
         }}
       >
         {/* Left: BZ Logo + App name */}
-        <a href="https://kita.balizero.com" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+        <a
+          href="https://kita.balizero.com"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            textDecoration: "none",
+          }}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/static/balizero-logo-clean.png" alt="Bali Zero" width={22} height={22} style={{ borderRadius: "50%", flexShrink: 0 }} />
-          <span style={{ color: "var(--bz-text-3, #575350)", fontSize: 14 }}>/</span>
-          <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--bz-text-1, #edeae4)" }}>Drive</span>
+          <img
+            src="/static/balizero-logo-clean.png"
+            alt="Bali Zero"
+            width={22}
+            height={22}
+            style={{ borderRadius: "50%", flexShrink: 0 }}
+          />
+          <span style={{ color: "var(--bz-text-3, #575350)", fontSize: 14 }}>
+            /
+          </span>
+          <span
+            style={{
+              fontSize: "13px",
+              fontWeight: 500,
+              color: "var(--bz-text-1, #edeae4)",
+            }}
+          >
+            Drive
+          </span>
         </a>
         <div style={{ flex: 1 }} />
 
@@ -141,7 +172,9 @@ function AppShell({ children }: { children: ReactNode }) {
                   fontSize: "14px",
                   textDecoration: "none",
                   color: app.active ? "#f1f1f1" : "rgba(241,241,241,0.55)",
-                  backgroundColor: app.active ? "rgba(255,255,255,0.08)" : "transparent",
+                  backgroundColor: app.active
+                    ? "rgba(255,255,255,0.08)"
+                    : "transparent",
                 }}
               >
                 <span>{app.emoji}</span>
@@ -153,7 +186,9 @@ function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main style={{ height: "calc(100vh - 48px)", overflow: "auto" }}>{children}</main>
+      <main style={{ height: "calc(100vh - 48px)", overflow: "auto" }}>
+        {children}
+      </main>
 
       <style>{`
         .drive-app-switcher .drive-switcher-dropdown {

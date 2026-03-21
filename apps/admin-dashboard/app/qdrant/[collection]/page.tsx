@@ -1,10 +1,14 @@
-'use client';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Button, Badge } from '@/components/ui/primitives';
-import { ArrowLeft, RefreshCw, Braces } from 'lucide-react';
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Button, Badge } from "@/components/ui/primitives";
+import { ArrowLeft, RefreshCw, Braces } from "lucide-react";
 
-export default function CollectionDataPage({ params }: { params: { collection: string } }) {
+export default function CollectionDataPage({
+  params,
+}: {
+  params: { collection: string };
+}) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [offset, setOffset] = useState<string | null>(null);
@@ -14,7 +18,7 @@ export default function CollectionDataPage({ params }: { params: { collection: s
     setLoading(true);
     const url =
       `/api/qdrant/points?collection=${params.collection}` +
-      (currentOffset ? `&offset=${currentOffset}` : '');
+      (currentOffset ? `&offset=${currentOffset}` : "");
 
     fetch(url)
       .then((res) => res.json())
@@ -42,7 +46,9 @@ export default function CollectionDataPage({ params }: { params: { collection: s
             </Button>
           </Link>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">{params.collection}</h1>
+            <h1 className="text-xl font-bold tracking-tight">
+              {params.collection}
+            </h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -65,7 +71,9 @@ export default function CollectionDataPage({ params }: { params: { collection: s
 
       <div className="flex-1 overflow-auto p-4 bg-muted/10">
         {loading ? (
-          <div className="text-center py-20 text-muted-foreground">Loading vectors...</div>
+          <div className="text-center py-20 text-muted-foreground">
+            Loading vectors...
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             {data.map((point) => (

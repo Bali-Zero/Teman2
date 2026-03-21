@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import os
@@ -11,6 +10,7 @@ load_dotenv()
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 async def main():
     # Transcription of the document
@@ -75,7 +75,7 @@ Tembusan:
         "year": "2026",
         "topic": "Penutupan PMA Risiko Rendah/Menengah dan Virtual Office di Bali",
         "status": "berlaku",
-        "full_title": "Surat Gubernur Bali Nomor B.27.000/642/PM/DPMPTSP Tahun 2026"
+        "full_title": "Surat Gubernur Bali Nomor B.27.000/642/PM/DPMPTSP Tahun 2026",
     }
 
     try:
@@ -99,7 +99,7 @@ Tembusan:
         qdrant_client=vector_db,
         embeddings=embedder,
         chunker=chunker,
-        sparse_vectorizer=sparse_vectorizer
+        sparse_vectorizer=sparse_vectorizer,
     )
 
     # Prepare base metadata for indexing
@@ -120,15 +120,13 @@ Tembusan:
         "type_abbrev": metadata["type_abbrev"],
         "number": metadata["number"],
         "year": metadata["year"],
-        "topic": metadata["topic"]
+        "topic": metadata["topic"],
     }
 
     logger.info(f"Starting manual ingestion for doc_id: {doc_id}")
 
     result = await indexer.index_legal_document(
-        document_text=text,
-        document_id=doc_id,
-        metadata=base_metadata
+        document_text=text, document_id=doc_id, metadata=base_metadata
     )
 
     if result.get("chunks_indexed") > 0:
@@ -138,6 +136,7 @@ Tembusan:
         try:
             # We need to import the script correctly
             import sys
+
             sys.path.append(os.path.join(os.getcwd(), "scripts"))
             import asyncpg
             from kg_incremental_extraction import KGIncrementalExtractor
@@ -149,19 +148,21 @@ Tembusan:
                 db_pool=db_pool,
                 qdrant_url=settings.qdrant_url,
                 qdrant_api_key=settings.qdrant_api_key,
-                gemini_client=None # Will use pattern-based if Gemini not configured
+                gemini_client=None,  # Will use pattern-based if Gemini not configured
             )
 
             logger.info("Extracting Knowledge Graph entities...")
             kg_result = await kg_extractor.extract_from_collection(
-                collection_name="legal_unified",
-                document_id=doc_id
+                collection_name="legal_unified", document_id=doc_id
             )
-            logger.info(f"✅ KG Result: {kg_result.get('entities_extracted')} entities, {kg_result.get('relationships_extracted')} relationships")
+            logger.info(
+                f"✅ KG Result: {kg_result.get('entities_extracted')} entities, {kg_result.get('relationships_extracted')} relationships"
+            )
         except Exception as kg_e:
             logger.warning(f"⚠️ KG extraction failed: {kg_e}")
     else:
         logger.error("❌ Indexing failed (0 chunks indexed)")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

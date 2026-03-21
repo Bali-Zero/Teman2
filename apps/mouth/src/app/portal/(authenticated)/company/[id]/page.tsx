@@ -64,7 +64,10 @@ export default function CompanyDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -72,8 +75,14 @@ export default function CompanyDetailPage() {
   if (!company) {
     return (
       <div className="text-center py-12">
-        <Building2 className="w-16 h-16 mx-auto mb-4 opacity-30" style={{ color: "var(--bz-text-2)" }} />
-        <h2 className="text-lg font-semibold" style={{ color: "var(--bz-text-2)" }}>
+        <Building2
+          className="w-16 h-16 mx-auto mb-4 opacity-30"
+          style={{ color: "var(--bz-text-2)" }}
+        />
+        <h2
+          className="text-lg font-semibold"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           Company not found
         </h2>
         <Button
@@ -102,17 +111,31 @@ export default function CompanyDetailPage() {
       </Button>
 
       {/* Company Header */}
-      <section className="rounded-xl border p-6" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+      <section
+        className="rounded-xl border p-6"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
+      >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl" style={{ background: "rgba(201,169,110,0.1)" }}>
-              <Building2 className="w-6 h-6" style={{ color: "var(--bz-accent-warm)" }} />
+            <div
+              className="p-3 rounded-xl"
+              style={{ background: "rgba(201,169,110,0.1)" }}
+            >
+              <Building2
+                className="w-6 h-6"
+                style={{ color: "var(--bz-accent-warm)" }}
+              />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">
                 {company.name}
               </h1>
-              <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>{company.type}</p>
+              <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+                {company.type}
+              </p>
             </div>
           </div>
           <StatusBadge status={company.status} />
@@ -125,7 +148,13 @@ export default function CompanyDetailPage() {
         )}
 
         {company.isPrimary && (
-          <div className="mt-4 px-3 py-1.5 text-xs font-medium rounded-full inline-flex items-center gap-1.5" style={{ background: "rgba(201,169,110,0.1)", color: "var(--bz-accent-warm)" }}>
+          <div
+            className="mt-4 px-3 py-1.5 text-xs font-medium rounded-full inline-flex items-center gap-1.5"
+            style={{
+              background: "rgba(201,169,110,0.1)",
+              color: "var(--bz-accent-warm)",
+            }}
+          >
             <Shield className="w-3.5 h-3.5" />
             Primary Company
           </div>
@@ -136,9 +165,18 @@ export default function CompanyDetailPage() {
       <BusinessDetailsSection company={company} />
 
       {/* Licenses Section */}
-      <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+      <section
+        className="rounded-xl border p-6 space-y-4"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
+      >
         <div className="flex items-center gap-2">
-          <FileCheck className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+          <FileCheck
+            className="w-5 h-5"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
           <h2 className="text-lg font-semibold">Licenses</h2>
         </div>
 
@@ -149,7 +187,10 @@ export default function CompanyDetailPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8" style={{ color: "var(--bz-text-2)" }}>
+          <div
+            className="text-center py-8"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             <FileCheck className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No licenses on record</p>
           </div>
@@ -157,9 +198,18 @@ export default function CompanyDetailPage() {
       </section>
 
       {/* Compliance Calendar Section */}
-      <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+      <section
+        className="rounded-xl border p-6 space-y-4"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
+      >
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+          <Calendar
+            className="w-5 h-5"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
           <h2 className="text-lg font-semibold">Compliance Calendar</h2>
         </div>
 
@@ -175,7 +225,10 @@ export default function CompanyDetailPage() {
               ))}
           </div>
         ) : (
-          <div className="text-center py-8" style={{ color: "var(--bz-text-2)" }}>
+          <div
+            className="text-center py-8"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No compliance deadlines</p>
           </div>
@@ -183,9 +236,18 @@ export default function CompanyDetailPage() {
       </section>
 
       {/* Directors Section */}
-      <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+      <section
+        className="rounded-xl border p-6 space-y-4"
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
+      >
         <div className="flex items-center gap-2">
-          <Users className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+          <Users
+            className="w-5 h-5"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
           <h2 className="text-lg font-semibold">Directors</h2>
         </div>
 
@@ -197,8 +259,14 @@ export default function CompanyDetailPage() {
                 className="flex items-center gap-3 p-3 rounded-lg"
                 style={{ background: "var(--bz-surface)" }}
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(201,169,110,0.1)" }}>
-                  <span className="text-sm font-semibold" style={{ color: "var(--bz-accent-warm)" }}>
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center"
+                  style={{ background: "rgba(201,169,110,0.1)" }}
+                >
+                  <span
+                    className="text-sm font-semibold"
+                    style={{ color: "var(--bz-accent-warm)" }}
+                  >
                     {director.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -207,7 +275,10 @@ export default function CompanyDetailPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8" style={{ color: "var(--bz-text-2)" }}>
+          <div
+            className="text-center py-8"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No directors on record</p>
           </div>
@@ -227,28 +298,56 @@ function BusinessDetailsSection({ company }: { company: PortalCompany }) {
     { icon: MapPin, label: "Registered Address", value: company.address },
     { icon: Mail, label: "Email", value: company.email },
     { icon: Phone, label: "Phone", value: company.phone },
-    { icon: FileText, label: "Akta No.", value: company.aktaNo ? `${company.aktaNo}${company.aktaDate ? ` (${new Date(company.aktaDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })})` : ""}` : undefined },
+    {
+      icon: FileText,
+      label: "Akta No.",
+      value: company.aktaNo
+        ? `${company.aktaNo}${company.aktaDate ? ` (${new Date(company.aktaDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })})` : ""}`
+        : undefined,
+    },
     { icon: FileText, label: "SK Kemenkumham", value: company.skNumber },
     { icon: MapPin, label: "Tax Office (KPP)", value: company.taxOffice },
-    { icon: Briefcase, label: "Investment Type", value: company.investmentType },
+    {
+      icon: Briefcase,
+      label: "Investment Type",
+      value: company.investmentType,
+    },
     { icon: Briefcase, label: "Company Status", value: company.companyStatus },
   ].filter((f) => f.value);
 
   if (fields.length === 0) return null;
 
   return (
-    <section className="rounded-xl border p-6 space-y-4" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
+    <section
+      className="rounded-xl border p-6 space-y-4"
+      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+    >
       <div className="flex items-center gap-2">
-        <Building2 className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
+        <Building2
+          className="w-5 h-5"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
         <h2 className="text-lg font-semibold">Business Details</h2>
       </div>
 
       <div className="grid gap-3">
         {fields.map((field) => (
-          <div key={field.label} className="flex items-start gap-3 p-3 rounded-lg" style={{ background: "var(--bz-surface)" }}>
-            <field.icon className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: "var(--bz-accent-warm)" }} />
+          <div
+            key={field.label}
+            className="flex items-start gap-3 p-3 rounded-lg"
+            style={{ background: "var(--bz-surface)" }}
+          >
+            <field.icon
+              className="w-4 h-4 mt-0.5 flex-shrink-0"
+              style={{ color: "var(--bz-accent-warm)" }}
+            />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium" style={{ color: "var(--bz-text-3)" }}>{field.label}</p>
+              <p
+                className="text-xs font-medium"
+                style={{ color: "var(--bz-text-3)" }}
+              >
+                {field.label}
+              </p>
               <p className="text-sm mt-0.5 break-words">{field.value}</p>
             </div>
           </div>
@@ -259,7 +358,10 @@ function BusinessDetailsSection({ company }: { company: PortalCompany }) {
 }
 
 function StatusBadge({ status }: { status: "active" | "pending" }) {
-  const config: Record<string, { icon: React.ElementType; label: string; style: React.CSSProperties }> = {
+  const config: Record<
+    string,
+    { icon: React.ElementType; label: string; style: React.CSSProperties }
+  > = {
     active: {
       icon: CheckCircle,
       label: "Active",
@@ -286,16 +388,41 @@ function StatusBadge({ status }: { status: "active" | "pending" }) {
 }
 
 function LicenseCard({ license }: { license: CompanyLicense }) {
-  const getStatusConfig = (status: string): { icon: React.ElementType; badgeStyle: React.CSSProperties; borderColor: string } => {
+  const getStatusConfig = (
+    status: string,
+  ): {
+    icon: React.ElementType;
+    badgeStyle: React.CSSProperties;
+    borderColor: string;
+  } => {
     switch (status) {
       case "active":
-        return { icon: CheckCircle, badgeStyle: { background: "rgba(16,185,129,0.12)", color: "#34d399" }, borderColor: "rgba(16,185,129,0.25)" };
+        return {
+          icon: CheckCircle,
+          badgeStyle: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+          borderColor: "rgba(16,185,129,0.25)",
+        };
       case "expiring":
-        return { icon: AlertTriangle, badgeStyle: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" }, borderColor: "rgba(245,158,11,0.3)" };
+        return {
+          icon: AlertTriangle,
+          badgeStyle: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+          borderColor: "rgba(245,158,11,0.3)",
+        };
       case "expired":
-        return { icon: AlertTriangle, badgeStyle: { background: "rgba(239,68,68,0.12)", color: "#f87171" }, borderColor: "rgba(239,68,68,0.3)" };
+        return {
+          icon: AlertTriangle,
+          badgeStyle: { background: "rgba(239,68,68,0.12)", color: "#f87171" },
+          borderColor: "rgba(239,68,68,0.3)",
+        };
       default:
-        return { icon: Clock, badgeStyle: { background: "var(--bz-surface)", color: "var(--bz-text-2)" }, borderColor: "var(--bz-border)" };
+        return {
+          icon: Clock,
+          badgeStyle: {
+            background: "var(--bz-surface)",
+            color: "var(--bz-text-2)",
+          },
+          borderColor: "var(--bz-border)",
+        };
     }
   };
 
@@ -303,7 +430,13 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
   const Icon = config.icon;
 
   return (
-    <div className="rounded-lg border p-4" style={{ borderColor: config.borderColor, background: "var(--bz-surface)" }}>
+    <div
+      className="rounded-lg border p-4"
+      style={{
+        borderColor: config.borderColor,
+        background: "var(--bz-surface)",
+      }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm">{license.name}</h3>
@@ -318,7 +451,14 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
           {license.daysRemaining !== undefined && (
             <p
               className="text-xs font-medium mt-1"
-              style={{ color: license.daysRemaining <= 30 ? "#f87171" : license.daysRemaining <= 60 ? "#fbbf24" : "#34d399" }}
+              style={{
+                color:
+                  license.daysRemaining <= 30
+                    ? "#f87171"
+                    : license.daysRemaining <= 60
+                      ? "#fbbf24"
+                      : "#34d399",
+              }}
             >
               {license.daysRemaining} days remaining
             </p>
@@ -337,26 +477,41 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
 }
 
 function ComplianceCard({ item }: { item: ComplianceItem }) {
-  const getStatusConfig = (status: string): { icon: React.ElementType; badgeStyle: React.CSSProperties; bgStyle: React.CSSProperties } => {
+  const getStatusConfig = (
+    status: string,
+  ): {
+    icon: React.ElementType;
+    badgeStyle: React.CSSProperties;
+    bgStyle: React.CSSProperties;
+  } => {
     switch (status) {
       case "completed":
         return {
           icon: CheckCircle,
           badgeStyle: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
-          bgStyle: { background: "var(--bz-surface)", borderColor: "var(--bz-border)" },
+          bgStyle: {
+            background: "var(--bz-surface)",
+            borderColor: "var(--bz-border)",
+          },
         };
       case "overdue":
         return {
           icon: AlertTriangle,
           badgeStyle: { background: "rgba(239,68,68,0.12)", color: "#f87171" },
-          bgStyle: { background: "rgba(239,68,68,0.06)", borderColor: "rgba(239,68,68,0.25)" },
+          bgStyle: {
+            background: "rgba(239,68,68,0.06)",
+            borderColor: "rgba(239,68,68,0.25)",
+          },
         };
       case "upcoming":
       default:
         return {
           icon: Clock,
           badgeStyle: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
-          bgStyle: { background: "rgba(245,158,11,0.06)", borderColor: "rgba(245,158,11,0.25)" },
+          bgStyle: {
+            background: "rgba(245,158,11,0.06)",
+            borderColor: "rgba(245,158,11,0.25)",
+          },
         };
     }
   };
@@ -373,7 +528,10 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
           <h3 className="font-semibold text-sm">{item.name}</h3>
           <p
             className="text-xs mt-1"
-            style={{ color: isPast ? "#f87171" : "var(--bz-text-2)", fontWeight: isPast ? 500 : 400 }}
+            style={{
+              color: isPast ? "#f87171" : "var(--bz-text-2)",
+              fontWeight: isPast ? 500 : 400,
+            }}
           >
             {isPast ? "Was due: " : "Due: "}
             {dueDate.toLocaleDateString("en-US", {

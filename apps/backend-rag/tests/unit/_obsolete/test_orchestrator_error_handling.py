@@ -13,7 +13,6 @@ The orchestrator module doesn't import SearchService directly.
 Skipped until patch paths are corrected.
 """
 
-
 import pytest
 from pydantic import ValidationError
 

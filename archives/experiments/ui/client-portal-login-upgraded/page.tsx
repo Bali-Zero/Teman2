@@ -15,21 +15,20 @@ import { logger } from "@/lib/logger";
 const REDIRECT_DELAY_MS = 1500;
 const ERROR_RESET_DELAY_MS = 2000;
 
-
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["300", "400", "700"],
   display: "swap",
 });
 
-
-
 export default function UpgradedLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
   const [step, setStep] = useState<"email" | "pin">("email");
-  const [loginStage, setLoginStage] = useState<"idle" | "authenticating" | "success" | "denied">("idle");
+  const [loginStage, setLoginStage] = useState<
+    "idle" | "authenticating" | "success" | "denied"
+  >("idle");
   const { play } = useSystemSound();
 
   // Spotlight mouse tracking state
@@ -86,10 +85,18 @@ export default function UpgradedLoginPage() {
         globalThis.location.replace(redirectTo);
       }, REDIRECT_DELAY_MS);
     } catch (error) {
-      logger.error("Login failed", { component: "UpgradedLoginPage", action: "handleLogin", metadata: { email } }, error as Error);
+      logger.error(
+        "Login failed",
+        {
+          component: "UpgradedLoginPage",
+          action: "handleLogin",
+          metadata: { email },
+        },
+        error as Error,
+      );
       setLoginStage("denied");
       play("access_denied");
-      
+
       setTimeout(() => {
         setLoginStage("idle");
       }, ERROR_RESET_DELAY_MS);
@@ -107,9 +114,11 @@ export default function UpgradedLoginPage() {
           className="absolute inset-0 z-50 bg-[#c9a96e]/10 flex items-center justify-center backdrop-blur-md"
         >
           <div className="text-center group">
-             <h1 className={`${cormorant.className} text-4xl md:text-6xl text-[#f8e89a] tracking-[0.2em] font-light shadow-[0_0_40px_rgba(201,169,110,0.4)]`}>
-                Portal Unlocked
-             </h1>
+            <h1
+              className={`${cormorant.className} text-4xl md:text-6xl text-[#f8e89a] tracking-[0.2em] font-light shadow-[0_0_40px_rgba(201,169,110,0.4)]`}
+            >
+              Portal Unlocked
+            </h1>
           </div>
         </motion.div>
       )}
@@ -123,7 +132,9 @@ export default function UpgradedLoginPage() {
           transition={{ duration: 0.1 }}
           className="absolute inset-0 z-50 bg-black/90 flex items-center justify-center backdrop-blur-md"
         >
-          <h1 className={`${cormorant.className} text-4xl md:text-6xl text-red-500/90 tracking-[0.2em] font-light uppercase`}>
+          <h1
+            className={`${cormorant.className} text-4xl md:text-6xl text-red-500/90 tracking-[0.2em] font-light uppercase`}
+          >
             Access Denied
           </h1>
         </motion.div>

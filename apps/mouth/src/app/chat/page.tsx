@@ -109,9 +109,9 @@ export default function ChatPage() {
     // Load profile, conversations, clock status in parallel
     Promise.all([
       Promise.resolve().then(() => {
-          const p = api.getUserProfile();
-          if (p) setUserName(p.name || p.email?.split("@")[0] || "User");
-        }),
+        const p = api.getUserProfile();
+        if (p) setUserName(p.name || p.email?.split("@")[0] || "User");
+      }),
       api
         .listConversations(20, 0)
         .then((r) => setConversations(r.conversations || []))
@@ -277,45 +277,42 @@ export default function ChatPage() {
 
   // ── Load conversation ─────────────────────────────────────────────────
 
-  const loadConversation = useCallback(
-    async (id: number) => {
-      setCurrentConvId(id);
-      try {
-        const conv = await api.getConversation(id);
-        if (conv?.messages) {
-          setMessages(
-            conv.messages
-              .filter(
-                (m): m is { role: string; content: string } =>
-                  typeof m.role === "string" && typeof m.content === "string",
-              )
-              .map((m) => ({
-                id: genId(),
-                role: (m.role === "user" ? "user" : "assistant") as
-                  | "user"
-                  | "assistant",
-                content: m.content,
-                timestamp: new Date(),
-              })),
-          );
-          if (conv.session_id) {
-            setSessionId(conv.session_id);
-            try {
-              sessionStorage.setItem("z_sid", conv.session_id);
-            } catch {}
-          }
-        }
-      } catch (err) {
-        logger.error(
-          "Failed to load conversation",
-          { component: "ChatPage" },
-          err instanceof Error ? err : new Error(String(err)),
+  const loadConversation = useCallback(async (id: number) => {
+    setCurrentConvId(id);
+    try {
+      const conv = await api.getConversation(id);
+      if (conv?.messages) {
+        setMessages(
+          conv.messages
+            .filter(
+              (m): m is { role: string; content: string } =>
+                typeof m.role === "string" && typeof m.content === "string",
+            )
+            .map((m) => ({
+              id: genId(),
+              role: (m.role === "user" ? "user" : "assistant") as
+                | "user"
+                | "assistant",
+              content: m.content,
+              timestamp: new Date(),
+            })),
         );
+        if (conv.session_id) {
+          setSessionId(conv.session_id);
+          try {
+            sessionStorage.setItem("z_sid", conv.session_id);
+          } catch {}
+        }
       }
-      if (window.innerWidth < 768) setSidebarOpen(false);
-    },
-    [],
-  );
+    } catch (err) {
+      logger.error(
+        "Failed to load conversation",
+        { component: "ChatPage" },
+        err instanceof Error ? err : new Error(String(err)),
+      );
+    }
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  }, []);
 
   // ── Delete conversation ───────────────────────────────────────────────
 
@@ -591,11 +588,7 @@ function MessageBubble({ msg }: { msg: ChatMsg }) {
       <div
         className={`
           max-w-[85%] rounded-2xl px-4 py-3
-          ${
-            isUser
-              ? "bg-blue-600 text-white"
-              : "bg-white/[0.06] text-white/90"
-          }
+          ${isUser ? "bg-blue-600 text-white" : "bg-white/[0.06] text-white/90"}
           ${msg.isStreaming && !msg.content ? "animate-pulse" : ""}
         `}
       >

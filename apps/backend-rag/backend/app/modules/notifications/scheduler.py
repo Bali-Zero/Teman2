@@ -14,9 +14,9 @@ import asyncpg
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from .checker import AlertDeduplicator, ExpiryChecker
-from .router import get_clients_from_db
-from .service import NotificationService
+from backend.app.modules.notifications.checker import AlertDeduplicator, ExpiryChecker
+from backend.app.modules.notifications.router import get_clients_from_db
+from backend.app.modules.notifications.service import NotificationService
 
 logger = logging.getLogger(__name__)
 

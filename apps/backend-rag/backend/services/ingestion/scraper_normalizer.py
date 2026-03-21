@@ -556,9 +556,7 @@ class ScraperDataNormalizer:
                 len(self.processed_items) / max(1, len(self.processed_items) + len(self.errors))
             )
             * 100,
-            "data_types": list(
-                {item.get("data_type", "unknown") for item in self.processed_items}
-            ),
+            "data_types": list({item.get("data_type", "unknown") for item in self.processed_items}),
             "average_quality_score": sum(
                 item.get("quality_score", 0) for item in self.processed_items
             )

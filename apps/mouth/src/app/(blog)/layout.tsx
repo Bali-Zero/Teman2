@@ -16,7 +16,11 @@ const LANGUAGES = [
   { code: "en", name: "English", flag: "\u{1F1EC}\u{1F1E7}" },
   { code: "id", name: "Bahasa Indonesia", flag: "\u{1F1EE}\u{1F1E9}" },
   { code: "it", name: "Italiano", flag: "\u{1F1EE}\u{1F1F9}" },
-  { code: "ru", name: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439", flag: "\u{1F1F7}\u{1F1FA}" },
+  {
+    code: "ru",
+    name: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439",
+    flag: "\u{1F1F7}\u{1F1FA}",
+  },
   { code: "fr", name: "Fran\u00E7ais", flag: "\u{1F1EB}\u{1F1F7}" },
 ] as const;
 

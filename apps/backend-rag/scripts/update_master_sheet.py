@@ -43,15 +43,19 @@ from googleapiclient.discovery import build
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
 
-DB = os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://") or \
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+DB = (
+    os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://")
+    or "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+)
 
 SHEET_ID = "1CcsZmYOiajdWtTlgmoHNeCqBXhbLRZrQVQOBRs422oY"
 SHEET_NAME = "Company"
 DATA_START_ROW = 10
 OFFICE_TYPE_VALUE = "Virtual Office - Jalan Raya Anyar Gg. 3, No. 2"
 
-SA_KEY_PATH = os.getenv("GOOGLE_SA_KEY", "/Users/antonellosiano/Downloads/nuzantara-google-drive-sa-key-20260312.json")
+SA_KEY_PATH = os.getenv(
+    "GOOGLE_SA_KEY", "/Users/antonellosiano/Downloads/nuzantara-google-drive-sa-key-20260312.json"
+)
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 _sheets_service = None
@@ -134,7 +138,7 @@ def extract_19_fields(ocr_docs: list[dict]) -> list[str]:
         p = s(commissioners[0].get("ownership_pct", ""))
         comm1_pct = f"{p}%" if p and p != "0" else ""
 
-    for sh in (shareholders or []):
+    for sh in shareholders or []:
         if isinstance(sh, dict):
             name = s(sh.get("name", ""))
             if name.upper().startswith("PT ") or name.upper().startswith("CV "):
@@ -159,18 +163,27 @@ def extract_19_fields(ocr_docs: list[dict]) -> list[str]:
     if kbli_str and not any(c.isdigit() for c in kbli_str):
         kbli_str = ""
 
-    capital = s(akta.get("authorized_capital") or akta.get("Modal Dasar") or profile.get("authorized_capital") or "")
+    capital = s(
+        akta.get("authorized_capital")
+        or akta.get("Modal Dasar")
+        or profile.get("authorized_capital")
+        or ""
+    )
     if capital and capital != "0":
         try:
-            num = int(str(capital).replace(".", "").replace(",", "").replace("Rp", "").replace(" ", ""))
+            num = int(
+                str(capital).replace(".", "").replace(",", "").replace("Rp", "").replace(" ", "")
+            )
             capital = f"Rp {num:,.0f}".replace(",", ".")
         except (ValueError, TypeError):
             pass
 
     return [
         # D - Legal Address
-        first(s(akta.get("registered_address") or akta.get("Alamat") or akta.get("address")),
-              s(profile.get("registered_address") or profile.get("address") or profile.get("Alamat"))),
+        first(
+            s(akta.get("registered_address") or akta.get("Alamat") or akta.get("address")),
+            s(profile.get("registered_address") or profile.get("address") or profile.get("Alamat")),
+        ),
         # E - NIB
         s(nib.get("nib_number") or nib.get("Nomor Induk Berusaha") or ""),
         # F - NPWP
@@ -194,15 +207,24 @@ def extract_19_fields(ocr_docs: list[dict]) -> list[str]:
         # O - Deed Date
         first(s(akta.get("deed_date") or akta.get("Tanggal Akta")), s(sk.get("issue_date"))),
         # P - Email
-        first(s(profile.get("company_email") or profile.get("email") or profile.get("Email")), s(akta.get("email"))),
+        first(
+            s(profile.get("company_email") or profile.get("email") or profile.get("Email")),
+            s(akta.get("email")),
+        ),
         # Q - Phone
-        first(s(profile.get("company_phone") or profile.get("phone") or profile.get("Nomor Telepon")), s(akta.get("phone"))),
+        first(
+            s(profile.get("company_phone") or profile.get("phone") or profile.get("Nomor Telepon")),
+            s(akta.get("phone")),
+        ),
         # R - SK Number (Kemenkumham)
         first(s(sk.get("sk_number")), s(akta.get("sk_number") or akta.get("SK Number"))),
         # S - Tax Office KPP (from NPWP doc)
         s(npwp.get("kpp_office") or ""),
         # T - Company Status (TERTUTUP / TERBUKA)
-        first(s(akta.get("company_status") or akta.get("Status Perseroan")), s(profile.get("company_status"))),
+        first(
+            s(akta.get("company_status") or akta.get("Status Perseroan")),
+            s(profile.get("company_status")),
+        ),
         # U - PMA / PMDN
         first(s(nib.get("pma_status") or nib.get("investment_type")), s(profile.get("pma_status"))),
         # V - Office Type (always fixed)
@@ -220,10 +242,15 @@ def _load_company_names() -> dict[str, int]:
         return _company_name_cache
 
     svc = get_sheets()
-    result = svc.spreadsheets().values().get(
-        spreadsheetId=SHEET_ID,
-        range=f"{SHEET_NAME}!A{DATA_START_ROW}:A",
-    ).execute()
+    result = (
+        svc.spreadsheets()
+        .values()
+        .get(
+            spreadsheetId=SHEET_ID,
+            range=f"{SHEET_NAME}!A{DATA_START_ROW}:A",
+        )
+        .execute()
+    )
     rows = result.get("values", [])
 
     _company_name_cache = {}
@@ -260,7 +287,7 @@ def find_sheet_row(company_name: str) -> int | None:
     # 2. DB "PT Foo Bar" → Sheet "Foo Bar PT"
     for prefix in ("PT ", "CV ", "UD "):
         if name.upper().startswith(prefix):
-            without = name[len(prefix):].strip()
+            without = name[len(prefix) :].strip()
             row = cache.get(f"{without} {prefix.strip()}".lower())
             if row:
                 return row
@@ -286,10 +313,15 @@ NUM_FIELDS = 19  # D through V
 def read_sheet_row(row: int) -> list[str]:
     try:
         svc = get_sheets()
-        result = svc.spreadsheets().values().get(
-            spreadsheetId=SHEET_ID,
-            range=f"{SHEET_NAME}!D{row}:V{row}",
-        ).execute()
+        result = (
+            svc.spreadsheets()
+            .values()
+            .get(
+                spreadsheetId=SHEET_ID,
+                range=f"{SHEET_NAME}!D{row}:V{row}",
+            )
+            .execute()
+        )
         rows = result.get("values", [])
         if rows:
             data = rows[0]
@@ -322,7 +354,8 @@ async def main(dry_run: bool, limit: int) -> None:
     conn = await asyncpg.connect(DB)
 
     try:
-        companies = await conn.fetch("""
+        companies = await conn.fetch(
+            """
             SELECT c.id, c.company_name
             FROM companies c
             JOIN company_documents cd ON cd.company_id = c.id
@@ -330,7 +363,9 @@ async def main(dry_run: bool, limit: int) -> None:
             GROUP BY c.id, c.company_name
             HAVING count(*) > 0
             ORDER BY c.id LIMIT $1
-        """, limit)
+        """,
+            limit,
+        )
 
         logger.info(f"Companies with OCR data: {len(companies)}")
         totals = {"updated": 0, "fields": 0, "not_found": 0, "skipped": 0, "errors": 0}
@@ -342,11 +377,14 @@ async def main(dry_run: bool, limit: int) -> None:
             cid = co["id"]
             cname = co["company_name"]
 
-            docs = await conn.fetch("""
+            docs = await conn.fetch(
+                """
                 SELECT document_type, file_name, ocr_extracted_data
                 FROM company_documents
                 WHERE company_id = $1 AND ocr_status = 'completed' AND ocr_extracted_data IS NOT NULL
-            """, cid)
+            """,
+                cid,
+            )
 
             fields = extract_19_fields([dict(d) for d in docs])
             non_empty = sum(1 for f in fields if f.strip())
@@ -391,9 +429,11 @@ async def main(dry_run: bool, limit: int) -> None:
             totals["fields"] += written
 
             if (i + 1) % 50 == 0:
-                logger.info(f"\n--- {i+1}/{len(companies)} | updated={totals['updated']} fields={totals['fields']} ---\n")
+                logger.info(
+                    f"\n--- {i + 1}/{len(companies)} | updated={totals['updated']} fields={totals['fields']} ---\n"
+                )
 
-        logger.info(f"\n=== SHEET UPDATE SUMMARY ===")
+        logger.info("\n=== SHEET UPDATE SUMMARY ===")
         logger.info(f"  Companies   : {len(companies)}")
         logger.info(f"  Rows updated: {totals['updated']}")
         logger.info(f"  Fields      : {totals['fields']}")

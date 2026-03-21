@@ -43,7 +43,10 @@ export default function CompaniesPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -60,9 +63,21 @@ export default function CompaniesPage() {
 
       {/* Companies List */}
       {companies.length === 0 ? (
-        <section className="rounded-xl border border-dashed p-12 text-center" style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}>
-          <Building2 className="w-16 h-16 mx-auto mb-4 opacity-30" style={{ color: "var(--bz-text-2)" }} />
-          <h2 className="text-lg font-semibold" style={{ color: "var(--bz-text-2)" }}>
+        <section
+          className="rounded-xl border border-dashed p-12 text-center"
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
+        >
+          <Building2
+            className="w-16 h-16 mx-auto mb-4 opacity-30"
+            style={{ color: "var(--bz-text-2)" }}
+          />
+          <h2
+            className="text-lg font-semibold"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             No companies yet
           </h2>
           <p className="text-sm mt-1" style={{ color: "var(--bz-text-3)" }}>
@@ -131,8 +146,14 @@ function CompanyCard({
       style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
     >
       <div className="flex items-start gap-4">
-        <div className="p-3 rounded-xl flex-shrink-0" style={{ background: "rgba(201,169,110,0.1)" }}>
-          <Building2 className="w-6 h-6" style={{ color: "var(--bz-accent-warm)" }} />
+        <div
+          className="p-3 rounded-xl flex-shrink-0"
+          style={{ background: "rgba(201,169,110,0.1)" }}
+        >
+          <Building2
+            className="w-6 h-6"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -143,28 +164,36 @@ function CompanyCard({
                   {company.name}
                 </h3>
                 {company.isPrimary && (
-                  <Shield className="w-4 h-4 flex-shrink-0" style={{ color: "var(--bz-accent-warm)" }} />
+                  <Shield
+                    className="w-4 h-4 flex-shrink-0"
+                    style={{ color: "var(--bz-accent-warm)" }}
+                  />
                 )}
               </div>
-              <p className="text-sm mt-0.5" style={{ color: "var(--bz-text-2)" }}>
+              <p
+                className="text-sm mt-0.5"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 {company.type}
               </p>
             </div>
 
             <div className="flex items-center gap-1 flex-shrink-0">
               <StatusBadge status={company.status} />
-              <ChevronRight className="w-5 h-5" style={{ color: "var(--bz-text-2)" }} />
+              <ChevronRight
+                className="w-5 h-5"
+                style={{ color: "var(--bz-text-2)" }}
+              />
             </div>
           </div>
 
           {/* Quick Stats */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs" style={{ color: "var(--bz-text-2)" }}>
-            {company.nib && (
-              <span>NIB: {company.nib}</span>
-            )}
-            {company.kbli && (
-              <span>KBLI: {company.kbli}</span>
-            )}
+          <div
+            className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs"
+            style={{ color: "var(--bz-text-2)" }}
+          >
+            {company.nib && <span>NIB: {company.nib}</span>}
+            {company.kbli && <span>KBLI: {company.kbli}</span>}
             {company.licenses &&
               company.licenses.length > 0 &&
               licenseStatus && (
@@ -199,7 +228,10 @@ function CompanyCard({
 }
 
 function StatusBadge({ status }: { status: "active" | "pending" }) {
-  const config: Record<string, { icon: React.ElementType; label: string; style: React.CSSProperties }> = {
+  const config: Record<
+    string,
+    { icon: React.ElementType; label: string; style: React.CSSProperties }
+  > = {
     active: {
       icon: CheckCircle,
       label: "Active",

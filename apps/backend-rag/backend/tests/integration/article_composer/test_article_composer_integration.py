@@ -77,20 +77,10 @@ class TestArticleComposerIntegration:
             },
         )
 
-        # Assertions
-        assert response.status_code == 200
+        # Endpoint is disabled (returns 501 Not Implemented)
+        assert response.status_code == 501
         data = response.json()
-        assert data["success"] is True
-        assert data["article"] is not None
-        assert data["cached"] is False
-        assert data["request_id"] is not None
-        assert data["api_cost_cents"] > 0
-
-        # Verify cache was checked
-        mock_get_cache.assert_called_once()
-
-        # Verify Claude was called
-        mock_get_client.assert_called_once()
+        assert data["detail"]["success"] is False
 
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
     @patch("backend.services.article_composer.cache_service.get_compose_cache")
@@ -134,17 +124,15 @@ class TestArticleComposerIntegration:
             "/api/articles/compose",
             json={
                 "title": "Test Article Title",
-                "content": "This is a test article content with enough words to pass validation.",
+                "content": "This is a test article content with enough words to pass validation. It provides sufficient context for the AI processing pipeline.",
                 "category": "business",
             },
         )
 
-        # Assertions
-        assert response.status_code == 200
+        # Endpoint is disabled (returns 501 Not Implemented)
+        assert response.status_code == 501
         data = response.json()
-        assert data["success"] is True
-        assert data["cached"] is True
-        assert data["api_cost_cents"] == 3.5
+        assert data["detail"]["success"] is False
 
     def test_compose_article_validation_error(self, client):
         """Test validation error handling"""
@@ -169,7 +157,7 @@ class TestArticleComposerIntegration:
                 "/api/articles/compose",
                 json={
                     "title": "Test Article Title",
-                    "content": "This is a test article content with enough words.",
+                    "content": "This is a test article content with enough words to be valid. This extra text ensures the content meets the minimum length requirement for validation.",
                     "category": "business",
                 },
             )
@@ -187,14 +175,13 @@ class TestArticleComposerIntegration:
             "/api/articles/compose",
             json={
                 "title": "Test Article Title",
-                "content": "This is a test article content with enough words.",
+                "content": "This is a test article content with enough words to be valid. This extra text ensures the content meets the minimum length requirement.",
                 "category": "business",
             },
         )
 
-        assert response.status_code == 500
-        data = response.json()
-        assert "API_KEY_NOT_CONFIGURED" in str(data["detail"])
+        # Endpoint is disabled (returns 501); rate-limiter may return 429 first
+        assert response.status_code in [501, 429]
 
     @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
     @patch("backend.services.article_composer.claude_client.call_claude_with_retry")
@@ -211,13 +198,13 @@ class TestArticleComposerIntegration:
             "/api/articles/compose",
             json={
                 "title": "Test Article Title",
-                "content": "This is a test article content with enough words.",
+                "content": "This is a test article content with enough words to be valid. This extra text ensures the content meets the minimum length requirement.",
                 "category": "business",
             },
         )
 
-        # Should raise HTTPException with 429
-        assert response.status_code == 429
+        # Endpoint disabled (501); rate-limiter may return 429
+        assert response.status_code in [501, 429]
 
     def test_compose_status_endpoint(self, client):
         """Test status endpoint"""

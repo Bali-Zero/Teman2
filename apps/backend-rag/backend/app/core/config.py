@@ -427,6 +427,10 @@ class Settings(BaseSettings):
             "Production will fail if not explicitly set."
         ),
     )
+    intel_scraper_api_key: str = Field(
+        default="dev_scraper_key",
+        description="API key for internal scraper poller. Set via INTEL_SCRAPER_API_KEY env var.",
+    )
 
     @field_validator("api_keys", mode="before")
     @classmethod

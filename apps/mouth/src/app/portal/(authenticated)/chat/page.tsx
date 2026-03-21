@@ -175,7 +175,10 @@ export default function ChatPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -183,7 +186,10 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-180px)] md:h-[calc(100vh-140px)] animate-in fade-in duration-500">
       {/* Header */}
-      <section className="flex-shrink-0 pb-4 border-b" style={{ borderColor: "var(--bz-border)" }}>
+      <section
+        className="flex-shrink-0 pb-4 border-b"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
@@ -191,13 +197,22 @@ export default function ChatPage() {
               Chat with your Bali Zero team
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm" style={{ color: "var(--bz-text-2)" }}>
+          <div
+            className="flex items-center gap-2 text-sm"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             <Users className="w-4 h-4" />
             <span>Bali Zero Team</span>
           </div>
         </div>
         {unreadCount > 0 && (
-          <div className="mt-2 px-3 py-1.5 text-sm rounded-full inline-flex items-center gap-1.5" style={{ background: "rgba(201,169,110,0.12)", color: "var(--bz-accent-warm)" }}>
+          <div
+            className="mt-2 px-3 py-1.5 text-sm rounded-full inline-flex items-center gap-1.5"
+            style={{
+              background: "rgba(201,169,110,0.12)",
+              color: "var(--bz-accent-warm)",
+            }}
+          >
             <MessageCircle className="w-4 h-4" />
             {unreadCount} unread message{unreadCount !== 1 ? "s" : ""}
           </div>
@@ -211,11 +226,20 @@ export default function ChatPage() {
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <MessageCircle className="w-16 h-16 mb-4" style={{ color: "var(--bz-text-3)" }} />
-            <h3 className="text-lg font-semibold" style={{ color: "var(--bz-text-2)" }}>
+            <MessageCircle
+              className="w-16 h-16 mb-4"
+              style={{ color: "var(--bz-text-3)" }}
+            />
+            <h3
+              className="text-lg font-semibold"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               No messages yet
             </h3>
-            <p className="text-sm mt-1 max-w-xs" style={{ color: "var(--bz-text-3)" }}>
+            <p
+              className="text-sm mt-1 max-w-xs"
+              style={{ color: "var(--bz-text-3)" }}
+            >
               Start a conversation with your Bali Zero team. We're here to help!
             </p>
           </div>
@@ -224,11 +248,20 @@ export default function ChatPage() {
             <div key={date}>
               {/* Date Separator */}
               <div className="flex items-center gap-3 my-4">
-                <div className="flex-1 h-px" style={{ background: "var(--bz-border)" }} />
-                <span className="text-xs font-medium px-2" style={{ color: "var(--bz-text-2)" }}>
+                <div
+                  className="flex-1 h-px"
+                  style={{ background: "var(--bz-border)" }}
+                />
+                <span
+                  className="text-xs font-medium px-2"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   {formatDate(dateMessages[0].createdAt)}
                 </span>
-                <div className="flex-1 h-px" style={{ background: "var(--bz-border)" }} />
+                <div
+                  className="flex-1 h-px"
+                  style={{ background: "var(--bz-border)" }}
+                />
               </div>
 
               {/* Messages for this date */}
@@ -248,7 +281,10 @@ export default function ChatPage() {
       </div>
 
       {/* Input Area */}
-      <div className="flex-shrink-0 pt-4 border-t" style={{ borderColor: "var(--bz-border)" }}>
+      <div
+        className="flex-shrink-0 pt-4 border-t"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
         <div className="flex gap-2">
           <input
             ref={inputRef}
@@ -282,7 +318,10 @@ export default function ChatPage() {
             )}
           </Button>
         </div>
-        <p className="text-xs mt-2 text-center" style={{ color: "var(--bz-text-3)" }}>
+        <p
+          className="text-xs mt-2 text-center"
+          style={{ color: "var(--bz-text-3)" }}
+        >
           Messages are typically responded to within 24 hours
         </p>
       </div>
@@ -307,8 +346,14 @@ function MessageBubble({
     >
       {/* Team Avatar */}
       {isFromTeam && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(201,169,110,0.12)" }}>
-          <Users className="w-4 h-4" style={{ color: "var(--bz-accent-warm)" }} />
+        <div
+          className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+          style={{ background: "rgba(201,169,110,0.12)" }}
+        >
+          <Users
+            className="w-4 h-4"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
         </div>
       )}
 
@@ -319,13 +364,23 @@ function MessageBubble({
           isFromTeam ? "rounded-tl-sm" : "rounded-tr-sm",
           isUnread && "ring-2",
         )}
-        style={isFromTeam
-          ? { background: "var(--bz-surface)", boxShadow: isUnread ? "0 0 0 2px rgba(201,169,110,0.3)" : undefined }
-          : { background: "var(--bz-accent-warm)", color: "#0c0c0e" }}
+        style={
+          isFromTeam
+            ? {
+                background: "var(--bz-surface)",
+                boxShadow: isUnread
+                  ? "0 0 0 2px rgba(201,169,110,0.3)"
+                  : undefined,
+              }
+            : { background: "var(--bz-accent-warm)", color: "#0c0c0e" }
+        }
       >
         {/* Sender name for team messages */}
         {isFromTeam && message.sentBy && (
-          <p className="text-xs font-medium mb-1" style={{ color: "var(--bz-accent-warm)" }}>
+          <p
+            className="text-xs font-medium mb-1"
+            style={{ color: "var(--bz-accent-warm)" }}
+          >
             {message.sentBy}
           </p>
         )}
@@ -351,7 +406,9 @@ function MessageBubble({
         {/* Time */}
         <p
           className="text-[10px] mt-1"
-          style={{ color: isFromTeam ? "var(--bz-text-2)" : "rgba(12,12,14,0.6)" }}
+          style={{
+            color: isFromTeam ? "var(--bz-text-2)" : "rgba(12,12,14,0.6)",
+          }}
         >
           {formatTime(message.createdAt)}
           {!isFromTeam && message.readAt && " • Read"}
@@ -360,7 +417,10 @@ function MessageBubble({
 
       {/* User Avatar */}
       {!isFromTeam && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "var(--bz-accent-warm)" }}>
+        <div
+          className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+          style={{ background: "var(--bz-accent-warm)" }}
+        >
           <User className="w-4 h-4" style={{ color: "#0c0c0e" }} />
         </div>
       )}

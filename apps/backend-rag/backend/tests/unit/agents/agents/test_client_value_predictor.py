@@ -91,8 +91,13 @@ class TestClientValuePredictor:
         mock_app_module.state = MagicMock()
         mock_app_module.state.db_pool = mock_pool
 
+        import sys
+
+        mock_main_cloud_module = MagicMock()
+        mock_main_cloud_module.app = mock_app_module
+
         with (
-            patch("backend.app.main_cloud.app", mock_app_module),
+            patch.dict(sys.modules, {"backend.app.main_cloud": mock_main_cloud_module}),
             patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
             patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
             patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),

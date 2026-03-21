@@ -37,6 +37,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 def get_openai_embedding(text: str) -> list[float]:
     """Get embedding from OpenAI text-embedding-3-small (1536 dims)."""
     import openai
+
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
     response = client.embeddings.create(
         input=text,
@@ -88,6 +89,7 @@ def chunk_text(text: str, chunk_size: int = 1500, overlap: int = 200) -> list[st
 def generate_bm25_sparse(text: str) -> dict:
     """Generate BM25 sparse vector using hash-based token IDs."""
     from core.bm25_vectorizer import BM25Vectorizer
+
     bm25 = BM25Vectorizer()
     return bm25.generate_sparse_vector(text)
 
@@ -97,14 +99,16 @@ def upsert_point(point_id, dense_vector, sparse_indices, sparse_values, payload)
     url = f"{QDRANT_URL}/collections/{COLLECTION_NAME}/points"
     headers = {"Content-Type": "application/json", "api-key": QDRANT_API_KEY}
     data = {
-        "points": [{
-            "id": point_id,
-            "vector": {
-                "dense": dense_vector,
-                "bm25": {"indices": sparse_indices, "values": sparse_values},
-            },
-            "payload": payload,
-        }]
+        "points": [
+            {
+                "id": point_id,
+                "vector": {
+                    "dense": dense_vector,
+                    "bm25": {"indices": sparse_indices, "values": sparse_values},
+                },
+                "payload": payload,
+            }
+        ]
     }
 
     for attempt in range(3):
@@ -189,7 +193,9 @@ def ingest_file(file_path: str):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python scripts/ingest_single_file.py <relative-file-path>")
-        print("Example: python scripts/ingest_single_file.py training-data/business/business_033_kbli_foreign_ownership.md")
+        print(
+            "Example: python scripts/ingest_single_file.py training-data/business/business_033_kbli_foreign_ownership.md"
+        )
         sys.exit(1)
 
     if not OPENAI_API_KEY:

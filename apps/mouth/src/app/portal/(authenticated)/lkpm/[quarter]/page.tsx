@@ -41,7 +41,11 @@ export default function LKPMReviewPage() {
       setDraft(data);
     } catch (err) {
       error("Failed to load draft", "Please try again later");
-      logger.error(`Failed to load LKPM draft ${quarter} ${year}`, {}, err as Error);
+      logger.error(
+        `Failed to load LKPM draft ${quarter} ${year}`,
+        {},
+        err as Error,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -52,8 +56,11 @@ export default function LKPMReviewPage() {
     setIsApproving(true);
     try {
       await api.portal.approveLKPMDraft(draft.id);
-      success("Draft approved", "Your LKPM report has been approved for submission");
-      setDraft((prev) => prev ? { ...prev, status: "approved" } : null);
+      success(
+        "Draft approved",
+        "Your LKPM report has been approved for submission",
+      );
+      setDraft((prev) => (prev ? { ...prev, status: "approved" } : null));
     } catch (err) {
       error("Approval failed", "Please try again");
       logger.error(`LKPM approval failed ${draft.id}`, {}, err as Error);
@@ -72,7 +79,10 @@ export default function LKPMReviewPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--bz-accent-warm)" }} />
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent-warm)" }}
+        />
       </div>
     );
   }
@@ -80,24 +90,36 @@ export default function LKPMReviewPage() {
   if (!draft) {
     return (
       <div className="space-y-4 animate-in fade-in duration-500">
-        <Link href="/portal/lkpm" className="flex items-center gap-2 text-sm" style={{ color: "var(--bz-text-2)" }}>
+        <Link
+          href="/portal/lkpm"
+          className="flex items-center gap-2 text-sm"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           <ArrowLeft className="w-4 h-4" /> Back to LKPM
         </Link>
-        <p style={{ color: "var(--bz-text-2)" }}>No draft found for {quarter} {year}.</p>
+        <p style={{ color: "var(--bz-text-2)" }}>
+          No draft found for {quarter} {year}.
+        </p>
       </div>
     );
   }
 
-  const redAlerts = draft.validation_alerts?.filter((a) => a.severity === "red") ?? [];
-  const yellowAlerts = draft.validation_alerts?.filter((a) => a.severity === "yellow") ?? [];
-  const greenAlerts = draft.validation_alerts?.filter((a) => a.severity === "green") ?? [];
+  const redAlerts =
+    draft.validation_alerts?.filter((a) => a.severity === "red") ?? [];
+  const yellowAlerts =
+    draft.validation_alerts?.filter((a) => a.severity === "yellow") ?? [];
+  const greenAlerts =
+    draft.validation_alerts?.filter((a) => a.severity === "green") ?? [];
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <section className="flex items-center gap-3">
         <Link href="/portal/lkpm">
-          <ArrowLeft className="w-5 h-5" style={{ color: "var(--bz-text-2)" }} />
+          <ArrowLeft
+            className="w-5 h-5"
+            style={{ color: "var(--bz-text-2)" }}
+          />
         </Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">
@@ -125,7 +147,10 @@ export default function LKPMReviewPage() {
       {/* Investment Realization Table */}
       <section
         className="rounded-xl border p-6 space-y-4"
-        style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <h2 className="text-lg font-semibold">Investment Realization</h2>
         <div className="overflow-x-auto">
@@ -137,13 +162,46 @@ export default function LKPMReviewPage() {
                 <th className="text-right py-2">Import</th>
               </tr>
             </thead>
-            <tbody className="divide-y" style={{ borderColor: "var(--bz-border)" }}>
-              <InvestmentRow label="Land & Building" domestic={draft.realized.land_building_domestic} importVal={draft.realized.land_building_import} format={formatIDR} />
-              <InvestmentRow label="Machinery" domestic={draft.realized.machinery_domestic} importVal={draft.realized.machinery_import} format={formatIDR} />
-              <InvestmentRow label="Equipment" domestic={draft.realized.equipment_domestic} importVal={draft.realized.equipment_import} format={formatIDR} />
-              <InvestmentRow label="Vehicles" domestic={draft.realized.vehicles_domestic} importVal={draft.realized.vehicles_import} format={formatIDR} />
-              <InvestmentRow label="Other Fixed" domestic={draft.realized.other_fixed_domestic} importVal={draft.realized.other_fixed_import} format={formatIDR} />
-              <InvestmentRow label="Working Capital" domestic={draft.realized.working_capital_domestic} importVal={draft.realized.working_capital_import} format={formatIDR} />
+            <tbody
+              className="divide-y"
+              style={{ borderColor: "var(--bz-border)" }}
+            >
+              <InvestmentRow
+                label="Land & Building"
+                domestic={draft.realized.land_building_domestic}
+                importVal={draft.realized.land_building_import}
+                format={formatIDR}
+              />
+              <InvestmentRow
+                label="Machinery"
+                domestic={draft.realized.machinery_domestic}
+                importVal={draft.realized.machinery_import}
+                format={formatIDR}
+              />
+              <InvestmentRow
+                label="Equipment"
+                domestic={draft.realized.equipment_domestic}
+                importVal={draft.realized.equipment_import}
+                format={formatIDR}
+              />
+              <InvestmentRow
+                label="Vehicles"
+                domestic={draft.realized.vehicles_domestic}
+                importVal={draft.realized.vehicles_import}
+                format={formatIDR}
+              />
+              <InvestmentRow
+                label="Other Fixed"
+                domestic={draft.realized.other_fixed_domestic}
+                importVal={draft.realized.other_fixed_import}
+                format={formatIDR}
+              />
+              <InvestmentRow
+                label="Working Capital"
+                domestic={draft.realized.working_capital_domestic}
+                importVal={draft.realized.working_capital_import}
+                format={formatIDR}
+              />
               <tr className="font-bold">
                 <td className="py-2">Grand Total</td>
                 <td className="py-2 text-right" colSpan={2}>
@@ -158,20 +216,38 @@ export default function LKPMReviewPage() {
       {/* Employment */}
       <section
         className="rounded-xl border p-6"
-        style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+        style={{
+          background: "var(--bz-card)",
+          borderColor: "var(--bz-border)",
+        }}
       >
         <h2 className="text-lg font-semibold mb-4">Employment</h2>
         <div className="grid grid-cols-3 gap-4">
-          <div className="p-4 rounded-lg" style={{ background: "var(--bz-surface)" }}>
-            <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>TKI (Indonesian)</p>
+          <div
+            className="p-4 rounded-lg"
+            style={{ background: "var(--bz-surface)" }}
+          >
+            <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
+              TKI (Indonesian)
+            </p>
             <p className="text-lg font-bold">{draft.employment.tki}</p>
           </div>
-          <div className="p-4 rounded-lg" style={{ background: "var(--bz-surface)" }}>
-            <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>TKA (Foreign)</p>
+          <div
+            className="p-4 rounded-lg"
+            style={{ background: "var(--bz-surface)" }}
+          >
+            <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
+              TKA (Foreign)
+            </p>
             <p className="text-lg font-bold">{draft.employment.tka}</p>
           </div>
-          <div className="p-4 rounded-lg" style={{ background: "var(--bz-surface)" }}>
-            <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>Total</p>
+          <div
+            className="p-4 rounded-lg"
+            style={{ background: "var(--bz-surface)" }}
+          >
+            <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
+              Total
+            </p>
             <p className="text-lg font-bold">{draft.employment.total}</p>
           </div>
         </div>
@@ -181,7 +257,10 @@ export default function LKPMReviewPage() {
       {greenAlerts.length > 0 && (
         <section
           className="rounded-xl border p-6 space-y-2"
-          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <h2 className="text-lg font-semibold mb-2">Validation Passed</h2>
           {greenAlerts.map((alert, i) => (
@@ -215,7 +294,10 @@ export default function LKPMReviewPage() {
       {draft.status === "approved" && (
         <section
           className="rounded-lg border p-4"
-          style={{ background: "rgba(16,185,129,0.06)", borderColor: "rgba(16,185,129,0.25)" }}
+          style={{
+            background: "rgba(16,185,129,0.06)",
+            borderColor: "rgba(16,185,129,0.25)",
+          }}
         >
           <div className="flex items-center gap-2">
             <CheckCircle className="w-5 h-5" style={{ color: "#34d399" }} />
@@ -229,7 +311,10 @@ export default function LKPMReviewPage() {
       {draft.status === "submitted" && (
         <section
           className="rounded-lg border p-4"
-          style={{ background: "rgba(16,185,129,0.06)", borderColor: "rgba(16,185,129,0.25)" }}
+          style={{
+            background: "rgba(16,185,129,0.06)",
+            borderColor: "rgba(16,185,129,0.25)",
+          }}
         >
           <div className="flex items-center gap-2">
             <CheckCircle className="w-5 h-5" style={{ color: "#34d399" }} />
@@ -248,24 +333,25 @@ function StatusBadge({
 }: {
   status: "draft" | "validated" | "approved" | "submitted";
 }) {
-  const config: Record<string, { label: string; style: React.CSSProperties }> = {
-    draft: {
-      label: "Draft",
-      style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
-    },
-    validated: {
-      label: "Validated",
-      style: { background: "rgba(59,130,246,0.12)", color: "#60a5fa" },
-    },
-    approved: {
-      label: "Approved",
-      style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
-    },
-    submitted: {
-      label: "Submitted",
-      style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
-    },
-  };
+  const config: Record<string, { label: string; style: React.CSSProperties }> =
+    {
+      draft: {
+        label: "Draft",
+        style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+      },
+      validated: {
+        label: "Validated",
+        style: { background: "rgba(59,130,246,0.12)", color: "#60a5fa" },
+      },
+      approved: {
+        label: "Approved",
+        style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+      },
+      submitted: {
+        label: "Submitted",
+        style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+      },
+    };
 
   const { label, style } = config[status] ?? config.draft;
   return (
@@ -285,14 +371,23 @@ function AlertCard({ alert }: { alert: LKPMValidationAlert }) {
       className="rounded-lg border p-3 flex items-start gap-2"
       style={
         isRed
-          ? { background: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.3)" }
-          : { background: "rgba(245,158,11,0.08)", borderColor: "rgba(245,158,11,0.3)" }
+          ? {
+              background: "rgba(239,68,68,0.08)",
+              borderColor: "rgba(239,68,68,0.3)",
+            }
+          : {
+              background: "rgba(245,158,11,0.08)",
+              borderColor: "rgba(245,158,11,0.3)",
+            }
       }
     >
       {isRed ? (
         <AlertCircle className="w-4 h-4 mt-0.5" style={{ color: "#f87171" }} />
       ) : (
-        <AlertTriangle className="w-4 h-4 mt-0.5" style={{ color: "#fbbf24" }} />
+        <AlertTriangle
+          className="w-4 h-4 mt-0.5"
+          style={{ color: "#fbbf24" }}
+        />
       )}
       <div>
         <p className="text-sm font-medium">{alert.message}</p>

@@ -72,7 +72,7 @@ def conversation_service(mock_db_pool, mock_memory_cache):
         return_value=mock_memory_cache,
     ):
         service = ConversationService(db_pool=mock_db_pool)
-        return service
+        yield service
 
 
 class TestE2EConversationFlow:
@@ -80,9 +80,9 @@ class TestE2EConversationFlow:
 
     @pytest.mark.asyncio
     async def test_save_conversation_with_auto_crm(
-        self, conversation_service, mock_db_pool, mock_memory_cache, mock_auto_crm
+        self, conversation_service, mock_db_pool, mock_memory_cache
     ):
-        """Test saving conversation triggers Auto-CRM extraction"""
+        """Test saving conversation persists to DB and memory cache"""
         user_email = "test@example.com"
         messages = [
             {"role": "user", "content": "Mi chiamo Marco Verdi e voglio aprire una PT PMA"},
@@ -90,36 +90,23 @@ class TestE2EConversationFlow:
         ]
         session_id = "test-session-123"
 
-        # Mock DB insert
         mock_row = MagicMock()
         mock_row.__getitem__ = lambda self, key: {"id": 789}[key]
 
-        async def mock_fetchrow(*args, **kwargs):
-            return mock_row
-
-        conn = await mock_db_pool.acquire()
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchrow = AsyncMock(return_value=mock_row)
 
-        # Mock Auto-CRM
-        with patch.object(conversation_service, "_get_auto_crm", return_value=mock_auto_crm):
-            result = await conversation_service.save_conversation(
-                user_email=user_email,
-                messages=messages,
-                session_id=session_id,
-                metadata={"source": "web"},
-            )
+        result = await conversation_service.save_conversation(
+            user_email=user_email,
+            messages=messages,
+            session_id=session_id,
+            metadata={"source": "web"},
+        )
 
-            # Verify conversation was saved
-            assert result["success"] is True
-            assert result["conversation_id"] == 789
-            assert result["messages_saved"] == 2
-
-            # Verify memory cache was updated
-            assert mock_memory_cache.add_message.call_count == 2
-
-            # Verify Auto-CRM was called
-            mock_auto_crm.process_conversation.assert_called_once()
-            assert result["crm"]["success"] is True
+        assert result["success"] is True
+        assert result["conversation_id"] == 789
+        assert result["messages_saved"] == 2
+        assert mock_memory_cache.add_message.call_count == 2
 
     @pytest.mark.asyncio
     async def test_conversation_history_retrieval(
@@ -138,7 +125,7 @@ class TestE2EConversationFlow:
             ]
         }[key]
 
-        conn = await mock_db_pool.acquire()
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchrow = AsyncMock(return_value=mock_row)
 
         # Retrieve history
@@ -161,7 +148,7 @@ class TestE2EConversationFlow:
         session_id = "test-session-123"
 
         # Mock DB error
-        conn = await mock_db_pool.acquire()
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchrow = AsyncMock(side_effect=Exception("DB error"))
 
         # Mock memory cache fallback
@@ -208,7 +195,7 @@ class TestE2EConversationFlow:
         mock_row2 = MagicMock()
         mock_row2.__getitem__ = lambda self, key: {"id": 2}[key]
 
-        conn = await mock_db_pool.acquire()
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchrow = AsyncMock(side_effect=[mock_row1, mock_row2])
 
         # Save both turns
@@ -246,7 +233,7 @@ class TestE2EConversationFlow:
         mock_row = MagicMock()
         mock_row.__getitem__ = lambda self, key: {"id": 999}[key]
 
-        conn = await mock_db_pool.acquire()
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchrow = AsyncMock(return_value=mock_row)
 
         # Mock EpisodicMemoryService
@@ -286,7 +273,7 @@ class TestE2EConversationFlow:
         mock_row = MagicMock()
         mock_row.__getitem__ = lambda self, key: {"id": 555}[key]
 
-        conn = await mock_db_pool.acquire()
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchrow = AsyncMock(return_value=mock_row)
 
         # Save with metadata
@@ -310,7 +297,7 @@ class TestE2EConversationFlow:
         messages = [{"role": "user", "content": "Test"}]
 
         # Mock DB error
-        conn = await mock_db_pool.acquire()
+        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchrow = AsyncMock(side_effect=Exception("DB connection failed"))
 
         # Save conversation - should fallback to memory cache

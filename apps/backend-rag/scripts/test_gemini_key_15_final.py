@@ -21,12 +21,12 @@ async def test_key() -> None:
     try:
         # Try different model ID formats
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents="Hello, respond with 'OK' if you can hear me."
+            model="gemini-1.5-flash", contents="Hello, respond with 'OK' if you can hear me."
         )
         logger.info("Response: %s", response.text)
     except Exception as exc:
         logger.exception("Gemini key 1.5 final test failed: %s", exc)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

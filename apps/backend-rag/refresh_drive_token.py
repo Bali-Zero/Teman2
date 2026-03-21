@@ -10,14 +10,15 @@ import sys
 
 import asyncpg
 
-sys.path.insert(0, '.')
+sys.path.insert(0, ".")
+
 
 async def refresh_drive_token():
     """Force refresh Google Drive SYSTEM token."""
 
-    print("="*60)
+    print("=" * 60)
     print("🔄 Google Drive Token Refresh")
-    print("="*60)
+    print("=" * 60)
 
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
@@ -50,7 +51,9 @@ async def refresh_drive_token():
 
             if current:
                 print(f"Current token expires: {current['expires_at']}")
-                print(f"Refresh token present: {'✅ Yes' if current['refresh_token'] else '❌ No'}\n")
+                print(
+                    f"Refresh token present: {'✅ Yes' if current['refresh_token'] else '❌ No'}\n"
+                )
             else:
                 print("❌ No SYSTEM token found in database")
                 print("   You need to authorize first:")
@@ -96,8 +99,10 @@ async def refresh_drive_token():
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     success = asyncio.run(refresh_drive_token())

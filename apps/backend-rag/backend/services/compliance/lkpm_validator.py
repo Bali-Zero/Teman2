@@ -38,15 +38,11 @@ class LKPMValidator:
         alerts: list[ValidationAlert] = []
 
         # 1. KBLI match
-        kbli_alerts = await self.validate_kbli_match(
-            draft.client_id, config.kbli_codes
-        )
+        kbli_alerts = await self.validate_kbli_match(draft.client_id, config.kbli_codes)
         alerts.extend(kbli_alerts)
 
         # 2. WNA (foreign worker) count cross-check
-        wna_alerts = await self.validate_wna_count(
-            draft.employment.tka, draft.client_id
-        )
+        wna_alerts = await self.validate_wna_count(draft.employment.tka, draft.client_id)
         alerts.extend(wna_alerts)
 
         # 3. Zero realization detection
@@ -102,10 +98,7 @@ class LKPMValidator:
                     """,
                     [f"kbli:{code}" for code in registered_kbli],
                 )
-                found_set = {
-                    row["entity_id"].replace("kbli:", "")
-                    for row in found_codes
-                }
+                found_set = {row["entity_id"].replace("kbli:", "") for row in found_codes}
         except Exception as e:
             logger.warning(f"KBLI validation query failed: {e}")
             found_set = set()
@@ -186,9 +179,7 @@ class LKPMValidator:
 
         return alerts
 
-    async def detect_zero_realization(
-        self, client_id: int
-    ) -> list[ValidationAlert]:
+    async def detect_zero_realization(self, client_id: int) -> list[ValidationAlert]:
         """Count consecutive quarters with zero investment realization."""
         alerts: list[ValidationAlert] = []
 
@@ -252,11 +243,27 @@ class LKPMValidator:
         alerts: list[ValidationAlert] = []
 
         checks = [
-            ("equipment_domestic", draft.cumulative.equipment_domestic, config.planned.equipment_domestic),
-            ("equipment_import", draft.cumulative.equipment_import, config.planned.equipment_import),
-            ("building_domestic", draft.cumulative.building_domestic, config.planned.building_domestic),
+            (
+                "equipment_domestic",
+                draft.cumulative.equipment_domestic,
+                config.planned.equipment_domestic,
+            ),
+            (
+                "equipment_import",
+                draft.cumulative.equipment_import,
+                config.planned.equipment_import,
+            ),
+            (
+                "building_domestic",
+                draft.cumulative.building_domestic,
+                config.planned.building_domestic,
+            ),
             ("building_import", draft.cumulative.building_import, config.planned.building_import),
-            ("vehicle_domestic", draft.cumulative.vehicle_domestic, config.planned.vehicle_domestic),
+            (
+                "vehicle_domestic",
+                draft.cumulative.vehicle_domestic,
+                config.planned.vehicle_domestic,
+            ),
             ("vehicle_import", draft.cumulative.vehicle_import, config.planned.vehicle_import),
             ("land", draft.cumulative.land, config.planned.land),
             ("working_capital", draft.cumulative.working_capital, config.planned.working_capital),

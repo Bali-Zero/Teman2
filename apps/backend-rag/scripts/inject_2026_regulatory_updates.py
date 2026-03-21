@@ -5,7 +5,10 @@ import os
 import asyncpg
 
 # Database connection from environment or default local
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara"
+)
+
 
 async def run():
     print("🚀 Injecting March 2026 Regulatory Intelligence into Knowledge Graph...")
@@ -26,45 +29,60 @@ async def run():
     async def inject_intelligence(codes, group_name, alert_msg, risk_level="high"):
         for code in codes:
             entity_id = f"kbli:{code}"
-            row = await conn.fetchrow("SELECT properties FROM kg_nodes WHERE entity_id = $1", entity_id)
+            row = await conn.fetchrow(
+                "SELECT properties FROM kg_nodes WHERE entity_id = $1", entity_id
+            )
 
             if row:
-                props = json.loads(row['properties']) if isinstance(row['properties'], str) else row['properties']
-                if 'expert_legal' not in props:
-                    props['expert_legal'] = {}
+                props = (
+                    json.loads(row["properties"])
+                    if isinstance(row["properties"], str)
+                    else row["properties"]
+                )
+                if "expert_legal" not in props:
+                    props["expert_legal"] = {}
 
                 # Update with 2026 Intelligence
-                props['expert_legal']['regulatory_update_2026'] = {
+                props["expert_legal"]["regulatory_update_2026"] = {
                     "source": group_name,
                     "alert": alert_msg,
                     "risk_level": risk_level,
-                    "last_sync": "2026-03-15"
+                    "last_sync": "2026-03-15",
                 }
 
                 # Append to existing alerts if any
-                existing_alert = props['expert_legal'].get('bali_alert', "")
+                existing_alert = props["expert_legal"].get("bali_alert", "")
                 if alert_msg not in existing_alert:
                     combined = f"{existing_alert} | [MARCH 2026 UPDATE]: {alert_msg}"
-                    props['expert_legal']['bali_alert'] = combined.lstrip(" | ").rstrip(" | ")
+                    props["expert_legal"]["bali_alert"] = combined.lstrip(" | ").rstrip(" | ")
 
-                await conn.execute("UPDATE kg_nodes SET properties = $1 WHERE entity_id = $2", json.dumps(props), entity_id)
+                await conn.execute(
+                    "UPDATE kg_nodes SET properties = $1 WHERE entity_id = $2",
+                    json.dumps(props),
+                    entity_id,
+                )
                 print(f"✅ 2026 Intelligence injected for {entity_id}")
             else:
                 # Create node if missing
                 await conn.execute(
                     "INSERT INTO kg_nodes (entity_id, entity_type, name, properties) VALUES ($1, $2, $3, $4)",
-                    entity_id, 'kbli', f"KBLI {code}", json.dumps({
-                        "kode": code,
-                        "expert_legal": {
-                            "regulatory_update_2026": {
-                                "source": group_name,
-                                "alert": alert_msg,
-                                "risk_level": risk_level,
-                                "last_sync": "2026-03-15"
+                    entity_id,
+                    "kbli",
+                    f"KBLI {code}",
+                    json.dumps(
+                        {
+                            "kode": code,
+                            "expert_legal": {
+                                "regulatory_update_2026": {
+                                    "source": group_name,
+                                    "alert": alert_msg,
+                                    "risk_level": risk_level,
+                                    "last_sync": "2026-03-15",
+                                },
+                                "bali_alert": f"[MARCH 2026 UPDATE]: {alert_msg}",
                             },
-                            "bali_alert": f"[MARCH 2026 UPDATE]: {alert_msg}"
                         }
-                    })
+                    ),
                 )
                 print(f"🆕 Created and injected 2026 data for {entity_id}")
 
@@ -73,7 +91,7 @@ async def run():
         lp2b_sectors,
         "Perda 4/2026 (Bali LP2B)",
         "CRITICAL: Building on protected rice fields (LP2B) is now a criminal offense with jail time. Strict zoning audit mandatory before purchase.",
-        "critical"
+        "critical",
     )
 
     # Regulation 49/2025 Alert
@@ -81,11 +99,12 @@ async def run():
         compliance_sectors,
         "Regulation 49/2025 (Annual Reporting)",
         "COMPLIANCE ALERT: Notarized Annual Reports (GMS) are now mandatory via SABH. Failure to file triggers NIB suspension.",
-        "high"
+        "high",
     )
 
     await conn.close()
     print("✨ Sync complete. Zantara RAG is now aware of March 2026 regulatory shifts.")
+
 
 if __name__ == "__main__":
     asyncio.run(run())

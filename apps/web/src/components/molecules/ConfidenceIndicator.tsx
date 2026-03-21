@@ -49,16 +49,16 @@ export function ConfidenceIndicator({
         </span>
       </div>
       <div className="grid grid-cols-3 gap-1">
-        {(Object.entries(FACTOR_LABELS) as [keyof ConfidenceScores, string][]).map(
-          ([key, name]) => (
-            <div key={key} className="text-xs">
-              <span className="text-muted-foreground">{name}: </span>
-              <span className="font-medium">
-                {(scores[key] * 100).toFixed(0)}%
-              </span>
-            </div>
-          ),
-        )}
+        {(
+          Object.entries(FACTOR_LABELS) as [keyof ConfidenceScores, string][]
+        ).map(([key, name]) => (
+          <div key={key} className="text-xs">
+            <span className="text-muted-foreground">{name}: </span>
+            <span className="font-medium">
+              {(scores[key] * 100).toFixed(0)}%
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

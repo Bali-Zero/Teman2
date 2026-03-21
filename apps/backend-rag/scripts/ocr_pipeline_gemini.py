@@ -184,14 +184,16 @@ async def update_company_docs(
         # Find matching doc in DB
         row = await conn.fetchrow(
             "SELECT id, document_type FROM company_documents WHERE company_id = $1 AND file_name = $2",
-            company_id, file_name,
+            company_id,
+            file_name,
         )
 
         if not row:
             # Try fuzzy match (file names sometimes differ slightly)
             row = await conn.fetchrow(
                 "SELECT id, document_type FROM company_documents WHERE company_id = $1 AND file_name ILIKE $2",
-                company_id, f"%{file_name[:30]}%",
+                company_id,
+                f"%{file_name[:30]}%",
             )
 
         if not row:
@@ -210,7 +212,8 @@ async def update_company_docs(
                        ocr_extracted_data = $1::jsonb,
                        updated_at = NOW()
                    WHERE id = $2""",
-                ocr_json, doc_id,
+                ocr_json,
+                doc_id,
             )
 
         updated += 1
@@ -223,14 +226,24 @@ async def update_company_docs(
             if nib:
                 current = await conn.fetchval("SELECT nib FROM companies WHERE id = $1", company_id)
                 if not current:
-                    await conn.execute("UPDATE companies SET nib = $1, updated_at = NOW() WHERE id = $2", nib, company_id)
+                    await conn.execute(
+                        "UPDATE companies SET nib = $1, updated_at = NOW() WHERE id = $2",
+                        nib,
+                        company_id,
+                    )
                     logger.info(f"      → companies.nib = {nib}")
         elif not dry_run and folder_type == "02_NPWP":
             npwp = doc.get("npwp_number", "").strip()
             if npwp:
-                current = await conn.fetchval("SELECT npwp_company FROM companies WHERE id = $1", company_id)
+                current = await conn.fetchval(
+                    "SELECT npwp_company FROM companies WHERE id = $1", company_id
+                )
                 if not current:
-                    await conn.execute("UPDATE companies SET npwp_company = $1, updated_at = NOW() WHERE id = $2", npwp, company_id)
+                    await conn.execute(
+                        "UPDATE companies SET npwp_company = $1, updated_at = NOW() WHERE id = $2",
+                        npwp,
+                        company_id,
+                    )
                     logger.info(f"      → companies.npwp_company = {npwp}")
 
     return updated
@@ -244,17 +257,30 @@ async def update_company_fields(conn: asyncpg.Connection, company_id: int, doc: 
         deed_no = doc.get("deed_number", "").strip()
         deed_date = doc.get("deed_date", "").strip()
         if deed_no:
-            current = await conn.fetchval("SELECT akta_pendirian_no FROM companies WHERE id = $1", company_id)
+            current = await conn.fetchval(
+                "SELECT akta_pendirian_no FROM companies WHERE id = $1", company_id
+            )
             if not current:
-                await conn.execute("UPDATE companies SET akta_pendirian_no = $1, updated_at = NOW() WHERE id = $2", deed_no, company_id)
+                await conn.execute(
+                    "UPDATE companies SET akta_pendirian_no = $1, updated_at = NOW() WHERE id = $2",
+                    deed_no,
+                    company_id,
+                )
                 logger.info(f"      → companies.akta_pendirian_no = {deed_no}")
         if deed_date and deed_date != "YYYY-MM-DD":
-            current = await conn.fetchval("SELECT akta_pendirian_date FROM companies WHERE id = $1", company_id)
+            current = await conn.fetchval(
+                "SELECT akta_pendirian_date FROM companies WHERE id = $1", company_id
+            )
             if not current:
                 try:
                     from datetime import date as dt_date
+
                     d = dt_date.fromisoformat(deed_date)
-                    await conn.execute("UPDATE companies SET akta_pendirian_date = $1, updated_at = NOW() WHERE id = $2", d, company_id)
+                    await conn.execute(
+                        "UPDATE companies SET akta_pendirian_date = $1, updated_at = NOW() WHERE id = $2",
+                        d,
+                        company_id,
+                    )
                     logger.info(f"      → companies.akta_pendirian_date = {deed_date}")
                 except ValueError:
                     pass
@@ -273,17 +299,30 @@ async def update_company_fields(conn: asyncpg.Connection, company_id: int, doc: 
         sk_no = doc.get("sk_number", "").strip()
         sk_date = doc.get("deed_date", "").strip()
         if sk_no:
-            current = await conn.fetchval("SELECT sk_menhumkam_no FROM companies WHERE id = $1", company_id)
+            current = await conn.fetchval(
+                "SELECT sk_menhumkam_no FROM companies WHERE id = $1", company_id
+            )
             if not current:
-                await conn.execute("UPDATE companies SET sk_menhumkam_no = $1, updated_at = NOW() WHERE id = $2", sk_no, company_id)
+                await conn.execute(
+                    "UPDATE companies SET sk_menhumkam_no = $1, updated_at = NOW() WHERE id = $2",
+                    sk_no,
+                    company_id,
+                )
                 logger.info(f"      → companies.sk_menhumkam_no = {sk_no}")
         if sk_date and sk_date != "YYYY-MM-DD":
-            current = await conn.fetchval("SELECT sk_menhumkam_date FROM companies WHERE id = $1", company_id)
+            current = await conn.fetchval(
+                "SELECT sk_menhumkam_date FROM companies WHERE id = $1", company_id
+            )
             if not current:
                 try:
                     from datetime import date as dt_date
+
                     d = dt_date.fromisoformat(sk_date)
-                    await conn.execute("UPDATE companies SET sk_menhumkam_date = $1, updated_at = NOW() WHERE id = $2", d, company_id)
+                    await conn.execute(
+                        "UPDATE companies SET sk_menhumkam_date = $1, updated_at = NOW() WHERE id = $2",
+                        d,
+                        company_id,
+                    )
                 except ValueError:
                     pass
 
@@ -296,9 +335,13 @@ async def ensure_ocr_columns(conn: asyncpg.Connection) -> None:
     cols = {r["column_name"] for r in existing}
 
     if "ocr_status" not in cols:
-        await conn.execute("ALTER TABLE company_documents ADD COLUMN ocr_status VARCHAR(20) DEFAULT NULL")
+        await conn.execute(
+            "ALTER TABLE company_documents ADD COLUMN ocr_status VARCHAR(20) DEFAULT NULL"
+        )
     if "ocr_extracted_data" not in cols:
-        await conn.execute("ALTER TABLE company_documents ADD COLUMN ocr_extracted_data JSONB DEFAULT NULL")
+        await conn.execute(
+            "ALTER TABLE company_documents ADD COLUMN ocr_extracted_data JSONB DEFAULT NULL"
+        )
 
 
 async def main(dry_run: bool, batch_size: int, folder: str) -> None:
@@ -407,9 +450,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="OCR Pipeline v2 — Gemini CLI with Drive access")
     parser.add_argument("--dry-run", action="store_true", help="Preview only")
     parser.add_argument("--batch", type=int, default=20, help="Companies per run (default 20)")
-    parser.add_argument("--folder", type=str, default="00_AKTA",
-                        choices=["00_AKTA", "01_NIB", "02_NPWP"],
-                        help="Which subfolder to OCR (default: 00_AKTA)")
+    parser.add_argument(
+        "--folder",
+        type=str,
+        default="00_AKTA",
+        choices=["00_AKTA", "01_NIB", "02_NPWP"],
+        help="Which subfolder to OCR (default: 00_AKTA)",
+    )
     args = parser.parse_args()
 
     asyncio.run(main(dry_run=args.dry_run, batch_size=args.batch, folder=args.folder))

@@ -28,16 +28,12 @@ OBSTACLE_TEMPLATES = {
         "Gangguan rantai pasokan global menyebabkan keterlambatan pengadaan "
         "peralatan dan material yang diperlukan untuk realisasi investasi."
     ),
-    "construction_delay": (
-        "Proses pembangunan/renovasi mengalami keterlambatan akibat {reason}."
-    ),
+    "construction_delay": ("Proses pembangunan/renovasi mengalami keterlambatan akibat {reason}."),
     "market_conditions": (
         "Kondisi pasar yang belum stabil mempengaruhi rencana ekspansi "
         "dan realisasi investasi perusahaan."
     ),
-    "no_obstacles": (
-        "Tidak ada hambatan signifikan dalam realisasi investasi pada periode ini."
-    ),
+    "no_obstacles": ("Tidak ada hambatan signifikan dalam realisasi investasi pada periode ini."),
 }
 
 
@@ -68,8 +64,7 @@ def generate_ready_pack_html(pack: LKPMReadyPack) -> str:
                 ValidationSeverity.RED: "&#10006;",
             }.get(alert.severity, "&#8226;")
             validation_html += (
-                f'<div style="color:{color};margin:2px 0;">'
-                f'{icon} {alert.message}</div>\n'
+                f'<div style="color:{color};margin:2px 0;">{icon} {alert.message}</div>\n'
             )
 
     # Escape user-supplied strings to prevent XSS
@@ -113,11 +108,11 @@ def generate_ready_pack_html(pack: LKPMReadyPack) -> str:
         <p><strong>NPWP:</strong> {npwp}</p>
         <p><strong>NIB:</strong> {nib}</p>
         <p><strong>Periode:</strong> {pack.quarter} {pack.year}</p>
-        <p><strong>KBLI:</strong> {', '.join(pack.kbli_codes) or '—'}</p>
+        <p><strong>KBLI:</strong> {", ".join(pack.kbli_codes) or "—"}</p>
         <p><strong>Realisasi terhadap Rencana:</strong> {pack.realization_percentage}%</p>
     </div>
 
-    {f'<div class="validation"><strong>Validasi:</strong><br>{validation_html}</div>' if validation_html else ''}
+    {f'<div class="validation"><strong>Validasi:</strong><br>{validation_html}</div>' if validation_html else ""}
 
     <h2>1. Realisasi Investasi — Periode Ini ({pack.quarter} {pack.year})</h2>
     <table>
@@ -233,7 +228,7 @@ def generate_ready_pack_html(pack: LKPMReadyPack) -> str:
     </div>
 
     <div class="no-print" style="margin-top:24px;padding:12px;background:#e8f4fd;border-radius:6px;">
-        <p><strong>Generated:</strong> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}</p>
+        <p><strong>Generated:</strong> {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}</p>
         <p><strong>Draft ID:</strong> {pack.draft_id}</p>
     </div>
 </body>

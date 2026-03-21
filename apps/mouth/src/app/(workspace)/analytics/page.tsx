@@ -182,9 +182,7 @@ function StatCard({
         )}
       </p>
       {subtitle && (
-        <p className="text-xs text-[var(--bz-text-2)] mt-1">
-          {subtitle}
-        </p>
+        <p className="text-xs text-[var(--bz-text-2)] mt-1">{subtitle}</p>
       )}
     </div>
   );
@@ -630,9 +628,7 @@ export default function AnalyticsDashboard() {
             summary={
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    Total Cost
-                  </p>
+                  <p className="text-xs text-[var(--bz-text-2)]">Total Cost</p>
                   <p className="text-lg font-bold text-[var(--success)]">
                     {formatUSD(llmUsage.total_cost_usd)}
                   </p>
@@ -652,7 +648,9 @@ export default function AnalyticsDashboard() {
               {/* Token Overview */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="p-4 rounded-lg bg-[var(--bz-accent)]/10 text-center">
-                  <p className="text-xs text-[var(--bz-accent)]">Prompt Tokens</p>
+                  <p className="text-xs text-[var(--bz-accent)]">
+                    Prompt Tokens
+                  </p>
                   <p className="text-2xl font-bold text-[var(--bz-accent)]">
                     {formatNumber(llmUsage.total_prompt_tokens)}
                   </p>
@@ -728,17 +726,13 @@ export default function AnalyticsDashboard() {
           summary={
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Avg Latency
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Avg Latency</p>
                 <p className="text-lg font-bold">
                   {data.rag.avg_latency_ms.toFixed(0)}ms
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Queries Today
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Queries Today</p>
                 <p className="text-lg font-bold">{data.rag.queries_today}</p>
               </div>
             </div>
@@ -753,25 +747,19 @@ export default function AnalyticsDashboard() {
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    Embedding
-                  </p>
+                  <p className="text-xs text-[var(--bz-text-2)]">Embedding</p>
                   <p className="text-xl font-bold">
                     {data.rag.embedding_latency_ms.toFixed(0)}ms
                   </p>
                 </div>
                 <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    Search
-                  </p>
+                  <p className="text-xs text-[var(--bz-text-2)]">Search</p>
                   <p className="text-xl font-bold">
                     {data.rag.search_latency_ms.toFixed(0)}ms
                   </p>
                 </div>
                 <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    Rerank
-                  </p>
+                  <p className="text-xs text-[var(--bz-text-2)]">Rerank</p>
                   <p className="text-xl font-bold">
                     {data.rag.rerank_latency_ms.toFixed(0)}ms
                   </p>
@@ -816,17 +804,13 @@ export default function AnalyticsDashboard() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--bz-text-2)]">
-                      Tokens Used
-                    </span>
+                    <span className="text-[var(--bz-text-2)]">Tokens Used</span>
                     <span className="font-medium">
                       {formatNumber(data.rag.token_usage_today)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--bz-text-2)]">
-                      Avg Latency
-                    </span>
+                    <span className="text-[var(--bz-text-2)]">Avg Latency</span>
                     <span className="font-medium">
                       {data.rag.avg_latency_ms.toFixed(0)}ms
                     </span>
@@ -921,7 +905,9 @@ export default function AnalyticsDashboard() {
                     </p>
                   </div>
                   <div className="p-4 rounded-lg bg-[var(--bz-accent)]/10 text-center">
-                    <p className="text-xs text-[var(--bz-accent)]">Satisfaction</p>
+                    <p className="text-xs text-[var(--bz-accent)]">
+                      Satisfaction
+                    </p>
                     <p className="text-2xl font-bold text-[var(--bz-accent)]">
                       {queryInsights.satisfaction.satisfaction_percent != null
                         ? `${queryInsights.satisfaction.satisfaction_percent}%`
@@ -983,10 +969,7 @@ export default function AnalyticsDashboard() {
                       >
                         {q.collections_attempted?.join(", ") || "-"}
                       </span>,
-                      <span
-                        key="t"
-                        className="text-xs text-[var(--bz-text-2)]"
-                      >
+                      <span key="t" className="text-xs text-[var(--bz-text-2)]">
                         {q.last_seen
                           ? new Date(q.last_seen).toLocaleDateString()
                           : "-"}
@@ -1125,9 +1108,7 @@ export default function AnalyticsDashboard() {
                   />
                 </div>
                 <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    Memory Used
-                  </p>
+                  <p className="text-xs text-[var(--bz-text-2)]">Memory Used</p>
                   <p className="text-xl font-bold">
                     {(data.system.memory_mb / 1024).toFixed(1)} GB
                   </p>
@@ -1179,9 +1160,7 @@ export default function AnalyticsDashboard() {
               </h4>
               <div className="grid grid-cols-3 gap-4">
                 <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    Active
-                  </p>
+                  <p className="text-xs text-[var(--bz-text-2)]">Active</p>
                   <p className="text-xl font-bold text-[var(--bz-accent)]">
                     {data.system.db_connections_active}
                   </p>
@@ -1193,9 +1172,7 @@ export default function AnalyticsDashboard() {
                   </p>
                 </div>
                 <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    Error Rate
-                  </p>
+                  <p className="text-xs text-[var(--bz-text-2)]">Error Rate</p>
                   <p
                     className={cn(
                       "text-xl font-bold",
@@ -1257,9 +1234,7 @@ export default function AnalyticsDashboard() {
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Collections
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Collections</p>
                 <p className="text-lg font-bold">
                   {data.qdrant.collections.length}
                 </p>
@@ -1271,7 +1246,9 @@ export default function AnalyticsDashboard() {
             {/* Overview Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 rounded-lg bg-[var(--bz-accent)]/10 text-center">
-                <p className="text-xs text-[var(--bz-accent)]">Total Documents</p>
+                <p className="text-xs text-[var(--bz-accent)]">
+                  Total Documents
+                </p>
                 <p className="text-2xl font-bold text-[var(--bz-accent)]">
                   {formatNumber(data.qdrant.total_documents)}
                 </p>
@@ -1293,9 +1270,7 @@ export default function AnalyticsDashboard() {
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Upserts Today
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Upserts Today</p>
                 <p className="text-2xl font-bold">
                   {data.qdrant.upsert_operations_today}
                 </p>
@@ -1350,9 +1325,7 @@ export default function AnalyticsDashboard() {
           summary={
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Clients
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Clients</p>
                 <p className="text-lg font-bold">{data.crm.clients_total}</p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
@@ -1362,9 +1335,7 @@ export default function AnalyticsDashboard() {
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Practices
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Practices</p>
                 <p className="text-lg font-bold">{data.crm.practices_total}</p>
               </div>
             </div>
@@ -1379,7 +1350,9 @@ export default function AnalyticsDashboard() {
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-lg bg-[var(--bz-accent)]/10 text-center">
-                  <p className="text-xs text-[var(--bz-accent)]">Total Clients</p>
+                  <p className="text-xs text-[var(--bz-accent)]">
+                    Total Clients
+                  </p>
                   <p className="text-2xl font-bold text-[var(--bz-accent)]">
                     {data.crm.clients_total}
                   </p>
@@ -1399,9 +1372,7 @@ export default function AnalyticsDashboard() {
                   </p>
                 </div>
                 <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    Practices
-                  </p>
+                  <p className="text-xs text-[var(--bz-text-2)]">Practices</p>
                   <p className="text-2xl font-bold">
                     {data.crm.practices_total}
                   </p>
@@ -1453,9 +1424,7 @@ export default function AnalyticsDashboard() {
               </div>
               <div className="mt-3 p-3 rounded-lg bg-[var(--bz-card)]/50">
                 <div className="flex justify-between text-sm">
-                  <span className="text-[var(--bz-text-2)]">
-                    Total Quoted
-                  </span>
+                  <span className="text-[var(--bz-text-2)]">Total Quoted</span>
                   <span className="font-medium">
                     {formatIDR(data.crm.revenue_quoted)}
                   </span>
@@ -1571,9 +1540,7 @@ export default function AnalyticsDashboard() {
           summary={
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg bg-[var(--bz-card)]/50">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Hours Today
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Hours Today</p>
                 <p className="text-lg font-bold">
                   {data.team.hours_today.toFixed(1)}h
                 </p>
@@ -1679,9 +1646,7 @@ export default function AnalyticsDashboard() {
           summary={
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Avg Rating
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Avg Rating</p>
                 <p className="text-lg font-bold text-[var(--success)]">
                   {data.feedback.avg_rating.toFixed(1)}/5
                 </p>
@@ -1712,9 +1677,7 @@ export default function AnalyticsDashboard() {
                 <p className="text-xs text-[var(--success)]">out of 5</p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Total Ratings
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Total Ratings</p>
                 <p className="text-2xl font-bold">
                   {data.feedback.total_ratings}
                 </p>
@@ -1890,17 +1853,13 @@ export default function AnalyticsDashboard() {
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Errors Today
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Errors Today</p>
                 <p className="text-2xl font-bold">
                   {data.alerts.error_count_today}
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--bz-card)]/50 text-center">
-                <p className="text-xs text-[var(--bz-text-2)]">
-                  Slow Queries
-                </p>
+                <p className="text-xs text-[var(--bz-text-2)]">Slow Queries</p>
                 <p className="text-2xl font-bold">
                   {data.alerts.slow_queries.length}
                 </p>

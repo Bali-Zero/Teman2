@@ -14,6 +14,8 @@ from fastapi.testclient import TestClient
 
 # Add backend to path
 backend_path = Path(__file__).resolve().parents[4]
+
+
 # Aggressively mock problematic modules before any backend imports
 def mock_problematic_modules():
     # Mock PIL only (numpy 1.26.4 is installed, use real numpy)

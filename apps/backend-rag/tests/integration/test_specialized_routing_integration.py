@@ -149,9 +149,7 @@ class TestSpecializedServiceRouterIntegration:
             patch(
                 "backend.services.routing.specialized_service_router.CrossOracleSynthesisService"
             ),
-            patch(
-                "backend.services.routing.specialized_service_router.ClientJourneyOrchestrator"
-            ),
+            patch("backend.services.routing.specialized_service_router.ClientJourneyOrchestrator"),
         ):
             mock_research_instance = MagicMock()
             mock_research_instance.research = AsyncMock(
@@ -185,9 +183,7 @@ class TestSpecializedServiceRouterIntegration:
             patch(
                 "backend.services.routing.specialized_service_router.CrossOracleSynthesisService"
             ) as mock_synthesis,
-            patch(
-                "backend.services.routing.specialized_service_router.SearchService"
-            ),
+            patch("backend.services.routing.specialized_service_router.SearchService"),
         ):
             mock_synthesis_instance = MagicMock()
             mock_synthesis_instance.synthesize = AsyncMock(

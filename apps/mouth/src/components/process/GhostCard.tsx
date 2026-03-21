@@ -22,7 +22,8 @@ export function GhostCard({ practice, onClick }: GhostCardProps) {
       }}
     >
       <p className="text-xs font-medium text-[var(--bz-text-2)]">
-        {practice.practice_type_code?.toUpperCase().replace(/_/g, " ") || "Process"}
+        {practice.practice_type_code?.toUpperCase().replace(/_/g, " ") ||
+          "Process"}
       </p>
       <p className="text-[10px] text-[var(--bz-text-2)]/60 mt-0.5">
         {practice.client_name || "Unknown Client"}

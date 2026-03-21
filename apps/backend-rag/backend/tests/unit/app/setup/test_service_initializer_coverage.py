@@ -284,9 +284,7 @@ async def test_database_health_check_loop_exception_recovery():
     mock_pool.acquire = MagicMock(side_effect=[_acquire_raise(), _acquire_ok(), _acquire_ok()])
 
     with (
-        patch(
-            "backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock
-        ),
+        patch("backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock),
         patch("backend.app.setup.service_initializer.service_registry") as mock_registry,
     ):
         task = asyncio.create_task(_database_health_check_loop(mock_pool))

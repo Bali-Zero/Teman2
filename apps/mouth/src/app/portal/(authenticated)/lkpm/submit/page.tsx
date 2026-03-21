@@ -44,9 +44,11 @@ const T = {
     revenueY: "Annual Revenue",
     narrative: "Challenges & Plans",
     obstacles: "Challenges Encountered",
-    obstaclesPlaceholder: "e.g. permit delays, supply chain issues, construction delays...",
+    obstaclesPlaceholder:
+      "e.g. permit delays, supply chain issues, construction delays...",
     plans: "Plans for Next Period",
-    plansPlaceholder: "e.g. hire 2 TKI, complete renovation, expand operations...",
+    plansPlaceholder:
+      "e.g. hire 2 TKI, complete renovation, expand operations...",
     submit: "Submit Data",
     submitting: "Submitting...",
   },
@@ -71,7 +73,8 @@ const T = {
     other: "Lain-lain",
     otherHint: "Biaya pra-operasional, perizinan, studi kelayakan",
     modalKerja: "Modal Kerja — 1 Turnover (Rp)",
-    modalKerjaHint: "Bahan baku, gaji/upah, listrik-air-telepon, suku cadang, overhead",
+    modalKerjaHint:
+      "Bahan baku, gaji/upah, listrik-air-telepon, suku cadang, overhead",
     modalKerjaPlaceholder: "Total modal kerja untuk 1 siklus operasional",
     employment: "Realisasi Tenaga Kerja",
     tki: "TKI (Tenaga Kerja Indonesia)",
@@ -83,7 +86,8 @@ const T = {
     revenueY: "Pendapatan Tahunan",
     narrative: "Kendala & Rencana",
     obstacles: "Permasalahan yang Dihadapi",
-    obstaclesPlaceholder: "Contoh: keterlambatan perizinan, gangguan rantai pasokan...",
+    obstaclesPlaceholder:
+      "Contoh: keterlambatan perizinan, gangguan rantai pasokan...",
     plans: "Rencana Kegiatan Berikutnya",
     plansPlaceholder: "Contoh: penambahan 2 TKI, penyelesaian renovasi...",
     submit: "Kirim Data",
@@ -183,7 +187,10 @@ export default function LKPMSubmitPage() {
       {/* Header */}
       <section className="flex items-center gap-3">
         <Link href="/portal/lkpm">
-          <ArrowLeft className="w-5 h-5" style={{ color: "var(--bz-text-2)" }} />
+          <ArrowLeft
+            className="w-5 h-5"
+            style={{ color: "var(--bz-text-2)" }}
+          />
         </Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
@@ -193,7 +200,11 @@ export default function LKPMSubmitPage() {
           type="button"
           onClick={() => setLang(lang === "en" ? "id" : "en")}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border"
-          style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)", color: "var(--bz-text-2)" }}
+          style={{
+            background: "var(--bz-surface)",
+            borderColor: "var(--bz-border)",
+            color: "var(--bz-text-2)",
+          }}
         >
           <Globe className="w-3.5 h-3.5" />
           {lang === "en" ? "Bahasa" : "English"}
@@ -204,20 +215,57 @@ export default function LKPMSubmitPage() {
         {/* Period */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <h2 className="text-lg font-semibold">{t.period}</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>{t.quarter}</label>
-              <select value={quarter} onChange={(e) => setQuarter(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}>
-                {QUARTERS.map((q) => (<option key={q} value={q}>{q}</option>))}
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                {t.quarter}
+              </label>
+              <select
+                value={quarter}
+                onChange={(e) => setQuarter(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: "var(--bz-surface)",
+                  borderColor: "var(--bz-border)",
+                }}
+              >
+                {QUARTERS.map((q) => (
+                  <option key={q} value={q}>
+                    {q}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>{t.year}</label>
-              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }}>
-                {[currentYear, currentYear - 1, currentYear - 2].map((y) => (<option key={y} value={y}>{y}</option>))}
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                {t.year}
+              </label>
+              <select
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: "var(--bz-surface)",
+                  borderColor: "var(--bz-border)",
+                }}
+              >
+                {[currentYear, currentYear - 1, currentYear - 2].map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -226,34 +274,93 @@ export default function LKPMSubmitPage() {
         {/* Modal Tetap */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <h2 className="text-lg font-semibold">{t.modalTetap}</h2>
           <div className="grid grid-cols-1 gap-4">
-            <div className="grid grid-cols-3 gap-3 text-xs font-medium" style={{ color: "var(--bz-text-2)" }}>
+            <div
+              className="grid grid-cols-3 gap-3 text-xs font-medium"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               <span>{t.component}</span>
               <span>{t.domestic}</span>
               <span>{t.import}</span>
             </div>
 
             {modalTetap.map((cat) => (
-              <div key={cat.key} className="grid grid-cols-3 gap-3 items-center">
+              <div
+                key={cat.key}
+                className="grid grid-cols-3 gap-3 items-center"
+              >
                 <div>
                   <span className="text-sm">{cat.label}</span>
-                  <p className="text-[10px] mt-0.5" style={{ color: "var(--bz-text-2)" }}>{cat.hint}</p>
+                  <p
+                    className="text-[10px] mt-0.5"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    {cat.hint}
+                  </p>
                 </div>
-                <input type="text" inputMode="numeric" value={formatNumber(investment[`${cat.key}_domestic`])} onChange={(e) => updateInvestment(`${cat.key}_domestic`, e.target.value)} placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm text-right" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }} />
-                <input type="text" inputMode="numeric" value={formatNumber(investment[`${cat.key}_import`])} onChange={(e) => updateInvestment(`${cat.key}_import`, e.target.value)} placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm text-right" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatNumber(investment[`${cat.key}_domestic`])}
+                  onChange={(e) =>
+                    updateInvestment(`${cat.key}_domestic`, e.target.value)
+                  }
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-sm text-right"
+                  style={{
+                    background: "var(--bz-surface)",
+                    borderColor: "var(--bz-border)",
+                  }}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatNumber(investment[`${cat.key}_import`])}
+                  onChange={(e) =>
+                    updateInvestment(`${cat.key}_import`, e.target.value)
+                  }
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-sm text-right"
+                  style={{
+                    background: "var(--bz-surface)",
+                    borderColor: "var(--bz-border)",
+                  }}
+                />
               </div>
             ))}
 
             {modalTetapSingle.map((field) => (
-              <div key={field.key} className="grid grid-cols-3 gap-3 items-center">
+              <div
+                key={field.key}
+                className="grid grid-cols-3 gap-3 items-center"
+              >
                 <div>
                   <span className="text-sm">{field.label}</span>
-                  <p className="text-[10px] mt-0.5" style={{ color: "var(--bz-text-2)" }}>{field.hint}</p>
+                  <p
+                    className="text-[10px] mt-0.5"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    {field.hint}
+                  </p>
                 </div>
-                <input type="text" inputMode="numeric" value={formatNumber(investment[field.key])} onChange={(e) => updateInvestment(field.key, e.target.value)} placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm text-right col-span-2" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formatNumber(investment[field.key])}
+                  onChange={(e) => updateInvestment(field.key, e.target.value)}
+                  placeholder="0"
+                  className="w-full rounded-lg border px-3 py-2 text-sm text-right col-span-2"
+                  style={{
+                    background: "var(--bz-surface)",
+                    borderColor: "var(--bz-border)",
+                  }}
+                />
               </div>
             ))}
           </div>
@@ -262,29 +369,85 @@ export default function LKPMSubmitPage() {
         {/* Modal Kerja */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <div>
             <h2 className="text-lg font-semibold">{t.modalKerja}</h2>
-            <p className="text-[10px] mt-1" style={{ color: "var(--bz-text-2)" }}>{t.modalKerjaHint}</p>
+            <p
+              className="text-[10px] mt-1"
+              style={{ color: "var(--bz-text-2)" }}
+            >
+              {t.modalKerjaHint}
+            </p>
           </div>
-          <input type="text" inputMode="numeric" value={formatNumber(investment.working_capital)} onChange={(e) => updateInvestment("working_capital", e.target.value)} placeholder={t.modalKerjaPlaceholder} className="w-full rounded-lg border px-3 py-2 text-sm text-right" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }} />
+          <input
+            type="text"
+            inputMode="numeric"
+            value={formatNumber(investment.working_capital)}
+            onChange={(e) =>
+              updateInvestment("working_capital", e.target.value)
+            }
+            placeholder={t.modalKerjaPlaceholder}
+            className="w-full rounded-lg border px-3 py-2 text-sm text-right"
+            style={{
+              background: "var(--bz-surface)",
+              borderColor: "var(--bz-border)",
+            }}
+          />
         </section>
 
         {/* Employment */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <h2 className="text-lg font-semibold">{t.employment}</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>{t.tki}</label>
-              <input type="number" min="0" value={tki || ""} onChange={(e) => setTki(Number(e.target.value) || 0)} placeholder={t.tkiPlaceholder} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }} />
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                {t.tki}
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={tki || ""}
+                onChange={(e) => setTki(Number(e.target.value) || 0)}
+                placeholder={t.tkiPlaceholder}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: "var(--bz-surface)",
+                  borderColor: "var(--bz-border)",
+                }}
+              />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>{t.tka}</label>
-              <input type="number" min="0" value={tka || ""} onChange={(e) => setTka(Number(e.target.value) || 0)} placeholder={t.tkaPlaceholder} className="w-full rounded-lg border px-3 py-2 text-sm" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }} />
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                {t.tka}
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={tka || ""}
+                onChange={(e) => setTka(Number(e.target.value) || 0)}
+                placeholder={t.tkaPlaceholder}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{
+                  background: "var(--bz-surface)",
+                  borderColor: "var(--bz-border)",
+                }}
+              />
             </div>
           </div>
         </section>
@@ -292,17 +455,60 @@ export default function LKPMSubmitPage() {
         {/* Revenue */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <h2 className="text-lg font-semibold">{t.revenue}</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>{t.revenueQ}</label>
-              <input type="text" inputMode="numeric" value={formatNumber(revenueQuarterly)} onChange={(e) => setRevenueQuarterly(parseInt(e.target.value.replace(/\D/g, ""), 10) || 0)} placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm text-right" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }} />
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                {t.revenueQ}
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={formatNumber(revenueQuarterly)}
+                onChange={(e) =>
+                  setRevenueQuarterly(
+                    parseInt(e.target.value.replace(/\D/g, ""), 10) || 0,
+                  )
+                }
+                placeholder="0"
+                className="w-full rounded-lg border px-3 py-2 text-sm text-right"
+                style={{
+                  background: "var(--bz-surface)",
+                  borderColor: "var(--bz-border)",
+                }}
+              />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>{t.revenueY}</label>
-              <input type="text" inputMode="numeric" value={formatNumber(revenueAnnual)} onChange={(e) => setRevenueAnnual(parseInt(e.target.value.replace(/\D/g, ""), 10) || 0)} placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm text-right" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }} />
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                {t.revenueY}
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={formatNumber(revenueAnnual)}
+                onChange={(e) =>
+                  setRevenueAnnual(
+                    parseInt(e.target.value.replace(/\D/g, ""), 10) || 0,
+                  )
+                }
+                placeholder="0"
+                className="w-full rounded-lg border px-3 py-2 text-sm text-right"
+                style={{
+                  background: "var(--bz-surface)",
+                  borderColor: "var(--bz-border)",
+                }}
+              />
             </div>
           </div>
         </section>
@@ -310,25 +516,67 @@ export default function LKPMSubmitPage() {
         {/* Narrative */}
         <section
           className="rounded-xl border p-6 space-y-4"
-          style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+          style={{
+            background: "var(--bz-card)",
+            borderColor: "var(--bz-border)",
+          }}
         >
           <h2 className="text-lg font-semibold">{t.narrative}</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>{t.obstacles}</label>
-              <textarea value={obstacles} onChange={(e) => setObstacles(e.target.value)} placeholder={t.obstaclesPlaceholder} rows={3} className="w-full rounded-lg border px-3 py-2 text-sm resize-none" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }} />
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                {t.obstacles}
+              </label>
+              <textarea
+                value={obstacles}
+                onChange={(e) => setObstacles(e.target.value)}
+                placeholder={t.obstaclesPlaceholder}
+                rows={3}
+                className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
+                style={{
+                  background: "var(--bz-surface)",
+                  borderColor: "var(--bz-border)",
+                }}
+              />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>{t.plans}</label>
-              <textarea value={plans} onChange={(e) => setPlans(e.target.value)} placeholder={t.plansPlaceholder} rows={3} className="w-full rounded-lg border px-3 py-2 text-sm resize-none" style={{ background: "var(--bz-surface)", borderColor: "var(--bz-border)" }} />
+              <label
+                className="block text-xs mb-1"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                {t.plans}
+              </label>
+              <textarea
+                value={plans}
+                onChange={(e) => setPlans(e.target.value)}
+                placeholder={t.plansPlaceholder}
+                rows={3}
+                className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
+                style={{
+                  background: "var(--bz-surface)",
+                  borderColor: "var(--bz-border)",
+                }}
+              />
             </div>
           </div>
         </section>
 
         {/* Submit */}
         <div className="flex justify-end">
-          <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 rounded-lg text-sm font-medium text-white flex items-center gap-2 disabled:opacity-50" style={{ background: "var(--bz-accent-warm)" }}>
-            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-6 py-2.5 rounded-lg text-sm font-medium text-white flex items-center gap-2 disabled:opacity-50"
+            style={{ background: "var(--bz-accent-warm)" }}
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
             {isSubmitting ? t.submitting : t.submit}
           </button>
         </div>

@@ -8,7 +8,13 @@ vi.mock("@/hooks/useRoleMetrics", () => ({
   useRoleMetrics: vi.fn(() => ({
     data: {
       role: "zero",
-      metrics: { revenue_mtd: 48200, visti_scadenza: 3, fatture_overdue: 2, agenti_count: 46, fly_uptime: 99.9 },
+      metrics: {
+        revenue_mtd: 48200,
+        visti_scadenza: 3,
+        fatture_overdue: 2,
+        agenti_count: 46,
+        fly_uptime: 99.9,
+      },
       alerts: [],
     },
     isLoading: false,
@@ -28,13 +34,23 @@ describe("RoleWidget", () => {
   });
 
   it("renders skeleton when loading", () => {
-    vi.mocked(useRoleMetricsModule.useRoleMetrics).mockReturnValueOnce({ data: undefined, isLoading: true, isError: false });
+    vi.mocked(useRoleMetricsModule.useRoleMetrics).mockReturnValueOnce({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+    });
     const { container } = render(<RoleWidget role="team" userId="user-2" />);
-    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("renders error state on failure", () => {
-    vi.mocked(useRoleMetricsModule.useRoleMetrics).mockReturnValueOnce({ data: undefined, isLoading: false, isError: true });
+    vi.mocked(useRoleMetricsModule.useRoleMetrics).mockReturnValueOnce({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+    });
     render(<RoleWidget role="team" userId="user-2" />);
     expect(screen.getByText(/errore/i)).toBeInTheDocument();
   });

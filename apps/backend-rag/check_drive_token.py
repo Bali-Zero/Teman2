@@ -11,14 +11,15 @@ from datetime import datetime, timezone
 
 import asyncpg
 
-sys.path.insert(0, '.')
+sys.path.insert(0, ".")
+
 
 async def check_drive_token():
     """Check Google Drive SYSTEM token status."""
 
-    print("="*60)
+    print("=" * 60)
     print("🔍 Google Drive OAuth Token Check")
-    print("="*60)
+    print("=" * 60)
 
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
@@ -68,7 +69,7 @@ async def check_drive_token():
 
         # 3. Check expiration
         now = datetime.now(timezone.utc)
-        expires_at = token_row['expires_at']
+        expires_at = token_row["expires_at"]
 
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
@@ -84,14 +85,14 @@ async def check_drive_token():
         elif time_left.total_seconds() < 300:  # Less than 5 min
             print("   ⚠️  Token expires in < 5 minutes - will refresh soon")
         else:
-            print(f"   ✅ Token valid for {time_left.days} days, {time_left.seconds//3600} hours")
+            print(f"   ✅ Token valid for {time_left.days} days, {time_left.seconds // 3600} hours")
 
         await conn.close()
 
         # 4. Test actual Drive API call
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🧪 Testing Google Drive API Call")
-        print("="*60)
+        print("=" * 60)
 
         try:
             from backend.services.integrations.google_drive_service import GoogleDriveService
@@ -136,14 +137,17 @@ async def check_drive_token():
         except Exception as e:
             print(f"❌ Drive service test failed: {e}")
             import traceback
+
             traceback.print_exc()
             return False
 
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     success = asyncio.run(check_drive_token())

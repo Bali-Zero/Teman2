@@ -5,7 +5,9 @@ import asyncpg
 
 
 async def run():
-    conn = await asyncpg.connect('postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara')
+    conn = await asyncpg.connect(
+        "postgresql://nuzantara:nuzantara_local_2024@localhost:5432/nuzantara"
+    )
 
     retail_codes = ["47111", "47112", "47113", "47191"]
 
@@ -16,22 +18,26 @@ async def run():
         "description": "Moratoria totale (penghentian sementara) sul rilascio di nuove licenze per Toko Modern Berjejaring.",
         "impact": "Blocco PBG e licenze commerciali per catene/franchising retail a Bali.",
         "geographic_scope": "Intera Provincia di Bali",
-        "legal_basis": "Visi Nangun Sat Kerthi Loka Bali / Haluan Bali 100 Tahun."
+        "legal_basis": "Visi Nangun Sat Kerthi Loka Bali / Haluan Bali 100 Tahun.",
     }
 
     for code in retail_codes:
         entity_id = f"kbli:{code}"
-        row = await conn.fetchrow("SELECT properties, name FROM kg_nodes WHERE entity_id = $1", entity_id)
+        row = await conn.fetchrow(
+            "SELECT properties, name FROM kg_nodes WHERE entity_id = $1", entity_id
+        )
 
         # Se il nodo non esiste (es. retail non ancora iniettato), lo creo base
-        current_props = json.loads(row['properties']) if row and row['properties'] else {"kode": code}
+        current_props = (
+            json.loads(row["properties"]) if row and row["properties"] else {"kode": code}
+        )
 
         # Iniezione allerta
-        current_props['bali_moratorium'] = bali_moratorium
-        if 'expert_legal' not in current_props:
-            current_props['expert_legal'] = {"regulation": "PP 28/2025"}
+        current_props["bali_moratorium"] = bali_moratorium
+        if "expert_legal" not in current_props:
+            current_props["expert_legal"] = {"regulation": "PP 28/2025"}
 
-        current_props['expert_legal']['special_alerts'] = [
+        current_props["expert_legal"]["special_alerts"] = [
             "BALI EXCLUSIVE MORATORIUM: INGUB 6/2025 halts all new modern retail chain licenses."
         ]
 
@@ -41,13 +47,14 @@ async def run():
             ON CONFLICT (entity_id) DO UPDATE
             SET properties = EXCLUDED.properties, updated_at = CURRENT_TIMESTAMP
         """
-        name = row['name'] if row else f"KBLI {code} (Retail)"
+        name = row["name"] if row else f"KBLI {code} (Retail)"
         desc = "Aktivitas Perdagangan Eceran / Toko Modern Berjejaring"
 
-        await conn.execute(sql, entity_id, 'kbli', name, desc, json.dumps(current_props))
+        await conn.execute(sql, entity_id, "kbli", name, desc, json.dumps(current_props))
         print(f"✅ Moratoria Bali iniettata in {entity_id}")
 
     await conn.close()
+
 
 if __name__ == "__main__":
     asyncio.run(run())
