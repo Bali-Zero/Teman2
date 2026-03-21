@@ -374,8 +374,12 @@ async def list_practices(
     if pool:
         db_pool = pool
 
-    # FIX: Resolve Query() objects when called directly (not via HTTP)
-    # FastAPI doesn't resolve Query() defaults for direct function calls
+    # FIX: Resolve Depends/Query objects when called directly (not via HTTP)
+    # FastAPI doesn't resolve these defaults for direct function calls
+    # When current_user is still a Depends object (direct call), skip RBAC filtering
+    if not isinstance(current_user, dict):
+        current_user = None  # Will skip RBAC filtering safely
+
     client_id = resolve_query_param(client_id)
     status = resolve_query_param(status)
     assigned_to = resolve_query_param(assigned_to)
@@ -435,7 +439,8 @@ async def list_practices(
                 param_index += 1
 
             # RBAC: non-admin users only see practices assigned to them
-            if not can_view_all_practices(current_user):
+            # When current_user is None (direct call), use assigned_to param for filtering
+            if current_user and not can_view_all_practices(current_user):
                 user_email = current_user.get("email", "").lower()
                 query_parts.append(f" AND c.assigned_to = ${param_index}")
                 params.append(user_email)

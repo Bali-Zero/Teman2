@@ -50,7 +50,7 @@ class TestForceOrchestrator:
         repo_path: Path = Path("apps/backend-rag"),
         llm_provider: str = "local",
         coverage_target: float = 99.0,
-    ):
+    ) -> None:
         self.repo_path = repo_path
         self.llm_provider = llm_provider
         self.coverage_target = coverage_target

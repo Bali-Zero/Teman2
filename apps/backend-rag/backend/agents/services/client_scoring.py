@@ -5,7 +5,7 @@ Responsibility: Calculate client lifetime value (LTV) scores from database data.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
@@ -167,7 +167,11 @@ class ClientScoringService:
         practice_score = min(100, practice_count * 15)
 
         # Days since last interaction
-        days_since_last = (datetime.now() - last_interaction).days if last_interaction else 999
+        days_since_last = (
+            (datetime.now(tz=timezone.utc).replace(tzinfo=None) - last_interaction).days
+            if last_interaction
+            else 999
+        )
 
         # Weighted LTV prediction
         ltv_score = (
