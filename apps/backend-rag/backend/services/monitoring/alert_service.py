@@ -70,6 +70,11 @@ class AlertService:
         self._last_alert_time: dict[str, float] = {}
         self._alert_cooldown_seconds: float = 300.0  # 5 min per error type
 
+        # Global rate limiter: max N Telegram messages per minute across ALL paths
+        self._global_send_times: list[float] = []
+        self._global_max_per_minute: int = 3  # max 3 Telegram messages per minute total
+        self._global_cooldown_seconds: float = 60.0
+
         logger.info("✅ AlertService initialized")
         logger.info(
             f"   Telegram: {'✅ enabled' if self.enable_telegram else '❌ disabled (need TELEGRAM_BOT_TOKEN + ADMIN_TELEGRAM_CHAT_ID)'}"
@@ -119,6 +124,19 @@ class AlertService:
                 f"[alert] Rate limited '{title}' — {int(self._alert_cooldown_seconds - (now - last_sent))}s remaining"
             )
             return results
+
+        # Global rate limiter: prevent Telegram spam across ALL error paths
+        self._global_send_times = [
+            t for t in self._global_send_times
+            if now - t < self._global_cooldown_seconds
+        ]
+        if len(self._global_send_times) >= self._global_max_per_minute:
+            logger.debug(
+                f"[alert] Global rate limited — {len(self._global_send_times)} alerts in last {int(self._global_cooldown_seconds)}s"
+            )
+            return results
+        self._global_send_times.append(now)
+
         self._last_alert_time[rate_key] = now
 
         # Send to Telegram (primary channel)
