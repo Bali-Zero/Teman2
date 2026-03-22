@@ -1,292 +1,81 @@
-"""
-Orchestrator Context Manager
-
-Responsabilità singola: Gestione del context loading per query processing.
-Include:
-- User context loading (profile, facts, collective facts)
-- Conversation history loading e validazione
-- Context window management (summarization per token budget)
-- Error handling con fallback graceful
-
-Questo modulo è testabile in isolamento mockando memory_handler e context_window_manager.
-"""
-
 import logging
 import time
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.misc.context_window_manager import ContextWindowManager
-from backend.services.rag.agentic.context_manager import (
-    fetch_memory_facts,
-    fetch_profile_and_history,
-    get_user_context,
-)
-from backend.services.rag.agentic.memory_handler import MemoryHandler
+from backend.services.rag.agentic.context_manager import get_user_context
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Enable debug logging for context operations
 
-
 class OrchestratorContextManager:
     """
     Gestisce il loading e la preparazione del context per query processing.
-
-    Responsabilità:
-    - Carica user context (profile, facts, collective facts)
-    - Gestisce conversation history con validazione
-    - Applica context window management per lunghe conversazioni
-    - Fornisce fallback graceful in caso di errori
+    Isola il caricamento del profilo, dei facts, e la gestione della window history.
     """
 
     def __init__(
         self,
-        memory_handler: MemoryHandler,
+        db_pool: Any,
+        memory_handler: Any,
         context_window_manager: ContextWindowManager,
-        db_pool: Any = None,
     ):
-        """
-        Inizializza il context manager.
-
-        Args:
-            memory_handler: Handler per memory orchestrator access
-            context_window_manager: Manager per context window trimming/summarization
-            db_pool: Optional database pool per context loading
-        """
+        self.db_pool = db_pool
         self.memory_handler = memory_handler
         self.context_window_manager = context_window_manager
-        self.db_pool = db_pool
 
-    async def load_user_context(
+    async def prepare_query_context(
         self,
-        user_id: str | None,
+        user_id: str,
         query: str,
-        session_id: str | None = None,
-    ) -> dict[str, Any]:
+        session_id: Optional[str] = None,
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        deep_think_mode: bool = False
+    ) -> Dict[str, Any]:
         """
-        Carica il context completo dell'utente.
-
-        Args:
-            user_id: User ID (può essere None per anonymous)
-            query: Query string per context-aware loading
-            session_id: Optional session ID
-
-        Returns:
-            Dict con keys: profile, facts, collective_facts, history
-            In caso di errore, ritorna context vuoto con fallback graceful.
+        Recupera il profilo utente, i facts (personali/collettivi), valida e comprime
+        la history della conversazione rispettando il budget di token.
         """
-        effective_user_id = user_id or "anonymous"
-        with trace_span("context.load_user", {"user_id": effective_user_id}):
+        with trace_span("orchestrator.prepare_query_context") as span:
+            start_time = time.time()
             try:
-                memory_orchestrator = await self.memory_handler.get_memory_orchestrator()
-                user_context = await get_user_context(
-                    self.db_pool,
-                    effective_user_id,
-                    memory_orchestrator,
+                # 1. Recupero dati utente base (Profile, Facts, Episodic)
+                context_data = await get_user_context(
+                    db_pool=self.db_pool,
+                    user_id=user_id,
+                    memory_orchestrator=self.memory_handler.memory_orchestrator if hasattr(self.memory_handler, 'memory_orchestrator') else self.memory_handler,
                     query=query,
-                    session_id=session_id,
+                    deep_think_mode=deep_think_mode,
+                    session_id=session_id
                 )
-                set_span_attribute("facts_count", len(user_context.get("facts", [])))
-                set_span_status("ok")
-                return user_context
+
+                # 2. Gestione History: diamo priorità a quella passata via API (es. streaming dal frontend)
+                if conversation_history is not None:
+                    context_data["history"] = conversation_history
+
+                # 3. Context Window Management (Trimming/Summarization)
+                if context_data.get("history"):
+                    context_data["history"] = await self.context_window_manager.manage_context(
+                        context_data["history"],
+                        query=query
+                    )
+
+                # Metriche e tracciamento
+                set_span_attribute("context.history_length", len(context_data.get("history", [])))
+                set_span_attribute("context.facts_count", len(context_data.get("memory_facts", [])))
+                set_span_attribute("execution_time", time.time() - start_time)
+                set_span_status("OK")
+
+                return context_data
+
             except Exception as e:
-                logger.warning(
-                    f"⚠️ [Context] Failed to load user context (degraded): {e}", exc_info=True
-                )
-                set_span_status("error", str(e))
-                # Fallback graceful: ritorna context vuoto
+                # Fallback graceful: ritorna un contesto base vuoto per non far fallire l'intera RAG query
+                logger.error(f"Errore critico durante il caricamento del contesto: {e}", exc_info=True)
+                set_span_status("ERROR", str(e))
                 return {
-                    "profile": None,
-                    "facts": [],
-                    "collective_facts": [],
-                    "history": [],
+                    "profile": {},
+                    "history": conversation_history or [],
+                    "memory_facts": [],
+                    "collective_facts": []
                 }
-
-    def prepare_conversation_history(
-        self,
-        conversation_history: list[dict] | None,
-        user_context: dict[str, Any],
-    ) -> list[dict]:
-        """
-        Prepara e valida conversation history.
-
-        Args:
-            conversation_history: History esplicita passata come parametro
-            user_context: User context che può contenere history
-
-        Returns:
-            Lista validata di messaggi conversazione
-        """
-        history_to_use = conversation_history or user_context.get("history", [])
-
-        # Validazione: deve essere lista di dict
-        if not isinstance(history_to_use, list) or (
-            history_to_use and not isinstance(history_to_use[0], dict)
-        ):
-            return []
-
-        return history_to_use
-
-    async def apply_context_window_management(
-        self,
-        history: list[dict],
-    ) -> list[dict]:
-        """
-        Applica context window management per lunghe conversazioni.
-
-        Previene "lost in the middle" phenomenon summarizzando messaggi più vecchi
-        quando la conversazione supera la soglia.
-
-        Args:
-            history: Lista di messaggi conversazione
-
-        Returns:
-            History ottimizzata con summarization se necessario
-        """
-        if len(history) == 0:
-            return history
-
-        trim_result = self.context_window_manager.trim_conversation_history(history)
-
-        if trim_result["needs_summarization"]:
-            logger.info(
-                f"📊 [ContextWindow] Summarizing {len(trim_result['messages_to_summarize'])} older messages"
-            )
-            try:
-                summary = await self.context_window_manager.generate_summary(
-                    trim_result["messages_to_summarize"], trim_result["context_summary"]
-                )
-                optimized_history = self.context_window_manager.inject_summary_into_history(
-                    trim_result["trimmed_messages"], summary
-                )
-                logger.info(
-                    f"✅ [ContextWindow] Summarized to {len(optimized_history)} messages with summary"
-                )
-                return optimized_history
-            except Exception as e:
-                logger.warning(
-                    f"⚠️ [ContextWindow] Summarization failed, using trimmed history: {e}"
-                )
-                return trim_result["trimmed_messages"]
-        else:
-            return trim_result["trimmed_messages"]
-
-    async def get_basic_context(
-        self,
-        user_id: str | None,
-        session_id: str | None = None,
-    ) -> tuple[dict[str, Any], list[dict]]:
-        """
-        Load ONLY basic context (Profile + History) from DB.
-        Skips heavy Vector DB / Memory loading.
-        Used for early gates (Greeting, Fast checks).
-
-        Args:
-            user_id: User ID
-            session_id: Optional Session ID
-
-        Returns:
-            Tuple (basic_user_context, optimized_history)
-        """
-        profile_time_start = time.time()
-
-        # 1. Load basic user context (No memory facts)
-        effective_user_id = user_id or "anonymous"
-        user_context_raw = await self._load_basic_user_profile(effective_user_id, session_id)
-
-        # 2. Prepare conversation history
-        history = self.prepare_conversation_history(None, user_context_raw)
-
-        # 3. Apply context window management
-        optimized_history = await self.apply_context_window_management(history)
-
-        logger.info(
-            f"⚡ [Context] Loaded BASIC context for {user_id} in {time.time() - profile_time_start:.3f}s"
-        )
-        return user_context_raw, optimized_history
-
-    async def _load_basic_user_profile(
-        self,
-        user_id: str,
-        session_id: str | None = None,
-    ) -> dict[str, Any]:
-        """Internal helper to load just profile and history from DB."""
-        return await fetch_profile_and_history(self.db_pool, user_id, session_id)
-
-    async def get_full_context(
-        self,
-        user_id: str | None,
-        query: str,
-        conversation_history: list[dict] | None = None,
-        session_id: str | None = None,
-    ) -> tuple[dict[str, Any], list[dict]]:
-        """
-        Carica e prepara context completo per query processing.
-
-        Questo è il metodo principale che combina tutti i passaggi:
-        1. Load user context
-        2. Prepare conversation history
-        3. Apply context window management
-
-        Args:
-            user_id: User ID (può essere None)
-            query: Query string
-            conversation_history: Optional explicit history
-            session_id: Optional session ID
-
-        Returns:
-            Tuple di (user_context, optimized_history)
-        """
-        # 1. Load user context
-        user_context = await self.load_user_context(user_id, query, session_id)
-
-        # 2. Prepare conversation history
-        history = self.prepare_conversation_history(conversation_history, user_context)
-
-        # 3. Apply context window management
-        optimized_history = await self.apply_context_window_management(history)
-
-        logger.info(
-            f"🧠 [Context] Loaded context for {user_id or 'anonymous'} "
-            f"(Facts: {len(user_context.get('facts', []))}, History: {len(optimized_history)} msgs)"
-        )
-
-        return user_context, optimized_history
-
-    async def enrich_user_context(
-        self,
-        basic_context: dict[str, Any],
-        user_id: str,
-        query: str,
-    ) -> dict[str, Any]:
-        """
-        Enrich a basic context (profile only) with Memory Facts and Collective Knowledge.
-        Called AFTER early gates have passed.
-
-        Args:
-            basic_context: Context containing profile/history/entities
-            user_id: User ID
-            query: Query string
-
-        Returns:
-            Enriched context with facts
-        """
-        if not user_id or user_id == "anonymous":
-            return basic_context
-
-        # Fetch Memory Facts
-        try:
-            memory_orchestrator = await self.memory_handler.get_memory_orchestrator()
-            memory_data = await fetch_memory_facts(memory_orchestrator, user_id, query)
-
-            # Merge into context
-            enriched_context = basic_context.copy()
-            enriched_context.update(memory_data)
-
-            logger.info(
-                f"🧠 [Context] Enriched context with {len(memory_data.get('facts', []))} facts"
-            )
-            return enriched_context
-        except Exception as e:
-            logger.warning(f"⚠️ [Context] Failed to enrich context: {e}")
-            return basic_context
