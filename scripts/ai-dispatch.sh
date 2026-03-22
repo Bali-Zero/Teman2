@@ -284,9 +284,9 @@ case "$CMD" in
             exit 0
         fi
         start=$(date +%s)
-        output=$(run_gemini "explore" "Use your codebase_investigator tool to deeply analyze: $PROMPT. Trace all dependencies, map the architecture, find the root cause. Return findings as structured list with file:line references." 180) || true
+        output=$(run_gemini "explore" "Use your codebase_investigator tool to deeply analyze: $PROMPT. Trace all dependencies, map the architecture, find the root cause. Return findings as structured list with file:line references." 180) && ec=0 || ec=$?
         duration=$(( $(date +%s) - start ))
-        result=$(json_output "explore" "$duration" "$output" "$?")
+        result=$(json_output "explore" "$duration" "$output" "$ec")
         cache_save "explore:$PROMPT" "$result"
         echo "$result"
         ;;
@@ -301,9 +301,9 @@ case "$CMD" in
             exit 0
         fi
         start=$(date +%s)
-        output=$(run_gemini "search" "Use google_web_search to find: $PROMPT. Provide a summary with sources and citations." 120) || true
+        output=$(run_gemini "search" "Use google_web_search to find: $PROMPT. Provide a summary with sources and citations." 120) && ec=0 || ec=$?
         duration=$(( $(date +%s) - start ))
-        result=$(json_output "search" "$duration" "$output" "$?")
+        result=$(json_output "search" "$duration" "$output" "$ec")
         cache_save "search:$PROMPT" "$result"
         echo "$result"
         ;;
@@ -313,9 +313,9 @@ case "$CMD" in
         [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh sandbox \"task\""; exit 1; }
         check_safety "$PROMPT"
         start=$(date +%s)
-        output=$(run_codex "workspace-write" "$PROMPT" 300) || true
+        output=$(run_codex "workspace-write" "$PROMPT" 300) && ec=0 || ec=$?
         duration=$(( $(date +%s) - start ))
-        json_output "sandbox" "$duration" "$output" "$?"
+        json_output "sandbox" "$duration" "$output" "$ec"
         ;;
 
     # REDTEAM: Gemini critiques solution pre-deploy (no cache — must be fresh)
@@ -331,9 +331,9 @@ Se non trovi problemi, dichiara esplicitamente 'NESSUN PROBLEMA TROVATO'
 con la tua confidence level (alta/media/bassa).
 
 Soluzione da analizzare:
-$PROMPT" 180) || true
+$PROMPT" 180) && ec=0 || ec=$?
         duration=$(( $(date +%s) - start ))
-        json_output "redteam" "$duration" "$output" "$?"
+        json_output "redteam" "$duration" "$output" "$ec"
         ;;
 
     # ╔══════════════════════════════════════════════════╗
@@ -472,6 +472,7 @@ $ANALYSIS" 2>&1) || true
         fi
         pids=()
         tmpdir=$(mktemp -d)
+        trap "rm -rf '$tmpdir'" EXIT INT TERM
         i=0
         for arg in "$@"; do
             # Split on first colon: command:prompt
@@ -492,7 +493,8 @@ $ANALYSIS" 2>&1) || true
                 results+=$(cat "$tmpdir/$j.json")
             else
                 local_err=$(cat "$tmpdir/$j.err" 2>/dev/null || echo "unknown error")
-                results+="{\"error\":\"$local_err\",\"exit_code\":$job_exit}"
+                # Use python to safely escape error string into JSON
+                results+=$(echo "$local_err" | python3 -c "import json,sys; print(json.dumps({'error':sys.stdin.read().strip(),'exit_code':$job_exit}))")
             fi
         done
         results+="]"
