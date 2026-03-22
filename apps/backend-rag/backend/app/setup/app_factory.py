@@ -205,7 +205,12 @@ async def lifespan(app: FastAPI):
             await db_health_check_task
         logger.info("✅ Database Health Check Loop stopped")
 
-    # Close HTTP clients
+    # Close HTTP clients and Service Connections
+    team_drive_service = getattr(app.state, "team_drive_service", None)
+    if team_drive_service and hasattr(team_drive_service, "close"):
+        await team_drive_service.close()
+        logger.info("✅ Team Drive Service HTTP client closed")
+        
     logger.info("✅ HTTP clients closed")
 
     logger.info("✅ ZANTARA shutdown complete")
