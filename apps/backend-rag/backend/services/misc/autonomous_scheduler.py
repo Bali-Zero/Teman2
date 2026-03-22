@@ -747,9 +747,9 @@ async def create_and_start_scheduler(
             name="drive_changes_poll",
             task_func=run_drive_poll,
             interval_seconds=300,  # 5 minutes
-            enabled=False,  # DISABLED (audit 2026-03-16): loses change_token on restart. Migrated to OpenClaw.
+            enabled=True,  # RE-ENABLED 2026-03-22: page_token persisted in PostgreSQL system_settings, survives restarts. Added dedup + nested subfolder support.
         )
-        logger.info("⏸️ Drive Changes Polling registered but DISABLED (migrated to OpenClaw)")
+        logger.info("📂 Drive Changes Polling registered and ENABLED (every 5 min)")
     except Exception as e:
         logger.error(f"Failed to register Drive Changes Polling: {e}")
 

@@ -70,8 +70,9 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
         "birth_certificate": ["birth", "kelahiran", "akta kelahiran", "born"],
         "marriage_certificate": ["marriage", "pernikahan", "akta nikah", "nikah"],
     },
-    # ── 00_Profile: applicant profile docs ──────────────────────────────────
+    # ── 00_Profile: applicant profile docs (passport, foto, address) ─────────
     "personal": {
+        "passport": ["passport", "paspor", "pport"],
         "photo": ["photo", "foto", "picture", "selfie", "image", "foto_wajah"],
         "alamat": [
             "alamat",
@@ -84,9 +85,8 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
         ],
         "cv": ["cv", "resume", "curriculum vitae"],
     },
-    # ── 01_Immigration: applicant permits/visas ──────────────────────────────
+    # ── 01_Immigration: e-visa, IMK/ITK, KITAS (NO passport — that's Profile)
     "immigration": {
-        "passport": ["passport", "paspor", "pp", "pport"],
         "kitas": ["kitas", "kitap", "itas", "limited stay", "stay permit"],
         "imk": ["imk", "izin masuk kembali", "reentry", "re-entry"],
         "itk": ["itk", "izin tinggal kunjungan"],

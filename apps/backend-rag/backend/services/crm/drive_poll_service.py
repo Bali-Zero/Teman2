@@ -77,7 +77,8 @@ async def poll_drive_changes() -> dict[str, Any]:
                 )
             return {"status": "no_changes", "processed": 0}
 
-        # 3. Build lookup: subfolder_id → (client_id, subfolder_name)
+        # 3. Build lookup maps: subfolder_id → (client_id, subfolder_name)
+        # Includes BOTH top-level (00_Profile) AND nested (02_Company/AKTA) subfolders
         async with db_pool.acquire() as conn:
             subfolders = await conn.fetch(
                 "SELECT client_id, subfolder_name, subfolder_id FROM client_drive_subfolders",
@@ -87,7 +88,7 @@ async def poll_drive_changes() -> dict[str, Any]:
         for sf in subfolders:
             subfolder_map[sf["subfolder_id"]] = (sf["client_id"], sf["subfolder_name"])
 
-        # Also build client root folder → client_id map
+        # Also build client root folder → client_id map (for fallback resolution)
         async with db_pool.acquire() as conn:
             clients_with_folders = await conn.fetch(
                 "SELECT id, google_drive_folder_id FROM clients WHERE google_drive_folder_id IS NOT NULL",
@@ -99,6 +100,7 @@ async def poll_drive_changes() -> dict[str, Any]:
 
         # 4. Process new files
         processed = 0
+        skipped = 0
         for change in changes:
             if change.get("removed"):
                 continue
@@ -120,42 +122,90 @@ async def poll_drive_changes() -> dict[str, Any]:
 
             parent_id = parents[0]
 
-            # Check if parent is a known subfolder
+            # Check if parent is a known subfolder (top-level OR nested)
             if parent_id in subfolder_map:
                 client_id, folder_name = subfolder_map[parent_id]
-                logger.info(
-                    f"Drive poll: new file '{file_name}' in {folder_name} for client {client_id}"
+            elif parent_id in root_folder_map:
+                # File in client root folder — skip (should be in a subfolder)
+                skipped += 1
+                continue
+            else:
+                # Unknown parent — try to resolve via Drive API
+                # This catches nested folders not yet in client_drive_subfolders
+                try:
+                    parent_info = await drive_service.get_file_metadata(parent_id)
+                    parent_name = parent_info.get("name", "")
+                    parent_parents = parent_info.get("parents", [])
+
+                    # Check if grandparent is a known subfolder (nested case)
+                    if parent_parents and parent_parents[0] in subfolder_map:
+                        client_id, _ = subfolder_map[parent_parents[0]]
+                        folder_name = parent_name.lower()
+                        # Register this nested folder for future polls
+                        async with db_pool.acquire() as conn:
+                            await conn.execute(
+                                """INSERT INTO client_drive_subfolders
+                                (client_id, subfolder_name, subfolder_id)
+                                VALUES ($1, $2, $3)
+                                ON CONFLICT (subfolder_id) DO NOTHING""",
+                                client_id,
+                                parent_name,
+                                parent_id,
+                            )
+                        subfolder_map[parent_id] = (client_id, folder_name)
+                        logger.info(
+                            f"Drive poll: registered nested folder '{parent_name}' for client {client_id}"
+                        )
+                    else:
+                        skipped += 1
+                        continue
+                except Exception:
+                    skipped += 1
+                    continue
+
+            # Deduplicate: skip if file_id already in documents
+            async with db_pool.acquire() as conn:
+                existing = await conn.fetchval(
+                    "SELECT id FROM documents WHERE file_id = $1",
+                    file_id,
+                )
+                if existing:
+                    skipped += 1
+                    continue
+
+            logger.info(
+                f"Drive poll: new file '{file_name}' in {folder_name} for client {client_id}"
+            )
+
+            # Create document record with auto-categorization
+            cat_result = auto_categorize_document(file_name)
+            doc_category = cat_result["document_category"]
+            async with db_pool.acquire() as conn:
+                doc_id = await conn.fetchval(
+                    """INSERT INTO documents (
+                        client_id, document_type, document_category, file_name, file_id,
+                        status, storage_type, ocr_status
+                    ) VALUES ($1, $2, $3, $4, $5, 'active', 'google_drive', 'pending')
+                    RETURNING id""",
+                    client_id,
+                    _infer_document_type(file_name, folder_name),
+                    doc_category,
+                    file_name,
+                    file_id,
                 )
 
-                # Create document record with auto-categorization
-                cat_result = auto_categorize_document(file_name)
-                doc_category = cat_result["document_category"]
-                async with db_pool.acquire() as conn:
-                    doc_id = await conn.fetchval(
-                        """INSERT INTO documents (
-                            client_id, document_type, document_category, file_name, file_id,
-                            status, storage_type, ocr_status
-                        ) VALUES ($1, $2, $3, $4, $5, 'active', 'google_drive', 'pending')
-                        RETURNING id""",
-                        client_id,
-                        _infer_document_type(file_name, folder_name),
-                        doc_category,
-                        file_name,
-                        file_id,
-                    )
-
-                # Dispatch OCR
-                try:
-                    await _dispatch_ocr_by_folder(
-                        client_id,
-                        file_id,
-                        folder_name,
-                        file_name,
-                        doc_id,
-                    )
-                    processed += 1
-                except Exception as e:
-                    logger.error(f"Drive poll: OCR dispatch failed for {file_name}: {e}")
+            # Dispatch OCR
+            try:
+                await _dispatch_ocr_by_folder(
+                    client_id,
+                    file_id,
+                    folder_name,
+                    file_name,
+                    doc_id,
+                )
+                processed += 1
+            except Exception as e:
+                logger.error(f"Drive poll: OCR dispatch failed for {file_name}: {e}")
 
         # 5. Save new page token
         async with db_pool.acquire() as conn:
@@ -165,8 +215,15 @@ async def poll_drive_changes() -> dict[str, Any]:
                 new_token,
             )
 
-        logger.info(f"Drive poll: processed {processed} new files from {len(changes)} changes")
-        return {"status": "ok", "changes": len(changes), "processed": processed}
+        logger.info(
+            f"Drive poll: processed {processed}, skipped {skipped} from {len(changes)} changes"
+        )
+        return {
+            "status": "ok",
+            "changes": len(changes),
+            "processed": processed,
+            "skipped": skipped,
+        }
 
     except Exception as e:
         logger.error(f"Drive poll failed: {e}", exc_info=True)
@@ -177,23 +234,44 @@ async def poll_drive_changes() -> dict[str, Any]:
 
 
 def _infer_document_type(filename: str, folder_name: str) -> str:
-    """Infer document type from filename and folder name."""
-    fn = filename.lower()
+    """Infer document type from filename and folder name.
 
-    if "passport" in fn:
+    Matches the official folder schema:
+    - 00_Profile: passport, foto, address
+    - 01_Immigration: e-visa, IMK/ITK, KITAS (NOT passport)
+    - 02_Company: AKTA, NIB, NPWP company, Profile Perseroan
+    - 03_Tax: SPT, LKPM, NPWP personal
+    - 04_Family: passport/visa/kitas of family members
+    - 99_Misc: everything else
+    """
+    fn = filename.lower()
+    fl = folder_name.lower()
+
+    # Keyword-based detection (priority order)
+    if "passport" in fn or "paspor" in fn:
         return "passport"
-    if any(kw in fn for kw in ["kitas", "kitap", "visa", "b211", "evisa", "e-visa"]):
+    if any(kw in fn for kw in ["kitas", "kitap", "itas"]):
+        return "kitas"
+    if any(kw in fn for kw in ["visa", "voa", "b211", "evisa", "e-visa"]):
         return "visa"
+    if "imk" in fn or "reentry" in fn:
+        return "imk"
+    if "itk" in fn:
+        return "itk"
+    if "akta" in fn:
+        return "akta"
     if "nib" in fn or "berusaha" in fn or "oss" in fn:
         return "nib"
     if "npwp" in fn:
         return "npwp"
-    if "akta" in fn:
-        return "akta"
-    if "spt" in fn or "tax" in fn:
-        return "tax_return"
+    if "spt" in fn:
+        return "spt"
+    if "lkpm" in fn:
+        return "lkpm"
+    if "profile perseroan" in fn or "company profile" in fn:
+        return "profile_perseroan"
 
-    # Fallback by folder
+    # Fallback by folder (supports nested: "02_company/akta" → "akta")
     folder_map = {
         "00_profile": "profile_document",
         "01_immigration": "immigration_document",
@@ -201,5 +279,14 @@ def _infer_document_type(filename: str, folder_name: str) -> str:
         "03_tax": "tax_document",
         "04_family": "family_document",
         "99_misc": "misc_document",
+        # Nested subfolders
+        "akta": "akta",
+        "nib": "nib",
+        "npwp": "npwp",
+        "profile perseroan": "profile_perseroan",
+        "spt company": "spt_company",
+        "spt personal": "spt_personal",
+        "lkpm reports": "lkpm",
+        "npwp personal": "npwp_personal",
     }
-    return folder_map.get(folder_name.lower(), "other")
+    return folder_map.get(fl, "other")
