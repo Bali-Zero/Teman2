@@ -136,6 +136,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/integrations/google-drive/system/status",  # BUSINESS: OAuth status check - REVIEW: Should require auth
             "/api/admin/drive/health",  # BUSINESS: Drive health check - public status for diagnostics
             "/api/admin/drive/poll",  # BUSINESS: Drive poll trigger - called by Air cron every 5min
+            "/api/admin/drive/backfill",  # BUSINESS: One-time Drive backfill - registers missing schema-compliant files
             "/api/admin/drive/refresh",  # BUSINESS: Drive token refresh - public for admin use
             "/api/admin/drive/service-account-status",  # BUSINESS: Service Account status - public for diagnostics
             "/api/admin/drive/test-list-files",  # BUSINESS: SA file listing test - public for diagnostics
