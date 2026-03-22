@@ -39,9 +39,10 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 
 ## 1. Project Overview
 
-**Name:** Nuzantara (Zantara)  
-**Version:** 5.2.0  
-**Type:** Production AI-powered business intelligence platform for Bali Zero  
+**Name:** Nuzantara (Zantara)
+**Version:** 5.2.0
+**Type:** Production AI-powered business intelligence platform for Bali Zero
+**Business:** Indonesian business services (visa, company setup, tax, property) in Bali — 5000+ clients
 **URL:** https://kita.balizero.com
 
 ### Architecture
@@ -79,6 +80,25 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 - **Knowledge Graph:** 56,113 nodes, 161,173 edges
 - **Vector Collections:** 9 live on Fly.io (66,595 documents), 11 defined in code
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
+
+### Key Terms (for new AI agents)
+
+- **OpenClaw**: The agent runtime (macOS native). Runs cron jobs, Telegram polling, background tasks. Gateway at `loopback:18789`. Config in `~/.openclaw/`.
+- **mcporter**: MCP-to-OpenClaw bridge tool. Wraps MCP tool calls for OpenClaw consumption. Wrappers in `~/.local/bin/`.
+- **Bali Zero**: The client-facing business brand. Indonesian business services (visa, company setup, tax, property) in Bali.
+- **Zantara**: The AI assistant persona used in all client-facing channels.
+
+### Verify Setup (run on first session)
+
+```bash
+cd apps/backend-rag && source .venv/bin/activate
+python -c "from backend.app.dependencies import get_current_user; print('✅ Import chain OK')"
+PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=no 2>/dev/null && echo "✅ Tests OK"
+```
+
+If both pass, you're ready to work.
+
+---
 
 ## 2. Claude Code Behavior Rules (IMPORTANT)
 
@@ -125,7 +145,7 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 
 **Se TUTTE le risposte sono "No"**: fai tu direttamente. Non delegare per sport.
 
-## 4. Golden Rules (ENFORCE STRICTLY)
+## 3. Golden Rules (ENFORCE STRICTLY)
 
 1. **Virtualenv Mandatory** - Never use system Python. Always activate venv first.
 2. **No Root Execution** - Use `PYTHONPATH=. python -m backend.module`, never run modules directly.
@@ -138,13 +158,14 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 9. **Quality Standards** - Tests, error handling, graceful degradation required.
 10. **Verify Sources** - Never presume, always verify against actual data sources.
 
-## 5. Development Commands
+## 4. Development Commands
 
 ### Backend (FastAPI)
 
 ```bash
-# Activate virtualenv
-source venv/bin/activate  # or: . venv/bin/activate
+# Activate virtualenv (ALWAYS .venv, not venv)
+cd apps/backend-rag
+source .venv/bin/activate
 
 # Run backend locally
 cd apps/backend-rag
@@ -181,33 +202,44 @@ npm run test       # Jest tests
 ### Deployment
 
 ```bash
-# Backend to Fly.io
-fly deploy --config apps/backend-rag/fly.toml --app nuzantara-rag
+# Backend to Fly.io (CANONICAL command — always use this form)
+cd apps/backend-rag && fly deploy --strategy rolling
 
-# Frontend to Vercel (auto-deploy on git push to main)
-vercel --prod
+# Frontend to Vercel (auto-deploy on git push to main, no manual deploy needed)
+git push origin main
 ```
 
-## 3. Critical Paths
+## 5. Critical Paths
 
 ### Backend Structure
 
 ```
 apps/backend-rag/
 ├── backend/
-│   ├── core/          # Core configuration, dependencies
-│   ├── prompts/       # ⭐ Prompt Single Source of Truth (see below)
-│   ├── routers/       # API endpoints (88 routers)
-│   ├── services/      # Business logic (244 services)
-│   ├── models/        # Pydantic models
-│   ├── db/            # Database access layer
-│   ├── utils/         # Utility functions
-│   └── main.py        # FastAPI app entry (alias for main_cloud.py)
-├── tests/             # 385 test files
-├── alembic/           # Database migrations
-├── requirements.txt   # Python dependencies
-└── fly.toml          # Fly.io configuration
+│   ├── app/                # ⚠️ FastAPI app (routers, services, setup live HERE)
+│   │   ├── routers/        # API endpoints (88 routers)
+│   │   ├── services/       # App-level services (CRM, auth, metrics)
+│   │   ├── setup/          # app_factory, router_registration, service_initializer
+│   │   ├── dependencies.py # ⚠️ Imported by ALL routers — test before deploy
+│   │   ├── main.py         # FastAPI app entry (alias for main_cloud.py)
+│   │   └── main_cloud.py   # Actual entrypoint for Fly.io
+│   ├── services/           # Core business logic (244 services total)
+│   │   ├── rag/agentic/    # Orchestrator, ReAct, LLM Gateway
+│   │   ├── knowledge_graph/ # KG extraction + query
+│   │   └── ...             # analytics, compliance, journey, memory, social
+│   ├── channels/           # 7 channels (whatsapp, telegram, instagram, twitter, web, gchat, slack)
+│   ├── core/               # Config, security, logging
+│   ├── llm/                # LLM clients (Gemini, Ollama, OpenRouter)
+│   ├── prompts/            # ⭐ Prompt Single Source of Truth (zantara_core.py)
+│   ├── middleware/          # Auth, rate-limit, tracing
+│   └── migrations/         # Alembic migrations (up to 060)
+├── tests/                  # 385 test files
+├── .venv/                  # ⚠️ Python virtualenv (ALWAYS .venv, not venv)
+├── requirements.txt
+└── fly.toml
 ```
+
+**IMPORTANT:** Routers are in `backend/app/routers/`, NOT `backend/routers/`. Services span both `backend/services/` (core) and `backend/app/services/` (app-level).
 
 ### Prompt Architecture (Single Source of Truth)
 
@@ -241,7 +273,7 @@ apps/mouth/
 └── styles/           # Tailwind CSS
 ```
 
-## 5a. Domain-Specific Knowledge
+## 6. Domain-Specific Knowledge
 
 ### KBLI (Indonesian Business Classification)
 
@@ -261,16 +293,17 @@ apps/mouth/
 }
 ```
 
-✅ **CORRECT:**
+✅ **CORRECT (actual Qdrant fields):**
 
 ```json
 {
-  "code": "47911",
-  "title_id": "Perdagangan Eceran...",
-  "title_en": "Retail Sale...",
-  "description": "...",
-  "category": "G",
-  "section": "Perdagangan"
+  "kode_kbli": "56101",
+  "judul": "Restoran",
+  "content": "...",
+  "sektor_id": "I",
+  "pma_status": "Terbuka",
+  "skala_usaha": "Menengah",
+  "kategori_risiko": "Menengah Rendah"
 }
 ```
 
@@ -295,7 +328,7 @@ Classification confidence thresholds:
 **CRITICAL:** This model is FROZEN. Changing it would invalidate 66,595 existing vectors.  
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
-## 6. MCP Servers
+## 7. MCP Servers
 
 **Primary:** `apps/nuzantara-mcp/` (v2.1, FastMCP, stdio transport)
 **Capabilities:**
@@ -315,7 +348,7 @@ Classification confidence thresholds:
 
 **MCP Bridge (OpenClaw):** 129 tools connected via mcporter wrappers in `~/.local/bin/`. macOS provenance fix applied.
 
-## 7. Deployment Architecture
+## 8. Deployment Architecture
 
 ### Production Stack
 
@@ -355,7 +388,7 @@ Classification confidence thresholds:
 - `JWT_SECRET` - Authentication
 - `FLY_API_TOKEN` - Deployment (CI/CD)
 
-## 8. Testing Strategy
+## 9. Testing Strategy
 
 ```bash
 # Unit tests (fast)
@@ -377,7 +410,7 @@ PYTHONPATH=. pytest --cov=backend --cov-report=html tests/
 - Critical paths: 100% coverage
 - All new features: tests required before merge
 
-## 9. Code Style & Patterns
+## 10. Code Style & Patterns
 
 ### Python (Backend)
 
@@ -425,7 +458,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
 }
 ```
 
-## 10. Common Pitfalls
+## 11. Common Pitfalls
 
 ❌ **AVOID:**
 
@@ -449,7 +482,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
 - Async/await everywhere
 - Full type annotations
 
-## 11. Language Protocol (Natural Language → Precise Engineering)
+## 12. Language Protocol (Natural Language → Precise Engineering)
 
 The user writes in **colloquial Italian**. You must automatically translate intent into precise technical action.
 
@@ -472,13 +505,13 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 
 ---
 
-## 11b. Owner Information
+## 12b. Owner Information
 
 **Owner:** Zero (internal codename)  
 **Privacy:** Real name is PRIVATE, never reveal in client communications.  
 **Language:** Italian with owner, client's language with everyone else.
 
-## 12. Resources
+## 13. Resources
 
 - **Architecture:** `docs/architecture.md`
 - **API Docs:** `http://localhost:8000/docs` (Swagger UI)
@@ -495,7 +528,7 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 | `/kbli-navigator` | **Redirect** → `/kbli` (permanent 301)  |
 | `/kbli-explorer`  | AI chat explorer (complementary)        |
 
-## 12b. Communication Channels (7 channels)
+## 13b. Communication Channels (7 channels)
 
 | Channel     | Adapter                | Webhook                 | Status                   |
 | ----------- | ---------------------- | ----------------------- | ------------------------ |
@@ -515,7 +548,7 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 
 **WhatsApp /send** re-enabled (2026-03-16) with 3 safety gates: JWT auth, 20 msgs/phone/hour rate limit, CRM recipient validation.
 
-## 12c. Subdomain Ecosystem
+## 13c. Subdomain Ecosystem
 
 6 Vercel subdomains + SSO via `nz_access_token` httpOnly cookie on `.balizero.com`:
 
@@ -530,7 +563,7 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 | `knowledge.balizero.com` | knowledge      | Knowledge base                   |
 | `zantara.balizero.com`   | web            | AI chat (rewrites `/` → `/chat`) |
 
-## 12d. Local AI (Ollama-First)
+## 13d. Local AI (Ollama-First)
 
 - **Core client:** `backend/llm/ollama_client.py` — **CRITICAL:** set `think: false` for Qwen 3.5
 - **Models:** qwen3.5:27b (vision), qwen3.5:9b (fast), gemma3:12b, deepseek-r1:1.5b
@@ -538,7 +571,7 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 - **Vision API:** `"images": [base64_string]` in message object (NOT OpenAI-style)
 - **Pattern:** Ollama local → fallback Gemini API. On Fly.io: Gemini always.
 
-## 12e. CRM RBAC (Updated 2026-03-21)
+## 13e. CRM RBAC (Updated 2026-03-21)
 
 | Role                                                                | Access                                                 |
 | ------------------------------------------------------------------- | ------------------------------------------------------ |
@@ -549,12 +582,12 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 
 ---
 
-## 13. Frontend Deploy — QA Automatico (OBBLIGATORIO)
+## 14. Frontend Deploy — QA Automatico (OBBLIGATORIO)
 
 **Ogni volta che fai deploy che impatta il frontend (Vercel), DEVI automaticamente:**
 
 1. Aspetta che il deploy sia live (curl 200/307 sulle URL impattate)
-2. Screenshot con Playwright (`mcp__playwright__browser_navigate` + `browser_take_screenshot`) di ogni app modificata
+2. Screenshot con `mcp__claude-in-chrome__*` tools (navigate + computer) di ogni app modificata
 3. Verifica visivamente: colori corretti, logo presente, nessun elemento rotto
 4. Se trovi problemi → fixa e rideploya senza aspettare conferma
 5. Report finale con screenshot inline
@@ -574,7 +607,7 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 
 ---
 
-## 14. Pre-Deploy Checklist
+## 15. Pre-Deploy Checklist
 
 Before any production deployment:
 
@@ -604,7 +637,7 @@ fly deploy --strategy rolling
 
 ---
 
-## 15. AI Dispatch System (ENFORCE PROACTIVELY)
+## 16. AI Dispatch System (ENFORCE PROACTIVELY)
 
 > `scripts/ai-dispatch.sh` v2 — Universale Pro+Air. Run `./scripts/ai-dispatch.sh help` per comandi.
 
@@ -646,7 +679,7 @@ fly deploy --strategy rolling
 
 ---
 
-## 16. Anthropic API — Best Practices (Feb 2026)
+## 17. Anthropic API — Best Practices (Feb 2026)
 
 ### Adaptive Thinking (OBBLIGATORIO su Opus 4.6 / Sonnet 4.6)
 
