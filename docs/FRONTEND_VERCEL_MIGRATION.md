@@ -10,12 +10,12 @@ The frontend (`apps/mouth`) has been fully migrated from Fly.io to **Vercel** fo
 
 ## Production URLs
 
-| Domain                               | Points To                     | Status                      |
-| ------------------------------------ | ----------------------------- | --------------------------- |
-| `https://www.balizero.com`           | Vercel (cname.vercel-dns.com) | ✅ Primary                  |
-| `https://balizero.com`               | Redirects to www              | ✅ Active                   |
-| `https://kita.balizero.com`          | Vercel                        | ✅ Active                   |
-| `https://nuzantara-mouth.fly.dev`    | -                             | ❌ Deprecated (app stopped) |
+| Domain                            | Points To                     | Status                      |
+| --------------------------------- | ----------------------------- | --------------------------- |
+| `https://www.balizero.com`        | Vercel (cname.vercel-dns.com) | ✅ Primary                  |
+| `https://balizero.com`            | Redirects to www              | ✅ Active                   |
+| `https://kita.balizero.com`       | Vercel                        | ✅ Active                   |
+| `https://nuzantara-mouth.fly.dev` | -                             | ❌ Deprecated (app stopped) |
 
 ## DNS Configuration (Cloudflare)
 

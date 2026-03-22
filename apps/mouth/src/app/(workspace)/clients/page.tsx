@@ -112,6 +112,19 @@ function VirtualizedClientGrid({
     overscan: 2,
   });
 
+  const scrollTimer = useRef<NodeJS.Timeout | null>(null);
+  const handleScroll = useCallback(() => {
+    if (scrollTimer.current) return;
+    scrollTimer.current = setTimeout(() => {
+      scrollTimer.current = null;
+      const el = parentRef.current;
+      if (!el || !onNearBottom) return;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 500) {
+        onNearBottom();
+      }
+    }, 300);
+  }, [onNearBottom]);
+
   useEffect(() => {
     if (parentRef.current && shouldVirtualize) {
       virtualizer.measure();
@@ -154,19 +167,6 @@ function VirtualizedClientGrid({
   }
 
   const virtualRows = virtualizer.getVirtualItems();
-
-  const scrollTimer = useRef<NodeJS.Timeout | null>(null);
-  const handleScroll = useCallback(() => {
-    if (scrollTimer.current) return;
-    scrollTimer.current = setTimeout(() => {
-      scrollTimer.current = null;
-      const el = parentRef.current;
-      if (!el || !onNearBottom) return;
-      if (el.scrollHeight - el.scrollTop - el.clientHeight < 500) {
-        onNearBottom();
-      }
-    }, 300);
-  }, [onNearBottom]);
 
   return (
     <div
@@ -455,10 +455,10 @@ function ClientsListContent() {
         <div className="flex items-center gap-2">
           {/* View Toggle */}
           <div
-            className="p-1 rounded-lg flex"
+            className="p-1 rounded-lg flex shadow-md backdrop-blur-md"
             style={{
-              background: "var(--bz-surface)",
-              border: "1px solid var(--bz-border)",
+              background: "rgba(35, 35, 40, 0.45)",
+              border: "1px solid rgba(255,255,255,0.05)",
             }}
           >
             <button
@@ -466,7 +466,11 @@ function ClientsListContent() {
               className="p-2 rounded-md transition-all"
               style={
                 viewMode === "list"
-                  ? { background: "var(--bz-card)", color: "var(--bz-text-1)" }
+                  ? {
+                      background: "rgba(255, 255, 255, 0.1)",
+                      color: "var(--bz-text-1)",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    }
                   : { color: "var(--bz-text-2)" }
               }
               title="List View"
@@ -479,7 +483,11 @@ function ClientsListContent() {
               className="p-2 rounded-md transition-all"
               style={
                 viewMode === "kanban"
-                  ? { background: "var(--bz-card)", color: "var(--bz-text-1)" }
+                  ? {
+                      background: "rgba(255, 255, 255, 0.1)",
+                      color: "var(--bz-text-1)",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    }
                   : { color: "var(--bz-text-2)" }
               }
               title="Kanban Board"
@@ -518,11 +526,13 @@ function ClientsListContent() {
               placeholder="Search clients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2"
+              className="w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 transition-all duration-300 shadow-sm hover:shadow-md"
               style={
                 {
-                  border: "1px solid var(--bz-border)",
-                  background: "var(--bz-surface)",
+                  border: "1px solid rgba(255, 255, 255, 0.05)",
+                  background: "rgba(35, 35, 40, 0.45)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
                   color: "var(--bz-text-1)",
                   "--tw-ring-color": "rgba(212,132,90,0.5)",
                 } as React.CSSProperties
@@ -560,10 +570,10 @@ function ClientsListContent() {
         {/* Expanded Filters Panel */}
         {showFilters && (
           <div
-            className="p-4 rounded-lg space-y-4"
+            className="p-4 rounded-xl space-y-4 shadow-xl backdrop-blur-xl transition-all duration-300"
             style={{
-              border: "1px solid var(--bz-border)",
-              background: "var(--bz-surface)",
+              border: "1px solid rgba(255, 255, 255, 0.05)",
+              background: "rgba(32, 32, 36, 0.65)",
             }}
           >
             <div className="flex items-center justify-between">
@@ -595,10 +605,10 @@ function ClientsListContent() {
                   onChange={(e) =>
                     setFilters({ ...filters, status: e.target.value })
                   }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none transition-all duration-300"
                   style={{
-                    border: "1px solid var(--bz-border)",
-                    background: "var(--bz-base)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                    background: "rgba(19, 19, 21, 0.5)",
                     color: "var(--bz-text-1)",
                   }}
                 >
@@ -622,10 +632,10 @@ function ClientsListContent() {
                   onChange={(e) =>
                     setFilters({ ...filters, nationality: e.target.value })
                   }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none transition-all duration-300"
                   style={{
-                    border: "1px solid var(--bz-border)",
-                    background: "var(--bz-base)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                    background: "rgba(19, 19, 21, 0.5)",
                     color: "var(--bz-text-1)",
                   }}
                 >
@@ -649,10 +659,10 @@ function ClientsListContent() {
                   onChange={(e) =>
                     setFilters({ ...filters, assigned_to: e.target.value })
                   }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none transition-all duration-300"
                   style={{
-                    border: "1px solid var(--bz-border)",
-                    background: "var(--bz-base)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                    background: "rgba(19, 19, 21, 0.5)",
                     color: "var(--bz-text-1)",
                   }}
                 >
@@ -694,7 +704,8 @@ function ClientsListContent() {
                         color: "var(--bz-accent)",
                       }
                     : {
-                        background: "var(--bz-surface)",
+                        background: "rgba(35,35,40,0.6)",
+                        backdropFilter: "blur(12px)",
                         color: "var(--bz-text-2)",
                       }
                 }
@@ -715,10 +726,10 @@ function ClientsListContent() {
       {/* CONTENT AREA */}
       {isLoading && !clients.length ? (
         <div
-          className="rounded-xl p-12 text-center"
+          className="rounded-xl p-12 text-center backdrop-blur-sm"
           style={{
-            border: "1px solid var(--bz-border)",
-            background: "var(--bz-surface)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            background: "rgba(26,26,30,0.5)",
           }}
         >
           <CRMSkeleton count={6} />

@@ -61,17 +61,16 @@ export default function PortalLayout({
   }, []);
 
   // Check authentication and load data
+  // Uses cookie-based auth check (not localStorage) for cross-domain SSO support.
+  // When user logs in on kita.balizero.com, the httpOnly cookie on .balizero.com
+  // is shared with my.balizero.com, but localStorage is NOT shared across subdomains.
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
+      setIsLoading(true);
+
+      // First check localStorage (fast path for same-domain)
       const token = api.getToken();
-
-      if (!token) {
-        router.push("/portal/login");
-        return;
-      }
-
-      const loadData = async () => {
-        setIsLoading(true);
+      if (token) {
         try {
           await loadUserProfile();
         } catch (error) {
@@ -82,9 +81,33 @@ export default function PortalLayout({
         } finally {
           setIsLoading(false);
         }
-      };
+        return;
+      }
 
-      loadData();
+      // No localStorage token — try cookie-based auth (cross-domain SSO).
+      // The httpOnly cookie is sent automatically via credentials: "include".
+      try {
+        const profile = await api.getProfile();
+        if (profile?.email) {
+          // Cookie auth worked — sync token to localStorage for future fast checks
+          api.setUserProfile(profile);
+          const userName =
+            profile.name ||
+            (profile.email ? profile.email.split("@")[0] : "User");
+          setUser({
+            name: userName,
+            email: profile.email || "",
+            avatar: profile.avatar,
+          });
+          setIsLoading(false);
+          return;
+        }
+      } catch {
+        // Cookie auth also failed — redirect to login
+      }
+
+      setIsLoading(false);
+      router.push("/portal/login");
     };
 
     const timeoutId = setTimeout(checkAuth, 100);

@@ -81,10 +81,11 @@ export default function SettingsPage() {
           <div
             key={section.title}
             onClick={() => handleSettingsClick(section.href)}
-            className="p-4 rounded-xl cursor-pointer transition-colors group hover:opacity-90"
+            className="p-4 rounded-xl cursor-pointer transition-all duration-300 group hover:shadow-xl hover:-translate-y-0.5 backdrop-blur-md"
             style={{
-              border: "1px solid var(--bz-border)",
-              background: "var(--bz-surface)",
+              border: "1px solid rgba(255,255,255,0.05)",
+              background:
+                "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
             }}
           >
             <div className="flex items-start gap-4">
@@ -115,10 +116,11 @@ export default function SettingsPage() {
 
       {/* Admin Section */}
       <div
-        className="rounded-xl overflow-hidden"
+        className="rounded-xl overflow-hidden shadow-2xl backdrop-blur-xl"
         style={{
-          border: "1px solid var(--bz-border)",
-          background: "var(--bz-surface)",
+          border: "1px solid rgba(255,255,255,0.05)",
+          background:
+            "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
         }}
       >
         <div
@@ -197,9 +199,9 @@ export default function SettingsPage() {
 
       {/* Info Box */}
       <div
-        className="rounded-xl border border-dashed p-8 text-center"
+        className="rounded-xl border border-dashed p-8 text-center backdrop-blur-sm"
         style={{
-          borderColor: "var(--bz-border)",
+          borderColor: "rgba(255,255,255,0.1)",
           background: "rgba(26,26,30,0.5)",
         }}
       >

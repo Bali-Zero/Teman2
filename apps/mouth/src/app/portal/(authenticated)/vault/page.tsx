@@ -108,7 +108,10 @@ export default function VaultPage() {
       case "expired":
         return { background: "rgba(239,68,68,0.12)", color: "#f87171" };
       default:
-        return { background: "var(--bz-surface)", color: "var(--bz-text-2)" };
+        return {
+          background: "rgba(255,255,255,0.05)",
+          color: "var(--bz-text-2)",
+        };
     }
   };
 
@@ -191,9 +194,15 @@ export default function VaultPage() {
               className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors"
               style={
                 selectedCategory === cat
-                  ? { background: "var(--bz-accent-warm)", color: "#0c0c0e" }
+                  ? {
+                      background:
+                        "linear-gradient(135deg, var(--bz-accent-warm), rgba(212,132,90,0.8))",
+                      color: "#0c0c0e",
+                      boxShadow: "0 4px 14px 0 rgba(212,132,90,0.39)",
+                    }
                   : {
-                      background: "var(--bz-surface)",
+                      background: "rgba(35,35,40,0.5)",
+                      backdropFilter: "blur(12px)",
                       color: "var(--bz-text-2)",
                     }
               }
@@ -241,10 +250,10 @@ export default function VaultPage() {
             {filteredDocs.map((doc) => (
               <div
                 key={doc.id}
-                className="rounded-lg border p-4 transition-colors"
+                className="rounded-lg border p-4 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 backdrop-blur-xl"
                 style={{
-                  background: "var(--bz-card)",
-                  borderColor: "var(--bz-border)",
+                  background: "rgba(30,30,35,0.7)",
+                  borderColor: "rgba(255,255,255,0.05)",
                 }}
               >
                 <div className="flex items-start gap-3">

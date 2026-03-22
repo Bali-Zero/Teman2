@@ -296,8 +296,8 @@ export function Header({
                     color: "var(--bz-green)",
                   }
                 : {
-                    borderColor: "var(--bz-border)",
-                    background: "var(--bz-surface)",
+                    borderColor: "rgba(255,255,255,0.05)",
+                    background: "rgba(35,35,40,0.6)",
                     color: "var(--bz-text-2)",
                   }
             }

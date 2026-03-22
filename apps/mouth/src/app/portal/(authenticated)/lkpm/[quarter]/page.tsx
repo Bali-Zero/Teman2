@@ -37,7 +37,7 @@ export default function LKPMReviewPage() {
   const loadDraft = async () => {
     try {
       setIsLoading(true);
-      const data = await api.portal.getLKPMDraft(0, quarter, year);
+      const data = await api.portal.getLKPMDraft(0, quarter, year); // 0 = resolve from authenticated session
       setDraft(data);
     } catch (err) {
       error("Failed to load draft", "Please try again later");
@@ -148,8 +148,9 @@ export default function LKPMReviewPage() {
       <section
         className="rounded-xl border p-6 space-y-4"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <h2 className="text-lg font-semibold">Investment Realization</h2>
@@ -217,15 +218,16 @@ export default function LKPMReviewPage() {
       <section
         className="rounded-xl border p-6"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <h2 className="text-lg font-semibold mb-4">Employment</h2>
         <div className="grid grid-cols-3 gap-4">
           <div
             className="p-4 rounded-lg"
-            style={{ background: "var(--bz-surface)" }}
+            style={{ background: "rgba(255,255,255,0.03)" }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               TKI (Indonesian)
@@ -234,7 +236,7 @@ export default function LKPMReviewPage() {
           </div>
           <div
             className="p-4 rounded-lg"
-            style={{ background: "var(--bz-surface)" }}
+            style={{ background: "rgba(255,255,255,0.03)" }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               TKA (Foreign)
@@ -243,7 +245,7 @@ export default function LKPMReviewPage() {
           </div>
           <div
             className="p-4 rounded-lg"
-            style={{ background: "var(--bz-surface)" }}
+            style={{ background: "rgba(255,255,255,0.03)" }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Total
@@ -258,8 +260,9 @@ export default function LKPMReviewPage() {
         <section
           className="rounded-xl border p-6 space-y-2"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <h2 className="text-lg font-semibold mb-2">Validation Passed</h2>

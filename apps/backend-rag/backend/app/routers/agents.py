@@ -591,23 +591,30 @@ async def cross_oracle_synthesis(
         raise HTTPException(status_code=500, detail=str(e)) from None
 
 
+class PricingCalculateRequest(BaseModel):
+    service_type: str
+    complexity: str = "standard"
+    urgency: str = "normal"
+    package: str | None = None
+
+
 @router.post("/pricing/calculate")
 async def calculate_dynamic_pricing(
-    service_type: str,
-    complexity: str = "standard",
-    urgency: str = "normal",
+    body: PricingCalculateRequest,
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     💰 AGENT 6: Dynamic Pricing Service
 
-    Calculate pricing based on service type, complexity, and urgency
+    Calculate pricing based on service type, complexity, and urgency.
+    Accepts JSON body: {"service_type": "pt_pma", "complexity": "standard", "urgency": "normal"}
     """
     return {
         "success": True,
-        "service_type": service_type,
-        "complexity": complexity,
-        "urgency": urgency,
+        "service_type": body.service_type,
+        "complexity": body.complexity,
+        "urgency": body.urgency,
+        "package": body.package,
         "message": "Dynamic pricing available via /pricing/all endpoint",
         "note": "Use the unified pricing endpoint for comprehensive pricing",
     }

@@ -148,11 +148,15 @@ function StatCard({
     <div
       onClick={onClick}
       className={cn(
-        "p-4 rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)]",
-        onClick &&
-          "cursor-pointer hover:border-[var(--bz-accent)] hover:bg-[var(--bz-card)] transition-all",
+        "p-4 rounded-xl border shadow-lg backdrop-blur-md transition-all duration-300",
+        onClick ? "cursor-pointer hover:shadow-xl hover:-translate-y-1" : "",
         accent?.border,
       )}
+      style={{
+        background:
+          "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+        border: "1px solid rgba(255, 255, 255, 0.05)",
+      }}
     >
       <div className="flex items-center gap-3 mb-2">
         <div className="p-2 rounded-lg bg-[var(--bz-card)]/50">
@@ -247,13 +251,22 @@ function ExpandableSection({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] overflow-hidden transition-all",
+        "rounded-xl border shadow-xl backdrop-blur-xl overflow-hidden transition-all duration-300 hover:shadow-2xl",
         isExpanded && "lg:col-span-2 ring-2 ring-[var(--bz-accent)]",
       )}
+      style={{
+        background:
+          "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
+        border: "1px solid rgba(255, 255, 255, 0.05)",
+      }}
     >
       <div
         onClick={onToggle}
-        className="px-4 py-3 border-b border-[var(--bz-border)] bg-[var(--bz-card)]/30 flex items-center justify-between cursor-pointer hover:bg-[var(--bz-card)]/50 transition-colors"
+        className="px-4 py-3 border-b flex items-center justify-between cursor-pointer transition-colors hover:bg-white/5"
+        style={{
+          borderColor: "rgba(255, 255, 255, 0.05)",
+          background: "rgba(255, 255, 255, 0.02)",
+        }}
       >
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-[var(--bz-accent)]" />

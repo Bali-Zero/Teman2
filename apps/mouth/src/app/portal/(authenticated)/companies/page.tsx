@@ -66,8 +66,9 @@ export default function CompaniesPage() {
         <section
           className="rounded-xl border border-dashed p-12 text-center"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <Building2
@@ -143,7 +144,11 @@ function CompanyCard({
     <div
       onClick={onClick}
       className="rounded-xl border p-4 cursor-pointer transition-all active:scale-[0.99]"
-      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+      style={{
+        background: "rgba(30,30,35,0.7)",
+        borderColor: "rgba(255,255,255,0.05)",
+        backdropFilter: "blur(24px)",
+      }}
     >
       <div className="flex items-start gap-4">
         <div

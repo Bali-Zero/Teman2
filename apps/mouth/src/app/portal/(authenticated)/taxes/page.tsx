@@ -77,8 +77,9 @@ export default function TaxesPage() {
       <section
         className="rounded-xl border p-6 space-y-4"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <div className="flex items-center justify-between">
@@ -95,7 +96,7 @@ export default function TaxesPage() {
         <div className="grid grid-cols-2 gap-4">
           <div
             className="p-4 rounded-lg"
-            style={{ background: "var(--bz-surface)" }}
+            style={{ background: "rgba(255,255,255,0.03)" }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Total Due
@@ -109,7 +110,7 @@ export default function TaxesPage() {
 
           <div
             className="p-4 rounded-lg"
-            style={{ background: "var(--bz-surface)" }}
+            style={{ background: "rgba(255,255,255,0.03)" }}
           >
             <p className="text-xs mb-1" style={{ color: "var(--bz-text-2)" }}>
               Next Deadline
@@ -181,8 +182,9 @@ export default function TaxesPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <div className="flex items-center gap-2">
@@ -210,8 +212,9 @@ export default function TaxesPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <div className="flex items-center gap-2">
@@ -307,7 +310,10 @@ function ObligationCard({
       case "overdue":
         return { background: "rgba(239,68,68,0.12)", color: "#f87171" };
       default:
-        return { background: "var(--bz-surface)", color: "var(--bz-text-2)" };
+        return {
+          background: "rgba(255,255,255,0.05)",
+          color: "var(--bz-text-2)",
+        };
     }
   };
 
@@ -315,8 +321,8 @@ function ObligationCard({
     <div
       className="rounded-lg border p-4 transition-colors"
       style={{
-        background: "var(--bz-surface)",
-        borderColor: "var(--bz-border)",
+        background: "rgba(255,255,255,0.03)",
+        borderColor: "rgba(255,255,255,0.05)",
       }}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
@@ -371,8 +377,8 @@ function HistoryCard({
     <div
       className="rounded-lg border p-3"
       style={{
-        background: "var(--bz-surface)",
-        borderColor: "var(--bz-border)",
+        background: "rgba(255,255,255,0.03)",
+        borderColor: "rgba(255,255,255,0.05)",
       }}
     >
       <div className="flex items-center justify-between">

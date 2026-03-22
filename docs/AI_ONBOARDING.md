@@ -373,11 +373,11 @@ fly deploy --strategy rolling
 
 - **SOLO 3 Fly.io apps** (updated 2026-03-14):
 
-| App                  | CPU       | RAM | Auto-stop     | Note                    |
-| -------------------- | --------- | --- | ------------- | ----------------------- |
-| `nuzantara-rag`      | shared-2x | 2GB | ✅ yes, min=0 | Cold start ~35s         |
+| App                  | CPU       | RAM | Auto-stop     | Note                                     |
+| -------------------- | --------- | --- | ------------- | ---------------------------------------- |
+| `nuzantara-rag`      | shared-2x | 2GB | ✅ yes, min=0 | Cold start ~35s                          |
 | `nuzantara-postgres` | shared-1x | 2GB | no            | v0.1.0 (upgraded from v0.0.66 after OOM) |
-| `nuzantara-qdrant`   | shared-1x | 2GB | no            | v1.12.1                 |
+| `nuzantara-qdrant`   | shared-1x | 2GB | no            | v1.12.1                                  |
 
 - **Destroyed (2026-03-14):** `nuzantara-rag-staging`, `bali-intel-scraper`, `zantara-media`, `fly-builder-red-flower-7537`
 - **Cost:** ~$35-40/mo (was ~$81/mo, -50%)
@@ -477,19 +477,20 @@ nuzantara-mcp  # starts stdio server
 
 **7 omnichannel integrations** in `backend/channels/`:
 
-| Channel      | Adapter                | Webhook                 | Status         |
-| ------------ | ---------------------- | ----------------------- | -------------- |
-| WhatsApp     | `whatsapp/adapter.py`  | `/webhook/whatsapp`     | ✅ Live (Meta Cloud API) |
-| Telegram     | `telegram/adapter.py`  | `/api/telegram/webhook` | ✅ Live (@Balizerobot) |
-| Instagram    | `instagram/adapter.py` | `/webhook/instagram`    | ✅ Live        |
-| X/Twitter    | `twitter/adapter.py`   | `/webhook/twitter`      | ❌ CRC broken  |
-| Web Chat     | `web/adapter.py`       | `/api/webhook/chat`     | ✅ Live        |
-| Google Chat  | `gchat/adapter.py`     | TBD                     | 🔧 Scaffold   |
-| Slack        | `slack/adapter.py`     | TBD                     | 🔧 Scaffold   |
+| Channel     | Adapter                | Webhook                 | Status                   |
+| ----------- | ---------------------- | ----------------------- | ------------------------ |
+| WhatsApp    | `whatsapp/adapter.py`  | `/webhook/whatsapp`     | ✅ Live (Meta Cloud API) |
+| Telegram    | `telegram/adapter.py`  | `/api/telegram/webhook` | ✅ Live (@Balizerobot)   |
+| Instagram   | `instagram/adapter.py` | `/webhook/instagram`    | ✅ Live                  |
+| X/Twitter   | `twitter/adapter.py`   | `/webhook/twitter`      | ❌ CRC broken            |
+| Web Chat    | `web/adapter.py`       | `/api/webhook/chat`     | ✅ Live                  |
+| Google Chat | `gchat/adapter.py`     | TBD                     | 🔧 Scaffold              |
+| Slack       | `slack/adapter.py`     | TBD                     | 🔧 Scaffold              |
 
 Each channel has `adapter.py`, `config.py`, `formatter.py` following a consistent pattern.
 
 **Channel ownership:**
+
 - **Web/WhatsApp/Instagram**: Backend Fly.io (Gemini 3 Flash + RAG)
 - **Telegram**: Pro OpenClaw @Balizerobot (Opus 4.6 + SOUL.md persona) — Pro polls, Air/Fly send only
 - **X/Twitter**: Backend Fly.io — currently broken (CRC authentication failure)
@@ -668,10 +669,10 @@ These tools bypass evidence scoring because they provide their own evidence:
 
 **File:** `backend/app/routers/crm_practices.py` + `crm_utils.py`
 
-| Role                                                              | Access                                      |
-| ----------------------------------------------------------------- | ------------------------------------------- |
-| Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`, role=admin) | All clients and practices                   |
-| Team Member (role != admin)                                       | Only practices where `clients.assigned_to` = own email |
+| Role                                                                | Access                                                 |
+| ------------------------------------------------------------------- | ------------------------------------------------------ |
+| Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`, role=admin) | All clients and practices                              |
+| Team Member (role != admin)                                         | Only practices where `clients.assigned_to` = own email |
 
 **Implementation:** `crm_utils.can_view_all_practices()` + SQL `AND c.assigned_to = $email`. Server-side only, frontend unchanged.
 
@@ -858,20 +859,20 @@ npm run dev
 
 ## ESSENTIAL DOCUMENTATION
 
-| Document                      | Path                                                     | When to Read                   |
-| ----------------------------- | -------------------------------------------------------- | ------------------------------ |
-| **AI Configuration Files**    | `CLAUDE.md`, `.cursorrules`, `.antigravity/context.md`   | First session (AI setup)       |
-| **AI Handover Protocol**      | `docs/ai/AI_HANDOVER_PROTOCOL.md`                        | Always (project brain)         |
-| **LangGraph KG Architecture** | `docs/KG_LANGGRAPH_ARCHITECTURE.md`                      | Knowledge Graph implementation |
-| **System Map 4D**             | `docs/SYSTEM_MAP_4D.md`                                  | Architecture overview          |
-| **Observability Guide**       | `docs/operations/OBSERVABILITY_GUIDE.md`                 | Debugging/monitoring           |
-| **Deploy Checklist**          | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying               |
-| **Database Architecture**     | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference            |
-| **KG Value Assessment**       | `docs/KG_VALUE_ASSESSMENT_2026_01_18.md`                 | Knowledge Graph ROI            |
-| **Intel Pipeline**            | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper                   |
-| **Chain Onboarding**          | `docs/architecture/CHAIN_ONBOARDING_IMPROVEMENTS.md`     | Onboarding workflow details    |
+| Document                      | Path                                                     | When to Read                           |
+| ----------------------------- | -------------------------------------------------------- | -------------------------------------- |
+| **AI Configuration Files**    | `CLAUDE.md`, `.cursorrules`, `.antigravity/context.md`   | First session (AI setup)               |
+| **AI Handover Protocol**      | `docs/ai/AI_HANDOVER_PROTOCOL.md`                        | Always (project brain)                 |
+| **LangGraph KG Architecture** | `docs/KG_LANGGRAPH_ARCHITECTURE.md`                      | Knowledge Graph implementation         |
+| **System Map 4D**             | `docs/SYSTEM_MAP_4D.md`                                  | Architecture overview                  |
+| **Observability Guide**       | `docs/operations/OBSERVABILITY_GUIDE.md`                 | Debugging/monitoring                   |
+| **Deploy Checklist**          | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying                       |
+| **Database Architecture**     | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference                    |
+| **KG Value Assessment**       | `docs/KG_VALUE_ASSESSMENT_2026_01_18.md`                 | Knowledge Graph ROI                    |
+| **Intel Pipeline**            | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper                           |
+| **Chain Onboarding**          | `docs/architecture/CHAIN_ONBOARDING_IMPROVEMENTS.md`     | Onboarding workflow details            |
 | **Cicatrix Scars**            | `.claude/rules/cicatrix-scars.md`                        | 20 known bugs/gotchas (auto-extracted) |
-| **Documentation Archive**     | `docs/archive/MANIFEST.md`                               | Old docs & reports             |
+| **Documentation Archive**     | `docs/archive/MANIFEST.md`                               | Old docs & reports                     |
 
 ---
 
@@ -904,10 +905,10 @@ npm run dev
 
 ## PRO-AIR FEDERATION (Updated 2026-03-22)
 
-| Machine | User             | Hostname      | Role                       | RAM   |
-| ------- | ---------------- | ------------- | -------------------------- | ----- |
-| **Pro** | `nuzantara`      | `Nuzantara`   | Development (primary)      | 48GB  |
-| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24                 | 16GB  |
+| Machine | User             | Hostname      | Role                  | RAM  |
+| ------- | ---------------- | ------------- | --------------------- | ---- |
+| **Pro** | `nuzantara`      | `Nuzantara`   | Development (primary) | 48GB |
+| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24            | 16GB |
 
 - **SSH:** `ssh air` (from Pro) / `ssh pro` (from Air) — mDNS, works on any WiFi
 - **Git sync:** post-commit hook → `ssh air 'cd ~/Projects/nuzantara && git pull --ff-only'`
@@ -932,13 +933,13 @@ npm run dev
 
 6 Vercel subdomains with SSO via `nz_access_token` httpOnly cookie on `.balizero.com`:
 
-| Subdomain                  | App           | Purpose            |
-| -------------------------- | ------------- | ------------------ |
-| `kita.balizero.com`        | mouth         | Workspace (main)   |
-| `mail.balizero.com`        | mail          | Email interface    |
-| `calendar.balizero.com`    | calendar      | Calendar           |
-| `drive.balizero.com`       | drive          | File management    |
-| `knowledge.balizero.com`   | knowledge     | Knowledge base     |
-| `zantara.balizero.com`     | web           | AI chat (rewrites `/` → `/chat`) |
-| `my.balizero.com`          | mouth (portal) | Client portal      |
-| `prime.balizero.com`       | mouth (prime)  | Spatial intelligence (3D maps) |
+| Subdomain                | App            | Purpose                          |
+| ------------------------ | -------------- | -------------------------------- |
+| `kita.balizero.com`      | mouth          | Workspace (main)                 |
+| `mail.balizero.com`      | mail           | Email interface                  |
+| `calendar.balizero.com`  | calendar       | Calendar                         |
+| `drive.balizero.com`     | drive          | File management                  |
+| `knowledge.balizero.com` | knowledge      | Knowledge base                   |
+| `zantara.balizero.com`   | web            | AI chat (rewrites `/` → `/chat`) |
+| `my.balizero.com`        | mouth (portal) | Client portal                    |
+| `prime.balizero.com`     | mouth (prime)  | Spatial intelligence (3D maps)   |

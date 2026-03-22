@@ -28,27 +28,15 @@ export async function generateMetadata({
     };
   }
 
-  const metaOverrides: Record<string, { title: string; description: string }> =
-    {
-      visa: {
-        title:
-          "Bali Visa Agency 2026 | KITAS, Visit & Working Visa Indonesia | Bali Zero",
-        description:
-          "Trusted visa agency in Bali. KITAS, KITAP, Visit Visa, Investor Visa & Working Permits handled end-to-end. 1000+ expats served. Fast processing, transparent pricing.",
-      },
-      company: {
-        title:
-          "Company Setup Bali 2026 | PT PMA, Licenses & Business Registration | Bali Zero",
-        description:
-          "Set up your company in Bali with expert guidance. PT PMA, PMDN, KBLI licenses, Hygiene Certificates & more. Full compliance guaranteed.",
-      },
-    };
-
-  const override = metaOverrides[slug];
-  if (override) {
-    return {
-      title: override.title,
-      description: override.description,
+  const metaOverrides: Record<
+    string,
+    { title: string; description: string; keywords?: string[] }
+  > = {
+    visa: {
+      title:
+        "Bali Visa Agency 2026 | KITAS, Visit & Working Visa Indonesia | Bali Zero",
+      description:
+        "Trusted visa agency in Bali. KITAS, KITAP, Visit Visa, Investor Visa & Working Permits handled end-to-end. 1000+ expats served. Fast processing, transparent pricing.",
       keywords: [
         "bali visa agency",
         "visa agent bali",
@@ -58,7 +46,57 @@ export async function generateMetadata({
         "working visa bali",
         "investor kitas bali",
         "bali zero visa",
+        "visto bali",
       ],
+    },
+    company: {
+      title:
+        "Company Registration Bali 2026 | PT PMA, Business License Indonesia | Bali Zero",
+      description:
+        "Register your company in Bali — PT PMA setup, business license Indonesia, KBLI classification, NIB & OSS permits. Transparent pricing from IDR 20M. 5000+ businesses established.",
+      keywords: [
+        "company registration bali",
+        "business license indonesia",
+        "indonesia business license",
+        "pt pma bali",
+        "business establishment services",
+        "license holder in indonesia",
+        "bali company setup",
+      ],
+    },
+    tax: {
+      title:
+        "Indonesia Tax Compliance 2026 | NPWP, Tax Filing & Advisory | Bali Zero",
+      description:
+        "Navigate Indonesia's tax system with expert guidance. NPWP registration, annual tax filing, tax planning for expats & businesses. Compliant, transparent, hassle-free.",
+      keywords: [
+        "indonesia tax compliance",
+        "npwp registration bali",
+        "expat tax indonesia",
+        "indonesia tax filing",
+        "bali tax advisor",
+      ],
+    },
+    property: {
+      title:
+        "Bali Property Services 2026 | Legal Due Diligence & Investment | Bali Zero",
+      description:
+        "Secure property in Bali with legal clarity. Due diligence, land certificates, foreign ownership structures & investment advisory. Protect your investment with expert guidance.",
+      keywords: [
+        "bali property investment",
+        "property due diligence bali",
+        "foreign property ownership indonesia",
+        "bali land certificate",
+      ],
+    },
+  };
+
+  const override = metaOverrides[slug];
+  if (override) {
+    return {
+      title: override.title,
+      description: override.description,
+      keywords: override.keywords || ["bali zero", "bali services", slug],
       alternates: {
         canonical: `https://balizero.com/services/${slug}`,
       },

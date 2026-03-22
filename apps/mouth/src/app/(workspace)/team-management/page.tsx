@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Users, Clock, Calendar, UserCircle, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 // Team member interface
 interface TeamMember {
@@ -87,7 +88,7 @@ export default function TeamPage() {
           }
         }
       } catch (err) {
-        console.error("Failed to load team stats:", err);
+        logger.error("Failed to load team stats", {}, err as Error);
         setError("Failed to load team data");
       } finally {
         setIsLoading(false);
@@ -131,23 +132,47 @@ export default function TeamPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]">
+        <div
+          className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
+          style={{
+            background:
+              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+          }}
+        >
           <p className="text-sm text-[var(--foreground-muted)]">Team Members</p>
           <p className="text-2xl font-bold text-[var(--foreground)]">
             {isLoading ? "-" : totalMembers}
           </p>
         </div>
-        <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]">
+        <div
+          className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
+          style={{
+            background:
+              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+          }}
+        >
           <p className="text-sm text-[var(--foreground-muted)]">Online Now</p>
           <p className="text-2xl font-bold text-[var(--success)]">
             {isLoading ? "-" : onlineCount}
           </p>
         </div>
-        <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]">
+        <div
+          className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
+          style={{
+            background:
+              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+          }}
+        >
           <p className="text-sm text-[var(--foreground-muted)]">On Leave</p>
           <p className="text-2xl font-bold text-[var(--foreground)]">0</p>
         </div>
-        <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]">
+        <div
+          className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
+          style={{
+            background:
+              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+          }}
+        >
           <p className="text-sm text-[var(--foreground-muted)]">Hours Today</p>
           <p className="text-2xl font-bold text-[var(--foreground)]">0h</p>
         </div>
@@ -160,9 +185,13 @@ export default function TeamPage() {
             key={dept.name}
             onClick={() => {
               // Filter team members by department - can be implemented with real API
-              // console.log(`Filter by ${dept.name}`);
+              // TODO: filter by department
             }}
-            className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)]/50 cursor-pointer transition-colors"
+            className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-1"
+            style={{
+              background:
+                "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+            }}
           >
             <div className="flex items-center gap-3 mb-3">
               <div
@@ -184,8 +213,14 @@ export default function TeamPage() {
       </div>
 
       {/* Team Members List */}
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]">
-        <div className="p-4 border-b border-[var(--border)]">
+      <div
+        className="rounded-xl border border-[rgba(255,255,255,0.05)] shadow-2xl backdrop-blur-xl"
+        style={{
+          background:
+            "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
+        }}
+      >
+        <div className="p-4 border-b border-[rgba(255,255,255,0.05)]">
           <h2 className="font-semibold text-[var(--foreground)]">
             Team Members
           </h2>
@@ -266,7 +301,7 @@ export default function TeamPage() {
       </div>
 
       {/* Info Box */}
-      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-8 text-center">
+      <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-8 text-center">
         <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto">
           Manage the Bali Zero team with attendance, timesheet, leave and
           permissions. View who is online and hours worked.

@@ -149,8 +149,8 @@ function DocumentUploadModal({
         </DialogHeader>
         <div className="space-y-4">
           <div
-            className="p-3 rounded-lg"
-            style={{ background: "var(--bz-surface)" }}
+            className="p-3 rounded-lg backdrop-blur-md"
+            style={{ background: "rgba(255,255,255,0.03)" }}
           >
             <p className="font-medium">{document.document_label}</p>
             {document.description && (
@@ -180,8 +180,8 @@ function DocumentUploadModal({
               placeholder="Add any notes about this document..."
               className="w-full px-3 py-2 rounded-lg border text-sm min-h-[80px]"
               style={{
-                background: "var(--bz-surface)",
-                borderColor: "var(--bz-border)",
+                background: "rgba(255,255,255,0.03)",
+                borderColor: "rgba(255,255,255,0.05)",
                 color: "var(--bz-text-1)",
               }}
             />
@@ -236,8 +236,11 @@ function ProcessCard({
 
   return (
     <div
-      className="rounded-xl border shadow-sm overflow-hidden"
-      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+      className="rounded-xl border shadow-2xl overflow-hidden backdrop-blur-xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+      style={{
+        background: "rgba(30,30,35,0.7)",
+        borderColor: "rgba(255,255,255,0.05)",
+      }}
     >
       {/* Header */}
       <button
@@ -245,7 +248,7 @@ function ProcessCard({
         className="w-full p-4 flex items-center justify-between transition-colors"
         style={{ background: "transparent" }}
         onMouseEnter={(e) =>
-          (e.currentTarget.style.background = "var(--bz-surface)")
+          (e.currentTarget.style.background = "rgba(45,45,50,0.5)")
         }
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
@@ -267,8 +270,8 @@ function ProcessCard({
               {verifiedCount}/{totalCount} documents
             </p>
             <div
-              className="w-24 h-1.5 rounded-full mt-1"
-              style={{ background: "var(--bz-surface)" }}
+              className="w-24 h-1.5 rounded-full mt-1 border border-[rgba(255,255,255,0.05)]"
+              style={{ background: "rgba(255,255,255,0.05)" }}
             >
               <div
                 className="h-full bg-[var(--accent)] rounded-full transition-all"
@@ -287,8 +290,8 @@ function ProcessCard({
       {/* Documents List */}
       {isExpanded && (
         <div
-          className="border-t divide-y"
-          style={{ borderColor: "var(--bz-border)" }}
+          className="border-t divide-y divide-[rgba(255,255,255,0.05)]"
+          style={{ borderColor: "rgba(255,255,255,0.05)" }}
         >
           {process.documents.length === 0 ? (
             <div
@@ -497,10 +500,10 @@ export default function PortalProcessPage() {
       {totalDocs > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div
-            className="rounded-xl border p-4"
+            className="rounded-xl border p-4 backdrop-blur-md shadow-lg"
             style={{
-              background: "var(--bz-card)",
-              borderColor: "var(--bz-border)",
+              background: "rgba(30,30,35,0.6)",
+              borderColor: "rgba(255,255,255,0.05)",
             }}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
@@ -511,8 +514,9 @@ export default function PortalProcessPage() {
           <div
             className="rounded-xl border p-4"
             style={{
-              background: "var(--bz-card)",
-              borderColor: "var(--bz-border)",
+              background: "rgba(30,30,35,0.7)",
+              borderColor: "rgba(255,255,255,0.05)",
+              backdropFilter: "blur(24px)",
             }}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
@@ -523,8 +527,9 @@ export default function PortalProcessPage() {
           <div
             className="rounded-xl border p-4"
             style={{
-              background: "var(--bz-card)",
-              borderColor: "var(--bz-border)",
+              background: "rgba(30,30,35,0.7)",
+              borderColor: "rgba(255,255,255,0.05)",
+              backdropFilter: "blur(24px)",
             }}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
@@ -535,8 +540,9 @@ export default function PortalProcessPage() {
           <div
             className="rounded-xl border p-4"
             style={{
-              background: "var(--bz-card)",
-              borderColor: "var(--bz-border)",
+              background: "rgba(30,30,35,0.7)",
+              borderColor: "rgba(255,255,255,0.05)",
+              backdropFilter: "blur(24px)",
             }}
           >
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
@@ -552,10 +558,10 @@ export default function PortalProcessPage() {
       {/* Process List */}
       {processGroups.length === 0 ? (
         <div
-          className="rounded-xl border p-12 text-center"
+          className="rounded-xl border p-12 text-center backdrop-blur-lg"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.5)",
+            borderColor: "rgba(255,255,255,0.05)",
           }}
         >
           <FolderOpen

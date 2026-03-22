@@ -114,8 +114,9 @@ export default function CompanyDetailPage() {
       <section
         className="rounded-xl border p-6"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <div className="flex items-start justify-between">
@@ -168,8 +169,9 @@ export default function CompanyDetailPage() {
       <section
         className="rounded-xl border p-6 space-y-4"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <div className="flex items-center gap-2">
@@ -201,8 +203,9 @@ export default function CompanyDetailPage() {
       <section
         className="rounded-xl border p-6 space-y-4"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <div className="flex items-center gap-2">
@@ -239,8 +242,9 @@ export default function CompanyDetailPage() {
       <section
         className="rounded-xl border p-6 space-y-4"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <div className="flex items-center gap-2">
@@ -257,7 +261,7 @@ export default function CompanyDetailPage() {
               <div
                 key={index}
                 className="flex items-center gap-3 p-3 rounded-lg"
-                style={{ background: "var(--bz-surface)" }}
+                style={{ background: "rgba(255,255,255,0.03)" }}
               >
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center"
@@ -320,7 +324,11 @@ function BusinessDetailsSection({ company }: { company: PortalCompany }) {
   return (
     <section
       className="rounded-xl border p-6 space-y-4"
-      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+      style={{
+        background: "rgba(30,30,35,0.7)",
+        borderColor: "rgba(255,255,255,0.05)",
+        backdropFilter: "blur(24px)",
+      }}
     >
       <div className="flex items-center gap-2">
         <Building2
@@ -335,7 +343,7 @@ function BusinessDetailsSection({ company }: { company: PortalCompany }) {
           <div
             key={field.label}
             className="flex items-start gap-3 p-3 rounded-lg"
-            style={{ background: "var(--bz-surface)" }}
+            style={{ background: "rgba(255,255,255,0.03)" }}
           >
             <field.icon
               className="w-4 h-4 mt-0.5 flex-shrink-0"
@@ -418,7 +426,7 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
         return {
           icon: Clock,
           badgeStyle: {
-            background: "var(--bz-surface)",
+            background: "rgba(255,255,255,0.03)",
             color: "var(--bz-text-2)",
           },
           borderColor: "var(--bz-border)",
@@ -434,7 +442,7 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
       className="rounded-lg border p-4"
       style={{
         borderColor: config.borderColor,
-        background: "var(--bz-surface)",
+        background: "rgba(255,255,255,0.03)",
       }}
     >
       <div className="flex items-start justify-between gap-3">
@@ -490,8 +498,8 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
           icon: CheckCircle,
           badgeStyle: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
           bgStyle: {
-            background: "var(--bz-surface)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(255,255,255,0.03)",
+            borderColor: "rgba(255,255,255,0.05)",
           },
         };
       case "overdue":
