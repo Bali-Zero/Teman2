@@ -4379,233 +4379,225 @@ function CompanyTab({
       .finally(() => setIsLoading(false));
   }, [clientId]);
 
-  // Helper: get Drive proxy thumbnail
-  const getProxyUrl = (doc: ClientDocument | undefined) => {
-    if (!doc?.google_drive_file_url) return null;
-    const fid = extractDriveFileId(doc.google_drive_file_url);
-    return fid ? `/api/documents/proxy/${fid}` : null;
-  };
+  // Helper: get Drive link for a doc
+  const driveLink = (doc: ClientDocument | undefined) => doc?.google_drive_file_url || null;
+
+  // Get first linked company for detailed data (shareholders, capital, akta numbers, etc.)
+  const co = companies[0];
 
   const hasCompanyName = !!client.company_name;
   const hasAnyDoc = pmaDocs.length > 0;
-  const hasLinkedCompanies = companies.length > 0;
 
-  // No company at all
-  if (!hasCompanyName && !hasAnyDoc && !hasLinkedCompanies && !isLoading) {
+  if (!hasCompanyName && !hasAnyDoc && !co && !isLoading) {
     return (
-      <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl">
+      <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] p-12 text-center">
         <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
         <p className="text-[var(--bz-text-2)]">No company information</p>
-        <p className="text-sm text-[var(--bz-text-2)] mt-1">
-          Upload company documents (Profil Perseroan, NIB, NPWP, Akta) to Drive
-        </p>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Company Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
-            {client.company_name || 'Company'}
-          </h3>
-          <p className="text-sm text-[var(--bz-text-2)]">
-            Profile Perseroan · {pmaDocs.length} documents
-          </p>
-        </div>
-      </div>
+  // Format capital
+  const formatCapital = (shares?: number, nominal?: number) => {
+    if (!shares) return null;
+    const nom = nominal || 1000000;
+    const total = shares * nom;
+    if (total >= 1e12) return `Rp ${(total / 1e12).toFixed(total % 1e12 === 0 ? 0 : 1)}T`;
+    if (total >= 1e9) return `Rp ${(total / 1e9).toFixed(total % 1e9 === 0 ? 0 : 1)}B`;
+    if (total >= 1e6) return `Rp ${(total / 1e6).toFixed(0)}M`;
+    return `Rp ${total.toLocaleString()}`;
+  };
 
-      {/* Document Cards Grid — each doc in its dedicated box */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Profil Perseroan — main company info card */}
-        <div
-          className="rounded-xl border overflow-hidden col-span-1 md:col-span-2"
-          style={{ border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(32,32,36,0.65)' }}
-        >
-          <div className="px-5 py-3 border-b border-[var(--bz-border)] bg-gradient-to-r from-purple-500/5 to-blue-500/5">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-purple-400" />
-              <h4 className="text-sm font-semibold text-[var(--bz-text-1)]">Profile Perseroan</h4>
+  const companyName = co?.company_name || client.company_name || 'Company';
+  const companyType = co?.company_type || '';
+  const capital = formatCapital(co?.shares_count, co?.share_nominal_value);
+
+  return (
+    <div className="space-y-5">
+      {/* ── COMPANY CARD — presentation style ─── */}
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(32,32,36,0.7)' }}
+      >
+        {/* Header band */}
+        <div className="px-6 py-5 bg-gradient-to-r from-purple-500/8 to-blue-500/8">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center shrink-0">
+              <Building2 className="w-7 h-7 text-purple-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xl font-bold text-[var(--bz-text-1)] truncate">{companyName}</h3>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {companyType && (
+                  <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400 font-medium">
+                    {companyType}
+                  </span>
+                )}
+                {(co?.company_status || 'active') !== 'dissolved' && (
+                  <span
+                    className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      (co?.company_status || 'active') === 'active'
+                        ? 'bg-green-500/20 text-green-400'
+                        : (co?.company_status || '') === 'in_setup'
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'bg-gray-500/20 text-gray-400'
+                    }`}
+                  >
+                    {(co?.company_status || 'active').replace(/_/g, ' ')}
+                  </span>
+                )}
+                {co?.sk_menhumkam_date && (
+                  <span className="text-xs text-[var(--bz-text-2)]">
+                    Est. {new Date(co.sk_menhumkam_date).getFullYear()}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-          <div className="p-5">
-            {profilPerseroan ? (
-              <div className="flex items-start gap-4">
-                <a
-                  href={profilPerseroan.google_drive_file_url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 w-20 h-28 rounded-lg border border-[var(--bz-border)] overflow-hidden bg-[var(--bz-base)] hover:border-purple-400/50 transition-colors"
-                >
-                  {getProxyUrl(profilPerseroan) ? (
-                    <img
-                      src={getProxyUrl(profilPerseroan)!}
-                      alt="Profile Perseroan"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <FileText className="w-8 h-8 text-[var(--bz-text-2)] opacity-50" />
-                    </div>
-                  )}
-                </a>
-                <div className="flex-1 space-y-2">
-                  <p className="text-sm font-medium text-[var(--bz-text-1)]">
-                    {client.company_name || '—'}
-                  </p>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-                    {client.company_name && (
-                      <div>
-                        <span className="text-[var(--bz-text-2)]">Company</span>
-                        <p className="text-[var(--bz-text-1)]">{client.company_name}</p>
-                      </div>
-                    )}
-                  </div>
-                  <a
-                    href={profilPerseroan.google_drive_file_url || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-purple-400 hover:underline mt-2"
-                  >
-                    <FileText className="w-3 h-3" /> View in Drive
-                  </a>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-[var(--bz-text-2)]">
-                No Profile Perseroan uploaded. Add it to{' '}
-                <code className="text-xs bg-[var(--bz-base)] px-1 rounded">
-                  02_Company/Profile Perseroan/
-                </code>{' '}
-                in Drive.
+        </div>
+
+        {/* Info grid */}
+        <div className="px-6 py-4 space-y-4">
+          {/* Row 1: KBLI + NIB + NPWP */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
+                KBLI
               </p>
+              <p className="text-sm text-[var(--bz-text-1)] font-medium">{co?.kbli_code || '—'}</p>
+              {co?.kbli_description && (
+                <p className="text-xs text-[var(--bz-text-2)] truncate">{co.kbli_description}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
+                NIB
+              </p>
+              <p className="text-sm text-[var(--bz-text-1)] font-mono">{co?.nib || '—'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
+                NPWP
+              </p>
+              <p className="text-sm text-[var(--bz-text-1)] font-mono">{co?.npwp_company || '—'}</p>
+            </div>
+          </div>
+
+          {/* Row 2: Address + Capital */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
+                Address
+              </p>
+              <p className="text-sm text-[var(--bz-text-1)]">
+                {co?.registered_address || co?.office_address || '—'}
+                {co?.city && `, ${co.city}`}
+                {co?.province && `, ${co.province}`}
+              </p>
+            </div>
+            {capital && (
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
+                  Capital
+                </p>
+                <p className="text-sm text-[var(--bz-text-1)] font-semibold">{capital}</p>
+                {co?.shares_count && (
+                  <p className="text-xs text-[var(--bz-text-2)]">
+                    {co.shares_count.toLocaleString()} shares
+                  </p>
+                )}
+              </div>
             )}
           </div>
-        </div>
 
-        {/* AKTA */}
-        <DocBox
-          title="Akta"
-          subtitle="Deed of Establishment"
-          icon={<FileText className="w-4 h-4 text-blue-400" />}
-          doc={aktaDoc}
-          getProxyUrl={getProxyUrl}
-          folderHint="02_Company/AKTA/"
-        />
-
-        {/* SK Kemenkumham */}
-        <DocBox
-          title="SK Kemenkumham"
-          subtitle="Ministry Approval"
-          icon={<FileText className="w-4 h-4 text-emerald-400" />}
-          doc={skDoc}
-          getProxyUrl={getProxyUrl}
-          folderHint="02_Company/"
-        />
-
-        {/* NIB */}
-        <DocBox
-          title="NIB"
-          subtitle="Business ID Number"
-          icon={<FileText className="w-4 h-4 text-orange-400" />}
-          doc={nibDoc}
-          getProxyUrl={getProxyUrl}
-          folderHint="02_Company/NIB/"
-        />
-
-        {/* NPWP */}
-        <DocBox
-          title="NPWP"
-          subtitle="Tax ID"
-          icon={<FileText className="w-4 h-4 text-emerald-400" />}
-          doc={npwpDoc}
-          getProxyUrl={getProxyUrl}
-          folderHint="02_Company/NPWP/"
-        />
-      </div>
-
-      {/* Legacy linked companies (if any exist) */}
-      {hasLinkedCompanies && (
-        <div className="space-y-4 pt-4 border-t border-[var(--bz-border)]">
-          <h4 className="text-sm font-semibold text-[var(--bz-text-2)] uppercase tracking-wider">
-            Linked Companies ({companies.length})
-          </h4>
-          {companies.map((c) => (
-            <div key={c.company_id} className="text-sm text-[var(--bz-text-1)]">
-              {c.company_name} · {c.role}{' '}
-              {c.ownership_percentage ? `(${c.ownership_percentage}%)` : ''}
+          {/* Shareholders */}
+          {companies.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-2">
+                Shareholders
+              </p>
+              <div className="space-y-1.5">
+                {companies.map((c) => (
+                  <div key={c.company_id} className="flex items-center justify-between text-sm">
+                    <span className="text-[var(--bz-text-1)]">
+                      {c.role || 'Shareholder'} —{' '}
+                      <span className="font-medium">{client.full_name}</span>
+                    </span>
+                    <span className="text-[var(--bz-text-2)]">
+                      {c.ownership_percentage ? `${c.ownership_percentage}%` : ''}
+                      {c.shares_count ? ` · ${c.shares_count.toLocaleString()} shares` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+          )}
 
-// Document box component for Company tab
-function DocBox({
-  title,
-  subtitle,
-  icon,
-  doc,
-  getProxyUrl,
-  folderHint,
-}: {
-  title: string;
-  subtitle: string;
-  icon: React.ReactNode;
-  doc: ClientDocument | undefined;
-  getProxyUrl: (d: ClientDocument | undefined) => string | null;
-  folderHint: string;
-}) {
-  return (
-    <div
-      className="rounded-xl border overflow-hidden"
-      style={{ border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(32,32,36,0.65)' }}
-    >
-      <div className="px-4 py-2.5 border-b border-[var(--bz-border)] flex items-center gap-2">
-        {icon}
-        <div>
-          <h4 className="text-sm font-semibold text-[var(--bz-text-1)]">{title}</h4>
-          <p className="text-[10px] text-[var(--bz-text-2)]">{subtitle}</p>
+          {/* Akta & SK */}
+          {(co?.akta_pendirian_no || co?.akta_perubahan_no || co?.sk_menhumkam_no) && (
+            <div className="pt-3 border-t border-[var(--bz-border)]">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                {co?.akta_pendirian_no && (
+                  <div>
+                    <span className="text-[var(--bz-text-2)]">Akta Pendirian</span>
+                    <p className="text-[var(--bz-text-1)] font-mono">No. {co.akta_pendirian_no}</p>
+                    {co.akta_pendirian_date && (
+                      <p className="text-[var(--bz-text-2)]">
+                        {formatDate(co.akta_pendirian_date)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {co?.akta_perubahan_no && (
+                  <div>
+                    <span className="text-[var(--bz-text-2)]">Akta Perubahan</span>
+                    <p className="text-[var(--bz-text-1)] font-mono">No. {co.akta_perubahan_no}</p>
+                    {co.akta_perubahan_date && (
+                      <p className="text-[var(--bz-text-2)]">
+                        {formatDate(co.akta_perubahan_date)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {co?.sk_menhumkam_no && (
+                  <div>
+                    <span className="text-[var(--bz-text-2)]">SK Kemenkumham</span>
+                    <p className="text-[var(--bz-text-1)] font-mono">{co.sk_menhumkam_no}</p>
+                    {co.sk_menhumkam_date && (
+                      <p className="text-[var(--bz-text-2)]">{formatDate(co.sk_menhumkam_date)}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-      <div className="p-4">
-        {doc ? (
-          <div className="flex items-center gap-3">
-            <a
-              href={doc.google_drive_file_url || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 w-14 h-14 rounded-lg border border-[var(--bz-border)] overflow-hidden bg-[var(--bz-base)] hover:border-[var(--bz-accent)]/50 transition-colors"
-            >
-              {getProxyUrl(doc) ? (
-                <img src={getProxyUrl(doc)!} alt={title} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-[var(--bz-text-2)] opacity-50" />
-                </div>
-              )}
-            </a>
-            <div className="min-w-0">
-              <p className="text-sm text-[var(--bz-text-1)] truncate">{doc.file_name}</p>
-              <a
-                href={doc.google_drive_file_url || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[var(--bz-accent)] hover:underline"
-              >
-                View in Drive
-              </a>
+
+        {/* Documents strip — small clickable thumbnails at bottom */}
+        {pmaDocs.length > 0 && (
+          <div className="px-6 py-3 border-t border-[var(--bz-border)] bg-[rgba(0,0,0,0.15)]">
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] shrink-0">
+                Documents
+              </span>
+              <div className="flex items-center gap-2 overflow-x-auto">
+                {pmaDocs.map((doc) => (
+                  <a
+                    key={doc.id}
+                    href={doc.google_drive_file_url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={doc.file_name}
+                    className="shrink-0 w-10 h-10 rounded border border-[var(--bz-border)] overflow-hidden bg-[var(--bz-base)] hover:border-[var(--bz-accent)] transition-colors"
+                  >
+                    <div className="w-full h-full flex items-center justify-center">
+                      <FileText className="w-4 h-4 text-[var(--bz-text-2)]" />
+                    </div>
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
-        ) : (
-          <p className="text-xs text-[var(--bz-text-2)]">
-            Not uploaded. Add to{' '}
-            <code className="bg-[var(--bz-base)] px-1 rounded">{folderHint}</code>
-          </p>
         )}
       </div>
     </div>
