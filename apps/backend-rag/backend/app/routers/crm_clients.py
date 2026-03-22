@@ -24,11 +24,20 @@ from backend.app.utils.crm_utils import (
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
+
+from backend.db.repositories.client_repository import ClientRepository
+from backend.services.crm.client_service import ClientService
+
 from backend.core.cache import cached, invalidate_cache
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/crm/clients", tags=["crm-clients"])
+
+
+def get_client_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> ClientService:
+    repository = ClientRepository(db_pool)
+    return ClientService(repository)
 
 # Constants
 MAX_LIMIT = 200
@@ -269,168 +278,61 @@ class ClientResponse(BaseModel):
 async def create_client(
     client: ClientCreate,
     background_tasks: BackgroundTasks,
-    db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
+    client_service: ClientService = Depends(get_client_service),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> ClientResponse:
     """
-    Create a new client
-
-    - **full_name**: Client's full name (required)
-    - **email**: Email address (optional but recommended)
-    - **phone**: Phone number
-    - **whatsapp**: WhatsApp number (can be same as phone)
-    - **nationality**: Client's nationality
-    - **passport_number**: Passport number
-    - **assigned_to**: Team member email to assign client to
-    - **avatar_url**: URL to client avatar image
-    - **tags**: Array of tags (e.g., ['vip', 'urgent'])
+    Create a new client with transactional safety and domain error mapping.
     """
-    time.time()
+    from backend.app.core.exceptions import ResourceConflictError
+    
     try:
+        # Estrae i dati validati da FastAPI/Pydantic
+        client_data = client.model_dump(exclude_unset=True)
+
+        # Costruisce i dati opzionali per l'azienda se presenti nel payload
+        company_data = None
+        if client.company_name:
+            company_data = {
+                "company_name": client.company_name,
+                "status": "active",
+                "kbli_code": client_data.pop("kbli_code", None)
+            }
+
+        # Chiama il Business Logic Layer (gestisce transazioni e Domain Errors)
+        created_record = await client_service.create_client(
+            client_data=client_data,
+            company_data=company_data
+        )
+        
+        new_client = dict(created_record)
         user_email = current_user.get("email", "").lower()
-        # Add timeout for connection acquisition to prevent hanging
-        import asyncio
-
+        
+        # Logica accessoria: Google Drive
         try:
-            async with asyncio.timeout(10.0):
-                async with db_pool.acquire() as conn:
-                    # Sanitize date fields - convert strings to date objects for asyncpg
-                    passport_expiry = None
-                    if client.passport_expiry:
-                        try:
-                            passport_expiry = datetime.strptime(
-                                client.passport_expiry, "%Y-%m-%d"
-                            ).date()
-                        except ValueError:
-                            passport_expiry = None
+            from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
+            drive_service = ServiceAccountDriveService()
+            background_tasks.add_task(
+                drive_service.create_client_folder,
+                client_id=new_client["id"],
+                client_name=client.full_name,
+                client_type=client.client_type,
+                db_pool=db_pool,
+            )
+        except Exception as e:
+            logger.error(f"Drive folder creation failed: {e}")
 
-                    date_of_birth = None
-                    if client.date_of_birth:
-                        try:
-                            date_of_birth = datetime.strptime(
-                                client.date_of_birth, "%Y-%m-%d"
-                            ).date()
-                        except ValueError:
-                            date_of_birth = None
+        # Invalidazione extra cache HTTP (il service invalida la memory cache)
+        await invalidate_cache("zantara:crm_clients_stats:*")
+        
+        return ClientResponse(**new_client)
 
-                    row = await conn.fetchrow(
-                        """
-                        INSERT INTO clients (
-                            full_name, email, phone, whatsapp, company_name,
-                            nationality, passport_number, passport_expiry, date_of_birth,
-                            status, client_type, assigned_to, avatar_url, address, notes,
-                            tags, lead_source, service_interest, custom_fields,
-                            first_contact_date, created_by
-                        ) VALUES (
-                            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-                            $16, $17, $18, $19, $20, $21
-                        )
-                        RETURNING *
-                        """,
-                        client.full_name,
-                        client.email,
-                        client.phone,
-                        client.whatsapp,
-                        client.company_name,
-                        client.nationality,
-                        client.passport_number,
-                        passport_expiry,
-                        date_of_birth,
-                        client.status,  # Use client's status instead of hardcoded "active"
-                        client.client_type,
-                        client.assigned_to,
-                        client.avatar_url,
-                        client.address,
-                        client.notes,
-                        client.tags,
-                        client.lead_source,
-                        client.service_interest,
-                        client.custom_fields,
-                        datetime.now(tz=timezone.utc).replace(tzinfo=None),
-                        user_email,
-                    )
-
-                    if not row:
-                        raise HTTPException(status_code=500, detail="Failed to create client")
-
-                    new_client = dict(row)
-                    log_success(
-                        logger, f"Created client: {client.full_name}", client_id=new_client["id"]
-                    )
-                    log_database_operation(logger, "CREATE", "clients", record_id=new_client["id"])
-
-                    # Track metrics (Legacy - keeping for backward metrics compatibility)
-                    # crm_client_operations.labels(operation="create", status="success").inc()
-                    # crm_client_creation_duration.observe(time.time() - start_time)
-
-                    # Use Enhanced Metrics
-                    crm_metrics.client_status_changes.labels(
-                        from_status="none", to_status=client.status, changed_by=user_email
-                    ).inc()
-
-                    # 🚀 Auto-create Google Drive folder for new client
-                    try:
-                        from backend.services.integrations.service_account_drive_service import (
-                            ServiceAccountDriveService,
-                        )
-
-                        drive_service = ServiceAccountDriveService()
-                        background_tasks.add_task(
-                            drive_service.create_client_folder,
-                            client_id=new_client["id"],
-                            client_name=client.full_name,
-                            client_type=client.client_type,
-                            db_pool=db_pool,
-                        )
-                        logger.info(
-                            f"🚀 Drive folder creation queued for client {new_client['id']}"
-                        )
-                    except Exception as e:
-                        logger.error(f"Drive folder creation failed: {e}")
-
-                    # 🎯 Auto-trigger onboarding chain for new leads/prospects
-                    if client.status in ("lead", "prospect") and client.service_interest:
-                        try:
-                            logger.info(
-                                f"🎯 Auto-triggering onboarding chain for new {client.status}: {client.full_name}"
-                            )
-                            # Note: This would call the MCP chain_new_client_onboarding
-                            # For now, we log the intent - actual MCP integration would go here
-                            onboarding_payload = {
-                                "name": client.full_name,
-                                "email": client.email or f"temp_{new_client['id']}@balizero.com",
-                                "nationality": client.nationality or "Unknown",
-                                "business_description": ", ".join(client.service_interest),
-                                "phone": client.whatsapp or client.phone,
-                                "client_id": new_client["id"],
-                            }
-                            logger.info(
-                                f"📋 Onboarding payload prepared for {client.full_name}: {onboarding_payload}"
-                            )
-                            # TODO: Call MCP chain_new_client_onboarding here
-                            # await mcp_client.call_tool("chain_new_client_onboarding", onboarding_payload)
-                        except Exception as onboarding_error:
-                            logger.warning(
-                                f"Failed to trigger onboarding chain: {onboarding_error}"
-                            )
-                            # Don't fail client creation if onboarding trigger fails
-
-                    await invalidate_cache("zantara:crm_clients_stats:*")
-                    return ClientResponse(**new_client)
-        except asyncio.TimeoutError:
-            logger.error("Database connection acquisition timeout")
-            raise HTTPException(
-                status_code=503,
-                detail="Database connection timeout. Please try again.",
-            ) from None
-
-    except asyncpg.UniqueViolationError as e:
+    except ResourceConflictError as e:
         logger.warning(f"Integrity error creating client: {e}")
         raise HTTPException(
-            status_code=400, detail="Client with this email or phone already exists"
+            status_code=400, detail=str(e)
         ) from e
-    except HTTPException:
-        raise
     except Exception as e:
         raise handle_database_error(e) from e
 
