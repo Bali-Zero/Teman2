@@ -235,7 +235,11 @@
       "property": "Immobilier",
       "lifestyle": "Lifestyle",
       "tech": "Tech",
-      "baliNews": "Actualités Bali"
+      "baliNews": "Actualités Bali",
+      "visas": "Visas et Immigration",
+      "taxes": "Fiscalité et Conformité",
+      "living": "Vivre en Indonésie",
+      "trends": "Tendances et Analyses"
     },
     "categoryDescriptions": {
       "immigration": "Visas, permis et tout ce que vous devez savoir pour vous installer en Indonésie.",
@@ -244,7 +248,11 @@
       "property": "Immobilier, propriété et opportunités d'investissement à Bali.",
       "lifestyle": "Vivre à Bali, culture, communauté et qualité de vie.",
       "tech": "Vie de nomade numérique, industrie technologique et travail à distance en Indonésie.",
-      "baliNews": "Actualités, culture, événements et histoires de Bali et d'Indonésie."
+      "baliNews": "Actualités, culture, événements et histoires de Bali et d'Indonésie.",
+      "visas": "Visas, permis et tout ce qu il faut savoir pour s installer en Indonésie.",
+      "taxes": "Obligations fiscales, conformité légale et mises à jour réglementaires.",
+      "living": "Vivre à Bali, culture, communauté, permis de conduire, santé et vie quotidienne.",
+      "trends": "Économie numérique, industrie tech, nouvelles réglementations et analyses de marché."
     }
   }
 }
