@@ -354,8 +354,8 @@ class NuzantaraSEOGuardian:
 
         if articles_dir.exists():
             for mdx_file in articles_dir.rglob("*.mdx"):
-                if mdx_file.name.endswith(".id.mdx") or mdx_file.name.endswith(".it.mdx"):
-                    continue
+                # Count all languages in GEO/AEO audit (multilingual coverage matters)
+                pass  # No language filtering — audit all translations
                 total_articles += 1
                 try:
                     content = mdx_file.read_text(encoding="utf-8", errors="ignore")
