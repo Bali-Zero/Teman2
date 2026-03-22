@@ -235,7 +235,11 @@
       "property": "Properti",
       "lifestyle": "Gaya Hidup",
       "tech": "Teknologi",
-      "baliNews": "Berita Bali"
+      "baliNews": "Berita Bali",
+      "visas": "Visa & Imigrasi",
+      "taxes": "Pajak & Kepatuhan",
+      "living": "Tinggal di Indonesia",
+      "trends": "Tren & Wawasan"
     },
     "categoryDescriptions": {
       "immigration": "Visa, izin tinggal, dan semua yang perlu Anda ketahui tentang pindah ke Indonesia.",
@@ -244,7 +248,11 @@
       "property": "Properti, kepemilikan tanah, dan peluang investasi di Bali.",
       "lifestyle": "Kehidupan di Bali, budaya, komunitas, dan kualitas hidup.",
       "tech": "Kehidupan digital nomad, industri teknologi, dan kerja remote di Indonesia.",
-      "baliNews": "Berita terkini, budaya, acara, dan cerita dari Bali dan Indonesia."
+      "baliNews": "Berita terkini, budaya, acara, dan cerita dari Bali dan Indonesia.",
+      "visas": "Visa, izin tinggal, dan panduan lengkap untuk pindah ke Indonesia.",
+      "taxes": "Kewajiban pajak, kepatuhan hukum, dan pembaruan regulasi.",
+      "living": "Tinggal di Bali, budaya, komunitas, SIM, kesehatan, dan kehidupan sehari-hari.",
+      "trends": "Ekonomi digital, industri teknologi, regulasi baru, dan wawasan pasar."
     }
   }
 }
