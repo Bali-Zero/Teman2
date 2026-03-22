@@ -52,6 +52,7 @@ import type {
   DocumentCategoryType,
   ClientCompanyLink,
   CompanyDocument,
+  Company,
 } from '@/lib/api/crm/crm.types';
 import { COMMON_NATIONALITIES, CLIENT_STATUSES } from '@/lib/api/crm/crm.types';
 import { cropToSquare } from '@/lib/utils/imageResize';
@@ -4343,52 +4344,163 @@ function CompanyTab({
 }) {
   // Company docs from client's documents (category = pma)
   const pmaDocs = documents.filter((d) => d.document_category === 'pma');
-  const profilPerseroan = pmaDocs.find(
-    (d) =>
-      d.document_type === 'company_profile' ||
-      d.document_type === 'profile_perseroan' ||
-      d.file_name?.toLowerCase().includes('profil perseroan') ||
-      d.file_name?.toLowerCase().includes('company profile')
-  );
-  const aktaDoc = pmaDocs.find(
-    (d) => d.document_type === 'akta' || d.file_name?.toLowerCase().includes('akta')
-  );
-  const nibDoc = pmaDocs.find(
-    (d) => d.document_type === 'nib' || d.file_name?.toLowerCase().includes('nib')
-  );
-  const npwpDoc = pmaDocs.find(
-    (d) => d.document_type === 'npwp' || d.file_name?.toLowerCase().includes('npwp')
-  );
-  const skDoc = pmaDocs.find(
-    (d) =>
-      d.document_type === 'sk' ||
-      d.file_name?.toLowerCase().includes('sk ') ||
-      d.file_name?.toLowerCase().includes('kemenkumham')
-  );
 
-  // Also try to load linked companies (legacy path)
-  // Load linked companies (legacy — most data now comes from documents prop)
-  const [companies, setCompanies] = useState<ClientCompanyLink[]>([]);
+  // Company data: try linked companies first, then fallback to search by name
+  const [companyData, setCompanyData] = useState<{
+    company_name: string;
+    company_type: string;
+    kbli_code?: string;
+    kbli_description?: string;
+    nib?: string;
+    npwp_company?: string;
+    akta_pendirian_no?: string;
+    akta_pendirian_date?: string;
+    akta_perubahan_no?: string;
+    akta_perubahan_date?: string;
+    sk_menhumkam_no?: string;
+    sk_menhumkam_date?: string;
+    registered_address?: string;
+    office_address?: string;
+    city?: string;
+    province?: string;
+    company_status?: string;
+    shares_count?: number;
+    share_nominal_value?: number;
+    setup_progress?: number;
+    company_id?: number;
+  } | null>(null);
+
+  const [associates, setAssociates] = useState<
+    Array<{
+      client_name?: string;
+      role: string;
+      ownership_percentage?: number;
+      shares_count?: number;
+    }>
+  >([]);
+
+  const [companyDocs, setCompanyDocs] = useState<CompanyDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    api.crm
-      .getClientCompanies(clientId)
-      .then(setCompanies)
-      .catch(() => setCompanies([]))
-      .finally(() => setIsLoading(false));
-  }, [clientId]);
+    let cancelled = false;
 
-  // Helper: get Drive link for a doc
-  const driveLink = (doc: ClientDocument | undefined) => doc?.google_drive_file_url || null;
+    async function loadCompanyData() {
+      try {
+        // Step 1: Try linked companies
+        const linked = await api.crm.getClientCompanies(clientId);
+        if (!cancelled && linked.length > 0) {
+          const co = linked[0];
+          setCompanyData({
+            company_name: co.company_name,
+            company_type: co.company_type,
+            kbli_code: co.kbli_code,
+            kbli_description: co.kbli_description,
+            nib: co.nib,
+            npwp_company: co.npwp_company,
+            akta_pendirian_no: co.akta_pendirian_no,
+            akta_pendirian_date: co.akta_pendirian_date,
+            akta_perubahan_no: co.akta_perubahan_no,
+            akta_perubahan_date: co.akta_perubahan_date,
+            sk_menhumkam_no: co.sk_menhumkam_no,
+            sk_menhumkam_date: co.sk_menhumkam_date,
+            registered_address: co.registered_address,
+            office_address: co.office_address,
+            city: co.city,
+            province: co.province,
+            company_status: co.company_status,
+            shares_count: co.shares_count,
+            share_nominal_value: co.share_nominal_value,
+            setup_progress: co.setup_progress,
+            company_id: co.company_id,
+          });
+          setAssociates(
+            linked.map((l) => ({
+              client_name: client.full_name,
+              role: l.role,
+              ownership_percentage: l.ownership_percentage,
+              shares_count: l.shares_count,
+            }))
+          );
+          // Load company documents if we have a company_id
+          if (co.company_id) {
+            api.crm
+              .getCompanyDocuments(co.company_id)
+              .then((docs) => !cancelled && setCompanyDocs(docs))
+              .catch(() => {});
+          }
+          return;
+        }
 
-  // Get first linked company for detailed data (shareholders, capital, akta numbers, etc.)
-  const co = companies[0];
+        // Step 2: Fallback — search by client.company_name
+        if (client.company_name) {
+          const found = await api.crm.searchCompanyByName(client.company_name);
+          if (!cancelled && found) {
+            setCompanyData({
+              company_name: found.company_name,
+              company_type: found.company_type,
+              kbli_code: found.kbli_code,
+              kbli_description: found.kbli_description,
+              nib: found.nib,
+              npwp_company: found.npwp_company,
+              akta_pendirian_no: found.akta_pendirian_no,
+              akta_pendirian_date: found.akta_pendirian_date,
+              akta_perubahan_no: found.akta_perubahan_no,
+              akta_perubahan_date: found.akta_perubahan_date,
+              sk_menhumkam_no: found.sk_menhumkam_no,
+              sk_menhumkam_date: found.sk_menhumkam_date,
+              registered_address: found.registered_address,
+              office_address: found.office_address,
+              city: found.city,
+              province: found.province,
+              company_status: found.status,
+              company_id: found.id,
+            });
+            if (found.associates?.length) {
+              setAssociates(
+                found.associates.map((a) => ({
+                  client_name: a.client_name,
+                  role: a.role,
+                  ownership_percentage: a.ownership_percentage,
+                  shares_count: a.shares_count,
+                }))
+              );
+            }
+            // Load company documents
+            api.crm
+              .getCompanyDocuments(found.id)
+              .then((docs) => !cancelled && setCompanyDocs(docs))
+              .catch(() => {});
+            return;
+          }
+        }
+
+        // Step 3: No company data found — companyData stays null
+      } catch {
+        // Silently handle errors
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    loadCompanyData();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, client.company_name, client.full_name]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--bz-text-2)]" />
+      </div>
+    );
+  }
 
   const hasCompanyName = !!client.company_name;
   const hasAnyDoc = pmaDocs.length > 0;
 
-  if (!hasCompanyName && !hasAnyDoc && !co && !isLoading) {
+  if (!companyData && !hasCompanyName && !hasAnyDoc) {
     return (
       <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] p-12 text-center">
         <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
@@ -4396,6 +4508,8 @@ function CompanyTab({
       </div>
     );
   }
+
+  const co = companyData;
 
   // Format capital
   const formatCapital = (shares?: number, nominal?: number) => {
@@ -4411,6 +4525,29 @@ function CompanyTab({
   const companyName = co?.company_name || client.company_name || 'Company';
   const companyType = co?.company_type || '';
   const capital = formatCapital(co?.shares_count, co?.share_nominal_value);
+  const status = co?.company_status || 'active';
+
+  // Merge client pma docs + company docs for the strip
+  const allDocs = [
+    ...pmaDocs.map((d) => ({
+      key: `client-${d.id}`,
+      name: d.file_name || d.document_type,
+      url: d.google_drive_file_url,
+      type: d.document_type,
+    })),
+    ...companyDocs
+      .filter((cd) => cd.google_drive_file_url || cd.google_drive_file_id)
+      .map((cd) => ({
+        key: `company-${cd.id}`,
+        name: cd.file_name || cd.document_type,
+        url:
+          cd.google_drive_file_url ||
+          (cd.google_drive_file_id
+            ? `https://drive.google.com/file/d/${cd.google_drive_file_id}/view`
+            : undefined),
+        type: cd.document_type,
+      })),
+  ];
 
   return (
     <div className="space-y-5">
@@ -4433,17 +4570,17 @@ function CompanyTab({
                     {companyType}
                   </span>
                 )}
-                {(co?.company_status || 'active') !== 'dissolved' && (
+                {status !== 'dissolved' && (
                   <span
                     className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      (co?.company_status || 'active') === 'active'
+                      status === 'active'
                         ? 'bg-green-500/20 text-green-400'
-                        : (co?.company_status || '') === 'in_setup'
+                        : status === 'in_setup'
                           ? 'bg-yellow-500/20 text-yellow-400'
                           : 'bg-gray-500/20 text-gray-400'
                     }`}
                   >
-                    {(co?.company_status || 'active').replace(/_/g, ' ')}
+                    {status.replace(/_/g, ' ')}
                   </span>
                 )}
                 {co?.sk_menhumkam_date && (
@@ -4510,22 +4647,22 @@ function CompanyTab({
             )}
           </div>
 
-          {/* Shareholders */}
-          {companies.length > 0 && (
+          {/* Shareholders / Associates */}
+          {associates.length > 0 && (
             <div>
               <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-2">
                 Shareholders
               </p>
               <div className="space-y-1.5">
-                {companies.map((c) => (
-                  <div key={c.company_id} className="flex items-center justify-between text-sm">
+                {associates.map((a, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
                     <span className="text-[var(--bz-text-1)]">
-                      {c.role || 'Shareholder'} —{' '}
-                      <span className="font-medium">{client.full_name}</span>
+                      {a.role || 'Shareholder'} —{' '}
+                      <span className="font-medium">{a.client_name || client.full_name}</span>
                     </span>
                     <span className="text-[var(--bz-text-2)]">
-                      {c.ownership_percentage ? `${c.ownership_percentage}%` : ''}
-                      {c.shares_count ? ` · ${c.shares_count.toLocaleString()} shares` : ''}
+                      {a.ownership_percentage ? `${a.ownership_percentage}%` : ''}
+                      {a.shares_count ? ` · ${a.shares_count.toLocaleString()} shares` : ''}
                     </span>
                   </div>
                 ))}
@@ -4574,20 +4711,20 @@ function CompanyTab({
         </div>
 
         {/* Documents strip — small clickable thumbnails at bottom */}
-        {pmaDocs.length > 0 && (
+        {allDocs.length > 0 && (
           <div className="px-6 py-3 border-t border-[var(--bz-border)] bg-[rgba(0,0,0,0.15)]">
             <div className="flex items-center gap-4">
               <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] shrink-0">
                 Documents
               </span>
               <div className="flex items-center gap-2 overflow-x-auto">
-                {pmaDocs.map((doc) => (
+                {allDocs.map((doc) => (
                   <a
-                    key={doc.id}
-                    href={doc.google_drive_file_url || '#'}
+                    key={doc.key}
+                    href={doc.url || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title={doc.file_name}
+                    title={doc.name}
                     className="shrink-0 w-10 h-10 rounded border border-[var(--bz-border)] overflow-hidden bg-[var(--bz-base)] hover:border-[var(--bz-accent)] transition-colors"
                   >
                     <div className="w-full h-full flex items-center justify-center">
@@ -4603,12 +4740,6 @@ function CompanyTab({
     </div>
   );
 }
-
-// CompanyTab now uses documents prop directly — no more client_company_links dependency
-
-// ============================================
-// ORIGINAL CompanyTab LEGACY SECTION REMOVED
-// ============================================
 
 // TAX TAB (Company-Centric CRM)
 // ============================================
