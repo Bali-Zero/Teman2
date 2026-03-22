@@ -145,6 +145,95 @@ async def create_company(
         }
 
 
+@router.get("/by-name", response_model=dict[str, Any] | None)
+async def get_company_by_name_early(
+    request: Request,
+    name: str = Query(..., description="Company name to search for"),
+    db: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+):
+    """Find a company by name (ILIKE match) — must be before /{company_id} route"""
+    async with db.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM companies WHERE company_name ILIKE $1 ORDER BY id LIMIT 1",
+            f"%{name}%",
+        )
+        if not row:
+            return None
+
+        company = company_record_to_dict(row)
+
+        associates = await conn.fetch(
+            """
+            SELECT ccl.id as link_id, ccl.client_id, c.full_name as client_name,
+                   ccl.role, ccl.is_primary, ccl.ownership_percentage,
+                   ccl.shares_count, ccl.share_nominal_value, ccl.start_date, ccl.status
+            FROM client_company_links ccl
+            JOIN clients c ON ccl.client_id = c.id
+            WHERE ccl.company_id = $1
+            """,
+            row["id"],
+        )
+
+        company["associates"] = [
+            {
+                "link_id": a["link_id"],
+                "client_id": a["client_id"],
+                "client_name": a["client_name"],
+                "role": a["role"],
+                "is_primary": a["is_primary"],
+                "ownership_percentage": a["ownership_percentage"],
+                "shares_count": a["shares_count"],
+                "share_nominal_value": a["share_nominal_value"],
+                "start_date": a["start_date"].isoformat() if a["start_date"] else None,
+                "status": a["status"],
+            }
+            for a in associates
+        ]
+
+        return company
+
+
+@router.get("/by-client/{client_id}", response_model=list[dict[str, Any]])
+async def get_client_companies_early(
+    request: Request,
+    client_id: int,
+    db: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+):
+    """Get all companies linked to a client — must be before /{company_id} route"""
+    async with db.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT c.*, ccl.id as link_id, ccl.role, ccl.is_primary,
+                   ccl.ownership_percentage, ccl.shares_count,
+                   ccl.share_nominal_value, ccl.start_date as link_start_date,
+                   ccl.status as link_status
+            FROM client_company_links ccl
+            JOIN companies c ON ccl.company_id = c.id
+            WHERE ccl.client_id = $1
+            """,
+            client_id,
+        )
+
+        results = []
+        for r in rows:
+            comp = company_record_to_dict(r)
+            comp["company_id"] = comp.pop("id")
+            comp["company_status"] = comp.pop("status")
+            comp["link_id"] = r["link_id"]
+            comp["role"] = r["role"]
+            comp["is_primary"] = r["is_primary"]
+            comp["ownership_percentage"] = r["ownership_percentage"]
+            comp["shares_count"] = r["shares_count"]
+            comp["share_nominal_value"] = r["share_nominal_value"]
+            comp["start_date"] = r["link_start_date"].isoformat() if r["link_start_date"] else None
+            comp["link_status"] = r["link_status"]
+            results.append(comp)
+
+        return results
+
+
 @router.get("/{company_id}", response_model=dict[str, Any])
 async def get_company(
     request: Request,
@@ -625,92 +714,4 @@ async def get_company_tax_record(
 
 
 # ========== CLIENT-SPECIFIC COMPANY ENDPOINTS ==========
-
-
-@router.get("/by-name", response_model=dict[str, Any] | None)
-async def get_company_by_name(
-    request: Request,
-    name: str = Query(..., description="Company name to search for"),
-    db: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
-):
-    """Find a company by name (ILIKE match) and return full details with associates"""
-    async with db.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM companies WHERE company_name ILIKE $1 ORDER BY id LIMIT 1",
-            f"%{name}%",
-        )
-        if not row:
-            return None
-
-        company = company_record_to_dict(row)
-
-        associates = await conn.fetch(
-            """
-            SELECT ccl.id as link_id, ccl.client_id, c.full_name as client_name,
-                   ccl.role, ccl.is_primary, ccl.ownership_percentage,
-                   ccl.shares_count, ccl.share_nominal_value, ccl.start_date, ccl.status
-            FROM client_company_links ccl
-            JOIN clients c ON ccl.client_id = c.id
-            WHERE ccl.company_id = $1
-            """,
-            row["id"],
-        )
-
-        company["associates"] = [
-            {
-                "link_id": a["link_id"],
-                "client_id": a["client_id"],
-                "client_name": a["client_name"],
-                "role": a["role"],
-                "is_primary": a["is_primary"],
-                "ownership_percentage": a["ownership_percentage"],
-                "shares_count": a["shares_count"],
-                "share_nominal_value": a["share_nominal_value"],
-                "start_date": a["start_date"].isoformat() if a["start_date"] else None,
-                "status": a["status"],
-            }
-            for a in associates
-        ]
-
-        return company
-
-
-@router.get("/by-client/{client_id}", response_model=list[dict[str, Any]])
-async def get_client_companies(
-    request: Request,
-    client_id: int,
-    db: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
-):
-    """Get all companies linked to a client with full company details"""
-    async with db.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT c.*, ccl.id as link_id, ccl.role, ccl.is_primary,
-                   ccl.ownership_percentage, ccl.shares_count,
-                   ccl.share_nominal_value, ccl.start_date as link_start_date,
-                   ccl.status as link_status
-            FROM client_company_links ccl
-            JOIN companies c ON ccl.company_id = c.id
-            WHERE ccl.client_id = $1
-            """,
-            client_id,
-        )
-
-        results = []
-        for r in rows:
-            comp = company_record_to_dict(r)
-            comp["company_id"] = comp.pop("id")
-            comp["company_status"] = comp.pop("status")
-            comp["link_id"] = r["link_id"]
-            comp["role"] = r["role"]
-            comp["is_primary"] = r["is_primary"]
-            comp["ownership_percentage"] = r["ownership_percentage"]
-            comp["shares_count"] = r["shares_count"]
-            comp["share_nominal_value"] = r["share_nominal_value"]
-            comp["start_date"] = r["link_start_date"].isoformat() if r["link_start_date"] else None
-            comp["link_status"] = r["link_status"]
-            results.append(comp)
-
-        return results
+# NOTE: by-name and by-client routes are defined BEFORE /{company_id} above to avoid routing conflicts
