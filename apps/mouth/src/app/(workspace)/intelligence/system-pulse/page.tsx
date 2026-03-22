@@ -139,13 +139,17 @@ export default function SystemPulsePage() {
         {/* Agent Status */}
         <Card
           className={cn(
-            "border-t-4",
+            "border-t-4 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl",
             metrics.agent_status === "active"
               ? "border-t-green-500"
               : metrics.agent_status === "idle"
                 ? "border-t-amber-500"
                 : "border-t-red-500",
           )}
+          style={{
+            background: "rgba(35, 35, 40, 0.45)",
+            borderColor: "rgba(255, 255, 255, 0.05)",
+          }}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
@@ -187,7 +191,14 @@ export default function SystemPulsePage() {
         </Card>
 
         {/* Last Scan */}
-        <Card className="border-t-4 border-t-blue-500">
+        <Card
+          className="border-t-4 border-t-blue-500 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+          style={{
+            background:
+              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+            borderColor: "rgba(255, 255, 255, 0.05)",
+          }}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Last Scan
@@ -207,7 +218,14 @@ export default function SystemPulsePage() {
         </Card>
 
         {/* Items Processed Today */}
-        <Card className="border-t-4 border-t-purple-500">
+        <Card
+          className="border-t-4 border-t-purple-500 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+          style={{
+            background:
+              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+            borderColor: "rgba(255, 255, 255, 0.05)",
+          }}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Items Processed Today
@@ -225,7 +243,14 @@ export default function SystemPulsePage() {
         </Card>
 
         {/* Avg Response Time */}
-        <Card className="border-t-4 border-t-amber-500">
+        <Card
+          className="border-t-4 border-t-amber-500 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+          style={{
+            background:
+              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+            borderColor: "rgba(255, 255, 255, 0.05)",
+          }}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Avg Response Time
@@ -245,13 +270,17 @@ export default function SystemPulsePage() {
         {/* Qdrant Health */}
         <Card
           className={cn(
-            "border-t-4",
+            "border-t-4 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl",
             metrics.qdrant_health === "healthy"
               ? "border-t-green-500"
               : metrics.qdrant_health === "degraded"
                 ? "border-t-amber-500"
                 : "border-t-red-500",
           )}
+          style={{
+            background: "rgba(35, 35, 40, 0.45)",
+            borderColor: "rgba(255, 255, 255, 0.05)",
+          }}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
@@ -302,7 +331,14 @@ export default function SystemPulsePage() {
         </Card>
 
         {/* Next Scheduled Run */}
-        <Card className="border-t-4 border-t-blue-500">
+        <Card
+          className="border-t-4 border-t-blue-500 shadow-xl backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+          style={{
+            background:
+              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+            borderColor: "rgba(255, 255, 255, 0.05)",
+          }}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Next Scheduled Run
@@ -325,7 +361,13 @@ export default function SystemPulsePage() {
       </div>
 
       {/* Agent Configuration */}
-      <Card>
+      <Card
+        className="shadow-2xl backdrop-blur-xl transition-all duration-300 border-[rgba(255,255,255,0.05)]"
+        style={{
+          background:
+            "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
+        }}
+      >
         <CardHeader>
           <CardTitle className="text-xl font-bold text-[var(--foreground)]">
             Agent Configuration

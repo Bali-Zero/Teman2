@@ -96,8 +96,9 @@ export default function LKPMPage() {
         <section
           className="rounded-xl border p-6"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <div className="flex items-center gap-2 mb-4">
@@ -160,8 +161,9 @@ export default function LKPMPage() {
       <section
         className="rounded-xl border p-6 space-y-4"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <div className="flex items-center gap-2">
@@ -251,8 +253,9 @@ function ReportCard({
       <div
         className="rounded-lg border p-4 transition-colors hover:border-[var(--bz-accent-warm)]"
         style={{
-          background: "var(--bz-surface)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <div className="flex items-center justify-between">

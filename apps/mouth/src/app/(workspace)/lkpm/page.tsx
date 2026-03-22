@@ -151,10 +151,10 @@ export default function LKPMBatchPage() {
           <select
             value={quarter}
             onChange={(e) => setQuarter(e.target.value)}
-            className="rounded-lg border px-3 py-2 text-sm"
+            className="rounded-lg border px-3 py-2 text-sm backdrop-blur-md"
             style={{
-              background: "var(--bz-surface)",
-              borderColor: "var(--bz-border)",
+              background: "rgba(35,35,40,0.6)",
+              borderColor: "rgba(255,255,255,0.05)",
             }}
           >
             {QUARTERS.map((q) => (
@@ -166,10 +166,10 @@ export default function LKPMBatchPage() {
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
-            className="rounded-lg border px-3 py-2 text-sm"
+            className="rounded-lg border px-3 py-2 text-sm backdrop-blur-md"
             style={{
-              background: "var(--bz-surface)",
-              borderColor: "var(--bz-border)",
+              background: "rgba(35,35,40,0.6)",
+              borderColor: "rgba(255,255,255,0.05)",
             }}
           >
             {[currentYear, currentYear - 1, currentYear - 2].map((y) => (
@@ -275,10 +275,17 @@ export default function LKPMBatchPage() {
               className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors"
               style={
                 statusFilter === filter
-                  ? { background: "var(--bz-accent-warm)", color: "white" }
+                  ? {
+                      background:
+                        "linear-gradient(135deg, var(--bz-accent-warm) 0%, rgba(212, 132, 90, 0.8) 100%)",
+                      color: "white",
+                      boxShadow: "0 4px 15px rgba(212, 132, 90, 0.3)",
+                    }
                   : {
-                      background: "var(--bz-surface)",
+                      background: "rgba(35,35,40,0.6)",
+                      backdropFilter: "blur(12px)",
                       color: "var(--bz-text-2)",
+                      border: "1px solid rgba(255,255,255,0.05)",
                     }
               }
             >
@@ -290,10 +297,11 @@ export default function LKPMBatchPage() {
 
       {/* Batch Table */}
       <section
-        className="rounded-xl border overflow-hidden"
+        className="rounded-xl border shadow-2xl backdrop-blur-xl overflow-hidden"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background:
+            "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
+          borderColor: "rgba(255, 255, 255, 0.05)",
         }}
       >
         <div className="overflow-x-auto">
@@ -329,7 +337,10 @@ export default function LKPMBatchPage() {
                 </tr>
               ) : (
                 filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-[var(--bz-surface)]">
+                  <tr
+                    key={item.id}
+                    className="hover:bg-[rgba(255,255,255,0.05)] transition-colors"
+                  >
                     <td className="px-4 py-3 font-medium">
                       {item.company_name}
                     </td>
@@ -406,7 +417,7 @@ export default function LKPMBatchPage() {
                           href={`/lkpm/${item.id}`}
                           className="px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
                           style={{
-                            background: "var(--bz-surface)",
+                            background: "rgba(255,255,255,0.05)",
                             color: "var(--bz-text-2)",
                           }}
                         >
@@ -439,8 +450,12 @@ function KPICard({
 }) {
   return (
     <div
-      className="rounded-xl border p-4"
-      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+      className="rounded-xl border p-4 shadow-xl backdrop-blur-md transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
+      style={{
+        background:
+          "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+        borderColor: "rgba(255, 255, 255, 0.05)",
+      }}
     >
       <div className="flex items-center gap-2 mb-2">
         <Icon

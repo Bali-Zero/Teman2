@@ -721,7 +721,7 @@ _Integrated from adversarial architecture review (ChatGPT/Kimi findings)._
 
 | Constraint                | Enforcement                                                                                                                                               |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Fly.io RAM scaling        | Phase 0-2: 2GB shared-cpu-2x (current). Phase 3+: scale up only if monitoring shows pressure.                                                               |
+| Fly.io RAM scaling        | Phase 0-2: 2GB shared-cpu-2x (current). Phase 3+: scale up only if monitoring shows pressure.                                                             |
 | Async-first               | `httpx` only, `ainvoke`/`astream` for LangGraph, `asyncpg` for checkpointing                                                                              |
 | Python 3.11+              | Type hints required, `TypedDict` for graph state, `match` statements                                                                                      |
 | No hardcoded secrets      | Environment variables only, `.secrets/` in `.gitignore`                                                                                                   |

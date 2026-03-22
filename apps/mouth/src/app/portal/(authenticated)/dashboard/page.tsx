@@ -191,13 +191,16 @@ function TeamMemberCard({
 
   return (
     <div
-      className="rounded-xl border overflow-hidden flex flex-col"
-      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+      className="rounded-xl border overflow-hidden flex flex-col backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+      style={{
+        background: "rgba(30, 30, 35, 0.7)",
+        borderColor: "rgba(255, 255, 255, 0.05)",
+      }}
     >
       {/* Header */}
       <div
         className="flex items-center gap-2 px-4 py-3 border-b"
-        style={{ borderColor: "var(--bz-border)" }}
+        style={{ borderColor: "rgba(255, 255, 255, 0.05)" }}
       >
         <User className="w-5 h-5" style={{ color: "var(--bz-accent-warm)" }} />
         <h3 className="font-semibold">Team Member</h3>
@@ -208,7 +211,7 @@ function TeamMemberCard({
         {/* Team Member - Small Avatar */}
         <div
           className="flex items-center gap-3 p-3 rounded-lg"
-          style={{ background: "var(--bz-surface)" }}
+          style={{ background: "rgba(255, 255, 255, 0.03)" }}
         >
           {assignedTo?.avatarUrl ? (
             <img
@@ -454,13 +457,16 @@ function PassportCard({
 
   return (
     <div
-      className="rounded-xl border overflow-hidden flex flex-col"
-      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+      className="rounded-xl border overflow-hidden flex flex-col backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+      style={{
+        background: "rgba(30, 30, 35, 0.7)",
+        borderColor: "rgba(255, 255, 255, 0.05)",
+      }}
     >
       {/* Header */}
       <div
         className="flex items-center gap-2 px-4 py-3 border-b"
-        style={{ borderColor: "var(--bz-border)" }}
+        style={{ borderColor: "rgba(255, 255, 255, 0.05)" }}
       >
         <CreditCard
           className="w-5 h-5"
@@ -488,8 +494,8 @@ function PassportCard({
           <div
             className="aspect-[3/2] rounded-lg border flex items-center justify-center overflow-hidden"
             style={{
-              background: "var(--bz-surface)",
-              borderColor: "var(--bz-border)",
+              background: "rgba(255, 255, 255, 0.02)",
+              borderColor: "rgba(255, 255, 255, 0.05)",
             }}
           >
             {/* TODO: Show actual passport image from Google Drive */}
@@ -507,8 +513,8 @@ function PassportCard({
           <div
             className="aspect-[3/2] rounded-lg border-2 border-dashed flex flex-col items-center justify-center"
             style={{
-              background: "var(--bz-surface)",
-              borderColor: "var(--bz-border)",
+              background: "rgba(255, 255, 255, 0.02)",
+              borderColor: "rgba(255, 255, 255, 0.05)",
             }}
           >
             <CreditCard
@@ -541,7 +547,7 @@ function PassportCard({
           {/* Passport Number */}
           <div
             className="flex items-center justify-between p-2 rounded-lg"
-            style={{ background: "var(--bz-surface)" }}
+            style={{ background: "rgba(255, 255, 255, 0.03)" }}
           >
             <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
               Passport No.
@@ -570,7 +576,7 @@ function PassportCard({
                       ? "rgba(245,158,11,0.08)"
                       : passportValidity.alertLevel === "ok"
                         ? "rgba(16,185,129,0.08)"
-                        : "var(--bz-surface)",
+                        : "rgba(255, 255, 255, 0.03)",
               }}
             >
               <div className="flex items-center justify-between">
@@ -639,7 +645,7 @@ function PassportCard({
           ) : (
             <div
               className="p-2 rounded-lg text-center"
-              style={{ background: "var(--bz-surface)" }}
+              style={{ background: "rgba(255, 255, 255, 0.03)" }}
             >
               <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
                 No expiry date detected
@@ -677,13 +683,16 @@ function VisaProcessCard({
 
   return (
     <div
-      className="rounded-xl border overflow-hidden flex flex-col"
-      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+      className="rounded-xl border overflow-hidden flex flex-col backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+      style={{
+        background: "rgba(30, 30, 35, 0.7)",
+        borderColor: "rgba(255, 255, 255, 0.05)",
+      }}
     >
       {/* Header */}
       <div
         className="flex items-center gap-2 px-4 py-3 border-b"
-        style={{ borderColor: "var(--bz-border)" }}
+        style={{ borderColor: "rgba(255, 255, 255, 0.05)" }}
       >
         <FileText
           className="w-5 h-5"
@@ -698,8 +707,8 @@ function VisaProcessCard({
         <div
           className="aspect-[3/2] rounded-lg border flex items-center justify-center"
           style={{
-            background: "var(--bz-surface)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(255, 255, 255, 0.02)",
+            borderColor: "rgba(255, 255, 255, 0.05)",
           }}
         >
           {currentVisa ? (
@@ -747,7 +756,7 @@ function VisaProcessCard({
               style={
                 isCritical
                   ? { background: "rgba(239,68,68,0.1)" }
-                  : { background: "var(--bz-surface)" }
+                  : { background: "rgba(255, 255, 255, 0.03)" }
               }
             >
               <div className="flex items-center justify-between">
@@ -806,13 +815,16 @@ function VisaProcessCard({
 function ProcessCard() {
   return (
     <div
-      className="rounded-xl border overflow-hidden flex flex-col"
-      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+      className="rounded-xl border overflow-hidden flex flex-col backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+      style={{
+        background: "rgba(30, 30, 35, 0.7)",
+        borderColor: "rgba(255, 255, 255, 0.05)",
+      }}
     >
       {/* Header */}
       <div
         className="flex items-center gap-2 px-4 py-3 border-b"
-        style={{ borderColor: "var(--bz-border)" }}
+        style={{ borderColor: "rgba(255, 255, 255, 0.05)" }}
       >
         <FolderOpen
           className="w-5 h-5"
@@ -864,13 +876,16 @@ function ProcessCard() {
 function ElectronicVisaCard() {
   return (
     <div
-      className="rounded-xl border overflow-hidden flex flex-col"
-      style={{ background: "var(--bz-card)", borderColor: "var(--bz-border)" }}
+      className="rounded-xl border overflow-hidden flex flex-col backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+      style={{
+        background: "rgba(30, 30, 35, 0.7)",
+        borderColor: "rgba(255, 255, 255, 0.05)",
+      }}
     >
       {/* Header */}
       <div
         className="flex items-center gap-2 px-4 py-3 border-b"
-        style={{ borderColor: "var(--bz-border)" }}
+        style={{ borderColor: "rgba(255, 255, 255, 0.05)" }}
       >
         <FileText
           className="w-5 h-5"
@@ -884,8 +899,8 @@ function ElectronicVisaCard() {
         <div
           className="aspect-[3/2] rounded-lg border flex items-center justify-center"
           style={{
-            background: "var(--bz-surface)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(255, 255, 255, 0.02)",
+            borderColor: "rgba(255, 255, 255, 0.05)",
           }}
         >
           <div className="text-center">

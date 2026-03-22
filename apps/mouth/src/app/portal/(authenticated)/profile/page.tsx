@@ -155,8 +155,9 @@ export default function ProfilePage() {
       <section
         className="rounded-xl border p-6 space-y-6"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         {/* Avatar */}
@@ -265,7 +266,7 @@ export default function ProfilePage() {
                 style={
                   isBirthday
                     ? { background: "rgba(251,191,36,0.25)" }
-                    : { background: "var(--bz-surface)" }
+                    : { background: "rgba(255,255,255,0.03)" }
                 }
               >
                 <Calendar
@@ -443,8 +444,8 @@ function ProfileField({
   return (
     <div className="flex items-start gap-3">
       <div
-        className="p-2 rounded-md"
-        style={{ background: "var(--bz-surface)" }}
+        className="p-2 rounded-md backdrop-blur-sm shadow-sm"
+        style={{ background: "rgba(255,255,255,0.03)" }}
       >
         <Icon className="w-4 h-4" style={{ color: "var(--bz-text-2)" }} />
       </div>

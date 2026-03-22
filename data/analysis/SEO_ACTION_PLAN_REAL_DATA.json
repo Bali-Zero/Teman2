@@ -1,30 +1,44 @@
 {
-  "generated_at": "2026-03-21",
+  "generated_at": "2026-03-22",
   "date_range": {
-    "start": "2026-03-14",
-    "end": "2026-03-21"
+    "start": "2026-03-15",
+    "end": "2026-03-22"
   },
   "site_url": "https://balizero.com",
   "data_sources": {
     "gsc": "real",
-    "analytics": "real"
+    "analytics": "skipped"
   },
   "gsc_summary": {
-    "total_queries": 19,
+    "total_queries": 18,
     "top_queries": [
       {
         "query": "bali zero",
-        "clicks": 3,
-        "impressions": 23,
-        "ctr": 0.1304,
-        "position": 1.9
+        "clicks": 5,
+        "impressions": 27,
+        "ctr": 0.1852,
+        "position": 2.2
       },
       {
         "query": "balizero",
+        "clicks": 4,
+        "impressions": 7,
+        "ctr": 0.5714,
+        "position": 1.4
+      },
+      {
+        "query": "bali zero visa",
         "clicks": 1,
-        "impressions": 2,
-        "ctr": 0.5,
-        "position": 1.5
+        "impressions": 5,
+        "ctr": 0.2,
+        "position": 1.8
+      },
+      {
+        "query": "zero bali",
+        "clicks": 1,
+        "impressions": 6,
+        "ctr": 0.1667,
+        "position": 5
       },
       {
         "query": "\"constitutional ai 2.0\" anthropic",
@@ -36,23 +50,23 @@
       {
         "query": "alcohol license",
         "clicks": 0,
-        "impressions": 5,
+        "impressions": 4,
         "ctr": 0,
-        "position": 26.4
+        "position": 33.5
       },
       {
         "query": "alcohol license for restaurant",
         "clicks": 0,
-        "impressions": 4,
+        "impressions": 2,
         "ctr": 0,
-        "position": 63.5
+        "position": 74
       },
       {
         "query": "balazuocom",
         "clicks": 0,
-        "impressions": 2,
+        "impressions": 4,
         "ctr": 0,
-        "position": 2
+        "position": 1.8
       },
       {
         "query": "bali visa agency",
@@ -62,25 +76,11 @@
         "position": 48
       },
       {
-        "query": "bali zero visa",
-        "clicks": 0,
-        "impressions": 3,
-        "ctr": 0,
-        "position": 1.7
-      },
-      {
         "query": "business establishment services",
         "clicks": 0,
         "impressions": 1,
         "ctr": 0,
         "position": 17
-      },
-      {
-        "query": "business license indonesia",
-        "clicks": 0,
-        "impressions": 11,
-        "ctr": 0,
-        "position": 39.2
       }
     ],
     "kbli_related_queries": []
@@ -99,16 +99,16 @@
     {
       "query": "alcohol license",
       "clicks": 0,
-      "impressions": 5,
+      "impressions": 4,
       "ctr": 0,
-      "position": 26.4
+      "position": 33.5
     },
     {
       "query": "alcohol license for restaurant",
       "clicks": 0,
-      "impressions": 4,
+      "impressions": 2,
       "ctr": 0,
-      "position": 63.5
+      "position": 74
     },
     {
       "query": "bali visa agency",
@@ -127,37 +127,30 @@
     {
       "query": "business license indonesia",
       "clicks": 0,
-      "impressions": 11,
+      "impressions": 14,
       "ctr": 0,
-      "position": 39.2
+      "position": 45.9
     },
     {
       "query": "company registration bali",
       "clicks": 0,
-      "impressions": 5,
+      "impressions": 7,
       "ctr": 0,
-      "position": 13
+      "position": 29.4
     },
     {
       "query": "foreign driving license conversion indonesia",
       "clicks": 0,
-      "impressions": 5,
+      "impressions": 8,
       "ctr": 0,
-      "position": 11.2
+      "position": 10.5
     },
     {
       "query": "indonesia business license",
       "clicks": 0,
-      "impressions": 8,
+      "impressions": 9,
       "ctr": 0,
-      "position": 39.9
-    },
-    {
-      "query": "indonesia citizenship by investment 2026",
-      "clicks": 0,
-      "impressions": 3,
-      "ctr": 0,
-      "position": 10.3
+      "position": 42.2
     },
     {
       "query": "license holder in indonesia",
@@ -167,11 +160,11 @@
       "position": 59
     },
     {
-      "query": "suwung landfill",
+      "query": "visto bali",
       "clicks": 0,
       "impressions": 1,
       "ctr": 0,
-      "position": 11
+      "position": 83
     }
   ],
   "action_items": [
@@ -187,7 +180,7 @@
     },
     {
       "priority": "MEDIUM",
-      "action": "Fix 11 queries with position >10 and 0 clicks",
+      "action": "Fix 10 queries with position >10 and 0 clicks",
       "reason": "High impression / zero click = metadata or content gap"
     },
     {
@@ -195,27 +188,5 @@
       "action": "Update llms.txt with latest service pricing",
       "reason": "AI crawlers (GPT, Gemini) reference llms.txt for structured answers"
     }
-  ],
-  "analytics_data": {
-    "dimensionHeaders": [
-      {
-        "name": "pagePath"
-      }
-    ],
-    "metricHeaders": [
-      {
-        "name": "sessions",
-        "type": "TYPE_INTEGER"
-      },
-      {
-        "name": "bounceRate",
-        "type": "TYPE_FLOAT"
-      }
-    ],
-    "metadata": {
-      "currencyCode": "USD",
-      "timeZone": "Etc/GMT-8"
-    },
-    "kind": "analyticsData#runReport"
-  }
+  ]
 }

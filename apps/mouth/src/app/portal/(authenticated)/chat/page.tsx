@@ -300,8 +300,8 @@ export default function ChatPage() {
               "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
             style={{
-              background: "var(--bz-surface)",
-              borderColor: "var(--bz-border)",
+              background: "rgba(255,255,255,0.03)",
+              borderColor: "rgba(255,255,255,0.05)",
               color: "var(--bz-text-1)",
             }}
           />
@@ -367,7 +367,8 @@ function MessageBubble({
         style={
           isFromTeam
             ? {
-                background: "var(--bz-surface)",
+                background: "rgba(255,255,255,0.03)",
+                backdropFilter: "blur(12px)",
                 boxShadow: isUnread
                   ? "0 0 0 2px rgba(201,169,110,0.3)"
                   : undefined,

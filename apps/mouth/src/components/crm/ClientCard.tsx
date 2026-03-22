@@ -179,10 +179,13 @@ export const ClientCard = React.memo(
           // Removed layoutId to improve performance with large lists
           // layoutId causes expensive layout calculations with many items
           className={`
-          relative bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] 
-          p-4 cursor-pointer hover:shadow-lg transition-all duration-300
-          ${isDragging ? "opacity-50 scale-95 rotate-3" : "hover:-translate-y-1"}
+          relative rounded-xl border p-4 cursor-pointer transition-all duration-300 shadow-lg backdrop-blur-xl
+          ${isDragging ? "opacity-50 scale-95 rotate-3" : "hover:-translate-y-1 hover:shadow-2xl hover:bg-[rgba(45,45,50,0.65)]"}
         `}
+          style={{
+            background: "rgba(35, 35, 40, 0.55)",
+            borderColor: "rgba(255, 255, 255, 0.05)",
+          }}
           onClick={() => router.push(`/clients/${client.id}`)}
         >
           {/* Header with Avatar & Name */}
@@ -301,28 +304,14 @@ export const ClientCard = React.memo(
           </div>
         </motion.div>
 
-        {/* "Strategic Peek" Hover Effect - A floating detail card that appears on hover */}
-        <div className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+        {/* "Strategic Peek" Hover Effect - Shows sentiment on hover */}
+        <div className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 translate-y-2 group-hover:translate-y-0">
           <div className="bg-black/90 backdrop-blur-md text-white p-3 rounded-lg shadow-xl text-xs">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-bold text-[var(--accent)]">
-                WAR ROOM INTEL
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-gray-400">Sentiment:</span>
+              <span className="capitalize text-white font-medium">
+                {sentiment}
               </span>
-              <TrendingUp className="w-3 h-3 text-green-400" />
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Value:</span>
-                <span className="font-mono text-green-400">$High</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Next Step:</span>
-                <span>Follow-up (3d)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Sentiment:</span>
-                <span className="capitalize text-white">{sentiment}</span>
-              </div>
             </div>
             <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-black/90 rotate-45"></div>
           </div>

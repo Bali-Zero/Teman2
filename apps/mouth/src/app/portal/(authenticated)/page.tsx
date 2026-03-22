@@ -19,7 +19,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePortalDashboard, usePortalTimeline } from "@/hooks";
-import { PortalCardSkeleton, PortalPageLoader } from "@/components/portal";
+import {
+  PortalCardSkeleton,
+  PortalPageLoader,
+  PortalListSkeleton,
+} from "@/components/portal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { TimelineEntry } from "@/lib/api/types/timeline.types";
@@ -43,11 +47,11 @@ export default function PortalHomePage() {
         <section>
           <div
             className="h-8 rounded w-48 mb-2 animate-pulse"
-            style={{ background: "var(--bz-surface)" }}
+            style={{ background: "rgba(255,255,255,0.03)" }}
           />
           <div
             className="h-4 rounded w-64 animate-pulse"
-            style={{ background: "var(--bz-surface)" }}
+            style={{ background: "rgba(255,255,255,0.03)" }}
           />
         </section>
 
@@ -60,7 +64,7 @@ export default function PortalHomePage() {
         <section className="space-y-4">
           <div
             className="h-6 rounded w-32 animate-pulse"
-            style={{ background: "var(--bz-surface)" }}
+            style={{ background: "rgba(255,255,255,0.03)" }}
           />
           <PortalListSkeleton count={5} />
         </section>
@@ -300,9 +304,9 @@ function StatusCard({
         };
       default:
         return {
-          background: "var(--bz-surface)",
+          background: "rgba(255,255,255,0.03)",
           color: "var(--bz-text-2)",
-          borderColor: "var(--bz-border)",
+          borderColor: "rgba(255,255,255,0.05)",
         };
     }
   };
@@ -364,7 +368,10 @@ function TimelineItem({
   entry: TimelineEntry;
   isLast: boolean;
 }) {
-  const isFuture = (entry as any).isFuture;
+  const isFuture =
+    "isFuture" in entry
+      ? Boolean((entry as unknown as { isFuture?: boolean }).isFuture)
+      : false;
 
   const getIcon = () => {
     switch (entry.type) {
@@ -402,7 +409,10 @@ function TimelineItem({
       case "deadline":
         return { background: "rgba(239,68,68,0.25)", color: "#f87171" };
       default:
-        return { background: "var(--bz-surface)", color: "var(--bz-text-2)" };
+        return {
+          background: "rgba(255,255,255,0.05)",
+          color: "var(--bz-text-2)",
+        };
     }
   };
 
@@ -457,6 +467,3 @@ function TimelineItem({
     </div>
   );
 }
-
-// Import for the skeleton component
-import { PortalListSkeleton } from "@/components/portal";

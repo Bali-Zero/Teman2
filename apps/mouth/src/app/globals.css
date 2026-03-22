@@ -19,24 +19,27 @@
   --accent-hover: var(--kbli-accent-hover);
 
   /* Warm Depth tokens */
-  --bz-base:         #0c0c0e;
-  --bz-elevated:     #131315;
-  --bz-surface:      #1a1a1e;
-  --bz-card:         #202024;
-  --bz-card-hover:   #262629;
-  --bz-accent:       #d4845a;
+  --bz-base: #0c0c0e;
+  --bz-elevated: #131315;
+  --bz-surface: #1a1a1e;
+  --bz-card: #202024;
+  --bz-card-hover: #262629;
+  --bz-accent: #d4845a;
   --bz-accent-hover: #bf7350;
-  --bz-accent-warm:  #c9a96e;
-  --bz-accent-cool:  #5e7fb5;
-  --bz-text-1:       #edeae4;
-  --bz-text-2:       #8c8884;
-  --bz-text-3:       #575350;
-  --bz-border:        rgba(255,255,255,0.055);
-  --bz-border-hover:  rgba(255,255,255,0.10);
-  --bz-border-accent: rgba(201,169,110,0.18);
-  --bz-green:        #4db87a;
-  --bz-red:          #d95f5a;
-  --bz-amber:        #d4923a;
+  --bz-accent-warm: #c9a96e;
+  --bz-accent-cool: #5e7fb5;
+  --bz-text-1: #edeae4;
+  --bz-text-2: #8c8884;
+  --bz-text-3: #575350;
+  --bz-border: rgba(255, 255, 255, 0.055);
+  --bz-border-hover: rgba(255, 255, 255, 0.1);
+  --bz-border-accent: rgba(201, 169, 110, 0.18);
+  --bz-green: #4db87a;
+  --bz-red: #d95f5a;
+  --bz-amber: #d4923a;
+  --success: #4db87a;
+  --warning: #d4923a;
+  --error: #d95f5a;
   --bz-sidebar-width: 216px;
   --bz-header-height: 48px;
   --bz-batik-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M0 10 L10 0 L20 10 L10 20 Z' fill='none' stroke='%23c9a96e' stroke-width='0.5'/%3E%3C/svg%3E");
@@ -173,8 +176,12 @@ main,
 }
 
 @keyframes holographic-spin {
-  0% { --border-angle: 0deg; }
-  100% { --border-angle: 360deg; }
+  0% {
+    --border-angle: 0deg;
+  }
+  100% {
+    --border-angle: 360deg;
+  }
 }
 
 .holographic-card {
@@ -187,7 +194,14 @@ main,
   position: absolute;
   inset: -1px;
   border-radius: 1.1rem;
-  background: conic-gradient(from var(--border-angle), transparent 20%, #d4845a, #a855f7, #3b82f6, transparent 80%);
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 20%,
+    #d4845a,
+    #a855f7,
+    #3b82f6,
+    transparent 80%
+  );
   animation: holographic-spin 3s linear infinite;
   z-index: -1;
   opacity: 0;
@@ -199,16 +213,48 @@ main,
 }
 
 @keyframes progress-grow {
-  from { width: 0%; }
+  from {
+    width: 0%;
+  }
 }
-
 
 /* ── Zantara Portal Card animations ─────────────────────────── */
 @keyframes lotusPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.5); }
-  50%       { box-shadow: 0 0 0 6px rgba(59,130,246,0); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+  }
 }
 @keyframes liquidShift {
-  0%   { transform: scale(1) translate(0, 0); }
-  100% { transform: scale(1.06) translate(2%, 1%); }
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  100% {
+    transform: scale(1.06) translate(2%, 1%);
+  }
+}
+
+@layer utilities {
+  .glass-panel-deep {
+    @apply bg-black/40 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.4)];
+  }
+
+  .glass-card-warm {
+    @apply bg-[rgba(26,26,30,0.5)] backdrop-blur-md border border-[rgba(255,255,255,0.08)] shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300;
+  }
+
+  .glass-card-warm:hover {
+    @apply bg-[rgba(36,36,41,0.6)] border-[rgba(255,255,255,0.15)] shadow-[0_8px_32px_rgba(212,132,90,0.15)] -translate-y-0.5;
+  }
+
+  .glass-card-mckinsey {
+    @apply bg-[rgba(10,37,64,0.3)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300;
+  }
+
+  .glass-card-mckinsey:hover {
+    @apply bg-[rgba(10,37,64,0.6)] border-[#2251ff]/50 shadow-[0_8px_32px_rgba(34,81,255,0.15)] -translate-y-0.5;
+  }
 }

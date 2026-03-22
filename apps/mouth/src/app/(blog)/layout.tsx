@@ -58,10 +58,10 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
     const urlParams = new URLSearchParams(window.location.search);
     const adminMode =
       urlParams.get("admin") === "true" ||
-      localStorage.getItem("balizero-admin") === "true";
+      sessionStorage.getItem("balizero-admin") === "true";
     setIsAdmin(adminMode);
     if (adminMode) {
-      localStorage.setItem("balizero-admin", "true");
+      sessionStorage.setItem("balizero-admin", "true");
     }
 
     // Fetch pending news count for admins
@@ -119,7 +119,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
       <LocaleHead />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#0c1f3a] border-b border-white/10">
+      <header className="sticky top-0 z-50 bg-[rgba(12,31,58,0.7)] backdrop-blur-md border-b border-[rgba(255,255,255,0.05)] shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             {/* Logo - clean version without white border */}
@@ -147,7 +147,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
                 </button>
 
                 {activeDropdown === "news" && (
-                  <div className="absolute top-full left-0 w-64 bg-[#0a2540] border border-white/10 rounded-lg shadow-xl py-2 mt-1">
+                  <div className="absolute top-full left-0 w-64 bg-[rgba(10,37,64,0.7)] backdrop-blur-lg border border-[rgba(255,255,255,0.1)] rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.3)] py-2 mt-1">
                     {INSIGHT_CATEGORIES.map((category) => (
                       <Link
                         key={category.slug}
@@ -176,7 +176,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
                 </Link>
 
                 {activeDropdown === "services" && (
-                  <div className="absolute top-full left-0 w-64 bg-[#0a2540] border border-white/10 rounded-lg shadow-xl py-2 mt-1">
+                  <div className="absolute top-full left-0 w-64 bg-[rgba(10,37,64,0.7)] backdrop-blur-lg border border-[rgba(255,255,255,0.1)] rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.3)] py-2 mt-1">
                     {SERVICES.map((service) => (
                       <Link
                         key={service.slug}
@@ -239,7 +239,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
                 </button>
 
                 {langMenuOpen && (
-                  <div className="absolute top-full right-0 mt-1 w-48 bg-[#0a2540] border border-white/10 rounded-lg shadow-xl py-1 z-50">
+                  <div className="absolute top-full right-0 mt-1 w-48 bg-[rgba(10,37,64,0.7)] backdrop-blur-lg border border-[rgba(255,255,255,0.1)] rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.3)] py-1 z-50">
                     {LANGUAGES.map((lang) => (
                       <button
                         key={lang.code}
@@ -293,7 +293,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden bg-[#0a2540] border-t border-white/10">
+          <div className="lg:hidden bg-[rgba(10,37,64,0.95)] backdrop-blur-xl border-t border-[rgba(255,255,255,0.05)]">
             <nav className="max-w-[1400px] mx-auto px-4 py-4 space-y-1">
               <div className="py-2">
                 <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/40">
@@ -394,7 +394,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
       />
 
       {/* Footer */}
-      <footer className="bg-[#031219] border-t border-white/10">
+      <footer className="bg-[rgba(3,18,25,0.85)] backdrop-blur-md border-t border-[rgba(255,255,255,0.05)] relative z-10">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
             {/* Brand */}

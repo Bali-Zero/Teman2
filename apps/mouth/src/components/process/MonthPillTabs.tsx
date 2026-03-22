@@ -73,10 +73,10 @@ export function MonthPillTabs({
   const isFuture = (m: string) => m > currentMonth;
 
   return (
-    <div className="flex items-center gap-1 p-1 bg-[var(--bz-surface)]/60 border border-[var(--bz-border)] rounded-xl w-fit">
+    <div className="flex items-center gap-1 p-1 bg-[rgba(32,32,36,0.5)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] rounded-xl w-fit shadow-xl">
       <button
         onClick={() => onMonthChange(addMonths(selectedMonth, -1))}
-        className="p-1.5 text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors rounded-lg hover:bg-[var(--bz-card)]"
+        className="p-1.5 text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors rounded-lg hover:bg-[rgba(255,255,255,0.05)]"
         aria-label="Previous month"
       >
         <ChevronLeft className="w-3.5 h-3.5" />
@@ -94,10 +94,10 @@ export function MonthPillTabs({
             disabled={future}
             className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
               isSelected
-                ? "bg-[var(--bz-accent)] text-white shadow-sm"
+                ? "bg-gradient-to-br from-[var(--bz-accent-warm)] to-[rgba(212,132,90,0.8)] text-white shadow-lg shadow-[rgba(212,132,90,0.3)]"
                 : future
                   ? "text-[var(--bz-text-2)]/30 cursor-not-allowed"
-                  : "text-[var(--bz-text-2)] hover:bg-[var(--bz-card)] hover:text-[var(--bz-text-1)]"
+                  : "text-[var(--bz-text-2)] hover:bg-[rgba(255,255,255,0.05)] hover:text-[var(--bz-text-1)]"
             }`}
           >
             {MONTH_LABELS[mNum - 1]}
@@ -111,7 +111,7 @@ export function MonthPillTabs({
           if (!isFuture(next)) onMonthChange(next);
         }}
         disabled={isFuture(addMonths(selectedMonth, 1))}
-        className="p-1.5 text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors rounded-lg hover:bg-[var(--bz-card)] disabled:opacity-30 disabled:cursor-not-allowed"
+        className="p-1.5 text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors rounded-lg hover:bg-[rgba(255,255,255,0.05)] disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Next month"
       >
         <ChevronRight className="w-3.5 h-3.5" />

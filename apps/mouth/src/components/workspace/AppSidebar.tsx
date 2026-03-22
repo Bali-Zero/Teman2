@@ -97,7 +97,7 @@ export function AppSidebar({
       "flex items-center gap-2.5 px-2.5 py-[7px] rounded-[8px] mb-[2px] text-[11.5px] font-medium uppercase tracking-[0.5px] transition-all group",
       active
         ? "font-semibold"
-        : "hover:bg-[var(--bz-surface)] hover:text-[var(--bz-text-1)]",
+        : "hover:bg-[rgba(255,255,255,0.05)] hover:text-[var(--bz-text-1)]",
     );
     const sharedStyle = active
       ? { background: "rgba(212,132,90,0.12)", color: "var(--bz-accent)" }
@@ -174,12 +174,9 @@ export function AppSidebar({
 
   return (
     <aside
-      className="fixed left-0 top-0 z-40 h-screen flex flex-col border-r transition-all duration-300"
+      className="fixed left-0 top-0 z-40 h-screen flex flex-col border-r transition-all duration-300 glass-panel-deep"
       style={{
         width: "var(--bz-sidebar-width, 216px)",
-        background: "rgba(19, 19, 21, 0.65)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
         borderColor: "var(--bz-border)",
       }}
     >
@@ -213,7 +210,7 @@ export function AppSidebar({
         className="border-t p-2.5"
         style={{ borderColor: "var(--bz-border)" }}
       >
-        <div className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-[var(--bz-surface)] cursor-pointer transition-colors">
+        <div className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-[rgba(255,255,255,0.05)] cursor-pointer transition-colors">
           <div className="relative flex-shrink-0">
             {user.avatar ? (
               <Image
