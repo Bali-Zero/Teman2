@@ -235,7 +235,11 @@
       "property": "Immobiliare",
       "lifestyle": "Lifestyle",
       "tech": "Tech",
-      "baliNews": "Notizie Bali"
+      "baliNews": "Notizie Bali",
+      "visas": "Visti e Immigrazione",
+      "taxes": "Tasse e Conformità",
+      "living": "Vivere in Indonesia",
+      "trends": "Tendenze e Approfondimenti"
     },
     "categoryDescriptions": {
       "immigration": "Visti, permessi e tutto quello che devi sapere per trasferirti in Indonesia.",
@@ -244,7 +248,11 @@
       "property": "Immobili, proprietà e opportunità di investimento a Bali.",
       "lifestyle": "Vivere a Bali, cultura, comunità e qualità della vita.",
       "tech": "Vita da nomade digitale, industria tech e lavoro da remoto in Indonesia.",
-      "baliNews": "Notizie, cultura, eventi e storie da Bali e dall'Indonesia."
+      "baliNews": "Notizie, cultura, eventi e storie da Bali e dall'Indonesia.",
+      "visas": "Visti, permessi e tutto ciò che serve per trasferirsi in Indonesia.",
+      "taxes": "Obblighi fiscali, conformità legale e aggiornamenti normativi.",
+      "living": "Vivere a Bali, cultura, comunità, patente, sanità e vita quotidiana.",
+      "trends": "Economia digitale, settore tech, nuove normative e analisi di mercato."
     }
   }
 }
