@@ -85,7 +85,7 @@ const MOCK_ARTICLES = [
     excerpt:
       "Indonesia launches its Golden Visa program, offering 5-10 year stays for investors.",
     coverImage: "/static/blog/golden-visa.jpg",
-    category: "immigration",
+    category: "visas",
     author: {
       id: "zantara-ai",
       name: "Zantara AI",
@@ -129,7 +129,7 @@ const MOCK_ARTICLES = [
     excerpt:
       "Key dates for personal and corporate tax filings. New Coretax system fully operational.",
     coverImage: "/static/blog/tax-calendar.jpg",
-    category: "tax-legal",
+    category: "taxes",
     author: {
       id: "zantara-ai",
       name: "Zantara AI",

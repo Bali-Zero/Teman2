@@ -38,18 +38,18 @@ BATCH_DELAY_SEC = 0.5
 
 # Folder → URL category mapping (mirrors apps/mouth/src/lib/blog/articles.ts)
 CATEGORY_MAP: dict[str, str] = {
-    "immigration": "immigration",
+    "immigration": "visas",
     "business": "business",
-    "tax": "tax-legal",
-    "tax-legal": "tax-legal",
+    "tax": "taxes",
+    "tax-legal": "taxes",
     "property": "property",
-    "lifestyle": "lifestyle",
-    "digital-nomad": "lifestyle",
-    "tech": "tech",
+    "lifestyle": "living",
+    "digital-nomad": "living",
+    "tech": "trends",
     "news": "business",
     "business_regulations": "business",
-    "emerging_trends": "business",
-    "bali_news": "lifestyle",
+    "emerging_trends": "trends",
+    "bali_news": "living",
 }
 
 # GSC impressions (28gg) — ordine priorità decrescente

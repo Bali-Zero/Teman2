@@ -15,13 +15,12 @@ export type ArticleStatus =
   | "archived";
 
 export type ArticleCategory =
-  | "immigration"
+  | "visas"
   | "business"
-  | "tax-legal"
+  | "taxes"
   | "property"
-  | "lifestyle"
-  | "tech"
-  | "bali_news";
+  | "living"
+  | "trends";
 
 export type ArticleTone = "professional" | "casual" | "urgent";
 export type ArticleLength = "short" | "medium" | "long";
@@ -384,7 +383,7 @@ export const CATEGORY_METADATA: Record<
     gradient: string;
   }
 > = {
-  immigration: {
+  visas: {
     label: "Immigration",
     description: "Visas, permits, and relocation guides",
     icon: "Plane",
@@ -398,7 +397,7 @@ export const CATEGORY_METADATA: Record<
     color: "emerald",
     gradient: "from-emerald-500/20 to-teal-500/20",
   },
-  "tax-legal": {
+  taxes: {
     label: "Tax & Legal",
     description: "Tax obligations and legal compliance",
     icon: "Scale",
@@ -412,26 +411,19 @@ export const CATEGORY_METADATA: Record<
     color: "rose",
     gradient: "from-rose-500/20 to-pink-500/20",
   },
-  lifestyle: {
+  living: {
     label: "Lifestyle",
     description: "Living in Bali and Indonesia",
     icon: "Sun",
     color: "violet",
     gradient: "from-violet-500/20 to-purple-500/20",
   },
-  tech: {
-    label: "Tech",
-    description: "Digital nomad and tech industry insights",
+  trends: {
+    label: "Trends",
+    description: "Emerging trends and industry insights",
     icon: "Cpu",
     color: "fuchsia",
     gradient: "from-fuchsia-500/20 to-pink-500/20",
-  },
-  bali_news: {
-    label: "Bali News",
-    description: "Breaking news, culture, and stories from Bali",
-    icon: "Newspaper",
-    color: "orange",
-    gradient: "from-orange-500/20 to-amber-500/20",
   },
 };
 

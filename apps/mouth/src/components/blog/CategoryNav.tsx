@@ -18,25 +18,23 @@ import type { ArticleCategory, CategoryNavProps } from "@/lib/blog/types";
 // Category icons mapping
 const categoryIcons: Record<ArticleCategory | "all", React.ElementType> = {
   all: LayoutGrid,
-  immigration: Plane,
+  visas: Plane,
   business: Building2,
-  "tax-legal": Scale,
+  "taxes": Scale,
   property: Home,
-  lifestyle: Sun,
-  tech: Cpu,
-  bali_news: Newspaper,
+  living: Sun,
+  trends: Cpu,
 };
 
 // Category labels
 const categoryLabels: Record<ArticleCategory | "all", string> = {
   all: "All",
-  immigration: "Immigration",
+  visas: "Visas",
   business: "Business",
-  "tax-legal": "Tax & Legal",
+  "taxes": "Taxes",
   property: "Property",
-  lifestyle: "Lifestyle",
-  tech: "Tech",
-  bali_news: "Bali News",
+  living: "Living",
+  trends: "Trends",
 };
 
 // Category colors
@@ -53,7 +51,7 @@ const categoryColors: Record<
     inactive: "text-white/50 hover:text-white/80 hover:bg-white/5",
     gradient: "from-white/20 to-white/10",
   },
-  immigration: {
+  visas: {
     active: "bg-cyan-500/20 text-cyan-400",
     inactive: "text-white/50 hover:text-cyan-400 hover:bg-cyan-500/10",
     gradient: "from-blue-500/20 to-cyan-500/20",
@@ -63,7 +61,7 @@ const categoryColors: Record<
     inactive: "text-white/50 hover:text-emerald-400 hover:bg-emerald-500/10",
     gradient: "from-emerald-500/20 to-teal-500/20",
   },
-  "tax-legal": {
+  "taxes": {
     active: "bg-amber-500/20 text-amber-400",
     inactive: "text-white/50 hover:text-amber-400 hover:bg-amber-500/10",
     gradient: "from-amber-500/20 to-orange-500/20",
@@ -73,32 +71,27 @@ const categoryColors: Record<
     inactive: "text-white/50 hover:text-rose-400 hover:bg-rose-500/10",
     gradient: "from-rose-500/20 to-pink-500/20",
   },
-  lifestyle: {
+  living: {
     active: "bg-violet-500/20 text-violet-400",
     inactive: "text-white/50 hover:text-violet-400 hover:bg-violet-500/10",
     gradient: "from-violet-500/20 to-purple-500/20",
   },
-  tech: {
-    active: "bg-fuchsia-500/20 text-fuchsia-400",
-    inactive: "text-white/50 hover:text-fuchsia-400 hover:bg-fuchsia-500/10",
-    gradient: "from-fuchsia-500/20 to-pink-500/20",
-  },
-  bali_news: {
-    active: "bg-orange-500/20 text-orange-400",
-    inactive: "text-white/50 hover:text-orange-400 hover:bg-orange-500/10",
-    gradient: "from-orange-500/20 to-amber-500/20",
+  trends: {
+    active: "bg-blue-500/20 text-blue-400",
+    inactive: "text-white/50 hover:text-blue-400 hover:bg-blue-500/10",
+    gradient: "from-indigo-500/20 to-blue-500/20",
   },
 };
 
 // All categories list
 const ALL_CATEGORIES: (ArticleCategory | "all")[] = [
   "all",
-  "immigration",
+  "visas",
   "business",
-  "tax-legal",
+  "taxes",
   "property",
-  "lifestyle",
-  "tech",
+  "living",
+  "trends",
 ];
 
 export function CategoryNav({

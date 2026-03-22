@@ -132,13 +132,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // 3. Category pages (match actual routes: /{category})
   const categories = [
-    "immigration",
+    "visas",
     "business",
-    "tax-legal",
+    "taxes",
     "property",
-    "lifestyle",
-    "tech",
-    "bali_news",
+    "living",
+    "trends",
   ];
 
   const newsCategoryPages = categories.map((category) => ({

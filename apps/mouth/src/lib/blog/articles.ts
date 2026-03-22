@@ -210,8 +210,8 @@ const CATEGORY_FOLDERS: Record<ArticleCategory, string[]> = {
   business: ["business", "business_regulations", "news"],
   taxes: ["tax-legal", "tax"],
   property: ["property"],
-  living: ["lifestyle", "living"],
-  trends: ["trends"],
+  living: ["lifestyle", "digital-nomad", "bali_news"],
+  trends: ["emerging_trends", "tech", "social_media"],
 };
 
 async function getAllMdxSlugs(): Promise<

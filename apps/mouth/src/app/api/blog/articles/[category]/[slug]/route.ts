@@ -194,7 +194,7 @@ The Golden Visa program positions Indonesia, and particularly Bali, as a premier
 *Have questions about the Golden Visa? [Contact our team](/contact) for a free consultation.*
       `,
       coverImage: "/static/blog/golden-visa.jpg",
-      category: "immigration",
+      category: "visas",
       tags: ["golden-visa", "investment", "residency", "indonesia"],
       author: {
         id: "zantara-ai",

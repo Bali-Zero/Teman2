@@ -204,6 +204,43 @@ const nextConfig: NextConfig = {
   // Redirect legacy /kbli-navigator to new Next.js /kbli app
   async redirects() {
     return [
+      // Category renames (2026-03-23) — keep for 12+ months
+      { source: "/immigration", destination: "/visas", permanent: true },
+      {
+        source: "/immigration/:slug*",
+        destination: "/visas/:slug*",
+        permanent: true,
+      },
+      { source: "/tax-legal", destination: "/taxes", permanent: true },
+      {
+        source: "/tax-legal/:slug*",
+        destination: "/taxes/:slug*",
+        permanent: true,
+      },
+      { source: "/lifestyle", destination: "/living", permanent: true },
+      {
+        source: "/lifestyle/:slug*",
+        destination: "/living/:slug*",
+        permanent: true,
+      },
+      { source: "/tech", destination: "/trends", permanent: true },
+      {
+        source: "/tech/:slug*",
+        destination: "/trends/:slug*",
+        permanent: true,
+      },
+      { source: "/bali_news", destination: "/living", permanent: true },
+      {
+        source: "/bali_news/:slug*",
+        destination: "/living/:slug*",
+        permanent: true,
+      },
+      { source: "/digital-nomad", destination: "/living", permanent: true },
+      {
+        source: "/digital-nomad/:slug*",
+        destination: "/living/:slug*",
+        permanent: true,
+      },
       {
         source: "/kbli-navigator",
         destination: "/kbli",

@@ -367,7 +367,7 @@ export default function NewsPageClient({
                       <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                     </svg>
                     <span>
-                      Immigration consultants, tax specialists, business
+                      Visas consultants, tax specialists, business
                       advisors
                     </span>
                   </div>
@@ -516,7 +516,7 @@ function formatCategory(category: string, t?: (key: string) => string): string {
     const keyMap: Record<string, string> = {
       immigration: "home.categories.immigration",
       business: "home.categories.business",
-      "tax-legal": "home.categories.taxLegal",
+      "taxes": "home.categories.taxLegal",
       property: "home.categories.property",
       lifestyle: "home.categories.lifestyle",
     };
@@ -525,26 +525,26 @@ function formatCategory(category: string, t?: (key: string) => string): string {
     }
   }
   const categoryMap: Record<string, string> = {
-    immigration: "Immigration",
+    visas: "Visas",
     business: "Business",
-    "tax-legal": "Tax & Legal",
+    "taxes": "Taxes",
     property: "Property",
-    lifestyle: "Lifestyle",
-    tech: "Tech & AI",
+    living: "Living",
+    trends: "Tech & AI",
   };
   return categoryMap[category] || category.replace("-", " & ");
 }
 
 const TOPICS = [
   { id: "ai-tech", name: "AI & Tech", slug: "tech" },
-  { id: "gci", name: "GCI", slug: "immigration" },
-  { id: "golden-visa", name: "Golden Visa", slug: "immigration" },
+  { id: "gci", name: "GCI", slug: "visas" },
+  { id: "golden-visa", name: "Golden Visa", slug: "visas" },
   { id: "pt-pma", name: "PT PMA", slug: "business" },
-  { id: "tax-2026", name: "Tax 2026", slug: "tax-legal" },
-  { id: "kitas", name: "KITAS", slug: "immigration" },
-  { id: "digital-nomad", name: "Digital Nomad", slug: "lifestyle" },
+  { id: "tax-2026", name: "Tax 2026", slug: "taxes" },
+  { id: "kitas", name: "KITAS", slug: "visas" },
+  { id: "digital-nomad", name: "Digital Nomad", slug: "living" },
   { id: "property", name: "Property", slug: "property" },
-  { id: "work-permits", name: "Work Permits", slug: "immigration" },
+  { id: "work-permits", name: "Work Permits", slug: "visas" },
 ];
 
 function formatViewCount(count: number): string {
@@ -553,7 +553,7 @@ function formatViewCount(count: number): string {
 
 const SERVICES = [
   {
-    name: "Visa & Immigration",
+    name: "Visa & Visas",
     slug: "visa",
     description: "KITAS, KITAP, Golden Visa, and all permit types",
     icon: Plane,
@@ -583,7 +583,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Governor Koster wants 'quality tourists' to prove their wealth. But Jakarta might have the final say.",
     coverImage: "/static/news/constitutional-clash-koster.jpg",
-    category: "immigration",
+    category: "visas",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -743,7 +743,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Waste crisis, dengue surge, maritime blockade, tax shock, property crackdown — all hitting at once. Here's how to navigate.",
     coverImage: "/static/news/perfect-storm-bali.jpg",
-    category: "lifestyle",
+    category: "living",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -766,7 +766,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Bali's main landfill is closing. No clear Plan B. If you're in hospitality or events, this affects you.",
     coverImage: "/static/news/suwung-landfill.jpg",
-    category: "lifestyle",
+    category: "living",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -788,7 +788,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Dengue cases are up 636 in Bali this year. Know the symptoms, get insurance, and protect your family.",
     coverImage: "/static/news/dengue-alert.jpg",
-    category: "lifestyle",
+    category: "living",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -811,7 +811,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Fishermen blocked Labuan Bajo port for 3 days. If you're planning East Indonesia travel, build in buffer days.",
     coverImage: "/static/news/maritime-chaos.jpg",
-    category: "lifestyle",
+    category: "living",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -834,7 +834,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Indonesia's new entertainment tax hits 40-75%. Beach clubs, bars, and karaoke venues are scrambling.",
     coverImage: "/static/news/pajak-hiburan.jpg",
-    category: "tax-legal",
+    category: "taxes",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -881,7 +881,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Living in Indonesia while earning abroad? Under PMK 18/2021, your foreign income may be taxed at 0%.",
     coverImage: "/static/news/indonesia-zero-tax-expat.jpg",
-    category: "tax-legal",
+    category: "taxes",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -903,7 +903,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       'After decades of "choose us or them," Indonesia finally opens its arms.',
     coverImage: "/static/blog/global-citizenship.jpg",
-    category: "immigration",
+    category: "visas",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -926,7 +926,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Indonesia's new Coretax system launched January 1st — and it's causing headaches.",
     coverImage: "/static/news/coretax-kpp-queue.jpg",
-    category: "tax-legal",
+    category: "taxes",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -948,7 +948,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Claude 4.5 Opus sets a new benchmark for AI. Extended thinking, deeper reasoning.",
     coverImage: "/static/insights/tech/claude-opus-revolutionizes-ai.jpg",
-    category: "tech",
+    category: "trends",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -970,7 +970,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Gemini 3 doesn't answer: it anticipates. It doesn't assist: it acts. The first AI that thinks like a human.",
     coverImage: "/static/news/gemini-3-ai.jpg",
-    category: "tech",
+    category: "trends",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -992,7 +992,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Governor Koster announces financial screening for tourists entering Bali.",
     coverImage: "/static/news/bank-screening-clean.jpg",
-    category: "immigration",
+    category: "visas",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -1010,11 +1010,11 @@ const MOCK_ARTICLES: ArticleListItem[] = [
   {
     id: "17",
     slug: "immigration-lounge-bali-malls-2026",
-    title: "Immigration Lounges Coming to Bali Malls in 2026",
+    title: "Visas Lounges Coming to Bali Malls in 2026",
     excerpt:
       "No more queuing at Kantor Imigrasi? Bali plans to open immigration service lounges in shopping malls.",
     coverImage: "/static/news/immigration-lounge-mall.jpg",
-    category: "immigration",
+    category: "visas",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -1035,7 +1035,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     title: "Bali Is Not a Playground: The Rules You Must Respect",
     excerpt: "Bali welcomes visitors. What it doesn't welcome is arrogance.",
     coverImage: "/static/blog/bali-rules-behavior.jpg",
-    category: "lifestyle",
+    category: "living",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -1057,7 +1057,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "With 2.8M tourists arriving for Christmas and New Year, Bali experiments with radical traffic changes.",
     coverImage: "/static/blog/kerobokan-traffic.jpg",
-    category: "lifestyle",
+    category: "living",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -1079,7 +1079,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "After 12 months of Indonesia's Golden Visa program, we analyze approval rates.",
     coverImage: "/static/blog/golden-visa.jpg",
-    category: "immigration",
+    category: "visas",
     author: {
       id: "zantara-ai",
       name: "Zantara AI",
@@ -1100,7 +1100,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     title: "Tax Deadlines 2026: What Every Expat Needs to Know",
     excerpt: "Key dates for personal and corporate tax filings.",
     coverImage: "/static/blog/tax-calendar.jpg",
-    category: "tax-legal",
+    category: "taxes",
     author: {
       id: "zantara-ai",
       name: "Zantara AI",
@@ -1164,7 +1164,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     title: "Digital Nomad Visa 2026: Indonesia Finally Gets Serious",
     excerpt: "The long-awaited Digital Nomad Visa is here.",
     coverImage: "/static/blog/nomad-comparison.jpg",
-    category: "lifestyle",
+    category: "living",
     author: {
       id: "zantara-ai",
       name: "Zantara AI",
@@ -1185,12 +1185,12 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     title: "KITAS Application 2026: New Digital System Finally Works",
     excerpt: "The real story of getting your stay permit.",
     coverImage: "/static/blog/kitas-guide.jpg",
-    category: "immigration",
+    category: "visas",
     author: {
       id: "1",
-      name: "Immigration Team",
+      name: "Visas Team",
       avatar: "/static/team/immigration.jpg",
-      role: "Immigration Specialist",
+      role: "Visas Specialist",
       isAI: false,
     },
     publishedAt: new Date("2025-12-20"),
@@ -1207,7 +1207,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "AI agents now book travel, manage emails, file permits, and run businesses.",
     coverImage: "/static/insights/tech/ai-agents-autonomous-era.jpg",
-    category: "tech",
+    category: "trends",
     author: {
       id: "zantara-ai",
       name: "Zantara AI",
@@ -1229,7 +1229,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     excerpt:
       "Midjourney v7's photorealism is so precise that professional photographers are pivoting to AI.",
     coverImage: "/static/insights/tech/midjourney-v7-photorealism.jpg",
-    category: "tech",
+    category: "trends",
     author: {
       id: "editorial",
       name: "Bali Zero Editorial",
@@ -1250,7 +1250,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     title: "Sora Has Arrived: OpenAI's Video Generator Changes Everything",
     excerpt: "Sora creates cinematic videos from text prompts.",
     coverImage: "/static/insights/tech/sora-video-generation.jpg",
-    category: "tech",
+    category: "trends",
     author: {
       id: "zantara-ai",
       name: "Zantara AI",
