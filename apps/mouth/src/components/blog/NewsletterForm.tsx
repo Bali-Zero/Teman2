@@ -9,12 +9,12 @@ import type { ArticleCategory, NewsletterFormProps } from "@/lib/blog/types";
 
 // Category options for newsletter
 const CATEGORY_OPTIONS: { value: ArticleCategory; label: string }[] = [
-  { value: "immigration", label: "Immigration & Visas" },
+  { value: "visas", label: "Visas & Visas" },
   { value: "business", label: "Business Setup" },
-  { value: "tax-legal", label: "Tax & Legal" },
+  { value: "taxes", label: "Taxes" },
   { value: "property", label: "Property" },
-  { value: "lifestyle", label: "Lifestyle" },
-  { value: "tech", label: "Tech & Digital Nomad" },
+  { value: "living", label: "Living" },
+  { value: "trends", label: "Trends & Insights" },
 ];
 
 // Frequency options
@@ -57,7 +57,7 @@ function InlineForm({
         categories:
           defaultCategories.length > 0
             ? defaultCategories
-            : ["immigration", "business"],
+            : ["visas", "business"],
         frequency: "weekly",
         language: "en",
       });
@@ -176,7 +176,7 @@ function SidebarForm({
   const [categories, setCategories] = React.useState<ArticleCategory[]>(
     defaultCategories.length > 0
       ? defaultCategories
-      : ["immigration", "business"],
+      : ["visas", "business"],
   );
   const [frequency, setFrequency] = React.useState<
     "daily" | "weekly" | "monthly"

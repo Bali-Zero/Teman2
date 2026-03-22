@@ -378,8 +378,8 @@ export function SearchModal({
           <div className="p-4 border-b border-white/10">
             <div className="flex gap-2 overflow-x-auto scrollbar-hide">
               <QuickFilter
-                label="Immigration"
-                onClick={() => handleCategoryClick("immigration")}
+                label="Visas"
+                onClick={() => handleCategoryClick("visas")}
               />
               <QuickFilter
                 label="Business"
@@ -394,8 +394,8 @@ export function SearchModal({
                 onClick={() => handleCategoryClick("property")}
               />
               <QuickFilter
-                label="Lifestyle"
-                onClick={() => handleCategoryClick("lifestyle")}
+                label="Living"
+                onClick={() => handleCategoryClick("living")}
               />
             </div>
           </div>

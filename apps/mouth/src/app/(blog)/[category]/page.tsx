@@ -32,11 +32,11 @@ const CATEGORY_VISUAL: Record<
     descKey: string;
   }
 > = {
-  immigration: {
+  visas: {
     icon: Plane,
     gradient: "from-blue-500/20 via-cyan-500/10 to-transparent",
-    titleKey: "news.categories.immigration",
-    descKey: "news.categoryDescriptions.immigration",
+    titleKey: "news.categories.visas",
+    descKey: "news.categoryDescriptions.visas",
   },
   business: {
     icon: Building2,
@@ -44,11 +44,11 @@ const CATEGORY_VISUAL: Record<
     titleKey: "news.categories.business",
     descKey: "news.categoryDescriptions.business",
   },
-  "tax-legal": {
+  "taxes": {
     icon: Scale,
     gradient: "from-amber-500/20 via-orange-500/10 to-transparent",
-    titleKey: "news.categories.taxLegal",
-    descKey: "news.categoryDescriptions.taxLegal",
+    titleKey: "news.categories.taxes",
+    descKey: "news.categoryDescriptions.taxes",
   },
   property: {
     icon: Home,
@@ -56,23 +56,17 @@ const CATEGORY_VISUAL: Record<
     titleKey: "news.categories.property",
     descKey: "news.categoryDescriptions.property",
   },
-  lifestyle: {
+  living: {
     icon: Sun,
     gradient: "from-violet-500/20 via-purple-500/10 to-transparent",
-    titleKey: "news.categories.lifestyle",
-    descKey: "news.categoryDescriptions.lifestyle",
+    titleKey: "news.categories.living",
+    descKey: "news.categoryDescriptions.living",
   },
-  tech: {
+  trends: {
     icon: Cpu,
     gradient: "from-fuchsia-500/20 via-pink-500/10 to-transparent",
-    titleKey: "news.categories.tech",
-    descKey: "news.categoryDescriptions.tech",
-  },
-  bali_news: {
-    icon: Newspaper,
-    gradient: "from-orange-500/20 via-amber-500/10 to-transparent",
-    titleKey: "news.categories.baliNews",
-    descKey: "news.categoryDescriptions.baliNews",
+    titleKey: "news.categories.trends",
+    descKey: "news.categoryDescriptions.trends",
   },
 };
 

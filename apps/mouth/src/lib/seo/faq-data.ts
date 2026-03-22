@@ -6,7 +6,7 @@
 export interface FAQItem {
   question: string;
   answer: string;
-  category?: "immigration" | "business" | "tax" | "property" | "general";
+  category?: "visas" | "business" | "tax" | "property" | "general";
 }
 
 // Homepage FAQs - Most common questions
@@ -23,7 +23,7 @@ export const HOMEPAGE_FAQS: FAQItem[] = [
       "What is KITAS and what are the different types available in Indonesia?",
     answer:
       "KITAS (Kartu Izin Tinggal Terbatas) is a Temporary Stay Permit for foreigners in Indonesia. Types include: C312 (Director KITAS) for PT PMA directors, C313 (Investor KITAS) for shareholders, C314 (Employee KITAS) for workers, E33F (1-year Retirement KITAS) and E33E (5-year Retirement KITAS) for retirees aged 55+. Each type has different requirements and costs.",
-    category: "immigration",
+    category: "visas",
   },
   {
     question: "Can foreigners own property in Indonesia?",
@@ -35,13 +35,13 @@ export const HOMEPAGE_FAQS: FAQItem[] = [
     question: "What is the Golden Visa Indonesia and who qualifies?",
     answer:
       "Golden Visa is a long-stay residence pathway for qualifying investors and high-net-worth individuals. Eligibility, investment thresholds, and processing rules can change, so qualification should always be checked against the current immigration framework and the latest Bali Zero service guidance.",
-    category: "immigration",
+    category: "visas",
   },
   {
     question: "How long can I stay in Bali on a tourist visa?",
     answer:
       "Short-stay options depend on your nationality and the visa class you use. Entry periods, extension rules, and long-stay alternatives should always be checked against the current immigration rules before travel.",
-    category: "immigration",
+    category: "visas",
   },
   {
     question: "What are the tax obligations for expats living in Indonesia?",
@@ -53,35 +53,35 @@ export const HOMEPAGE_FAQS: FAQItem[] = [
     question: "Can I work on a retirement visa in Indonesia?",
     answer:
       "NO. Retirement visas (E33F and E33E) strictly prohibit any employment or business activity in Indonesia. If you want to work legally, you need a work-related KITAS (C312 Director, C313 Investor, or C314 Employee). Violation can result in deportation and visa ban.",
-    category: "immigration",
+    category: "visas",
   },
   {
     question: "What is the Second Home Visa for Indonesia?",
     answer:
       "Second Home Visa is a long-stay residence option aimed at financially established applicants. Financial proof, eligibility rules, and processing standards should be checked against the latest immigration policy before applying.",
-    category: "immigration",
+    category: "visas",
   },
 ];
 
-// Immigration category FAQs
+// Visas category FAQs
 export const IMMIGRATION_FAQS: FAQItem[] = [
   {
     question: "What documents are needed for KITAS application?",
     answer:
       "Common KITAS requirements include: valid passport (18+ months validity), passport photos, sponsoring company documents (NIB, NPWP, domicile letter), RPTKA approval for work permits, CV/resume, educational certificates (for employee KITAS), and health certificate. Specific requirements vary by KITAS type. Bali Zero handles all document preparation.",
-    category: "immigration",
+    category: "visas",
   },
   {
     question: "How long does KITAS processing take?",
     answer:
       "KITAS processing time depends on the visa type, sponsor readiness, document quality, and current immigration workload. Exact timelines should be treated as operational estimates, not fixed promises.",
-    category: "immigration",
+    category: "visas",
   },
   {
     question: "What is KITAP and how do I qualify?",
     answer:
       "KITAP (Kartu Izin Tinggal Tetap) is a permanent stay permit for applicants who meet the relevant long-stay or family-based eligibility rules. Qualification pathways and operational requirements should be checked against the current immigration framework.",
-    category: "immigration",
+    category: "visas",
   },
 ];
 

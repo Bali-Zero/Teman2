@@ -7,7 +7,7 @@ const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
  * Unique titles, descriptions, and canonicals per category.
  */
 const CATEGORY_SEO: Record<string, { title: string; description: string }> = {
-  immigration: {
+  visas: {
     title: "Immigration & Visa Guides Bali 2026",
     description:
       "Expert guides on Indonesia visas: KITAS, KITAP, Golden Visa, work permits, retirement visa, digital nomad visa. Updated 2026 requirements from Bali Zero.",
@@ -17,7 +17,7 @@ const CATEGORY_SEO: Record<string, { title: string; description: string }> = {
     description:
       "Complete guides to PT PMA company setup, KBLI codes, business licenses, OSS registration. Expert advice for foreign entrepreneurs in Bali.",
   },
-  "tax-legal": {
+  "taxes": {
     title: "Indonesia Tax & Legal Compliance Guides 2026",
     description:
       "Tax compliance guides for expats and businesses in Indonesia. Personal tax, corporate tax, Coretax system, deadlines, and legal requirements.",
@@ -27,20 +27,15 @@ const CATEGORY_SEO: Record<string, { title: string; description: string }> = {
     description:
       "Property guides for foreigners: Hak Pakai, leasehold, villa investment, Airbnb regulations. Expert real estate advice for buying property in Bali.",
   },
-  lifestyle: {
+  living: {
     title: "Living in Bali - Expat Lifestyle & Relocation Guides",
     description:
       "Guides for living in Bali: cost of living, healthcare, banking, culture, digital nomad life, expat community. Everything you need to know.",
   },
-  tech: {
+  trends: {
     title: "Tech & Digital Nomad Life in Indonesia 2026",
     description:
       "Digital nomad guides for Bali: visa options, coworking spaces, internet, remote work tips. Stay connected and productive in paradise.",
-  },
-  bali_news: {
-    title: "Bali News & Indonesia Updates 2026",
-    description:
-      "Breaking news, culture, events, and stories from Bali and Indonesia. Stay informed with the latest updates from the Island of the Gods.",
   },
 };
 

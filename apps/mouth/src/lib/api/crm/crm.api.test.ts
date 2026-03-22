@@ -1172,13 +1172,13 @@ describe("CrmApi", () => {
           {
             code: "PASSPORT",
             name: "Passport",
-            category_group: "immigration",
+            category_group: "visas",
             has_expiry: true,
           },
           {
             code: "VISA",
             name: "Visa",
-            category_group: "immigration",
+            category_group: "visas",
             has_expiry: true,
           },
         ];

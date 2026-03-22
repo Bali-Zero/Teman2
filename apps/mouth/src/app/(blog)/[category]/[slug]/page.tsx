@@ -46,14 +46,14 @@ const STATIC_PATHS = [
 
 // Valid blog categories
 const VALID_CATEGORIES = [
-  "immigration",
+  "visas",
   "business",
-  "tax-legal",
+  "taxes",
   "property",
-  "lifestyle",
+  "living",
   "digital-nomad",
-  "tech",
-  "bali_news",
+  "trends",
+  "living",
 ];
 
 /**
@@ -129,14 +129,13 @@ export async function generateMetadata({
 
 // Category labels for breadcrumbs
 const CATEGORY_LABELS: Record<string, string> = {
-  immigration: "Immigration",
+  visas: "Immigration",
   business: "Business",
-  "tax-legal": "Tax & Legal",
+  "taxes": "Tax & Legal",
   property: "Property",
-  lifestyle: "Lifestyle",
+  living: "Lifestyle",
   "digital-nomad": "Digital Nomad",
-  tech: "Tech",
-  bali_news: "Bali News",
+  trends: "Tech",
 };
 
 /**
