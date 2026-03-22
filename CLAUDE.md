@@ -124,26 +124,33 @@ If both pass, you're ready to work.
 - Production deployments (use risk/reversibility judgment)
 - Destructive operations (rm, git reset --hard, etc.)
 
-### Delegation Checkpoint — 5 Domande Pre-Task (ENFORCE)
+### Federation Orchestrator (AUTOMATICO)
 
-**Prima di QUALSIASI task, rispondi a queste 5 domande:**
+**Per task complessi, usa l'orchestratore LangGraph:**
 
-1. **Questo task richiede di leggere/esplorare più di 5 file?**
-   → Sì: `./scripts/ai-dispatch.sh explore "question"`. Gemini 1M ctx, gratis.
+```bash
+python scripts/federation_orchestrator.py "task description"
+# oppure con --telegram CHAT_ID per output su Telegram
+# oppure con --no-confirm per skip conferma umana
+```
 
-2. **Questo task richiede informazioni esterne in tempo reale?**
-   → Sì: `./scripts/ai-dispatch.sh search "query"`. Google Search grounded con citazioni.
+L'orchestratore classifica il task (Haiku), lancia i dispatch necessari (Gemini search/explore, Codex sandbox), assembla il contesto, e lo salva in `ai-dispatch-output/`. Se il rischio è alto, forza un red team review.
 
-3. **Questo task comporta rischio per il repo se il codice è sbagliato?**
-   → Sì: `./scripts/ai-dispatch.sh sandbox "task"`. Codex in sandbox kernel-level.
+**Trigger che DEVONO passare dall'orchestratore (non fare a mano):**
 
-4. **Questo task beneficerebbe di due prospettive indipendenti?**
-   → Sì: `./scripts/ai-dispatch.sh parallel explore:"q1" search:"q2"`. Tu sintetizzi.
+| Trigger                                            | L'orchestratore lancia | Motivo                                 |
+| -------------------------------------------------- | ---------------------- | -------------------------------------- |
+| KBLI, visa, normativa indonesiana                  | Gemini `search`        | Claude hallucina su regolamenti        |
+| Refactor che tocca 3+ app del monorepo             | Gemini `explore`       | 1M ctx mappa tutte le dipendenze       |
+| Alembic migration / schema change                  | Codex `sandbox`        | Testa upgrade+downgrade in isolamento  |
+| Pre-deploy Fly.io (backend)                        | Gemini `redteam`       | Mai deploy senza red team              |
+| Fix a `dependencies.py` o `service_initializer.py` | Codex `sandbox`        | Import chain = single point of failure |
 
-5. **Questo task è un deploy o una modifica critica?**
-   → Sì: `./scripts/ai-dispatch.sh redteam "soluzione proposta"`. Mai deploy senza red team.
+**Task semplici** (fix un bug, aggiorna un componente): procedi direttamente senza orchestratore.
 
-**Se TUTTE le risposte sono "No"**: fai tu direttamente. Non delegare per sport.
+### Escalations (leggere a inizio sessione)
+
+Controlla `shared/escalations.json` — se ci sono pending, gestiscili prima di altro lavoro.
 
 ## 3. Golden Rules (ENFORCE STRICTLY)
 
@@ -643,11 +650,13 @@ fly deploy --strategy rolling
 
 ### Ruoli
 
-| Agente                         | Ruolo                                         | Forza                                                 |
-| ------------------------------ | --------------------------------------------- | ----------------------------------------------------- |
-| **Tu (Claude Code, Opus 4.6)** | Il Re — orchestra, sintetizza, decide, esegue | Refactor multi-file, deploy, decisioni architetturali |
-| **Gemini 3.1 Pro CLI**         | Il Consigliere — 1M ctx, read-only            | `codebase_investigator`, `google_web_search` grounded |
-| **Codex 5.4 CLI**              | Il Soldato in Fortezza — sandbox kernel-level | Fix isolati, migration, test in ambiente sicuro       |
+| Agente                          | Ruolo                                         | Forza                                                 |
+| ------------------------------- | --------------------------------------------- | ----------------------------------------------------- |
+| **Tu (Claude Code, Opus 4.6)**  | Il Re — orchestra, sintetizza, decide, esegue | Refactor multi-file, deploy, decisioni architetturali |
+| **Claude CLI (Opus 4.6)**       | Il Giudice — review, redteam, read-only       | `claude-review`, `claude-redteam` (Max plan, $0)      |
+| **Gemini 3.1 Pro CLI**          | Il Consigliere — 1M ctx, read-only            | `codebase_investigator`, `google_web_search` grounded |
+| **Codex 5.4 CLI**               | Il Soldato in Fortezza — sandbox kernel-level | Fix isolati, migration, test in ambiente sicuro       |
+| **Aider (OpenRouter/DeepSeek)** | Il Mercenario — multi-model coding            | `aider-fix` (DeepSeek V3), `aider-refactor` (Sonnet)  |
 
 ### Pattern di Dispatch
 
