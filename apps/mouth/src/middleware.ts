@@ -120,24 +120,6 @@ export function middleware(request: NextRequest) {
   }
 
 
-  // === REDIRECT 301: Category renames (2026-03-23) ===
-  // SEO: Preserve link equity for renamed blog categories
-  const CATEGORY_REDIRECTS: Record<string, string> = {
-    "immigration": "visas",
-    "tax-legal": "taxes",
-    "lifestyle": "living",
-    "tech": "trends",
-    "bali_news": "living",
-    "digital-nomad": "living",
-  };
-  const oldCategory = pathname.split("/")[1];
-  if (oldCategory && CATEGORY_REDIRECTS[oldCategory]) {
-    const newCategory = CATEGORY_REDIRECTS[oldCategory];
-    const newPath = pathname.replace(`/${oldCategory}`, `/${newCategory}`);
-    const url = request.nextUrl.clone();
-    url.pathname = newPath;
-    return NextResponse.redirect(url, 301);
-  }
 
   // === REDIRECT 301: mo.balizero.com → balizero.com ===
   // SEO: Prevent duplicate content and consolidate domain authority
@@ -257,6 +239,24 @@ export function middleware(request: NextRequest) {
       const redirectResponse = NextResponse.redirect(url, 301);
       redirectResponse.headers.set("x-pathname", pathname);
       return redirectResponse;
+    }
+
+    // === REDIRECT 301: Category renames (2026-03-23) ===
+    const CATEGORY_REDIRECTS: Record<string, string> = {
+      "immigration": "visas",
+      "tax-legal": "taxes",
+      "lifestyle": "living",
+      "tech": "trends",
+      "bali_news": "living",
+      "digital-nomad": "living",
+    };
+    const oldCat = pathname.split("/")[1];
+    if (oldCat && CATEGORY_REDIRECTS[oldCat]) {
+      const newCat = CATEGORY_REDIRECTS[oldCat];
+      const newPath = pathname.replace(`/${oldCat}`, `/${newCat}`);
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = newPath;
+      return NextResponse.redirect(redirectUrl, 301);
     }
 
     // Allow public routes
