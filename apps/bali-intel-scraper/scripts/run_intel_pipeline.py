@@ -1461,25 +1461,15 @@ IMPORTANT:
                     headers={"X-API-Key": API_KEY}
                 )
                 if r.status_code in (200, 201):
-                    # Forzare la pubblicazione scavalcando lo staging
+                    # Articolo inviato a STAGING — attende approvazione nella News Room
+                    # (kita.balizero.com/intelligence/news-room)
                     res_data = r.json()
                     item_id = res_data.get("item_id")
                     intel_type = res_data.get("intel_type", "news")
                     if item_id:
-                        pub_r = await c.post(
-                            f"{BACKEND_URL}/api/intel/staging/publish/{intel_type}/{item_id}",
-                            json={},
-                            headers={"X-API-Key": API_KEY}
-                        )
-                        if pub_r.status_code in (200, 201):
-                            self.log(f'Auto-published {item_id} successfully.')
-                            # Salva item_id e intel_type sull'articolo per step_images
-                            art['_published_item_id'] = item_id
-                            art['_published_intel_type'] = intel_type
-                            return True
-                        else:
-                            self.log(f'Auto-publish failed for {item_id}: {pub_r.text}', 'WARN')
-                            return False
+                        self.log(f'Submitted to staging: {item_id} ({intel_type}) — awaiting News Room approval')
+                        art['_staging_item_id'] = item_id
+                        art['_staging_intel_type'] = intel_type
                     return True
                 return False
 
