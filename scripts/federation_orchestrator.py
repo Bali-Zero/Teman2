@@ -35,6 +35,13 @@ for _env in (_master_env, _backend_env):
 import httpx
 from langgraph.graph import END, StateGraph
 
+from federation_capability_table import (
+    ARSENAL_SUMMARY,
+    build_classifier_context,
+    match_domains,
+    suggest_agents,
+)
+
 # ═══════════════════════════════════════════════════════
 # Config
 # ═══════════════════════════════════════════════════════
@@ -43,7 +50,7 @@ DISPATCH_SCRIPT = PROJECT_ROOT / "scripts" / "ai-dispatch.sh"
 OUTPUT_DIR = PROJECT_ROOT / "ai-dispatch-output"
 AUDIT_FILE = OUTPUT_DIR / "audit.jsonl"
 
-CLASSIFIER_MODEL = "qwen3.5:9b"  # Local via Ollama — $0, no API credits needed
+CLASSIFIER_MODEL = "qwen3.5:9b"  # Local via Ollama — $0, fast classification
 OLLAMA_URL = "http://localhost:11434"
 
 # LangSmith observability (disabled until API key configured)
@@ -114,60 +121,101 @@ async def send_telegram(chat_id: str, text: str) -> None:
 # ═══════════════════════════════════════════════════════
 # Nodes
 # ═══════════════════════════════════════════════════════
-CLASSIFY_PROMPT = """Classify this software development task for routing.
+CAPABILITY_CONTEXT = build_classifier_context()
+
+# Compact prompt for Qwen 9b (must stay <2K tokens for fast inference)
+CLASSIFY_PROMPT = """Route this task. Agents: gemini-search (regulations/KBLI/visa/tax/market), gemini-explore (codebase 3+ apps/architecture), codex-sandbox (DB migration/schema), claude-redteam (deploy/security).
+
+Pre-matched domains: {matched_domains}
 
 Task: {task}
 
-Respond with ONLY valid JSON (no markdown, no explanation):
-{{
-  "type": "feature|bugfix|refactor|deploy|research|conversation",
-  "risk": "low|medium|high",
-  "domains": ["list of app/service areas involved"],
-  "needs_search": <true if task involves regulations, laws, taxes, visa, KBLI, or external data>,
-  "needs_explore": <true if task touches 3+ apps or requires reading >5 files>,
-  "needs_sandbox": <true if task involves DB migration, schema change, or risky code>,
-  "needs_redteam": <true if task involves deployment or critical system changes>
-}}"""
+ONLY JSON, no text:
+{{"type":"feature|bugfix|refactor|deploy|research|conversation","risk":"low|medium|high","domains":["{matched_domains}"],"needs_search":<bool>,"needs_explore":<bool>,"needs_sandbox":<bool>,"needs_redteam":<bool>}}"""
 
 
 async def classify_node(state: FederationState) -> dict:
-    """Classify the task using local Ollama (Qwen 3.5:9b)."""
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            f"{OLLAMA_URL}/api/chat",
-            json={
-                "model": CLASSIFIER_MODEL,
-                "messages": [{"role": "user", "content": CLASSIFY_PROMPT.format(task=state["task"])}],
-                "stream": False,
-                "options": {"temperature": 0.1, "num_predict": 300},
-                "think": False,  # CRITICAL: disable thinking for Qwen 3.5
-            },
-        )
-        resp.raise_for_status()
-        raw = resp.json()["message"]["content"].strip()
+    """Classify the task using local Ollama (Qwen 3.5:9b) with capability-aware routing."""
+    task = state["task"]
 
-    # Extract JSON from potential markdown fencing or think tags
-    if "<think>" in raw:
-        raw = raw.split("</think>")[-1].strip()
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+    # Pre-filter: keyword matching against capability table
+    matched = match_domains(task)
+    keyword_suggestions = suggest_agents(task)
 
-    classification = json.loads(raw)
+    prompt = CLASSIFY_PROMPT.format(
+        task=task,
+        capability_context=CAPABILITY_CONTEXT,
+        matched_domains=", ".join(matched) if matched else "none detected",
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(
+                f"{OLLAMA_URL}/api/chat",
+                json={
+                    "model": CLASSIFIER_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "stream": False,
+                    "options": {"temperature": 0.1, "num_predict": 200},
+                    "think": False,  # CRITICAL: disable thinking for Qwen 3.5
+                    "keep_alive": "30m",
+                },
+            )
+            resp.raise_for_status()
+            raw = resp.json()["message"]["content"].strip()
+
+        # Extract JSON from potential markdown fencing or think tags
+        if "<think>" in raw:
+            raw = raw.split("</think>")[-1].strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+
+        classification = json.loads(raw)
+    except Exception as e:
+        # Fallback: use keyword-based classification if Qwen fails
+        print(f"  [WARN] Classifier failed ({type(e).__name__}: {e}), using keyword fallback")
+        classification = {
+            "type": "research" if keyword_suggestions.get("needs_search") else "feature",
+            "risk": "medium",
+            "domains": matched or ["general"],
+            **keyword_suggestions,
+        }
+
+    # Merge: if Qwen missed a dispatch that keywords caught, add it
+    for key in ("needs_search", "needs_explore", "needs_sandbox", "needs_redteam"):
+        if keyword_suggestions.get(key) and not classification.get(key):
+            classification[key] = True
+
     return {"classification": classification}
 
 
 async def human_checkpoint_node(state: FederationState) -> dict:
     """Show classification and ask for confirmation."""
     c = state["classification"]
+    domains = c.get("domains", [])
+    # Show which agents will handle which domains
+    agent_map = []
+    if c.get("needs_search"):
+        agent_map.append("Gemini Search")
+    if c.get("needs_explore"):
+        agent_map.append("Gemini Explore (1M)")
+    if c.get("needs_sandbox"):
+        agent_map.append("Codex Sandbox")
+    if c.get("needs_redteam") or c.get("risk") == "high":
+        agent_map.append("Claude Redteam")
+    if not agent_map:
+        agent_map.append("Claude Code (direct)")
+
     summary = (
         f"\n{'='*40}\n"
         f"  FEDERATION ROUTING\n"
         f"{'='*40}\n"
         f"  Task:    {state['task'][:80]}\n"
         f"  Type:    {c.get('type')} | Risk: {c.get('risk')}\n"
+        f"  Domains: {', '.join(domains)}\n"
+        f"  Agents:  {' → '.join(agent_map)}\n"
         f"  Search:  {c.get('needs_search')} | Explore: {c.get('needs_explore')}\n"
         f"  Sandbox: {c.get('needs_sandbox')} | Redteam: {c.get('needs_redteam')}\n"
-        f"  Domains: {', '.join(c.get('domains', []))}\n"
         f"{'='*40}"
     )
 
@@ -398,7 +446,8 @@ def main():
         "audit_entries": [],
     }
 
-    print(f"\n  Federation Orchestrator v1")
+    total = ARSENAL_SUMMARY["total_capabilities"]
+    print(f"\n  Federation Orchestrator v2 ({total} capabilities)")
     print(f"  Task: {task[:100]}")
     print()
 
