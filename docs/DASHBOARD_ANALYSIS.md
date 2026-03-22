@@ -207,7 +207,7 @@ async def get_neural_pulse(db_pool: asyncpg.Pool) -> dict:
     return {
         "status": "healthy",
         "memory_facts": memory_facts or 42,  # Fallback
-        "knowledge_docs": knowledge_docs or 53757,  # Fallback
+        "knowledge_docs": knowledge_docs or 66595,  # Fallback
         "latency_ms": int((time.time() - start_time) * 1000),
         "model_version": "Gemini 1.5 Pro",
         "last_activity": last_activity,
@@ -223,7 +223,7 @@ async def get_neural_pulse(db_pool: asyncpg.Pool) -> dict:
 
 **Note:**
 
-- ⚠️ Fallback hardcoded (42, 53757) se database non disponibile
+- ⚠️ Fallback hardcoded (42, 66595) se database non disponibile
 - ⚠️ WebSocket errors visibili in console (non critico)
 
 ---

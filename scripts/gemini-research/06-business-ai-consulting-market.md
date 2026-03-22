@@ -5,7 +5,7 @@ You are researching for Bali Zero — building an AI-first consulting platform (
 ## Current Product
 
 - 24/7 AI assistant (Zantara) for immigration, tax, company setup questions
-- CRM with 1000+ clients
+- CRM with 5000+ clients
 - Client portal with visa tracking, document management
 - Intel pipeline: automatic news scraping → AI enrichment → publishing
 - Pricing: traditional consulting fees (manual quote per service)

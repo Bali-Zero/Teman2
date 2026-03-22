@@ -20,8 +20,8 @@ NON sei autorizzato a:
 - Cambiare struttura di directory
 - Fare deploy o push
 
-**Perché:** AI precedenti hanno causato 448 test rotti e crash in produzione
-"migliorando" codice che non dovevano toccare.
+**Perché:** AI precedenti avevano causato 448 test rotti e crash in produzione
+"migliorando" codice che non dovevano toccare. (Debito pulito 2026-03-20, ma la regola resta.)
 
 ## 1. Sandbox Obbligatorio
 
@@ -52,7 +52,7 @@ NON sei autorizzato a:
 
 - `apps/backend-rag/` — Python FastAPI backend (Fly.io)
 - `apps/mouth/` — Next.js frontend (Vercel)
-- `apps/nuzantara-mcp/` — MCP server (96 tools)
+- `apps/nuzantara-mcp/` — MCP server (109 tools)
 
 ### File Critici — NON TOCCARE MAI
 
@@ -80,8 +80,8 @@ NON sei autorizzato a:
 
 ## 4. Quando lavori su test
 
-I 448 test rotti in `tests/unit/` sono **debito tecnico pre-esistente** da rogue AI refactor.
-Le cause principali sono:
+I 448 test rotti in `tests/unit/` (debito tecnico da rogue AI refactor) sono stati **puliti il 2026-03-20** (0 failed, 0 errors).
+Le cause principali erano:
 
 - Import rimossi (`Any` da typing, `get_logger` da logging_utils)
 - Funzioni rinominate (`_get_critical_domain_type`, `calculate_evidence_score`)

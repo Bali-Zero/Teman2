@@ -399,7 +399,7 @@ BALIZERO_API_KEY=your_api_key
 
 # Preview URL Base
 # Note: Preview URLs can be served by backend (nuzantara-rag.fly.dev/preview)
-# or frontend (nuzantara-mouth.vercel.app/preview)
+# or frontend (kita.balizero.com/preview)
 PREVIEW_BASE_URL=https://nuzantara-rag.fly.dev/preview
 ```
 

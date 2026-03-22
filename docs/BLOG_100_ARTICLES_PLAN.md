@@ -2,7 +2,7 @@
 
 **Piano per 100 Articoli Evergreen Pre-Launch**
 
-> Obiettivo: Creare 100 articoli di alta qualità che sfruttano la KB (53,757 documenti) prima del lancio del blog.
+> Obiettivo: Creare 100 articoli di alta qualità che sfruttano la KB (66,595 documenti) prima del lancio del blog.
 
 ---
 

@@ -17,17 +17,19 @@
 **Owner:** Bali Zero | **URL:** https://kita.balizero.com
 **Owner codename:** Zero (real name PRIVATE — never expose)
 
-## Architecture (updated 2026-03-14)
+## Architecture (updated 2026-03-22)
 
 ```
 nuzantara/
 ├── apps/
-│   ├── mouth/              → Next.js frontend (Vercel)
-│   ├── backend-rag/        → FastAPI RAG backend (Fly.io) — 86 routers, 236 services
-│   ├── nuzantara-mcp/      → MCP server v2.1 (96 tools, 10 prompts, 8 chains)
-│   ├── nuzantara-mcp-advanced/ → Fly.io ops, diagnostics
-│   ├── evaluator/          → SEO Guardian + QA system
-│   ├── bali-intel-scraper/ → Intel gathering (LOCAL ONLY, not on Fly)
+│   ├── mouth/              → Next.js frontend (Vercel) — kita/my/prime.balizero.com
+│   ├── backend-rag/        → FastAPI RAG backend (Fly.io) — 88 routers, 244 services
+│   ├── nuzantara-mcp/      → MCP server v2.1 (109 tools, 10 prompts, 8 chains)
+│   ├── nuzantara-mcp-advanced/ → Fly.io ops, diagnostics (14 tools)
+│   ├── evaluator/          → SEO Guardian + QA + Core Guardian V3
+│   ├── war-room/           → Ops dashboard + Canva automation
+│   ├── bali-intel-scraper/ → Intel gathering (LOCAL ONLY on Pro, not on Fly)
+│   ├── calendar/drive/knowledge/mail/web/ → Subdomain satellites
 │   ├── admin-dashboard/    → Admin UI
 │   └── webapp/             → Web application
 └── packages/
@@ -39,7 +41,7 @@ nuzantara/
 
 | Layer | Technology | Scale |
 |-------|------------|-------|
-| Backend | FastAPI, Python 3.11+ | 86 routers, 236 services |
+| Backend | FastAPI, Python 3.11+ | 88 routers, 244 services, 385 tests |
 | Frontend | Next.js, TypeScript, Tailwind | App Router |
 | Database | PostgreSQL 17 | Fly.io `nuzantara-postgres` (2GB) |
 | Vectors | Qdrant | 9 collections, 66,595 vectors |
@@ -47,7 +49,8 @@ nuzantara/
 | Knowledge Graph | LangGraph | 56,113 nodes, 161,173 edges |
 | Embeddings | `text-embedding-3-small` | 1536 dims — **FROZEN** |
 | Deploy | Fly.io (backend) + Vercel (frontend) | |
-| MCP | nuzantara-mcp | 96 tools, 8 workflow chains |
+| MCP | nuzantara-mcp | 109 tools, 8 workflow chains |
+| Channels | 7 omnichannel | WA, TG, IG, X, Web, GChat, Slack |
 
 ### Fly.io — ONLY 3 APPS
 

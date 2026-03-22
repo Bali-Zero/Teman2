@@ -71,7 +71,7 @@ This appends the task to `.antigravity/context.md` and plays a macOS notificatio
 
 ### MCP Servers (via `~/.gemini/antigravity/mcp_config.json`)
 
-- `nuzantara-rag` — 96 tools (CRM, portal, intel, KBLI, analytics)
+- `nuzantara-rag` — 109 tools (CRM, portal, intel, KBLI, analytics)
 - `nuzantara-ops` — Fly.io ops, deployment, diagnostics
 - `sequential-thinking` — Structured reasoning
 - `GitKraken` — Git operations via GitLens

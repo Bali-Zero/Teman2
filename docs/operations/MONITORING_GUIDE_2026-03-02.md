@@ -292,12 +292,12 @@ flyctl metrics -a nuzantara-rag
 **Monitor:**
 
 - CPU: Should be < 80% average
-- Memory: Should be < 3.5GB (4GB total)
+- Memory: Should be < 1.5GB (2GB total)
 - Disk: Should be < 800MB (1GB total)
 
 **Alert if:**
 
-- Memory > 3.8GB (risk of OOM)
+- Memory > 1.8GB (risk of OOM)
 - CPU sustained > 90%
 - Disk > 950MB
 
@@ -373,7 +373,7 @@ Trigger immediate action if:
 - ❌ Critical service degraded (search, ai, router)
 - ❌ Qdrant connection lost
 - ❌ PostgreSQL connection lost
-- ❌ Memory usage > 3.8GB
+- ❌ Memory usage > 1.8GB
 - ❌ Fly.io machine not started
 
 ---
@@ -384,7 +384,7 @@ Monitor closely if:
 
 - ⚠️ Response time > 5s on any endpoint
 - ⚠️ Error rate > 1% on any endpoint
-- ⚠️ Memory usage > 3.2GB
+- ⚠️ Memory usage > 1.5GB
 - ⚠️ CPU usage sustained > 80%
 - ⚠️ Qdrant documents not increasing (ingestion stopped)
 
@@ -517,5 +517,5 @@ flyctl restart -a nuzantara-rag
 
 ---
 
-**Last Updated:** 2026-03-02  
-**Next Review:** 2026-03-09
+**Last Updated:** 2026-03-22
+**Next Review:** 2026-03-29

@@ -10,15 +10,15 @@
 
 Supportare Zantara su **multiple piattaforme** con **logica business centralizzata** e **UX ottimizzata per ogni canale**.
 
-**Canali Target:**
+**Canali (7 attivi/scaffold):**
 
 - ✅ Web App (esistente)
 - ✅ Telegram (esistente)
-- 🔄 WhatsApp Business API
-- 🔄 Instagram DM
-- 🔄 X (Twitter) DM
-- 🔄 Facebook Messenger
-- 🔄 Voice (Twilio Voice, Google Assistant)
+- ✅ WhatsApp Business API (esistente)
+- ✅ Instagram DM (esistente)
+- ✅ X (Twitter) DM (esistente)
+- 🔄 Google Chat (scaffold)
+- 🔄 Slack (scaffold)
 
 ---
 
@@ -28,15 +28,15 @@ Supportare Zantara su **multiple piattaforme** con **logica business centralizza
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    CHANNEL LAYER                                │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐       │
-│  │  Web   │ │Telegram│ │WhatsApp│ │Instagram│ │   X    │       │
-│  │  App   │ │  Bot   │ │Business│ │   DM    │ │  DM    │       │
-│  └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬────┘       │
-│      │          │          │          │          │              │
-└──────┼──────────┼──────────┼──────────┼──────────┼──────────────┘
-       │          │          │          │          │
-       └──────────┴──────────┴──────────┴──────────┘
+│                    CHANNEL LAYER (7 channels)                    │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌─────┐│
+│  │ Web  │ │Telegr│ │Whats │ │Insta │ │  X   │ │Google│ │Slack││
+│  │ App  │ │ Bot  │ │ App  │ │  DM  │ │  DM  │ │ Chat │ │     ││
+│  └──┬───┘ └──┬───┘ └──┬───┘ └──┬───┘ └──┬───┘ └──┬───┘ └──┬──┘│
+│     │        │        │        │        │        │        │    │
+└─────┼────────┼────────┼────────┼────────┼────────┼────────┼────┘
+      │        │        │        │        │        │        │
+      └────────┴────────┴────────┴────────┴────────┴────────┘
                           │
               ┌───────────▼──────────────┐
               │   CHANNEL ROUTER         │
@@ -905,4 +905,4 @@ async def stream_query(
 
 ---
 
-_Documento creato 2026-01-16. Architecture proposal per multi-channel Zantara platform._
+_Documento creato 2026-01-16, aggiornato 2026-03-22. Architecture per multi-channel Zantara platform (7 canali)._

@@ -29,7 +29,7 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 - Migrations: 51
 - API Endpoints: 406
 - Test Cases: ~5308+
-- Qdrant Collections: 4 (53,757+ documents)
+- Qdrant Collections: 9 (66,595+ documents)
 - Knowledge Graph: 34,606 nodes, 30,628 edges
 
 ### 1. THE GOLDEN RULES (Strict Compliance Required)
@@ -348,7 +348,7 @@ Mostra vista completa del cliente:
 - Logo: `/Users/antonellosiano/Desktop/Investor KITAS - Bali Zero_files/balizero-logo-transparent.png`
 
 **Deployed to:** `apps/mouth/public/files/visa/`
-**URL pattern:** `https://nuzantara-mouth.vercel.app/files/visa/{CODE}_{Name}_BaliZero.pdf` (deployed on Vercel)
+**URL pattern:** `https://kita.balizero.com/files/visa/{CODE}_{Name}_BaliZero.pdf` (deployed on Vercel)
 
 **Database:** `visa_types.metadata->>'pdf_url'` contiene il path relativo
 

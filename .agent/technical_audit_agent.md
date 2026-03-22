@@ -13,7 +13,7 @@ Analizzare approfonditamente la codebase per identificare:
 
 ## Focus Prioritario
 
-- Backend: 78 routers, 244 services
+- Backend: 88 routers, 244 services
 - Frontend: React Query patterns, hook optimization
 - Database: Query efficiency, N+1 problems
 - API: Response time optimization

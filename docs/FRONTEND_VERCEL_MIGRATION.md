@@ -14,7 +14,7 @@ The frontend (`apps/mouth`) has been fully migrated from Fly.io to **Vercel** fo
 | ------------------------------------ | ----------------------------- | --------------------------- |
 | `https://www.balizero.com`           | Vercel (cname.vercel-dns.com) | ✅ Primary                  |
 | `https://balizero.com`               | Redirects to www              | ✅ Active                   |
-| `https://nuzantara-mouth.vercel.app` | Vercel                        | ✅ Active                   |
+| `https://kita.balizero.com`          | Vercel                        | ✅ Active                   |
 | `https://nuzantara-mouth.fly.dev`    | -                             | ❌ Deprecated (app stopped) |
 
 ## DNS Configuration (Cloudflare)
@@ -63,7 +63,7 @@ Set in Vercel dashboard:
 `ZANTARA_ALLOWED_ORIGINS` includes all active frontend origins:
 
 ```bash
-fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
+fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com" -a nuzantara-rag
 ```
 
 ## Benefits

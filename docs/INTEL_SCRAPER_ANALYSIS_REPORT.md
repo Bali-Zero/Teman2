@@ -500,7 +500,7 @@ EnrichedArticle(
 **Deployment Note:**
 
 - Preview URLs possono essere serviti dal backend (`https://nuzantara-rag.fly.dev/preview`)
-- Oppure dal frontend Vercel (`https://nuzantara-mouth.vercel.app/preview`)
+- Oppure dal frontend Vercel (`https://kita.balizero.com/preview`)
 - Default: backend (configurabile via `PREVIEW_BASE_URL` env var)
 - Il frontend è deployato su **Vercel** (non più su Fly.io)
 
@@ -583,7 +583,7 @@ POST /api/intel/scraper/submit
 **Note:**
 
 - Il **backend** resta su **Fly.io** (`https://nuzantara-rag.fly.dev`)
-- Il **frontend** è deployato su **Vercel** (`https://nuzantara-mouth.vercel.app`)
+- Il **frontend** è deployato su **Vercel** (`https://kita.balizero.com`)
 - I domini custom (`kita.balizero.com`, `balizero.com`) puntano al frontend Vercel tramite DNS
 
 **Payload:**

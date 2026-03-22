@@ -42,7 +42,7 @@
 
 - **Client Management**: CRUD completo con multi-tenancy
 - **Kanban View**: Drag & drop per status (Lead → Active → Completed)
-- **List View**: Griglia virtualizzata (performance per 1000+ clienti)
+- **List View**: Griglia virtualizzata (performance per 5000+ clienti)
 - **Family Members**: Gestione familiari e dipendenti
 - **Documents**: Upload/tracking documenti (passaporti, visti, contratti)
 - **Timeline**: Storico interazioni (note, chiamate, email)
@@ -61,7 +61,7 @@
 
 - ✅ Server-side filtering by `assigned_to`
 - ✅ Date field sanitization (no more DB crashes)
-- ✅ Virtualization (handles 1000+ clients smoothly)
+- ✅ Virtualization (handles 5000+ clients smoothly)
 - ✅ Avatar fallback system (country flags)
 - ✅ Access control (Super Admin vs Regular Members)
 

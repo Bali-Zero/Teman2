@@ -145,7 +145,7 @@ PYTHONPATH=. pytest backend/tests/services/rag/ -q
 cd apps/mouth && npm test
 ```
 
-**Note:** ~448 pre-existing failures in `tests/unit/` are from rogue AI refactors. These do NOT affect production and are known technical debt.
+**Note:** Test debt cleaned 2026-03-20 (0 failures). Previously ~448 pre-existing failures from rogue AI refactors, resolved by Windsurf cleanup.
 
 ---
 
@@ -401,7 +401,7 @@ curl -s https://nuzantara-rag.fly.dev/api/monitoring/retrieval-quality?time_rang
 A: Pre-existing failures from rogue AI refactors (Gemini, Windsurf, Cursor). They removed imports, renamed functions, and deleted modules. Core tests (KG, Channels, RAG) are 100%. The unit test debt is tracked but not prioritized.
 
 **Q: Why only 1 uvicorn worker?**
-A: ML models (torch, sentence-transformers) consume ~2GB each. With a 4GB VM, 2 workers = OOM kill. See ADR-009.
+A: ML models (torch, sentence-transformers) consume ~2GB each. With a 2GB VM, even 1 worker is tight. See ADR-009.
 
 **Q: Why Gemini instead of GPT-4?**
 A: Cost. Gemini Flash is 5-10x cheaper for equivalent quality on our domain. OpenAI is only used for embeddings. See ADR-001.

@@ -11,7 +11,7 @@ Verificare che il login funzioni correttamente e che i cookie di autenticazione 
 1. Apri `https://kita.balizero.com/login` nel browser
 2. Inserisci credenziali:
    - Email: `zero@balizero.com` (o altro utente valido)
-   - PIN: `010719` (o PIN corretto)
+   - PIN: `$ADMIN_PIN` [PIN from env] (o PIN corretto)
 3. Clicca "Authenticate"
 
 ### 2. Verifica Cookie (DevTools)
@@ -160,7 +160,7 @@ Se il redirect non avviene o va in loop, c'è un problema con la logica di routi
 # Test login endpoint
 curl -X POST https://kita.balizero.com/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"zero@balizero.com","pin":"010719"}' \
+  -d '{"email":"zero@balizero.com","pin":"'$ADMIN_PIN'"}' \
   -v \
   -c cookies.txt
 

@@ -6,7 +6,7 @@ You are researching for Bali Zero / Zantara AI — an AI-powered business intell
 
 - Zantara AI chat (24/7, multilingual: EN/IT/ID)
 - Client portal (visa tracking, documents, messaging)
-- CRM with 1000+ clients
+- CRM with 5000+ clients
 - KBLI 2025 Navigator (1,563 business codes with AI explanations)
 - Knowledge Graph (56K nodes, 161K edges)
 - Intel pipeline (automated news → enrichment → publishing)
