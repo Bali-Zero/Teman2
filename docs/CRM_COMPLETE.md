@@ -585,7 +585,7 @@ tail -f apps/backend-rag/logs/app.log
 
 **Maintainer**: Zero (zero@balizero.com)  
 **Deployment**: https://nuzantara-rag.fly.dev  
-**Frontend**: https://nuzantara-mouth.vercel.app  
+**Frontend**: https://kita.balizero.com  
 **Logs**: `fly logs -a nuzantara-rag`
 
 **Emergency Rollback**:

@@ -9,7 +9,7 @@
 | Metrica             | Valore                                           |
 | ------------------- | ------------------------------------------------ |
 | **Linee di codice** | ~50,000+                                         |
-| **Routers**         | 63 endpoint files                                |
+| **Routers**         | 88 endpoint files                                |
 | **Services**        | 26 domini                                        |
 | **Core Engine**     | 3,617 LOC                                        |
 | **LLM Providers**   | 5 (Gemini, Vertex, DeepSeek, Ollama, OpenRouter) |
@@ -31,7 +31,7 @@ app/
 ├── streaming.py         # SSE streaming (24KB)
 ├── feature_flags.py     # Feature toggles
 ├── models.py            # Pydantic models
-├── routers/             # 63 router files!
+├── routers/             # 88 router files!
 ├── setup/               # Startup initialization
 ├── auth/                # Authentication
 ├── utils/               # Helpers

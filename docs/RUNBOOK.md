@@ -385,10 +385,10 @@ fly logs -a nuzantara-rag | grep -i "oom\|killed\|memory"
 
 ### Root Cause
 
-Each uvicorn worker loads ~2GB of ML models. With a 4GB VM:
+Each uvicorn worker loads ~2GB of ML models. With a 2GB VM:
 
-- 1 worker: ~3.5GB total (safe)
-- 2 workers: ~6GB total (OOM kill)
+- 1 worker: ~1.8GB total (tight but stable with lazy loading)
+- 2 workers: ~3.5GB total (OOM kill on 2GB VM)
 
 ### Fix
 
@@ -496,7 +496,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/agentic-rag/query \
   -d '{"query": "What is a PT PMA?", "session_id": "deploy-test"}'
 ```
 
-**Known test debt:** ~448 pre-existing failures in `tests/unit/` from rogue AI refactors. These do NOT affect production.
+**Known test debt:** Cleaned 2026-03-20 (0 failures). Previously ~448 pre-existing failures from rogue AI refactors, resolved by Windsurf cleanup.
 
 ---
 

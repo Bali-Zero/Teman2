@@ -6,7 +6,7 @@ You are researching for Nuzantara/Bali Zero. We're designing a multi-agent syste
 
 - LangGraph-based agent orchestration
 - 8 workflow chains (daily_ops, client_onboarding, compliance, intel_pipeline, etc.)
-- MCP server with 96 tools
+- MCP server with 109 tools
 - Episodic memory in Qdrant (collective_memories collection)
 - OODA loop pattern (Observe → Orient → Decide → Act)
 

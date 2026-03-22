@@ -672,7 +672,7 @@ _Integrated from adversarial architecture review (ChatGPT/Kimi findings)._
 
 ### Phase 1: Validation Layer + Concurrency Safeguards (Next)
 
-- [ ] Scale Fly.io nuzantara-rag to 4GB RAM ($48/mo)
+- [ ] Scale Fly.io nuzantara-rag to 2GB RAM (current allocation)
 - [ ] Add VALIDATE gate (Gate 1-3) to SEO Guardian (Pydantic ActionPlan model)
 - [ ] Add Gate 0: Data Sanity Validator (pre-DECIDE baseline comparison)
 - [ ] File I/O safety: `fcntl.flock` + atomic swap for state.json
@@ -692,7 +692,7 @@ _Integrated from adversarial architecture review (ChatGPT/Kimi findings)._
 - [ ] Intel Gatherer Commander (upgrade bali-intel-scraper cron)
 - [ ] Memory Curator Commander (JSONL → Qdrant consolidation)
 - [ ] Create `agent_events` PostgreSQL table (just-in-time: G2 broadcasts to G1)
-- [ ] Scale to performance-1x 4GB if monitoring shows CPU pressure ($64/mo)
+- [ ] Scale to performance-1x 2GB if monitoring shows CPU pressure
 - **Why event bus here**: First cross-domain flow: G2 intel → G1 compliance alerts.
 
 ### Phase 4: Content General (G3) + Comms General (G5)
@@ -721,7 +721,7 @@ _Integrated from adversarial architecture review (ChatGPT/Kimi findings)._
 
 | Constraint                | Enforcement                                                                                                                                               |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Fly.io RAM scaling        | Phase 0-2: 4GB shared-cpu-2x ($48/mo). Phase 3+: 4GB performance-1x ($64/mo). Scale to 8GB perf-2x ($99/mo) only if monitoring shows pressure.            |
+| Fly.io RAM scaling        | Phase 0-2: 2GB shared-cpu-2x (current). Phase 3+: scale up only if monitoring shows pressure.                                                               |
 | Async-first               | `httpx` only, `ainvoke`/`astream` for LangGraph, `asyncpg` for checkpointing                                                                              |
 | Python 3.11+              | Type hints required, `TypedDict` for graph state, `match` statements                                                                                      |
 | No hardcoded secrets      | Environment variables only, `.secrets/` in `.gitignore`                                                                                                   |

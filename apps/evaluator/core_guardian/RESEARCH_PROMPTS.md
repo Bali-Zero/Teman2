@@ -3,7 +3,7 @@
 ## Contesto comune (da includere in entrambi i prompt)
 
 ```
-Sto progettando un "Super Agent" autonomo per un backend Python FastAPI in produzione (86 routers, 236 servizi, ~4000 test). L'agente deve operare H24 su una macchina locale (M4 Pro, 48GB RAM) e migliorare progressivamente la qualità del codice senza supervisione umana diretta.
+Sto progettando un "Super Agent" autonomo per un backend Python FastAPI in produzione (88 routers, 244 servizi, ~4000 test). L'agente deve operare H24 su una macchina locale (M4 Pro, 48GB RAM) e migliorare progressivamente la qualità del codice senza supervisione umana diretta.
 
 Stack: Python 3.11, FastAPI, asyncpg, Qdrant (vector DB), LangGraph, pytest, ruff.
 Infra: Fly.io (prod), macchina locale (dev), OpenClaw come agent runtime (Claude Opus 4.6 + Gemini + Ollama locale).

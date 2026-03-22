@@ -17,7 +17,7 @@ The KG LangGraph workflow generator does NOT produce visible improvements for mu
 
 ## Test Environment
 
-- **Backend:** nuzantara-rag on Fly.io (Singapore, shared-cpu-2x, 4GB RAM)
+- **Backend:** nuzantara-rag on Fly.io (Singapore, shared-cpu-2x, 2GB RAM)
 - **API Endpoint:** `POST /api/agentic-rag/query`
 - **Auth:** JWT token (zero@balizero.com)
 - **Method:** Direct API calls (browser login was blocked during crash recovery)

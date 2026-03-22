@@ -78,7 +78,7 @@ Each ADR documents a significant architecture choice, its context, rationale, an
 **Rationale:**
 
 - Fly.io kills containers that don't respond to health checks within 60s
-- ML imports (torch, sentence-transformers) take 30-45s on a 4GB VM
+- ML imports (torch, sentence-transformers) take 30-45s on a 2GB VM
 - 70+ router imports add another 10-15s at module level
 - The solution is to defer all heavy work and respond immediately to `/health`
 
@@ -94,7 +94,7 @@ Each ADR documents a significant architecture choice, its context, rationale, an
 - `backend/app/setup/app_factory.py`
 - `backend/app/setup/service_initializer.py`
 - `backend/app/setup/router_registration.py`
-- `Dockerfile`: `--workers 1` (2 workers = OOM on 4GB)
+- `Dockerfile`: `--workers 1` (2 workers = OOM on 2GB)
 
 **Consequences:**
 
@@ -264,14 +264,14 @@ AgenticRAGOrchestrator (orchestrator.py)
 
 **Date:** 2026-02-12
 **Status:** Active
-**Decision:** Run exactly 1 uvicorn worker on the 4GB Fly.io VM.
+**Decision:** Run exactly 1 uvicorn worker on the 2GB Fly.io VM.
 
-**Context:** ML models (torch, sentence-transformers) consume ~2GB per worker process. With a 4GB VM, 2 workers consistently trigger OOM kills.
+**Context:** ML models (torch, sentence-transformers) consume ~2GB per worker process. With a 2GB VM, even 1 worker is tight and 2 workers would OOM kill.
 
 **Rationale:**
 
-- 1 worker × 2GB ML models = 2GB + ~1GB for Python runtime + ~500MB OS = fits in 4GB
-- 2 workers = 4GB ML + 2GB runtime = OOM kill
+- 1 worker × 2GB ML models = tight fit in 2GB VM (lazy loading + deferred init required)
+- 2 workers = impossible on 2GB, guaranteed OOM kill
 - Fly.io's `min_machines_running = 1` + `auto_stop_machines = false` ensures the single worker is always hot
 - Rolling deploys (`strategy = rolling`) provide zero-downtime updates
 
@@ -280,7 +280,7 @@ AgenticRAGOrchestrator (orchestrator.py)
 **Consequences:**
 
 - (+) Stable, no OOM kills
-- (+) Cost-effective (4GB VM instead of 8GB)
+- (+) Cost-effective (2GB VM)
 - (-) Single-threaded processing (mitigated by async I/O)
 - (-) No process-level fault tolerance (one bad request can't be isolated)
 

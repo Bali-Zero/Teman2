@@ -7,7 +7,7 @@ globs: "**/fly.toml,**/Dockerfile,**/fly.*.toml"
 
 ## Fly.io Backend
 
-**CRITICO: 1 worker SOLO** — 2 workers = OOM kill garantito su VM 4GB
+**CRITICO: 1 worker SOLO** — 2 workers = OOM kill garantito su VM 2GB
 
 ```bash
 # SEMPRE rolling

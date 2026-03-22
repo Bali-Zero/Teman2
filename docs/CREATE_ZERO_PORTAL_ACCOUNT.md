@@ -1,7 +1,9 @@
 # 🔐 Creare Account Portal per zero@balizero.com
 
-**Email:** `zero@balizero.com`  
-**PIN:** `010719`
+> **SECURITY:** Never hardcode PINs. Use environment variable `ADMIN_PIN`.
+
+**Email:** `zero@balizero.com`
+**PIN:** `$ADMIN_PIN` (from environment variable)
 
 ---
 
@@ -23,14 +25,14 @@
 
 1. Controlla email `zero@balizero.com`
 2. Clicca sul link invito
-3. Crea PIN: `010719`
+3. Crea PIN: `$ADMIN_PIN` [PIN from env]
 4. Completa registrazione
 
 ### Step 4: Accedi
 
 1. Vai su: `https://my.balizero.com/portal/login`
 2. Email: `zero@balizero.com`
-3. PIN: `010719`
+3. PIN: `$ADMIN_PIN` [PIN from env]
 4. Enter Portal ✅
 
 ---
@@ -50,7 +52,7 @@ cd apps/backend-rag/backend/scripts
 export ADMIN_TOKEN="il_tuo_token_qui"
 export BACKEND_URL="https://nuzantara-rag.fly.dev"
 
-./create_portal_account_via_api.sh zero@balizero.com 010719
+./create_portal_account_via_api.sh zero@balizero.com $ADMIN_PIN
 ```
 
 ---
@@ -62,8 +64,8 @@ export BACKEND_URL="https://nuzantara-rag.fly.dev"
 ```bash
 cd apps/backend-rag
 python3 << 'PYEOF'
-import bcrypt
-pin = '010719'
+import os, bcrypt
+pin = os.environ.get('ADMIN_PIN', 'CHANGE_ME')  # Set ADMIN_PIN env var
 pin_hash = bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
 print(f"UPDATE team_members SET pin_hash = '{pin_hash}', active = true, portal_access = true, updated_at = NOW() WHERE email = 'zero@balizero.com';")
 PYEOF
@@ -123,7 +125,7 @@ Dopo aver creato l'account, verifica:
 # Via API
 curl -X POST https://nuzantara-rag.fly.dev/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "zero@balizero.com", "credentials": "010719"}'
+  -d '{"email": "zero@balizero.com", "credentials": "'$ADMIN_PIN'"}'
 
 # Dovresti ricevere un JWT token se funziona
 ```
@@ -136,7 +138,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/auth/login \
 
 1. Vai su: `https://my.balizero.com/portal/login`
 2. Email: `zero@balizero.com`
-3. PIN: `010719`
+3. PIN: `$ADMIN_PIN` [PIN from env]
 4. Enter Portal ✅
 
 ---

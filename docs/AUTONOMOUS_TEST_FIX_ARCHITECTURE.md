@@ -567,7 +567,7 @@ Next run: tomorrow 03:00 WITA
 
 ### MVP (Week 1): Scan + Classify Only
 
-**Goal:** Get structured visibility into the 448 failures.
+**Goal:** Get structured visibility into test failures. (Note: test debt was cleaned 2026-03-20, 0 failures remain.)
 **Effort:** 4 hours.
 
 1. Install pytest plugins:
@@ -876,13 +876,10 @@ Week 5-6: Fix TYPE errors (62 → ~15)          [~+2% coverage]
 Week 7-8: Fix LOGIC errors (78 → ~30)         [~+2% coverage]
 Week 9+:  Test generation for uncovered code  [+1-2% per week]
 
-Expected trajectory:
-  Week 0:  448 failures, ~42% coverage
-  Week 2:  280 failures, ~47% coverage
-  Week 4:  200 failures, ~52% coverage
-  Week 6:  150 failures, ~56% coverage
-  Week 8:  100 failures, ~60% coverage
-  Week 12: <50 failures, ~70% coverage
+Expected trajectory (HISTORICAL — test debt cleaned 2026-03-20, 0 failures):
+  Week 0:  448 failures, ~42% coverage  [baseline]
+  ...
+  2026-03-20: 0 failures (cleaned by Windsurf)
 ```
 
 ### 6.3 When to Stop

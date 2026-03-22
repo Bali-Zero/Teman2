@@ -10,9 +10,9 @@ trigger: always_on
 
 ## Stack
 
-- Backend: Python 3.11+, FastAPI — 78 router, 244 service, 46 agenti autonomi
+- Backend: Python 3.11+, FastAPI — 88 router, 244 service, 46 agenti autonomi
 - Frontend: Next.js (App Router), TypeScript, Tailwind CSS
-- Vector DB: Qdrant — 7 collezioni, 58.880 vettori
+- Vector DB: Qdrant — 9 collezioni, 66.595 vettori
 - Relational: PostgreSQL 17 | Cache: Redis
 - **Embedding: `text-embedding-3-small` 1536 dims — MAI CAMBIARE, FROZEN**
 - KG: LangGraph — 56.113 nodi, 161.173 archi
@@ -46,7 +46,7 @@ MAI hardcodare. Solo da `PricingTool`. Ref: `PRICING_REFERENCE.md`
 - Rimuovere `Any` da `typing` → crash runtime tutti i router
 - `httpx` → `requests` → viola async rule
 - Payload nested Qdrant → KBLI search rotta
-- `--workers 2` Dockerfile → OOM kill Fly.io 4GB
+- `--workers 2` Dockerfile → OOM kill Fly.io 2GB
 - Import relativi → crash runtime
 
 ## MCP Tools

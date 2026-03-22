@@ -8,7 +8,7 @@ globs: apps/backend-rag/**/*.py
 ## Struttura
 
 ```
-backend/app/routers/     # 78 router — endpoint per dominio
+backend/app/routers/     # 88 router — endpoint per dominio
 backend/app/services/    # 244 service — business logic
 backend/core/            # config, dipendenze, logging
 backend/models/          # Pydantic models
@@ -46,7 +46,7 @@ cd apps/backend-rag && source .venv/bin/activate
 PYTHONPATH=. pytest tests/unit/app/routers/test_<nome>.py -v
 ```
 
-Test debt noto: ~448 failure pre-esistenti in tests/unit/ da rogue AI. Non bloccano deploy.
+Test debt: CLEANED — 0 failed, 0 errors dopo cleanup. Non ci sono più failure bloccanti.
 
 ## Comandi
 

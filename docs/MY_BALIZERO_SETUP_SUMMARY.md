@@ -54,7 +54,7 @@ Le pagine portal sono attualmente accessibili su:
 **Nota:** Dopo il deploy, aggiornare anche il secret Fly.io:
 
 ```bash
-fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://my.balizero.com,https://www.my.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
+fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://my.balizero.com,https://www.my.balizero.com,https://kita.balizero.com" -a nuzantara-rag
 ```
 
 ---
@@ -105,7 +105,7 @@ TTL: Auto
 **Dopo che il dominio è attivo, aggiornare Fly.io secrets:**
 
 ```bash
-fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://my.balizero.com,https://www.my.balizero.com,https://nuzantara-mouth.vercel.app" -a nuzantara-rag
+fly secrets set ZANTARA_ALLOWED_ORIGINS="https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://my.balizero.com,https://www.my.balizero.com,https://kita.balizero.com" -a nuzantara-rag
 ```
 
 **Verifica:**

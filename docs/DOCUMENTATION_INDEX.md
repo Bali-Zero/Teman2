@@ -134,7 +134,7 @@ From [SYSTEM_MAP_4D.md](SYSTEM_MAP_4D.md) (auto-updated):
 | API Endpoints      | 406                        |
 | Test Cases         | ~5,308+                    |
 | Database Tables    | 24                         |
-| Qdrant Collections | 4 (53,757+ documents)      |
+| Qdrant Collections | 9 (66,595+ documents)      |
 | Knowledge Graph    | 34,606 nodes, 30,628 edges |
 
 ---
