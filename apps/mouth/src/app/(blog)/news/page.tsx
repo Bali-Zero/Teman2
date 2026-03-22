@@ -2,10 +2,8 @@ import type { Metadata } from "next";
 import { getAllArticles } from "@/lib/blog/articles";
 import NewsPageClient from "../NewsPageClient";
 
-// ISR: Rigenera la pagina ogni 60 secondi per contenuti freschi
-export const revalidate = 60;
-
-export const dynamicParams = true;
+// Force dynamic rendering to avoid prerender failures when APIs are unreachable
+export const dynamic = "force-dynamic";
 
 const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || "https://balizero.com";
 
