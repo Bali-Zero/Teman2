@@ -25,22 +25,34 @@ const BACKEND_URL =
  * This handles legacy naming and folder structure differences
  */
 const CATEGORY_MAP: Record<string, ArticleCategory> = {
-  immigration: "immigration",
+  // Canonical categories
+  visas: "visas",
   business: "business",
-  tax: "tax-legal",
-  "tax-legal": "tax-legal",
+  taxes: "taxes",
   property: "property",
-  lifestyle: "lifestyle",
-  "digital-nomad": "lifestyle", // Map digital-nomad to lifestyle
-  tech: "tech",
-  general: "business", // Backend may use "general"
-  legal: "tax-legal", // news_items table uses "legal"
-  bali_news: "bali_news",
-  "bali-news": "bali_news",
+  living: "living",
+  trends: "trends",
+  // Backward compat (old category names)
+  immigration: "visas",
+  lifestyle: "living",
+  tech: "trends",
+  bali_news: "living",
+  // Folder mappings (14 folders → 7 categories)
+  tax: "taxes",
+  "tax-legal": "taxes",
+  "digital-nomad": "living",
+  "bali-news": "living",
+  business_regulations: "business",
+  emerging_trends: "trends",
+  social_media: "trends",
+  news: "business",
+  // Backend compatibility
+  general: "business",
+  legal: "taxes",
 };
 
 function normalizeCategory(rawCategory: string): ArticleCategory {
-  return CATEGORY_MAP[rawCategory] || "lifestyle";
+  return CATEGORY_MAP[rawCategory] || "living";
 }
 
 // ============================================================================
@@ -194,13 +206,12 @@ async function fetchBackendArticleBySlug(
  * Reverse mapping: normalized category to possible folder names
  */
 const CATEGORY_FOLDERS: Record<ArticleCategory, string[]> = {
-  immigration: ["immigration"],
-  business: ["business"],
-  "tax-legal": ["tax-legal", "tax"],
+  visas: ["immigration"],
+  business: ["business", "business_regulations", "news"],
+  taxes: ["tax-legal", "tax"],
   property: ["property"],
-  lifestyle: ["lifestyle", "digital-nomad"],
-  tech: ["tech"],
-  bali_news: ["bali_news"],
+  living: ["lifestyle", "living"],
+  trends: ["trends"],
 };
 
 async function getAllMdxSlugs(): Promise<

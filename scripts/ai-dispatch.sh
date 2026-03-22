@@ -118,7 +118,17 @@ cache_check() {
     hash=$(echo "$key" | shasum -a 256 | cut -d' ' -f1)
     local cached="$CACHE_DIR/${hash}.json"
     if [ -f "$cached" ]; then
-        local age=$(( $(date +%s) - $(stat -f%m "$cached" 2>/dev/null || stat -c%Y "$cached" 2>/dev/null || echo 0) ))
+        local cache_time
+        cache_time=$(stat -f%m "$cached" 2>/dev/null || stat -c%Y "$cached" 2>/dev/null || echo 0)
+        # Invalidate if repo has new commits since cache was written
+        local last_commit_time
+        last_commit_time=$(git log -1 --format=%ct 2>/dev/null || echo 0)
+        if [ "$last_commit_time" -gt "$cache_time" ]; then
+            info "CACHE INVALIDATED: repo changed since cache"
+            rm -f "$cached"
+            return 1
+        fi
+        local age=$(( $(date +%s) - cache_time ))
         if [ "$age" -lt 86400 ]; then
             echo "$cached"
             return 0
@@ -133,6 +143,16 @@ cache_save() {
     local hash
     hash=$(echo "$key" | shasum -a 256 | cut -d' ' -f1)
     echo "$content" > "$CACHE_DIR/${hash}.json"
+}
+
+# ═══════════════════════════════════════════════════════
+# Audit log: append-only JSONL for federation metrics
+# ═══════════════════════════════════════════════════════
+audit_log() {
+    local cmd="$1" prompt_hash="$2" duration="$3" exit_code="$4"
+    local ts
+    ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    echo "{\"ts\":\"$ts\",\"cmd\":\"$cmd\",\"machine\":\"$MACHINE\",\"prompt_hash\":\"$prompt_hash\",\"duration_s\":$duration,\"exit_code\":$exit_code}" >> "$OUTPUT_DIR/audit.jsonl"
 }
 
 # ═══════════════════════════════════════════════════════
@@ -208,6 +228,27 @@ require_codex() {
     fi
 }
 
+require_claude() {
+    if ! command -v claude &>/dev/null; then
+        err "Claude CLI not installed."
+        exit 1
+    fi
+}
+
+require_aider() {
+    if ! command -v aider &>/dev/null; then
+        err "Aider not installed. Install: pip install aider-chat"
+        exit 1
+    fi
+    # Load API keys from master env if not already set
+    if [ -z "$OPENROUTER_API_KEY" ] && [ -f "$HOME/Desktop/NUZANTARA_ENV_KEYS.env" ]; then
+        export OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY "$HOME/Desktop/NUZANTARA_ENV_KEYS.env" | cut -d= -f2)
+    fi
+    if [ -z "$DEEPSEEK_API_KEY" ] && [ -f "$HOME/Desktop/NUZANTARA_ENV_KEYS.env" ]; then
+        export DEEPSEEK_API_KEY=$(grep DEEPSEEK_API_KEY "$HOME/Desktop/NUZANTARA_ENV_KEYS.env" | cut -d= -f2)
+    fi
+}
+
 # ═══════════════════════════════════════════════════════
 # Core runners
 # ═══════════════════════════════════════════════════════
@@ -265,6 +306,34 @@ run_codex() {
     fi
 }
 
+run_claude() {
+    local mode="$1"
+    local prompt="$2"
+    local timeout="${3:-120}"
+    local allowed_tools="${4:-Read,Grep,Glob}"
+    require_claude
+    check_safety "$prompt"
+    log "Claude Code (Opus 4.6) → $mode [read-only, tools=$allowed_tools]"
+
+    local start_time exit_code output
+    start_time=$(date +%s)
+    output=$(run_with_timeout "$timeout" command claude -p "$prompt" --allowedTools "$allowed_tools" --no-input 2>&1) && exit_code=0 || exit_code=$?
+    local duration=$(( $(date +%s) - start_time ))
+
+    save_output "claude-$mode" "$output" "$duration"
+
+    if [ "$exit_code" -eq 0 ]; then
+        echo "$output"
+    elif [ "$exit_code" -eq 124 ]; then
+        err "TIMEOUT: Claude did not respond in ${timeout}s"
+        return 1
+    else
+        err "Claude failed (exit $exit_code) after ${duration}s"
+        echo "$output"
+        return 1
+    fi
+}
+
 # ═══════════════════════════════════════════════════════
 # COMMANDS
 # ═══════════════════════════════════════════════════════
@@ -288,23 +357,21 @@ case "$CMD" in
         duration=$(( $(date +%s) - start ))
         result=$(json_output "explore" "$duration" "$output" "$ec")
         cache_save "explore:$PROMPT" "$result"
+        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
+        audit_log "explore" "$prompt_hash" "$duration" "$ec"
         echo "$result"
         ;;
 
-    # SEARCH: Gemini Google grounded for regulation/web (cached 24h)
+    # SEARCH: Gemini Google grounded for regulation/web (NEVER cached — must be fresh)
     search)
         [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh search \"query\""; exit 1; }
         check_safety "$PROMPT"
-        if cached=$(cache_check "search:$PROMPT"); then
-            info "CACHE HIT: $cached"
-            cat "$cached"
-            exit 0
-        fi
         start=$(date +%s)
         output=$(run_gemini "search" "Use google_web_search to find: $PROMPT. Provide a summary with sources and citations." 120) && ec=0 || ec=$?
         duration=$(( $(date +%s) - start ))
         result=$(json_output "search" "$duration" "$output" "$ec")
-        cache_save "search:$PROMPT" "$result"
+        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
+        audit_log "search" "$prompt_hash" "$duration" "$ec"
         echo "$result"
         ;;
 
@@ -315,6 +382,8 @@ case "$CMD" in
         start=$(date +%s)
         output=$(run_codex "workspace-write" "$PROMPT" 300) && ec=0 || ec=$?
         duration=$(( $(date +%s) - start ))
+        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
+        audit_log "sandbox" "$prompt_hash" "$duration" "$ec"
         json_output "sandbox" "$duration" "$output" "$ec"
         ;;
 
@@ -333,6 +402,8 @@ con la tua confidence level (alta/media/bassa).
 Soluzione da analizzare:
 $PROMPT" 180) && ec=0 || ec=$?
         duration=$(( $(date +%s) - start ))
+        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
+        audit_log "redteam" "$prompt_hash" "$duration" "$ec"
         json_output "redteam" "$duration" "$output" "$ec"
         ;;
 
@@ -519,6 +590,115 @@ $ANALYSIS" 2>&1) || true
         ;;
 
     # ╔══════════════════════════════════════════════════╗
+    # ║  CLAUDE — Read-only analysis (Max plan, $0)    ║
+    # ╚══════════════════════════════════════════════════╝
+
+    claude-review)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh claude-review \"prompt\""; exit 1; }
+        start=$(date +%s)
+        output=$(run_claude "review" "Review this code/architecture for bugs, security issues, and improvements. Be specific with file:line references. $PROMPT" 180 "Read,Grep,Glob") && ec=0 || ec=$?
+        duration=$(( $(date +%s) - start ))
+        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
+        audit_log "claude-review" "$prompt_hash" "$duration" "$ec"
+        json_output "claude-review" "$duration" "$output" "$ec"
+        ;;
+
+    claude-redteam)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh claude-redteam \"solution\""; exit 1; }
+        start=$(date +%s)
+        output=$(run_claude "redteam" "Red team this solution. Find: edge cases, race conditions, breaking changes, security vulnerabilities, performance issues. If no problems found, say 'NESSUN PROBLEMA TROVATO' with confidence level. Solution: $PROMPT" 180 "Read,Grep,Glob") && ec=0 || ec=$?
+        duration=$(( $(date +%s) - start ))
+        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
+        audit_log "claude-redteam" "$prompt_hash" "$duration" "$ec"
+        json_output "claude-redteam" "$duration" "$output" "$ec"
+        ;;
+
+    claude-explain)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh claude-explain \"question\""; exit 1; }
+        run_claude "explain" "$PROMPT" 120 "Read,Grep,Glob"
+        ;;
+
+    # ╔══════════════════════════════════════════════════╗
+    # ║  AIDER — Multi-model coding (OpenRouter/DeepSeek)║
+    # ╚══════════════════════════════════════════════════╝
+
+    aider-fix)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh aider-fix \"file and what to fix\""; exit 1; }
+        require_aider
+        check_safety "$PROMPT"
+        log "Aider → DeepSeek V3 (via OpenRouter)"
+        start=$(date +%s)
+        output=$(run_with_timeout 180 aider --model openrouter/deepseek/deepseek-chat-v3-0324 --message "$PROMPT" --yes --no-git 2>&1) && ec=0 || ec=$?
+        duration=$(( $(date +%s) - start ))
+        save_output "aider-fix" "$output" "$duration"
+        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
+        audit_log "aider-fix" "$prompt_hash" "$duration" "$ec"
+        echo "$output"
+        ;;
+
+    aider-refactor)
+        [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh aider-refactor \"what to refactor\""; exit 1; }
+        require_aider
+        check_safety "$PROMPT"
+        log "Aider → Claude Sonnet (via OpenRouter) for refactoring"
+        start=$(date +%s)
+        output=$(run_with_timeout 300 aider --model openrouter/anthropic/claude-sonnet-4 --message "$PROMPT" --yes --no-git 2>&1) && ec=0 || ec=$?
+        duration=$(( $(date +%s) - start ))
+        save_output "aider-refactor" "$output" "$duration"
+        prompt_hash=$(echo "$PROMPT" | shasum -a 256 | cut -d' ' -f1)
+        audit_log "aider-refactor" "$prompt_hash" "$duration" "$ec"
+        echo "$output"
+        ;;
+
+    # ╔══════════════════════════════════════════════════╗
+    # ║  ARCHIVE & STATS                                ║
+    # ╚══════════════════════════════════════════════════╝
+
+    archive)
+        mkdir -p "$OUTPUT_DIR/archive"
+        count=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*.md" -mtime +7 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$count" -gt 0 ]; then
+            find "$OUTPUT_DIR" -maxdepth 1 -name "*.md" -mtime +7 -exec mv {} "$OUTPUT_DIR/archive/" \;
+            ok "Archived $count files >7 days old"
+        else
+            info "No files older than 7 days to archive"
+        fi
+        ;;
+
+    stats)
+        if [ ! -f "$OUTPUT_DIR/audit.jsonl" ]; then
+            warn "No audit log yet. Run some dispatches first."
+            exit 0
+        fi
+        python3 -c "
+import json
+from collections import Counter
+lines = open('$OUTPUT_DIR/audit.jsonl').readlines()
+entries = [json.loads(l) for l in lines if l.strip()]
+if not entries:
+    print('No entries in audit log.')
+    exit()
+cmds = Counter(e['cmd'] for e in entries)
+total = len(entries)
+ok_count = sum(1 for e in entries if e['exit_code'] == 0)
+avg_dur = sum(e['duration_s'] for e in entries) / total
+machines = Counter(e['machine'] for e in entries)
+print(f'=== Federation Dispatch Stats ===')
+print(f'Total dispatches: {total}')
+print(f'Success rate: {ok_count}/{total} ({100*ok_count//total}%)')
+print(f'Avg duration: {avg_dur:.0f}s')
+print(f'')
+print(f'By command:')
+for cmd, count in cmds.most_common():
+    print(f'  {cmd}: {count}')
+print(f'')
+print(f'By machine:')
+for m, count in machines.most_common():
+    print(f'  {m}: {count}')
+"
+        ;;
+
+    # ╔══════════════════════════════════════════════════╗
     # ║  INFO                                           ║
     # ╚══════════════════════════════════════════════════╝
 
@@ -586,6 +766,15 @@ CODEX (sandbox kernel-level):
   codex-fix-batch    "pattern"    Batch fix multiple tests
   codex-migrate      "desc"       Alembic migration in sandbox
 
+CLAUDE (read-only, Opus 4.6 via Max plan):
+  claude-review      "prompt"     Deep code review with file:line refs
+  claude-redteam     "solution"   Red team analysis (Opus-level reasoning)
+  claude-explain     "question"   Explain code/architecture
+
+AIDER (multi-model coding via OpenRouter/DeepSeek):
+  aider-fix          "prompt"     Fix with DeepSeek V3 (fast, cheap)
+  aider-refactor     "prompt"     Refactor with Claude Sonnet (via OpenRouter)
+
 COMBO:
   analyze-then-fix   "prompt"     Gemini analyzes → Codex fixes
 
@@ -596,6 +785,10 @@ PARALLEL:
 CACHE:
   cache-clear                     Clear all cached results
   cache-stats                     Show cache statistics
+
+METRICS:
+  stats                           Federation dispatch stats (from audit.jsonl)
+  archive                         Move output files >7 days old to archive/
 
 INFO:
   status                          System status + peer check
