@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 // ISR: Rigenera la pagina ogni 60 secondi per contenuti freschi
 // ma con cache per performance ottimali
+export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
 // Cache tags per invalidazione manuale quando necessario
