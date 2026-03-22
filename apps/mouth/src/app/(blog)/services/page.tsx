@@ -200,7 +200,7 @@ export default function ServicesPage() {
                 return (
                   <div
                     key={`${review.name}-${index}`}
-                    className="flex-shrink-0 w-[350px] p-6 rounded-xl bg-[#0a2540]"
+                    className="flex-shrink-0 w-[350px] p-6 rounded-xl bg-[rgba(10,37,64,0.4)] backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.2)]"
                     style={{ border: color.border }}
                   >
                     <div className="flex items-center gap-1 mb-3">
@@ -254,7 +254,7 @@ export default function ServicesPage() {
                 href={`/services/${service.slug}`}
                 className="group"
               >
-                <div className="h-full rounded-xl border border-white/10 bg-[#0a2540] p-8 hover:border-[#2251ff]/50 transition-all">
+                <div className="h-full rounded-xl border border-[rgba(255,255,255,0.05)] bg-[rgba(10,37,64,0.3)] backdrop-blur-md p-8 hover:border-[#2251ff]/50 hover:bg-[rgba(10,37,64,0.6)] hover:shadow-[0_8px_32px_rgba(34,81,255,0.15)] transition-all">
                   {/* Header */}
                   <div className="flex items-start gap-4 mb-6">
                     <div
@@ -388,7 +388,7 @@ export default function ServicesPage() {
           </div>
 
           {/* Zantara AI */}
-          <div className="flex items-center justify-center gap-4 p-6 rounded-xl bg-gradient-to-r from-[#2251ff]/20 to-[#e85c41]/20 border border-white/10">
+          <div className="flex items-center justify-center gap-4 p-6 rounded-xl bg-gradient-to-r from-[#2251ff]/20 to-[#e85c41]/20 border border-[rgba(255,255,255,0.1)] backdrop-blur-sm shadow-[0_4px_24px_rgba(232,92,65,0.15)]">
             <Image
               src="/assets/logo/zantara-lotus.png"
               alt="Zantara AI"
@@ -460,7 +460,10 @@ export default function ServicesPage() {
 
             <div className="grid grid-cols-2 gap-4">
               {CONTACT_INFO.map((info) => (
-                <div key={info.label} className="bg-white/10 rounded-xl p-6">
+                <div
+                  key={info.label}
+                  className="bg-[rgba(255,255,255,0.05)] backdrop-blur-md border border-[rgba(255,255,255,0.1)] rounded-xl p-6 shadow-auto hover:bg-[rgba(255,255,255,0.1)] transition-colors"
+                >
                   <p className="text-white/60 text-sm mb-1">{info.label}</p>
                   <p className="text-white font-medium">{info.value}</p>
                 </div>

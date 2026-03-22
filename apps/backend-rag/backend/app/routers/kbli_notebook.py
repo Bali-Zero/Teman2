@@ -283,7 +283,11 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
     logger.info(f"🧐 KBLI Inspection (Dynamic TTL {ttl}s): {code}")
     if not pool:
         logger.error("❌ Database pool not available for KBLI inspection")
-        raise HTTPException(status_code=500, detail="Database connection error")
+        raise HTTPException(
+            status_code=503,
+            detail="Database temporarily unavailable — retrying shortly",
+            headers={"Retry-After": "15"},
+        )
 
     try:
         async with pool.acquire() as conn:
@@ -400,9 +404,33 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
             return result
     except HTTPException:
         raise
+    except (ConnectionResetError, OSError) as e:
+        # Stale connection from Fly.io cold start — expire and signal retry
+        logger.warning(f"⚠️ KBLI Inspection stale connection for {code}: {e}")
+        try:
+            await pool.expire_connections()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=503,
+            detail="Database connection reset — please retry",
+            headers={"Retry-After": "5"},
+        ) from e
     except Exception as e:
-        logger.error(f"❌ KBLI Inspection Error for {code}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal processing error: {str(e)}") from e
+        err_msg = str(e)
+        if "connection was closed" in err_msg or "connection is closed" in err_msg:
+            logger.warning(f"⚠️ KBLI Inspection closed connection for {code}: {e}")
+            try:
+                await pool.expire_connections()
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=503,
+                detail="Database connection reset — please retry",
+                headers={"Retry-After": "5"},
+            ) from e
+        logger.error(f"❌ KBLI Inspection Error for {code}: {err_msg}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal processing error: {err_msg}") from e
 
 
 _llm_gateway_instance = None

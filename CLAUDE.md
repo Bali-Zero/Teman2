@@ -497,17 +497,18 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 
 ## 12b. Communication Channels (7 channels)
 
-| Channel      | Adapter                | Webhook                 | Status         |
-| ------------ | ---------------------- | ----------------------- | -------------- |
-| WhatsApp     | `whatsapp/adapter.py`  | `/webhook/whatsapp`     | ✅ Live (Meta Cloud API) |
-| Telegram     | `telegram/adapter.py`  | `/api/telegram/webhook` | ✅ Live (@Balizerobot) |
-| Instagram    | `instagram/adapter.py` | `/webhook/instagram`    | ✅ Live        |
-| X/Twitter    | `twitter/adapter.py`   | `/webhook/twitter`      | ❌ CRC broken  |
-| Web Chat     | `web/adapter.py`       | `/api/webhook/chat`     | ✅ Live        |
-| Google Chat  | `gchat/adapter.py`     | TBD                     | 🔧 Scaffold   |
-| Slack        | `slack/adapter.py`     | TBD                     | 🔧 Scaffold   |
+| Channel     | Adapter                | Webhook                 | Status                   |
+| ----------- | ---------------------- | ----------------------- | ------------------------ |
+| WhatsApp    | `whatsapp/adapter.py`  | `/webhook/whatsapp`     | ✅ Live (Meta Cloud API) |
+| Telegram    | `telegram/adapter.py`  | `/api/telegram/webhook` | ✅ Live (@Balizerobot)   |
+| Instagram   | `instagram/adapter.py` | `/webhook/instagram`    | ✅ Live                  |
+| X/Twitter   | `twitter/adapter.py`   | `/webhook/twitter`      | ❌ CRC broken            |
+| Web Chat    | `web/adapter.py`       | `/api/webhook/chat`     | ✅ Live                  |
+| Google Chat | `gchat/adapter.py`     | TBD                     | 🔧 Scaffold              |
+| Slack       | `slack/adapter.py`     | TBD                     | 🔧 Scaffold              |
 
 **Channel ownership:**
+
 - **Web/WhatsApp/Instagram**: Backend Fly.io (Gemini 3 Flash + RAG)
 - **Telegram**: Pro OpenClaw @Balizerobot (Opus 4.6 + SOUL.md persona) — Pro polls, Air/Fly send only
 - **X/Twitter**: Backend Fly.io — currently broken (CRC authentication failure)
@@ -518,16 +519,16 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 
 6 Vercel subdomains + SSO via `nz_access_token` httpOnly cookie on `.balizero.com`:
 
-| Subdomain                  | App           | Purpose            |
-| -------------------------- | ------------- | ------------------ |
-| `kita.balizero.com`        | mouth         | Workspace (main)   |
-| `my.balizero.com`          | mouth (portal) | Client portal      |
-| `prime.balizero.com`       | mouth (prime)  | Spatial intelligence (3D maps) |
-| `mail.balizero.com`        | mail          | Email interface    |
-| `calendar.balizero.com`    | calendar      | Calendar           |
-| `drive.balizero.com`       | drive          | File management    |
-| `knowledge.balizero.com`   | knowledge     | Knowledge base     |
-| `zantara.balizero.com`     | web           | AI chat (rewrites `/` → `/chat`) |
+| Subdomain                | App            | Purpose                          |
+| ------------------------ | -------------- | -------------------------------- |
+| `kita.balizero.com`      | mouth          | Workspace (main)                 |
+| `my.balizero.com`        | mouth (portal) | Client portal                    |
+| `prime.balizero.com`     | mouth (prime)  | Spatial intelligence (3D maps)   |
+| `mail.balizero.com`      | mail           | Email interface                  |
+| `calendar.balizero.com`  | calendar       | Calendar                         |
+| `drive.balizero.com`     | drive          | File management                  |
+| `knowledge.balizero.com` | knowledge      | Knowledge base                   |
+| `zantara.balizero.com`   | web            | AI chat (rewrites `/` → `/chat`) |
 
 ## 12d. Local AI (Ollama-First)
 
@@ -539,10 +540,10 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 
 ## 12e. CRM RBAC (Updated 2026-03-21)
 
-| Role | Access |
-| ---- | ------ |
-| Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`, role=admin) | All clients and practices |
-| Team Member (role != admin) | Only practices where `clients.assigned_to` = own email |
+| Role                                                                | Access                                                 |
+| ------------------------------------------------------------------- | ------------------------------------------------------ |
+| Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`, role=admin) | All clients and practices                              |
+| Team Member (role != admin)                                         | Only practices where `clients.assigned_to` = own email |
 
 **Implementation:** `crm_utils.can_view_all_practices()` + SQL `AND c.assigned_to = $email`. Server-side only, frontend unchanged.
 

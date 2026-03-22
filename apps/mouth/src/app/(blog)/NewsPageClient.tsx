@@ -27,7 +27,7 @@ const KBLINavigatorSection = lazy(
 
 // Skeleton for lazy-loaded sections
 const SectionSkeleton = () => (
-  <div className="animate-pulse bg-[#0a1628] h-[400px] lg:h-[500px]" />
+  <div className="animate-pulse bg-[rgba(10,22,40,0.6)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] rounded-2xl h-[400px] lg:h-[500px]" />
 );
 
 // App domain for internal routes
@@ -169,7 +169,7 @@ export default function NewsPageClient({
                 )}
 
                 {/* Newsletter Box */}
-                <div className="bg-[#0a2540] p-6 flex-[0.6]">
+                <div className="bg-[rgba(10,37,64,0.6)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] p-6 flex-[0.6] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
                   <p className="text-white font-medium mb-2">
                     {t("home.newsletter.title")}
                   </p>
@@ -255,7 +255,7 @@ export default function NewsPageClient({
                 >
                   <Link href="/kbli">
                     <article className="group">
-                      <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5 bg-[#0a1628]">
+                      <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5 bg-[rgba(10,22,40,0.6)] backdrop-blur-sm border border-[rgba(255,255,255,0.03)]">
                         {article.coverImage &&
                         typeof article.coverImage === "string" ? (
                           <Image
@@ -424,7 +424,7 @@ export default function NewsPageClient({
               <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
                 {SERVICES.map((service) => (
                   <Link key={service.slug} href={`/services/${service.slug}`}>
-                    <div className="group p-6 rounded-xl border border-white/10 hover:border-[#2251ff]/50 hover:bg-white/5 transition-all h-full">
+                    <div className="group p-6 rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(10,37,64,0.3)] backdrop-blur-md hover:border-[#2251ff]/50 hover:bg-[rgba(10,37,64,0.6)] hover:-translate-y-1 transition-all h-full shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
                       <div className="w-12 h-12 rounded-lg bg-[#2251ff]/10 flex items-center justify-center mb-4 group-hover:bg-[#2251ff]/20 transition-colors">
                         <service.icon className="w-6 h-6 text-[#2251ff]" />
                       </div>

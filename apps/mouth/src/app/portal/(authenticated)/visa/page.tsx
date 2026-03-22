@@ -72,8 +72,9 @@ export default function VisaPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <div className="flex items-center justify-between">
@@ -188,8 +189,9 @@ export default function VisaPage() {
         <section
           className="rounded-xl border border-dashed p-8 text-center"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <Plane
@@ -207,8 +209,9 @@ export default function VisaPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <div className="flex items-center gap-2">
@@ -232,8 +235,9 @@ export default function VisaPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <div className="flex items-center gap-2">
@@ -312,7 +316,10 @@ function DocumentCard({ document }: { document: PortalDocument }) {
       case "expired":
         return { background: "rgba(239,68,68,0.12)", color: "#f87171" };
       default:
-        return { background: "var(--bz-surface)", color: "var(--bz-text-2)" };
+        return {
+          background: "rgba(255,255,255,0.03)",
+          color: "var(--bz-text-2)",
+        };
     }
   };
 
@@ -320,8 +327,8 @@ function DocumentCard({ document }: { document: PortalDocument }) {
     <div
       className="rounded-lg border p-3 transition-colors"
       style={{
-        background: "var(--bz-surface)",
-        borderColor: "var(--bz-border)",
+        background: "rgba(255,255,255,0.03)",
+        borderColor: "rgba(255,255,255,0.05)",
       }}
     >
       <div className="flex items-center gap-3">
@@ -358,8 +365,8 @@ function HistoryCard({ item }: { item: VisaHistoryItem }) {
     <div
       className="rounded-lg border p-3"
       style={{
-        background: "var(--bz-surface)",
-        borderColor: "var(--bz-border)",
+        background: "rgba(255,255,255,0.03)",
+        borderColor: "rgba(255,255,255,0.05)",
       }}
     >
       <div className="flex items-start justify-between">
@@ -371,7 +378,10 @@ function HistoryCard({ item }: { item: VisaHistoryItem }) {
         </div>
         <span
           className="text-xs px-2 py-1 rounded-full font-medium"
-          style={{ background: "var(--bz-card)", color: "var(--bz-text-2)" }}
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            color: "var(--bz-text-2)",
+          }}
         >
           {item.status}
         </span>

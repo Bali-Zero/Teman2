@@ -81,9 +81,6 @@ def test_app():
     service_modules_to_mock = [
         "personality_service",  # May not exist
         "query_router",
-        "rag",
-        "rag.agentic",
-        "rag.vision_rag",
         "ingestion_service",
         "auto_ingestion_orchestrator",
         "client_journey_orchestrator",

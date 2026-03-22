@@ -174,24 +174,23 @@ class TestSaveConversation:
         test_app.dependency_overrides[get_database_pool] = override_db_pool
 
         try:
-            with patch("backend.app.routers.conversations.get_auto_crm", return_value=None):
-                response = test_client.post(
-                    "/api/bali-zero/conversations/save",
-                    json={
-                        "messages": [
-                            {"role": "user", "content": "Hello"},
-                            {"role": "assistant", "content": "Hi there!"},
-                        ],
-                        "session_id": "test-session-123",
-                    },
-                    headers={"Authorization": f"Bearer {valid_jwt_token}"},
-                )
+            response = test_client.post(
+                "/api/bali-zero/conversations/save",
+                json={
+                    "messages": [
+                        {"role": "user", "content": "Hello"},
+                        {"role": "assistant", "content": "Hi there!"},
+                    ],
+                    "session_id": "test-session-123",
+                },
+                headers={"Authorization": f"Bearer {valid_jwt_token}"},
+            )
 
-                assert response.status_code == 200
-                data = response.json()
-                assert data["success"] is True
-                assert "conversation_id" in data
-                assert data["messages_saved"] == 2
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is True
+            assert "conversation_id" in data
+            assert data["messages_saved"] == 2
         finally:
             test_app.dependency_overrides.pop(get_database_pool, None)
 
@@ -204,7 +203,6 @@ class TestSaveConversation:
 
         with (
             patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("backend.app.routers.conversations.get_auto_crm", return_value=None),
             patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.post(
@@ -227,7 +225,6 @@ class TestSaveConversation:
 
         with (
             patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("backend.app.routers.conversations.get_auto_crm", return_value=None),
             patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.post(
@@ -560,7 +557,6 @@ class TestConversationSecurity:
 
         with (
             patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("backend.app.routers.conversations.get_auto_crm", return_value=None),
             patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.post(
@@ -601,7 +597,6 @@ class TestConversationSecurity:
 
         with (
             patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("backend.app.routers.conversations.get_auto_crm", return_value=None),
             patch("backend.app.routers.conversations.logger"),
         ):
             # User 1 saves

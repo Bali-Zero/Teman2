@@ -416,7 +416,7 @@ export function ArticleClient({
                           </code>
                         ),
                       pre: ({ children }) => (
-                        <pre className="bg-[#0a1929] border border-white/10 rounded-xl p-4 overflow-x-auto my-6 text-base">
+                        <pre className="bg-[rgba(10,25,41,0.6)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] shadow-inner rounded-xl p-4 overflow-x-auto my-6 text-base">
                           {children}
                         </pre>
                       ),
@@ -474,7 +474,7 @@ export function ArticleClient({
               )}
 
               {/* Author card */}
-              <div className="mt-12 p-6 rounded-2xl bg-white/5 border border-white/10">
+              <div className="mt-12 p-6 rounded-2xl bg-[rgba(255,255,255,0.03)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
                 <div className="flex items-start gap-4">
                   {article.author.avatar ? (
                     <Image
@@ -534,7 +534,7 @@ export function ArticleClient({
 
       {/* Related articles */}
       {relatedArticles.length > 0 && (
-        <section className="py-12 md:py-16 bg-[#031219] border-t border-white/10">
+        <section className="py-12 md:py-16 bg-[rgba(3,18,25,0.5)] backdrop-blur-xl border-t border-[rgba(255,255,255,0.05)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-serif text-2xl md:text-3xl font-bold text-white mb-8">
               Related Articles

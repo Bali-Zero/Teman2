@@ -83,7 +83,7 @@ function FeaturedCard({ article, index = 0 }: ArticleCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
-      className="group relative overflow-hidden rounded-2xl bg-black/40"
+      className="group relative overflow-hidden rounded-2xl bg-[rgba(0,0,0,0.4)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
     >
       <Link href={href} className="block">
         {/* Background Image */}

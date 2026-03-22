@@ -147,7 +147,7 @@ export default function LKPMSubmitPage() {
         year: number;
         realized_total: number;
       }>("/api/v1/lkpm/submit-data", {
-        client_id: 0,
+        client_id: 0, // 0 = resolve from authenticated session
         quarter,
         year,
         ...investment,
@@ -201,8 +201,8 @@ export default function LKPMSubmitPage() {
           onClick={() => setLang(lang === "en" ? "id" : "en")}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border"
           style={{
-            background: "var(--bz-surface)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(255,255,255,0.03)",
+            borderColor: "rgba(255,255,255,0.05)",
             color: "var(--bz-text-2)",
           }}
         >
@@ -216,8 +216,9 @@ export default function LKPMSubmitPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <h2 className="text-lg font-semibold">{t.period}</h2>
@@ -234,8 +235,8 @@ export default function LKPMSubmitPage() {
                 onChange={(e) => setQuarter(e.target.value)}
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
+                  background: "rgba(255,255,255,0.03)",
+                  borderColor: "rgba(255,255,255,0.05)",
                 }}
               >
                 {QUARTERS.map((q) => (
@@ -257,8 +258,8 @@ export default function LKPMSubmitPage() {
                 onChange={(e) => setYear(Number(e.target.value))}
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
+                  background: "rgba(255,255,255,0.03)",
+                  borderColor: "rgba(255,255,255,0.05)",
                 }}
               >
                 {[currentYear, currentYear - 1, currentYear - 2].map((y) => (
@@ -275,8 +276,9 @@ export default function LKPMSubmitPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <h2 className="text-lg font-semibold">{t.modalTetap}</h2>
@@ -314,8 +316,8 @@ export default function LKPMSubmitPage() {
                   placeholder="0"
                   className="w-full rounded-lg border px-3 py-2 text-sm text-right"
                   style={{
-                    background: "var(--bz-surface)",
-                    borderColor: "var(--bz-border)",
+                    background: "rgba(255,255,255,0.03)",
+                    borderColor: "rgba(255,255,255,0.05)",
                   }}
                 />
                 <input
@@ -328,8 +330,8 @@ export default function LKPMSubmitPage() {
                   placeholder="0"
                   className="w-full rounded-lg border px-3 py-2 text-sm text-right"
                   style={{
-                    background: "var(--bz-surface)",
-                    borderColor: "var(--bz-border)",
+                    background: "rgba(255,255,255,0.03)",
+                    borderColor: "rgba(255,255,255,0.05)",
                   }}
                 />
               </div>
@@ -357,8 +359,8 @@ export default function LKPMSubmitPage() {
                   placeholder="0"
                   className="w-full rounded-lg border px-3 py-2 text-sm text-right col-span-2"
                   style={{
-                    background: "var(--bz-surface)",
-                    borderColor: "var(--bz-border)",
+                    background: "rgba(255,255,255,0.03)",
+                    borderColor: "rgba(255,255,255,0.05)",
                   }}
                 />
               </div>
@@ -370,8 +372,9 @@ export default function LKPMSubmitPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <div>
@@ -393,8 +396,8 @@ export default function LKPMSubmitPage() {
             placeholder={t.modalKerjaPlaceholder}
             className="w-full rounded-lg border px-3 py-2 text-sm text-right"
             style={{
-              background: "var(--bz-surface)",
-              borderColor: "var(--bz-border)",
+              background: "rgba(255,255,255,0.03)",
+              borderColor: "rgba(255,255,255,0.05)",
             }}
           />
         </section>
@@ -403,8 +406,9 @@ export default function LKPMSubmitPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <h2 className="text-lg font-semibold">{t.employment}</h2>
@@ -424,8 +428,8 @@ export default function LKPMSubmitPage() {
                 placeholder={t.tkiPlaceholder}
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
+                  background: "rgba(255,255,255,0.03)",
+                  borderColor: "rgba(255,255,255,0.05)",
                 }}
               />
             </div>
@@ -444,8 +448,8 @@ export default function LKPMSubmitPage() {
                 placeholder={t.tkaPlaceholder}
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
+                  background: "rgba(255,255,255,0.03)",
+                  borderColor: "rgba(255,255,255,0.05)",
                 }}
               />
             </div>
@@ -456,8 +460,9 @@ export default function LKPMSubmitPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <h2 className="text-lg font-semibold">{t.revenue}</h2>
@@ -481,8 +486,8 @@ export default function LKPMSubmitPage() {
                 placeholder="0"
                 className="w-full rounded-lg border px-3 py-2 text-sm text-right"
                 style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
+                  background: "rgba(255,255,255,0.03)",
+                  borderColor: "rgba(255,255,255,0.05)",
                 }}
               />
             </div>
@@ -505,8 +510,8 @@ export default function LKPMSubmitPage() {
                 placeholder="0"
                 className="w-full rounded-lg border px-3 py-2 text-sm text-right"
                 style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
+                  background: "rgba(255,255,255,0.03)",
+                  borderColor: "rgba(255,255,255,0.05)",
                 }}
               />
             </div>
@@ -517,8 +522,9 @@ export default function LKPMSubmitPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "var(--bz-card)",
-            borderColor: "var(--bz-border)",
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(24px)",
           }}
         >
           <h2 className="text-lg font-semibold">{t.narrative}</h2>
@@ -537,8 +543,8 @@ export default function LKPMSubmitPage() {
                 rows={3}
                 className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
                 style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
+                  background: "rgba(255,255,255,0.03)",
+                  borderColor: "rgba(255,255,255,0.05)",
                 }}
               />
             </div>
@@ -556,8 +562,8 @@ export default function LKPMSubmitPage() {
                 rows={3}
                 className="w-full rounded-lg border px-3 py-2 text-sm resize-none"
                 style={{
-                  background: "var(--bz-surface)",
-                  borderColor: "var(--bz-border)",
+                  background: "rgba(255,255,255,0.03)",
+                  borderColor: "rgba(255,255,255,0.05)",
                 }}
               />
             </div>

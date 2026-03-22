@@ -113,14 +113,14 @@ The evidence scoring system was designed for a tool-calling pipeline, but Gemini
 
 ### Comprehensive Test Results
 
-| Suite                    | Passed  | Failed | Notes                        |
-| ------------------------ | ------- | ------ | ---------------------------- |
-| KG LangGraph + Subgraphs | 58/58   | 0      | All 4 domains                |
-| Dynamic Confidence       | 24/24   | 0      | 6-factor scoring             |
-| Channels                 | 43/43   | 0      | Telegram, Web, WhatsApp      |
-| Full KG + RAG            | 244/244 | 16\*   | \*pre-existing               |
-| Main Unit Suite          | 3,917   | 0      | Cleaned 2026-03-20           |
-| Production API           | 7/7     | 0      | health, agent, KBLI          |
+| Suite                    | Passed  | Failed | Notes                   |
+| ------------------------ | ------- | ------ | ----------------------- |
+| KG LangGraph + Subgraphs | 58/58   | 0      | All 4 domains           |
+| Dynamic Confidence       | 24/24   | 0      | 6-factor scoring        |
+| Channels                 | 43/43   | 0      | Telegram, Web, WhatsApp |
+| Full KG + RAG            | 244/244 | 16\*   | \*pre-existing          |
+| Main Unit Suite          | 3,917   | 0      | Cleaned 2026-03-20      |
+| Production API           | 7/7     | 0      | health, agent, KBLI     |
 
 **Test debt: CLEANED (2026-03-20).** Previously ~448 failures from rogue AI refactors (Gemini/Windsurf) — all resolved. 0 failed, 0 errors.
 

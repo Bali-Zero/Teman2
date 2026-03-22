@@ -95,8 +95,9 @@ export default function SettingsPage() {
       <section
         className="rounded-xl border p-6 space-y-6"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <div className="flex items-center gap-2">
@@ -130,8 +131,9 @@ export default function SettingsPage() {
       <section
         className="rounded-xl border p-6 space-y-4"
         style={{
-          background: "var(--bz-card)",
-          borderColor: "var(--bz-border)",
+          background: "rgba(30,30,35,0.7)",
+          borderColor: "rgba(255,255,255,0.05)",
+          backdropFilter: "blur(24px)",
         }}
       >
         <div className="flex items-center gap-2">
@@ -202,8 +204,8 @@ function ToggleSetting({
     <div
       className="flex items-center justify-between gap-4 p-4 rounded-lg border transition-colors"
       style={{
-        background: "var(--bz-surface)",
-        borderColor: "var(--bz-border)",
+        background: "rgba(255,255,255,0.03)",
+        borderColor: "rgba(255,255,255,0.05)",
       }}
     >
       <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -251,7 +253,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div
       className="flex items-center justify-between p-3 rounded-lg"
-      style={{ background: "var(--bz-surface)" }}
+      style={{ background: "rgba(255,255,255,0.03)" }}
     >
       <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>
         {label}

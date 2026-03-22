@@ -90,13 +90,7 @@ async def _init_critical_services(
     except (ValueError, ConnectionError, RuntimeError) as e:
         error_msg = str(e)
         service_registry.register("search", ServiceStatus.UNAVAILABLE, error=error_msg)
-        logger.error(f"❌ CRITICAL: Failed to initialize SearchService: {e}")
-        # Catch-all for unexpected errors
-        error_msg = str(e)
-        service_registry.register("search", ServiceStatus.UNAVAILABLE, error=error_msg)
-        logger.error(
-            f"❌ CRITICAL: Unexpected error initializing SearchService: {e}", exc_info=True
-        )
+        logger.error(f"❌ CRITICAL: Failed to initialize SearchService: {e}", exc_info=True)
 
     # 2. AI Client (CRITICAL)
     ai_client = None
@@ -108,13 +102,7 @@ async def _init_critical_services(
     except (ValueError, ConnectionError, RuntimeError) as exc:
         error_msg = str(exc)
         service_registry.register("ai", ServiceStatus.UNAVAILABLE, error=error_msg)
-        logger.error(f"❌ CRITICAL: Failed to initialize ZantaraAIClient: {exc}")
-        # Catch-all for unexpected errors
-        error_msg = str(exc)
-        service_registry.register("ai", ServiceStatus.UNAVAILABLE, error=error_msg)
-        logger.error(
-            f"❌ CRITICAL: Unexpected error initializing ZantaraAIClient: {exc}", exc_info=True
-        )
+        logger.error(f"❌ CRITICAL: Failed to initialize ZantaraAIClient: {exc}", exc_info=True)
 
     # Fail-fast if critical services are unavailable
     if service_registry.has_critical_failures():
@@ -322,9 +310,10 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             # Configure pool kwargs
             pool_kwargs = {
                 "dsn": dsn,
-                "min_size": getattr(settings, "db_pool_min_size", None) or 5,
+                "min_size": getattr(settings, "db_pool_min_size", None) or 2,
                 "max_size": getattr(settings, "db_pool_max_size", None) or 20,
                 "command_timeout": getattr(settings, "db_command_timeout", None) or 60,
+                "max_inactive_connection_lifetime": 300.0,  # Drop idle conns after 5min (prevents stale after Fly cold start)
                 "init": init_db_connection,
             }
 
@@ -480,8 +469,8 @@ def _is_transient_error(error: Exception) -> bool:
 
 
 async def _database_health_check_loop(db_pool: asyncpg.Pool):
-    """Periodic health check for database pool."""
-    check_interval = 30  # seconds
+    """Periodic health check for database pool with automatic stale connection recovery."""
+    check_interval = 15  # seconds (fast recovery for Fly.io cold starts)
     from backend.app.core.service_health import ServiceStatus, service_registry
 
     while True:
@@ -516,10 +505,18 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
                 except ImportError:
                     pass
 
-                # Try to recover
+                # Try to recover stale connections by expiring the pool
                 if _is_transient_error(e):
-                    logger.info("Attempting database recovery...")
-                    # Recovery logic could be added here
+                    logger.info("Attempting database pool recovery — expiring idle connections...")
+                    try:
+                        await db_pool.expire_connections()
+                        # Verify recovery worked
+                        async with db_pool.acquire() as test_conn:
+                            await test_conn.execute("SELECT 1")
+                        service_registry.register("database", ServiceStatus.HEALTHY)
+                        logger.info("✅ Database pool recovered successfully")
+                    except Exception as recovery_err:
+                        logger.error(f"❌ Database pool recovery failed: {recovery_err}")
 
         except asyncio.CancelledError:
             logger.info("Database health check loop cancelled")

@@ -471,12 +471,12 @@ export default function PratichePage() {
   const totalPages = Math.ceil(filteredPractices.length / itemsPerPage);
 
   const SkeletonCard = () => (
-    <div className="p-3 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-card)] space-y-2">
-      <div className="h-4 bg-[var(--bz-surface)] rounded w-3/4 animate-pulse" />
-      <div className="h-3 bg-[var(--bz-surface)] rounded w-1/2 animate-pulse" />
-      <div className="flex gap-2 pt-2 border-t border-[var(--bz-border)]">
-        <div className="h-6 w-6 bg-[var(--bz-surface)] rounded animate-pulse" />
-        <div className="h-6 w-6 bg-[var(--bz-surface)] rounded animate-pulse" />
+    <div className="p-3 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.45)] backdrop-blur-md space-y-2">
+      <div className="h-4 bg-[rgba(255,255,255,0.05)] rounded w-3/4 animate-pulse" />
+      <div className="h-3 bg-[rgba(255,255,255,0.05)] rounded w-1/2 animate-pulse" />
+      <div className="flex gap-2 mt-4 pt-3 border-t border-[var(--bz-border)]">
+        <div className="h-6 w-6 bg-[rgba(255,255,255,0.05)] rounded animate-pulse" />
+        <div className="h-6 w-6 bg-[rgba(255,255,255,0.05)] rounded animate-pulse" />
       </div>
     </div>
   );
@@ -518,13 +518,13 @@ export default function PratichePage() {
               placeholder="Search process by ID, client, type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 transition-all"
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 transition-all"
             />
           </div>
           <div className="flex gap-2">
             <Button
               variant={showFilters ? "default" : "outline"}
-              className="gap-2 border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)]"
+              className="gap-2 border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md text-[var(--bz-text-1)] hover:bg-[rgba(45,45,50,0.8)]"
               onClick={() => setShowFilters(!showFilters)}
             >
               <Filter className="w-4 h-4" />
@@ -535,7 +535,7 @@ export default function PratichePage() {
                 </span>
               )}
             </Button>
-            <div className="flex rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] overflow-hidden">
+            <div className="flex rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md overflow-hidden">
               <button
                 onClick={() => setViewMode("kanban")}
                 className={`p-2 transition-all ${
@@ -564,7 +564,7 @@ export default function PratichePage() {
 
         {/* Filters Panel */}
         {showFilters && (
-          <div className="p-4 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] space-y-4">
+          <div className="p-4 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(32,32,36,0.7)] backdrop-blur-xl shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-[var(--bz-text-1)]">Filters</h3>
               {activeFiltersCount > 0 && (
@@ -678,10 +678,10 @@ export default function PratichePage() {
             return (
               <div
                 key={statusKey}
-                className="rounded-xl flex flex-col h-full min-h-[500px] min-w-[280px] overflow-hidden"
+                className="rounded-xl flex flex-col h-full min-h-[500px] min-w-[280px] overflow-hidden shadow-xl backdrop-blur-md"
                 style={{
                   background: colors.tintBg,
-                  border: `1px solid ${colors.tintBorder}`,
+                  border: `1px solid rgba(255,255,255,0.05)`,
                 }}
               >
                 {/* Gradient top bar */}
@@ -739,7 +739,7 @@ export default function PratichePage() {
                           return (
                             <div
                               key={practice.id}
-                              className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md relative group ${
+                              className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-xl relative group backdrop-blur-sm hover:-translate-y-1 ${
                                 updatingId === practice.id
                                   ? "opacity-70 pointer-events-none"
                                   : ""
@@ -748,17 +748,19 @@ export default function PratichePage() {
                                   ? "border-[var(--bz-accent)] ring-1 ring-[var(--bz-accent)]/30"
                                   : cardIsCompleted
                                     ? "border-green-500/30"
-                                    : "border-[var(--bz-border)] hover:border-[var(--bz-accent)]/30"
+                                    : "border-[rgba(255,255,255,0.06)] hover:border-[var(--bz-accent)]/30"
                               }`}
                               style={
                                 cardIsCompleted
                                   ? {
-                                      background: "rgba(34, 197, 94, 0.06)",
+                                      background:
+                                        "linear-gradient(145deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.05) 100%)",
                                       boxShadow:
-                                        "0 0 12px rgba(34, 197, 94, 0.1)",
+                                        "0 4px 20px rgba(34, 197, 94, 0.15)",
                                     }
                                   : {
-                                      background: "var(--bz-card)",
+                                      background:
+                                        "linear-gradient(145deg, rgba(40,40,45,0.7) 0%, rgba(30,30,35,0.4) 100%)",
                                     }
                               }
                               onClick={() =>
@@ -784,7 +786,7 @@ export default function PratichePage() {
 
                                 {/* 3-Dot Menu Trigger */}
                                 <button
-                                  className="absolute top-3 right-2 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-surface)] opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="absolute top-3 right-2 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[rgba(255,255,255,0.05)] opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={(e) => handleMenuClick(e, practice)}
                                 >
                                   <MoreVertical className="w-4 h-4" />
@@ -909,7 +911,7 @@ export default function PratichePage() {
 
       {/* List View */}
       {viewMode === "list" && (
-        <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)]/50 overflow-hidden">
+        <div className="rounded-xl border border-[rgba(255,255,255,0.05)] bg-[rgba(32,32,36,0.6)] backdrop-blur-md shadow-2xl overflow-hidden">
           {isLoading ? (
             <div className="p-12 text-center">
               <div className="animate-pulse space-y-4">
@@ -930,7 +932,7 @@ export default function PratichePage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[var(--bz-card)] border-b border-[var(--bz-border)]">
+                <thead className="bg-[rgba(35,35,40,0.8)] border-b border-[rgba(255,255,255,0.05)] backdrop-blur-lg">
                   <tr>
                     <th
                       onClick={() => toggleSort("id")}
@@ -1022,11 +1024,11 @@ export default function PratichePage() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--bz-border)]">
+                <tbody className="divide-y divide-[rgba(255,255,255,0.05)]">
                   {paginatedPractices.map((practice) => (
                     <tr
                       key={practice.id}
-                      className="hover:bg-[var(--bz-card)]/50 transition-colors cursor-pointer"
+                      className="hover:bg-[rgba(255,255,255,0.05)] transition-colors cursor-pointer"
                       onClick={() => router.push(`/process/${practice.id}`)}
                     >
                       <td className="px-4 py-3 text-sm font-medium text-[var(--bz-text-1)]">
@@ -1121,7 +1123,7 @@ export default function PratichePage() {
                             </button>
                           )}
                           <button
-                            className="p-1.5 rounded text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[var(--bz-surface)] transition-colors"
+                            className="p-1.5 rounded text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors"
                             onClick={(e) => handleMenuClick(e, practice)}
                             title="More options"
                           >
@@ -1136,7 +1138,7 @@ export default function PratichePage() {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--bz-border)] bg-[var(--bz-card)]">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.8)] backdrop-blur-lg">
                   <div className="text-sm text-[var(--bz-text-2)]">
                     Showing {(listPageNumber - 1) * itemsPerPage + 1} to{" "}
                     {Math.min(
@@ -1151,7 +1153,7 @@ export default function PratichePage() {
                         setListPageNumber((p) => Math.max(1, p - 1))
                       }
                       disabled={listPageNumber === 1}
-                      className="px-3 py-1 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] hover:bg-[var(--bz-base)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-1 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(45,45,50,0.5)] backdrop-blur-md text-[var(--bz-text-1)] hover:bg-[rgba(65,65,70,0.8)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Previous
                     </button>
@@ -1167,7 +1169,7 @@ export default function PratichePage() {
                               className={`px-2 py-1 rounded-lg transition-colors ${
                                 listPageNumber === pageNum
                                   ? "bg-[var(--bz-accent)] text-white"
-                                  : "bg-[var(--bz-surface)] text-[var(--bz-text-1)] hover:bg-[var(--bz-base)]"
+                                  : "bg-[rgba(45,45,50,0.5)] backdrop-blur-md text-[var(--bz-text-1)] hover:bg-[rgba(65,65,70,0.8)]"
                               }`}
                             >
                               {pageNum}
@@ -1208,7 +1210,7 @@ export default function PratichePage() {
       {selectedPractice && menuPosition && (
         <div
           ref={menuRef}
-          className="fixed z-50 min-w-[200px] rounded-lg border border-[var(--bz-border)] bg-[var(--bz-card)] shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-50 min-w-[200px] rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(30,30,35,0.8)] backdrop-blur-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100"
           style={{
             // ✅ Smart positioning: adjusts based on viewport boundaries
             // Menu height ~340px (header 40px + 9 items * 32px + padding)
@@ -1226,7 +1228,7 @@ export default function PratichePage() {
             maxWidth: "calc(100vw - 20px)",
           }}
         >
-          <div className="px-3 py-2 border-b border-[var(--bz-border)] bg-[var(--bz-surface)]/50 rounded-t-lg">
+          <div className="px-3 py-2 border-b border-[rgba(255,255,255,0.05)] bg-[rgba(40,40,45,0.6)] backdrop-blur-md rounded-t-lg">
             <p className="text-xs font-semibold text-[var(--bz-text-1)]">
               Update Status
             </p>

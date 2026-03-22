@@ -19,7 +19,6 @@ export function PortalBottomNav() {
       setUnreadCount(data.unreadCount);
     } catch (err) {
       // Silently fail - not critical for nav
-      console.error("Failed to fetch unread count", err);
     }
   }, []);
 
@@ -55,7 +54,7 @@ export function PortalBottomNav() {
 
   // Only show on mobile
   return (
-    <div className="fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[#242424]/95 backdrop-blur-lg md:hidden z-50 safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[rgba(19,19,21,0.65)] backdrop-blur-[20px] md:hidden z-50 safe-area-bottom">
       <div className="flex items-center justify-around h-16">
         {tabs.map((tab) => {
           const Icon = tab.icon;

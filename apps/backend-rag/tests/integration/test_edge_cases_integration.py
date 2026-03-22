@@ -36,6 +36,7 @@ class TestDatabaseEdgeCases:
     @pytest.mark.asyncio
     async def test_database_connection_pool_exhaustion(self, db_pool):
         """Test behavior when connection pool is exhausted"""
+        import asyncio
 
         # Try to acquire more connections than pool size
         max_size = 10
@@ -43,11 +44,16 @@ class TestDatabaseEdgeCases:
 
         try:
             for i in range(max_size + 5):  # Try more than max
-                conn = await db_pool.acquire()
-                connections.append(conn)
+                try:
+                    # If pool is exhausted, it will block. We use a timeout to prevent infinite hang.
+                    conn = await asyncio.wait_for(db_pool.acquire(), timeout=0.5)
+                    connections.append(conn)
+                except asyncio.TimeoutError:
+                    # Expected: we exhausted the pool
+                    break
 
-            # Should handle gracefully
-            assert len(connections) <= max_size + 5
+            # Should have acquired some connections, but blocked on the rest
+            assert len(connections) > 0
 
         finally:
             # Release all connections
@@ -354,12 +360,12 @@ class TestConcurrencyEdgeCases:
                 """
             )
 
-            # Run concurrent writes
-            tasks = []
-            for i in range(10):
-                async with db_pool.acquire() as conn:
-                    tasks.append(write_data(conn, i))
+            # Run concurrent writes — each task acquires its own connection
+            async def write_with_own_conn(pool, value):
+                async with pool.acquire() as c:
+                    await write_data(c, value)
 
+            tasks = [write_with_own_conn(db_pool, i) for i in range(10)]
             await asyncio.gather(*tasks)
 
             # Verify all writes succeeded

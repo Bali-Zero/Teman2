@@ -14,33 +14,33 @@
 
 The interface is liquid; intelligence is solid.
 
-| Channel              | Tech              | Role                                  | Status |
-| -------------------- | ----------------- | ------------------------------------- | ------ |
-| **Web Command Deck** | Next.js + React   | Deep Work, Admin, Analytics           | ✅     |
-| **Telegram**         | Bot API (OpenClaw)| Notifications, Approvals, Quick Tasks | ✅     |
-| **WhatsApp**         | Meta Cloud API    | Client Communication, Docs            | ✅     |
-| **Instagram**        | Meta API          | Brand Presence                        | ✅     |
-| **X/Twitter**        | Twitter API       | Social Monitoring                     | ❌ CRC |
-| **Google Chat**      | GChat API         | (Scaffold)                            | 🔧     |
-| **Slack**            | Slack API         | (Scaffold)                            | 🔧     |
+| Channel              | Tech               | Role                                  | Status |
+| -------------------- | ------------------ | ------------------------------------- | ------ |
+| **Web Command Deck** | Next.js + React    | Deep Work, Admin, Analytics           | ✅     |
+| **Telegram**         | Bot API (OpenClaw) | Notifications, Approvals, Quick Tasks | ✅     |
+| **WhatsApp**         | Meta Cloud API     | Client Communication, Docs            | ✅     |
+| **Instagram**        | Meta API           | Brand Presence                        | ✅     |
+| **X/Twitter**        | Twitter API        | Social Monitoring                     | ❌ CRC |
+| **Google Chat**      | GChat API          | (Scaffold)                            | 🔧     |
+| **Slack**            | Slack API          | (Scaffold)                            | 🔧     |
 
 ---
 
 ## QUICK STATS (Numeri Reali Verificati)
 
-| Metrica                 | Valore      | Note                                  |
-| ----------------------- | ----------- | ------------------------------------- |
-| **Documenti Qdrant**    | **66,595**  | 9 collezioni live + 11 defined        |
-| **API Endpoints**       | **88**      | Router files                          |
-| **Servizi Python**      | **244**     | /backend/services/                    |
-| **File Test**           | **385**     | unit/api/integration                  |
-| **MCP Tools**           | **109+14**  | nuzantara-mcp + nuzantara-mcp-advanced|
-| **Tabelle Database**    | **24+**     | PostgreSQL                            |
-| **Migrazioni**          | **60**      | Applicate                             |
-| **Knowledge Graph**     | **56,113 nodes / 161,173 edges** | PostgreSQL    |
-| **Canali Comunicazione**| **7**       | WhatsApp, Telegram, IG, X, Web, GChat, Slack |
-| **Fonti Intel**         | **630+**    | 12 categorie                          |
-| **Fly.io Apps**         | **3**       | rag + postgres + qdrant (Singapore)   |
+| Metrica                  | Valore                           | Note                                         |
+| ------------------------ | -------------------------------- | -------------------------------------------- |
+| **Documenti Qdrant**     | **66,595**                       | 9 collezioni live + 11 defined               |
+| **API Endpoints**        | **88**                           | Router files                                 |
+| **Servizi Python**       | **244**                          | /backend/services/                           |
+| **File Test**            | **385**                          | unit/api/integration                         |
+| **MCP Tools**            | **109+14**                       | nuzantara-mcp + nuzantara-mcp-advanced       |
+| **Tabelle Database**     | **24+**                          | PostgreSQL                                   |
+| **Migrazioni**           | **60**                           | Applicate                                    |
+| **Knowledge Graph**      | **56,113 nodes / 161,173 edges** | PostgreSQL                                   |
+| **Canali Comunicazione** | **7**                            | WhatsApp, Telegram, IG, X, Web, GChat, Slack |
+| **Fonti Intel**          | **630+**                         | 12 categorie                                 |
+| **Fly.io Apps**          | **3**                            | rag + postgres + qdrant (Singapore)          |
 
 ---
 

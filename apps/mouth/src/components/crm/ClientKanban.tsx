@@ -171,12 +171,19 @@ export const ClientKanban = ({
       {COLUMNS.map((column) => (
         <div
           key={column.id}
-          className="flex-shrink-0 w-80 flex flex-col rounded-xl bg-[var(--background-secondary)]/50 border border-[var(--border)]"
+          className="flex-shrink-0 w-80 flex flex-col rounded-xl shadow-xl backdrop-blur-md"
+          style={{
+            background: "rgba(25, 25, 30, 0.45)",
+            border: "1px solid rgba(255, 255, 255, 0.05)",
+          }}
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, column.id)}
         >
           {/* Column Header */}
-          <div className="p-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-inherit rounded-t-xl z-10 backdrop-blur-sm">
+          <div
+            className="p-3 border-b flex items-center justify-between sticky top-0 bg-inherit rounded-t-xl z-10 backdrop-blur-md"
+            style={{ borderColor: "rgba(255,255,255,0.05)" }}
+          >
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${column.color}`} />
               <h3 className="font-medium text-sm text-[var(--foreground)]">
