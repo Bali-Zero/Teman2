@@ -119,16 +119,10 @@ The evidence scoring system was designed for a tool-calling pipeline, but Gemini
 | Dynamic Confidence       | 24/24   | 0      | 6-factor scoring             |
 | Channels                 | 43/43   | 0      | Telegram, Web, WhatsApp      |
 | Full KG + RAG            | 244/244 | 16\*   | \*pre-existing               |
-| Main Unit Suite          | 3,675   | 448\*  | \*pre-existing rogue AI debt |
+| Main Unit Suite          | 3,917   | 0      | Cleaned 2026-03-20           |
 | Production API           | 7/7     | 0      | health, agent, KBLI          |
 
-**Pre-existing test debt (~448 failures):**
-
-- `invalidate_cache` removed from `backend.core.cache` (~30 errors)
-- `backend.services.integrations.service` module missing (~40 errors)
-- `reasoning.py` functions removed (16 failures)
-- `LLMGateway._available` property setter missing (10 errors)
-- Various mock/numpy issues
+**Test debt: CLEANED (2026-03-20).** Previously ~448 failures from rogue AI refactors (Gemini/Windsurf) — all resolved. 0 failed, 0 errors.
 
 ### Prevention Checklist (NEW)
 

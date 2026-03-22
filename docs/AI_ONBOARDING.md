@@ -1,20 +1,22 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-03-02
+**Last Updated:** 2026-03-22
 **Purpose:** Quick-start guide for AI assistants working on Project Nuzantara
 
 **System Stats:**
 
-- Router Files: 86
-- Services: 236 Python files
-- Test Files: 414
+- Router Files: 88
+- Services: 244 Python files
+- Test Files: 385
 - Qdrant Collections: 9 live on Fly.io (11 defined in code), 66,595 total documents
 - Knowledge Graph: 56,113 nodes, 161,173 edges (PostgreSQL)
-- Fly.io: 3 machines (Singapore), all healthy
+- Fly.io: 3 apps (Singapore) — nuzantara-rag, nuzantara-postgres, nuzantara-qdrant
 - DB Migrations: 060
-- MCP Server: 96 tools, 10 prompts, 5 resources, 8 workflow chains
-- Autonomous Scheduler: 11 tasks (auto-ingestion, self-healing, conversation trainer, golden routes, renewal alerts, birthplace enrichment, birthday notifier, conversation cleanup, daily ops autopilot)
+- MCP Server: 109 tools, 10 prompts, 5 resources, 8 workflow chains
+- Communication Channels: 7 (WhatsApp, Telegram, Instagram, X/Twitter, Web, Google Chat, Slack)
+- Autonomous Scheduler: 11 tasks via OpenClaw cron (mcporter calls, NOT lobster)
 - Core Test Pass Rate: 100% (KG 82/82, Channels 43/43, RAG 244/244)
+- Core Guardian V3: Autonomous code quality agent (3 fixers, every 3h, $0 cost)
 
 > **READ THIS FIRST** before making any changes to the codebase.
 
@@ -46,7 +48,7 @@ See [`docs/PRO_AIR_CONNECTION.md`](PRO_AIR_CONNECTION.md) for SSH setup and trou
 Then verify you understand:
 
 - [ ] **Virtualenv:** `.venv` created and activated (`source .venv/bin/activate`)
-- [ ] **Project Structure:** Monorepo with 14 apps, core: `apps/backend-rag` (FastAPI) and `apps/mouth` (Next.js)
+- [ ] **Project Structure:** Monorepo with 20 apps, core: `apps/backend-rag` (FastAPI) and `apps/mouth` (Next.js)
 - [ ] **Golden Rules:** No root execution, absolute imports, async-first, type hints required
 - [ ] **Critical Knowledge:** Embedding model must be `text-embedding-3-small`, KBLI has flat payload
 - [ ] **Deployment:** Backend on Fly.io (`nuzantara-rag`, Singapore), Frontend on Vercel
@@ -284,49 +286,55 @@ nuzantara/
 │   ├── backend-rag/             # CORE: FastAPI Backend (Fly.io)
 │   │   ├── backend/
 │   │   │   ├── app/             # FastAPI entrypoint (main_cloud.py)
-│   │   │   │   ├── routers/     # 86 route files
+│   │   │   │   ├── routers/     # 88 route files
 │   │   │   │   └── modules/     # identity, knowledge, notifications
-│   │   │   ├── channels/        # 5 channels: whatsapp, telegram, instagram, twitter, web
+│   │   │   ├── channels/        # 7 channels: whatsapp, telegram, instagram, twitter, web, gchat, slack
 │   │   │   ├── core/            # Config, Security, Logging
 │   │   │   ├── generals/        # Multi-agent task coordinator
 │   │   │   ├── prompts/         # Prompt Single Source of Truth (zantara_core.py)
-│   │   │   ├── services/        # Business Logic (236 files)
+│   │   │   ├── services/        # Business Logic (244 files)
 │   │   │   │   ├── rag/agentic/ # CORE: Orchestrator, ReAct, LLM Gateway
 │   │   │   │   ├── knowledge_graph/  # KG extraction + query
-│   │   │   │   ├── social/      # X/Twitter monitoring (NEW)
+│   │   │   │   ├── social/      # X/Twitter monitoring
 │   │   │   │   ├── compliance/  # 5 compliance services
 │   │   │   │   ├── journey/     # 5 journey services
 │   │   │   │   └── memory/      # Memory Orchestrator
-│   │   │   └── migrations/      # 43 migration files (up to 060)
-│   │   ├── tests/               # 414 test files
+│   │   │   └── migrations/      # Migration files (up to 060)
+│   │   ├── tests/               # 385 test files
 │   │   └── scripts/             # Maintenance + ingestion scripts
 │   │
-│   ├── mouth/                   # Frontend: Next.js + React (Vercel)
+│   ├── mouth/                   # Frontend: Next.js + React (Vercel) — kita.balizero.com
 │   │   └── src/
-│   │       ├── app/             # 83 page routes (blog, workspace, portal, kbli)
+│   │       ├── app/             # Page routes (blog, workspace, portal, kbli)
 │   │       ├── components/      # UI components
 │   │       └── lib/             # API clients, store
 │   │
 │   ├── nuzantara-mcp/           # MCP Server v2.1 (FastMCP, stdio)
-│   │   └── nuzantara_mcp/       # 96 tools, 10 prompts, 5 resources, 8 chains
+│   │   └── nuzantara_mcp/       # 109 tools, 10 prompts, 5 resources, 8 chains
 │   │
-│   ├── nuzantara-mcp-advanced/  # Advanced MCP (Fly.io ops, diagnostics)
+│   ├── nuzantara-mcp-advanced/  # Advanced MCP (Fly.io ops, diagnostics, 14 tools)
 │   ├── nuzantara-mcp-browser/   # Browser automation MCP
-│   ├── bali-intel-scraper/      # News processing pipeline
-│   ├── zantara-media/           # Editorial content system
+│   ├── bali-intel-scraper/      # News pipeline (runs LOCALLY on Pro via OpenClaw, NOT Fly)
+│   ├── evaluator/               # Quality assurance + Core Guardian V3
 │   ├── graph-engine/            # Graph processing engine
 │   ├── kbli-voice/              # KBLI voice interface
+│   ├── war-room/                # Operations dashboard + Canva automation
+│   ├── zantara-media/           # Editorial content system
 │   ├── admin-dashboard/         # Admin UI
 │   ├── webapp/                  # Web application
-│   ├── evaluator/               # Quality assurance
-│   └── web/                     # Web app variant
+│   ├── calendar/                # Subdomain satellite (calendar.balizero.com)
+│   ├── drive/                   # Subdomain satellite (drive.balizero.com)
+│   ├── knowledge/               # Subdomain satellite (knowledge.balizero.com)
+│   ├── mail/                    # Subdomain satellite (mail.balizero.com)
+│   ├── kbli-navigator/          # KBLI 2025 Navigator interface
+│   └── web/                     # Subdomain satellite (zantara.balizero.com)
 │
 ├── packages/
-│   ├── core/                    # Core libraries
+│   ├── core/                    # Core libraries + BZ design tokens + BZLogo
 │   └── kb/                      # Knowledge base
 │
 ├── docs/                        # Documentation
-├── scripts/                     # Root-level utilities
+├── scripts/                     # Root-level utilities + ai-dispatch.sh
 └── data/source_documents/       # KBLI JSON, legal PDFs
 ```
 
@@ -363,12 +371,25 @@ cd apps/backend-rag
 fly deploy --strategy rolling
 ```
 
-- App: `nuzantara-rag` (3 machines, Singapore)
+- **SOLO 3 Fly.io apps** (updated 2026-03-14):
+
+| App                  | CPU       | RAM | Auto-stop     | Note                    |
+| -------------------- | --------- | --- | ------------- | ----------------------- |
+| `nuzantara-rag`      | shared-2x | 2GB | ✅ yes, min=0 | Cold start ~35s         |
+| `nuzantara-postgres` | shared-1x | 2GB | no            | v0.1.0 (upgraded from v0.0.66 after OOM) |
+| `nuzantara-qdrant`   | shared-1x | 2GB | no            | v1.12.1                 |
+
+- **Destroyed (2026-03-14):** `nuzantara-rag-staging`, `bali-intel-scraper`, `zantara-media`, `fly-builder-red-flower-7537`
+- **Cost:** ~$35-40/mo (was ~$81/mo, -50%)
 - Health: `GET /health` shows runtime state
 - Secrets: `fly secrets list -a nuzantara-rag`
 - Logs: `fly logs -a nuzantara-rag`
-- **1 worker only** in Dockerfile (2 workers = OOM on 4GB VM)
+- **1 worker only** in Dockerfile (2 workers = OOM on 2GB VM)
 - **Lazy loading:** Heavy imports deferred to background init; health returns `"initializing"` while loading
+- **Backup:** pg_dump daily → Tigris `nuzantara-backups` via `~/scripts/fly-pg-backup.sh` (cron 03:00)
+- **Health monitor:** `~/scripts/fly-health-check.sh` every 5min, alerts via Telegram
+
+**CRITICAL:** `bali-intel-scraper` runs ONLY locally on Pro via OpenClaw cron (03:00 WITA), NOT on Fly.io.
 
 ### Frontend (Vercel)
 
@@ -395,7 +416,7 @@ This is a known issue, not a hack. The hook validates JS/TS formatting which is 
 
 **Package:** `apps/nuzantara-mcp/` (FastMCP 2.x, stdio transport, v2.1)
 
-Full-spectrum AI business intelligence and automation platform. **96 tools** across 17 modules:
+Full-spectrum AI business intelligence and automation platform. **109 tools** across 17 modules:
 
 | Module       | Capabilities                                      |
 | ------------ | ------------------------------------------------- |
@@ -433,8 +454,13 @@ See `docs/architecture/CHAIN_ONBOARDING_IMPROVEMENTS.md` for full implementation
 
 **Additional MCP servers:**
 
-- `apps/nuzantara-mcp-advanced/` — Fly.io ops, deployment readiness, code search, diagnostics
+- `apps/nuzantara-mcp-advanced/` — Fly.io ops, deployment readiness, code search, diagnostics (14 tools)
 - `apps/nuzantara-mcp-browser/` — Browser automation
+- `ga4-analytics` — GA4 property 505466833 (BALI ZERO WEB stream, G-S3H2M6VXWT)
+- `google-search-console` — 19 SEO tools, SA auth, site owner on balizero.com
+- `ocr-tesseract` — Document OCR with Indonesian language support
+
+**MCP Bridge (OpenClaw):** 129 tools connected via mcporter wrappers in `~/.local/bin/`. macOS provenance fix applied for LaunchAgent compatibility.
 
 **Run locally:**
 
@@ -449,19 +475,28 @@ nuzantara-mcp  # starts stdio server
 
 ## COMMUNICATION CHANNELS
 
-**5 omnichannel integrations** in `backend/channels/`:
+**7 omnichannel integrations** in `backend/channels/`:
 
-| Channel   | Adapter                | Webhook                 |
-| --------- | ---------------------- | ----------------------- |
-| WhatsApp  | `whatsapp/adapter.py`  | `/webhook/whatsapp`     |
-| Telegram  | `telegram/adapter.py`  | `/api/telegram/webhook` |
-| Instagram | `instagram/adapter.py` | `/webhook/instagram`    |
-| X/Twitter | `twitter/adapter.py`   | `/webhook/twitter`      |
-| Web Chat  | `web/adapter.py`       | `/api/webhook/chat`     |
+| Channel      | Adapter                | Webhook                 | Status         |
+| ------------ | ---------------------- | ----------------------- | -------------- |
+| WhatsApp     | `whatsapp/adapter.py`  | `/webhook/whatsapp`     | ✅ Live (Meta Cloud API) |
+| Telegram     | `telegram/adapter.py`  | `/api/telegram/webhook` | ✅ Live (@Balizerobot) |
+| Instagram    | `instagram/adapter.py` | `/webhook/instagram`    | ✅ Live        |
+| X/Twitter    | `twitter/adapter.py`   | `/webhook/twitter`      | ❌ CRC broken  |
+| Web Chat     | `web/adapter.py`       | `/api/webhook/chat`     | ✅ Live        |
+| Google Chat  | `gchat/adapter.py`     | TBD                     | 🔧 Scaffold   |
+| Slack        | `slack/adapter.py`     | TBD                     | 🔧 Scaffold   |
 
 Each channel has `adapter.py`, `config.py`, `formatter.py` following a consistent pattern.
 
-**NEW:** X/Twitter social monitoring via `services/social/x_monitor_service.py` + `routers/x_monitor.py`.
+**Channel ownership:**
+- **Web/WhatsApp/Instagram**: Backend Fly.io (Gemini 3 Flash + RAG)
+- **Telegram**: Pro OpenClaw @Balizerobot (Opus 4.6 + SOUL.md persona) — Pro polls, Air/Fly send only
+- **X/Twitter**: Backend Fly.io — currently broken (CRC authentication failure)
+
+**WhatsApp /send** re-enabled (2026-03-16) with 3 safety gates: JWT auth, 20 msgs/phone/hour rate limit, CRM recipient validation.
+
+X/Twitter social monitoring via `services/social/x_monitor_service.py` + `routers/x_monitor.py`.
 
 ---
 
@@ -629,14 +664,16 @@ These tools bypass evidence scoring because they provide their own evidence:
 
 **DO NOT modify trusted tools check without understanding the full flow.**
 
-### CRM RBAC (Role-Based Access Control)
+### CRM RBAC (Role-Based Access Control) — Updated 2026-03-21
 
-**File:** `backend/app/routers/crm_practices.py`
+**File:** `backend/app/routers/crm_practices.py` + `crm_utils.py`
 
-| Role                                              | Access                                      |
-| ------------------------------------------------- | ------------------------------------------- |
-| Admin (`zero@balizero.com`, `admin@balizero.com`) | All clients and practices                   |
-| Team Member                                       | Only clients with `assigned_to` = own email |
+| Role                                                              | Access                                      |
+| ----------------------------------------------------------------- | ------------------------------------------- |
+| Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`, role=admin) | All clients and practices                   |
+| Team Member (role != admin)                                       | Only practices where `clients.assigned_to` = own email |
+
+**Implementation:** `crm_utils.can_view_all_practices()` + SQL `AND c.assigned_to = $email`. Server-side only, frontend unchanged.
 
 ### Date Conversion Fix
 
@@ -711,7 +748,9 @@ Other AI tools (Gemini, Windsurf, Cursor) have **repeatedly** broken production 
 
 **2026-02-16 Incident:** 10 files had `Any` removed from typing imports. `dependencies.py` (imported by ALL routers) crashed the entire production app at startup. Hotfix: commits `bdf83fc54` + `b4abe9108`.
 
-**Pre-existing test debt:** ~448 test failures in `tests/unit/` from cumulative rogue refactors.
+**Pre-existing test debt:** Test cleanup by Windsurf (2026-03-20): 0 failed, 0 errors (was 48 failed + 17 errors). ~385 test files remain after consolidation.
+
+**Core Guardian V3** (2026-03-20): Autonomous code quality agent runs every 3h, fixing deterministic lint issues (DTZ005/DTZ003/ANN204). Files: `apps/evaluator/core_guardian/`. Safety: worktree isolation, flock, circuit breaker (3 failures → 24h cooldown).
 
 **Before deploying, ALWAYS run:**
 
@@ -830,6 +869,8 @@ npm run dev
 | **Database Architecture**     | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference            |
 | **KG Value Assessment**       | `docs/KG_VALUE_ASSESSMENT_2026_01_18.md`                 | Knowledge Graph ROI            |
 | **Intel Pipeline**            | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper                   |
+| **Chain Onboarding**          | `docs/architecture/CHAIN_ONBOARDING_IMPROVEMENTS.md`     | Onboarding workflow details    |
+| **Cicatrix Scars**            | `.claude/rules/cicatrix-scars.md`                        | 20 known bugs/gotchas (auto-extracted) |
 | **Documentation Archive**     | `docs/archive/MANIFEST.md`                               | Old docs & reports             |
 
 ---
@@ -844,11 +885,60 @@ npm run dev
 6. **Check the archive** - Old session reports and transient docs are in `docs/archive/MANIFEST.md`
 7. **LangGraph KG is production-ready** - 82 tests passing, 4 subgraphs deployed, feature flag controlled
 8. **Test import chain before deploy** - `python -c "from backend.app.dependencies import get_current_user"` prevents production crashes
-9. **~448 unit test failures are PRE-EXISTING** - caused by rogue AI refactors, NOT by your changes. Core tests (KG, Channels, RAG) are 100%
+9. **Test debt cleaned** (2026-03-20) - Windsurf cleanup: 0 failed, 0 errors. Core tests (KG, Channels, RAG) are 100%
 10. **Router registration** is in `backend/app/setup/router_registration.py`, NOT in `main_cloud.py`
 11. **Lazy loading** - backend uses deferred imports and background init. Health returns 200 during startup.
-12. **MCP server has 96+ tools** - not 7. Check `apps/nuzantara-mcp/` for the full inventory.
+12. **MCP server has 109 tools** (nuzantara-mcp) + 14 (nuzantara-mcp-advanced) = 123 total. Plus GA4, GSC, OCR external MCP servers.
+13. **bali-intel-scraper** runs ONLY on Pro locally via OpenClaw cron, NOT on Fly.io (destroyed 2026-03-14)
+14. **Cicatrix scars** - `.claude/rules/cicatrix-scars.md` has 20 auto-extracted known bugs/gotchas. Read before modifying referenced files.
+15. **Core Guardian V3** - autonomous code quality agent runs every 3h at $0 cost. Do NOT interfere with its worktree-isolated fixes.
+16. **RBAC** - admin/accounting see all practices, team members see only assigned. Server-side only (`crm_utils.can_view_all_practices()`).
+17. **AI Dispatch** - `./scripts/ai-dispatch.sh` delegates to Gemini (explore/search) and Codex (sandbox). See CLAUDE.md §15 for patterns.
+18. **Pro-Air federation** - post-commit hook syncs Air via SSH. Health monitoring bidirectional. Hot standby failover on Air.
 
-**Remember:** This is a production system serving real clients. Be careful with changes, verify the embedding model matches, and test your work.
+**Remember:** This is a production system serving 5000+ real clients. Be careful with changes, verify the embedding model matches, and test your work.
 
-**Cross-Reference:** See `CLAUDE.md` for Claude Code specific configuration and detailed session notes.
+**Cross-Reference:** See `CLAUDE.md` for Claude Code specific configuration, AI dispatch system, and delegation checkpoint.
+
+---
+
+## PRO-AIR FEDERATION (Updated 2026-03-22)
+
+| Machine | User             | Hostname      | Role                       | RAM   |
+| ------- | ---------------- | ------------- | -------------------------- | ----- |
+| **Pro** | `nuzantara`      | `Nuzantara`   | Development (primary)      | 48GB  |
+| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24                 | 16GB  |
+
+- **SSH:** `ssh air` (from Pro) / `ssh pro` (from Air) — mDNS, works on any WiFi
+- **Git sync:** post-commit hook → `ssh air 'cd ~/Projects/nuzantara && git pull --ff-only'`
+- **Health:** Pro→Air via `~/monitor-air.sh`, Air→Pro via `monitor-pro.sh`
+- **Hot standby:** 4 business cron jobs on Air (disabled), activated after 15min Pro downtime
+- **Cron distribution:** Pro 11 active (business+dev), Air 8 active (infra+intel) + 4 standby
+- **OpenClaw:** Pro polls Telegram (sole listener), Air sends only (no 409 conflict)
+
+---
+
+## LOCAL AI (Ollama-First, 2026-03-08)
+
+- **Core client:** `backend/llm/ollama_client.py` — **CRITICAL:** set `think: false` for Qwen 3.5
+- **Models:** qwen3.5:27b (vision), qwen3.5:9b (fast), gemma3:12b, deepseek-r1:1.5b
+- **Vision:** qwen2.5vl:7b ONLY (qwen3.5 Q4_K_M strips vision weights)
+- **Vision API:** `"images": [base64_string]` in message object (NOT OpenAI-style)
+- **Pattern:** Ollama local → fallback Gemini API. On Fly.io: Gemini always.
+
+---
+
+## SUBDOMAIN ECOSYSTEM
+
+6 Vercel subdomains with SSO via `nz_access_token` httpOnly cookie on `.balizero.com`:
+
+| Subdomain                  | App           | Purpose            |
+| -------------------------- | ------------- | ------------------ |
+| `kita.balizero.com`        | mouth         | Workspace (main)   |
+| `mail.balizero.com`        | mail          | Email interface    |
+| `calendar.balizero.com`    | calendar      | Calendar           |
+| `drive.balizero.com`       | drive          | File management    |
+| `knowledge.balizero.com`   | knowledge     | Knowledge base     |
+| `zantara.balizero.com`     | web           | AI chat (rewrites `/` → `/chat`) |
+| `my.balizero.com`          | mouth (portal) | Client portal      |
+| `prime.balizero.com`       | mouth (prime)  | Spatial intelligence (3D maps) |

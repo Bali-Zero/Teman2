@@ -1,6 +1,6 @@
 # NUZANTARA 4D SYSTEM CONSCIOUSNESS
 
-**Generated: 2026-02-02 | Auto-generated Report**
+**Generated: 2026-02-02 | Updated: 2026-03-22**
 
 > Questa mappa rappresenta la "coscienza" completa del sistema NUZANTARA, organizzata in 4 dimensioni per una comprensione immediata.
 
@@ -14,30 +14,33 @@
 
 The interface is liquid; intelligence is solid.
 
-| Channel              | Tech              | Role                                  |
-| -------------------- | ----------------- | ------------------------------------- |
-| **Web Command Deck** | Next.js 16        | Deep Work, Admin, Analytics           |
-| **Telegram**         | Bot API + Scraper | Notifications, Approvals, Quick Tasks |
-| **WhatsApp**         | Business API      | Client Communication, Docs            |
-| **Voice**            | ElevenLabs + VAPI | Concierge, Hands-free                 |
-| **Social**           | Instagram/X APIs  | Brand Presence, Listening             |
+| Channel              | Tech              | Role                                  | Status |
+| -------------------- | ----------------- | ------------------------------------- | ------ |
+| **Web Command Deck** | Next.js + React   | Deep Work, Admin, Analytics           | ✅     |
+| **Telegram**         | Bot API (OpenClaw)| Notifications, Approvals, Quick Tasks | ✅     |
+| **WhatsApp**         | Meta Cloud API    | Client Communication, Docs            | ✅     |
+| **Instagram**        | Meta API          | Brand Presence                        | ✅     |
+| **X/Twitter**        | Twitter API       | Social Monitoring                     | ❌ CRC |
+| **Google Chat**      | GChat API         | (Scaffold)                            | 🔧     |
+| **Slack**            | Slack API         | (Scaffold)                            | 🔧     |
 
 ---
 
 ## QUICK STATS (Numeri Reali Verificati)
 
-| Metrica                 | Valore     | Note                 |
-| ----------------------- | ---------- | -------------------- |
-| **Documenti Qdrant**    | **53,757** | 4 collezioni attive  |
-| **API Endpoints**       | **406**    | 63 file router       |
-| **Servizi Python**      | **217**    | /backend/services/   |
-| **File Test**           | **468**    | unit/api/integration |
-| **Test Cases**          | **~5308+** | pytest coverage      |
-| **Tabelle Database**    | **24**     | PostgreSQL           |
-| **Migrazioni**          | **51**     | Applicate            |
-| **Variabili Ambiente**  | **63+**    | Across all apps      |
-| **File Documentazione** | **209+**   | Markdown             |
-| **Fonti Intel**         | **630+**   | 12 categorie         |
+| Metrica                 | Valore      | Note                                  |
+| ----------------------- | ----------- | ------------------------------------- |
+| **Documenti Qdrant**    | **66,595**  | 9 collezioni live + 11 defined        |
+| **API Endpoints**       | **88**      | Router files                          |
+| **Servizi Python**      | **244**     | /backend/services/                    |
+| **File Test**           | **385**     | unit/api/integration                  |
+| **MCP Tools**           | **109+14**  | nuzantara-mcp + nuzantara-mcp-advanced|
+| **Tabelle Database**    | **24+**     | PostgreSQL                            |
+| **Migrazioni**          | **60**      | Applicate                             |
+| **Knowledge Graph**     | **56,113 nodes / 161,173 edges** | PostgreSQL    |
+| **Canali Comunicazione**| **7**       | WhatsApp, Telegram, IG, X, Web, GChat, Slack |
+| **Fonti Intel**         | **630+**    | 12 categorie                          |
+| **Fly.io Apps**         | **3**       | rag + postgres + qdrant (Singapore)   |
 
 ---
 
@@ -48,24 +51,29 @@ nuzantara/
 ├── apps/
 │   ├── backend-rag/          ← CORE (Python FastAPI)
 │   │   ├── backend/
-│   │   │   ├── app/routers/  (63 files, 406+ endpoints)
-│   │   │   ├── services/     (217 Python files)
+│   │   │   ├── app/routers/  (88 router files)
+│   │   │   ├── services/     (244 Python files)
+│   │   │   ├── channels/     (7: whatsapp, telegram, instagram, twitter, web, gchat, slack)
 │   │   │   ├── core/         (embeddings, chunking, cache)
 │   │   │   ├── middleware/   (auth, rate-limit, tracing)
-│   │   │   ├── llm/          (Gemini, OpenRouter, Jaksel)
-│   │   │   ├── agents/       (46 Tier-1 autonomous)
-│   │   │   └── migrations/   (51 migrations, 24 tables)
-│   │   └── tests/            (468 files, ~5308+ test cases)
+│   │   │   ├── llm/          (Gemini, Ollama, OpenRouter)
+│   │   │   ├── prompts/      (zantara_core.py — Single Source of Truth)
+│   │   │   └── migrations/   (60 migrations)
+│   │   └── tests/            (385 test files)
 │   │
-│   ├── mouth/                ← FRONTEND (Next.js 16 + React 19)
-│   │   ├── src/app/          (login, chat, dashboard, clienti, pratiche)
+│   ├── mouth/                ← FRONTEND (Next.js + React)
+│   │   ├── src/app/          (workspace, portal, blog, kbli)
 │   │   ├── src/components/   (shadcn/ui + custom)
 │   │   └── src/lib/          (api clients, store, utils)
 │   │
-│   ├── bali-intel-scraper/   ← SATELLITE: 630+ sources intel pipeline
-│   ├── zantara-media/        ← SATELLITE: editorial content system
-│   ├── evaluator/            ← SATELLITE: RAG quality (RAGAS)
-│   └── kb/                   ← SATELLITE: legal scraping utilities
+│   ├── nuzantara-mcp/        ← MCP Server v2.1 (109 tools, 10 prompts, 5 resources, 8 chains)
+│   ├── nuzantara-mcp-advanced/ ← Advanced MCP (Fly.io ops, 14 tools)
+│   ├── bali-intel-scraper/   ← Intel pipeline (LOCAL Pro only, NOT Fly)
+│   ├── evaluator/            ← QA + Core Guardian V3
+│   ├── war-room/             ← Ops dashboard + Canva automation
+│   ├── zantara-media/        ← Editorial content system
+│   ├── graph-engine/         ← Graph processing engine
+│   └── calendar/drive/knowledge/mail/web/ ← Subdomain satellites
 │
 ├── docs/                     (209+ markdown files)
 ├── config/                   (prometheus, alertmanager)
@@ -115,7 +123,7 @@ USER REQUEST
     ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      ROUTER LAYER                            │
-│  31 routers: auth, chat, crm, agents, agentic-rag, debug   │
+│  88 routers: auth, chat, crm, agents, agentic-rag, debug   │
 └─────────────────────────────────────────────────────────────┘
     │
     ▼
@@ -142,7 +150,7 @@ USER REQUEST
 │                     DATA LAYER                               │
 │  ┌───────────┐  ┌───────────┐  ┌───────────┐               │
 │  │ PostgreSQL│  │  Qdrant   │  │   Redis   │               │
-│  │  24 tables│  │ 53,757 docs│  │   cache   │               │
+│  │  24+tables│  │ 66,595 docs│  │   cache   │               │
 │  └───────────┘  └───────────┘  └───────────┘               │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -162,11 +170,13 @@ SOURCES (630+)          INTEL SCRAPER           ZANTARA MEDIA
                              ▼                       ▼
                     ┌─────────────────────────────────────┐
                     │        NUZANTARA QDRANT             │
-                    │  visa_oracle    │ 1,612 docs        │
-                    │  legal_unified  │ 5,041 docs        │
-                    │  kbli_unified   │ 8,886 docs        │
-                    │  tax_genius     │   895 docs        │
-                    │  + others       │37,323 docs        │
+                    │  visa_oracle         │  1,612 docs  │
+                    │  legal_unified       │  5,041 docs  │
+                    │  legal_unified_hybrid│ 47,959 docs  │
+                    │  kbli_2025_final     │  8,886 docs  │
+                    │  tax_genius          │    895 docs  │
+                    │  + 4 others          │  2,202 docs  │
+                    │  TOTAL: 9 live       │ 66,595 docs  │
                     └─────────────────────────────────────┘
                                      │
                                      ▼
@@ -355,7 +365,7 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 │ bali_zero_team   │       22    │ Team profiles    │
 │ + knowledge_base │   37,272    │ General KB       │
 ├──────────────────┼─────────────┼──────────────────┤
-│ TOTAL            │   53,757    │ All vectors      │
+│ TOTAL            │   66,595    │ All vectors      │
 └──────────────────┴─────────────┴──────────────────┘
 ```
 
@@ -437,7 +447,7 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 │                                                              │
 │  INFRASTRUCTURE                                              │
 │  ├─ PostgreSQL (Fly managed)                                 │
-│  ├─ Qdrant Cloud (53,757 docs)                              │
+│  ├─ Qdrant Cloud (66,595 docs)                              │
 │  └─ Redis (optional cache)                                   │
 └──────────────────────────────────────────────────────────────┘
 ```

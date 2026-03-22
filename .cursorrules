@@ -4,12 +4,14 @@
 Production AI platform (v5.2.0) - FastAPI backend + Next.js frontend
 
 ## Stack
-- Backend: Python 3.11+, FastAPI, **78 routers**, **244 services**, 46 autonomous agents
+- Backend: Python 3.11+, FastAPI, **88 routers**, **244 services**, 385 test files
 - Frontend: Next.js (App Router), TypeScript, Tailwind CSS
-- DB: PostgreSQL 17, Qdrant (7 collections, 58.880 vectors), Redis
-- Deploy: Fly.io `nuzantara-rag` (backend), Vercel (frontend)
+- DB: PostgreSQL 17, Qdrant (9 collections, 66,595 vectors), Redis
+- Deploy: Fly.io `nuzantara-rag` (backend, 2GB RAM, auto_stop), Vercel (frontend)
 - Embedding: `text-embedding-3-small` (1536 dims) — **NEVER CHANGE, FROZEN**
-- KG: LangGraph — 56.113 nodes, 161.173 edges
+- KG: LangGraph — 56,113 nodes, 161,173 edges
+- MCP: 109 tools (nuzantara-mcp) + 14 tools (nuzantara-mcp-advanced)
+- Channels: 7 (WhatsApp, Telegram, Instagram, X/Twitter, Web, Google Chat, Slack)
 
 ## Golden Rules (ENFORCE)
 
@@ -154,7 +156,7 @@ npm run test
 ❌ Rimuovere `Any` da `typing` imports → crash runtime su tutti i router
 ❌ Cambiare `httpx` con `requests` → viola async rule
 ❌ Payload nested in Qdrant → KBLI search rotta
-❌ `--workers 2` nel Dockerfile → OOM kill su Fly.io (4GB VM, deve restare 1)
+❌ `--workers 2` nel Dockerfile → OOM kill su Fly.io (2GB VM, deve restare 1)
 ❌ Import relativi → crash runtime
 
 ## Pre-Deploy Checklist
@@ -176,4 +178,9 @@ PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py \
 fly deploy --strategy rolling --app nuzantara-rag
 ```
 
-**Test debt noto:** ~448 failure pre-esistenti in `tests/unit/` da rogue AI precedenti. NON bloccano il deploy.
+**Test debt cleaned (2026-03-20):** 0 failed, 0 errors. Core tests 100% (KG 82/82, Channels 43/43, RAG 244/244).
+
+**Core Guardian V3:** Autonomous code quality agent runs every 3h ($0 cost). Do NOT interfere with its worktree-isolated fixes in `apps/evaluator/core_guardian/`.
+
+**Fly.io:** SOLO 3 app (nuzantara-rag 2GB, nuzantara-postgres 2GB, nuzantara-qdrant 2GB). Cost ~$35-40/mo.
+**bali-intel-scraper:** runs ONLY locally on Pro via OpenClaw, NOT on Fly.io (destroyed 2026-03-14).

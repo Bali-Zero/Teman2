@@ -9,9 +9,9 @@
 ## Memory 1: Architettura Sistema
 
 Nuzantara è una piattaforma AI per Bali Zero (servizi legali/business in Indonesia).
-Stack: FastAPI backend (78 router, 244 service, 46 agenti, LangGraph KG) + Next.js frontend.
-Database: PostgreSQL 17 + Qdrant (7 collezioni, 58.880 vettori) + Redis.
-Deploy: backend su Fly.io app `nuzantara-rag` (Singapore, 4GB VM, 1 worker SOLO).
+Stack: FastAPI backend (88 router, 244 service, 46 agenti, LangGraph KG) + Next.js frontend.
+Database: PostgreSQL 17 + Qdrant (9 collezioni, 66.595 vettori) + Redis.
+Deploy: backend su Fly.io app `nuzantara-rag` (Singapore, 2GB VM, 1 worker SOLO).
 Frontend: Vercel, auto-deploy su push a main.
 Embedding model: `text-embedding-3-small` 1536 dims — FROZEN, mai cambiare.
 Knowledge Graph: LangGraph, 56.113 nodi, 161.173 archi, 4 subgraph (company, visa, property, tax).
@@ -47,7 +47,7 @@ Pre-deploy obbligatorio:
 3. PYTHONPATH=. pytest test_kg_langgraph.py test_kg_subgraphs.py test_confidence.py -q (82 test)
 4. fly deploy --strategy rolling --app nuzantara-rag
 
-Test debt noto: ~448 failure pre-esistenti in tests/unit/ da rogue AI (Gemini/Windsurf/Cursor passati). NON bloccano deploy.
+Test debt: CLEANED — 0 failed, 0 errors dopo cleanup (era ~448 failure pre-esistenti). NON ci sono più failure bloccanti.
 Causa crash loop più comune: import pesanti a livello modulo (torch, sentence-transformers).
 
 ## Memory 5: MCP Tools Disponibili

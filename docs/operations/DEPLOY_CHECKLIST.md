@@ -83,10 +83,10 @@ curl https://nuzantara-rag.fly.dev/health/detailed | jq '.services.database'
 ### 1. Test Endpoint Stats
 
 ```bash
-# Ottieni token JWT
+# Ottieni token JWT (usa credenziali da env, MAI hardcodare pin)
 TOKEN=$(curl -s -X POST https://nuzantara-rag.fly.dev/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"zero@balizero.com","pin":"010719"}' | jq -r '.data.token')
+  -d "{\"email\":\"zero@balizero.com\",\"pin\":\"$ADMIN_PIN\"}" | jq -r '.data.token')
 
 # Test practices stats
 curl -H "Authorization: Bearer $TOKEN" \
@@ -101,7 +101,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ### 2. Test Frontend Dashboard
 
-1. Accedi a `https://nuzantara-mouth.vercel.app/login` (frontend deployed on Vercel)
+1. Accedi a `https://kita.balizero.com/login` (frontend deployed on Vercel)
 2. Login come `zero@balizero.com`
 3. Verifica dashboard carica correttamente
 4. Verifica widget AI Pulse e Financial Reality visibili (solo per zero@balizero.com)
@@ -225,7 +225,7 @@ Deploy considerato riuscito se:
 - `httpx` 0.28.1
 
 **Status**: ✅ Success
-**Health Check**: `{"status":"healthy","version":"v100-qdrant","database":{"collections":4,"total_documents":53757}}`
+**Health Check**: `{"status":"healthy","version":"v100-qdrant","database":{"collections":9,"total_documents":66595}}`
 **Machine Status**: 1/1 passing ✅
 **Fix Verification**:
 

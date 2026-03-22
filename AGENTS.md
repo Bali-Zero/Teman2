@@ -1,4 +1,4 @@
-# CLAUDE.md - Nuzantara Project Context for Claude Code
+# AGENTS.md - Nuzantara Project Context for Codex
 
 ## 0. Machine Identification (IMPORTANT)
 
@@ -46,29 +46,22 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 
 ### Architecture
 
-**Monorepo structure (20 apps):**
+**Monorepo structure:**
 
-- `apps/mouth/` - Next.js frontend (Vercel) — kita.balizero.com + my.balizero.com + prime.balizero.com
+- `apps/mouth/` - Next.js frontend (Vercel)
 - `apps/backend-rag/` - Python FastAPI RAG backend (Fly.io)
-- `apps/nuzantara-mcp/` - MCP server v2.1 (109 tools, 10 prompts, 5 resources, 8 chains)
-- `apps/nuzantara-mcp-advanced/` - Advanced MCP (Fly.io ops, diagnostics, 14 tools)
-- `apps/nuzantara-mcp-browser/` - Browser automation MCP
-- `apps/bali-intel-scraper/` - Intel pipeline (runs LOCALLY on Pro via OpenClaw, NOT Fly)
-- `apps/evaluator/` - Quality assurance + Core Guardian V3
-- `apps/war-room/` - Operations dashboard + Canva automation
-- `apps/graph-engine/` - Graph processing engine
-- `apps/kbli-voice/` - KBLI voice interface
-- `apps/zantara-media/` - Editorial content system
 - `apps/admin-dashboard/` - Admin UI
 - `apps/webapp/` - Web application
-- `apps/kbli-navigator/` - KBLI 2025 Navigator interface
-- `apps/calendar/` - Subdomain satellite (calendar.balizero.com)
-- `apps/drive/` - Subdomain satellite (drive.balizero.com)
-- `apps/knowledge/` - Subdomain satellite (knowledge.balizero.com)
-- `apps/mail/` - Subdomain satellite (mail.balizero.com)
-- `apps/web/` - Subdomain satellite (zantara.balizero.com)
-- `packages/core/` - Core libraries + BZ design tokens + BZLogo
+- `apps/bali-intel-scraper/` - Intelligence gathering
+- `apps/nuzantara-mcp/` - MCP server v2.1 (109 tools, 10 prompts, 5 resources, 8 chains)
+- `apps/nuzantara-mcp-advanced/` - Advanced MCP (Fly.io ops, diagnostics)
+- `apps/nuzantara-mcp-browser/` - Browser automation MCP
+- `apps/graph-engine/` - Graph processing engine
+- `apps/kbli-voice/` - KBLI voice interface
+- `apps/evaluator/` - Quality assurance
+- `apps/zantara-media/` - Editorial content system
 - `packages/kb/` - Knowledge base
+- `packages/core/` - Core libraries
 
 ### Tech Stack
 
@@ -80,7 +73,7 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 - **Vector Collections:** 9 live on Fly.io (66,595 documents), 11 defined in code
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
 
-## 2. Claude Code Behavior Rules (IMPORTANT)
+## 2. Codex Behavior Rules (IMPORTANT)
 
 **DO NOT ask the user to write code.** You are authorized to edit, write, and execute code directly.
 
@@ -89,41 +82,11 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 - Only ask if you genuinely need user input (e.g., choosing between multiple valid approaches)
 - **NEVER** ask "should I write this?" or "do you want me to...?" — just do it
 
-### Browser Automation Rules (ENFORCE STRICTLY)
-
-- **ALWAYS use `mcp__claude-in-chrome__*` tools** for any browser interaction
-- **NEVER fall back to `mcp__playwright__*` autonomously** — only if user explicitly orders it
-- **Text before screenshot**: use `get_page_text`, `find`, `javascript_tool`, `read_console_messages` first
-- Screenshots (`computer`) only for visual QA (layout, colors, logo) — never for content/debug
-- If Claude-in-Chrome fails → run recovery steps from the `browser` skill, then report to user
-- See skill: `browser` (`~/.claude/skills/browser.md`)
-
 **Exception:** Only ask for decisions on:
 
 - Architecture choices with trade-offs (use `AskUserQuestion`)
 - Production deployments (use risk/reversibility judgment)
 - Destructive operations (rm, git reset --hard, etc.)
-
-### Delegation Checkpoint — 5 Domande Pre-Task (ENFORCE)
-
-**Prima di QUALSIASI task, rispondi a queste 5 domande:**
-
-1. **Questo task richiede di leggere/esplorare più di 5 file?**
-   → Sì: `./scripts/ai-dispatch.sh explore "question"`. Gemini 1M ctx, gratis.
-
-2. **Questo task richiede informazioni esterne in tempo reale?**
-   → Sì: `./scripts/ai-dispatch.sh search "query"`. Google Search grounded con citazioni.
-
-3. **Questo task comporta rischio per il repo se il codice è sbagliato?**
-   → Sì: `./scripts/ai-dispatch.sh sandbox "task"`. Codex in sandbox kernel-level.
-
-4. **Questo task beneficerebbe di due prospettive indipendenti?**
-   → Sì: `./scripts/ai-dispatch.sh parallel explore:"q1" search:"q2"`. Tu sintetizzi.
-
-5. **Questo task è un deploy o una modifica critica?**
-   → Sì: `./scripts/ai-dispatch.sh redteam "soluzione proposta"`. Mai deploy senza red team.
-
-**Se TUTTE le risposte sono "No"**: fai tu direttamente. Non delegare per sport.
 
 ## 4. Golden Rules (ENFORCE STRICTLY)
 
@@ -188,7 +151,7 @@ fly deploy --config apps/backend-rag/fly.toml --app nuzantara-rag
 vercel --prod
 ```
 
-## 3. Critical Paths
+## 4. Critical Paths
 
 ### Backend Structure
 
@@ -241,7 +204,7 @@ apps/mouth/
 └── styles/           # Tailwind CSS
 ```
 
-## 5a. Domain-Specific Knowledge
+## 5. Domain-Specific Knowledge
 
 ### KBLI (Indonesian Business Classification)
 
@@ -307,42 +270,19 @@ Classification confidence thresholds:
 
 **Additional MCP servers:**
 
-- `apps/nuzantara-mcp-advanced/` — Fly.io ops, deployment readiness, code search, diagnostics (14 tools)
+- `apps/nuzantara-mcp-advanced/` — Fly.io ops, deployment readiness, code search, diagnostics
 - `apps/nuzantara-mcp-browser/` — Browser automation
-- `ga4-analytics` — GA4 property 505466833 (BALI ZERO WEB stream, G-S3H2M6VXWT)
-- `google-search-console` — 19 SEO tools, SA auth, site owner on balizero.com
-- `ocr-tesseract` — Document OCR with Indonesian language support
-
-**MCP Bridge (OpenClaw):** 129 tools connected via mcporter wrappers in `~/.local/bin/`. macOS provenance fix applied.
 
 ## 7. Deployment Architecture
 
 ### Production Stack
 
 - **Frontend:** Vercel (CDN, Edge Functions)
-- **Backend:** Fly.io `nuzantara-rag` (Singapore, shared-cpu-2x, **2GB RAM**, auto_stop=true, min=0)
+- **Backend:** Fly.io `nuzantara-rag` (Asia region)
 - **Databases:**
-  - PostgreSQL: Fly.io `nuzantara-postgres` (**2GB RAM**, v0.1.0, upgraded 2026-03-14)
-  - Qdrant: Fly.io `nuzantara-qdrant` (2GB, v1.12.1 — upgrade TODO)
+  - PostgreSQL: Fly.io managed
+  - Qdrant: Fly.io app
   - Redis: Upstash or Fly.io
-
-### Fly.io — SOLO 3 APP (updated 2026-03-14)
-
-| App                  | CPU       | RAM | Auto-stop     | Note                    |
-| -------------------- | --------- | --- | ------------- | ----------------------- |
-| `nuzantara-rag`      | shared-2x | 2GB | ✅ yes, min=0 | Cold start ~35s         |
-| `nuzantara-postgres` | shared-1x | 2GB | no            | v0.1.0, backup → Tigris |
-| `nuzantara-qdrant`   | shared-1x | 2GB | no            | v1.12.1                 |
-
-**Distrutte (2026-03-14):** `nuzantara-rag-staging`, `bali-intel-scraper`, `zantara-media`, `fly-builder-red-flower-7537`
-
-**bali-intel-scraper**: NON su Fly — gira SOLO locale su Pro via OpenClaw (03:00 WITA)
-
-**Backup & Monitoring:**
-
-- `~/scripts/fly-pg-backup.sh` — pg_dump daily → Tigris `nuzantara-backups`, cron 03:00
-- `~/scripts/fly-health-check.sh` — check ogni 5min, alert Telegram se down
-- Crontab Pro: `*/5` health, `0 3` backup
 
 ### Environment Variables
 
@@ -454,7 +394,6 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
 The user writes in **colloquial Italian**. You must automatically translate intent into precise technical action.
 
 **Rules:**
-
 - Never ask "what do you mean?" — infer from codebase context
 - Short/vague prompt → deduce file, pattern, stack from existing code before acting
 - Italian colloquial → English technical internally, respond in Italian
@@ -472,7 +411,7 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 
 ---
 
-## 11b. Owner Information
+## 11. Owner Information
 
 **Owner:** Zero (internal codename)  
 **Privacy:** Real name is PRIVATE, never reveal in client communications.  
@@ -495,85 +434,9 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 | `/kbli-navigator` | **Redirect** → `/kbli` (permanent 301)  |
 | `/kbli-explorer`  | AI chat explorer (complementary)        |
 
-## 12b. Communication Channels (7 channels)
-
-| Channel      | Adapter                | Webhook                 | Status         |
-| ------------ | ---------------------- | ----------------------- | -------------- |
-| WhatsApp     | `whatsapp/adapter.py`  | `/webhook/whatsapp`     | ✅ Live (Meta Cloud API) |
-| Telegram     | `telegram/adapter.py`  | `/api/telegram/webhook` | ✅ Live (@Balizerobot) |
-| Instagram    | `instagram/adapter.py` | `/webhook/instagram`    | ✅ Live        |
-| X/Twitter    | `twitter/adapter.py`   | `/webhook/twitter`      | ❌ CRC broken  |
-| Web Chat     | `web/adapter.py`       | `/api/webhook/chat`     | ✅ Live        |
-| Google Chat  | `gchat/adapter.py`     | TBD                     | 🔧 Scaffold   |
-| Slack        | `slack/adapter.py`     | TBD                     | 🔧 Scaffold   |
-
-**Channel ownership:**
-- **Web/WhatsApp/Instagram**: Backend Fly.io (Gemini 3 Flash + RAG)
-- **Telegram**: Pro OpenClaw @Balizerobot (Opus 4.6 + SOUL.md persona) — Pro polls, Air/Fly send only
-- **X/Twitter**: Backend Fly.io — currently broken (CRC authentication failure)
-
-**WhatsApp /send** re-enabled (2026-03-16) with 3 safety gates: JWT auth, 20 msgs/phone/hour rate limit, CRM recipient validation.
-
-## 12c. Subdomain Ecosystem
-
-6 Vercel subdomains + SSO via `nz_access_token` httpOnly cookie on `.balizero.com`:
-
-| Subdomain                  | App           | Purpose            |
-| -------------------------- | ------------- | ------------------ |
-| `kita.balizero.com`        | mouth         | Workspace (main)   |
-| `my.balizero.com`          | mouth (portal) | Client portal      |
-| `prime.balizero.com`       | mouth (prime)  | Spatial intelligence (3D maps) |
-| `mail.balizero.com`        | mail          | Email interface    |
-| `calendar.balizero.com`    | calendar      | Calendar           |
-| `drive.balizero.com`       | drive          | File management    |
-| `knowledge.balizero.com`   | knowledge     | Knowledge base     |
-| `zantara.balizero.com`     | web           | AI chat (rewrites `/` → `/chat`) |
-
-## 12d. Local AI (Ollama-First)
-
-- **Core client:** `backend/llm/ollama_client.py` — **CRITICAL:** set `think: false` for Qwen 3.5
-- **Models:** qwen3.5:27b (vision), qwen3.5:9b (fast), gemma3:12b, deepseek-r1:1.5b
-- **Vision:** qwen2.5vl:7b ONLY (qwen3.5 Q4_K_M strips vision weights)
-- **Vision API:** `"images": [base64_string]` in message object (NOT OpenAI-style)
-- **Pattern:** Ollama local → fallback Gemini API. On Fly.io: Gemini always.
-
-## 12e. CRM RBAC (Updated 2026-03-21)
-
-| Role | Access |
-| ---- | ------ |
-| Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`, role=admin) | All clients and practices |
-| Team Member (role != admin) | Only practices where `clients.assigned_to` = own email |
-
-**Implementation:** `crm_utils.can_view_all_practices()` + SQL `AND c.assigned_to = $email`. Server-side only, frontend unchanged.
-
 ---
 
-## 13. Frontend Deploy — QA Automatico (OBBLIGATORIO)
-
-**Ogni volta che fai deploy che impatta il frontend (Vercel), DEVI automaticamente:**
-
-1. Aspetta che il deploy sia live (curl 200/307 sulle URL impattate)
-2. Screenshot con Playwright (`mcp__playwright__browser_navigate` + `browser_take_screenshot`) di ogni app modificata
-3. Verifica visivamente: colori corretti, logo presente, nessun elemento rotto
-4. Se trovi problemi → fixa e rideploya senza aspettare conferma
-5. Report finale con screenshot inline
-
-**URL da monitorare:**
-
-- `https://kita.balizero.com` — workspace principale
-- `https://my.balizero.com` — portal clienti
-- `https://prime.balizero.com` — spatial intelligence
-- `https://calendar.balizero.com` — calendar
-- `https://mail.balizero.com` — mail
-- `https://drive.balizero.com` — drive
-- `https://knowledge.balizero.com` — knowledge
-- `https://zantara.balizero.com` — AI chat
-
-**Non serve che l'utente lo chieda — è parte del processo di deploy.**
-
----
-
-## 14. Pre-Deploy Checklist
+## 13. Pre-Deploy Checklist
 
 Before any production deployment:
 
@@ -592,60 +455,16 @@ PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/test
 fly deploy --strategy rolling
 ```
 
-**Test debt cleaned (2026-03-20):** Windsurf cleanup brought test suite to 0 failed, 0 errors (was 48 failed + 17 errors). Core tests (KG 82/82, Channels 43/43, RAG 244/244) remain 100%.
-
-**Core Guardian V3:** Autonomous code quality agent runs every 3h, fixing deterministic lint issues (DTZ005/DTZ003/ANN204) in worktree isolation. Files: `apps/evaluator/core_guardian/`. Do NOT interfere with its fixes.
+**Test debt:** Cleaned 2026-03-20 (0 failed, 0 errors). Previously ~448 failures from rogue AI refactors — resolved by Windsurf cleanup. Details in `memory/session-2026-02-16-hotfix-and-tests.md`.
 
 ---
 
-**Last Updated:** 2026-03-22
+**Last Updated:** 2026-03-01
 **Maintained by:** Bali Zero AI Team
 
 ---
 
-## 15. AI Dispatch System (ENFORCE PROACTIVELY)
-
-> `scripts/ai-dispatch.sh` v2 — Universale Pro+Air. Run `./scripts/ai-dispatch.sh help` per comandi.
-
-### Ruoli
-
-| Agente                         | Ruolo                                         | Forza                                                 |
-| ------------------------------ | --------------------------------------------- | ----------------------------------------------------- |
-| **Tu (Claude Code, Opus 4.6)** | Il Re — orchestra, sintetizza, decide, esegue | Refactor multi-file, deploy, decisioni architetturali |
-| **Gemini 3.1 Pro CLI**         | Il Consigliere — 1M ctx, read-only            | `codebase_investigator`, `google_web_search` grounded |
-| **Codex 5.4 CLI**              | Il Soldato in Fortezza — sandbox kernel-level | Fix isolati, migration, test in ambiente sicuro       |
-
-### Pattern di Dispatch
-
-1. **SERIALE**: Claude→Gemini analizza→Claude decide→Codex esegue→Claude valida
-2. **PARALLELO**: `./scripts/ai-dispatch.sh parallel explore:"q1" search:"q2"` → Tu sintetizzi
-3. **RED TEAM** (obbligatorio pre-deploy): `redteam "soluzione"` → Se problemi: rivedi. Se clean: deploy.
-4. **MIGRATION**: `codex-migrate "desc"` → Genera e testa upgrade+downgrade in sandbox
-5. **NORMATIVA**: `search "KBLI 2025"` → Gemini Google Search grounded con fonti
-
-### Sicurezza
-
-- Gemini: `--sandbox --approval-mode plan` → read-only. MAI scrive sul repo.
-- Codex: `--sandbox read-only` o `workspace-write`. MAI `--dangerously-bypass`.
-- File OFF LIMITS per tutti gli agenti: `zantara_core.py`, `fly.toml`, `.env*`, `alembic/env.py`
-- Output: ogni comando salva in `./ai-dispatch-output/` con metriche (JSON strutturato)
-- Cache: explore/search cachati 24h. Redteam/sandbox mai cachati.
-
-### Fallback
-
-- Timeout Gemini (>120s): riprova con prompt semplificato
-- Timeout Codex (>180s): riprova, poi esegui tu con cautela
-- Rate limit: segnala all'umano, retry dopo reset giornaliero
-
-### Federation Protocol
-
-- **Escalation**: Air scrive finding in `shared/escalations.json`, Pro legge a inizio sessione
-- **Git sync**: post-commit hook → `ssh air 'cd ~/Projects/nuzantara && git pull --ff-only'`
-- **CLAUDE.md**: IDENTICO su entrambe — git-tracked, push/pull obbligatorio
-
----
-
-## 16. Anthropic API — Best Practices (Feb 2026)
+## 15. Anthropic API — Best Practices (Feb 2026)
 
 ### Adaptive Thinking (OBBLIGATORIO su Opus 4.6 / Sonnet 4.6)
 
@@ -654,7 +473,7 @@ fly deploy --strategy rolling
 ```python
 # ✅ CORRETTO — adaptive thinking
 response = client.messages.create(
-    model="claude-sonnet-4-6",
+    model="Codex-sonnet-4-6",
     max_tokens=8192,
     thinking={"type": "adaptive"},
     output_config={"effort": "medium"},  # "max" | "high" | "medium" | "low"
@@ -719,7 +538,7 @@ tools = [{"name": "kbli_search", "eager_input_streaming": True, ...}]
 
 | Uso                       | Modello                     | Perché                                       |
 | ------------------------- | --------------------------- | -------------------------------------------- |
-| RAG complesso, reasoning  | `claude-sonnet-4-6`         | Knowledge cutoff gen 2026, adaptive thinking |
-| Routing / classificazione | `claude-haiku-4-5-20251001` | $1/$5 MTok, velocissimo                      |
-| Task critici              | `claude-opus-4-6`           | 128K output, effort=max                      |
-| Spiegazioni KBLI          | `claude-haiku-4-5-20251001` | Già configurato in kbli_notebook.py          |
+| RAG complesso, reasoning  | `Codex-sonnet-4-6`         | Knowledge cutoff gen 2026, adaptive thinking |
+| Routing / classificazione | `Codex-haiku-4-5-20251001` | $1/$5 MTok, velocissimo                      |
+| Task critici              | `Codex-opus-4-6`           | 128K output, effort=max                      |
+| Spiegazioni KBLI          | `Codex-haiku-4-5-20251001` | Già configurato in kbli_notebook.py          |

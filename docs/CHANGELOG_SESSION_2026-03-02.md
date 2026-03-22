@@ -142,7 +142,7 @@ if kg_langgraph_enabled:
 **Resources:**
 
 - CPU: 2 vCPU (shared)
-- RAM: 4GB
+- RAM: 2GB
 - Storage: 1GB volume
 
 **Health Check:** ✅ Passing

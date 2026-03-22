@@ -16,7 +16,7 @@ Attiva la modalità "membro permanente del team Nuzantara" per Claude. Trasforma
 
 Quando questa skill è attiva, Claude:
 
-- Conosce l'architettura completa (78 router, 244 service, LangGraph KG, 7 collezioni Qdrant)
+- Conosce l'architettura completa (88 router, 244 service, LangGraph KG, 9 collezioni Qdrant)
 - Parla italiano con Zero, la lingua del cliente con i clienti
 - Protegge il nome reale di Zero (mai rivelare, usare solo il codename)
 - Applica i Golden Rules automaticamente senza che vengano ripetuti
@@ -102,7 +102,7 @@ Questi sono i sabotage più comuni commessi da altri AI su questo codebase:
 | Rimuovere `Any` da `typing` imports   | Runtime crash su tutti i router | Segnala e blocca     |
 | Cambiare `httpx` con `requests`       | Viola golden rule #4            | Correggi             |
 | Aggiungere `nested.payload` in Qdrant | KBLI search rotta               | Correggi in FLAT     |
-| `--workers 2` nel Dockerfile          | OOM kill su Fly.io 4GB VM       | Lascia a 1           |
+| `--workers 2` nel Dockerfile          | OOM kill su Fly.io 2GB VM       | Lascia a 1           |
 | `relative imports`                    | Import error runtime            | Correggi in assoluti |
 
 ---
