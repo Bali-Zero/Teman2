@@ -97,6 +97,27 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 - Production deployments (use risk/reversibility judgment)
 - Destructive operations (rm, git reset --hard, etc.)
 
+### Delegation Checkpoint — 5 Domande Pre-Task (ENFORCE)
+
+**Prima di QUALSIASI task, rispondi a queste 5 domande:**
+
+1. **Questo task richiede di leggere/esplorare più di 5 file?**
+   → Sì: `./scripts/ai-dispatch.sh explore "question"`. Gemini 1M ctx, gratis.
+
+2. **Questo task richiede informazioni esterne in tempo reale?**
+   → Sì: `./scripts/ai-dispatch.sh search "query"`. Google Search grounded con citazioni.
+
+3. **Questo task comporta rischio per il repo se il codice è sbagliato?**
+   → Sì: `./scripts/ai-dispatch.sh sandbox "task"`. Codex in sandbox kernel-level.
+
+4. **Questo task beneficerebbe di due prospettive indipendenti?**
+   → Sì: `./scripts/ai-dispatch.sh parallel explore:"q1" search:"q2"`. Tu sintetizzi.
+
+5. **Questo task è un deploy o una modifica critica?**
+   → Sì: `./scripts/ai-dispatch.sh redteam "soluzione proposta"`. Mai deploy senza red team.
+
+**Se TUTTE le risposte sono "No"**: fai tu direttamente. Non delegare per sport.
+
 ## 4. Golden Rules (ENFORCE STRICTLY)
 
 1. **Virtualenv Mandatory** - Never use system Python. Always activate venv first.
@@ -515,7 +536,49 @@ fly deploy --strategy rolling
 
 ---
 
-## 15. Anthropic API — Best Practices (Feb 2026)
+## 15. AI Dispatch System (ENFORCE PROACTIVELY)
+
+> `scripts/ai-dispatch.sh` v2 — Universale Pro+Air. Run `./scripts/ai-dispatch.sh help` per comandi.
+
+### Ruoli
+
+| Agente                         | Ruolo                                         | Forza                                                 |
+| ------------------------------ | --------------------------------------------- | ----------------------------------------------------- |
+| **Tu (Claude Code, Opus 4.6)** | Il Re — orchestra, sintetizza, decide, esegue | Refactor multi-file, deploy, decisioni architetturali |
+| **Gemini 3.1 Pro CLI**         | Il Consigliere — 1M ctx, read-only            | `codebase_investigator`, `google_web_search` grounded |
+| **Codex 5.4 CLI**              | Il Soldato in Fortezza — sandbox kernel-level | Fix isolati, migration, test in ambiente sicuro       |
+
+### Pattern di Dispatch
+
+1. **SERIALE**: Claude→Gemini analizza→Claude decide→Codex esegue→Claude valida
+2. **PARALLELO**: `./scripts/ai-dispatch.sh parallel explore:"q1" search:"q2"` → Tu sintetizzi
+3. **RED TEAM** (obbligatorio pre-deploy): `redteam "soluzione"` → Se problemi: rivedi. Se clean: deploy.
+4. **MIGRATION**: `codex-migrate "desc"` → Genera e testa upgrade+downgrade in sandbox
+5. **NORMATIVA**: `search "KBLI 2025"` → Gemini Google Search grounded con fonti
+
+### Sicurezza
+
+- Gemini: `--sandbox --approval-mode plan` → read-only. MAI scrive sul repo.
+- Codex: `--sandbox read-only` o `workspace-write`. MAI `--dangerously-bypass`.
+- File OFF LIMITS per tutti gli agenti: `zantara_core.py`, `fly.toml`, `.env*`, `alembic/env.py`
+- Output: ogni comando salva in `./ai-dispatch-output/` con metriche (JSON strutturato)
+- Cache: explore/search cachati 24h. Redteam/sandbox mai cachati.
+
+### Fallback
+
+- Timeout Gemini (>120s): riprova con prompt semplificato
+- Timeout Codex (>180s): riprova, poi esegui tu con cautela
+- Rate limit: segnala all'umano, retry dopo reset giornaliero
+
+### Federation Protocol
+
+- **Escalation**: Air scrive finding in `shared/escalations.json`, Pro legge a inizio sessione
+- **Git sync**: post-commit hook → `ssh air 'cd ~/Projects/nuzantara && git pull --ff-only'`
+- **CLAUDE.md**: IDENTICO su entrambe — git-tracked, push/pull obbligatorio
+
+---
+
+## 16. Anthropic API — Best Practices (Feb 2026)
 
 ### Adaptive Thinking (OBBLIGATORIO su Opus 4.6 / Sonnet 4.6)
 
