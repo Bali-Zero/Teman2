@@ -545,11 +545,12 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
 
 // Navigation data
 const INSIGHT_CATEGORIES = [
-  { name: "Immigration", slug: "immigration" },
+  { name: "Visas", slug: "visas" },
   { name: "Business", slug: "business" },
-  { name: "Tax & Legal", slug: "tax-legal" },
+  { name: "Taxes", slug: "taxes" },
   { name: "Property", slug: "property" },
-  { name: "Lifestyle", slug: "lifestyle" },
+  { name: "Living", slug: "living" },
+  { name: "Trends", slug: "trends" },
 ];
 
 const SERVICES = [

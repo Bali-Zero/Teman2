@@ -33,12 +33,16 @@ const INTERNAL_ROUTES = [
 // Public routes for balizero.com
 const PUBLIC_CATEGORIES = [
   "immigration",
+  "visas",
   "business",
   "tax-legal",
+  "taxes",
   "property",
   "lifestyle",
+  "living",
   "digital-nomad",
   "tech",
+  "trends",
 ];
 
 // Domains

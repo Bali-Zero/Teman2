@@ -14,7 +14,7 @@ const categoryStyles: Record<
   ArticleCategory,
   { bg: string; text: string; gradient: string }
 > = {
-  immigration: {
+  visas: {
     bg: "bg-[#2251ff]/10",
     text: "text-[#2251ff]",
     gradient: "from-[#2251ff]/20 to-[#4d73ff]/20",
@@ -24,7 +24,7 @@ const categoryStyles: Record<
     text: "text-emerald-400",
     gradient: "from-emerald-500/20 to-teal-500/20",
   },
-  "tax-legal": {
+  "taxes": {
     bg: "bg-amber-500/10",
     text: "text-amber-400",
     gradient: "from-amber-500/20 to-orange-500/20",
@@ -34,20 +34,15 @@ const categoryStyles: Record<
     text: "text-[#e85c41]",
     gradient: "from-[#e85c41]/20 to-[#d14832]/20",
   },
-  lifestyle: {
+  living: {
     bg: "bg-violet-500/10",
     text: "text-violet-400",
     gradient: "from-violet-500/20 to-purple-500/20",
   },
-  tech: {
+  trends: {
     bg: "bg-fuchsia-500/10",
     text: "text-fuchsia-400",
     gradient: "from-fuchsia-500/20 to-pink-500/20",
-  },
-  bali_news: {
-    bg: "bg-orange-500/10",
-    text: "text-orange-400",
-    gradient: "from-orange-500/20 to-amber-500/20",
   },
 };
 
@@ -55,8 +50,7 @@ const categoryStyles: Record<
 function CategoryBadge({ category }: { category: ArticleCategory }) {
   const styles = categoryStyles[category];
   const labelMap: Record<string, string> = {
-    "tax-legal": "Tax & Legal",
-    bali_news: "Bali News",
+    "taxes": "Tax & Legal",
   };
   const label = labelMap[category] ?? category;
 

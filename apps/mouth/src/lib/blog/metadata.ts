@@ -13,7 +13,7 @@ const CATEGORY_META: Record<
   string,
   { title: string; description: string; keywords: string[] }
 > = {
-  immigration: {
+  visas: {
     title: "Indonesia Visa & Immigration Guides",
     description:
       "Expert guides on Indonesia visas: KITAS, KITAP, Golden Visa, work permits, retirement visa, digital nomad visa. Updated 2026 requirements and processes.",
@@ -38,7 +38,7 @@ const CATEGORY_META: Record<
       "foreign investment indonesia",
     ],
   },
-  "tax-legal": {
+  taxes: {
     title: "Indonesia Tax & Legal Guides",
     description:
       "Tax compliance guides for expats and businesses in Indonesia. Personal tax, corporate tax, Coretax system, tax deadlines, legal requirements.",
@@ -62,7 +62,7 @@ const CATEGORY_META: Record<
       "airbnb bali",
     ],
   },
-  lifestyle: {
+  living: {
     title: "Living in Bali - Expat Lifestyle Guides",
     description:
       "Guides for living in Bali: cost of living, healthcare, banking, culture, digital nomad life, expat community. Everything you need to know.",

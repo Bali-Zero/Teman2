@@ -335,14 +335,12 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
     category: ArticleCategory,
   ): Promise<string> {
     const categoryThemes: Record<ArticleCategory, string> = {
-      immigration: "passport, travel documents, airport, visa stamp",
+      visas: "passport, travel documents, airport, visa stamp",
       business: "office building, business meeting, corporate, professional",
-      "tax-legal": "legal documents, scales of justice, contract, official",
+      taxes: "legal documents, scales of justice, contract, official",
       property: "luxury villa, Bali architecture, real estate, tropical home",
-      lifestyle: "Bali sunset, rice terraces, beach, tropical paradise",
-      tech: "laptop, digital nomad workspace, modern technology, coworking",
-      bali_news:
-        "Bali street scene, temple ceremony, Balinese culture, island life",
+      living: "Bali sunset, rice terraces, beach, tropical paradise",
+      trends: "laptop, digital nomad workspace, modern technology, coworking",
     };
 
     try {
@@ -383,13 +381,12 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
   private static getDefaultCoverImage(category: ArticleCategory): string {
     const defaults: Record<ArticleCategory, string> = {
-      immigration: "/static/blog/default-immigration.jpg",
+      visas: "/static/blog/default-immigration.jpg",
       business: "/static/blog/default-business.jpg",
-      "tax-legal": "/static/blog/default-tax-legal.jpg",
+      taxes: "/static/blog/default-tax-legal.jpg",
       property: "/static/blog/default-property.jpg",
-      lifestyle: "/static/blog/default-lifestyle.jpg",
-      tech: "/static/blog/default-tech.jpg",
-      bali_news: "/static/blog/default-lifestyle.jpg",
+      living: "/static/blog/default-lifestyle.jpg",
+      trends: "/static/blog/default-tech.jpg",
     };
     return defaults[category];
   }
@@ -649,7 +646,7 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
     // Analyze visa type
     if (client.visaType) {
-      categories.add("immigration");
+      categories.add("visas");
       tags.add(client.visaType.toLowerCase());
     }
 
@@ -663,16 +660,16 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
     if (client.interests) {
       client.interests.forEach((interest) => {
         const categoryMap: Record<string, ArticleCategory> = {
-          visa: "immigration",
-          immigration: "immigration",
+          visa: "visas",
+          immigration: "visas",
           company: "business",
           business: "business",
-          tax: "tax-legal",
-          legal: "tax-legal",
+          tax: "taxes",
+          legal: "taxes",
           property: "property",
           real_estate: "property",
-          lifestyle: "lifestyle",
-          tech: "tech",
+          lifestyle: "living",
+          trends: "trends",
         };
         const category = categoryMap[interest.toLowerCase()];
         if (category) categories.add(category);

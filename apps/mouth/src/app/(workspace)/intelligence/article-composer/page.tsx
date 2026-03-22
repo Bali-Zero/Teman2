@@ -34,11 +34,11 @@ import {
 
 const CATEGORIES = [
   { value: "business", label: "Business & Company" },
-  { value: "immigration", label: "Immigration & Visas" },
-  { value: "tax", label: "Tax & Legal" },
+  { value: "visas", label: "Visas & Visas" },
+  { value: "tax", label: "Taxes" },
   { value: "property", label: "Property & Real Estate" },
-  { value: "lifestyle", label: "Lifestyle" },
-  { value: "tech", label: "Technology" },
+  { value: "living", label: "Living" },
+  { value: "trends", label: "Trends & Insights" },
   { value: "legal", label: "Legal Updates" },
 ];
 

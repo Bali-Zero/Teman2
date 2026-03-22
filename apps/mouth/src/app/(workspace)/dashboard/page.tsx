@@ -34,12 +34,11 @@ import { RefreshCw } from "lucide-react";
 
 // ── Category colors ────────────────────────────────────────
 const CATEGORY_COLOR: Record<string, string> = {
-  immigration: "#4a8ec4",
+  visas: "#4a8ec4",
   business: "#5cb88a",
-  "tax-legal": "#b89a40",
+  "taxes": "#b89a40",
   property: "#9880d8",
-  lifestyle: "#d4845a",
-  bali_news: "#c45c78",
+  living: "#d4845a",
   emerging_trends: "#4ab8c4",
 };
 function getCategoryColor(cat: string): string {

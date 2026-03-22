@@ -107,13 +107,13 @@ export function ArticleEditor({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="immigration">Immigration</SelectItem>
+                <SelectItem value="visas">Visas</SelectItem>
                 <SelectItem value="property">Property</SelectItem>
                 <SelectItem value="business">Business</SelectItem>
                 <SelectItem value="news">News</SelectItem>
                 <SelectItem value="visa">Visa</SelectItem>
-                <SelectItem value="tax">Tax & Legal</SelectItem>
-                <SelectItem value="lifestyle">Lifestyle</SelectItem>
+                <SelectItem value="tax">Taxes</SelectItem>
+                <SelectItem value="living">Living</SelectItem>
               </SelectContent>
             </Select>
           </div>
