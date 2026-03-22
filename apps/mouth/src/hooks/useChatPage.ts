@@ -205,7 +205,8 @@ export function useChatPage(): UseChatPageReturn {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // ← Run only once on mount to avoid infinite loop
 
-  // Optimistic messages
+  
+  // Optimistic messages (Source of Truth dal React Context dei messaggi reali)
   const [optimisticMessages, addOptimisticMessage] = useOptimistic<
     OptimisticMessage[],
     OptimisticMessage
@@ -214,145 +215,70 @@ export function useChatPage(): UseChatPageReturn {
   const displayMessages = optimisticMessages;
   const [isPending, startTransition] = useTransition();
 
-  // Chat send hook
+  // Chat send hook delegato
   const chatSend = useChatSend({
     sessionId,
-    attachedImages: chatInput.attachedImages,
-    conversationHistory: displayMessages
+    conversationHistory: messages
       .filter((m) => !m.isStreaming)
-      .map((m) => ({ role: m.role, content: m.content })),
+      .map((m) => ({ role: m.role, content: m.content || "" })),
     isMountedRef,
     isAbortedRef,
     onToast: showToast,
     onChunk: (chunk: string) => {
       setMessages((prev) => {
         if (prev.length === 0) return prev;
-        const lastMsg = prev[prev.length - 1];
-        // Only update if the last message is an assistant message (it should be)
-        if (lastMsg.role !== "assistant") return prev;
-
-        return [
-          ...prev.slice(0, -1),
-          { ...lastMsg, content: chunk, isPending: false },
-        ];
+        const newMsgs = [...prev];
+        const lastMsg = newMsgs[newMsgs.length - 1];
+        if (lastMsg.role === "assistant") {
+            lastMsg.content = (lastMsg.content || "") + chunk;
+        }
+        return newMsgs;
       });
-    },
-    onComplete: (fullResponse, sources, metadata) => {
-      const typedMeta = metadata as
-        | {
-            generated_image?: string;
-            followup_questions?: string[];
-            execution_time?: number;
-            route_used?: string;
-          }
-        | undefined;
-
-      logger.info("Message received successfully", {
-        component: "useChatPage",
-        action: "onComplete",
-        metadata: { sessionId, responseLength: fullResponse.length },
-      });
-
-      // Track metrics
-      const executionTime = typedMeta?.execution_time || 0;
-      chatMetrics.messageReceived(fullResponse.length, executionTime);
-
-      // trackEvent now imported at top
-      const userProfile = api.getUserProfile();
-      trackEvent(
-        "chat_message_received",
-        { sessionId, responseLength: fullResponse.length },
-        userProfile?.email,
-      );
-
-      setMessages((prev) => {
-        if (prev.length === 0) return prev;
-        const lastMsg = prev[prev.length - 1];
-        if (lastMsg.role !== "assistant") return prev;
-
-        return [
-          ...prev.slice(0, -1),
-          {
-            ...lastMsg,
-            content: fullResponse,
-            sources: sources as Source[],
-            isStreaming: false,
-            isPending: false,
-            ...(typedMeta?.generated_image
-              ? { imageUrl: typedMeta.generated_image }
-              : {}),
-            ...(typedMeta?.followup_questions &&
-            typedMeta.followup_questions.length > 0
-              ? {
-                  metadata: {
-                    followup_questions: typedMeta.followup_questions,
-                  },
-                }
-              : {}),
-          },
-        ];
-      });
-      setCurrentStatus("");
-
-      startTransition(async () => {
-        // Conversation is automatically saved by the backend (agentic_rag.py stream endpoint)
-        // No need for manual saveConversation call here anymore.
-        logger.info("Conversation persisted automatically by backend", {
-          component: "useChatPage",
-          action: "persistence",
-          metadata: { sessionId },
-        });
-
-        // Track metrics
-        chatMetrics.conversationSaved(
-          sessionId,
-          displayMessages.filter((m) => !m.isStreaming).length,
-        );
-
-        trackEvent(
-          "chat_conversation_saved",
-          { sessionId },
-          userProfile?.email,
-        );
-      });
-    },
-    onError: (error: Error) => {
-      logger.error(
-        "Message send error",
-        {
-          component: "useChatPage",
-          action: "onError",
-          metadata: { sessionId, errorMessage: error.message },
-        },
-        error,
-      );
-      setMessages((prev) => {
-        if (prev.length === 0) return prev;
-        const lastMsg = prev[prev.length - 1];
-        if (lastMsg.role !== "assistant") return prev;
-
-        return [
-          ...prev.slice(0, -1),
-          {
-            ...lastMsg,
-            content:
-              "Sorry, there was an error processing your request. Please try again.",
-            isPending: false,
-            isStreaming: false,
-          },
-        ];
-      });
-      setCurrentStatus("");
     },
     onStep: (step: AgentStep) => {
-      setStreamingSteps((prev) => [...prev, step]);
-      if (step.type === "status" && typeof step.data === "string") {
-        setCurrentStatus(step.data);
-      }
+      // Gestito in streamingSteps da useChatSend
     },
+    onComplete: async (fullResponse: string, sources: any[], metadata?: ChatMessage["metadata"]) => {
+        setMessages((prev) => {
+            if (prev.length === 0) return prev;
+            const newMsgs = [...prev];
+            const lastMsg = newMsgs[newMsgs.length - 1];
+            if (lastMsg.role === "assistant") {
+                lastMsg.content = fullResponse;
+                lastMsg.sources = sources;
+                lastMsg.isStreaming = false;
+                if (metadata) lastMsg.metadata = metadata;
+            }
+            return newMsgs;
+        });
+        
+        // Salvataggio conversazione
+        try {
+          const title =
+            messages.length === 0
+              ? chatInput.input.slice(0, 50) + (chatInput.input.length > 50 ? "..." : "")
+              : "Nuova Conversazione";
+          
+          
+          // L'API di actions.ts si aspetta un oggetto con title, messages, e options
+          
+          // L'API di actions.ts (saveConversation) richiede: sessionId (string) e messages (ChatMessage[])
+          
+          // Force types
+          await saveConversation(sessionId as any, [
+              ...messages.map((m) => ({ role: m.role, content: m.content || "" })) as any,
+              { role: "assistant", content: fullResponse } as any,
+            ] as any);
+        } catch (e) {
+            console.error("Save error:", e);
+        }
+    },
+    onError: (error: Error) => {
+        logger.error("Chat error", { component: "useChatPage" }, error);
+    }
   });
 
-  // Handle send message
+  // Handle send message (Thin delegator)
   const handleSend = useCallback(async () => {
     const trimmedInput = chatInput.input.trim();
     const hasImages = chatInput.attachedImages.length > 0;
@@ -361,57 +287,34 @@ export function useChatPage(): UseChatPageReturn {
       return;
     }
 
-    logger.info("Message send started", {
-      component: "useChatPage",
-      action: "handleSend",
-      metadata: {
-        sessionId,
-        textLength: trimmedInput.length,
-        hasImages: chatInput.attachedImages.length > 0,
-      },
-    });
-
-    // Track metrics
-    chatMetrics.messageSent(
-      chatInput.attachedImages.length > 0,
-      chatInput.attachedImages.length,
-    );
-    chatMetrics.streamingStarted(sessionId);
-
-    chatInput.clearInput();
-    chatInput.clearAttachments();
-    setStreamingSteps([]);
-    setCurrentStatus("");
-
-    const userMessage: OptimisticMessage = {
-      id: generateId(),
+    const userMsg: OptimisticMessage = {
+      id: `msg_${Date.now()}`,
       role: "user",
-      content: trimmedInput || (hasImages ? "[Image attached]" : ""),
-      images:
-        chatInput.attachedImages.length > 0
-          ? chatInput.attachedImages
-          : undefined,
-      timestamp: new Date(),
-      isPending: false,
-    };
-
-    const assistantMessage: OptimisticMessage = {
-      id: generateId(),
-      role: "assistant",
-      content: "",
+      content: trimmedInput,
       timestamp: new Date(),
       isPending: true,
-      isStreaming: true,
+      images: chatInput.attachedImages,
     };
 
     startTransition(() => {
-      addOptimisticMessage(userMessage);
-      addOptimisticMessage(assistantMessage);
+      addOptimisticMessage(userMsg);
     });
 
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
-    await chatSend.sendMessage(trimmedInput || "[Image attached]");
-  }, [chatInput, isPending, chatSend, sessionId, addOptimisticMessage]);
+    setMessages((prev) => [...prev, { ...userMsg, isPending: false }]);
+    setMessages((prev) => [...prev, { id: `ast_${Date.now()}`, role: "assistant", content: "", isStreaming: true, timestamp: new Date() }]);
+
+    chatInput.setInput("");
+    chatInput.setAttachedImages([]);
+    chatInput.setImageGenPrompt("");
+
+    setTimeout(() => {
+      const textarea = document.querySelector("textarea");
+      textarea?.focus();
+    }, 100);
+
+    await chatSend.sendMessage(trimmedInput, chatInput.attachedImages);
+
+  }, [chatInput, isPending, chatSend, addOptimisticMessage]);
 
   // Load user profile
   const loadUserProfile = useCallback(async () => {
