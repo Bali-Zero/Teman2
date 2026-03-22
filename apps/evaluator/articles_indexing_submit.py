@@ -102,11 +102,16 @@ def discover_articles() -> list[dict[str, Any]]:
         url_category = CATEGORY_MAP.get(folder.name, folder.name)
 
         for mdx_file in sorted(folder.glob("*.mdx")):
-            # Skip translated and conflict files
-            if mdx_file.name.endswith(".id.mdx"):
-                continue
+            # Skip conflict files only (NOT translations — we index all languages)
             if ".sync-conflict-" in mdx_file.name:
                 continue
+
+            # Detect language from filename
+            lang = "en"
+            for lang_suffix in [".id.mdx", ".it.mdx", ".fr.mdx", ".ru.mdx"]:
+                if mdx_file.name.endswith(lang_suffix):
+                    lang = lang_suffix[1:3]  # "id", "it", "fr", "ru"
+                    break
 
             fm = read_frontmatter(mdx_file)
             slug = fm.get("slug") or mdx_file.stem
@@ -115,16 +120,24 @@ def discover_articles() -> list[dict[str, Any]]:
             if no_index:
                 continue  # Skip noIndex articles
 
-            url = f"{SITE_BASE_URL}/{url_category}/{slug}"
+            base_url = f"{SITE_BASE_URL}/{url_category}/{slug}"
+            url = base_url if lang == "en" else f"{base_url}?lang={lang}"
             priority = GSC_PRIORITY.get(slug, 0)
+            # Deprioritize translations slightly (English first)
+            if lang != "en":
+                priority = max(priority - 1, 0)
+
+            # Use slug+lang as unique key to avoid collisions
+            unique_key = f"{slug}:{lang}" if lang != "en" else slug
 
             articles.append({
-                "slug": slug,
+                "slug": unique_key,
                 "url": url,
                 "category": url_category,
                 "folder": folder.name,
                 "priority": priority,
                 "title": fm.get("title", slug),
+                "lang": lang,
             })
 
     # Sort: GSC priority first (highest impressions), then alphabetical
