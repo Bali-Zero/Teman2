@@ -4367,64 +4367,17 @@ function CompanyTab({
   );
 
   // Also try to load linked companies (legacy path)
+  // Load linked companies (legacy — most data now comes from documents prop)
   const [companies, setCompanies] = useState<ClientCompanyLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
-    loadCompanies();
+    api.crm
+      .getClientCompanies(clientId)
+      .then(setCompanies)
+      .catch(() => setCompanies([]))
+      .finally(() => setIsLoading(false));
   }, [clientId]);
-
-  const loadCompanies = async () => {
-    try {
-      setIsLoading(true);
-      const data = await api.crm.getClientCompanies(clientId);
-      setCompanies(data);
-      // Fetch documents for each company
-      const docsMap: Record<number, CompanyDocument[]> = {};
-      await Promise.all(
-        data.map(async (c) => {
-          try {
-            const docs = await api.crm.getCompanyDocuments(c.company_id);
-            docsMap[c.company_id] = docs;
-          } catch {
-            docsMap[c.company_id] = [];
-          }
-        })
-      );
-      setCompanyDocs(docsMap);
-    } catch (err) {
-      logger.error('Failed to load companies:', {}, err as Error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCompanyCreated = () => {
-    loadCompanies();
-    setShowAddModal(false);
-  };
-
-  const getDocByType = (companyId: number, docType: string) => {
-    const docs = companyDocs[companyId] || [];
-    return docs.find((d) => d.document_type === docType) || null;
-  };
-
-  // Generate intelligent company summary
-  const getCompanySummary = (c: ClientCompanyLink) => {
-    const parts: string[] = [];
-    // Concise one-liner: "PT PMA | KBLI 68110, 70209 | Badung, Bali | Est. 2021"
-    if (c.company_type) parts.push(c.company_type);
-    if (c.kbli_code) parts.push(`KBLI ${c.kbli_code}`);
-    const loc = [c.city, c.province].filter(Boolean).join(', ');
-    if (loc) parts.push(loc);
-    if (c.nib) parts.push(`NIB ${c.nib}`);
-    if (c.sk_menhumkam_date) {
-      const year = new Date(c.sk_menhumkam_date).getFullYear();
-      if (!isNaN(year)) parts.push(`Est. ${year}`);
-    }
-    return parts.join(' · ');
-  };
 
   // Helper: get Drive proxy thumbnail
   const getProxyUrl = (doc: ClientDocument | undefined) => {
@@ -4659,8 +4612,7 @@ function DocBox({
   );
 }
 
-// Keep old CompanyTab code for loadCompanies below — TODO remove after migration
-// The rest of the old company rendering code was replaced by the document-driven approach above.
+// CompanyTab now uses documents prop directly — no more client_company_links dependency
 
 // ============================================
 // ORIGINAL CompanyTab LEGACY SECTION REMOVED
