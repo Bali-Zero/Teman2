@@ -900,7 +900,13 @@ export default function ClientDetailPage() {
       )}
 
       {activeTab === "company" && (
-        <CompanyTab clientId={clientId} formatDate={formatDate} />
+        <CompanyTab
+          clientId={clientId}
+          client={client}
+          documents={documents}
+          formatDate={formatDate}
+          onRefresh={refreshProfile}
+        />
       )}
 
       {activeTab === "tax" && (
@@ -4716,15 +4722,49 @@ function CompanyDocUpload({
 
 function CompanyTab({
   clientId,
+  client,
+  documents,
   formatDate,
+  onRefresh,
 }: {
   clientId: number;
+  client: ClientProfile["client"];
+  documents: ClientDocument[];
   formatDate: (d: string) => string;
+  onRefresh: () => Promise<void>;
 }) {
+  // Company docs from client's documents (category = pma)
+  const pmaDocs = documents.filter((d) => d.document_category === "pma");
+  const profilPerseroan = pmaDocs.find(
+    (d) =>
+      d.document_type === "company_profile" ||
+      d.document_type === "profile_perseroan" ||
+      d.file_name?.toLowerCase().includes("profil perseroan") ||
+      d.file_name?.toLowerCase().includes("company profile"),
+  );
+  const aktaDoc = pmaDocs.find(
+    (d) =>
+      d.document_type === "akta" ||
+      d.file_name?.toLowerCase().includes("akta"),
+  );
+  const nibDoc = pmaDocs.find(
+    (d) =>
+      d.document_type === "nib" || d.file_name?.toLowerCase().includes("nib"),
+  );
+  const npwpDoc = pmaDocs.find(
+    (d) =>
+      d.document_type === "npwp" ||
+      d.file_name?.toLowerCase().includes("npwp"),
+  );
+  const skDoc = pmaDocs.find(
+    (d) =>
+      d.document_type === "sk" ||
+      d.file_name?.toLowerCase().includes("sk ") ||
+      d.file_name?.toLowerCase().includes("kemenkumham"),
+  );
+
+  // Also try to load linked companies (legacy path)
   const [companies, setCompanies] = useState<ClientCompanyLink[]>([]);
-  const [companyDocs, setCompanyDocs] = useState<
-    Record<number, CompanyDocument[]>
-  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -4783,22 +4823,231 @@ function CompanyTab({
     return parts.join(" · ");
   };
 
-  if (isLoading) {
+  // Helper: get Drive proxy thumbnail
+  const getProxyUrl = (doc: ClientDocument | undefined) => {
+    if (!doc?.google_drive_file_url) return null;
+    const fid = extractDriveFileId(doc.google_drive_file_url);
+    return fid ? `/api/documents/proxy/${fid}` : null;
+  };
+
+  const hasCompanyName = !!client.company_name;
+  const hasAnyDoc = pmaDocs.length > 0;
+  const hasLinkedCompanies = companies.length > 0;
+
+  // No company at all
+  if (!hasCompanyName && !hasAnyDoc && !hasLinkedCompanies && !isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-[var(--bz-accent)]" />
+      <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl">
+        <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
+        <p className="text-[var(--bz-text-2)]">No company information</p>
+        <p className="text-sm text-[var(--bz-text-2)] mt-1">
+          Upload company documents (Profil Perseroan, NIB, NPWP, Akta) to Drive
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Company Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
-            Companies
-          </h3>
-          <p className="text-sm text-[var(--bz-text-2)]">Profile Perseroan</p>
+            {client.company_name || "Company"}</h3>
+          <p className="text-sm text-[var(--bz-text-2)]">
+            Profile Perseroan · {pmaDocs.length} documents
+          </p>
+        </div>
+      </div>
+
+      {/* Document Cards Grid — each doc in its dedicated box */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Profil Perseroan — main company info card */}
+        <div
+          className="rounded-xl border overflow-hidden col-span-1 md:col-span-2"
+          style={{ border: "1px solid rgba(255,255,255,0.05)", background: "rgba(32,32,36,0.65)" }}
+        >
+          <div className="px-5 py-3 border-b border-[var(--bz-border)] bg-gradient-to-r from-purple-500/5 to-blue-500/5">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-purple-400" />
+              <h4 className="text-sm font-semibold text-[var(--bz-text-1)]">Profile Perseroan</h4>
+            </div>
+          </div>
+          <div className="p-5">
+            {profilPerseroan ? (
+              <div className="flex items-start gap-4">
+                <a
+                  href={profilPerseroan.google_drive_file_url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 w-20 h-28 rounded-lg border border-[var(--bz-border)] overflow-hidden bg-[var(--bz-base)] hover:border-purple-400/50 transition-colors"
+                >
+                  {getProxyUrl(profilPerseroan) ? (
+                    <img src={getProxyUrl(profilPerseroan)!} alt="Profile Perseroan" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <FileText className="w-8 h-8 text-[var(--bz-text-2)] opacity-50" />
+                    </div>
+                  )}
+                </a>
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm font-medium text-[var(--bz-text-1)]">{client.company_name || "—"}</p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                    {client.company_name && (
+                      <div><span className="text-[var(--bz-text-2)]">Company</span><p className="text-[var(--bz-text-1)]">{client.company_name}</p></div>
+                    )}
+                  </div>
+                  <a
+                    href={profilPerseroan.google_drive_file_url || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-purple-400 hover:underline mt-2"
+                  >
+                    <FileText className="w-3 h-3" /> View in Drive
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-[var(--bz-text-2)]">
+                No Profile Perseroan uploaded. Add it to <code className="text-xs bg-[var(--bz-base)] px-1 rounded">02_Company/Profile Perseroan/</code> in Drive.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* AKTA */}
+        <DocBox
+          title="Akta"
+          subtitle="Deed of Establishment"
+          icon={<FileText className="w-4 h-4 text-blue-400" />}
+          doc={aktaDoc}
+          getProxyUrl={getProxyUrl}
+          folderHint="02_Company/AKTA/"
+        />
+
+        {/* SK Kemenkumham */}
+        <DocBox
+          title="SK Kemenkumham"
+          subtitle="Ministry Approval"
+          icon={<FileText className="w-4 h-4 text-emerald-400" />}
+          doc={skDoc}
+          getProxyUrl={getProxyUrl}
+          folderHint="02_Company/"
+        />
+
+        {/* NIB */}
+        <DocBox
+          title="NIB"
+          subtitle="Business ID Number"
+          icon={<FileText className="w-4 h-4 text-orange-400" />}
+          doc={nibDoc}
+          getProxyUrl={getProxyUrl}
+          folderHint="02_Company/NIB/"
+        />
+
+        {/* NPWP */}
+        <DocBox
+          title="NPWP"
+          subtitle="Tax ID"
+          icon={<FileText className="w-4 h-4 text-emerald-400" />}
+          doc={npwpDoc}
+          getProxyUrl={getProxyUrl}
+          folderHint="02_Company/NPWP/"
+        />
+      </div>
+
+      {/* Legacy linked companies (if any exist) */}
+      {hasLinkedCompanies && (
+        <div className="space-y-4 pt-4 border-t border-[var(--bz-border)]">
+          <h4 className="text-sm font-semibold text-[var(--bz-text-2)] uppercase tracking-wider">
+            Linked Companies ({companies.length})
+          </h4>
+          {companies.map((c) => (
+            <div key={c.company_id} className="text-sm text-[var(--bz-text-1)]">
+              {c.company_name} · {c.role} {c.ownership_percentage ? `(${c.ownership_percentage}%)` : ""}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Document box component for Company tab
+function DocBox({
+  title,
+  subtitle,
+  icon,
+  doc,
+  getProxyUrl,
+  folderHint,
+}: {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  doc: ClientDocument | undefined;
+  getProxyUrl: (d: ClientDocument | undefined) => string | null;
+  folderHint: string;
+}) {
+  return (
+    <div
+      className="rounded-xl border overflow-hidden"
+      style={{ border: "1px solid rgba(255,255,255,0.05)", background: "rgba(32,32,36,0.65)" }}
+    >
+      <div className="px-4 py-2.5 border-b border-[var(--bz-border)] flex items-center gap-2">
+        {icon}
+        <div>
+          <h4 className="text-sm font-semibold text-[var(--bz-text-1)]">{title}</h4>
+          <p className="text-[10px] text-[var(--bz-text-2)]">{subtitle}</p>
+        </div>
+      </div>
+      <div className="p-4">
+        {doc ? (
+          <div className="flex items-center gap-3">
+            <a
+              href={doc.google_drive_file_url || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 w-14 h-14 rounded-lg border border-[var(--bz-border)] overflow-hidden bg-[var(--bz-base)] hover:border-[var(--bz-accent)]/50 transition-colors"
+            >
+              {getProxyUrl(doc) ? (
+                <img src={getProxyUrl(doc)!} alt={title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-[var(--bz-text-2)] opacity-50" />
+                </div>
+              )}
+            </a>
+            <div className="min-w-0">
+              <p className="text-sm text-[var(--bz-text-1)] truncate">{doc.file_name}</p>
+              <a
+                href={doc.google_drive_file_url || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[var(--bz-accent)] hover:underline"
+              >
+                View in Drive
+              </a>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-[var(--bz-text-2)]">
+            Not uploaded. Add to <code className="bg-[var(--bz-base)] px-1 rounded">{folderHint}</code>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Keep old CompanyTab code for loadCompanies below — TODO remove after migration
+// The rest of the old company rendering code was replaced by the document-driven approach above.
+
+// ============================================
+// ORIGINAL CompanyTab LEGACY SECTION REMOVED
+// ============================================
+
+// OLD COMPANY TAB CODE REMOVED — replaced by document-driven approach above
         </div>
         <Button
           size="sm"
