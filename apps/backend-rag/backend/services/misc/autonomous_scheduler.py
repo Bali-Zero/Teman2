@@ -747,9 +747,9 @@ async def create_and_start_scheduler(
             name="drive_changes_poll",
             task_func=run_drive_poll,
             interval_seconds=300,  # 5 minutes
-            enabled=True,  # RE-ENABLED 2026-03-22: page_token persisted in PostgreSQL system_settings, survives restarts. Added dedup + nested subfolder support.
+            enabled=False,  # DISABLED 2026-03-22: moved to Air cron (curl POST /api/admin/drive/poll every 5min). Fly.io auto_stop incompatible with internal polling.
         )
-        logger.info("📂 Drive Changes Polling registered and ENABLED (every 5 min)")
+        logger.info("⏸️ Drive Changes Polling DISABLED (moved to Air cron)")
     except Exception as e:
         logger.error(f"Failed to register Drive Changes Polling: {e}")
 
