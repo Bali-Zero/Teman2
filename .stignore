@@ -1,4 +1,12 @@
 .claude/worktrees
 
+# Machine-specific Claude Code state — causes sync conflicts
+.claude/settings.local.json
+.claude/settings.local.sync-conflict-*
+.claude/statsig/
+
+# AI dispatch cache is machine-local
+.ai-dispatch-cache/
+
 # CRITICAL: never sync git internals
 .git/

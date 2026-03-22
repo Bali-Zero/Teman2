@@ -457,4 +457,5 @@ scripts/drive_reorganize_report.json
 # Translate script (runs via LaunchAgent, not part of main pipeline)
 apps/bali-intel-scraper/scripts/translate_articles.py
 ai-dispatch-output/
+.ai-dispatch-cache/
 .superpowers/
