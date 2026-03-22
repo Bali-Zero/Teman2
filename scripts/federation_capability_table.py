@@ -5,14 +5,18 @@ Used by the federation orchestrator to provide Qwen classifier with
 routing context. Each capability has: agent, tool_type, domain tags,
 and when_to_use description for intelligent dispatch.
 
-Arsenal inventory (2026-03-23):
+Arsenal inventory (2026-03-23, v2):
   - 109 NuzMCP tools (20 modules)
   - 13 NuzMCP-Advanced tools
+  - 35 NotebookLM MCP tools (notebooks, sources, studio, research, pipeline, batch)
   - 16 OpenClaw skills
   - 5 Gemini CLI extensions
-  - 18 Gemini built-in tools
-  - 7 Claude Code MCP servers
+  - 16 Gemini built-in tools
+  - 8 Claude Code MCP servers (+ google-colab)
   - 5 AI dispatch commands
+  - 12 Google SDK/APIs installed (ADK, A2A, Translation, DocumentAI, etc.)
+  - gws CLI (unified Google Workspace)
+  - GBP API (Google Business Profile)
 """
 
 # ═══════════════════════════════════════════════════════
@@ -85,6 +89,30 @@ AGENTS = {
         "limits": "no orchestration awareness, single-task focus",
         "cost": "$ (OpenRouter rates)",
         "dispatch_cmd": "aider-fix",
+    },
+    "notebooklm": {
+        "name": "NotebookLM (Google AI Ultra)",
+        "role": "L'Oracolo — knowledge synthesis with citations",
+        "strengths": [
+            "multi-document synthesis with exact citations",
+            "cross-domain query (5+ notebooks in 1 call)",
+            "Deep Research (autonomous web search, 120/day)",
+            "audio/podcast generation", "quiz/flashcard/mind map generation",
+        ],
+        "limits": "3-15s latency, cookie auth fragile, 50 sources/notebook, no live DB access",
+        "cost": "$0 (Google AI Ultra subscription)",
+        "dispatch_cmd": "nlm-query",
+    },
+    "gws": {
+        "name": "Google Workspace CLI (gws)",
+        "role": "Il Segretario — unified Google Workspace automation",
+        "strengths": [
+            "Gmail send/search", "Drive CRUD", "Calendar events/free-busy",
+            "Sheets read/write/append", "Docs create/export", "Admin user management",
+        ],
+        "limits": "requires Google Workspace account, CLI tool",
+        "cost": "$0 (already paying Workspace)",
+        "dispatch_cmd": "gws",
     },
 }
 
@@ -225,6 +253,98 @@ CAPABILITY_DOMAINS = {
         "best_agent": "claude-code",
         "keywords": ["langsmith", "tracing", "log", "admin", "analytics", "monitoring"],
     },
+
+    # --- NotebookLM (NEW) ---
+    "notebook-research": {
+        "description": "Deep web research with auto-import of sources into knowledge base",
+        "tools": "NLM MCP: research_start (Deep Research, autonomous 80+ web searches), cross_notebook_query (multi-domain synthesis)",
+        "best_agent": "notebooklm",
+        "keywords": ["research", "ricerca", "deep research", "investigate", "indaga", "fonti", "sources"],
+    },
+    "notebook-synthesis": {
+        "description": "Multi-document synthesis with exact citations from curated knowledge",
+        "tools": "NLM MCP: notebook_query, cross_notebook_query (across 7+ domain notebooks)",
+        "best_agent": "notebooklm",
+        "keywords": ["synthesis", "sintesi", "compare", "confronta", "multi-domain", "cross-domain", "citazione", "citation"],
+    },
+    "notebook-media": {
+        "description": "AI-generated audio podcasts, quizzes, flashcards, mind maps, study guides from knowledge",
+        "tools": "NLM MCP: studio_create (audio/podcast/video), download_artifact (quiz/flashcard/mind_map/study_guide/timeline/slide_deck/infographic)",
+        "best_agent": "notebooklm",
+        "keywords": ["podcast", "audio", "quiz", "flashcard", "mind map", "study guide", "guida", "briefing"],
+    },
+    "notebook-management": {
+        "description": "Create, populate, and manage knowledge notebooks",
+        "tools": "NLM MCP: notebook_create, notebook_list, notebook_delete, source_add (file/url/text/youtube/drive), source_list, source_delete, pipeline, batch",
+        "best_agent": "notebooklm",
+        "keywords": ["notebook", "create notebook", "add source", "populate", "knowledge base"],
+    },
+
+    # --- Google Workspace unified (NEW) ---
+    "email-automation": {
+        "description": "Email send, search, draft, label management via gws CLI",
+        "tools": "gws gmail send/search/list/draft + NuzMCP: send_email, search_emails, list_emails",
+        "best_agent": "gws",
+        "keywords": ["email", "gmail", "send email", "draft", "invia email", "posta"],
+    },
+    "calendar-scheduling": {
+        "description": "Calendar events, free-busy check, appointment booking",
+        "tools": "gws calendar create/list/free-busy + Google Calendar MCP (gcal_*)",
+        "best_agent": "gws",
+        "keywords": ["calendar", "appuntamento", "appointment", "meeting", "schedule", "disponibilità", "free time"],
+    },
+    "document-generation": {
+        "description": "Create Google Docs, export PDF, proposals, reports, audit trails",
+        "tools": "gws docs create/append/export + gws drive upload",
+        "best_agent": "gws",
+        "keywords": ["document", "documento", "PDF", "proposal", "preventivo", "report", "Google Doc", "audit trail"],
+    },
+
+    # --- Google Business Profile (NEW) ---
+    "reputation": {
+        "description": "Google Business Profile: reviews, posts, Q&A, insights, listing management",
+        "tools": "GBP API: reviews.list/updateReply, localPosts.create, questions.answers.upsert, reportInsights + Places API for competitor monitoring",
+        "best_agent": "claude-code",
+        "keywords": ["review", "recensione", "Google Business", "GBP", "listing", "reputation", "local SEO", "Google Maps"],
+    },
+
+    # --- Translation & OCR (NEW) ---
+    "translation": {
+        "description": "Indonesian-English translation for documents, articles, client comms",
+        "tools": "Google Cloud Translation API (200+ languages) + Gemini inline translation",
+        "best_agent": "claude-code",
+        "keywords": ["translate", "traduci", "translation", "traduzione", "Indonesian", "English", "bahasa"],
+    },
+    "document-ocr": {
+        "description": "Advanced OCR for Indonesian documents (passports, KITAS, contracts, notarial acts)",
+        "tools": "Google Cloud Document AI (200+ languages, superior to tesseract) + OCR Tesseract MCP (fallback)",
+        "best_agent": "claude-code",
+        "keywords": ["OCR", "scan", "passaporto", "passport", "document scan", "extract text"],
+    },
+
+    # --- AI Agent Framework (NEW) ---
+    "agent-framework": {
+        "description": "Multi-agent orchestration framework, agent-to-agent communication",
+        "tools": "Google ADK (Agent Development Kit) for multi-agent graphs + A2A Protocol SDK for inter-agent communication + Agent Cards",
+        "best_agent": "claude-code",
+        "keywords": ["agent", "multi-agent", "A2A", "agent card", "orchestration", "framework", "ADK"],
+    },
+
+    # --- GPU Compute (NEW) ---
+    "gpu-compute": {
+        "description": "Remote GPU runtime for ML inference, training, heavy computation",
+        "tools": "Google Colab MCP: execute_code, create_notebook, pip_install + Colab free/Pro GPU",
+        "best_agent": "claude-code",
+        "keywords": ["GPU", "training", "inference", "Colab", "compute", "ML", "machine learning"],
+    },
+
+    # --- Image & Video Generation (NEW) ---
+    "media-generation": {
+        "description": "AI image generation (Imagen 4) and video generation (Veo 3) for marketing",
+        "tools": "google-genai SDK: Imagen 4 ($0.03/img), Veo 3 ($0.35/sec) + Canva MCP (20+ tools)",
+        "best_agent": "claude-code",
+        "keywords": ["image", "immagine", "generate image", "video", "Imagen", "Veo", "Canva", "design", "marketing visual"],
+    },
 }
 
 # ═══════════════════════════════════════════════════════
@@ -273,6 +393,83 @@ GEMINI_TOOLS = {
 }
 
 
+# ═══════════════════════════════════════════════════════
+# NotebookLM MCP Tools (35 tools via notebooklm-mcp-cli)
+# ═══════════════════════════════════════════════════════
+NOTEBOOKLM_TOOLS = {
+    # Notebook CRUD
+    "notebook_list": "List all notebooks",
+    "notebook_create": "Create a new notebook",
+    "notebook_delete": "Delete a notebook",
+    "notebook_get": "Get notebook details",
+    # Source management
+    "source_add": "Add source (file, url, text, youtube, drive)",
+    "source_list": "List sources in a notebook",
+    "source_delete": "Delete a source",
+    "source_refresh": "Refresh source content",
+    # Querying
+    "notebook_query": "Chat with notebook sources (grounded, cited)",
+    "cross_notebook_query": "Query across multiple notebooks simultaneously",
+    # Deep Research
+    "research_start": "Trigger autonomous Deep Research (web search, 80+ sources)",
+    "research_status": "Check Deep Research progress",
+    "research_import": "Import research results into notebook",
+    # Studio (media generation)
+    "studio_create": "Generate: audio_overview, podcast, video, quiz, flashcards, mind_map, study_guide, slide_deck, infographic, timeline, data_table, report",
+    "studio_status": "Check studio generation status",
+    # Artifacts
+    "download_artifact": "Download generated artifacts (MP3, PDF, PNG, JSON, CSV, PPTX)",
+    # Automation
+    "pipeline": "Multi-step workflows (create → add sources → query → generate)",
+    "batch": "Batch operations across notebooks",
+    # Authentication
+    "login": "Browser-based Google auth (one-time)",
+    "profile_list": "List authenticated Google profiles",
+    "profile_switch": "Switch active profile",
+}
+
+# ═══════════════════════════════════════════════════════
+# Google Workspace CLI (gws) — unified Workspace access
+# ═══════════════════════════════════════════════════════
+GWS_TOOLS = {
+    "gmail_send": "Send email with attachments",
+    "gmail_search": "Search emails by query",
+    "gmail_list": "List recent emails",
+    "gmail_draft": "Create email draft",
+    "drive_list": "List files in folder",
+    "drive_upload": "Upload file to Drive",
+    "drive_download": "Download file from Drive",
+    "drive_mkdir": "Create Drive folder",
+    "drive_search": "Search files by name/content",
+    "calendar_create": "Create calendar event",
+    "calendar_list": "List events",
+    "calendar_freebusy": "Check availability",
+    "sheets_read": "Read spreadsheet range",
+    "sheets_write": "Write to spreadsheet",
+    "sheets_append": "Append row to sheet",
+    "sheets_find": "Search in spreadsheet",
+    "docs_create": "Create Google Doc",
+    "docs_append": "Append content to Doc",
+    "docs_export": "Export Doc to PDF/text",
+    "admin_users_list": "List Workspace users",
+    "admin_users_update": "Update user settings",
+    "chat_send": "Send Google Chat message",
+}
+
+# ═══════════════════════════════════════════════════════
+# Google SDK/APIs installed (usable on-demand)
+# ═══════════════════════════════════════════════════════
+GOOGLE_SDKS = {
+    "google-adk": "Agent Development Kit — multi-agent graphs, native MCP, model-agnostic",
+    "a2a-sdk": "Agent-to-Agent Protocol — agent discovery, task lifecycle, streaming, push notifications",
+    "google-cloud-translate": "Cloud Translation API — 200+ languages, ID↔EN critical for Bali Zero",
+    "google-cloud-documentai": "Document AI — OCR 200+ languages, superior Indonesian doc processing",
+    "google-genai": "Gemini API SDK — Imagen 4 (images), Veo 3 (video), Deep Research, grounding",
+    "google-colab-mcp": "Colab MCP — remote GPU runtime from any agent",
+    "google-api-python-client": "Google APIs — GBP (Business Profile), YouTube, Contacts, Forms, etc.",
+}
+
+
 def build_classifier_context() -> str:
     """Build the capability context string for the Qwen classifier prompt."""
     lines = ["# Federation Capability Table\n"]
@@ -304,7 +501,7 @@ def match_domains(task: str) -> list[str]:
 def suggest_agents(task: str) -> dict[str, bool]:
     """Suggest which agents to dispatch based on keyword matching.
 
-    Returns dict with needs_search, needs_explore, needs_sandbox, needs_redteam.
+    Returns dict with dispatch flags for all agent types.
     This is a heuristic fallback — the Qwen classifier should override this.
     """
     domains = match_domains(task)
@@ -315,6 +512,8 @@ def suggest_agents(task: str) -> dict[str, bool]:
         "needs_explore": "gemini-explore" in best_agents,
         "needs_sandbox": "codex-sandbox" in best_agents,
         "needs_redteam": "claude-review" in best_agents,
+        "needs_notebook": "notebooklm" in best_agents,
+        "needs_gws": "gws" in best_agents,
     }
 
 
@@ -325,12 +524,20 @@ ARSENAL_SUMMARY = {
     "nuzmcp_tools": 109,
     "nuzmcp_modules": 20,
     "nuzmcp_advanced_tools": 13,
+    "notebooklm_tools": len(NOTEBOOKLM_TOOLS),
+    "gws_tools": len(GWS_TOOLS),
+    "google_sdks": len(GOOGLE_SDKS),
     "openclaw_skills": len(OPENCLAW_SKILLS),
     "gemini_tools": len(GEMINI_TOOLS),
-    "claude_code_mcp_servers": 7,
+    "claude_code_mcp_servers": 8,  # +google-colab
     "dispatch_commands": 5,
     "workflow_chains": 8,
-    "total_capabilities": 109 + 13 + len(OPENCLAW_SKILLS) + len(GEMINI_TOOLS) + 7 + 5 + 8,
+    "capability_domains": len(CAPABILITY_DOMAINS),
+    "agents": len(AGENTS),
+    "total_capabilities": (
+        109 + 13 + len(NOTEBOOKLM_TOOLS) + len(GWS_TOOLS) + len(GOOGLE_SDKS)
+        + len(OPENCLAW_SKILLS) + len(GEMINI_TOOLS) + 8 + 5 + 8
+    ),
 }
 
 
