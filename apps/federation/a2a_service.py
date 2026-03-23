@@ -323,6 +323,7 @@ class CLIAgentExecutor(AgentExecutor):
                     status=TaskStatus(
                         state=TaskState.failed,
                         message=Message(
+                            messageId=f"{context.task_id}-msg",
                             role="agent",
                             parts=[Part(TextPart(text="No prompt provided"))],
                         ),
@@ -365,6 +366,7 @@ class CLIAgentExecutor(AgentExecutor):
                         status=TaskStatus(
                             state=TaskState.completed,
                             message=Message(
+                                messageId=f"{context.task_id}-msg",
                                 role="agent",
                                 parts=[Part(TextPart(text=fallback_result[:500]))],
                             ),
@@ -382,6 +384,7 @@ class CLIAgentExecutor(AgentExecutor):
                 status=TaskStatus(
                     state=TaskState.working,
                     message=Message(
+                        messageId=f"{context.task_id}-msg",
                         role="agent",
                         parts=[Part(TextPart(text=f"Executing {self.agent_id}..."))],
                     ),
@@ -413,6 +416,7 @@ class CLIAgentExecutor(AgentExecutor):
                         status=TaskStatus(
                             state=TaskState.failed,
                             message=Message(
+                                messageId=f"{context.task_id}-msg",
                                 role="agent",
                                 parts=[Part(TextPart(text=f"Timeout after {timeout}s"))],
                             ),
@@ -436,6 +440,7 @@ class CLIAgentExecutor(AgentExecutor):
                         status=TaskStatus(
                             state=TaskState.failed,
                             message=Message(
+                                messageId=f"{context.task_id}-msg",
                                 role="agent",
                                 parts=[Part(TextPart(text=f"Error: {error_msg[:2000]}"))],
                             ),
@@ -465,6 +470,7 @@ class CLIAgentExecutor(AgentExecutor):
                     status=TaskStatus(
                         state=TaskState.completed,
                         message=Message(
+                            messageId=f"{context.task_id}-msg",
                             role="agent",
                             parts=[Part(TextPart(text=result_text[:500]))],
                         ),
@@ -482,6 +488,7 @@ class CLIAgentExecutor(AgentExecutor):
                     status=TaskStatus(
                         state=TaskState.failed,
                         message=Message(
+                            messageId=f"{context.task_id}-msg",
                             role="agent",
                             parts=[Part(TextPart(text=f"Execution error: {e!s}"))],
                         ),
@@ -507,6 +514,7 @@ class CLIAgentExecutor(AgentExecutor):
                 status=TaskStatus(
                     state=TaskState.canceled,
                     message=Message(
+                        messageId=f"{context.task_id}-msg",
                         role="agent",
                         parts=[Part(TextPart(text="Task canceled"))],
                     ),
