@@ -3,6 +3,7 @@
 # BALI ZERO WAR ROOM — Master Pipeline Orchestrator
 # Usage: ./pipeline.sh "Coretax 2025" [--dry-run] [--auto]
 #
+# V2 (A2A): python apps/war-room/pipeline_v2.py "topic" [--dry-run]
 # Override env vars:
 #   CANVA_ROW=upper|lower   (default: upper)
 #   CANVA_PAGE=1|2|3        (default: 1)
