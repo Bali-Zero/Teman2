@@ -1,0 +1,46 @@
+{
+  "name": "Aider (OpenRouter/DeepSeek)",
+  "description": "Il Mercenario — multi-model coding",
+  "url": "http://localhost:8086/",
+  "version": "1.0.0",
+  "protocol_version": "0.3.0",
+  "provider": {
+    "organization": "Nuzantara Federation",
+    "url": "https://kita.balizero.com"
+  },
+  "capabilities": {
+    "streaming": false,
+    "push_notifications": false,
+    "state_transition_history": true
+  },
+  "default_input_modes": ["text/plain"],
+  "default_output_modes": ["text/plain"],
+  "skills": [
+    {
+      "id": "aider-core",
+      "name": "Aider (OpenRouter/DeepSeek)",
+      "description": "Il Mercenario — multi-model coding",
+      "tags": [
+        "quick targeted fixes",
+        "single-file refactors",
+        "DeepSeek V3 for cost-effective coding",
+        "Sonnet for refactors"
+      ],
+      "examples": [
+        "Use Aider (OpenRouter/DeepSeek) for quick targeted fixes",
+        "Use Aider (OpenRouter/DeepSeek) for single-file refactors"
+      ]
+    }
+  ],
+  "extensions": [
+    {
+      "uri": "urn:nuzantara:dispatch",
+      "description": "CLI dispatch command: aider-fix",
+      "params": {
+        "dispatch_cmd": "aider-fix",
+        "cost": "$ (OpenRouter rates)",
+        "limits": "no orchestration awareness, single-task focus"
+      }
+    }
+  ]
+}
