@@ -30,10 +30,12 @@ class TestDocumentCategorizer:
     """Test suite for document auto-categorization service."""
 
     def test_passport_categorization(self):
-        """Test passport document categorization."""
+        """Test passport document categorization.
+        Passports go to 00_Profile (personal) per the official Drive folder mapping.
+        """
         result = auto_categorize_document("Passport_MARCO_2028-12-31.pdf")
 
-        assert result["document_category"] == "immigration"
+        assert result["document_category"] == "personal"
         assert result["document_type"] == "Passport"
         assert result["confidence"] >= 0.8
         assert result["matched_keyword"] == "passport"
@@ -233,8 +235,8 @@ class TestBatchCategorization:
         results = auto_categorize_documents_batch(filenames)
 
         assert len(results) == 5
-        assert results[0]["document_category"] == "immigration"
-        assert results[1]["document_category"] == "immigration"
+        assert results[0]["document_category"] == "personal"   # passport → 00_Profile
+        assert results[1]["document_category"] == "immigration"  # kitas → 01_Immigration
         assert results[2]["document_category"] == "pma"
         assert results[3]["document_category"] == "tax"
         assert results[4]["document_category"] == "personal"
@@ -343,9 +345,11 @@ class TestMigrationScenarios:
 
         results = auto_categorize_documents_batch(documents)
 
-        # Should still categorize most correctly
+        # Passport → personal (00_Profile), KITAS → immigration (01_Immigration)
         immigration_count = sum(1 for r in results if r["document_category"] == "immigration")
-        assert immigration_count >= 2  # Passport and KITAS
+        personal_count = sum(1 for r in results if r["document_category"] == "personal")
+        assert immigration_count >= 1  # KITAS
+        assert personal_count >= 1  # Passport
 
     def test_date_extraction_in_migration(self):
         """Test date extraction for various document types."""
@@ -409,13 +413,13 @@ class TestEdgeCases:
         long_name = "Passport_" + ("A" * 200) + "_2028-12-31.pdf"
         result = auto_categorize_document(long_name)
 
-        assert result["document_category"] == "immigration"
+        assert result["document_category"] == "personal"  # passport → 00_Profile
         assert result["document_type"] == "Passport"
 
     def test_special_characters(self):
         """Test handling of special characters."""
         result = auto_categorize_document("Passport_MARCO@#$%_2028.pdf")
-        assert result["document_category"] == "immigration"
+        assert result["document_category"] == "personal"  # passport → 00_Profile
 
     def test_multiple_date_patterns(self):
         """Test filename with multiple dates."""
