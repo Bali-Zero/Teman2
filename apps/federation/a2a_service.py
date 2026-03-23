@@ -105,6 +105,115 @@ AGENT_CLI_COMMANDS: dict[str, dict[str, Any]] = {
         "timeout": 300,
         "stream": False,
     },
+    # ═══════════════════════════════════════════════════════
+    # War Room agents (ports 8100-8106, Pro only)
+    # Ports start at 8100 to avoid conflict with air-batch (8091)
+    # ═══════════════════════════════════════════════════════
+    "war-room-topic": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara/apps/war-room && "
+            "source .venv/bin/activate 2>/dev/null; "
+            "python agents/00_topic_selector.py "
+            "--intel $HOME/Desktop/nuzantara/apps/bali-intel-scraper/data/intel_output_latest.json "
+            "--hint \"{prompt}\" "
+            "--output output/strategy/selected_topic.json 2>&1 && "
+            "cat output/strategy/selected_topic.json",
+        ],
+        "timeout": 240,
+        "stream": False,
+    },
+    "war-room-researcher": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara/apps/war-room && "
+            "source .venv/bin/activate 2>/dev/null; "
+            "python agents/01_chatgpt_researcher.py --topic \"{prompt}\" "
+            "--output output/raw/chatgpt_dump.json 2>&1 & "
+            "python agents/09_exa_researcher.py --topic \"{prompt}\" "
+            "--output output/raw/exa_dump.json 2>&1 & "
+            "wait && "
+            "python -c '"
+            "import json; from pathlib import Path; "
+            "sources = [Path(\"output/raw/chatgpt_dump.json\"), Path(\"output/raw/exa_dump.json\")]; "
+            "merged = {\"facts\": [], \"merged\": True}; "
+            "[merged[\"facts\"].extend(json.loads(s.read_text()).get(\"facts\",[])) for s in sources if s.exists()]; "
+            "Path(\"output/raw/merged_dump.json\").write_text(json.dumps(merged))' && "
+            "python agents/015_qwen_preprocessor.py "
+            "--research output/raw/merged_dump.json "
+            "--output output/raw/processed_dump.json 2>&1 && "
+            "cat output/raw/processed_dump.json",
+        ],
+        "timeout": 600,
+        "stream": False,
+    },
+    "war-room-strategist": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara/apps/war-room && "
+            "source .venv/bin/activate 2>/dev/null; "
+            "python agents/03_gemini_strategist.py "
+            "--dump output/raw/processed_dump.json "
+            "--topic \"{prompt}\" "
+            "--output output/strategy/gemini_concepts.json 2>&1 && "
+            "cat output/strategy/gemini_concepts.json",
+        ],
+        "timeout": 600,
+        "stream": False,
+    },
+    "war-room-director": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara/apps/war-room && "
+            "source .venv/bin/activate 2>/dev/null; "
+            "python agents/04_claude_director.py "
+            "--concepts output/strategy/gemini_concepts.json "
+            "--topic \"{prompt}\" "
+            "--output output/strategy/claude_slides.json 2>&1 && "
+            "cat output/strategy/claude_slides.json",
+        ],
+        "timeout": 600,
+        "stream": False,
+    },
+    "war-room-image-gen": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara/apps/war-room && "
+            "source .venv/bin/activate 2>/dev/null; "
+            "python agents/05_gemini_images.py "
+            "--slides output/strategy/claude_slides.json "
+            "--output output/images/ "
+            "--cdp http://localhost:9222 2>&1 && "
+            "cat output/images/manifest.json",
+        ],
+        "timeout": 300,
+        "stream": False,
+    },
+    "war-room-canva": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara/apps/war-room && "
+            "source .venv/bin/activate 2>/dev/null; "
+            "python agents/06_canva_builder.py "
+            "--slides output/strategy/claude_slides.json "
+            "--output output/canva/ "
+            "--master output/master/ "
+            "--design-id DAHEME4mocU "
+            "--row all --page 1 2>&1 && "
+            "cat output/canva/canva_pending.json",
+        ],
+        "timeout": 120,
+        "stream": False,
+    },
+    "war-room-delivery": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara/apps/war-room && "
+            "bash agents/07_delivery.sh --topic \"{prompt}\" 2>&1",
+        ],
+        "timeout": 120,
+        "stream": False,
+    },
 }
 
 
