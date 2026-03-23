@@ -47,13 +47,14 @@ CLASSIFY_PROMPT = """Route this task. Available agents:
 - claude-review: pre-deploy security/logic review (red team)
 - notebooklm: multi-document synthesis/research (citations)
 - gws: Google Workspace operations (email/calendar/drive/sheets)
+- war-room-pipeline: Instagram carousel content creation for Bali Zero (topic, research, slides, images, Canva)
 
 Pre-matched domains: {matched_domains}
 
 Task: {task}
 
 Respond ONLY with JSON, no other text:
-{{"type":"feature|bugfix|refactor|deploy|research|conversation","risk":"low|medium|high","domains":[...],
+{{"type":"feature|bugfix|refactor|deploy|research|conversation|content-creation","risk":"low|medium|high","domains":[...],
 "dispatch":[list of agent IDs to dispatch, e.g. "gemini-search","codex-sandbox"]}}"""
 
 
@@ -119,6 +120,7 @@ class ClassifierAgent(BaseAgent):
             "needs_redteam": "claude-review",
             "needs_notebook": "notebooklm",
             "needs_gws": "gws",
+            "needs_war_room": "war-room-pipeline",
         }
         for key, agent_id in keyword_to_agent.items():
             if keyword_suggestions.get(key) and agent_id not in classification.get("dispatch", []):
@@ -182,9 +184,11 @@ class ClassifierAgent(BaseAgent):
                 dispatch.append("notebooklm")
             if keyword_suggestions.get("needs_gws"):
                 dispatch.append("gws")
+            if keyword_suggestions.get("needs_war_room"):
+                dispatch.append("war-room-pipeline")
 
             return {
-                "type": "research" if keyword_suggestions.get("needs_search") else "feature",
+                "type": "content-creation" if keyword_suggestions.get("needs_war_room") else "research" if keyword_suggestions.get("needs_search") else "feature",
                 "risk": "medium",
                 "domains": matched or ["general"],
                 "dispatch": dispatch,
