@@ -114,6 +114,17 @@ AGENTS = {
         "cost": "$0 (already paying Workspace)",
         "dispatch_cmd": "gws",
     },
+    "war-room-pipeline": {
+        "name": "War Room Pipeline",
+        "role": "Content Creator — Instagram carousel pipeline for Bali Zero",
+        "strengths": [
+            "Instagram carousel creation", "content strategy", "slide copywriting",
+            "image prompt generation", "Canva automation", "social media content",
+        ],
+        "limits": "IG carousel only, Canva MCP requires interactive Claude Code session",
+        "cost": "~$0.10 per carousel (ChatGPT + Exa research)",
+        "dispatch_cmd": "war-room-pipeline",
+    },
 }
 
 # ═══════════════════════════════════════════════════════
@@ -180,6 +191,15 @@ CAPABILITY_DOMAINS = {
         "tools": "NuzMCP: compose_article, publish_article, list_articles, get_article (6 tools) + OpenClaw: bz-newsroom, war-room-crew",
         "best_agent": "claude-code",
         "keywords": ["article", "articolo", "blog", "content", "editorial", "publish"],
+    },
+    "content-creation": {
+        "description": "Instagram carousel creation, social media content pipeline",
+        "tools": "War Room Pipeline: research → strategy → copywriting → image prompts → Canva carousel + Canva MCP (20+ tools)",
+        "best_agent": "war-room-pipeline",
+        "keywords": [
+            "carousel", "carosello", "war room", "instagram", "post bali zero",
+            "contenuto", "social media", "content creation", "IG post", "slide",
+        ],
     },
 
     # --- Infrastructure & DevOps ---
@@ -514,6 +534,7 @@ def suggest_agents(task: str) -> dict[str, bool]:
         "needs_redteam": "claude-review" in best_agents,
         "needs_notebook": "notebooklm" in best_agents,
         "needs_gws": "gws" in best_agents,
+        "needs_war_room": "war-room-pipeline" in best_agents,
     }
 
 
