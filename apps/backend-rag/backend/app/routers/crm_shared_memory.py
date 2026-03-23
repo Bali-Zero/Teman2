@@ -76,8 +76,8 @@ async def search_shared_memory(
 
     Returns relevant results from clients, practices, and interactions
     """
-    current_user.get("email", "").lower()
-    is_crm_admin(current_user)
+    user_email: str = current_user.get("email", "").lower()
+    user_is_admin: bool = is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:
             query_lower = q.lower()
@@ -95,32 +95,60 @@ async def search_shared_memory(
             if any(word in query_lower for word in ["expir", "renewal", "renew", "scaden"]):
                 results["interpretation"].append("Detected: Renewal/Expiry query")
 
-                rows = await conn.fetch(
-                    """
-                    SELECT
-                        c.full_name as client_name,
-                        c.email,
-                        c.phone,
-                        pt.name as practice_type,
-                        pt.code as practice_code,
-                        p.expiry_date,
-                        p.expiry_date - CURRENT_DATE as days_until_expiry,
-                        p.assigned_to,
-                        p.id as practice_id
-                    FROM practices p
-                    JOIN clients c ON p.client_id = c.id
-                    JOIN practice_types pt ON p.practice_type_id = pt.id
-                    WHERE p.expiry_date IS NOT NULL
-                    AND p.expiry_date > CURRENT_DATE
-                    AND p.expiry_date <= CURRENT_DATE + INTERVAL '1 day' * $2
-                    AND p.status = 'completed'
-                    {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
-                    ORDER BY p.expiry_date ASC
-                    LIMIT $1
-                    """,
-                    limit,
-                    DEFAULT_EXPIRY_WARNING_DAYS,
-                )
+                if user_is_admin:
+                    rows = await conn.fetch(
+                        """
+                        SELECT
+                            c.full_name as client_name,
+                            c.email,
+                            c.phone,
+                            pt.name as practice_type,
+                            pt.code as practice_code,
+                            p.expiry_date,
+                            p.expiry_date - CURRENT_DATE as days_until_expiry,
+                            p.assigned_to,
+                            p.id as practice_id
+                        FROM practices p
+                        JOIN clients c ON p.client_id = c.id
+                        JOIN practice_types pt ON p.practice_type_id = pt.id
+                        WHERE p.expiry_date IS NOT NULL
+                        AND p.expiry_date > CURRENT_DATE
+                        AND p.expiry_date <= CURRENT_DATE + INTERVAL '1 day' * $2
+                        AND p.status = 'completed'
+                        ORDER BY p.expiry_date ASC
+                        LIMIT $1
+                        """,
+                        limit,
+                        DEFAULT_EXPIRY_WARNING_DAYS,
+                    )
+                else:
+                    rows = await conn.fetch(
+                        """
+                        SELECT
+                            c.full_name as client_name,
+                            c.email,
+                            c.phone,
+                            pt.name as practice_type,
+                            pt.code as practice_code,
+                            p.expiry_date,
+                            p.expiry_date - CURRENT_DATE as days_until_expiry,
+                            p.assigned_to,
+                            p.id as practice_id
+                        FROM practices p
+                        JOIN clients c ON p.client_id = c.id
+                        JOIN practice_types pt ON p.practice_type_id = pt.id
+                        WHERE p.expiry_date IS NOT NULL
+                        AND p.expiry_date > CURRENT_DATE
+                        AND p.expiry_date <= CURRENT_DATE + INTERVAL '1 day' * $2
+                        AND p.status = 'completed'
+                        AND LOWER(c.assigned_to) = $3
+                        ORDER BY p.expiry_date ASC
+                        LIMIT $1
+                        """,
+                        limit,
+                        DEFAULT_EXPIRY_WARNING_DAYS,
+                        user_email,
+                    )
 
                 results["practices"] = [dict(row) for row in rows]
 
@@ -137,24 +165,43 @@ async def search_shared_memory(
 
                     search_pattern = f"%{' '.join(name_parts)}%"
 
-                    # Search clients
-                    client_rows = await conn.fetch(
-                        """
-                        SELECT
-                            c.*,
-                            COUNT(DISTINCT p.id) as total_practices,
-                            COUNT(DISTINCT CASE WHEN p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process') THEN p.id END) as active_practices
-                        FROM clients c
-                        LEFT JOIN practices p ON c.id = p.client_id
-                        WHERE (c.full_name ILIKE $1 OR c.email ILIKE $2)
-                        {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
-                        GROUP BY c.id
-                        LIMIT $3
-                        """,
-                        search_pattern,
-                        search_pattern,
-                        limit,
-                    )
+                    # Search clients — RBAC: non-admins see only assigned clients
+                    if user_is_admin:
+                        client_rows = await conn.fetch(
+                            """
+                            SELECT
+                                c.*,
+                                COUNT(DISTINCT p.id) as total_practices,
+                                COUNT(DISTINCT CASE WHEN p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process') THEN p.id END) as active_practices
+                            FROM clients c
+                            LEFT JOIN practices p ON c.id = p.client_id
+                            WHERE (c.full_name ILIKE $1 OR c.email ILIKE $2)
+                            GROUP BY c.id
+                            LIMIT $3
+                            """,
+                            search_pattern,
+                            search_pattern,
+                            limit,
+                        )
+                    else:
+                        client_rows = await conn.fetch(
+                            """
+                            SELECT
+                                c.*,
+                                COUNT(DISTINCT p.id) as total_practices,
+                                COUNT(DISTINCT CASE WHEN p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process') THEN p.id END) as active_practices
+                            FROM clients c
+                            LEFT JOIN practices p ON c.id = p.client_id
+                            WHERE (c.full_name ILIKE $1 OR c.email ILIKE $2)
+                            AND LOWER(c.assigned_to) = $4
+                            GROUP BY c.id
+                            LIMIT $3
+                            """,
+                            search_pattern,
+                            search_pattern,
+                            limit,
+                            user_email,
+                        )
 
                     results["clients"] = [dict(row) for row in client_rows]
 
@@ -214,28 +261,52 @@ async def search_shared_memory(
                         "on_process",
                     ]  # default to active
 
-                practice_rows = await conn.fetch(
-                    """
-                    SELECT
-                        p.*,
-                        pt.name as practice_type_name,
-                        pt.code as practice_type_code,
-                        c.full_name as client_name,
-                        c.email as client_email,
-                        c.phone as client_phone
-                    FROM practices p
-                    JOIN practice_types pt ON p.practice_type_id = pt.id
-                    JOIN clients c ON p.client_id = c.id
-                    WHERE pt.code = $1
-                    AND p.status = ANY($2)
-                    {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
-                    ORDER BY p.created_at DESC
-                    LIMIT $3
-                    """,
-                    detected_practice_type,
-                    status_filter,
-                    limit,
-                )
+                if user_is_admin:
+                    practice_rows = await conn.fetch(
+                        """
+                        SELECT
+                            p.*,
+                            pt.name as practice_type_name,
+                            pt.code as practice_type_code,
+                            c.full_name as client_name,
+                            c.email as client_email,
+                            c.phone as client_phone
+                        FROM practices p
+                        JOIN practice_types pt ON p.practice_type_id = pt.id
+                        JOIN clients c ON p.client_id = c.id
+                        WHERE pt.code = $1
+                        AND p.status = ANY($2)
+                        ORDER BY p.created_at DESC
+                        LIMIT $3
+                        """,
+                        detected_practice_type,
+                        status_filter,
+                        limit,
+                    )
+                else:
+                    practice_rows = await conn.fetch(
+                        """
+                        SELECT
+                            p.*,
+                            pt.name as practice_type_name,
+                            pt.code as practice_type_code,
+                            c.full_name as client_name,
+                            c.email as client_email,
+                            c.phone as client_phone
+                        FROM practices p
+                        JOIN practice_types pt ON p.practice_type_id = pt.id
+                        JOIN clients c ON p.client_id = c.id
+                        WHERE pt.code = $1
+                        AND p.status = ANY($2)
+                        AND LOWER(c.assigned_to) = $4
+                        ORDER BY p.created_at DESC
+                        LIMIT $3
+                        """,
+                        detected_practice_type,
+                        status_filter,
+                        limit,
+                        user_email,
+                    )
 
                 results["practices"] = [dict(row) for row in practice_rows]
 
@@ -243,30 +314,56 @@ async def search_shared_memory(
             if any(word in query_lower for word in ["urgent", "priority", "asap", "quickly"]):
                 results["interpretation"].append("Detected: Urgency/Priority filter")
 
-                practice_rows = await conn.fetch(
-                    """
-                    SELECT
-                        p.*,
-                        pt.name as practice_type_name,
-                        c.full_name as client_name,
-                        c.email as client_email
-                    FROM practices p
-                    JOIN practice_types pt ON p.practice_type_id = pt.id
-                    JOIN clients c ON p.client_id = c.id
-                    WHERE p.priority IN ('high', 'urgent')
-                    AND p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
-                    {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
-                    ORDER BY
-                        CASE p.priority
-                            WHEN 'urgent' THEN 1
-                            WHEN 'high' THEN 2
-                            ELSE 3
-                        END,
-                        p.created_at DESC
-                    LIMIT $1
-                    """,
-                    limit,
-                )
+                if user_is_admin:
+                    practice_rows = await conn.fetch(
+                        """
+                        SELECT
+                            p.*,
+                            pt.name as practice_type_name,
+                            c.full_name as client_name,
+                            c.email as client_email
+                        FROM practices p
+                        JOIN practice_types pt ON p.practice_type_id = pt.id
+                        JOIN clients c ON p.client_id = c.id
+                        WHERE p.priority IN ('high', 'urgent')
+                        AND p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
+                        ORDER BY
+                            CASE p.priority
+                                WHEN 'urgent' THEN 1
+                                WHEN 'high' THEN 2
+                                ELSE 3
+                            END,
+                            p.created_at DESC
+                        LIMIT $1
+                        """,
+                        limit,
+                    )
+                else:
+                    practice_rows = await conn.fetch(
+                        """
+                        SELECT
+                            p.*,
+                            pt.name as practice_type_name,
+                            c.full_name as client_name,
+                            c.email as client_email
+                        FROM practices p
+                        JOIN practice_types pt ON p.practice_type_id = pt.id
+                        JOIN clients c ON p.client_id = c.id
+                        WHERE p.priority IN ('high', 'urgent')
+                        AND p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
+                        AND LOWER(c.assigned_to) = $2
+                        ORDER BY
+                            CASE p.priority
+                                WHEN 'urgent' THEN 1
+                                WHEN 'high' THEN 2
+                                ELSE 3
+                            END,
+                            p.created_at DESC
+                        LIMIT $1
+                        """,
+                        limit,
+                        user_email,
+                    )
 
                 results["practices"] = [dict(row) for row in practice_rows]
 
@@ -286,22 +383,40 @@ async def search_shared_memory(
                 elif "today" in query_lower:
                     days = 1
 
-                interaction_rows = await conn.fetch(
-                    """
-                    SELECT
-                        i.*,
-                        c.full_name as client_name,
-                        c.email as client_email
-                    FROM interactions i
-                    JOIN clients c ON i.client_id = c.id
-                    WHERE i.interaction_date >= NOW() - INTERVAL '1 day' * $1
-                    {"" if user_is_admin else f"AND (LOWER(c.assigned_to) = '{user_email}' OR LOWER(i.team_member) = '{user_email}')"}
-                    ORDER BY i.interaction_date DESC
-                    LIMIT $2
-                    """,
-                    days,
-                    limit,
-                )
+                if user_is_admin:
+                    interaction_rows = await conn.fetch(
+                        """
+                        SELECT
+                            i.*,
+                            c.full_name as client_name,
+                            c.email as client_email
+                        FROM interactions i
+                        JOIN clients c ON i.client_id = c.id
+                        WHERE i.interaction_date >= NOW() - INTERVAL '1 day' * $1
+                        ORDER BY i.interaction_date DESC
+                        LIMIT $2
+                        """,
+                        days,
+                        limit,
+                    )
+                else:
+                    interaction_rows = await conn.fetch(
+                        """
+                        SELECT
+                            i.*,
+                            c.full_name as client_name,
+                            c.email as client_email
+                        FROM interactions i
+                        JOIN clients c ON i.client_id = c.id
+                        WHERE i.interaction_date >= NOW() - INTERVAL '1 day' * $1
+                        AND (LOWER(c.assigned_to) = $3 OR LOWER(i.team_member) = $3)
+                        ORDER BY i.interaction_date DESC
+                        LIMIT $2
+                        """,
+                        days,
+                        limit,
+                        user_email,
+                    )
 
                 results["interactions"] = [dict(row) for row in interaction_rows]
 
@@ -339,35 +454,62 @@ async def get_upcoming_renewals(
 
     Performance: Cached for 10 minutes to reduce database load.
     """
-    current_user.get("email", "").lower()
-    is_crm_admin(current_user)
+    user_email: str = current_user.get("email", "").lower()
+    user_is_admin: bool = is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT
-                    c.full_name as client_name,
-                    c.email,
-                    c.phone,
-                    c.whatsapp,
-                    pt.name as practice_type,
-                    pt.code as practice_code,
-                    p.expiry_date,
-                    p.expiry_date - CURRENT_DATE as days_until_expiry,
-                    p.assigned_to,
-                    p.id as practice_id,
-                    p.status
-                FROM practices p
-                JOIN clients c ON p.client_id = c.id
-                JOIN practice_types pt ON p.practice_type_id = pt.id
-                WHERE p.expiry_date IS NOT NULL
-                AND p.expiry_date > CURRENT_DATE
-                AND p.expiry_date <= CURRENT_DATE + INTERVAL '1 day' * $1
-                {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
-                ORDER BY p.expiry_date ASC
-                """,
-                days,
-            )
+            if user_is_admin:
+                rows = await conn.fetch(
+                    """
+                    SELECT
+                        c.full_name as client_name,
+                        c.email,
+                        c.phone,
+                        c.whatsapp,
+                        pt.name as practice_type,
+                        pt.code as practice_code,
+                        p.expiry_date,
+                        p.expiry_date - CURRENT_DATE as days_until_expiry,
+                        p.assigned_to,
+                        p.id as practice_id,
+                        p.status
+                    FROM practices p
+                    JOIN clients c ON p.client_id = c.id
+                    JOIN practice_types pt ON p.practice_type_id = pt.id
+                    WHERE p.expiry_date IS NOT NULL
+                    AND p.expiry_date > CURRENT_DATE
+                    AND p.expiry_date <= CURRENT_DATE + INTERVAL '1 day' * $1
+                    ORDER BY p.expiry_date ASC
+                    """,
+                    days,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT
+                        c.full_name as client_name,
+                        c.email,
+                        c.phone,
+                        c.whatsapp,
+                        pt.name as practice_type,
+                        pt.code as practice_code,
+                        p.expiry_date,
+                        p.expiry_date - CURRENT_DATE as days_until_expiry,
+                        p.assigned_to,
+                        p.id as practice_id,
+                        p.status
+                    FROM practices p
+                    JOIN clients c ON p.client_id = c.id
+                    JOIN practice_types pt ON p.practice_type_id = pt.id
+                    WHERE p.expiry_date IS NOT NULL
+                    AND p.expiry_date > CURRENT_DATE
+                    AND p.expiry_date <= CURRENT_DATE + INTERVAL '1 day' * $1
+                    AND LOWER(c.assigned_to) = $2
+                    ORDER BY p.expiry_date ASC
+                    """,
+                    days,
+                    user_email,
+                )
 
             renewals = [dict(row) for row in rows]
 
