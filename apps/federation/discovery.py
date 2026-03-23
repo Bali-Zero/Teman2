@@ -138,6 +138,14 @@ AGENT_REGISTRY: dict[str, dict[str, Any]] = {
     # Air agents — host resolved dynamically via resolve_air_host()
     "notebooklm": {"host": "air", "port": 8087, "machine": "air"},
     "air-batch": {"host": "air", "port": 8091, "machine": "air"},
+    # War Room agents (Pro only)
+    "war-room-topic": {"host": "localhost", "port": 8100, "machine": "pro"},
+    "war-room-researcher": {"host": "localhost", "port": 8101, "machine": "pro"},
+    "war-room-strategist": {"host": "localhost", "port": 8102, "machine": "pro"},
+    "war-room-director": {"host": "localhost", "port": 8103, "machine": "pro"},
+    "war-room-image-gen": {"host": "localhost", "port": 8104, "machine": "pro"},
+    "war-room-canva": {"host": "localhost", "port": 8105, "machine": "pro"},
+    "war-room-delivery": {"host": "localhost", "port": 8106, "machine": "pro"},
 }
 
 
