@@ -73,8 +73,9 @@ canonicalUrl: 'https://balizero.com/business/environmental-permits'
 ogImage: '/static/insights/business/environmental-permits.jpg'
 ogType: 'article'
 twitterCard: 'summary_large_image'
-locale: "fr"
+locale: 'fr'
 ---
+
 import {
   DecisionTree,
   ComparisonTable,
@@ -95,7 +96,7 @@ La conformité environnementale est obligatoire pour la plupart des entreprises 
   nodes={[
     {
       id: 'start',
-      question: "Quelle est votre activité commerciale ?",
+      question: 'Quelle est votre activité commerciale ?',
       options: [
         { label: 'Grande industrie/impact significatif', next: 'amdal' },
         { label: 'Entreprise moyenne/impact modéré', next: 'ukl' },
@@ -116,7 +117,7 @@ La conformité environnementale est obligatoire pour la plupart des entreprises 
       result: {
         title: 'UKL-UPL requis',
         description:
-          "Efforts de gestion et de surveillance environnementale requis. Pour les entreprises à impact moyen comme les restaurants, les petites usines ou la construction modérée.",
+          'Efforts de gestion et de surveillance environnementale requis. Pour les entreprises à impact moyen comme les restaurants, les petites usines ou la construction modérée.',
       },
     },
     {
@@ -199,22 +200,22 @@ AMDAL implique une consultation publique et une évaluation par des experts.
 
 ### Processus AMDAL
 
-| Étape               | Description                 | Durée        |
-| ------------------- | --------------------------- | ------------ |
-| Sélection           | Déterminer si AMDAL est nécessaire | 1-2 semaines |
-| Définition du champ d'application | Définir le périmètre de l'étude | 2-4 semaines |
-| Étude d'impact environnemental | Étude d'impact environnemental | 3-6 mois     |
-| Consultation publique | Contribution de la communauté | 1-2 mois     |
-| Examen              | Évaluation par le comité     | 1-2 mois     |
-| Approbation         | Permis environnemental délivré | 2-4 semaines |
+| Étape                             | Description                        | Durée        |
+| --------------------------------- | ---------------------------------- | ------------ |
+| Sélection                         | Déterminer si AMDAL est nécessaire | 1-2 semaines |
+| Définition du champ d'application | Définir le périmètre de l'étude    | 2-4 semaines |
+| Étude d'impact environnemental    | Étude d'impact environnemental     | 3-6 mois     |
+| Consultation publique             | Contribution de la communauté      | 1-2 mois     |
+| Examen                            | Évaluation par le comité           | 1-2 mois     |
+| Approbation                       | Permis environnemental délivré     | 2-4 semaines |
 
 ### Composantes AMDAL
 
-| Document | Objectif                      |
-| -------- | ----------------------------- |
-| KA-ANDAL | Termes de référence           |
-| ANDAL    | Analyse d'impact              |
-| RKL      | Plan de gestion environnementale |
+| Document | Objectif                              |
+| -------- | ------------------------------------- |
+| KA-ANDAL | Termes de référence                   |
+| ANDAL    | Analyse d'impact                      |
+| RKL      | Plan de gestion environnementale      |
 | RPL      | Plan de surveillance environnementale |
 
 ---
@@ -262,7 +263,7 @@ La plupart des entreprises de taille moyenne ont besoin de UKL-UPL :
     {
       id: 'process',
       label: 'Description du flux de processus',
-      description: "Détail des activités commerciales",
+      description: 'Détail des activités commerciales',
       required: true,
       category: 'technical',
     },
@@ -327,12 +328,12 @@ Souvent généré automatiquement via le système OSS en fonction de votre code 
 
 Le système OSS utilise désormais une **approche basée sur les risques** :
 
-| Niveau de risque | Exigence environnementale |
-| ---------------- | ------------------------ |
+| Niveau de risque | Exigence environnementale   |
+| ---------------- | --------------------------- |
 | Faible           | SPPL (automatique dans OSS) |
-| Moyen-faible     | SPPL ou UKL-UPL simplifié |
-| Moyen-élevé      | UKL-UPL standard         |
-| Élevé            | AMDAL évaluation complète |
+| Moyen-faible     | SPPL ou UKL-UPL simplifié   |
+| Moyen-élevé      | UKL-UPL standard            |
+| Élevé            | AMDAL évaluation complète   |
 
 Risque déterminé par :
 
@@ -403,12 +404,12 @@ Risque déterminé par :
 
 ### Catégories de déchets
 
-| Catégorie      | Exemples                  | Exigences                  |
-| -------------- | ------------------------- | -------------------------- |
-| B3 (Dangereux) | Produits chimiques, batteries, huile | Élimination autorisée      |
-| Non-B3         | Déchets généraux          | Élimination appropriée     |
-| Eaux usées     | Eaux de processus         | Traitement avant rejet     |
-| Émissions atmosphériques | Fumée, gaz                | Surveillance, filtres      |
+| Catégorie                | Exemples                             | Exigences              |
+| ------------------------ | ------------------------------------ | ---------------------- |
+| B3 (Dangereux)           | Produits chimiques, batteries, huile | Élimination autorisée  |
+| Non-B3                   | Déchets généraux                     | Élimination appropriée |
+| Eaux usées               | Eaux de processus                    | Traitement avant rejet |
+| Émissions atmosphériques | Fumée, gaz                           | Surveillance, filtres  |
 
 <InfoCard variant="warning" title="Déchets B3">
 Les **déchets dangereux (B3)** nécessitent :
@@ -426,13 +427,13 @@ Les violations peuvent entraîner de graves sanctions.
 
 ## Sanctions en cas de non-conformité
 
-| Violation                | Sanction                   |
-| ------------------------ | -------------------------- |
-| Opération sans permis    | Fermeture + amendes        |
-| Dépassement des normes   | Avertissements → amendes → fermeture |
-| Élimination inappropriée des déchets | Poursuites pénales possibles |
-| Faux rapports            | Révocation du permis       |
-| Violations B3            | Responsabilité pénale + civile |
+| Violation                            | Sanction                             |
+| ------------------------------------ | ------------------------------------ |
+| Opération sans permis                | Fermeture + amendes                  |
+| Dépassement des normes               | Avertissements → amendes → fermeture |
+| Élimination inappropriée des déchets | Poursuites pénales possibles         |
+| Faux rapports                        | Révocation du permis                 |
+| Violations B3                        | Responsabilité pénale + civile       |
 
 ---
 

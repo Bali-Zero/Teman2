@@ -73,8 +73,9 @@ canonicalUrl: 'https://balizero.com/business/nib-oss-guide'
 ogImage: '/static/insights/business/nib-oss-guide.jpg'
 ogType: 'article'
 twitterCard: 'summary_large_image'
-locale: "fr"
+locale: 'fr'
 ---
+
 import {
   JourneyMap,
   ComparisonTable,
@@ -178,25 +179,30 @@ Le NIB fonctionne comme le TDP (Enregistrement de la Société), l'API (ID d'imp
       description: "Enregistrer un compte d'utilisateur",
       duration: '15-30 minutes',
       status: 'required',
-      tips: ["Aller sur oss.go.id", "Créer un compte d'utilisateur", 'Vérifier avec un OTP', "Utiliser l'e-mail du directeur"],
+      tips: [
+        'Aller sur oss.go.id',
+        "Créer un compte d'utilisateur",
+        'Vérifier avec un OTP',
+        "Utiliser l'e-mail du directeur",
+      ],
     },
     {
       id: 'company-data',
-      title: 'Saisir les données de l\'entreprise',
+      title: "Saisir les données de l'entreprise",
       description: "Remplir les informations de l'entreprise",
       duration: '30-60 minutes',
       status: 'required',
       tips: [
         'Numéro AHU en ligne',
-        'Détails de l\'entreprise',
-        "Informations sur les actionnaires",
+        "Détails de l'entreprise",
+        'Informations sur les actionnaires',
         'Données du directeur/commissaire',
       ],
     },
     {
       id: 'kbli',
       title: 'Sélectionner les codes KBLI',
-      description: "Choisir les activités commerciales",
+      description: 'Choisir les activités commerciales',
       duration: '15-30 minutes',
       status: 'required',
       tips: [
@@ -208,8 +214,8 @@ Le NIB fonctionne comme le TDP (Enregistrement de la Société), l'API (ID d'imp
     },
     {
       id: 'location',
-      title: 'Ajouter l\'adresse de l\'entreprise',
-      description: 'Enregistrer l\'adresse du bureau',
+      title: "Ajouter l'adresse de l'entreprise",
+      description: "Enregistrer l'adresse du bureau",
       duration: '15 minutes',
       status: 'required',
       tips: ['Adresse complète requise', 'Coordonnées GPS', 'Correspondre à la lettre de domicile'],
@@ -222,7 +228,7 @@ Le NIB fonctionne comme le TDP (Enregistrement de la Société), l'API (ID d'imp
       status: 'final',
       tips: [
         'Vérifier toutes les informations',
-        "Soumettre la demande",
+        'Soumettre la demande',
         'NIB délivré instantanément',
         'Télécharger le certificat NIB',
       ],
@@ -256,14 +262,14 @@ Un KBLI erroné peut entraîner des permis incorrects ou des violations du DNI.
 
 ### Exemples courants de KBLI
 
-| Activité             | Code KBLI           |
-| -------------------- | ------------------- |
-| Restaurant           | 56101               |
-| Développement logiciel | 62012               |
-| Commerce (général)    | 46900               |
-| Conseil              | 70201               |
-| Hôtel                | 55111               |
-| Fabrication          | Divers 10xxx-33xxx |
+| Activité               | Code KBLI          |
+| ---------------------- | ------------------ |
+| Restaurant             | 56101              |
+| Développement logiciel | 62012              |
+| Commerce (général)     | 46900              |
+| Conseil                | 70201              |
+| Hôtel                  | 55111              |
+| Fabrication            | Divers 10xxx-33xxx |
 
 ---
 
@@ -273,12 +279,12 @@ Après la saisie du KBLI, l'OSS détermine le niveau de risque :
 
 ### Niveaux de risque
 
-| Niveau       | Exigences               | Traitement      |
-| ----------- | -------------------------- | --------------- |
-| Faible         | NIB uniquement                   | Instantané         |
-| Moyen-faible  | NIB + Certificat Standard | Auto-déclaration    |
-| Moyen-élevé | NIB + Certificat Standard | Vérification    |
-| Élevé        | NIB + Permis               | Évaluation complète |
+| Niveau       | Exigences                 | Traitement          |
+| ------------ | ------------------------- | ------------------- |
+| Faible       | NIB uniquement            | Instantané          |
+| Moyen-faible | NIB + Certificat Standard | Auto-déclaration    |
+| Moyen-élevé  | NIB + Certificat Standard | Vérification        |
+| Élevé        | NIB + Permis              | Évaluation complète |
 
 ### Ce qui détermine le risque ?
 
@@ -314,7 +320,7 @@ Après la saisie du KBLI, l'OSS détermine le niveau de risque :
     {
       id: 'director-id',
       label: 'KTP/Passeport du directeur',
-      description: 'Pièce d\'identité des directeurs',
+      description: "Pièce d'identité des directeurs",
       required: true,
       category: 'identity',
     },
@@ -381,13 +387,13 @@ Après la saisie du KBLI, l'OSS détermine le niveau de risque :
 
 ### Problèmes OSS
 
-| Problème            | Solution                   |
-| ---------------- | -------------------------- |
-| AHU non synchronisé   | Attendre ou contacter AHU        |
-| KBLI introuvable   | Utiliser les bons termes de recherche   |
-| Adresse rejetée | Vérifier le format/les coordonnées   |
-| Erreur système     | Essayer un autre navigateur/moment |
-| Incohérence des données   | S'assurer que l'acte correspond à l'entrée  |
+| Problème                | Solution                                   |
+| ----------------------- | ------------------------------------------ |
+| AHU non synchronisé     | Attendre ou contacter AHU                  |
+| KBLI introuvable        | Utiliser les bons termes de recherche      |
+| Adresse rejetée         | Vérifier le format/les coordonnées         |
+| Erreur système          | Essayer un autre navigateur/moment         |
+| Incohérence des données | S'assurer que l'acte correspond à l'entrée |
 
 ### Comment corriger les erreurs
 
@@ -409,14 +415,14 @@ Toujours mettre à jour l'OSS lorsque les données de l'entreprise changent.
 
 ### Ce que vous pouvez faire dans l'OSS
 
-| Fonctionnalité              | But                   |
-| -------------------- | ------------------------- |
-| Enregistrement NIB     | Enregistrement de nouvelles entreprises |
-| Demandes de licence | Permis sectoriels          |
-| Suivi des engagements  | Surveiller les exigences      |
-| Rapports LKPM       | Rapports d'investissement        |
-| Modifications de données      | Mettre à jour les informations        |
-| Téléchargement de certificat | Obtenir les documents de licence     |
+| Fonctionnalité               | But                                     |
+| ---------------------------- | --------------------------------------- |
+| Enregistrement NIB           | Enregistrement de nouvelles entreprises |
+| Demandes de licence          | Permis sectoriels                       |
+| Suivi des engagements        | Surveiller les exigences                |
+| Rapports LKPM                | Rapports d'investissement               |
+| Modifications de données     | Mettre à jour les informations          |
+| Téléchargement de certificat | Obtenir les documents de licence        |
 
 ---
 
@@ -441,7 +447,7 @@ Toujours mettre à jour l'OSS lorsque les données de l'entreprise changent.
     'Combien de temps faut-il pour obtenir le NIB ?',
     'Puis-je modifier le KBLI après le NIB ?',
     'Que faire si le système OSS présente des erreurs ?',
-    'Ai-je besoin d\'un agent pour l\'OSS ?',
+    "Ai-je besoin d'un agent pour l'OSS ?",
   ]}
 />
 

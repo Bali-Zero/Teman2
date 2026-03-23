@@ -72,8 +72,9 @@ canonicalUrl: 'https://balizero.com/business/termination-severance'
 ogImage: '/static/insights/business/termination-severance.jpg'
 ogType: 'article'
 twitterCard: 'summary_large_image'
-locale: "fr"
+locale: 'fr'
 ---
+
 import {
   ComparisonTable,
   Calculator,
@@ -94,8 +95,8 @@ Le licenciement d'employés en Indonesia (PHK - Pemutusan Hubungan Kerja) exige 
   description="Différents types de cessation d'emploi"
   items={[
     {
-      name: 'Initiée par l\'Employeur',
-      subtitle: 'Décision de l\'entreprise',
+      name: "Initiée par l'Employeur",
+      subtitle: "Décision de l'entreprise",
       values: {
         Examples: 'Licenciement économique, performances insuffisantes',
         Severance: 'Complètes ou partielles',
@@ -104,10 +105,10 @@ Le licenciement d'employés en Indonesia (PHK - Pemutusan Hubungan Kerja) exige 
       },
     },
     {
-      name: 'Démission de l\'Employé',
+      name: "Démission de l'Employé",
       subtitle: 'Volontaire',
       values: {
-        Examples: 'Choix de l\'employé',
+        Examples: "Choix de l'employé",
         Severance: 'Compensation uniquement',
         Notice: 'Généralement 30 jours',
         Process: 'Lettre de démission',
@@ -287,29 +288,29 @@ Le montant dépend de la raison du licenciement et des années de service.
 ### Uang Pesangon (UP) - Indemnité de Base
 
 | Période de Service | Mois   |
-| ---------------- | -------- |
-| < 1 an       | 1 mois  |
-| 1 à < 2 ans | 2 mois |
-| 2 à < 3 ans | 3 mois |
-| 3 à < 4 ans | 4 mois |
-| 4 à < 5 ans | 5 mois |
-| 5 à < 6 ans | 6 mois |
-| 6 à < 7 ans | 7 mois |
-| 7 à < 8 ans | 8 mois |
-| 8+ ans       | 9 mois |
+| ------------------ | ------ |
+| < 1 an             | 1 mois |
+| 1 à < 2 ans        | 2 mois |
+| 2 à < 3 ans        | 3 mois |
+| 3 à < 4 ans        | 4 mois |
+| 4 à < 5 ans        | 5 mois |
+| 5 à < 6 ans        | 6 mois |
+| 6 à < 7 ans        | 7 mois |
+| 7 à < 8 ans        | 8 mois |
+| 8+ ans             | 9 mois |
 
 ### UPMK - Ancienneté
 
-| Période de Service   | Mois    |
-| ---------------- | --------- |
-| 3 à < 6 ans   | 2 mois  |
-| 6 à < 9 ans   | 3 mois  |
-| 9 à < 12 ans  | 4 mois  |
-| 12 à < 15 ans | 5 mois  |
-| 15 à < 18 ans | 6 mois  |
-| 18 à < 21 ans | 7 mois  |
-| 21 à < 24 ans | 8 mois  |
-| 24+ ans        | 10 mois |
+| Période de Service | Mois    |
+| ------------------ | ------- |
+| 3 à < 6 ans        | 2 mois  |
+| 6 à < 9 ans        | 3 mois  |
+| 9 à < 12 ans       | 4 mois  |
+| 12 à < 15 ans      | 5 mois  |
+| 15 à < 18 ans      | 6 mois  |
+| 18 à < 21 ans      | 7 mois  |
+| 21 à < 24 ans      | 8 mois  |
+| 24+ ans            | 10 mois |
 
 ---
 
@@ -320,7 +321,7 @@ Le montant dépend de la raison du licenciement et des années de service.
   description="Basé sur le motif de licenciement"
   items={[
     {
-      name: 'Fermeture d\'Entreprise',
+      name: "Fermeture d'Entreprise",
       values: {
         UP: '1× complète',
         UPMK: '1× complète',
@@ -336,7 +337,7 @@ Le montant dépend de la raison du licenciement et des années de service.
       },
     },
     {
-      name: 'Pertes de l\'entreprise (2 ans)',
+      name: "Pertes de l'entreprise (2 ans)",
       values: {
         UP: '0.5×',
         UPMK: '1× complète',
@@ -395,7 +396,7 @@ Le montant dépend de la raison du licenciement et des années de service.
       status: 'required',
       tips: [
         'Documentation des performances',
-        'Lettres d\'avertissement (le cas échéant)',
+        "Lettres d'avertissement (le cas échéant)",
         'Justification commerciale',
         'Examen juridique',
       ],
@@ -407,16 +408,16 @@ Le montant dépend de la raison du licenciement et des années de service.
       duration: 'Max 30 jours',
       status: 'required',
       tips: [
-        'Rencontrer l\'employé/le syndicat',
+        "Rencontrer l'employé/le syndicat",
         'Tenter un accord mutuel',
         'Documenter toutes les discussions',
-        'Signer l\'accord si conclu',
+        "Signer l'accord si conclu",
       ],
     },
     {
       id: 'tripartite',
       title: 'Tripartite (si nécessaire)',
-      description: 'Médiation du bureau de la main-d\'œuvre',
+      description: "Médiation du bureau de la main-d'œuvre",
       duration: '30 jours',
       status: 'required',
       tips: [
@@ -432,7 +433,12 @@ Le montant dépend de la raison du licenciement et des années de service.
       description: 'Procédures PHI',
       duration: 'Semaines-mois',
       status: 'required',
-      tips: ['Si aucun accord n\'est trouvé', 'Déposer une requête auprès du tribunal PHI', 'Présenter le cas', 'Attendre la décision'],
+      tips: [
+        "Si aucun accord n'est trouvé",
+        'Déposer une requête auprès du tribunal PHI',
+        'Présenter le cas',
+        'Attendre la décision',
+      ],
     },
     {
       id: 'payment',
@@ -481,7 +487,7 @@ Après le SP3, le licenciement est possible avec des indemnités réduites.
     {
       id: 'fraud',
       label: 'Fraude ou détournement de fonds',
-      description: 'Vol des actifs de l\'entreprise',
+      description: "Vol des actifs de l'entreprise",
       required: false,
       category: 'criminal',
     },
@@ -502,7 +508,7 @@ Après le SP3, le licenciement est possible avec des indemnités réduites.
     {
       id: 'secrets',
       label: 'Divulgation de secrets commerciaux',
-      description: 'Fuite d\'informations confidentielles',
+      description: "Fuite d'informations confidentielles",
       required: false,
       category: 'breach',
     },
@@ -545,15 +551,15 @@ Pour les contrats à durée déterminée (PKWT), à l'expiration :
 
 ### Formule de Compensation
 
-| Durée du Contrat       | Compensation   |
-| --------------------- | -------------- |
-| Chaque mois de service | 1 jour de salaire |
-| Exemple : 12 mois    | 12 jours de salaire |
-| Exemple : 24 mois    | 24 jours de salaire |
+| Durée du Contrat       | Compensation        |
+| ---------------------- | ------------------- |
+| Chaque mois de service | 1 jour de salaire   |
+| Exemple : 12 mois      | 12 jours de salaire |
+| Exemple : 24 mois      | 24 jours de salaire |
 
 <InfoCard variant="note" title="Résiliation Anticipée du PKWT">
-  Si le PKWT est résilié prématurément par l'employeur : - Doit payer la valeur restante du contrat - Plus une compensation pour
-  la période de service - Sauf en cas de faute grave
+  Si le PKWT est résilié prématurément par l'employeur : - Doit payer la valeur restante du contrat
+  - Plus une compensation pour la période de service - Sauf en cas de faute grave
 </InfoCard>
 
 ---
@@ -562,26 +568,26 @@ Pour les contrats à durée déterminée (PKWT), à l'expiration :
 
 ### Documents Requis
 
-| Document              | Objet                 |
-| --------------------- | ----------------------- |
-| Lettre de licenciement| Notification officielle |
-| Calcul des indemnités | Détail                 |
-| Procès-verbal bipartite| Compte-rendu de réunion |
-| Accord                | Consentement mutuel     |
-| Reçu                  | Preuve de paiement      |
-| Lettre de référence   | Pour l'employé (facultatif) |
+| Document                | Objet                       |
+| ----------------------- | --------------------------- |
+| Lettre de licenciement  | Notification officielle     |
+| Calcul des indemnités   | Détail                      |
+| Procès-verbal bipartite | Compte-rendu de réunion     |
+| Accord                  | Consentement mutuel         |
+| Reçu                    | Preuve de paiement          |
+| Lettre de référence     | Pour l'employé (facultatif) |
 
 ---
 
 ## Erreurs Courantes
 
-| Erreur                               | Impact                     |
-| ------------------------------------- | -------------------------- |
-| Pas d'avertissements écrits         | Impossible de prouver la cause |
-| Ignorer la bipartite               | Procédure invalide         |
-| Sous-payer les indemnités            | Revendications légales     |
-| Licenciement immédiat sans motifs    | Doit réintégrer ou payer intégralement |
-| Absence de documentation            | Position juridique faible  |
+| Erreur                            | Impact                                 |
+| --------------------------------- | -------------------------------------- |
+| Pas d'avertissements écrits       | Impossible de prouver la cause         |
+| Ignorer la bipartite              | Procédure invalide                     |
+| Sous-payer les indemnités         | Revendications légales                 |
+| Licenciement immédiat sans motifs | Doit réintégrer ou payer intégralement |
+| Absence de documentation          | Position juridique faible              |
 
 ---
 
@@ -591,7 +597,7 @@ Pour les contrats à durée déterminée (PKWT), à l'expiration :
   context="Licenciement d'employés Indonésie, indemnités de licenciement, PHK, droit du travail licenciement"
   placeholder="Posez vos questions sur le licenciement et les indemnités..."
   suggestedQuestions={[
-    'Combien d\'indemnités pour 5 ans de service ?',
+    "Combien d'indemnités pour 5 ans de service ?",
     'Puis-je licencier sans indemnités ?',
     'Quel est le processus de licenciement ?',
     'Les employés sous PKWT reçoivent-ils des indemnités ?',

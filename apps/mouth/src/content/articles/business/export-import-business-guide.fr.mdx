@@ -73,8 +73,9 @@ canonicalUrl: 'https://balizero.com/business/export-import-business-guide'
 ogImage: '/static/insights/business/export-import-business-guide.jpg'
 ogType: 'article'
 twitterCard: 'summary_large_image'
-locale: "fr"
+locale: 'fr'
 ---
+
 import {
   JourneyMap,
   ComparisonTable,
@@ -152,8 +153,9 @@ Les sociétés de négoce à capitaux étrangers peuvent :
 - Vendre en gros aux détaillants
 
 <InfoCard variant="note" title="Exigence d'Investissement">
-  Une PT PMA de négoce requiert : - Un investissement minimum de **10 milliards IDR** - Un capital libéré de **2,5
-  milliards IDR** - Des installations d'entrepôt appropriées (pour certaines marchandises) - Des codes d'import-export enregistrés
+  Une PT PMA de négoce requiert : - Un investissement minimum de **10 milliards IDR** - Un capital
+  libéré de **2,5 milliards IDR** - Des installations d'entrepôt appropriées (pour certaines
+  marchandises) - Des codes d'import-export enregistrés
 </InfoCard>
 
 ---
@@ -173,14 +175,14 @@ Les sociétés de négoce à capitaux étrangers peuvent :
       status: 'required',
       tips: [
         'Choisir les codes KBLI de négoce',
-        'Inclure les activités d\'import-export',
-        'Satisfaire aux exigences d\'investissement',
+        "Inclure les activités d'import-export",
+        "Satisfaire aux exigences d'investissement",
       ],
     },
     {
       id: 'nib',
       title: 'Obtenir le NIB',
-      description: 'Identifiant d\'entreprise de l\'OSS',
+      description: "Identifiant d'entreprise de l'OSS",
       duration: '1-2 semaines',
       status: 'required',
       tips: ['Inclut la licence commerciale de base', 'Requis pour les étapes suivantes'],
@@ -188,7 +190,7 @@ Les sociétés de négoce à capitaux étrangers peuvent :
     {
       id: 'api',
       title: 'Demander la licence API',
-      description: 'Numéro d\'identification d\'importation',
+      description: "Numéro d'identification d'importation",
       duration: '2-4 semaines',
       status: 'required',
       tips: ['API-U pour le négoce', 'API-P pour la fabrication', 'Via le système OSS'],
@@ -199,7 +201,10 @@ Les sociétés de négoce à capitaux étrangers peuvent :
       description: 'Enregistrement douanier',
       duration: '1-2 semaines',
       status: 'required',
-      tips: ['S\'enregistrer auprès des Douanes (DJBC)', 'Requis pour le dédouanement des marchandises'],
+      tips: [
+        "S'enregistrer auprès des Douanes (DJBC)",
+        'Requis pour le dédouanement des marchandises',
+      ],
     },
     {
       id: 'warehouse',
@@ -207,15 +212,23 @@ Les sociétés de négoce à capitaux étrangers peuvent :
       description: 'Installations de stockage',
       duration: 'Varie',
       status: 'conditional',
-      tips: ['Requis pour certaines marchandises', 'Options d\'entrepôt sous douane', 'Entreposage frigorifique si nécessaire'],
+      tips: [
+        'Requis pour certaines marchandises',
+        "Options d'entrepôt sous douane",
+        'Entreposage frigorifique si nécessaire',
+      ],
     },
     {
       id: 'supplier',
-      title: 'Établir la Chaîne d\'Approvisionnement',
+      title: "Établir la Chaîne d'Approvisionnement",
       description: 'Fournisseurs et logistique',
       duration: 'En cours',
       status: 'required',
-      tips: ['Vérifier la légitimité du fournisseur', 'Négocier les conditions', 'Choisir un transitaire'],
+      tips: [
+        'Vérifier la légitimité du fournisseur',
+        'Négocier les conditions',
+        'Choisir un transitaire',
+      ],
     },
     {
       id: 'first',
@@ -223,7 +236,11 @@ Les sociétés de négoce à capitaux étrangers peuvent :
       description: 'Importer/exporter des marchandises',
       duration: 'Varie',
       status: 'final',
-      tips: ['Travailler avec un courtier en douane', 'Compléter la documentation', 'Payer les droits et taxes'],
+      tips: [
+        'Travailler avec un courtier en douane',
+        'Compléter la documentation',
+        'Payer les droits et taxes',
+      ],
     },
   ]}
 />
@@ -239,35 +256,35 @@ Les sociétés de négoce à capitaux étrangers peuvent :
   items={[
     {
       id: 'nib',
-      label: 'NIB (Identifiant d\'Entreprise)',
-      description: 'Enregistrement de base de l\'entreprise',
+      label: "NIB (Identifiant d'Entreprise)",
+      description: "Enregistrement de base de l'entreprise",
       required: true,
       category: 'company',
     },
     {
       id: 'api',
       label: 'Licence API (API-U ou API-P)',
-      description: 'Autorisation d\'importation',
+      description: "Autorisation d'importation",
       required: true,
       category: 'trade',
     },
     {
       id: 'nik',
       label: 'NIK (ID Douanier)',
-      description: 'Numéro d\'enregistrement douanier',
+      description: "Numéro d'enregistrement douanier",
       required: true,
       category: 'customs',
     },
     {
       id: 'npwp',
-      label: 'NPWP de l\'entreprise',
+      label: "NPWP de l'entreprise",
       description: 'Enregistrement fiscal',
       required: true,
       category: 'tax',
     },
     {
       id: 'warehouse',
-      label: 'Enregistrement d\'entrepôt',
+      label: "Enregistrement d'entrepôt",
       description: 'Pour le stockage des marchandises importées',
       required: false,
       category: 'operations',
@@ -297,12 +314,12 @@ Les sociétés de négoce à capitaux étrangers peuvent :
 
 ### Droits d'Importation
 
-| Catégorie       | Taux de Droit | Remarques                 |
-| -------------- | --------- | --------------------- |
-| Matières premières  | 0-5%      | Souvent plus bas           |
-| Semi-finis  | 5-15%     | Varie selon le produit     |
-| Produits finis | 10-40%    | Protection plus élevée     |
-| Articles de luxe   | 20-200%   | Taxe de luxe additionnelle |
+| Catégorie          | Taux de Droit | Remarques                  |
+| ------------------ | ------------- | -------------------------- |
+| Matières premières | 0-5%          | Souvent plus bas           |
+| Semi-finis         | 5-15%         | Varie selon le produit     |
+| Produits finis     | 10-40%        | Protection plus élevée     |
+| Articles de luxe   | 20-200%       | Taxe de luxe additionnelle |
 
 ### Autres Frais d'Importation
 
@@ -411,8 +428,12 @@ Travaillez avec des transitaires établis qui peuvent :
 ## Erreurs Courantes
 
 <InfoCard variant="error" title="Évitez Ces Erreurs">
-  1. **Mauvais type d'API** - API-U vs API-P doit correspondre à l'activité 2. **Ignorer les réglementations sur les produits** -
-  Certaines marchandises nécessitent des permis spéciaux 3. **Sous-évaluer les marchandises** - Les pénalités douanières sont sévères 4. **Absence de documentation appropriée** - Retards et coûts supplémentaires 5. **Mauvais code HS** - Droits différents, pénalités potentielles 6. **Ignorer les quotas/restrictions** - Certains produits sont limités
+  1. **Mauvais type d'API** - API-U vs API-P doit correspondre à l'activité 2. **Ignorer les
+  réglementations sur les produits** - Certaines marchandises nécessitent des permis spéciaux 3.
+  **Sous-évaluer les marchandises** - Les pénalités douanières sont sévères 4. **Absence de
+  documentation appropriée** - Retards et coûts supplémentaires 5. **Mauvais code HS** - Droits
+  différents, pénalités potentielles 6. **Ignorer les quotas/restrictions** - Certains produits sont
+  limités
 </InfoCard>
 
 ---
@@ -426,7 +447,7 @@ Travaillez avec des transitaires établis qui peuvent :
     'Combien de temps prend le dédouanement ?',
     'Puis-je importer des échantillons sans API ?',
     'Quels sont les avantages des entrepôts sous douane ?',
-    'Ai-je besoin d\'un partenaire local pour importer ?',
+    "Ai-je besoin d'un partenaire local pour importer ?",
   ]}
 />
 

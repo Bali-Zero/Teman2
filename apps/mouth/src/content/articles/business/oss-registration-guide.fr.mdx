@@ -74,8 +74,9 @@ canonicalUrl: 'https://balizero.com/business/oss-registration-guide'
 ogImage: '/static/insights/business/oss-registration-guide.jpg'
 ogType: 'article'
 twitterCard: 'summary_large_image'
-locale: "fr"
+locale: 'fr'
 ---
+
 import {
   JourneyMap,
   InfoCard,
@@ -108,10 +109,10 @@ L'OSS a remplacé l'ancien système de visite de plusieurs bureaux gouvernementa
 
 ### Évolution de l'OSS
 
-| Version     | Période       | Fonctionnalités Clés                |
-| ----------- | ------------ | ----------------------------------- |
-| OSS 1.0     | 2018-2020    | Lancement initial                   |
-| OSS 1.1     | 2020-2021    | Améliorations                       |
+| Version     | Période      | Fonctionnalités Clés                           |
+| ----------- | ------------ | ---------------------------------------------- |
+| OSS 1.0     | 2018-2020    | Lancement initial                              |
+| OSS 1.1     | 2020-2021    | Améliorations                                  |
 | **OSS RBA** | 2021-Présent | Approche Basée sur les Risques, système actuel |
 
 ---
@@ -125,7 +126,7 @@ L'OSS a remplacé l'ancien système de visite de plusieurs bureaux gouvernementa
     {
       name: 'Enregistrement NIB',
       values: {
-        Service: 'Obtenez votre identification d\'entreprise',
+        Service: "Obtenez votre identification d'entreprise",
         'Risk Level': 'Tous',
         Timeline: 'Instantané-24 heures',
       },
@@ -142,7 +143,7 @@ L'OSS a remplacé l'ancien système de visite de plusieurs bureaux gouvernementa
     {
       name: 'Izin (Licence Complète)',
       values: {
-        Service: 'Permis d\'exploitation complets',
+        Service: "Permis d'exploitation complets",
         'Risk Level': 'Élevé',
         Timeline: '7-30 jours',
       },
@@ -150,7 +151,7 @@ L'OSS a remplacé l'ancien système de visite de plusieurs bureaux gouvernementa
     {
       name: 'Rapports LKPM',
       values: {
-        Service: 'Rapports d\'investissement',
+        Service: "Rapports d'investissement",
         'Risk Level': 'Toutes les PMA',
         Timeline: 'Trimestriel',
       },
@@ -173,7 +174,12 @@ L'OSS a remplacé l'ancien système de visite de plusieurs bureaux gouvernementa
       description: 'Préparez-les avant de commencer',
       duration: 'Avant',
       status: 'required',
-      documents: ['SK Kemenkumham', 'NPWP de l\'entreprise', 'NIK/Passeport du directeur', 'KBLI codes prévus'],
+      documents: [
+        'SK Kemenkumham',
+        "NPWP de l'entreprise",
+        'NIK/Passeport du directeur',
+        'KBLI codes prévus',
+      ],
     },
     {
       id: 'access',
@@ -181,7 +187,11 @@ L'OSS a remplacé l'ancien système de visite de plusieurs bureaux gouvernementa
       description: 'Rendez-vous sur oss.go.id',
       duration: '5 min',
       status: 'required',
-      tips: ['Utilisez le navigateur Chrome', 'Désactivez les bloqueurs de pop-up', 'Ayez une connexion internet stable'],
+      tips: [
+        'Utilisez le navigateur Chrome',
+        'Désactivez les bloqueurs de pop-up',
+        'Ayez une connexion internet stable',
+      ],
     },
     {
       id: 'account',
@@ -189,15 +199,22 @@ L'OSS a remplacé l'ancien système de visite de plusieurs bureaux gouvernementa
       description: 'Enregistrer un compte utilisateur',
       duration: '15 min',
       status: 'required',
-      tips: ["Utilisez l'email du directeur", 'Vérifiez le numéro de téléphone', 'Définissez un mot de passe fort'],
+      tips: [
+        "Utilisez l'email du directeur",
+        'Vérifiez le numéro de téléphone',
+        'Définissez un mot de passe fort',
+      ],
     },
     {
       id: 'company',
-      title: 'Lier l\'Entreprise',
+      title: "Lier l'Entreprise",
       description: 'Connectez-vous à votre entreprise enregistrée',
       duration: '15 min',
       status: 'required',
-      tips: ['Entrez le numéro AHU du SK Kemenkumham', 'Le système récupère automatiquement les données de l\'entreprise'],
+      tips: [
+        'Entrez le numéro AHU du SK Kemenkumham',
+        "Le système récupère automatiquement les données de l'entreprise",
+      ],
     },
     {
       id: 'kbli',
@@ -218,7 +235,7 @@ L'OSS a remplacé l'ancien système de visite de plusieurs bureaux gouvernementa
       description: 'Remplissez tous les champs obligatoires',
       duration: '30-60 min',
       status: 'required',
-      documents: ['Plan d\'investissement', 'Prévisions d\'employés', 'Détails de l\'adresse'],
+      documents: ["Plan d'investissement", "Prévisions d'employés", "Détails de l'adresse"],
     },
     {
       id: 'submit',
@@ -265,7 +282,7 @@ Le système classe automatiquement lorsque vous sélectionnez vos codes KBLI.
     {
       id: 'browser',
       label: 'Utilisez Google Chrome',
-      description: 'D\'autres navigateurs peuvent rencontrer des problèmes',
+      description: "D'autres navigateurs peuvent rencontrer des problèmes",
       required: true,
       category: 'technical',
     },
@@ -285,7 +302,7 @@ Le système classe automatiquement lorsque vous sélectionnez vos codes KBLI.
     },
     {
       id: 'kbli',
-      label: 'Recherchez d\'abord les codes KBLI',
+      label: "Recherchez d'abord les codes KBLI",
       description: 'Sachez exactement quels codes vous avez besoin',
       required: true,
       category: 'preparation',
@@ -293,7 +310,7 @@ Le système classe automatiquement lorsque vous sélectionnez vos codes KBLI.
     {
       id: 'patience',
       label: 'Soyez patient avec le système',
-      description: 'L\'OSS peut être lent ou bogué',
+      description: "L'OSS peut être lent ou bogué",
       required: false,
       category: 'practical',
     },
@@ -323,8 +340,8 @@ Le système classe automatiquement lorsque vous sélectionnez vos codes KBLI.
   suggestedQuestions={[
     "Pourquoi ne puis-je pas me connecter à l'OSS ?",
     'Comment ajouter des codes KBLI plus tard ?',
-    'Que faire si l\'OSS affiche des données d\'entreprise erronées ?',
-    'Combien de temps prend l\'approbation ?',
+    "Que faire si l'OSS affiche des données d'entreprise erronées ?",
+    "Combien de temps prend l'approbation ?",
   ]}
 />
 
@@ -336,7 +353,8 @@ Le système classe automatiquement lorsque vous sélectionnez vos codes KBLI.
   variant="note"
   title="⚠️ Remarque : Cette section contient des OPINIONS et des discussions non encore officiellement confirmées"
 >
-  Informations basées sur des discussions publiques et des analyses d'experts. **Non confirmées par le gouvernement**.
+  Informations basées sur des discussions publiques et des analyses d'experts. **Non confirmées par
+  le gouvernement**.
 </InfoCard>
 
 ### Développements possibles de l'OSS (OPINION)
