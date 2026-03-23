@@ -118,6 +118,25 @@ class ZohoEmailService:
         self.db_pool = db_pool
         self.oauth_service = ZohoOAuthService(db_pool)
         self.api_domain = settings.zoho_api_domain
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client.
+
+        Note: per-request timeouts can be passed directly to client.get/post/request calls.
+        """
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=HttpTimeoutConstants.ZOHO_EMAIL_TIMEOUT,
+                limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        await self.oauth_service.close()
 
     async def _log_activity(
         self,
@@ -229,27 +248,28 @@ class ZohoEmailService:
 
         logger.debug(f"[Email API] {method} {endpoint} for user={user_id}")
 
-        async with httpx.AsyncClient(timeout=HttpTimeoutConstants.ZOHO_EMAIL_TIMEOUT) as client:
-            response = await client.request(
-                method=method,
-                url=url,
-                headers=headers,
-                json=json_data,
-                params=params,
+        client = self._get_client()
+        response = await client.request(
+            method=method,
+            url=url,
+            headers=headers,
+            json=json_data,
+            params=params,
+            timeout=HttpTimeoutConstants.ZOHO_EMAIL_TIMEOUT,
+        )
+
+        if response.status_code >= 400:
+            error_data = response.json() if response.content else {}
+            logger.warning(
+                f"[Email API] Error: {method} {endpoint} user={user_id} "
+                f"status={response.status_code} error={error_data}"
+            )
+            raise ValueError(
+                f"API error: {error_data.get('data', {}).get('errorCode', 'unknown')}"
             )
 
-            if response.status_code >= 400:
-                error_data = response.json() if response.content else {}
-                logger.warning(
-                    f"[Email API] Error: {method} {endpoint} user={user_id} "
-                    f"status={response.status_code} error={error_data}"
-                )
-                raise ValueError(
-                    f"API error: {error_data.get('data', {}).get('errorCode', 'unknown')}"
-                )
-
-            logger.debug(f"[Email API] Success: {method} {endpoint} status={response.status_code}")
-            return response.json()
+        logger.debug(f"[Email API] Success: {method} {endpoint} status={response.status_code}")
+        return response.json()
 
     # ═══════════════════════════════════════════
     # FOLDER OPERATIONS
@@ -931,21 +951,23 @@ class ZohoEmailService:
 
         url = f"{self.api_domain}/api/accounts/{account_id}/messages/{message_id}/attachments/{attachment_id}"
 
-        async with httpx.AsyncClient(
-            timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT
-        ) as client:
-            response = await client.get(url, headers=headers)
+        client = self._get_client()
+        response = await client.get(
+            url,
+            headers=headers,
+            timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT,
+        )
 
-            if response.status_code != 200:
-                logger.error(
-                    f"[Email] Failed to download attachment: status={response.status_code}"
-                )
-                raise ValueError(f"Failed to download attachment: {response.status_code}")
-
-            logger.debug(
-                f"[Email] Attachment downloaded successfully size={len(response.content)} bytes"
+        if response.status_code != 200:
+            logger.error(
+                f"[Email] Failed to download attachment: status={response.status_code}"
             )
-            return response.content
+            raise ValueError(f"Failed to download attachment: {response.status_code}")
+
+        logger.debug(
+            f"[Email] Attachment downloaded successfully size={len(response.content)} bytes"
+        )
+        return response.content
 
     async def upload_attachment(
         self,
@@ -1021,80 +1043,79 @@ class ZohoEmailService:
 
         url = f"{self.api_domain}/api/accounts/{account_id}/messages/attachments"
 
-        async with httpx.AsyncClient(
-            timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT
-        ) as client:
-            try:
-                response = await client.post(
-                    url,
-                    headers={"Authorization": f"Zoho-oauthtoken {token}"},
-                    files={"attach": (filename, content, content_type)},
-                )
+        client = self._get_client()
+        try:
+            response = await client.post(
+                url,
+                headers={"Authorization": f"Zoho-oauthtoken {token}"},
+                files={"attach": (filename, content, content_type)},
+                timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT,
+            )
 
-                # ========================================
-                # ERROR HANDLING WITH FULL DETAILS
-                # ========================================
+            # ========================================
+            # ERROR HANDLING WITH FULL DETAILS
+            # ========================================
 
-                if response.status_code != 200:
-                    # Parse Zoho error response
-                    error_body = {}
-                    try:
-                        error_body = response.json() if response.content else {}
-                    except Exception:
-                        error_body = {"raw_content": response.text[:500]}
+            if response.status_code != 200:
+                # Parse Zoho error response
+                error_body = {}
+                try:
+                    error_body = response.json() if response.content else {}
+                except Exception:
+                    error_body = {"raw_content": response.text[:500]}
 
-                    # Extract error details
-                    error_data = error_body.get("data", {})
-                    error_code = error_data.get("errorCode", "UNKNOWN_ERROR")
-                    error_message = error_data.get("message", "No error message provided")
+                # Extract error details
+                error_data = error_body.get("data", {})
+                error_code = error_data.get("errorCode", "UNKNOWN_ERROR")
+                error_message = error_data.get("message", "No error message provided")
 
-                    # Comprehensive error logging
-                    logger.error(
-                        f"[Email] Attachment upload failed\n"
-                        f"  User: {user_id}\n"
-                        f"  Filename: {filename!r} (original: {original_filename!r})\n"
-                        f"  Size: {file_size_mb:.2f}MB\n"
-                        f"  Content-Type: {content_type}\n"
-                        f"  HTTP Status: {response.status_code}\n"
-                        f"  Zoho Error Code: {error_code}\n"
-                        f"  Zoho Error Message: {error_message}\n"
-                        f"  Full Response: {error_body}"
-                    )
-
-                    # Raise informative error for user
-                    raise ValueError(
-                        f"Upload failed for '{original_filename}': {error_code} - {error_message}"
-                    )
-
-                # ========================================
-                # SUCCESS
-                # ========================================
-
-                data = response.json()
-                attachment_data = data.get("data", {})
-
-                result = {
-                    "attachment_id": attachment_data.get("attachmentId", ""),
-                    "store_name": attachment_data.get("storeName", ""),
-                    "attachment_path": attachment_data.get("attachmentPath", ""),
-                    "attachment_name": attachment_data.get("attachmentName", filename),
-                }
-
-                logger.info(
-                    f"[Email] Attachment uploaded successfully "
-                    f"user={user_id} attachment_id={result['attachment_id']} "
-                    f"filename={filename!r} size={file_size_mb:.2f}MB"
-                )
-
-                return result
-
-            except httpx.HTTPError as e:
+                # Comprehensive error logging
                 logger.error(
-                    f"[Email] HTTP error uploading attachment user={user_id} "
-                    f"filename={filename!r}: {e}",
-                    exc_info=True,
+                    f"[Email] Attachment upload failed\n"
+                    f"  User: {user_id}\n"
+                    f"  Filename: {filename!r} (original: {original_filename!r})\n"
+                    f"  Size: {file_size_mb:.2f}MB\n"
+                    f"  Content-Type: {content_type}\n"
+                    f"  HTTP Status: {response.status_code}\n"
+                    f"  Zoho Error Code: {error_code}\n"
+                    f"  Zoho Error Message: {error_message}\n"
+                    f"  Full Response: {error_body}"
                 )
-                raise ValueError(f"Network error uploading '{original_filename}': {str(e)}")
+
+                # Raise informative error for user
+                raise ValueError(
+                    f"Upload failed for '{original_filename}': {error_code} - {error_message}"
+                )
+
+            # ========================================
+            # SUCCESS
+            # ========================================
+
+            data = response.json()
+            attachment_data = data.get("data", {})
+
+            result = {
+                "attachment_id": attachment_data.get("attachmentId", ""),
+                "store_name": attachment_data.get("storeName", ""),
+                "attachment_path": attachment_data.get("attachmentPath", ""),
+                "attachment_name": attachment_data.get("attachmentName", filename),
+            }
+
+            logger.info(
+                f"[Email] Attachment uploaded successfully "
+                f"user={user_id} attachment_id={result['attachment_id']} "
+                f"filename={filename!r} size={file_size_mb:.2f}MB"
+            )
+
+            return result
+
+        except httpx.HTTPError as e:
+            logger.error(
+                f"[Email] HTTP error uploading attachment user={user_id} "
+                f"filename={filename!r}: {e}",
+                exc_info=True,
+            )
+            raise ValueError(f"Network error uploading '{original_filename}': {str(e)}")
 
     # ═══════════════════════════════════════════
     # DRAFT OPERATIONS

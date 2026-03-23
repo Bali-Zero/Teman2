@@ -19,6 +19,7 @@ import os
 from typing import Any
 
 import fitz  # PyMuPDF
+import httpx
 from PIL import Image
 
 from backend.app.core.config import settings
@@ -42,6 +43,22 @@ class PDFVisionService:
         self._genai_client: GenAIClient | None = None
         self.model_name = "gemini-2.0-flash-lite"
         self.ollama_model = "qwen2.5vl:7b"  # confirmed working for vision OCR
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client for Ollama."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=120.0,
+                limits=httpx.Limits(max_connections=5, max_keepalive_connections=2),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("PDFVisionService HTTP client closed.")
 
     def _get_genai_client(self) -> GenAIClient | None:
         """Lazy load GenAI client."""
@@ -117,8 +134,6 @@ class PDFVisionService:
 
     async def _analyze_via_ollama(self, prompt: str, image_base64: str) -> str | None:
         """Analyze image using local Ollama qwen3.5:27b vision."""
-        import httpx
-
         try:
             if not await is_ollama_available(self.ollama_model):
                 return None
@@ -140,18 +155,18 @@ class PDFVisionService:
                 },
             }
 
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                response = await client.post(
-                    f"{settings.ollama_url}/api/chat",
-                    json=payload,
-                )
-                response.raise_for_status()
-                data = response.json()
-                content = data.get("message", {}).get("content", "").strip()
-                if content:
-                    logger.info(f"👁️ Ollama vision ({self.ollama_model}) responded")
-                    return content
-                return None
+            client = self._get_client()
+            response = await client.post(
+                f"{settings.ollama_url}/api/chat",
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+            content = data.get("message", {}).get("content", "").strip()
+            if content:
+                logger.info(f"👁️ Ollama vision ({self.ollama_model}) responded")
+                return content
+            return None
 
         except httpx.ConnectError:
             logger.debug("Ollama not available for vision")
