@@ -730,3 +730,11 @@ class ZantaraAIClient:
         if self.mock_mode:
             return True
         return bool(self.api_key and GENAI_AVAILABLE)
+
+    async def close(self) -> None:
+        """
+        Shut down the AI client.
+        Google SDK handles pooling, but we null the reference for completeness.
+        """
+        self._genai_client = None
+        logger.info("✅ ZantaraAIClient: All clients shut down")

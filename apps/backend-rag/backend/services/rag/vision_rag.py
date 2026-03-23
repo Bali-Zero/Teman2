@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
 from PIL import Image
 
 from backend.app.core.config import settings
@@ -51,6 +52,22 @@ class VisionRAGService:
         self._genai_client: GenAIClient | None = None
         self.vision_model_name = "gemini-2.0-flash-lite"  # Vision capable
         self.text_model_name = "gemini-2.0-flash-lite"
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client for Ollama."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=120.0,
+                limits=httpx.Limits(max_connections=5, max_keepalive_connections=2),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("VisionRAGService HTTP client closed.")
 
     def _get_genai_client(self) -> GenAIClient | None:
         """Lazy load GenAI client."""
@@ -183,8 +200,6 @@ Output JSON:
 
     async def _vision_via_ollama(self, prompt: str, image_base64: str) -> str | None:
         """Analyze image using local Ollama qwen3.5:27b vision."""
-        import httpx
-
         try:
             if not await is_ollama_available(MODEL_HEAVY):
                 return None
@@ -197,17 +212,17 @@ Output JSON:
                 "options": {"temperature": 0.1, "num_predict": 8192},
             }
 
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                response = await client.post(
-                    f"{settings.ollama_url}/api/chat",
-                    json=payload,
-                )
-                response.raise_for_status()
-                content = response.json().get("message", {}).get("content", "").strip()
-                if content:
-                    logger.info(f"👁️ VisionRAG: Ollama ({MODEL_HEAVY}) responded")
-                    return content
-                return None
+            client = self._get_client()
+            response = await client.post(
+                f"{settings.ollama_url}/api/chat",
+                json=payload,
+            )
+            response.raise_for_status()
+            content = response.json().get("message", {}).get("content", "").strip()
+            if content:
+                logger.info(f"👁️ VisionRAG: Ollama ({MODEL_HEAVY}) responded")
+                return content
+            return None
         except Exception as e:
             logger.debug(f"VisionRAG Ollama fallback: {e}")
             return None

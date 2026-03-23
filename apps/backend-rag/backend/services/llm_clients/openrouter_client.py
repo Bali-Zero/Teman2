@@ -121,6 +121,22 @@ class OpenRouterClient:
         self.timeout = timeout
         self.site_url = site_url
         self.site_name = site_name
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=self.timeout,
+                limits=httpx.Limits(max_connections=50, max_keepalive_connections=10),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("OpenRouterClient HTTP client closed.")
 
     def get_fallback_chain(self, tier: ModelTier | None = None) -> list[str]:
         """Get model IDs for fallback chain"""
@@ -184,37 +200,37 @@ class OpenRouterClient:
         if tools:
             payload["tools"] = tools
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.BASE_URL}/chat/completions", headers=self._get_headers(), json=payload
-            )
-            response.raise_for_status()
+        client = self._get_client()
+        response = await client.post(
+            f"{self.BASE_URL}/chat/completions", headers=self._get_headers(), json=payload
+        )
+        response.raise_for_status()
 
-            data = response.json()
+        data = response.json()
 
-            # Extract response
-            choice = data.get("choices", [{}])[0]
-            message = choice.get("message", {})
-            content = message.get("content", "")
+        # Extract response
+        choice = data.get("choices", [{}])[0]
+        message = choice.get("message", {})
+        content = message.get("content", "")
 
-            # Get actual model used (OpenRouter returns this)
-            model_used = data.get("model", model_id or "unknown")
-            model_info = MODEL_INFO.get(model_used, {"name": model_used, "context": 0})
+        # Get actual model used (OpenRouter returns this)
+        model_used = data.get("model", model_id or "unknown")
+        model_info = MODEL_INFO.get(model_used, {"name": model_used, "context": 0})
 
-            # Extract usage
-            usage = data.get("usage", {})
+        # Extract usage
+        usage = data.get("usage", {})
 
-            logger.info(f"OpenRouter used model: {model_info['name']}")
+        logger.info(f"OpenRouter used model: {model_info['name']}")
 
-            return CompletionResult(
-                content=content,
-                model_used=model_used,
-                model_name=model_info["name"],
-                prompt_tokens=usage.get("prompt_tokens", 0),
-                completion_tokens=usage.get("completion_tokens", 0),
-                total_tokens=usage.get("total_tokens", 0),
-                cost=0.0,  # Free models
-            )
+        return CompletionResult(
+            content=content,
+            model_used=model_used,
+            model_name=model_info["name"],
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+            total_tokens=usage.get("total_tokens", 0),
+            cost=0.0,  # Free models
+        )
 
     async def complete_stream(
         self,
@@ -246,15 +262,13 @@ class OpenRouterClient:
         else:
             payload["models"] = self.get_fallback_chain(tier)
 
-        async with (
-            httpx.AsyncClient(timeout=self.timeout) as client,
-            client.stream(
-                "POST",
-                f"{self.BASE_URL}/chat/completions",
-                headers=self._get_headers(),
-                json=payload,
-            ) as response,
-        ):
+        client = self._get_client()
+        async with client.stream(
+            "POST",
+            f"{self.BASE_URL}/chat/completions",
+            headers=self._get_headers(),
+            json=payload,
+        ) as response:
             response.raise_for_status()
 
             async for line in response.aiter_lines():
@@ -278,11 +292,11 @@ class OpenRouterClient:
         if not self.api_key:
             return {"error": "API key not configured"}
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(f"{self.BASE_URL}/key", headers=self._get_headers())
-            if response.status_code == 200:
-                return response.json()
-            return {"error": f"Status {response.status_code}"}
+        client = self._get_client()
+        response = await client.get(f"{self.BASE_URL}/key", headers=self._get_headers())
+        if response.status_code == 200:
+            return response.json()
+        return {"error": f"Status {response.status_code}"}
 
 
 # Singleton instance

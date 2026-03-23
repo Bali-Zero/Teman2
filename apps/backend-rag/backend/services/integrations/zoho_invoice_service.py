@@ -26,6 +26,22 @@ class ZohoInvoiceService:
         self.db_pool = db_pool
         self.api_domain = "https://invoice.zoho.com"
         self.oauth_service = ZohoOAuthService(db_pool)
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=30.0,
+                limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        await self.oauth_service.close()
 
     async def _make_api_request(
         self,
@@ -78,28 +94,28 @@ class ZohoInvoiceService:
 
         url = f"{self.api_domain}/api/v3{endpoint}"
 
-        async with httpx.AsyncClient() as client:
-            response = await client.request(
-                method=method,
-                url=url,
-                headers=request_headers,
-                params=params,
-                json=json_data,
+        client = self._get_client()
+        response = await client.request(
+            method=method,
+            url=url,
+            headers=request_headers,
+            params=params,
+            json=json_data,
+        )
+
+        # Check for token expiration
+        if response.status_code == 401:
+            logger.error("Zoho token expired - manual reconnect required")
+            raise ValueError(
+                "Zoho OAuth token expired - please reconnect at /api/integrations/zoho/auth"
             )
 
-            # Check for token expiration
-            if response.status_code == 401:
-                logger.error("Zoho token expired - manual reconnect required")
-                raise ValueError(
-                    "Zoho OAuth token expired - please reconnect at /api/integrations/zoho/auth"
-                )
+        response.raise_for_status()
 
-            response.raise_for_status()
-
-            if accept_json:
-                return response.json()
-            else:
-                return response.content
+        if accept_json:
+            return response.json()
+        else:
+            return response.content
 
     async def get_or_create_customer(
         self,

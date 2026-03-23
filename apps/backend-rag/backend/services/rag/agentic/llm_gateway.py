@@ -1032,3 +1032,19 @@ class LLMGateway:
             logger.debug("✅ LLMGateway Health: OpenRouter client initialized")
 
         return status
+
+    async def close(self) -> None:
+        """
+        Shut down all persistent LLM clients managed by this gateway.
+        Should be called during application shutdown via lifespan.
+        """
+        if self._openrouter_client:
+            try:
+                await self._openrouter_client.close()
+                logger.info("✅ LLMGateway: OpenRouter client closed")
+            except Exception as e:
+                logger.warning(f"⚠️ LLMGateway: Error closing OpenRouter client: {e}")
+
+        # GenAI client pooling is managed by SDK, but we null it out for safety
+        self._genai_client = None
+        logger.info("✅ LLMGateway: All clients shut down")

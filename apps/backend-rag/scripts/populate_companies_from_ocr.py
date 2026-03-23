@@ -348,22 +348,25 @@ async def link_person_to_company(conn, company_id, person_name, role, ownership_
 
 async def process_company_with_retry(cid: int, cname: str, done: int, dry_run: bool) -> dict:
     """Process a single company using a fresh connection with retry on connection error."""
-    for attempt in range(3):
+    max_attempts = 10
+    for attempt in range(max_attempts):
         conn = None
         try:
             conn = await asyncpg.connect(DB, command_timeout=60)
             stats = await update_company_fields(conn, cid, dry_run)
             return stats
-        except (asyncpg.exceptions.ConnectionDoesNotExistError, OSError) as e:
-            logger.warning(f"  ⚠️ Connection error attempt {attempt+1}/3 for [{cid}] {cname}: {e}")
-            if attempt < 2:
-                await asyncio.sleep(2)
+        except (asyncpg.exceptions.ConnectionDoesNotExistError, OSError, ConnectionRefusedError) as e:
+            wait = min(5 * (attempt + 1), 30)
+            logger.warning(f"  ⚠️ Connection error attempt {attempt+1}/{max_attempts} for [{cid}] {cname}: {e} — retry in {wait}s")
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(wait)
         except Exception as e:
             logger.warning(f"  ⚠️ Skipped [{cid}] {cname}: {e}")
             return {"fields_updated": 0, "directors_linked": 0}
         finally:
             if conn and not conn.is_closed():
                 await conn.close()
+    logger.warning(f"  ✗ Giving up on [{cid}] {cname} after {max_attempts} attempts")
     return {"fields_updated": 0, "directors_linked": 0}
 
 
