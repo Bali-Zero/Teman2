@@ -7,6 +7,7 @@ import logging
 import time
 from typing import Any
 
+import httpx
 import psutil
 
 logger = logging.getLogger(__name__)
@@ -97,6 +98,22 @@ class AnalyticsAggregator:
         """
         self.app_state = app_state
         self._boot_time = getattr(app_state, "boot_time", time.time())
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=10.0,
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("AnalyticsAggregator HTTP client closed.")
 
     async def _get_db_pool(self) -> Any:
         """Get database connection pool from app state"""
@@ -438,8 +455,6 @@ class AnalyticsAggregator:
 
     async def get_qdrant_stats(self) -> dict:
         """Get Qdrant vector database statistics using direct HTTP calls"""
-        import httpx
-
         from backend.app.core.config import settings
         from backend.app.routers.analytics import QdrantStats
 
@@ -451,40 +466,42 @@ class AnalyticsAggregator:
             if settings.qdrant_api_key:
                 headers["api-key"] = settings.qdrant_api_key
 
-            async with httpx.AsyncClient(
-                base_url=settings.qdrant_url,
+            client = self._get_client()
+            # Get all collections
+            response = await client.get(
+                f"{settings.qdrant_url}/collections",
                 headers=headers,
-                timeout=10.0,
-            ) as client:
-                # Get all collections
-                response = await client.get("/collections")
-                response.raise_for_status()
-                collections_data = response.json().get("result", {}).get("collections", [])
+            )
+            response.raise_for_status()
+            collections_data = response.json().get("result", {}).get("collections", [])
 
-                collections = []
-                total_docs = 0
+            collections = []
+            total_docs = 0
 
-                for coll in collections_data:
-                    coll_name = coll.get("name")
-                    if coll_name:
-                        try:
-                            coll_response = await client.get(f"/collections/{coll_name}")
-                            coll_response.raise_for_status()
-                            coll_info = coll_response.json().get("result", {})
-                            count = coll_info.get("points_count", 0)
-                            status = coll_info.get("status", "unknown")
-                            total_docs += count
-                            collections.append(
-                                {"name": coll_name, "documents": count, "status": status}
-                            )
-                        except Exception as e:
-                            logger.warning(f"Failed to get info for collection {coll_name}: {e}")
-                            collections.append(
-                                {"name": coll_name, "documents": 0, "status": "unknown"}
-                            )
+            for coll in collections_data:
+                coll_name = coll.get("name")
+                if coll_name:
+                    try:
+                        coll_response = await client.get(
+                            f"{settings.qdrant_url}/collections/{coll_name}",
+                            headers=headers,
+                        )
+                        coll_response.raise_for_status()
+                        coll_info = coll_response.json().get("result", {})
+                        count = coll_info.get("points_count", 0)
+                        status = coll_info.get("status", "unknown")
+                        total_docs += count
+                        collections.append(
+                            {"name": coll_name, "documents": count, "status": status}
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to get info for collection {coll_name}: {e}")
+                        collections.append(
+                            {"name": coll_name, "documents": 0, "status": "unknown"}
+                        )
 
-                stats.total_documents = total_docs
-                stats.collections = sorted(collections, key=lambda x: x["documents"], reverse=True)
+            stats.total_documents = total_docs
+            stats.collections = sorted(collections, key=lambda x: x["documents"], reverse=True)
 
         except Exception as e:
             logger.error(f"Error fetching Qdrant stats: {e}")

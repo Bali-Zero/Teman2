@@ -17,6 +17,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
+import httpx
 import psutil
 
 from backend.services.monitoring.alert_service import AlertLevel, AlertService
@@ -66,7 +67,25 @@ class HealthMonitor:
         self._first_request_seen = False
         self._restart_count = self._read_restart_count()
 
+        # Persistent HTTP client
+        self._client: httpx.AsyncClient | None = None
+
         logger.info(f"✅ HealthMonitor initialized (check_interval={check_interval}s)")
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=10.0,
+                limits=httpx.Limits(max_connections=5, max_keepalive_connections=2),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("HealthMonitor HTTP client closed.")
 
     def record_first_request(self) -> None:
         """Call this when the first real request (non-health) is served."""
@@ -314,8 +333,6 @@ class HealthMonitor:
 
     async def _check_qdrant(self, search_service: Any) -> bool:
         """Check if Qdrant is actually working via HTTP"""
-        import httpx
-
         from backend.app.core.config import settings
 
         try:
@@ -323,13 +340,13 @@ class HealthMonitor:
             if settings.qdrant_api_key:
                 headers["api-key"] = settings.qdrant_api_key
 
-            async with httpx.AsyncClient(
-                base_url=settings.qdrant_url,
+            client = self._get_client()
+            response = await client.get(
+                f"{settings.qdrant_url}/collections",
                 headers=headers,
                 timeout=5.0,
-            ) as client:
-                response = await client.get("/collections")
-                return response.status_code == 200
+            )
+            return response.status_code == 200
         except Exception as e:
             logger.debug(f"Qdrant health check failed: {e}")
             return False

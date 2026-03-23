@@ -75,6 +75,9 @@ class AlertService:
         self._global_max_per_minute: int = 3  # max 3 Telegram messages per minute total
         self._global_cooldown_seconds: float = 60.0
 
+        # Persistent HTTP client
+        self._client: httpx.AsyncClient | None = None
+
         logger.info("✅ AlertService initialized")
         logger.info(
             f"   Telegram: {'✅ enabled' if self.enable_telegram else '❌ disabled (need TELEGRAM_BOT_TOKEN + ADMIN_TELEGRAM_CHAT_ID)'}"
@@ -86,6 +89,21 @@ class AlertService:
             f"   Discord: {'✅ enabled' if self.enable_discord else '❌ disabled (no DISCORD_WEBHOOK_URL)'}"
         )
         logger.info("   Logging: ✅ enabled")
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=10.0,
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("AlertService HTTP client closed.")
 
     async def send_alert(
         self,
@@ -220,9 +238,9 @@ class AlertService:
             "disable_web_page_preview": True,
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=payload, timeout=5.0)
-            response.raise_for_status()
+        client = self._get_client()
+        response = await client.post(url, json=payload, timeout=5.0)
+        response.raise_for_status()
 
     async def _send_slack_alert(
         self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None
@@ -273,9 +291,9 @@ class AlertService:
             ]
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(self.slack_webhook, json=payload, timeout=5.0)
-            response.raise_for_status()
+        client = self._get_client()
+        response = await client.post(self.slack_webhook, json=payload, timeout=5.0)
+        response.raise_for_status()
 
     async def _send_discord_alert(
         self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None
@@ -322,9 +340,9 @@ class AlertService:
 
         payload = {"embeds": [embed]}
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(self.discord_webhook, json=payload, timeout=5.0)
-            response.raise_for_status()
+        client = self._get_client()
+        response = await client.post(self.discord_webhook, json=payload, timeout=5.0)
+        response.raise_for_status()
 
     async def send_http_error_alert(
         self,
@@ -432,12 +450,11 @@ class AlertService:
                 "parse_mode": "HTML",
                 "disable_web_page_preview": True,
             }
-            async with httpx.AsyncClient() as client:
-                await client.post(url, json=payload, timeout=10.0)
+            client = self._get_client()
+            await client.post(url, json=payload, timeout=10.0)
             logger.info(
                 f"[digest] Hourly digest inviato: {len(events)} eventi, {len(by_path)} path"
             )
-
     async def _digest_loop(self) -> None:
         """Background loop: flush digest ogni ora esatta (minuto 0)."""
         while True:

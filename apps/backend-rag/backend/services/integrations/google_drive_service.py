@@ -57,6 +57,42 @@ class GoogleDriveService:
         self.client_secret = settings.google_drive_client_secret
         self.redirect_uri = settings.google_drive_redirect_uri
         self.root_folder_id = settings.google_drive_root_folder_id
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=30.0,
+                limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+
+    @staticmethod
+    def _sanitize_drive_query_string(value: str) -> str:
+        """
+        Sanitize a string value for use inside a Google Drive API query.
+
+        The Drive Files.list 'q' parameter uses a custom query language where
+        string literals are delimited by single quotes.  An un-sanitized value
+        can break out of that delimiter and inject arbitrary query clauses.
+
+        Google's own documentation recommends escaping single quotes as \'
+        and backslashes as \\ inside query string values.
+
+        Args:
+            value: Raw string (e.g., a user-supplied search term or folder name).
+
+        Returns:
+            Sanitized string safe to embed inside single-quoted Drive query.
+        """
+        # Order matters: escape backslash first, then single quote.
+        return value.replace("\\", "\\\\").replace("'", "\\'")
 
     def is_configured(self) -> bool:
         """Check if Google Drive OAuth is configured."""
@@ -103,26 +139,26 @@ class GoogleDriveService:
         """
         logger.info(f"[GDRIVE] Exchanging code for user {user_id}")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.TOKEN_URL,
-                data={
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
-                    "code": code,
-                    "grant_type": "authorization_code",
-                    "redirect_uri": self.redirect_uri,
-                },
+        client = self._get_client()
+        response = await client.post(
+            self.TOKEN_URL,
+            data={
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": self.redirect_uri,
+            },
+        )
+
+        if response.status_code != 200:
+            error_data = response.json()
+            logger.error(f"[GDRIVE] Token exchange failed: {error_data}")
+            raise ValueError(
+                f"Token exchange failed: {error_data.get('error_description', 'Unknown error')}"
             )
 
-            if response.status_code != 200:
-                error_data = response.json()
-                logger.error(f"[GDRIVE] Token exchange failed: {error_data}")
-                raise ValueError(
-                    f"Token exchange failed: {error_data.get('error_description', 'Unknown error')}"
-                )
-
-            token_data = response.json()
+        token_data = response.json()
 
         # Calculate expiry time
         expires_at = datetime.now(timezone.utc) + timedelta(
@@ -202,22 +238,22 @@ class GoogleDriveService:
         """Refresh access token using refresh token."""
         logger.info(f"[GDRIVE] Refreshing token for user {user_id}")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.TOKEN_URL,
-                data={
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
-                    "refresh_token": refresh_token,
-                    "grant_type": "refresh_token",
-                },
-            )
+        client = self._get_client()
+        response = await client.post(
+            self.TOKEN_URL,
+            data={
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "refresh_token": refresh_token,
+                "grant_type": "refresh_token",
+            },
+        )
 
-            if response.status_code != 200:
-                logger.error(f"[GDRIVE] Token refresh failed for user {user_id}")
-                return None
+        if response.status_code != 200:
+            logger.error(f"[GDRIVE] Token refresh failed for user {user_id}")
+            return None
 
-            token_data = response.json()
+        token_data = response.json()
 
         expires_at = datetime.now(timezone.utc) + timedelta(
             seconds=token_data.get("expires_in", 3600)
@@ -256,11 +292,11 @@ class GoogleDriveService:
 
             if row:
                 # Revoke token at Google
-                async with httpx.AsyncClient() as client:
-                    await client.post(
-                        "https://oauth2.googleapis.com/revoke",
-                        params={"token": row["access_token"]},
-                    )
+                client = self._get_client()
+                await client.post(
+                    "https://oauth2.googleapis.com/revoke",
+                    params={"token": row["access_token"]},
+                )
 
             # Delete from database
             await conn.execute(
@@ -311,21 +347,21 @@ class GoogleDriveService:
         if page_token:
             params["pageToken"] = page_token
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.API_BASE}/files",
-                params=params,
-                headers={"Authorization": f"Bearer {access_token}"},
+        client = self._get_client()
+        response = await client.get(
+            f"{self.API_BASE}/files",
+            params=params,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        if response.status_code != 200:
+            error = response.json()
+            logger.error(f"[GDRIVE] List files failed: {error}")
+            raise ValueError(
+                f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}"
             )
 
-            if response.status_code != 200:
-                error = response.json()
-                logger.error(f"[GDRIVE] List files failed: {error}")
-                raise ValueError(
-                    f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}"
-                )
-
-            data = response.json()
+        data = response.json()
 
         return {
             "files": data.get("files", []),
@@ -347,22 +383,22 @@ class GoogleDriveService:
         if not access_token:
             raise ValueError("User not connected to Google Drive")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.API_BASE}/files/{file_id}",
-                params={
-                    "fields": "id, name, mimeType, size, modifiedTime, iconLink, webViewLink, thumbnailLink, parents, permissions",
-                },
-                headers={"Authorization": f"Bearer {access_token}"},
+        client = self._get_client()
+        response = await client.get(
+            f"{self.API_BASE}/files/{file_id}",
+            params={
+                "fields": "id, name, mimeType, size, modifiedTime, iconLink, webViewLink, thumbnailLink, parents, permissions",
+            },
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        if response.status_code != 200:
+            error = response.json()
+            raise ValueError(
+                f"Failed to get file: {error.get('error', {}).get('message', 'Unknown error')}"
             )
 
-            if response.status_code != 200:
-                error = response.json()
-                raise ValueError(
-                    f"Failed to get file: {error.get('error', {}).get('message', 'Unknown error')}"
-                )
-
-            return response.json()
+        return response.json()
 
     async def get_folder_path(self, user_id: str, folder_id: str) -> list[dict[str, str]]:
         """
@@ -382,27 +418,27 @@ class GoogleDriveService:
         path = []
         current_id = folder_id
 
-        async with httpx.AsyncClient() as client:
-            while current_id and current_id != "root":
-                response = await client.get(
-                    f"{self.API_BASE}/files/{current_id}",
-                    params={"fields": "id, name, parents"},
-                    headers={"Authorization": f"Bearer {access_token}"},
-                )
+        client = self._get_client()
+        while current_id and current_id != "root":
+            response = await client.get(
+                f"{self.API_BASE}/files/{current_id}",
+                params={"fields": "id, name, parents"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
 
-                if response.status_code != 200:
-                    break
+            if response.status_code != 200:
+                break
 
-                data = response.json()
-                path.insert(0, {"id": data["id"], "name": data["name"]})
+            data = response.json()
+            path.insert(0, {"id": data["id"], "name": data["name"]})
 
-                # Move to parent
-                parents = data.get("parents", [])
-                current_id = parents[0] if parents else None
+            # Move to parent
+            parents = data.get("parents", [])
+            current_id = parents[0] if parents else None
 
-                # Stop at team root folder
-                if current_id == self.root_folder_id:
-                    break
+            # Stop at team root folder
+            if current_id == self.root_folder_id:
+                break
 
         return path
 
@@ -428,7 +464,9 @@ class GoogleDriveService:
             raise ValueError("User not connected to Google Drive")
 
         # Build search query - search within team folder if configured
-        q_parts = [f"name contains '{query}'", "trashed = false"]
+        # Sanitize user-supplied query to prevent Drive query injection.
+        safe_query = self._sanitize_drive_query_string(query)
+        q_parts = [f"name contains '{safe_query}'", "trashed = false"]
         if self.root_folder_id:
             q_parts.append(f"'{self.root_folder_id}' in parents")
 
@@ -438,17 +476,17 @@ class GoogleDriveService:
             "pageSize": page_size,
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.API_BASE}/files",
-                params=params,
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
+        client = self._get_client()
+        response = await client.get(
+            f"{self.API_BASE}/files",
+            params=params,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
 
-            if response.status_code != 200:
-                return []
+        if response.status_code != 200:
+            return []
 
-            return response.json().get("files", [])
+        return response.json().get("files", [])
 
     async def get_user_folder(self, user_id: str, user_email: str) -> dict[str, Any] | None:
         """
@@ -467,24 +505,26 @@ class GoogleDriveService:
 
         # Extract name from email (e.g., "anton@balizero.com" -> "Anton")
         user_name = user_email.split("@")[0].title()
+        # Sanitize before embedding in Drive query string.
+        safe_user_name = self._sanitize_drive_query_string(user_name)
 
         # Search for folder with user's name in Members folders
         params = {
-            "q": f"name = '{user_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+            "q": f"name = '{safe_user_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
             "fields": "files(id, name, parents)",
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.API_BASE}/files",
-                params=params,
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
+        client = self._get_client()
+        response = await client.get(
+            f"{self.API_BASE}/files",
+            params=params,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
 
-            if response.status_code == 200:
-                files = response.json().get("files", [])
-                if files:
-                    return files[0]
+        if response.status_code == 200:
+            files = response.json().get("files", [])
+            if files:
+                return files[0]
 
         return None
 
@@ -522,27 +562,27 @@ class GoogleDriveService:
         if parent_id:
             folder_metadata["parents"] = [parent_id]
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.API_BASE}/files",
-                json=folder_metadata,
-                params={"fields": "id, name, webViewLink, parents"},
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json",
-                },
+        client = self._get_client()
+        response = await client.post(
+            f"{self.API_BASE}/files",
+            json=folder_metadata,
+            params={"fields": "id, name, webViewLink, parents"},
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+        )
+
+        if response.status_code != 200:
+            error = response.json()
+            logger.error(f"[GDRIVE] Create folder failed: {error}")
+            raise ValueError(
+                f"Failed to create folder: {error.get('error', {}).get('message', 'Unknown error')}"
             )
 
-            if response.status_code != 200:
-                error = response.json()
-                logger.error(f"[GDRIVE] Create folder failed: {error}")
-                raise ValueError(
-                    f"Failed to create folder: {error.get('error', {}).get('message', 'Unknown error')}"
-                )
-
-            folder_data = response.json()
-            logger.info(f"[GDRIVE] Created folder '{name}' with ID: {folder_data['id']}")
-            return folder_data
+        folder_data = response.json()
+        logger.info(f"[GDRIVE] Created folder '{name}' with ID: {folder_data['id']}")
+        return folder_data
 
     async def create_client_folder_async(
         self,
@@ -691,7 +731,9 @@ class GoogleDriveService:
         # Build query
         query_parts = [f"'{folder_id}' in parents", "trashed = false"]
         if search:
-            query_parts.append(f"name contains '{search}'")
+            # Sanitize user-supplied search term to prevent Drive query injection.
+            safe_search = self._sanitize_drive_query_string(search)
+            query_parts.append(f"name contains '{safe_search}'")
         query = " and ".join(query_parts)
 
         # Calculate page token from offset (Drive API uses page tokens, not offset)
@@ -705,22 +747,22 @@ class GoogleDriveService:
             "pageSize": min(limit + offset, 200),  # Fetch enough to cover offset
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.API_BASE}/files",
-                params=params,
-                headers={"Authorization": f"Bearer {access_token}"},
+        client = self._get_client()
+        response = await client.get(
+            f"{self.API_BASE}/files",
+            params=params,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        if response.status_code != 200:
+            error = response.json()
+            logger.error(f"[GDRIVE] List folder files failed: {error}")
+            raise ValueError(
+                f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}"
             )
 
-            if response.status_code != 200:
-                error = response.json()
-                logger.error(f"[GDRIVE] List folder files failed: {error}")
-                raise ValueError(
-                    f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}"
-                )
-
-            data = response.json()
-            files = data.get("files", [])
+        data = response.json()
+        files = data.get("files", [])
 
         # Apply offset and limit in memory
         paginated_files = files[offset : offset + limit]
@@ -793,22 +835,22 @@ class GoogleDriveService:
             "orderBy": "name",
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.API_BASE}/files",
-                params=params,
-                headers={"Authorization": f"Bearer {access_token}"},
+        client = self._get_client()
+        response = await client.get(
+            f"{self.API_BASE}/files",
+            params=params,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        if response.status_code != 200:
+            error = response.json()
+            logger.error(f"[GDRIVE] Get folder structure failed: {error}")
+            raise ValueError(
+                f"Failed to get folder structure: {error.get('error', {}).get('message', 'Unknown error')}"
             )
 
-            if response.status_code != 200:
-                error = response.json()
-                logger.error(f"[GDRIVE] Get folder structure failed: {error}")
-                raise ValueError(
-                    f"Failed to get folder structure: {error.get('error', {}).get('message', 'Unknown error')}"
-                )
-
-            data = response.json()
-            subfolders = data.get("files", [])
+        data = response.json()
+        subfolders = data.get("files", [])
 
         # For each subfolder, get file count and size
         folders_info = []
@@ -826,53 +868,52 @@ class GoogleDriveService:
                 "pageSize": 1000,  # Get all files for accurate count
             }
 
-            async with httpx.AsyncClient() as client:
-                files_response = await client.get(
-                    f"{self.API_BASE}/files",
-                    params=files_params,
-                    headers={"Authorization": f"Bearer {access_token}"},
+            files_response = await client.get(
+                f"{self.API_BASE}/files",
+                params=files_params,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+
+            if files_response.status_code == 200:
+                files_data = files_response.json()
+                files = files_data.get("files", [])
+                file_count = len(
+                    [
+                        f
+                        for f in files
+                        if f.get("mimeType") != "application/vnd.google-apps.folder"
+                    ]
                 )
 
-                if files_response.status_code == 200:
-                    files_data = files_response.json()
-                    files = files_data.get("files", [])
-                    file_count = len(
-                        [
-                            f
-                            for f in files
-                            if f.get("mimeType") != "application/vnd.google-apps.folder"
-                        ]
-                    )
+                # Calculate total size
+                folder_size = sum(
+                    int(f.get("size", 0))
+                    for f in files
+                    if f.get("size")
+                    and f.get("mimeType") != "application/vnd.google-apps.folder"
+                )
 
-                    # Calculate total size
-                    folder_size = sum(
-                        int(f.get("size", 0))
-                        for f in files
-                        if f.get("size")
-                        and f.get("mimeType") != "application/vnd.google-apps.folder"
-                    )
+                # Get last modified time (most recent file)
+                if files:
+                    modified_times = [
+                        f.get("modifiedTime") for f in files if f.get("modifiedTime")
+                    ]
+                    last_modified = max(modified_times) if modified_times else None
+                else:
+                    last_modified = None
 
-                    # Get last modified time (most recent file)
-                    if files:
-                        modified_times = [
-                            f.get("modifiedTime") for f in files if f.get("modifiedTime")
-                        ]
-                        last_modified = max(modified_times) if modified_times else None
-                    else:
-                        last_modified = None
+                folders_info.append(
+                    {
+                        "name": folder_name,
+                        "id": folder_id,
+                        "file_count": file_count,
+                        "total_size_bytes": folder_size,
+                        "last_modified": last_modified,
+                    }
+                )
 
-                    folders_info.append(
-                        {
-                            "name": folder_name,
-                            "id": folder_id,
-                            "file_count": file_count,
-                            "total_size_bytes": folder_size,
-                            "last_modified": last_modified,
-                        }
-                    )
-
-                    total_files += file_count
-                    total_size_bytes += folder_size
+                total_files += file_count
+                total_size_bytes += folder_size
 
         return {
             "root_folder_id": root_folder_id,
@@ -925,68 +966,68 @@ class GoogleDriveService:
         }
 
         # Upload file using multipart upload
-        async with httpx.AsyncClient() as client:
-            # First, create metadata
-            metadata_response = await client.post(
-                f"{self.API_BASE}/files",
-                json=metadata,
-                params={"fields": "id, name, size"},
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json",
-                },
+        client = self._get_client()
+        # First, create metadata
+        metadata_response = await client.post(
+            f"{self.API_BASE}/files",
+            json=metadata,
+            params={"fields": "id, name, size"},
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+        )
+
+        if metadata_response.status_code != 200:
+            error = metadata_response.json()
+            logger.error(f"[GDRIVE] Upload file metadata failed: {error}")
+            raise ValueError(
+                f"Failed to upload file: {error.get('error', {}).get('message', 'Unknown error')}"
             )
 
-            if metadata_response.status_code != 200:
-                error = metadata_response.json()
-                logger.error(f"[GDRIVE] Upload file metadata failed: {error}")
-                raise ValueError(
-                    f"Failed to upload file: {error.get('error', {}).get('message', 'Unknown error')}"
+        file_id = metadata_response.json().get("id")
+        if not file_id:
+            raise ValueError("Failed to get file ID from upload")
+
+        # Then upload file content
+        upload_response = await client.patch(
+            f"{self.API_BASE}/files/{file_id}",
+            content=file_content,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": mime_type,
+            },
+        )
+
+        if upload_response.status_code not in (200, 204):
+            error = (
+                upload_response.json()
+                if upload_response.headers.get("content-type", "").startswith(
+                    "application/json"
                 )
-
-            file_id = metadata_response.json().get("id")
-            if not file_id:
-                raise ValueError("Failed to get file ID from upload")
-
-            # Then upload file content
-            upload_response = await client.patch(
-                f"{self.API_BASE}/files/{file_id}",
-                content=file_content,
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": mime_type,
-                },
+                else {}
+            )
+            logger.error(f"[GDRIVE] Upload file content failed: {error}")
+            raise ValueError(
+                f"Failed to upload file content: {error.get('error', {}).get('message', 'Unknown error')}"
             )
 
-            if upload_response.status_code not in (200, 204):
-                error = (
-                    upload_response.json()
-                    if upload_response.headers.get("content-type", "").startswith(
-                        "application/json"
-                    )
-                    else {}
-                )
-                logger.error(f"[GDRIVE] Upload file content failed: {error}")
-                raise ValueError(
-                    f"Failed to upload file content: {error.get('error', {}).get('message', 'Unknown error')}"
-                )
+        # Get final file info
+        file_info = metadata_response.json()
+        size_bytes = (
+            int(file_info.get("size", 0)) if file_info.get("size") else len(file_content)
+        )
 
-            # Get final file info
-            file_info = metadata_response.json()
-            size_bytes = (
-                int(file_info.get("size", 0)) if file_info.get("size") else len(file_content)
-            )
+        logger.info(
+            f"[GDRIVE] Uploaded file '{file_name}' ({size_bytes} bytes) to folder {folder_id}"
+        )
 
-            logger.info(
-                f"[GDRIVE] Uploaded file '{file_name}' ({size_bytes} bytes) to folder {folder_id}"
-            )
-
-            return {
-                "id": file_id,
-                "name": file_name,
-                "size_bytes": size_bytes,
-                "download_url": f"/api/documents/proxy/{file_id}",
-            }
+        return {
+            "id": file_id,
+            "name": file_name,
+            "size_bytes": size_bytes,
+            "download_url": f"/api/documents/proxy/{file_id}",
+        }
 
     async def get_folder_stats(
         self,
