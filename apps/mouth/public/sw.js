@@ -5,9 +5,9 @@
  *            Cache-First per assets statici
  */
 
-const CACHE_NAME = "balizero-v2";
-const STATIC_CACHE = "balizero-static-v2";
-const API_CACHE = "balizero-api-v2";
+const CACHE_NAME = "balizero-v3";
+const STATIC_CACHE = "balizero-static-v3";
+const API_CACHE = "balizero-api-v3";
 
 // Assets da cacheare immediatamente
 const STATIC_ASSETS = ["/", "/offline"];
@@ -95,10 +95,13 @@ self.addEventListener("fetch", (event) => {
 
 // Helpers
 function isStaticAsset(url) {
+  // Next.js JS/CSS chunks are immutable (hash in filename) — skip SW cache,
+  // let Vercel CDN handle them. Only cache images and fonts.
+  if (url.pathname.startsWith("/_next/static/chunks/")) return false;
   return (
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/_next/image/") ||
-    url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|webp|avif|svg|woff2?)$/)
+    url.pathname.match(/\.(png|jpg|jpeg|gif|webp|avif|svg|woff2?)$/)
   );
 }
 
@@ -186,4 +189,4 @@ self.addEventListener("message", (event) => {
   }
 });
 
-console.log("[SW] Service Worker loaded v2");
+console.log("[SW] Service Worker loaded v3");
