@@ -6,12 +6,12 @@ aiOptimization:
     validation errors, and stuck applications. Workarounds include visiting KPP offices
     directly, trying off-peak hours, and using alternative browsers.
   entityMentions:
-  - name: Direktorat Jenderal Pajak
-    sameAs: https://www.pajak.go.id
-    type: GovernmentOrganization
-  - name: Coretax
-    sameAs: https://coretaxdjp.pajak.go.id
-    type: SoftwareApplication
+    - name: Direktorat Jenderal Pajak
+      sameAs: https://www.pajak.go.id
+      type: GovernmentOrganization
+    - name: Coretax
+      sameAs: https://coretaxdjp.pajak.go.id
+      type: SoftwareApplication
   primaryQuestion: Why is my NPWP registration failing on the new Coretax system in
     2026?
 author:
@@ -55,20 +55,20 @@ difficulty: intermediate
 excerpt: Il nuovo sistema fiscale indonesiano è partito il 1° gennaio. Il risultato?
   Caos. Ecco cosa sta succedendo con Coretax e il tuo NPWP.
 faq:
-- answer: Coretax is Indonesia's new tax administration system replacing the legacy
-    DJP Online platform, launched January 1, 2026. It is experiencing widespread technical
-    issues including login failures, NPWP registration blocks, and validation errors
-    affecting taxpayers nationwide.
-  question: What is Coretax and why is it causing problems?
-- answer: Visit your local KPP Pratama tax office directly for manual processing.
-    Try the online system during off-peak hours (early morning or late evening). Some
-    users report success using different browsers or clearing cache before attempting
-    registration.
-  question: How can I register for NPWP if Coretax is not working?
-- answer: As of early 2026, DJP has NOT extended any tax filing deadlines despite
-    Coretax problems. All deadlines remain in effect. Document your failed attempts
-    as evidence in case penalties are applied.
-  question: Will tax deadlines be extended due to Coretax issues?
+  - answer: Coretax is Indonesia's new tax administration system replacing the legacy
+      DJP Online platform, launched January 1, 2026. It is experiencing widespread technical
+      issues including login failures, NPWP registration blocks, and validation errors
+      affecting taxpayers nationwide.
+    question: What is Coretax and why is it causing problems?
+  - answer: Visit your local KPP Pratama tax office directly for manual processing.
+      Try the online system during off-peak hours (early morning or late evening). Some
+      users report success using different browsers or clearing cache before attempting
+      registration.
+    question: How can I register for NPWP if Coretax is not working?
+  - answer: As of early 2026, DJP has NOT extended any tax filing deadlines despite
+      Coretax problems. All deadlines remain in effect. Document your failed attempts
+      as evidence in case penalties are applied.
+    question: Will tax deadlines be extended due to Coretax issues?
 featured: false
 image:
   alt: KPP Pratama Indonesian tax office with queue system and waiting area
@@ -78,17 +78,17 @@ ogImage: /static/news/coretax-kpp-queue.jpg
 publishedAt: '2026-01-03'
 readingTime: 5
 relatedArticles:
-- npwp-foreigners-guide
-- tax-residency-indonesia
-- annual-tax-return-guide
+  - npwp-foreigners-guide
+  - tax-residency-indonesia
+  - annual-tax-return-guide
 seo:
   description: Il sistema Coretax indonesiano sta causando problemi di registrazione
     NPWP a gennaio 2026. Codici errore, domande bloccate e workaround.
   keywords:
-  - coretax indonesia
-  - npwp problems 2026
-  - djp online error
-  - indonesia tax registration
+    - coretax indonesia
+    - npwp problems 2026
+    - djp online error
+    - indonesia tax registration
   title: Coretax Problems 2026 | Problemi Registrazione NPWP & Soluzioni
 seoDescription: Indonesia's Coretax system is causing NPWP registration failures and
   DJP Online errors in 2026. Get workarounds, error codes, and solutions for blocked
@@ -97,16 +97,16 @@ seoTitle: Coretax NPWP Problems 2026 | Fixes & Solutions
 slug: coretax-npwp-problems-2026
 tableOfContents: true
 tags:
-- Coretax
-- NPWP
-- pendaftaran pajak
-- DJP Online
-- pajak Indonesia 2026
-- kesalahan sistem pajak
-- KPP Pratama
-- pajak digital Indonesia
-- pendaftaran NPWP
-- kepatuhan pajak 2026
+  - Coretax
+  - NPWP
+  - pendaftaran pajak
+  - DJP Online
+  - pajak Indonesia 2026
+  - kesalahan sistem pajak
+  - KPP Pratama
+  - pajak digital Indonesia
+  - pendaftaran NPWP
+  - kepatuhan pajak 2026
 title: '# Coretax Chaos: Sistem Pajak Baru Memblokir Pendaftaran NPWP
 
 
@@ -189,7 +189,8 @@ trending: true
 twitterCard: summary_large_image
 updatedAt: '2026-01-03'
 ---
-import { InfoCard, AskZantara } from "@/components/blog/interactive";
+
+import { InfoCard, AskZantara } from '@/components/blog/interactive';
 
 # Kekacauan Coretax: Sistem Pajak Baru Menghambat Pendaftaran NPWP
 
@@ -212,13 +213,13 @@ Per 1 Januari 2026, DJP (Direktorat Jenderal Pajak) resmi mengoperasikan **Coret
 
 **Kendala yang Terjadi:**
 
-| Masalah | Frekuensi | Dampak |
-| :--- | :--- | :--- |
-| Kegagalan Login | Sangat Umum | Pengguna tidak dapat mengakses sistem sama sekali. |
-| Pendaftaran NPWP Terhambat | Umum | Permohonan berstatus "dalam proses" selama berhari-hari. |
-| Data Migrasi Tidak Ditemukan | Umum | Riwayat perpajakan lama tidak muncul di dasbor baru. |
-| OTP Tidak Terkirim | Sering | Proses verifikasi dan autentikasi gagal dilakukan. |
-| Paspor WNA Tidak Terdeteksi | Sering | Ekspatriat (WNA) mengalami kendala validasi identitas. |
+| Masalah                      | Frekuensi   | Dampak                                                   |
+| :--------------------------- | :---------- | :------------------------------------------------------- |
+| Kegagalan Login              | Sangat Umum | Pengguna tidak dapat mengakses sistem sama sekali.       |
+| Pendaftaran NPWP Terhambat   | Umum        | Permohonan berstatus "dalam proses" selama berhari-hari. |
+| Data Migrasi Tidak Ditemukan | Umum        | Riwayat perpajakan lama tidak muncul di dasbor baru.     |
+| OTP Tidak Terkirim           | Sering      | Proses verifikasi dan autentikasi gagal dilakukan.       |
+| Paspor WNA Tidak Terdeteksi  | Sering      | Ekspatriat (WNA) mengalami kendala validasi identitas.   |
 
 **Format NPWP Baru:**
 
@@ -229,13 +230,13 @@ Proses konversi otomatis ini memicu berbagai error teknis bagi banyak Wajib Paja
 
 **Siapa yang Paling Terdampak:**
 
-| Profil Wajib Pajak | Skala Dampak |
-| :--- | :--- |
-| Pendaftar NPWP Baru | 🔴 TINGGI |
-| Warga Negara Asing (Pemegang KITAS) | 🔴 TINGGI |
-| Konsultan Pajak | 🔴 TINGGI |
-| Wajib Pajak Terdaftar (Lama) | 🟡 MENENGAH |
-| Perusahaan / Badan Usaha | 🟡 MENENGAH |
+| Profil Wajib Pajak                  | Skala Dampak |
+| :---------------------------------- | :----------- |
+| Pendaftar NPWP Baru                 | 🔴 TINGGI    |
+| Warga Negara Asing (Pemegang KITAS) | 🔴 TINGGI    |
+| Konsultan Pajak                     | 🔴 TINGGI    |
+| Wajib Pajak Terdaftar (Lama)        | 🟡 MENENGAH  |
+| Perusahaan / Badan Usaha            | 🟡 MENENGAH  |
 
 ---
 
@@ -257,6 +258,7 @@ Jika tidak memiliki urusan yang bersifat mendesak, sebaiknya **tunggu**. Sistem 
   - **30 April 2026** — SPT Tahunan Badan (Perusahaan)
 
 Jika Anda gagal mengakses sistem, pastikan untuk mendokumentasikan (screenshot) upaya tersebut sebagai bukti. DJP biasanya hanya memberikan kebijakan khusus bagi Wajib Pajak yang terbukti mengalami masalah teknis sistem secara individual.
+
 </InfoCard>
 
 ---
@@ -273,14 +275,14 @@ Jika Anda gagal mengakses sistem, pastikan untuk mendokumentasikan (screenshot) 
 
 1. ✅ Gunakan fitur "Lupa Kata Sandi" untuk memaksa pembaruan kredensial.
 2. 📋 Cobalah akses pada jam-jam di luar waktu sibuk (dini hari atau subuh).
-3. 📋 Gunakan browser Chrome dengan mode *incognito*.
+3. 📋 Gunakan browser Chrome dengan mode _incognito_.
 4. 💬 Hubungi Kring Pajak: 1500200 (siapkan waktu tunggu antrean yang lama).
 
 ### Jika Permohonan Anda Terhenti (Stuck):
 
 1. ✅ Berikan waktu validasi sistem selama 3-5 hari kerja.
-2. 📋 Periksa folder *spam* pada email Anda untuk konfirmasi manual.
-3. 📋 Jika tidak ada perubahan setelah 5 hari, segera hubungi *Account Officer* di KPP terkait.
+2. 📋 Periksa folder _spam_ pada email Anda untuk konfirmasi manual.
+3. 📋 Jika tidak ada perubahan setelah 5 hari, segera hubungi _Account Officer_ di KPP terkait.
 
 ---
 

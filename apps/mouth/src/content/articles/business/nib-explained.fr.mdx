@@ -74,8 +74,9 @@ canonicalUrl: 'https://balizero.com/business/nib-explained'
 ogImage: '/static/insights/business/nib-explained.jpg'
 ogType: 'article'
 twitterCard: 'summary_large_image'
-locale: "fr"
+locale: 'fr'
 ---
+
 import {
   LegalDecoder,
   InfoCard,
@@ -101,7 +102,7 @@ Le NIB (Nomor Induk Berusaha) est la pierre angulaire de l'enregistrement des en
       original:
         'Nomor Induk Berusaha yang selanjutnya disingkat NIB adalah identitas Pelaku Usaha yang diterbitkan oleh Lembaga OSS setelah Pelaku Usaha melakukan Pendaftaran.',
       explanation:
-        'Le NIB est votre numéro d\'identification commerciale unique, délivré automatiquement lorsque vous vous enregistrez via le système OSS (Online Single Submission). Il sert de licence commerciale de base et de preuve d\'enregistrement commercial légal.',
+        "Le NIB est votre numéro d'identification commerciale unique, délivré automatiquement lorsque vous vous enregistrez via le système OSS (Online Single Submission). Il sert de licence commerciale de base et de preuve d'enregistrement commercial légal.",
       keyPoints: [
         'Identifiant unique à 13 chiffres',
         'Délivré via le système OSS',
@@ -121,16 +122,17 @@ Le NIB (Nomor Induk Berusaha) est la pierre angulaire de l'enregistrement des en
 
 Le NIB a consolidé plusieurs licences auparavant distinctes :
 
-| Ancienne Licence              | Fonction                | Désormais partie du NIB |
-| :---------------------------- | :---------------------- | :---------------------- |
-| **TDP**                       | Enregistrement d'entreprise | ✓ Remplacé              |
-| **API-U**                     | ID d'importateur général | ✓ Remplacé              |
-| **Angka Pengenal Impor**      | Numéro d'importation    | ✓ Remplacé              |
-| **Access to customs**         | Dédouanement à l'importation | ✓ Inclus                |
+| Ancienne Licence         | Fonction                     | Désormais partie du NIB |
+| :----------------------- | :--------------------------- | :---------------------- |
+| **TDP**                  | Enregistrement d'entreprise  | ✓ Remplacé              |
+| **API-U**                | ID d'importateur général     | ✓ Remplacé              |
+| **Angka Pengenal Impor** | Numéro d'importation         | ✓ Remplacé              |
+| **Access to customs**    | Dédouanement à l'importation | ✓ Inclus                |
 
 <InfoCard variant="tip" title="Un numéro, plusieurs fonctions">
-  Le NIB simplifie l'enregistrement des entreprises. Au lieu d'obtenir plusieurs licences distinctes, vous obtenez un
-  seul NIB qui sert à plusieurs fins. Ce fut une amélioration majeure par rapport au système d'avant 2018.
+  Le NIB simplifie l'enregistrement des entreprises. Au lieu d'obtenir plusieurs licences
+  distinctes, vous obtenez un seul NIB qui sert à plusieurs fins. Ce fut une amélioration majeure
+  par rapport au système d'avant 2018.
 </InfoCard>
 
 ---
@@ -145,30 +147,38 @@ Le NIB a consolidé plusieurs licences auparavant distinctes :
     {
       id: 'prereq',
       title: 'Prérequis',
-      description: 'Effectuez d\'abord l\'enregistrement légal de l\'entreprise',
+      description: "Effectuez d'abord l'enregistrement légal de l'entreprise",
       duration: 'Avant de commencer',
       status: 'required',
-      documents: ['SK Kemenkumham (approbation de l\'entité légale)', 'Acte de société', 'NPWP de l\'entreprise'],
+      documents: [
+        "SK Kemenkumham (approbation de l'entité légale)",
+        'Acte de société',
+        "NPWP de l'entreprise",
+      ],
     },
     {
       id: 'account',
       title: 'Créer un compte OSS',
-      description: 'S\'inscrire sur la plateforme OSS RBA',
+      description: "S'inscrire sur la plateforme OSS RBA",
       duration: '30 minutes',
       status: 'required',
-      tips: ['Aller sur oss.go.id', 'Le directeur crée le compte', 'Lien vers les données de l\'entreprise'],
+      tips: [
+        'Aller sur oss.go.id',
+        'Le directeur crée le compte',
+        "Lien vers les données de l'entreprise",
+      ],
     },
     {
       id: 'data',
-      title: 'Compléter les données de l\'entreprise',
+      title: "Compléter les données de l'entreprise",
       description: 'Saisir toutes les informations requises',
       duration: '1-2 heures',
       status: 'required',
       documents: [
-        'Détails de l\'entreprise',
+        "Détails de l'entreprise",
         'Informations sur les actionnaires',
         'Sélection des codes KBLI',
-        'Plan d\'investissement',
+        "Plan d'investissement",
       ],
     },
     {
@@ -206,7 +216,7 @@ Votre certificat NIB comprend :
     },
     {
       id: 'company',
-      label: 'Nom et adresse de l\'entreprise',
+      label: "Nom et adresse de l'entreprise",
       description: 'Dénomination sociale et adresse enregistrée',
       required: true,
       category: 'core',
@@ -235,14 +245,14 @@ Votre certificat NIB comprend :
     {
       id: 'qr',
       label: 'Code QR pour vérification',
-      description: 'Scanner pour vérifier l\'authenticité',
+      description: "Scanner pour vérifier l'authenticité",
       required: true,
       category: 'verification',
     },
   ]}
   categories={[
     { id: 'core', label: 'Info principale', color: 'blue' },
-    { id: 'business', label: 'Détails de l\'entreprise', color: 'green' },
+    { id: 'business', label: "Détails de l'entreprise", color: 'green' },
     { id: 'verification', label: 'Vérification', color: 'purple' },
   ]}
   showProgress={true}
@@ -254,17 +264,17 @@ Votre certificat NIB comprend :
 
 Dans le cadre de l'OSS RBA (approche basée sur le risque), votre NIB détermine les permis supplémentaires dont vous avez besoin :
 
-| Niveau de risque      | NIB + Quoi d'autre ?                    |
-| :-------------------- | :-------------------------------------- |
-| **Faible risque**     | NIB uniquement                           |
+| Niveau de risque        | NIB + Quoi d'autre ?                    |
+| :---------------------- | :-------------------------------------- |
+| **Faible risque**       | NIB uniquement                          |
 | **Risque moyen-faible** | NIB + Sertifikat Standar                |
-| **Risque moyen-élevé** | NIB + Sertifikat Standar + Vérification |
-| **Risque élevé**      | NIB + Izin complète (licence)           |
+| **Risque moyen-élevé**  | NIB + Sertifikat Standar + Vérification |
+| **Risque élevé**        | NIB + Izin complète (licence)           |
 
 <InfoCard variant="note" title="Risque déterminé par KBLI">
-  Vos codes d'activité commerciale (KBLI) déterminent le niveau de risque. Le conseil en technologie est généralement
-  à risque faible à moyen. La production alimentaire est à risque plus élevé. Le système OSS classe automatiquement en fonction
-  de votre sélection KBLI.
+  Vos codes d'activité commerciale (KBLI) déterminent le niveau de risque. Le conseil en technologie
+  est généralement à risque faible à moyen. La production alimentaire est à risque plus élevé. Le
+  système OSS classe automatiquement en fonction de votre sélection KBLI.
 </InfoCard>
 
 ---
@@ -278,7 +288,7 @@ Dans le cadre de l'OSS RBA (approche basée sur le risque), votre NIB détermine
     'Combien de temps le NIB est-il valide ?',
     'Puis-je ajouter des codes KBLI au NIB plus tard ?',
     'Que faire si mon NIB contient des informations erronées ?',
-    'Le NIB est-il la même chose qu\'une licence commerciale ?',
+    "Le NIB est-il la même chose qu'une licence commerciale ?",
   ]}
 />
 

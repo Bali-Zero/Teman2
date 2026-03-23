@@ -73,8 +73,9 @@ canonicalUrl: 'https://balizero.com/business/ecommerce-business-guide'
 ogImage: '/static/insights/business/ecommerce-business-guide.jpg'
 ogType: 'article'
 twitterCard: 'summary_large_image'
-locale: "fr"
+locale: 'fr'
 ---
+
 import {
   DecisionTree,
   ComparisonTable,
@@ -97,8 +98,8 @@ L'économie numérique de l'Indonésie :
 - Marché axé sur le mobile
 
 <InfoCard variant="note" title="Énorme opportunité">
-  L'Indonésie est le plus grand marché du commerce électronique d'Asie du Sud-Est. Plateformes clés : Tokopedia, Shopee, Lazada,
-  Blibli, Bukalapak.
+  L'Indonésie est le plus grand marché du commerce électronique d'Asie du Sud-Est. Plateformes clés
+  : Tokopedia, Shopee, Lazada, Blibli, Bukalapak.
 </InfoCard>
 
 ---
@@ -119,16 +120,16 @@ L'économie numérique de l'Indonésie :
     },
     {
       id: 'physical',
-      question: 'D\'où proviennent les produits ?',
+      question: "D'où proviennent les produits ?",
       options: [
-        { label: 'Importation de l\'étranger', next: 'import' },
+        { label: "Importation de l'étranger", next: 'import' },
         { label: 'Produits locaux indonésiens', next: 'local' },
         { label: 'Fabrication en Indonésie', next: 'manufacture' },
       ],
     },
     {
       id: 'digital',
-      question: 'Quel type d\'entreprise numérique ?',
+      question: "Quel type d'entreprise numérique ?",
       options: [
         { label: 'SaaS/Logiciels', next: 'saas' },
         { label: 'Contenu/cours numériques', next: 'content' },
@@ -140,7 +141,7 @@ L'économie numérique de l'Indonésie :
       result: {
         title: 'Importation + E-commerce PT PMA',
         description:
-          'Nécessite une PT PMA avec des licences de commerce et d\'importation. Requiert API-U/P pour les activités d\'importation. Investissement plus élevé mais contrôle total.',
+          "Nécessite une PT PMA avec des licences de commerce et d'importation. Requiert API-U/P pour les activités d'importation. Investissement plus élevé mais contrôle total.",
       },
     },
     {
@@ -164,7 +165,7 @@ L'économie numérique de l'Indonésie :
       result: {
         title: 'PT PMA de services informatiques',
         description:
-          'Création d\'une entreprise de logiciels/informatique. Investissement plus faible possible pour certains codes KBLI. Peut servir des clients indonésiens et étrangers.',
+          "Création d'une entreprise de logiciels/informatique. Investissement plus faible possible pour certains codes KBLI. Peut servir des clients indonésiens et étrangers.",
       },
     },
     {
@@ -217,11 +218,11 @@ L'économie numérique de l'Indonésie :
     },
     {
       name: 'Transfrontalier',
-      subtitle: 'Vendre de l\'étranger vers l\'Indonésie',
+      subtitle: "Vendre de l'étranger vers l'Indonésie",
       values: {
         Investment: 'Aucun en Indonésie',
         Control: 'Total',
-        Scalability: 'Limites d\'importation',
+        Scalability: "Limites d'importation",
         Complexity: 'Moyenne',
       },
     },
@@ -244,12 +245,12 @@ L'économie numérique de l'Indonésie :
 
 ### Codes KBLI pour le commerce électronique
 
-| KBLI Code | Activité                         | Notes                                |
-| --------- | -------------------------------- | ------------------------------------ |
+| KBLI Code | Activité                                  | Notes                                               |
+| --------- | ----------------------------------------- | --------------------------------------------------- |
 | 47911     | Commerce de détail par internet (général) | Le plus courant pour le commerce de détail en ligne |
-| 47912     | Commerce de gros par internet    | Commerce électronique B2B            |
-| 62011     | Développement de logiciels/applications | Pour les plateformes                 |
-| 63122     | Activités de portail web         | Opérations de marketplace            |
+| 47912     | Commerce de gros par internet             | Commerce électronique B2B                           |
+| 62011     | Développement de logiciels/applications   | Pour les plateformes                                |
+| 63122     | Activités de portail web                  | Opérations de marketplace                           |
 
 ### Propriété étrangère
 
@@ -260,8 +261,8 @@ La plupart des activités de commerce électronique autorisent une **propriété
 - Plateforme avec des éléments de médias sociaux
 
 <InfoCard variant="warning" title="Vérifier les restrictions KBLI">
-  Certains codes KBLI ont des limites ou des exigences en matière de propriété étrangère. Vérifiez votre activité spécifique
-  avant de créer votre entreprise.
+  Certains codes KBLI ont des limites ou des exigences en matière de propriété étrangère. Vérifiez
+  votre activité spécifique avant de créer votre entreprise.
 </InfoCard>
 
 ---
@@ -275,7 +276,7 @@ La plupart des activités de commerce électronique autorisent une **propriété
   items={[
     {
       id: 'nib',
-      label: 'NIB (Identifiant d\'entreprise)',
+      label: "NIB (Identifiant d'entreprise)",
       description: 'Via le système OSS',
       required: true,
       category: 'company',
@@ -283,13 +284,13 @@ La plupart des activités de commerce électronique autorisent une **propriété
     {
       id: 'pse',
       label: 'Enregistrement PSE',
-      description: 'Enregistrement d\'opérateur de système électronique',
+      description: "Enregistrement d'opérateur de système électronique",
       required: true,
       category: 'digital',
     },
     {
       id: 'npwp',
-      label: 'NPWP de l\'entreprise',
+      label: "NPWP de l'entreprise",
       description: 'Enregistrement fiscal',
       required: true,
       category: 'tax',
@@ -297,7 +298,7 @@ La plupart des activités de commerce électronique autorisent une **propriété
     {
       id: 'payment',
       label: 'Passerelle de paiement',
-      description: 'S\'associer à un fournisseur agréé',
+      description: "S'associer à un fournisseur agréé",
       required: true,
       category: 'operations',
     },
@@ -317,7 +318,7 @@ La plupart des activités de commerce électronique autorisent une **propriété
     },
     {
       id: 'import',
-      label: 'Licence d\'importation (si importation)',
+      label: "Licence d'importation (si importation)",
       description: 'API-U ou API-P',
       required: false,
       category: 'trade',
@@ -349,10 +350,10 @@ L'enregistrement **PSE (Penyelenggara Sistem Elektronik)** est obligatoire pour 
 
 ### Types de PSE
 
-| Type        | Pour                      | Exemple                     |
-| ----------- | ------------------------- | --------------------------- |
-| PSE Private | Entreprises privées       | Magasin de commerce électronique |
-| PSE Public  | Services gouvernementaux | N/A pour les entreprises    |
+| Type        | Pour                     | Exemple                          |
+| ----------- | ------------------------ | -------------------------------- |
+| PSE Private | Entreprises privées      | Magasin de commerce électronique |
+| PSE Public  | Services gouvernementaux | N/A pour les entreprises         |
 
 ### Comment s'enregistrer
 
@@ -384,8 +385,8 @@ Sans PT PMA, les étrangers peuvent toujours vendre via :
 - Conformité des produits aux règles de la plateforme
 
 <InfoCard variant="tip" title="Commencez petit sur les marketplaces">
-  Testez vos produits sur les marketplaces avant d'investir dans une PT PMA. Utilisez les données des marketplaces pour valider
-  la demande avant un investissement plus important.
+  Testez vos produits sur les marketplaces avant d'investir dans une PT PMA. Utilisez les données
+  des marketplaces pour valider la demande avant un investissement plus important.
 </InfoCard>
 
 ---
@@ -413,11 +414,11 @@ Sans PT PMA, les étrangers peuvent toujours vendre via :
 
 ### Fiscalité du commerce électronique
 
-| Type de taxe         | Taux          | S'applique à           |
-| -------------------- | ------------- | ---------------------- |
-| TVA (PPN)            | 11%           | Ventes de biens        |
+| Type de taxe              | Taux             | S'applique à              |
+| ------------------------- | ---------------- | ------------------------- |
+| TVA (PPN)                 | 11%              | Ventes de biens           |
 | Impôt sur le revenu (PPh) | 22% des sociétés | Bénéfices de l'entreprise |
-| Retenue à la source  | Varie         | Certaines transactions |
+| Retenue à la source       | Varie            | Certaines transactions    |
 
 ### Considérations transfrontalières
 
@@ -433,10 +434,10 @@ Sans PT PMA, les étrangers peuvent toujours vendre via :
   context="E-commerce Indonesia, online business, PT PMA trading, digital commerce"
   placeholder="Posez une question sur le commerce électronique..."
   suggestedQuestions={[
-    'Puis-je faire du dropshipping en Indonésie depuis l\'étranger ?',
+    "Puis-je faire du dropshipping en Indonésie depuis l'étranger ?",
     'Dois-je détenir des stocks en Indonésie ?',
     'Comment fonctionnent les retours pour le commerce électronique ?',
-    'Qu\'en est-il de la vente sur les médias sociaux ?',
+    "Qu'en est-il de la vente sur les médias sociaux ?",
   ]}
 />
 
