@@ -1,0 +1,39 @@
+{
+  "name": "War Room Topic Selector",
+  "description": "Selects optimal carousel topic from intel scraper output + Google Trends",
+  "url": "http://localhost:8100/",
+  "version": "1.0.0",
+  "protocol_version": "0.3.0",
+  "provider": {
+    "organization": "Nuzantara Federation",
+    "url": "https://kita.balizero.com"
+  },
+  "capabilities": {
+    "streaming": false,
+    "push_notifications": false,
+    "state_transition_history": true
+  },
+  "default_input_modes": ["text/plain"],
+  "default_output_modes": ["application/json"],
+  "skills": [
+    {
+      "id": "topic-selection",
+      "name": "Topic Selection",
+      "description": "Selects optimal carousel topic from intel scraper output + Google Trends",
+      "tags": ["topic", "intel", "carousel", "content-strategy", "war-room"],
+      "examples": [
+        "Select a topic for today's carousel",
+        "What's trending for Bali business content?"
+      ]
+    }
+  ],
+  "extensions": [
+    {
+      "uri": "urn:nuzantara:dispatch",
+      "description": "CLI dispatch command: war-room-topic",
+      "params": {
+        "dispatch_cmd": "war-room-topic"
+      }
+    }
+  ]
+}

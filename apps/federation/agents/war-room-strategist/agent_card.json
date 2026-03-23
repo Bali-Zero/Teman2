@@ -1,0 +1,40 @@
+{
+  "name": "War Room Strategist",
+  "description": "Content strategy via Gemini — generates 3 narrative concepts",
+  "url": "http://localhost:8102/",
+  "version": "1.0.0",
+  "protocol_version": "0.3.0",
+  "provider": {
+    "organization": "Nuzantara Federation",
+    "url": "https://kita.balizero.com"
+  },
+  "capabilities": {
+    "streaming": false,
+    "push_notifications": false,
+    "state_transition_history": true
+  },
+  "default_input_modes": ["text/plain"],
+  "default_output_modes": ["application/json"],
+  "skills": [
+    {
+      "id": "content-strategy",
+      "name": "Content Strategy",
+      "description": "Content strategy via Gemini — generates 3 narrative concepts",
+      "tags": ["gemini", "strategy", "narrative", "war-room"],
+      "examples": [
+        "Generate narrative concepts for PMA carousel",
+        "Create content strategy for visa topic"
+      ]
+    }
+  ],
+  "extensions": [
+    {
+      "uri": "urn:nuzantara:dispatch",
+      "description": "CLI dispatch command: war-room-strategist",
+      "params": {
+        "dispatch_cmd": "war-room-strategist",
+        "cost": "$0 (Gemini CLI)"
+      }
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "War Room Researcher",
+  "description": "Deep research via ChatGPT + Exa in parallel, merged and preprocessed by Qwen",
+  "url": "http://localhost:8101/",
+  "version": "1.0.0",
+  "protocol_version": "0.3.0",
+  "provider": {
+    "organization": "Nuzantara Federation",
+    "url": "https://kita.balizero.com"
+  },
+  "capabilities": {
+    "streaming": false,
+    "push_notifications": false,
+    "state_transition_history": true
+  },
+  "default_input_modes": ["text/plain"],
+  "default_output_modes": ["application/json"],
+  "skills": [
+    {
+      "id": "content-research",
+      "name": "Content Research",
+      "description": "Deep research via ChatGPT + Exa in parallel, merged and preprocessed by Qwen",
+      "tags": ["research", "chatgpt", "exa", "qwen", "war-room"],
+      "examples": [
+        "Research PMA company setup requirements in Bali",
+        "Deep dive on Indonesia digital nomad visa"
+      ]
+    }
+  ],
+  "extensions": [
+    {
+      "uri": "urn:nuzantara:dispatch",
+      "description": "CLI dispatch command: war-room-researcher",
+      "params": {
+        "dispatch_cmd": "war-room-researcher",
+        "cost": "~$0.10 (ChatGPT + Exa API)"
+      }
+    }
+  ]
+}
