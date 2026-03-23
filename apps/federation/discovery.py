@@ -37,7 +37,8 @@ logger = logging.getLogger("federation.discovery")
 # Override with env var FEDERATION_AIR_HOST if needed.
 AIR_HOST_CANDIDATES = [
     "Nuzantara-9.local",    # mDNS (macOS Bonjour)
-    "192.168.18.211",       # LAN static IP (current DHCP lease)
+    "192.168.0.16",         # LAN IP (current DHCP lease — updated 2026-03-23)
+    "192.168.18.211",       # LAN IP (alternate network)
     "100.89.49.94",         # Tailscale IP (works remote)
 ]
 
