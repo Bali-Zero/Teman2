@@ -223,12 +223,13 @@ describe("Middleware - Multi-domain Routing", () => {
     });
 
     it("should allow public category routes", () => {
-      const request = createRequest("https://balizero.com/immigration/kitas");
+      // Use a non-redirected category (visas is the canonical name after rename)
+      const request = createRequest("https://balizero.com/visas/kitas");
       const response = middleware(request);
 
       expect(response.status).not.toBe(301);
       expect(response.status).not.toBe(307);
-      expect(response.headers.get("x-pathname")).toBe("/immigration/kitas");
+      expect(response.headers.get("x-pathname")).toBe("/visas/kitas");
     });
 
     it("should allow /services routes", () => {
@@ -387,10 +388,11 @@ describe("Middleware - Multi-domain Routing", () => {
 
   describe("Pathname Header", () => {
     it("should always set x-pathname header", () => {
-      const request = createRequest("https://balizero.com/immigration/kitas");
+      // Use a non-redirected route (visas is canonical after category rename)
+      const request = createRequest("https://balizero.com/visas/kitas");
       const response = middleware(request);
 
-      expect(response.headers.get("x-pathname")).toBe("/immigration/kitas");
+      expect(response.headers.get("x-pathname")).toBe("/visas/kitas");
     });
 
     it("should set x-pathname header even for redirects on public domain", () => {
