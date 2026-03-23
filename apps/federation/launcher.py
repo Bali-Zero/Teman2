@@ -27,6 +27,14 @@ AGENT_PORTS = {
     "aider": 8086,
     "notebooklm": 8087,
     "gws": 8088,
+    # War Room agents (Pro only)
+    "war-room-topic": 8100,
+    "war-room-researcher": 8101,
+    "war-room-strategist": 8102,
+    "war-room-director": 8103,
+    "war-room-image-gen": 8104,
+    "war-room-canva": 8105,
+    "war-room-delivery": 8106,
     # claude-code (8081) is NOT launched — it IS the orchestrator
 }
 
