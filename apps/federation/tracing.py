@@ -1,34 +1,66 @@
 """
-Federation Tracing — OpenTelemetry instrumentation with LangSmith OTLP export.
+Federation Tracing — Dual-export observability (local + LangSmith).
 
 Provides tracing context managers for the federation orchestrator pipeline:
   - trace_dispatch(): traces a single agent dispatch (A2A or CLI)
   - trace_pipeline(): traces the full federation pipeline
   - get_agent_metrics(): returns accumulated per-agent statistics
 
-Exports to LangSmith via OTLP HTTP when LANGSMITH_API_KEY is set.
-Gracefully degrades to no-ops if opentelemetry packages are missing.
+Export targets (both active simultaneously):
+  1. Local: rolling JSONL file in ai-dispatch-output/metrics/
+  2. LangSmith: OTLP HTTP when LANGSMITH_API_KEY is set
+
+Metrics always collected in-memory regardless of export configuration.
 
 Usage:
     from apps.federation.tracing import init_tracing, trace_dispatch, trace_pipeline
 
     init_tracing()
 
-    async with trace_pipeline("add tax calculation") as span:
-        async with trace_dispatch("gemini-search") as dispatch_span:
+    with trace_pipeline("add tax calculation") as ctx:
+        with trace_dispatch("gemini-search") as dispatch_ctx:
             result = await do_work()
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import threading
 import time
 from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Generator
 
 logger = logging.getLogger("federation.tracing")
+
+# ═══════════════════════════════════════════════════════
+# Local file export
+# ═══════════════════════════════════════════════════════
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+METRICS_DIR = PROJECT_ROOT / "ai-dispatch-output" / "metrics"
+_local_export_lock = threading.Lock()
+
+
+def _ensure_metrics_dir() -> None:
+    """Create metrics directory if it doesn't exist."""
+    METRICS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _local_export_event(event: dict[str, Any]) -> None:
+    """Append a trace event to the daily JSONL file."""
+    try:
+        _ensure_metrics_dir()
+        today = datetime.now().strftime("%Y-%m-%d")
+        filepath = METRICS_DIR / f"federation-{today}.jsonl"
+        line = json.dumps(event, ensure_ascii=False, default=str) + "\n"
+        with _local_export_lock:
+            with open(filepath, "a") as f:
+                f.write(line)
+    except Exception as e:
+        logger.debug("Local metrics export failed: %s", e)
 
 # ═══════════════════════════════════════════════════════
 # Graceful degradation flag
@@ -44,8 +76,15 @@ _agent_metrics: dict[str, dict[str, float]] = {}
 #   {"count": N, "total_time": float, "failures": N}
 
 
-def _record_dispatch(agent_id: str, duration_s: float, *, failed: bool = False) -> None:
-    """Record a dispatch execution into the metrics accumulator."""
+def _record_dispatch(
+    agent_id: str,
+    duration_s: float,
+    *,
+    failed: bool = False,
+    dispatch_mode: str = "unknown",
+    output_length: int = 0,
+) -> None:
+    """Record a dispatch execution into the metrics accumulator + local file."""
     with _metrics_lock:
         if agent_id not in _agent_metrics:
             _agent_metrics[agent_id] = {"count": 0, "total_time": 0.0, "failures": 0}
@@ -54,6 +93,17 @@ def _record_dispatch(agent_id: str, duration_s: float, *, failed: bool = False) 
         entry["total_time"] += duration_s
         if failed:
             entry["failures"] += 1
+
+    # Local file export
+    _local_export_event({
+        "type": "dispatch",
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "agent_id": agent_id,
+        "duration_s": round(duration_s, 3),
+        "status": "failed" if failed else "completed",
+        "dispatch_mode": dispatch_mode,
+        "output_length": output_length,
+    })
 
 
 # ═══════════════════════════════════════════════════════
@@ -197,10 +247,13 @@ def trace_dispatch(
                 )
 
                 _record_dispatch(
-                    agent_id, duration, failed=(status == "failed")
+                    agent_id, duration,
+                    failed=(status == "failed"),
+                    dispatch_mode=dispatch_mode,
+                    output_length=len(output_text) if output_text else 0,
                 )
     else:
-        # No-op path: still collect metrics
+        # No-op path: still collect metrics + local export
         failed = False
         try:
             yield result
@@ -210,7 +263,13 @@ def trace_dispatch(
         finally:
             duration = time.monotonic() - start
             status = "failed" if failed or result.get("error") else "completed"
-            _record_dispatch(agent_id, duration, failed=(status == "failed"))
+            output_text = result.get("output", "")
+            _record_dispatch(
+                agent_id, duration,
+                failed=(status == "failed"),
+                dispatch_mode=dispatch_mode,
+                output_length=len(output_text) if output_text else 0,
+            )
 
 
 # ═══════════════════════════════════════════════════════
@@ -277,12 +336,36 @@ def trace_pipeline(
                     )
                 except Exception:
                     span.set_attribute("classification", str(classification))
+
+                # Also export locally
+                _local_export_event({
+                    "type": "pipeline",
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                    "task": task[:500],
+                    "total_duration_s": round(duration, 3),
+                    "total_agents": pipeline_ctx.get("total_agents", 0),
+                    "status": "failed" if failed else "completed",
+                    "classification": classification,
+                })
     else:
         # No-op path
+        failed = False
         try:
             yield pipeline_ctx
         except Exception:
+            failed = True
             raise
+        finally:
+            duration = time.monotonic() - start
+            _local_export_event({
+                "type": "pipeline",
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "task": task[:500],
+                "total_duration_s": round(duration, 3),
+                "total_agents": pipeline_ctx.get("total_agents", 0),
+                "status": "failed" if failed else "completed",
+                "classification": pipeline_ctx.get("classification", {}),
+            })
 
 
 # ═══════════════════════════════════════════════════════
@@ -354,13 +437,82 @@ def reset_metrics() -> None:
 
 
 # ═══════════════════════════════════════════════════════
+# Local file metrics reader
+# ═══════════════════════════════════════════════════════
+def read_local_metrics(days: int = 7) -> dict[str, Any]:
+    """Read metrics from local JSONL files for the last N days.
+
+    Returns aggregated stats from file-based trace history,
+    complementing the in-memory get_agent_metrics() which only
+    covers the current process.
+    """
+    from datetime import timedelta
+
+    _ensure_metrics_dir()
+    all_events: list[dict] = []
+
+    today = datetime.now()
+    for i in range(days):
+        day = today - timedelta(days=i)
+        filepath = METRICS_DIR / f"federation-{day.strftime('%Y-%m-%d')}.jsonl"
+        if filepath.exists():
+            with open(filepath) as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        try:
+                            all_events.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            continue
+
+    # Aggregate dispatch events
+    agent_stats: dict[str, dict[str, Any]] = {}
+    pipeline_count = 0
+    pipeline_total_time = 0.0
+
+    for evt in all_events:
+        if evt.get("type") == "dispatch":
+            aid = evt.get("agent_id", "unknown")
+            if aid not in agent_stats:
+                agent_stats[aid] = {"count": 0, "total_time": 0.0, "failures": 0}
+            agent_stats[aid]["count"] += 1
+            agent_stats[aid]["total_time"] += evt.get("duration_s", 0)
+            if evt.get("status") == "failed":
+                agent_stats[aid]["failures"] += 1
+        elif evt.get("type") == "pipeline":
+            pipeline_count += 1
+            pipeline_total_time += evt.get("total_duration_s", 0)
+
+    # Format output
+    agents_formatted = {}
+    for aid, stats in agent_stats.items():
+        c = stats["count"]
+        agents_formatted[aid] = {
+            "count": c,
+            "total_time_s": round(stats["total_time"], 3),
+            "avg_duration_s": round(stats["total_time"] / c, 3) if c > 0 else 0.0,
+            "failures": stats["failures"],
+            "success_rate": round((c - stats["failures"]) / c, 3) if c > 0 else 0.0,
+        }
+
+    return {
+        "source": "local_files",
+        "days": days,
+        "events_total": len(all_events),
+        "pipelines": pipeline_count,
+        "pipeline_avg_time_s": round(pipeline_total_time / pipeline_count, 3) if pipeline_count > 0 else 0.0,
+        "agents": agents_formatted,
+    }
+
+
+# ═══════════════════════════════════════════════════════
 # CLI entrypoint
 # ═══════════════════════════════════════════════════════
 def main() -> None:
-    """Print current tracing metrics when run directly."""
-    import json
-
+    """Print current + historical tracing metrics."""
     init_tracing()
+
+    print("═══ In-Memory Metrics (current process) ═══")
     metrics = get_agent_metrics()
     print(json.dumps(metrics, indent=2))
 
@@ -375,6 +527,15 @@ def main() -> None:
                 f"avg {stats['avg_duration_s']:.2f}s, "
                 f"success {stats['success_rate']:.1%}"
             )
+
+    print(f"\n═══ Local File Metrics (last 7 days) ═══")
+    local = read_local_metrics(days=7)
+    print(json.dumps(local, indent=2))
+    if local["events_total"] == 0:
+        print("\nNo local trace files found.")
+    else:
+        print(f"\n{local['events_total']} events, {local['pipelines']} pipelines")
+        print(f"Metrics dir: {METRICS_DIR}")
 
 
 if __name__ == "__main__":

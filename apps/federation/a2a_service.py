@@ -157,17 +157,27 @@ class CLIAgentExecutor(AgentExecutor):
         return ""
 
     async def _nlm_health_check(self) -> bool:
-        """Check if NotebookLM CLI is responsive (fast ping)."""
+        """Check if NotebookLM is authenticated and responsive.
+
+        Uses nlm_auth_bridge for proper auth validation + auto re-login,
+        falls back to simple CLI ping if bridge unavailable.
+        """
         try:
-            proc = await asyncio.create_subprocess_exec(
-                "bash", "-c", "nlm --help",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            await asyncio.wait_for(proc.communicate(), timeout=10)
-            return proc.returncode == 0
-        except Exception:
-            return False
+            from apps.federation.nlm_auth_bridge import ensure_nlm_auth
+            return await ensure_nlm_auth()
+        except ImportError:
+            # Fallback to simple ping if bridge not available
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    "nlm", "login", "--check",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=15)
+                output = (stdout.decode() + stderr.decode())
+                return "Authentication valid" in output or "✓" in output
+            except Exception:
+                return False
 
     async def _nlm_fallback(self, prompt: str) -> str:
         """Fallback: query Qdrant RAG via recall_similar when NLM is down."""
