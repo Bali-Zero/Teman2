@@ -346,67 +346,84 @@ async def link_person_to_company(conn, company_id, person_name, role, ownership_
         return True
 
 
+async def process_company_with_retry(cid: int, cname: str, done: int, dry_run: bool) -> dict:
+    """Process a single company using a fresh connection with retry on connection error."""
+    for attempt in range(3):
+        conn = None
+        try:
+            conn = await asyncpg.connect(DB, command_timeout=60)
+            stats = await update_company_fields(conn, cid, dry_run)
+            return stats
+        except (asyncpg.exceptions.ConnectionDoesNotExistError, OSError) as e:
+            logger.warning(f"  ⚠️ Connection error attempt {attempt+1}/3 for [{cid}] {cname}: {e}")
+            if attempt < 2:
+                await asyncio.sleep(2)
+        except Exception as e:
+            logger.warning(f"  ⚠️ Skipped [{cid}] {cname}: {e}")
+            return {"fields_updated": 0, "directors_linked": 0}
+        finally:
+            if conn and not conn.is_closed():
+                await conn.close()
+    return {"fields_updated": 0, "directors_linked": 0}
+
+
 async def main(dry_run: bool, limit: int, start_id: int = 0) -> None:
     logger.info(f"{'DRY RUN — ' if dry_run else ''}Populate Companies from OCR (Step 2+3)")
-    pool = await asyncpg.create_pool(DB, min_size=1, max_size=5, command_timeout=60)
 
+    # Fetch company list with a single short-lived connection
+    conn = await asyncpg.connect(DB, command_timeout=60)
     try:
-        async with pool.acquire() as conn:
-            companies = await conn.fetch(
-                """
-                SELECT c.id, c.company_name,
-                       count(*) FILTER (WHERE LOWER(cd.file_name) LIKE '%.pdf'
-                           AND (LOWER(cd.file_name) LIKE '%akta%' OR LOWER(cd.file_name) LIKE '%sk%'
-                                OR LOWER(cd.file_name) LIKE '%nib%' OR LOWER(cd.file_name) LIKE '%npwp%'
-                                OR LOWER(cd.file_name) LIKE '%profil%perseroan%' OR LOWER(cd.file_name) LIKE '%passport%')) as relevant,
-                       count(*) FILTER (WHERE cd.ocr_status = 'completed') as done
-                FROM companies c
-                JOIN company_documents cd ON cd.company_id = c.id
-                GROUP BY c.id, c.company_name
-                HAVING count(*) FILTER (WHERE LOWER(cd.file_name) LIKE '%.pdf'
-                           AND (LOWER(cd.file_name) LIKE '%akta%' OR LOWER(cd.file_name) LIKE '%sk%'
-                                OR LOWER(cd.file_name) LIKE '%nib%' OR LOWER(cd.file_name) LIKE '%npwp%'
-                                OR LOWER(cd.file_name) LIKE '%profil%perseroan%' OR LOWER(cd.file_name) LIKE '%passport%')) > 0
-                ORDER BY c.id
-                LIMIT $1
-            """,
-                limit,
-            )
-        # Filter by start_id if provided (resume support)
-        if start_id > 0:
-            companies = [c for c in companies if c["id"] >= start_id]
-            logger.info(f"Resuming from company_id >= {start_id}")
-
-        logger.info(f"Found {len(companies)} fully OCR'd companies")
-
-        totals = {"fields": 0, "directors": 0, "companies": 0}
-
-        for co in companies:
-            cid = co["id"]
-            cname = co["company_name"]
-            logger.info(f"\n📂 [{cid}] {cname} ({co['done']} docs)")
-
-            # Acquire a fresh connection per company to avoid long-lived connection timeouts
-            async with pool.acquire() as fresh_conn:
-                try:
-                    stats = await update_company_fields(fresh_conn, cid, dry_run)
-                    totals["fields"] += stats["fields_updated"]
-                    totals["directors"] += stats["directors_linked"]
-                    if stats["fields_updated"] > 0 or stats["directors_linked"] > 0:
-                        totals["companies"] += 1
-                except Exception as e:
-                    logger.warning(f"  ⚠️ Skipped [{cid}] {cname}: {e}")
-
-        logger.info("\n=== SUMMARY ===")
-        logger.info(f"  Companies processed : {len(companies)}")
-        logger.info(f"  Companies updated   : {totals['companies']}")
-        logger.info(f"  Fields populated    : {totals['fields']}")
-        logger.info(f"  Directors linked    : {totals['directors']}")
-        if dry_run:
-            logger.info("  (DRY RUN)")
-
+        companies = await conn.fetch(
+            """
+            SELECT c.id, c.company_name,
+                   count(*) FILTER (WHERE LOWER(cd.file_name) LIKE '%.pdf'
+                       AND (LOWER(cd.file_name) LIKE '%akta%' OR LOWER(cd.file_name) LIKE '%sk%'
+                            OR LOWER(cd.file_name) LIKE '%nib%' OR LOWER(cd.file_name) LIKE '%npwp%'
+                            OR LOWER(cd.file_name) LIKE '%profil%perseroan%' OR LOWER(cd.file_name) LIKE '%passport%')) as relevant,
+                   count(*) FILTER (WHERE cd.ocr_status = 'completed') as done
+            FROM companies c
+            JOIN company_documents cd ON cd.company_id = c.id
+            GROUP BY c.id, c.company_name
+            HAVING count(*) FILTER (WHERE LOWER(cd.file_name) LIKE '%.pdf'
+                       AND (LOWER(cd.file_name) LIKE '%akta%' OR LOWER(cd.file_name) LIKE '%sk%'
+                            OR LOWER(cd.file_name) LIKE '%nib%' OR LOWER(cd.file_name) LIKE '%npwp%'
+                            OR LOWER(cd.file_name) LIKE '%profil%perseroan%' OR LOWER(cd.file_name) LIKE '%passport%')) > 0
+            ORDER BY c.id
+            LIMIT $1
+        """,
+            limit,
+        )
     finally:
-        await pool.close()
+        await conn.close()
+
+    # Filter by start_id if provided (resume support)
+    if start_id > 0:
+        companies = [c for c in companies if c["id"] >= start_id]
+        logger.info(f"Resuming from company_id >= {start_id}")
+
+    logger.info(f"Found {len(companies)} fully OCR'd companies")
+
+    totals = {"fields": 0, "directors": 0, "companies": 0}
+
+    for co in companies:
+        cid = co["id"]
+        cname = co["company_name"]
+        logger.info(f"\n📂 [{cid}] {cname} ({co['done']} docs)")
+
+        # Fresh connection per company with retry
+        stats = await process_company_with_retry(cid, cname, co["done"], dry_run)
+        totals["fields"] += stats["fields_updated"]
+        totals["directors"] += stats["directors_linked"]
+        if stats["fields_updated"] > 0 or stats["directors_linked"] > 0:
+            totals["companies"] += 1
+
+    logger.info("\n=== SUMMARY ===")
+    logger.info(f"  Companies processed : {len(companies)}")
+    logger.info(f"  Companies updated   : {totals['companies']}")
+    logger.info(f"  Fields populated    : {totals['fields']}")
+    logger.info(f"  Directors linked    : {totals['directors']}")
+    if dry_run:
+        logger.info("  (DRY RUN)")
 
 
 if __name__ == "__main__":
