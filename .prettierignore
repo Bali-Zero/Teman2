@@ -32,6 +32,9 @@ source_documents/
 data/
 archives/kbli-feb2026/KBLI_2025_*.json
 
+# Shell scripts (not supported by Prettier)
+*.sh
+
 # Mypy cache
 **/.mypy_cache/
 
