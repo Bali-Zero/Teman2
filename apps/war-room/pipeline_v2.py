@@ -49,6 +49,9 @@ AGENT_PORTS: dict[str, int] = {
     "war-room-image-gen": 8104,
     "war-room-canva": 8105,
     "war-room-delivery": 8106,
+    # Intel scraper (optional, triggered via --with-intel)
+    "intel-pipeline": 8107,
+    "intel-enricher": 8108,
 }
 
 # ═══════════════════════════════════════════════════════
@@ -220,12 +223,15 @@ class AgentError(Exception):
 # ═══════════════════════════════════════════════════════
 
 
-async def run_pipeline(topic: str, dry_run: bool = False) -> dict[str, Any]:
+async def run_pipeline(
+    topic: str, dry_run: bool = False, with_intel: bool = False,
+) -> dict[str, Any]:
     """Run the full war-room content pipeline.
 
     Args:
         topic: The content topic. If empty, Phase 0 selects one.
         dry_run: If True, log what would happen without calling agents.
+        with_intel: If True, run intel scraper first (if intel is stale >8h).
 
     Returns:
         Pipeline result summary dict.
@@ -236,6 +242,33 @@ async def run_pipeline(topic: str, dry_run: bool = False) -> dict[str, Any]:
     # Ensure output directories exist
     for subdir in ("raw", "strategy", "images", "canva", "master"):
         (OUTPUT_DIR / subdir).mkdir(parents=True, exist_ok=True)
+
+    # ── Pre-Phase: Intel Pipeline (if requested) ─────────
+    if with_intel:
+        intel_file = Path.home() / "Desktop/nuzantara/apps/bali-intel-scraper/data/intel_output_latest.json"
+        intel_fresh = False
+
+        if intel_file.exists():
+            age_s = time.time() - intel_file.stat().st_mtime
+            if age_s < 28800:  # 8 hours
+                intel_fresh = True
+                log(f"   ✅ Intel fresco ({age_s/3600:.1f}h fa) — skippo scraper")
+
+        if not intel_fresh:
+            log("")
+            log("━━━ PRE-FASE: INTEL SCRAPER (A2A) ━━━")
+            if dry_run:
+                log("   [DRY RUN] Would call intel-pipeline agent (~60-120 min)")
+            else:
+                try:
+                    log("   ⏳ Lancio intel pipeline (può richiedere 60-120 min)...")
+                    result = await call_agent("intel-pipeline", "", timeout=7200)
+                    results["intel_pipeline"] = "ok"
+                    log("   ✅ Intel pipeline completato")
+                except AgentError as e:
+                    log(f"   ⚠️  Intel pipeline fallito: {e}")
+                    log("   Continuo con intel esistente su disco...")
+                    results["intel_pipeline"] = f"failed: {e}"
 
     # ── Phase 0: Topic selection ──────────────────────────
     if not topic:
@@ -391,6 +424,11 @@ def main() -> None:
         action="store_true",
         help="Auto mode (skip confirmations)",
     )
+    parser.add_argument(
+        "--with-intel",
+        action="store_true",
+        help="Run intel scraper first if intel_output_latest.json is stale (>8h)",
+    )
     args = parser.parse_args()
 
     # Setup logging
@@ -404,7 +442,9 @@ def main() -> None:
         log("⚠️  DRY RUN MODE — nessuna azione reale")
 
     # Run pipeline
-    result = asyncio.run(run_pipeline(topic=args.topic, dry_run=args.dry_run))
+    result = asyncio.run(run_pipeline(
+        topic=args.topic, dry_run=args.dry_run, with_intel=args.with_intel,
+    ))
 
     log(f"📋 Log: {log_file}")
 
