@@ -319,13 +319,38 @@ class OrchestratorStreamingCore:
         Yields:
             Stream events
         """
-        # Yield metadata
+        # Yield metadata — derive status from route_used (gate name) or verification_status
+        # Gate routes have form "<gate_name>-gate" (e.g. "greeting-gate", "security-gate")
+        # Map gate names to the status values expected by tests and clients
+        _GATE_STATUS_MAP: dict[str, str] = {
+            "security-gate": "blocked",
+            "out_of_domain-gate": "out-of-domain",
+            "clarification-gate": "clarification_needed",
+            "greeting-gate": "greeting",
+            "casual-gate": "casual",
+            "identity-gate": "identity",
+            "recall-gate": "recall",
+            "team-gate": "team-query",
+        }
+        model_used = getattr(result, "model_used", route_used) or route_used
+        if model_used in _GATE_STATUS_MAP:
+            status = _GATE_STATUS_MAP[model_used]
+        elif model_used and model_used.endswith("-gate"):
+            # Fallback: strip "-gate" suffix for unknown gate types
+            status = model_used[: -len("-gate")]
+        else:
+            verification_status = getattr(result, "verification_status", None)
+            status = (
+                verification_status
+                if verification_status and verification_status != "passed"
+                else "success"
+            )
         yield {
             "type": "metadata",
             "data": {
-                "status": "success",
+                "status": status,
                 "route": route_used,
-                "model_used": getattr(result, "model_used", route_used),
+                "model_used": model_used,
             },
             "timestamp": time.time(),
         }

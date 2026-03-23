@@ -24,7 +24,13 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import aiohttp
-import aiosmtplib
+
+try:
+    import aiosmtplib
+    _AIOSMTPLIB_AVAILABLE = True
+except ImportError:
+    aiosmtplib = None  # type: ignore[assignment]
+    _AIOSMTPLIB_AVAILABLE = False
 
 from backend.app.modules.notifications.models import (
     AlertStatus,
