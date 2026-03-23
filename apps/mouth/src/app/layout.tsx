@@ -246,13 +246,7 @@ export default function RootLayout({
         {/* Service Worker Registration */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js').catch(() => {});
-                });
-              }
-            `,
+            __html: "if('serviceWorker'in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});})}",
           }}
         />
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
