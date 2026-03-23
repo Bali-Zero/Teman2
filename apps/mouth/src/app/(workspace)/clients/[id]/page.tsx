@@ -4561,223 +4561,166 @@ function CompanyTab({
     .filter(Boolean)
     .join(', ');
 
-  // Avatar colors per index
-  const avatarColors = [
-    ['#7c3aed', '#4f46e5'],
-    ['#0891b2', '#0e7490'],
-    ['#059669', '#047857'],
-    ['#d97706', '#b45309'],
-    ['#db2777', '#be185d'],
-  ];
-
-  // KBLI description map for common codes
-  const kbliDescriptions: Record<string, string> = {
-    '47711': 'Perdagangan eceran pakaian',
-    '47721': 'Perdagangan eceran alas kaki',
-    '33122': 'Reparasi mesin industri',
-    '56101': 'Restoran dan rumah makan',
-    '68100': 'Real estat — jual beli properti',
-    '68200': 'Real estat — sewa properti',
-    '70200': 'Konsultasi manajemen bisnis',
-    '62010': 'Aktivitas pemrograman komputer',
-    '73100': 'Periklanan dan pemasaran',
-  };
-
-  // Generate business description from KBLI code + description
-  const kbliCodes = co?.kbli_code ? co.kbli_code.split(/[,\s]+/).map((c: string) => c.trim()).filter(Boolean) : [];
-  const kbliDesc = co?.kbli_description || kbliCodes.map((c: string) => kbliDescriptions[c]).filter(Boolean).join(', ');
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-
-      {/* ══ HERO ══ */}
+    <div className="space-y-5">
+      {/* ── COMPANY CARD ─── */}
       <div
-        style={{
-          borderRadius: '20px 20px 0 0',
-          overflow: 'hidden',
-          position: 'relative',
-          minHeight: 220,
-          background: 'linear-gradient(160deg, #1a0533 0%, #0c1a3a 45%, #051a15 100%)',
-          padding: '40px 40px 36px',
-        }}
+        className="rounded-xl overflow-hidden"
+        style={{ border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(32,32,36,0.7)' }}
       >
-        {/* Decorative blobs */}
-        <div style={{ position: 'absolute', top: -60, right: -60, width: 280, height: 280, borderRadius: '50%', background: 'rgba(124,58,237,0.18)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -40, left: '30%', width: 200, height: 200, borderRadius: '50%', background: 'rgba(16,185,129,0.10)', filter: 'blur(50px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', top: '20%', left: -30, width: 160, height: 160, borderRadius: '50%', background: 'rgba(59,130,246,0.10)', filter: 'blur(40px)', pointerEvents: 'none' }} />
-
-        {/* Company type badge top-right */}
-        {companyType && (
-          <div style={{ position: 'absolute', top: 24, right: 28, display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', background: 'rgba(124,58,237,0.3)', color: '#c4b5fd', border: '1px solid rgba(124,58,237,0.5)' }}>
-              {companyType}
-            </span>
-            <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: status === 'active' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)', color: status === 'active' ? '#4ade80' : '#fbbf24', border: `1px solid ${status === 'active' ? 'rgba(34,197,94,0.35)' : 'rgba(245,158,11,0.35)'}`, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: status === 'active' ? '#4ade80' : '#fbbf24', boxShadow: `0 0 8px ${status === 'active' ? '#4ade80' : '#fbbf24'}` }} />
-              {status === 'active' ? 'Active' : status.replace(/_/g, ' ')}
-            </span>
-          </div>
-        )}
-
-        {/* Icon + Name */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: 20 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 18, background: 'linear-gradient(135deg, rgba(124,58,237,0.6), rgba(59,130,246,0.5))', border: '1px solid rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 8px 32px rgba(124,58,237,0.4)' }}>
-            <Building2 style={{ width: 34, height: 34, color: 'rgba(255,255,255,0.95)' }} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
-            <h1 style={{ fontSize: 32, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.03em', lineHeight: 1.1, margin: 0 }}>
-              {companyName}
-            </h1>
-            {foundingYear && (
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 6, fontWeight: 500 }}>
-                Didirikan {foundingYear}{" \u00b7 "}Bali, Indonesia
-              </p>
-            )}
+        {/* Header band */}
+        <div className="px-6 py-5 bg-gradient-to-r from-purple-500/8 to-blue-500/8">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center shrink-0">
+              <Building2 className="w-7 h-7 text-purple-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xl font-bold text-[var(--bz-text-1)] truncate">{companyName}</h3>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {companyType && (
+                  <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400 font-medium">
+                    {companyType}
+                  </span>
+                )}
+                {(co?.company_status || 'active') !== 'dissolved' && (
+                  <span
+                    className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      (co?.company_status || 'active') === 'active'
+                        ? 'bg-green-500/20 text-green-400'
+                        : (co?.company_status || '') === 'in_setup'
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'bg-gray-500/20 text-gray-400'
+                    }`}
+                  >
+                    {(co?.company_status || 'active').replace(/_/g, ' ')}
+                  </span>
+                )}
+                {foundingYear && (
+                  <span className="text-xs text-[var(--bz-text-2)]">Est. {foundingYear}</span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* KBLI description / tagline */}
-        {kbliDesc && (
-          <p style={{ position: 'relative', marginTop: 20, fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, maxWidth: 600 }}>
-            {kbliDesc.charAt(0).toUpperCase() + kbliDesc.slice(1)}
-          </p>
-        )}
-
-        {/* ID chips row */}
-        <div style={{ position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 24 }}>
-          {kbliCodes.length > 0 && (
-            <div style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(124,58,237,0.3)', backdropFilter: 'blur(8px)' }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 3 }}>KBLI</div>
-              <div style={{ fontSize: 15, color: '#a78bfa', fontWeight: 800, fontFamily: 'monospace', letterSpacing: '0.04em' }}>{co!.kbli_code}</div>
-            </div>
-          )}
-          {co?.nib && (
-            <div style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(6,182,212,0.3)', backdropFilter: 'blur(8px)' }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 3 }}>NIB</div>
-              <div style={{ fontSize: 15, color: '#67e8f9', fontWeight: 800, fontFamily: 'monospace' }}>{co.nib}</div>
-            </div>
-          )}
-          {co?.npwp_company && (
-            <div style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(34,197,94,0.3)', backdropFilter: 'blur(8px)' }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 3 }}>NPWP</div>
-              <div style={{ fontSize: 15, color: '#86efac', fontWeight: 800, fontFamily: 'monospace' }}>{co.npwp_company}</div>
-            </div>
-          )}
-          {capital && (
-            <div style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(251,191,36,0.3)', backdropFilter: 'blur(8px)' }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 3 }}>MODAL DASAR</div>
-              <div style={{ fontSize: 15, color: '#fbbf24', fontWeight: 800 }}>{capital}</div>
-              {co?.shares_count && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{co.shares_count.toLocaleString()} saham</div>}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ══ BODY ══ */}
-      <div style={{ background: 'rgba(14,14,18,0.97)', border: '1px solid rgba(255,255,255,0.06)', borderTop: 'none', borderRadius: '0 0 20px 20px', overflow: 'hidden' }}>
-
-        {/* ADDRESS */}
-        {addressStr && (
-          <div style={{ padding: '20px 40px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <MapPin style={{ width: 16, height: 16, color: '#818cf8' }} />
+        {/* Info grid */}
+        <div className="px-6 py-4 space-y-4">
+          {/* Row 1: KBLI + NIB + NPWP */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">KBLI</p>
+              <p className="text-sm text-[var(--bz-text-1)] font-medium font-mono">{co?.kbli_code || '—'}</p>
+              {co?.kbli_description && (
+                <p className="text-xs text-[var(--bz-text-2)] truncate">{co.kbli_description}</p>
+              )}
             </div>
             <div>
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 5 }}>ALAMAT TERDAFTAR</p>
-              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>{addressStr}</p>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">NIB</p>
+              <p className="text-sm text-[var(--bz-text-1)] font-mono">{co?.nib || '—'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">NPWP</p>
+              <p className="text-sm text-[var(--bz-text-1)] font-mono">{co?.npwp_company || '—'}</p>
             </div>
           </div>
-        )}
 
-        {/* SHAREHOLDERS */}
-        {associates.length > 0 && (
-          <div style={{ padding: '24px 40px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(236,72,153,0.12)', border: '1px solid rgba(236,72,153,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Users style={{ width: 16, height: 16, color: '#f472b6' }} />
+          {/* Row 2: Address + Capital */}
+          <div className="grid grid-cols-2 gap-4">
+            {addressStr && (
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">Address</p>
+                <p className="text-sm text-[var(--bz-text-1)]">{addressStr}</p>
               </div>
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', fontWeight: 700 }}>SHAREHOLDERS & DIREKSI</p>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {associates.map((a, i) => {
-                const [c1, c2] = avatarColors[i % avatarColors.length];
-                const name = a.client_name || client.full_name || '?';
-                const initials = name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ width: 42, height: 42, borderRadius: '50%', background: `linear-gradient(135deg, ${c1}, ${c2})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: '#fff', flexShrink: 0, boxShadow: `0 4px 12px ${c1}60` }}>
-                      {initials}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.92)', margin: 0 }}>{name}</p>
-                      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.38)', margin: '3px 0 0', textTransform: 'capitalize' }}>{a.role || 'Shareholder'}</p>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      {a.ownership_percentage != null && (
-                        <p style={{ fontSize: 22, fontWeight: 800, color: '#a78bfa', margin: 0, lineHeight: 1 }}>{a.ownership_percentage}<span style={{ fontSize: 13 }}>%</span></p>
-                      )}
-                      {a.shares_count && (
-                        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>{a.shares_count.toLocaleString()} saham</p>
-                      )}
-                    </div>
+            )}
+            {capital && (
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">Capital</p>
+                <p className="text-sm text-[var(--bz-text-1)] font-semibold">{capital}</p>
+                {co?.shares_count && (
+                  <p className="text-xs text-[var(--bz-text-2)]">{co.shares_count.toLocaleString()} shares</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Shareholders */}
+          {associates.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-2">Shareholders</p>
+              <div className="space-y-1.5">
+                {associates.map((a, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-[var(--bz-text-1)]">
+                      {a.role || 'Shareholder'} — <span className="font-medium">{a.client_name || client.full_name}</span>
+                    </span>
+                    <span className="text-[var(--bz-text-2)]">
+                      {a.ownership_percentage ? `${a.ownership_percentage}%` : ''}
+                      {a.shares_count ? ` · ${a.shares_count.toLocaleString()} shares` : ''}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* LEGAL DOCS — timeline */}
-        {(co?.akta_pendirian_no || co?.akta_perubahan_no || co?.sk_menhumkam_no) && (
-          <div style={{ padding: '24px 40px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <FileText style={{ width: 16, height: 16, color: '#fbbf24' }} />
+                ))}
               </div>
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.12em', fontWeight: 700 }}>LEGALITAS PERUSAHAAN</p>
             </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              {[
-                co?.akta_pendirian_no ? { label: 'Akta Pendirian', no: co.akta_pendirian_no, date: co.akta_pendirian_date, color: '#fbbf24', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' } : null,
-                co?.akta_perubahan_no ? { label: 'Akta Perubahan', no: co.akta_perubahan_no, date: co.akta_perubahan_date, color: '#fb923c', bg: 'rgba(251,146,60,0.08)', border: 'rgba(251,146,60,0.2)' } : null,
-                co?.sk_menhumkam_no ? { label: 'SK Kemenkumham', no: co.sk_menhumkam_no, date: co.sk_menhumkam_date, color: '#34d399', bg: 'rgba(52,211,153,0.08)', border: 'rgba(52,211,153,0.2)' } : null,
-              ].filter(Boolean).map((doc, i) => (
-                <div key={i} style={{ flex: '1 1 180px', padding: '14px 16px', borderRadius: 12, background: doc!.bg, border: `1px solid ${doc!.border}` }}>
-                  <p style={{ fontSize: 10, color: doc!.color, letterSpacing: '0.08em', fontWeight: 700, marginBottom: 6, opacity: 0.8 }}>{doc!.label.toUpperCase()}</p>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace', fontWeight: 700, margin: 0 }}>
-                    {doc!.no.startsWith('No.') ? doc!.no : `No. ${doc!.no}`}
-                  </p>
-                  {doc!.date && (
-                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 4 }}>{formatDate(doc!.date)}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* DOCUMENTS STRIP */}
+          {/* Akta & SK */}
+          {(co?.akta_pendirian_no || co?.akta_perubahan_no || co?.sk_menhumkam_no) && (
+            <div className="pt-3 border-t border-[var(--bz-border)]">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                {co?.akta_pendirian_no && (
+                  <div>
+                    <span className="text-[var(--bz-text-2)]">Akta Pendirian</span>
+                    <p className="text-[var(--bz-text-1)] font-mono">No. {co.akta_pendirian_no}</p>
+                    {co.akta_pendirian_date && (
+                      <p className="text-[var(--bz-text-2)]">{formatDate(co.akta_pendirian_date)}</p>
+                    )}
+                  </div>
+                )}
+                {co?.akta_perubahan_no && (
+                  <div>
+                    <span className="text-[var(--bz-text-2)]">Akta Perubahan</span>
+                    <p className="text-[var(--bz-text-1)] font-mono">No. {co.akta_perubahan_no}</p>
+                    {co.akta_perubahan_date && (
+                      <p className="text-[var(--bz-text-2)]">{formatDate(co.akta_perubahan_date)}</p>
+                    )}
+                  </div>
+                )}
+                {co?.sk_menhumkam_no && (
+                  <div>
+                    <span className="text-[var(--bz-text-2)]">SK Kemenkumham</span>
+                    <p className="text-[var(--bz-text-1)] font-mono">{co.sk_menhumkam_no}</p>
+                    {co.sk_menhumkam_date && (
+                      <p className="text-[var(--bz-text-2)]">{formatDate(co.sk_menhumkam_date)}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Documents strip */}
         {allDocs.length > 0 && (
-          <div style={{ padding: '20px 40px' }}>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 12 }}>DOCUMENTI ALLEGATI</p>
-            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-              {allDocs.map((doc) => (
-                <a
-                  key={doc.key}
-                  href={doc.url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={doc.name}
-                  style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textDecoration: 'none' }}
-                >
-                  <div style={{ width: 48, height: 58, borderRadius: 10, background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <FileText style={{ width: 20, height: 20, color: '#a78bfa' }} />
-                  </div>
-                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', maxWidth: 48, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {doc.type || doc.name}
-                  </span>
-                </a>
-              ))}
+          <div className="px-6 py-3 border-t border-[var(--bz-border)] bg-[rgba(0,0,0,0.15)]">
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] shrink-0">
+                Documents
+              </span>
+              <div className="flex items-center gap-2 overflow-x-auto">
+                {allDocs.map((doc) => (
+                  <a
+                    key={doc.key}
+                    href={doc.url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={doc.name}
+                    className="shrink-0 w-10 h-10 rounded border border-[var(--bz-border)] overflow-hidden bg-[var(--bz-base)] hover:border-[var(--bz-accent)] transition-colors flex items-center justify-center flex-col gap-1"
+                  >
+                    <FileText className="w-4 h-4 text-[var(--bz-text-2)]" />
+                    <span className="text-[8px] text-[var(--bz-text-2)] truncate max-w-[36px] text-center">{doc.type}</span>
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
         )}
