@@ -1,0 +1,40 @@
+{
+  "name": "War Room Canva Builder",
+  "description": "Canva carousel builder — converts slides JSON into canva_pending.json operations",
+  "url": "http://localhost:8105/",
+  "version": "1.0.0",
+  "protocol_version": "0.3.0",
+  "provider": {
+    "organization": "Nuzantara Federation",
+    "url": "https://kita.balizero.com"
+  },
+  "capabilities": {
+    "streaming": false,
+    "push_notifications": false,
+    "state_transition_history": true
+  },
+  "default_input_modes": ["text/plain"],
+  "default_output_modes": ["application/json"],
+  "skills": [
+    {
+      "id": "canva-builder",
+      "name": "Canva Builder",
+      "description": "Canva carousel builder — converts slides JSON into canva_pending.json operations",
+      "tags": ["canva", "carousel", "design", "war-room"],
+      "examples": [
+        "Build Canva carousel from slides JSON",
+        "Convert slide deck to Canva operations"
+      ]
+    }
+  ],
+  "extensions": [
+    {
+      "uri": "urn:nuzantara:dispatch",
+      "description": "CLI dispatch command: war-room-canva",
+      "params": {
+        "dispatch_cmd": "war-room-canva",
+        "limits": "output is canva_pending.json, NOT actual Canva API calls"
+      }
+    }
+  ]
+}
