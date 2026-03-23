@@ -346,9 +346,10 @@ async def link_person_to_company(conn, company_id, person_name, role, ownership_
         return True
 
 
-async def main(dry_run: bool, limit: int) -> None:
+async def main(dry_run: bool, limit: int, start_id: int = 0) -> None:
     logger.info(f"{'DRY RUN — ' if dry_run else ''}Populate Companies from OCR (Step 2+3)")
-    conn = await asyncpg.connect(DB)
+    pool = await asyncpg.create_pool(DB, min_size=1, max_size=3, command_timeout=120)
+    conn = await pool.acquire()
 
     try:
         companies = await conn.fetch(
@@ -366,16 +367,15 @@ async def main(dry_run: bool, limit: int) -> None:
                        AND (LOWER(cd.file_name) LIKE '%akta%' OR LOWER(cd.file_name) LIKE '%sk%'
                             OR LOWER(cd.file_name) LIKE '%nib%' OR LOWER(cd.file_name) LIKE '%npwp%'
                             OR LOWER(cd.file_name) LIKE '%profil%perseroan%' OR LOWER(cd.file_name) LIKE '%passport%')) > 0
-               AND count(*) FILTER (WHERE LOWER(cd.file_name) LIKE '%.pdf'
-                       AND (LOWER(cd.file_name) LIKE '%akta%' OR LOWER(cd.file_name) LIKE '%sk%'
-                            OR LOWER(cd.file_name) LIKE '%nib%' OR LOWER(cd.file_name) LIKE '%npwp%'
-                            OR LOWER(cd.file_name) LIKE '%profil%perseroan%' OR LOWER(cd.file_name) LIKE '%passport%'))
-                   = count(*) FILTER (WHERE cd.ocr_status = 'completed')
             ORDER BY c.id
             LIMIT $1
         """,
             limit,
         )
+        # Filter by start_id if provided (resume support)
+        if start_id > 0:
+            companies = [c for c in companies if c["id"] >= start_id]
+            logger.info(f"Resuming from company_id >= {start_id}")
 
         logger.info(f"Found {len(companies)} fully OCR'd companies")
 
@@ -386,11 +386,16 @@ async def main(dry_run: bool, limit: int) -> None:
             cname = co["company_name"]
             logger.info(f"\n📂 [{cid}] {cname} ({co['done']} docs)")
 
-            stats = await update_company_fields(conn, cid, dry_run)
-            totals["fields"] += stats["fields_updated"]
-            totals["directors"] += stats["directors_linked"]
-            if stats["fields_updated"] > 0 or stats["directors_linked"] > 0:
-                totals["companies"] += 1
+            # Acquire a fresh connection per company to avoid long-lived connection timeouts
+            async with pool.acquire() as fresh_conn:
+                try:
+                    stats = await update_company_fields(fresh_conn, cid, dry_run)
+                    totals["fields"] += stats["fields_updated"]
+                    totals["directors"] += stats["directors_linked"]
+                    if stats["fields_updated"] > 0 or stats["directors_linked"] > 0:
+                        totals["companies"] += 1
+                except Exception as e:
+                    logger.warning(f"  ⚠️ Skipped [{cid}] {cname}: {e}")
 
         logger.info("\n=== SUMMARY ===")
         logger.info(f"  Companies processed : {len(companies)}")
@@ -401,13 +406,15 @@ async def main(dry_run: bool, limit: int) -> None:
             logger.info("  (DRY RUN)")
 
     finally:
-        await conn.close()
+        await pool.release(conn)
+        await pool.close()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=2000)
+    parser.add_argument("--start-id", type=int, default=0, help="Resume from company_id >= N")
     args = parser.parse_args()
 
-    asyncio.run(main(dry_run=args.dry_run, limit=args.limit))
+    asyncio.run(main(dry_run=args.dry_run, limit=args.limit, start_id=args.start_id))
