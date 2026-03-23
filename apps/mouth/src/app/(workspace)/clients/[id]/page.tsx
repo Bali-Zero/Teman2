@@ -4630,7 +4630,7 @@ function CompanyTab({
             </h1>
             {foundingYear && (
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 6, fontWeight: 500 }}>
-                Didirikan {foundingYear} · Bali, Indonesia
+                Didirikan {foundingYear}{" \u00b7 "}Bali, Indonesia
               </p>
             )}
           </div>
