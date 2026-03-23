@@ -176,9 +176,18 @@ register(Workflow(
             prompt_template="Analyze the codebase changes in apps/backend-rag/ for the upcoming deploy. Check: import chain integrity (dependencies.py), new routes, service changes, migration files. Use codebase_investigator tool.",
         ),
         WorkflowStep(
+            name="migration-check",
+            agent="codex-sandbox",
+            prompt_template="In sandbox mode with DRY RUN: check all pending Alembic migrations in apps/backend-rag/. "
+                "Run: cd apps/backend-rag && PYTHONPATH=. alembic upgrade head --sql (SQL-only, no apply). "
+                "Then: PYTHONPATH=. alembic downgrade -1 --sql (verify rollback SQL). "
+                "Report: migration names, SQL generated, any errors. Do NOT apply changes to any real database.",
+        ),
+        WorkflowStep(
             name="test-run",
             agent="codex-sandbox",
             prompt_template="In sandbox mode, run: PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q. Report pass/fail.",
+            depends_on=["migration-check"],
         ),
         WorkflowStep(
             name="redteam",
@@ -199,6 +208,7 @@ async def execute_workflow(
     task: str = "",
     *,
     interactive: bool = True,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
     """Execute a workflow by running its steps in dependency order."""
     from apps.federation.orchestrator import dispatch_agents, save_output, assemble_context
@@ -247,6 +257,9 @@ async def execute_workflow(
             for dep_name, dep_result in step_results.items():
                 prompt = prompt.replace(f"{{prev_{dep_name}}}", dep_result[:2000])
 
+            if dry_run and step.agent == "codex-sandbox":
+                prompt = "[DRY RUN] " + prompt
+
             results = await dispatch_agents([step.agent], prompt)
             output = results[0].get("output", "") if results else "(no output)"
             status = results[0].get("status", "unknown") if results else "failed"
@@ -286,13 +299,16 @@ def main() -> None:
 
     if args[0] == "run":
         if len(args) < 2:
-            print("Usage: python -m apps.federation.workflows run <workflow-id> [task]")
+            print("Usage: python -m apps.federation.workflows run <workflow-id> [--dry-run] [task]")
             return
 
-        workflow_id = args[1]
-        task = " ".join(args[2:]) if len(args) > 2 else ""
+        dry_run = "--dry-run" in args
+        filtered_args = [a for a in args[1:] if a != "--dry-run"]
 
-        asyncio.run(execute_workflow(workflow_id, task, interactive=False))
+        workflow_id = filtered_args[0] if filtered_args else ""
+        task = " ".join(filtered_args[1:]) if len(filtered_args) > 1 else ""
+
+        asyncio.run(execute_workflow(workflow_id, task, interactive=False, dry_run=dry_run))
     else:
         print(f"Unknown command: {args[0]}. Use 'list' or 'run'.")
 

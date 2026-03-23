@@ -96,6 +96,15 @@ AGENT_CLI_COMMANDS: dict[str, dict[str, Any]] = {
         "timeout": 300,
         "stream": True,
     },
+    # Air batch agent — runs slow tasks (intel pipeline, bulk processing)
+    "air-batch": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara && ./scripts/ai-dispatch.sh explore \"{prompt}\"",
+        ],
+        "timeout": 300,
+        "stream": False,
+    },
 }
 
 
@@ -104,7 +113,24 @@ class CLIAgentExecutor(AgentExecutor):
 
     Executes the CLI command as a subprocess, captures output,
     and publishes results to the A2A event queue.
+
+    Special handling for notebooklm: health check before dispatch,
+    graceful retry (2x), fallback to Qdrant RAG via recall_similar MCP tool.
     """
+
+    NLM_HEALTH_RETRIES = 2
+    NLM_FALLBACK_CMD = [
+        "bash", "-c",
+        'cd /Users/nuzantara/Desktop/nuzantara && '
+        'source apps/backend-rag/.venv/bin/activate && '
+        'python -c "'
+        "import asyncio, json, httpx; "
+        "r = asyncio.run(httpx.AsyncClient(timeout=30).post("
+        "'http://localhost:8000/api/rag/recall', "
+        "json={{'query': '{prompt}', 'collection': 'knowledge_base', 'limit': 5}}"
+        ")); print(r.text)"
+        '"'
+    ]
 
     def __init__(self, agent_id: str) -> None:
         self.agent_id = agent_id
@@ -130,10 +156,44 @@ class CLIAgentExecutor(AgentExecutor):
             return " ".join(text_parts) if text_parts else ""
         return ""
 
+    async def _nlm_health_check(self) -> bool:
+        """Check if NotebookLM CLI is responsive (fast ping)."""
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "bash", "-c", "nlm --help",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await asyncio.wait_for(proc.communicate(), timeout=10)
+            return proc.returncode == 0
+        except Exception:
+            return False
+
+    async def _nlm_fallback(self, prompt: str) -> str:
+        """Fallback: query Qdrant RAG via recall_similar when NLM is down."""
+        logger.info("NLM fallback: querying Qdrant RAG for: %s", prompt[:80])
+        fallback_cmd = [p.replace("{prompt}", prompt.replace('"', '\\"')) for p in self.NLM_FALLBACK_CMD]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *fallback_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+            output = stdout.decode("utf-8", errors="replace").strip()
+            if output:
+                return f"[Qdrant RAG fallback — NotebookLM unavailable]\n\n{output}"
+            return "[Qdrant RAG fallback returned no results]"
+        except Exception as e:
+            return f"[Both NotebookLM and Qdrant RAG fallback failed: {e}]"
+
     async def execute(
         self, context: RequestContext, event_queue: EventQueue
     ) -> None:
-        """Execute the CLI agent and publish results."""
+        """Execute the CLI agent and publish results.
+
+        For notebooklm: health check → retry 2x → fallback to Qdrant RAG.
+        """
         prompt = self._extract_prompt(context)
         if not prompt:
             await event_queue.enqueue(
@@ -154,6 +214,45 @@ class CLIAgentExecutor(AgentExecutor):
 
         cmd = self._build_command(prompt)
         timeout = self.config["timeout"]
+
+        # ── NLM special handling: health check + retry + fallback ──
+        if self.agent_id == "notebooklm":
+            nlm_healthy = await self._nlm_health_check()
+            if not nlm_healthy:
+                logger.warning("NotebookLM health check failed, attempting retry...")
+                for attempt in range(self.NLM_HEALTH_RETRIES):
+                    await asyncio.sleep(2)
+                    nlm_healthy = await self._nlm_health_check()
+                    if nlm_healthy:
+                        logger.info("NotebookLM recovered on retry %d", attempt + 1)
+                        break
+
+            if not nlm_healthy:
+                logger.warning("NotebookLM unavailable after %d retries, falling back to Qdrant RAG", self.NLM_HEALTH_RETRIES)
+                fallback_result = await self._nlm_fallback(prompt)
+
+                await event_queue.enqueue(
+                    Artifact(
+                        artifact_id=f"{context.task_id}-result",
+                        parts=[Part(TextPart(text=fallback_result))],
+                        name=f"{self.agent_id}_fallback_output",
+                    )
+                )
+                await event_queue.enqueue(
+                    TaskStatusUpdateEvent(
+                        task_id=context.task_id,
+                        context_id=context.context_id,
+                        final=True,
+                        status=TaskStatus(
+                            state=TaskState.completed,
+                            message=Message(
+                                role="agent",
+                                parts=[Part(TextPart(text=fallback_result[:500]))],
+                            ),
+                        ),
+                    )
+                )
+                return
 
         # Signal: working
         await event_queue.enqueue(
