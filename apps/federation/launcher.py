@@ -30,6 +30,10 @@ AGENT_PORTS = {
     # claude-code (8081) is NOT launched — it IS the orchestrator
 }
 
+# Heartbeat monitoring
+HEARTBEAT_INTERVAL = 30  # seconds between health checks
+MAX_FAILED_CHECKS = 3    # consecutive failures before auto-restart
+
 
 async def start_agent(agent_id: str, port: int) -> asyncio.subprocess.Process:
     """Start a single agent as a subprocess."""
@@ -63,6 +67,55 @@ async def health_check(host: str, port: int, retries: int = 10) -> bool:
             pass
         await asyncio.sleep(1.0)
     return False
+
+
+async def monitor_agents(
+    processes: dict[str, asyncio.subprocess.Process],
+    shutdown: asyncio.Event,
+) -> None:
+    """Periodically health-check agents and auto-restart on repeated failure."""
+    fail_counts: dict[str, int] = {agent_id: 0 for agent_id in processes}
+
+    while not shutdown.is_set():
+        # Sleep while respecting shutdown signal
+        try:
+            await asyncio.wait_for(shutdown.wait(), timeout=HEARTBEAT_INTERVAL)
+            break  # shutdown was set
+        except asyncio.TimeoutError:
+            pass  # normal timeout — proceed with checks
+
+        for agent_id in list(processes.keys()):
+            port = AGENT_PORTS[agent_id]
+            alive = await health_check("localhost", port, retries=1)
+
+            if alive:
+                fail_counts[agent_id] = 0
+                continue
+
+            fail_counts[agent_id] = fail_counts.get(agent_id, 0) + 1
+            logger.debug(
+                "Agent %s failed health check (%d/%d)",
+                agent_id, fail_counts[agent_id], MAX_FAILED_CHECKS,
+            )
+
+            if fail_counts[agent_id] >= MAX_FAILED_CHECKS:
+                logger.warning(
+                    "Agent %s failed %d consecutive health checks, restarting...",
+                    agent_id, MAX_FAILED_CHECKS,
+                )
+                # Kill the old process
+                old_proc = processes[agent_id]
+                old_proc.terminate()
+                try:
+                    await asyncio.wait_for(old_proc.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    old_proc.kill()
+
+                # Start a new process
+                new_proc = await start_agent(agent_id, port)
+                processes[agent_id] = new_proc
+                fail_counts[agent_id] = 0
+                logger.info("Agent %s restarted on port %d", agent_id, port)
 
 
 async def run_federation(agents: list[str] | None = None) -> None:
@@ -111,9 +164,17 @@ async def run_federation(agents: list[str] | None = None) -> None:
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, signal_handler)
 
+    # Start heartbeat monitor as background task
+    monitor_task = asyncio.create_task(monitor_agents(processes, shutdown))
+
     await shutdown.wait()
 
-    # Cleanup
+    # Cancel monitor and cleanup
+    monitor_task.cancel()
+    try:
+        await monitor_task
+    except asyncio.CancelledError:
+        pass
     logger.info("Shutting down federation...")
     for agent_id, proc in processes.items():
         proc.terminate()

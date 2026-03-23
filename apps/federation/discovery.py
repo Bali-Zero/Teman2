@@ -31,19 +31,18 @@ logger = logging.getLogger("federation.discovery")
 # change the host to "air.local" for those agents.
 
 AGENT_REGISTRY: dict[str, dict[str, Any]] = {
+    # Pro agents (localhost — development machine)
     "claude-code": {"host": "localhost", "port": 8081, "machine": "pro"},
     "gemini-search": {"host": "localhost", "port": 8082, "machine": "pro"},
     "gemini-explore": {"host": "localhost", "port": 8083, "machine": "pro"},
     "codex-sandbox": {"host": "localhost", "port": 8084, "machine": "pro"},
     "claude-review": {"host": "localhost", "port": 8085, "machine": "pro"},
     "aider": {"host": "localhost", "port": 8086, "machine": "pro"},
-    "notebooklm": {"host": "localhost", "port": 8087, "machine": "pro"},
     "gws": {"host": "localhost", "port": 8088, "machine": "pro"},
+    # Air agents (air.local — H24 server machine)
+    "notebooklm": {"host": "air.local", "port": 8087, "machine": "air"},
+    "air-batch": {"host": "air.local", "port": 8091, "machine": "air"},
 }
-
-# Future Air agents would look like:
-# "air-monitor": {"host": "air.local", "port": 8091, "machine": "air"},
-# "air-batch": {"host": "air.local", "port": 8092, "machine": "air"},
 
 
 def get_agent_url(agent_id: str) -> str:
