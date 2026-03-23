@@ -1,0 +1,75 @@
+{
+  "name": "Google Workspace CLI (gws)",
+  "description": "Il Segretario — unified Google Workspace automation",
+  "url": "http://localhost:8088/",
+  "version": "1.0.0",
+  "protocol_version": "0.3.0",
+  "provider": {
+    "organization": "Nuzantara Federation",
+    "url": "https://kita.balizero.com"
+  },
+  "capabilities": {
+    "streaming": false,
+    "push_notifications": false,
+    "state_transition_history": true
+  },
+  "default_input_modes": ["text/plain"],
+  "default_output_modes": ["text/plain"],
+  "skills": [
+    {
+      "id": "email-automation",
+      "name": "Email Automation",
+      "description": "Email send, search, draft, label management via gws CLI",
+      "tags": ["email", "gmail", "send email", "draft", "invia email", "posta"],
+      "examples": ["Help me with email", "I need information about gmail"]
+    },
+    {
+      "id": "calendar-scheduling",
+      "name": "Calendar Scheduling",
+      "description": "Calendar events, free-busy check, appointment booking",
+      "tags": [
+        "calendar",
+        "appuntamento",
+        "appointment",
+        "meeting",
+        "schedule",
+        "disponibilità",
+        "free time"
+      ],
+      "examples": [
+        "Help me with calendar",
+        "I need information about appuntamento"
+      ]
+    },
+    {
+      "id": "document-generation",
+      "name": "Document Generation",
+      "description": "Create Google Docs, export PDF, proposals, reports, audit trails",
+      "tags": [
+        "document",
+        "documento",
+        "PDF",
+        "proposal",
+        "preventivo",
+        "report",
+        "Google Doc",
+        "audit trail"
+      ],
+      "examples": [
+        "Help me with document",
+        "I need information about documento"
+      ]
+    }
+  ],
+  "extensions": [
+    {
+      "uri": "urn:nuzantara:dispatch",
+      "description": "CLI dispatch command: gws",
+      "params": {
+        "dispatch_cmd": "gws",
+        "cost": "$0 (already paying Workspace)",
+        "limits": "requires Google Workspace account, CLI tool"
+      }
+    }
+  ]
+}

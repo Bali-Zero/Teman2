@@ -1,0 +1,358 @@
+"""
+A2A Service — Wraps CLI agents as A2A-compatible services.
+
+Each agent runs as a FastAPI server exposing:
+  - GET  /.well-known/agent.json  → Agent Card
+  - POST /                        → JSON-RPC endpoint (task/send, task/get, etc.)
+
+Usage:
+  python -m apps.federation.a2a_service --agent gemini-search --port 8082
+  python -m apps.federation.a2a_service --agent notebooklm --port 8087
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+import uvicorn
+from a2a.server.agent_execution import AgentExecutor, RequestContext
+from a2a.server.apps.jsonrpc import A2AFastAPIApplication
+from a2a.server.events import EventQueue, InMemoryQueueManager
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
+from a2a.types import (
+    AgentCard,
+    Artifact,
+    Message,
+    Part,
+    TaskState,
+    TaskStatus,
+    TaskStatusUpdateEvent,
+    TextPart,
+)
+
+logger = logging.getLogger("federation.a2a_service")
+
+# ═══════════════════════════════════════════════════════
+# CLI dispatch commands per agent
+# ═══════════════════════════════════════════════════════
+AGENT_CLI_COMMANDS: dict[str, dict[str, Any]] = {
+    "gemini-search": {
+        "cmd_template": ["gemini", "-p", "{prompt}", "--sandbox", "--approval-mode", "plan"],
+        "timeout": 120,
+        "stream": True,
+    },
+    "gemini-explore": {
+        "cmd_template": ["gemini", "-p", "{prompt}", "--sandbox", "--approval-mode", "plan"],
+        "timeout": 180,
+        "stream": True,
+    },
+    "codex-sandbox": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara && ./scripts/ai-dispatch.sh sandbox \"{prompt}\"",
+        ],
+        "timeout": 180,
+        "stream": False,
+    },
+    "claude-review": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara && ./scripts/ai-dispatch.sh claude-redteam \"{prompt}\"",
+        ],
+        "timeout": 120,
+        "stream": True,
+    },
+    "aider": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara && ./scripts/ai-dispatch.sh aider-fix \"{prompt}\"",
+        ],
+        "timeout": 120,
+        "stream": False,
+    },
+    "notebooklm": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara && ./scripts/ai-dispatch.sh nlm-query \"{prompt}\"",
+        ],
+        "timeout": 60,
+        "stream": False,
+    },
+    "gws": {
+        "cmd_template": ["gws", "{prompt}"],
+        "timeout": 60,
+        "stream": False,
+    },
+    # claude-code is special — it IS the orchestrator, not a service
+    "claude-code": {
+        "cmd_template": ["claude", "-p", "{prompt}", "--allowedTools", "Read,Grep,Glob,Bash"],
+        "timeout": 300,
+        "stream": True,
+    },
+}
+
+
+class CLIAgentExecutor(AgentExecutor):
+    """Wraps a CLI tool as an A2A AgentExecutor.
+
+    Executes the CLI command as a subprocess, captures output,
+    and publishes results to the A2A event queue.
+    """
+
+    def __init__(self, agent_id: str) -> None:
+        self.agent_id = agent_id
+        self.config = AGENT_CLI_COMMANDS[agent_id]
+        self._running_processes: dict[str, asyncio.subprocess.Process] = {}
+
+    def _build_command(self, prompt: str) -> list[str]:
+        """Build the CLI command from template + prompt."""
+        cmd = []
+        for part in self.config["cmd_template"]:
+            cmd.append(part.replace("{prompt}", prompt))
+        return cmd
+
+    def _extract_prompt(self, context: RequestContext) -> str:
+        """Extract text prompt from the A2A request context."""
+        if context.message and context.message.parts:
+            text_parts = []
+            for part in context.message.parts:
+                if hasattr(part, "root") and hasattr(part.root, "text"):
+                    text_parts.append(part.root.text)
+                elif hasattr(part, "text"):
+                    text_parts.append(part.text)
+            return " ".join(text_parts) if text_parts else ""
+        return ""
+
+    async def execute(
+        self, context: RequestContext, event_queue: EventQueue
+    ) -> None:
+        """Execute the CLI agent and publish results."""
+        prompt = self._extract_prompt(context)
+        if not prompt:
+            await event_queue.enqueue(
+                TaskStatusUpdateEvent(
+                    task_id=context.task_id,
+                    context_id=context.context_id,
+                    final=True,
+                    status=TaskStatus(
+                        state=TaskState.failed,
+                        message=Message(
+                            role="agent",
+                            parts=[Part(TextPart(text="No prompt provided"))],
+                        ),
+                    ),
+                )
+            )
+            return
+
+        cmd = self._build_command(prompt)
+        timeout = self.config["timeout"]
+
+        # Signal: working
+        await event_queue.enqueue(
+            TaskStatusUpdateEvent(
+                task_id=context.task_id,
+                context_id=context.context_id,
+                final=False,
+                status=TaskStatus(
+                    state=TaskState.working,
+                    message=Message(
+                        role="agent",
+                        parts=[Part(TextPart(text=f"Executing {self.agent_id}..."))],
+                    ),
+                ),
+            )
+        )
+
+        try:
+            logger.info("Executing: %s (timeout=%ds)", " ".join(cmd[:3]) + "...", timeout)
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            self._running_processes[context.task_id] = process
+
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                process.kill()
+                await process.wait()
+                await event_queue.enqueue(
+                    TaskStatusUpdateEvent(
+                        task_id=context.task_id,
+                        context_id=context.context_id,
+                        final=True,
+                        status=TaskStatus(
+                            state=TaskState.failed,
+                            message=Message(
+                                role="agent",
+                                parts=[Part(TextPart(text=f"Timeout after {timeout}s"))],
+                            ),
+                        ),
+                    )
+                )
+                return
+            finally:
+                self._running_processes.pop(context.task_id, None)
+
+            output = stdout.decode("utf-8", errors="replace").strip()
+            error = stderr.decode("utf-8", errors="replace").strip()
+
+            if process.returncode != 0:
+                error_msg = error or output or f"Exit code {process.returncode}"
+                await event_queue.enqueue(
+                    TaskStatusUpdateEvent(
+                        task_id=context.task_id,
+                        context_id=context.context_id,
+                        final=True,
+                        status=TaskStatus(
+                            state=TaskState.failed,
+                            message=Message(
+                                role="agent",
+                                parts=[Part(TextPart(text=f"Error: {error_msg[:2000]}"))],
+                            ),
+                        ),
+                    )
+                )
+                return
+
+            # Success — publish result as artifact + completed status
+            result_text = output if output else "(no output)"
+
+            # Publish artifact
+            await event_queue.enqueue(
+                Artifact(
+                    artifact_id=f"{context.task_id}-result",
+                    parts=[Part(TextPart(text=result_text))],
+                    name=f"{self.agent_id}_output",
+                )
+            )
+
+            # Signal: completed
+            await event_queue.enqueue(
+                TaskStatusUpdateEvent(
+                    task_id=context.task_id,
+                    context_id=context.context_id,
+                    final=True,
+                    status=TaskStatus(
+                        state=TaskState.completed,
+                        message=Message(
+                            role="agent",
+                            parts=[Part(TextPart(text=result_text[:500]))],
+                        ),
+                    ),
+                )
+            )
+
+        except Exception as e:
+            logger.exception("Agent execution failed: %s", e)
+            await event_queue.enqueue(
+                TaskStatusUpdateEvent(
+                    task_id=context.task_id,
+                    context_id=context.context_id,
+                    final=True,
+                    status=TaskStatus(
+                        state=TaskState.failed,
+                        message=Message(
+                            role="agent",
+                            parts=[Part(TextPart(text=f"Execution error: {e!s}"))],
+                        ),
+                    ),
+                )
+            )
+
+    async def cancel(
+        self, context: RequestContext, event_queue: EventQueue
+    ) -> None:
+        """Cancel a running CLI process."""
+        process = self._running_processes.get(context.task_id)
+        if process:
+            process.kill()
+            await process.wait()
+            self._running_processes.pop(context.task_id, None)
+
+        await event_queue.enqueue(
+            TaskStatusUpdateEvent(
+                task_id=context.task_id,
+                context_id=context.context_id,
+                final=True,
+                status=TaskStatus(
+                    state=TaskState.canceled,
+                    message=Message(
+                        role="agent",
+                        parts=[Part(TextPart(text="Task canceled"))],
+                    ),
+                ),
+            )
+        )
+
+
+def load_agent_card(agent_id: str) -> AgentCard:
+    """Load an agent card from the generated JSON file."""
+    card_path = Path(__file__).parent / "agents" / agent_id / "agent_card.json"
+    if not card_path.exists():
+        raise FileNotFoundError(f"Agent card not found: {card_path}")
+    with open(card_path) as f:
+        data = json.load(f)
+    return AgentCard(**data)
+
+
+def create_a2a_app(agent_id: str) -> A2AFastAPIApplication:
+    """Create a complete A2A FastAPI application for an agent."""
+    agent_card = load_agent_card(agent_id)
+    executor = CLIAgentExecutor(agent_id)
+    task_store = InMemoryTaskStore()
+
+    handler = DefaultRequestHandler(
+        agent_executor=executor,
+        task_store=task_store,
+    )
+
+    a2a_app = A2AFastAPIApplication(
+        agent_card=agent_card,
+        http_handler=handler,
+    )
+
+    return a2a_app
+
+
+def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run a federation agent as an A2A service")
+    parser.add_argument("--agent", required=True, choices=list(AGENT_CLI_COMMANDS.keys()))
+    parser.add_argument("--port", type=int, default=None)
+    parser.add_argument("--host", default="0.0.0.0")
+    args = parser.parse_args()
+
+    # Import port allocation
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from apps.federation.generate_agent_cards import AGENT_PORTS
+
+    port = args.port or AGENT_PORTS.get(args.agent, 8080)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    )
+
+    logger.info("Starting A2A service: %s on port %d", args.agent, port)
+
+    a2a_application = create_a2a_app(args.agent)
+    app = a2a_application.build(title=f"Federation Agent: {args.agent}")
+
+    uvicorn.run(app, host=args.host, port=port)
+
+
+if __name__ == "__main__":
+    main()
