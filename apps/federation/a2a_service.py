@@ -315,7 +315,7 @@ class CLIAgentExecutor(AgentExecutor):
         """
         prompt = self._extract_prompt(context)
         if not prompt:
-            await event_queue.enqueue(
+            await event_queue.enqueue_event(
                 TaskStatusUpdateEvent(
                     task_id=context.task_id,
                     context_id=context.context_id,
@@ -350,14 +350,14 @@ class CLIAgentExecutor(AgentExecutor):
                 logger.warning("NotebookLM unavailable after %d retries, falling back to Qdrant RAG", self.NLM_HEALTH_RETRIES)
                 fallback_result = await self._nlm_fallback(prompt)
 
-                await event_queue.enqueue(
+                await event_queue.enqueue_event(
                     Artifact(
                         artifact_id=f"{context.task_id}-result",
                         parts=[Part(TextPart(text=fallback_result))],
                         name=f"{self.agent_id}_fallback_output",
                     )
                 )
-                await event_queue.enqueue(
+                await event_queue.enqueue_event(
                     TaskStatusUpdateEvent(
                         task_id=context.task_id,
                         context_id=context.context_id,
@@ -374,7 +374,7 @@ class CLIAgentExecutor(AgentExecutor):
                 return
 
         # Signal: working
-        await event_queue.enqueue(
+        await event_queue.enqueue_event(
             TaskStatusUpdateEvent(
                 task_id=context.task_id,
                 context_id=context.context_id,
@@ -405,7 +405,7 @@ class CLIAgentExecutor(AgentExecutor):
             except asyncio.TimeoutError:
                 process.kill()
                 await process.wait()
-                await event_queue.enqueue(
+                await event_queue.enqueue_event(
                     TaskStatusUpdateEvent(
                         task_id=context.task_id,
                         context_id=context.context_id,
@@ -428,7 +428,7 @@ class CLIAgentExecutor(AgentExecutor):
 
             if process.returncode != 0:
                 error_msg = error or output or f"Exit code {process.returncode}"
-                await event_queue.enqueue(
+                await event_queue.enqueue_event(
                     TaskStatusUpdateEvent(
                         task_id=context.task_id,
                         context_id=context.context_id,
@@ -448,7 +448,7 @@ class CLIAgentExecutor(AgentExecutor):
             result_text = output if output else "(no output)"
 
             # Publish artifact
-            await event_queue.enqueue(
+            await event_queue.enqueue_event(
                 Artifact(
                     artifact_id=f"{context.task_id}-result",
                     parts=[Part(TextPart(text=result_text))],
@@ -457,7 +457,7 @@ class CLIAgentExecutor(AgentExecutor):
             )
 
             # Signal: completed
-            await event_queue.enqueue(
+            await event_queue.enqueue_event(
                 TaskStatusUpdateEvent(
                     task_id=context.task_id,
                     context_id=context.context_id,
@@ -474,7 +474,7 @@ class CLIAgentExecutor(AgentExecutor):
 
         except Exception as e:
             logger.exception("Agent execution failed: %s", e)
-            await event_queue.enqueue(
+            await event_queue.enqueue_event(
                 TaskStatusUpdateEvent(
                     task_id=context.task_id,
                     context_id=context.context_id,
@@ -499,7 +499,7 @@ class CLIAgentExecutor(AgentExecutor):
             await process.wait()
             self._running_processes.pop(context.task_id, None)
 
-        await event_queue.enqueue(
+        await event_queue.enqueue_event(
             TaskStatusUpdateEvent(
                 task_id=context.task_id,
                 context_id=context.context_id,
