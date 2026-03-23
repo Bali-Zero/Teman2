@@ -1,0 +1,27 @@
+{
+  "name": "Air Batch Agent",
+  "description": "Batch processing agent for slow tasks — intel pipeline, bulk analysis, nightly jobs",
+  "url": "http://air.local:8091/",
+  "version": "1.0.0",
+  "protocol_version": "0.3.0",
+  "provider": {
+    "organization": "Nuzantara Federation",
+    "url": "https://kita.balizero.com"
+  },
+  "capabilities": {
+    "streaming": false,
+    "push_notifications": false,
+    "state_transition_history": true
+  },
+  "default_input_modes": ["text/plain"],
+  "default_output_modes": ["text/plain"],
+  "skills": [
+    {
+      "id": "batch-processing",
+      "name": "Batch Processing",
+      "description": "Execute long-running tasks in background on Air machine (H24)",
+      "tags": ["batch", "pipeline", "bulk", "nightly"],
+      "examples": ["Run intel pipeline", "Bulk process client documents"]
+    }
+  ]
+}
