@@ -35,6 +35,9 @@ AGENT_PORTS = {
     "war-room-image-gen": 8104,
     "war-room-canva": 8105,
     "war-room-delivery": 8106,
+    # Intel Scraper agents (Pro only)
+    "intel-pipeline": 8107,
+    "intel-enricher": 8108,
     # claude-code (8081) is NOT launched — it IS the orchestrator
 }
 
