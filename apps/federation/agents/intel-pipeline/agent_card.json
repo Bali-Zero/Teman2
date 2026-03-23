@@ -1,0 +1,50 @@
+{
+  "name": "Intel Pipeline",
+  "description": "Bali Zero intelligence scraper — 609 sources, LLM scoring, enrichment, SEO, publishing",
+  "url": "http://localhost:8107/",
+  "version": "1.0.0",
+  "protocol_version": "0.3.0",
+  "provider": {
+    "organization": "Nuzantara Federation",
+    "url": "https://kita.balizero.com"
+  },
+  "capabilities": {
+    "streaming": false,
+    "push_notifications": false,
+    "state_transition_history": true
+  },
+  "default_input_modes": ["text/plain", "application/json"],
+  "default_output_modes": ["application/json"],
+  "skills": [
+    {
+      "id": "intel-scraping",
+      "name": "Intelligence Scraping Pipeline",
+      "description": "Full 10-step pipeline: scrape 609 sources, validate, Qwen score, verify T1, cluster, Claude enrich, SEO, approve, publish, generate images. Pass JSON options as prompt: {\"mode\": \"full\", \"limit\": 15, \"resume_from\": \"3_enrichment\"}",
+      "tags": [
+        "intel",
+        "scraper",
+        "enrichment",
+        "seo",
+        "publishing",
+        "war-room",
+        "content"
+      ],
+      "examples": [
+        "Run full intel pipeline",
+        "Resume from enrichment step",
+        "Run with limit 5 articles"
+      ]
+    }
+  ],
+  "extensions": [
+    {
+      "uri": "urn:nuzantara:dispatch",
+      "description": "CLI dispatch: intel pipeline orchestrator",
+      "params": {
+        "dispatch_cmd": "intel-pipeline",
+        "cost": "~$0.50 per run (Exa + embeddings + Claude CLI enrichment at $0)",
+        "limits": "60-120 min full run, requires Ollama + Claude CLI + Gemini CLI"
+      }
+    }
+  ]
+}
