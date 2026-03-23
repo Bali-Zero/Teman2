@@ -146,6 +146,9 @@ AGENT_REGISTRY: dict[str, dict[str, Any]] = {
     "war-room-image-gen": {"host": "localhost", "port": 8104, "machine": "pro"},
     "war-room-canva": {"host": "localhost", "port": 8105, "machine": "pro"},
     "war-room-delivery": {"host": "localhost", "port": 8106, "machine": "pro"},
+    # Intel Scraper agents (Pro only)
+    "intel-pipeline": {"host": "localhost", "port": 8107, "machine": "pro"},
+    "intel-enricher": {"host": "localhost", "port": 8108, "machine": "pro"},
 }
 
 

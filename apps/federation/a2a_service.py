@@ -214,6 +214,31 @@ AGENT_CLI_COMMANDS: dict[str, dict[str, Any]] = {
         "timeout": 120,
         "stream": False,
     },
+    # ═══════════════════════════════════════════════════════
+    # Intel Scraper agents (ports 8107-8108, Pro only)
+    # ═══════════════════════════════════════════════════════
+    "intel-pipeline": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara/apps/bali-intel-scraper && "
+            "source .venv/bin/activate 2>/dev/null; "
+            "python scripts/run_intel_pipeline.py "
+            "--mode full --limit 15 --continue-on-error --auto-approve "
+            "{prompt} 2>&1 | tail -50",
+        ],
+        "timeout": 7200,
+        "stream": False,
+    },
+    "intel-enricher": {
+        "cmd_template": [
+            "bash", "-c",
+            "cd /Users/nuzantara/Desktop/nuzantara/apps/bali-intel-scraper && "
+            "source .venv/bin/activate 2>/dev/null; "
+            "python scripts/claude_cli_enricher.py \"{prompt}\" 2>&1",
+        ],
+        "timeout": 300,
+        "stream": False,
+    },
 }
 
 
