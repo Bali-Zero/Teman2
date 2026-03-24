@@ -3,6 +3,7 @@ Preview Router - Serve HTML previews for Telegram approval articles
 """
 
 import logging
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,6 +20,17 @@ router = APIRouter(prefix="/preview", tags=["Preview"])
 # Preview storage path (shared with scraper via volume or sync)
 PREVIEW_DIR = Path("/app/data/previews")  # On Fly.io
 LOCAL_PREVIEW_DIR = Path("data/previews")  # Local development
+
+
+# SECURITY: Only allow safe article_id values (alphanumeric, hyphens, underscores)
+_SAFE_ARTICLE_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def _validate_article_id(article_id: str) -> str:
+    """Validate article_id to prevent path traversal (CWE-22)."""
+    if not article_id or not _SAFE_ARTICLE_ID.match(article_id) or len(article_id) > 128:
+        raise HTTPException(status_code=400, detail="Invalid article_id format")
+    return article_id
 
 
 class PreviewUpload(BaseModel):
@@ -47,6 +59,9 @@ async def upload_preview(
         }
     """
     try:
+        # SECURITY: Validate article_id before using in file path
+        _validate_article_id(payload.article_id)
+
         # Use Fly.io path in production, local path in dev
         preview_dir = PREVIEW_DIR if PREVIEW_DIR.parent.exists() else LOCAL_PREVIEW_DIR
         preview_dir.mkdir(parents=True, exist_ok=True)
@@ -89,6 +104,9 @@ async def get_preview(article_id: str) -> HTMLResponse:
 
     Example: https://nuzantara-rag.fly.dev/preview/19d416944a15.html
     """
+    # SECURITY: Validate article_id before using in file path
+    _validate_article_id(article_id)
+
     # Try Fly.io path first, then local
     preview_paths = [
         PREVIEW_DIR / f"{article_id}.html",

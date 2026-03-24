@@ -351,7 +351,16 @@ async def synthesize_property_workflow(state: PropertyState, config: dict) -> di
             f"Based on this, the requirements are: {'; '.join(reqs)}."
         )
 
-    return {"final_analysis": analysis, "confidence_score": 0.85 if "error" not in zoning else 0.4}
+    # Dynamic confidence based on data quality instead of hardcoded values
+    from backend.services.rag.confidence import calculate_subgraph_confidence
+    breakdown = calculate_subgraph_confidence(
+        chains=state.get("kg_chains", []),
+        entities=state.get("resolved_entities", []),
+        query=state.get("query", ""),
+    )
+    confidence = breakdown.get("final_score", 0.85 if "error" not in zoning else 0.4)
+
+    return {"final_analysis": analysis, "confidence_score": confidence}
 
 
 # ═══════════════════════════════════════════════════════
