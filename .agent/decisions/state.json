@@ -1,19 +1,10 @@
 {
   "daily_spend_usd": 0.0,
-  "daily_spend_date": "2026-03-20",
+  "daily_spend_date": "2026-03-23",
   "consecutive_failures": 3,
-  "last_failure_at": "2026-03-20T16:09:01.502387+00:00",
-  "breaker_active_until": "2026-03-21T16:09:01.502421+00:00",
+  "last_failure_at": "2026-03-23T22:12:20.635112+00:00",
+  "breaker_active_until": "2026-03-24T22:12:20.635168+00:00",
   "runs": [
-    {
-      "run_id": "8e723762",
-      "timestamp": "2026-03-20T08:03:47.530719+00:00",
-      "ruff_code": "DTZ005",
-      "target_file": "backend/services/compliance/compliance_tracker.py",
-      "outcome": "success",
-      "cost_usd": 2.3039,
-      "error": ""
-    },
     {
       "run_id": "e0a926ad",
       "timestamp": "2026-03-20T08:31:19.959969+00:00",
@@ -409,6 +400,60 @@
       "outcome": "failed",
       "cost_usd": 0,
       "error": "Test failures: 2 real (+ 0 known/flaky ignored)"
+    },
+    {
+      "run_id": "646f4181",
+      "timestamp": "2026-03-22T19:38:36.927411+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Regression: 3868 passed < 3934 baseline (delta=66)"
+    },
+    {
+      "run_id": "3ef797c4",
+      "timestamp": "2026-03-22T19:41:11.862133+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Regression: 3868 passed < 3934 baseline (delta=66)"
+    },
+    {
+      "run_id": "2f57cb66",
+      "timestamp": "2026-03-22T19:43:59.048858+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Regression: 3868 passed < 3934 baseline (delta=66)"
+    },
+    {
+      "run_id": "de3fa0de",
+      "timestamp": "2026-03-23T22:08:22.057709+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Regression: 3856 passed < 3934 baseline (delta=78)"
+    },
+    {
+      "run_id": "61b9578f",
+      "timestamp": "2026-03-23T22:10:33.110800+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Regression: 3856 passed < 3934 baseline (delta=78)"
+    },
+    {
+      "run_id": "33597b43",
+      "timestamp": "2026-03-23T22:12:20.636214+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Regression: 3856 passed < 3934 baseline (delta=78)"
     }
   ]
 }

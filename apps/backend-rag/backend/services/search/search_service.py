@@ -61,6 +61,7 @@ except ImportError:
 # When doing dense-only fallback, these require vector_name="dense".
 NAMED_VECTOR_COLLECTIONS = {
     "legal_unified",
+    "legal_unified_2026",
     "tax_genius",
     "tax_genius_hybrid",
     "training_conversations_hybrid",
