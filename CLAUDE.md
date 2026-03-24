@@ -73,12 +73,16 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 
 ### Tech Stack
 
-- **Backend:** Python 3.11+, FastAPI, 88 routers, 244 services, 385 test files
+<!-- DOCSYNC:BACKEND_STATS_START -->
+- **Backend:** Python 3.11+, FastAPI, 89 routers, 249 services, 416 test files
+<!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
 - **Knowledge Graph:** 56,113 nodes, 161,173 edges
+<!-- DOCSYNC:VECTOR_STATS_START -->
 - **Vector Collections:** 10 live on Fly.io (93,283 documents), 11 defined in code
+<!-- DOCSYNC:VECTOR_STATS_END -->
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
 - **Search Pipeline:** Hybrid (BM25+Dense+RRF) + CrossEncoder reranking (enabled 2026-03-24)
 
@@ -334,7 +338,9 @@ Classification confidence thresholds:
 
 **Model:** `text-embedding-3-small` (OpenAI)  
 **Dimensions:** 1536  
-**CRITICAL:** This model is FROZEN. Changing it would invalidate 93,283 existing vectors.  
+<!-- DOCSYNC:EMBEDDING_FROZEN_START -->
+**CRITICAL:** This model is FROZEN. Changing it would invalidate 93,283 existing vectors.
+<!-- DOCSYNC:EMBEDDING_FROZEN_END -->
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
 ## 7. MCP Servers
