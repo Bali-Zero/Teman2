@@ -93,20 +93,31 @@ async def get_table_data(
 
     from backend.app.core.config import settings
 
-    # Basic sanitized table name check (prevent injection)
+    # SECURITY: Validate table name — must be alphanumeric/underscore AND exist in public schema
     if not table.replace("_", "").isalnum():
         raise HTTPException(status_code=400, detail="Invalid table name")
 
     try:
         conn = await asyncpg.connect(settings.database_url)
         try:
-            # Get columns
+            # SECURITY: Verify table exists in public schema (prevents pg_shadow etc.)
+            table_exists = await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_name = $1)",
+                table,
+            )
+            if not table_exists:
+                raise HTTPException(status_code=404, detail=f"Table '{table}' not found")
+
+            # Use identifier quoting to prevent SQL injection
+            quoted_table = f'"{table}"'
+
             # Get row count
-            count_query = f"SELECT COUNT(*) FROM {table}"
+            count_query = f"SELECT COUNT(*) FROM {quoted_table}"
             total_rows = await conn.fetchval(count_query)
 
             # Get data
-            query = f"SELECT * FROM {table} LIMIT $1 OFFSET $2"
+            query = f"SELECT * FROM {quoted_table} LIMIT $1 OFFSET $2"
             rows = await conn.fetch(query, limit, offset)
 
             # Serialize rows
