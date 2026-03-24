@@ -38,7 +38,7 @@ function FamilyMemberUploadButton({
   memberId: number;
   memberName: string;
   documentType: 'passport' | 'visa';
-  onRefresh: () => void;
+  onRefresh: () => Promise<void> | void;
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [ocrPolling, setOcrPolling] = useState(false);
@@ -54,14 +54,14 @@ function FamilyMemberUploadButton({
         };
         if (status.pending_ocr === 0 || attempts >= 10) {
           setOcrPolling(false);
-          onRefresh();
+          await onRefresh();
           return;
         }
         attempts++;
         setTimeout(poll, 3000);
       } catch {
         setOcrPolling(false);
-        onRefresh();
+        await onRefresh();
       }
     };
     setTimeout(poll, 2000);
@@ -159,7 +159,7 @@ export function FamilyTab({
   formatDate: (d: string) => string;
   onAddClick: () => void;
   onEditClick: (member: FamilyMember) => void;
-  onRefresh: () => void;
+  onRefresh: () => Promise<void> | void;
 }) {
   const handleDelete = async (id: number, name: string) => {
     if (confirm(`Remove ${name} from family members?`)) {
