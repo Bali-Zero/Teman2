@@ -16,6 +16,10 @@ import {
 import Link from "next/link";
 import { api } from "@/lib/api";
 import type { CreatePracticeParams, Client } from "@/lib/api/crm/crm.types";
+import {
+  createPracticeSchema,
+  flattenErrors,
+} from "@/lib/api/crm/crm.schemas";
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
@@ -26,6 +30,7 @@ export default function NewPracticePage() {
   const toast = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     title: "", // Maps to notes
     practice_type_code: "visa",
@@ -154,15 +159,21 @@ export default function NewPracticePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({});
 
-    if (!formData.client_id) {
-      toast.error(
-        "Missing Client",
-        "Please select a client to create this process for.",
-      );
+    // Validate with Zod schema
+    const result = createPracticeSchema.safeParse({
+      client_id: formData.client_id,
+      practice_type_code: formData.practice_type_code,
+      notes: formData.title,
+    });
+
+    if (!result.success) {
+      const errors = flattenErrors(result.error);
+      setFieldErrors(errors);
       casesMetrics.trackError(
         "Validation Error",
-        "Missing client_id",
+        Object.values(errors).join(", "),
         "CasesNewPage",
         undefined,
         userEmail.current || undefined,
@@ -184,24 +195,24 @@ export default function NewPracticePage() {
     try {
       const user = await api.getProfile();
 
-      // ✅ Check for duplicate practices (same client + same type + active status)
+      // Check for duplicate practices (same client + same type + active status)
       const existingPractices = await api.crm.getClientPractices(
-        formData.client_id,
+        result.data.client_id,
       );
       const duplicateCheck = existingPractices.find(
         (p) =>
-          p.practice_type_code === formData.practice_type_code &&
+          p.practice_type_code === result.data.practice_type_code &&
           !["completed", "cancelled"].includes(p.status),
       );
 
       if (duplicateCheck) {
         toast.error(
           "Duplicate Process",
-          `Client already has an active ${formData.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Please complete or cancel it first.`,
+          `Client already has an active ${result.data.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Please complete or cancel it first.`,
         );
         casesMetrics.trackError(
           "Duplicate Process Blocked",
-          `Prevented duplicate ${formData.practice_type_code} for client ${formData.client_id}`,
+          `Prevented duplicate ${result.data.practice_type_code} for client ${result.data.client_id}`,
           "CasesNewPage",
           duplicateCheck.id,
           user.email,
@@ -210,11 +221,11 @@ export default function NewPracticePage() {
       }
 
       const backendData: CreatePracticeParams = {
-        client_id: formData.client_id,
-        practice_type_code: formData.practice_type_code,
+        client_id: result.data.client_id,
+        practice_type_code: result.data.practice_type_code,
         status: "inquiry",
         priority: "normal",
-        notes: formData.title,
+        notes: result.data.notes,
       };
 
       const createdPractice = await api.crm.createPractice(
@@ -235,8 +246,8 @@ export default function NewPracticePage() {
       const caseId = (createdPractice as any)?.id || 0;
       casesMetrics.trackCaseCreation(
         caseId,
-        formData.practice_type_code,
-        formData.client_id,
+        result.data.practice_type_code,
+        result.data.client_id,
         user.email,
       );
       casesMetrics.endPerformanceMark("case_creation", caseId, user.email);
@@ -303,6 +314,13 @@ export default function NewPracticePage() {
       {/* Form */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-8 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Form-level error */}
+          {fieldErrors._form && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+              {fieldErrors._form}
+            </div>
+          )}
+
           {/* Client Selection */}
           <div className="space-y-2 relative" ref={searchRef}>
             <label className={labelClass}>
@@ -406,6 +424,9 @@ export default function NewPracticePage() {
                   </div>
                 )}
               </div>
+            )}
+            {fieldErrors.client_id && (
+              <p className="text-xs text-red-400 mt-1">{fieldErrors.client_id}</p>
             )}
           </div>
 

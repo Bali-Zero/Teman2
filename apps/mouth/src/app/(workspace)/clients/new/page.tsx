@@ -21,8 +21,6 @@ import {
   ChevronDown,
   Check,
   X,
-  Camera,
-  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -34,6 +32,11 @@ import {
   LEAD_SOURCES,
   SERVICE_INTERESTS,
 } from "@/lib/api/crm/crm.types";
+import {
+  createClientSchema,
+  flattenErrors,
+  type CreateClientInput,
+} from "@/lib/api/crm/crm.schemas";
 import { cropToSquare } from "@/lib/utils/imageResize";
 
 // Team members - ideally fetch from API
@@ -89,10 +92,11 @@ const TEAM_MEMBERS = [
 export default function NewClientPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [activeSection, setActiveSection] = useState<
     "basic" | "personal" | "crm"
   >("basic");
-  const [formData, setFormData] = useState<CreateClientParams>({
+  const [formData, setFormData] = useState<CreateClientInput>({
     full_name: "",
     email: "",
     phone: "",
@@ -121,20 +125,37 @@ export default function NewClientPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFieldErrors({});
 
-    // Block standalone profile creation for minors (< 18 years)
-    if (formData.date_of_birth) {
-      const dob = new Date(formData.date_of_birth);
-      const today = new Date();
-      const age = Math.floor(
-        (today.getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
-      );
-      if (age < 18) {
-        alert(
-          `⚠️ MINORE (${age} anni)\n\nI clienti under 18 non possono avere un profilo singolo.\nCollegare al profilo del genitore tramite "Family Members".`,
-        );
-        return;
+    // Validate with Zod schema
+    const result = createClientSchema.safeParse(formData);
+    if (!result.success) {
+      const errors = flattenErrors(result.error);
+      setFieldErrors(errors);
+
+      // Navigate to the tab containing the first error
+      const firstField = result.error.issues[0]?.path[0] as string;
+      const personalFields = [
+        "nationality",
+        "date_of_birth",
+        "passport_number",
+        "passport_expiry",
+        "notes",
+      ];
+      const crmFields = [
+        "status",
+        "lead_source",
+        "assigned_to",
+        "service_interest",
+      ];
+      if (personalFields.includes(firstField)) {
+        setActiveSection("personal");
+      } else if (crmFields.includes(firstField)) {
+        setActiveSection("crm");
+      } else {
+        setActiveSection("basic");
       }
+      return;
     }
 
     setIsLoading(true);
@@ -143,12 +164,12 @@ export default function NewClientPage() {
       if (!user?.email) {
         throw new Error("User email not available");
       }
-      // Clean up empty arrays and undefined values
-      const cleanData = {
-        ...formData,
-        tags: formData.tags?.length ? formData.tags : undefined,
-        service_interest: formData.service_interest?.length
-          ? formData.service_interest
+      // Clean up empty arrays — validated data is already clean
+      const cleanData: CreateClientParams = {
+        ...result.data,
+        tags: result.data.tags?.length ? result.data.tags : undefined,
+        service_interest: result.data.service_interest?.length
+          ? result.data.service_interest
           : undefined,
       };
       await api.crm.createClient(cleanData, user.email);
@@ -165,7 +186,6 @@ export default function NewClientPage() {
 
       if (error instanceof Error) {
         errorMessage = error.message;
-        // Check if message contains JSON (from API response)
         if (error.message.includes('{"')) {
           try {
             const parsed = JSON.parse(error.message);
@@ -175,7 +195,6 @@ export default function NewClientPage() {
           }
         }
       } else if (typeof error === "object" && error !== null) {
-        // Handle object errors (shouldn't happen but be defensive)
         const errObj = error as Record<string, unknown>;
         errorMessage =
           (errObj.detail as string) ||
@@ -183,7 +202,7 @@ export default function NewClientPage() {
           "Unknown error";
       }
 
-      alert(errorMessage);
+      setFieldErrors({ _form: errorMessage });
     } finally {
       setIsLoading(false);
     }
@@ -196,6 +215,14 @@ export default function NewClientPage() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error for this field on change
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const toggleServiceInterest = (value: string) => {
@@ -245,8 +272,16 @@ export default function NewClientPage() {
     // setFormData((prev) => ({ ...prev, avatar_url: '' })); // Disabled - type mismatch
   };
 
+  const FieldError = ({ field }: { field: string }) => {
+    const msg = fieldErrors[field];
+    if (!msg) return null;
+    return <p className="text-xs text-red-400 mt-1">{msg}</p>;
+  };
+
   const inputClass =
     "w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all";
+  const inputErrorClass =
+    "w-full pl-10 pr-4 py-2.5 rounded-lg border border-red-500 bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all";
   const selectClass =
     "w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 appearance-none cursor-pointer transition-all";
   const labelClass =
@@ -300,6 +335,13 @@ export default function NewClientPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Form-level error */}
+        {fieldErrors._form && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+            {fieldErrors._form}
+          </div>
+        )}
+
         {/* Basic Info Section */}
         {activeSection === "basic" && (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-6 space-y-5">
@@ -346,10 +388,11 @@ export default function NewClientPage() {
                     onChange={handleChange}
                     required
                     type="text"
-                    className={inputClass}
+                    className={fieldErrors.full_name ? inputErrorClass : inputClass}
                     placeholder="John Doe"
                   />
                 </div>
+                <FieldError field="full_name" />
               </div>
 
               {/* Email */}
@@ -362,10 +405,11 @@ export default function NewClientPage() {
                     value={formData.email}
                     onChange={handleChange}
                     type="email"
-                    className={inputClass}
+                    className={fieldErrors.email ? inputErrorClass : inputClass}
                     placeholder="john@example.com"
                   />
                 </div>
+                <FieldError field="email" />
               </div>
 
               {/* Phone */}
@@ -429,10 +473,11 @@ export default function NewClientPage() {
                       value={formData.company_name}
                       onChange={handleChange}
                       type="text"
-                      className={inputClass}
+                      className={fieldErrors.company_name ? inputErrorClass : inputClass}
                       placeholder="PT Example Indonesia"
                     />
                   </div>
+                  <FieldError field="company_name" />
                 </div>
               )}
 
@@ -508,9 +553,10 @@ export default function NewClientPage() {
                     value={formData.date_of_birth}
                     onChange={handleChange}
                     type="date"
-                    className={inputClass}
+                    className={fieldErrors.date_of_birth ? inputErrorClass : inputClass}
                   />
                 </div>
+                <FieldError field="date_of_birth" />
               </div>
 
               {/* Passport Number */}
@@ -539,9 +585,10 @@ export default function NewClientPage() {
                     value={formData.passport_expiry}
                     onChange={handleChange}
                     type="date"
-                    className={inputClass}
+                    className={fieldErrors.passport_expiry ? inputErrorClass : inputClass}
                   />
                 </div>
+                <FieldError field="passport_expiry" />
               </div>
 
               {/* Notes */}
