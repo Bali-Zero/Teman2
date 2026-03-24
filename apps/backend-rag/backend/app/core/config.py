@@ -233,6 +233,11 @@ class Settings(BaseSettings):
     # ========================================
     # BM25 HYBRID SEARCH CONFIGURATION
     # ========================================
+    enable_hybrid_search: bool = Field(
+        default=False,
+        description="Enable hybrid search (BM25+dense+RRF+reranking) in the agentic VectorSearchTool pipeline. "
+        "Set via ENABLE_HYBRID_SEARCH env var. When False, uses dense-only search with legacy reranker.",
+    )
     enable_bm25: bool = Field(
         default=True,
         description="Enable BM25 sparse vectors for hybrid search. Set via ENABLE_BM25 env var.",
