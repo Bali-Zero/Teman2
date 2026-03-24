@@ -39,6 +39,22 @@ class BirthplaceEnrichmentService:
 
     def __init__(self, db_pool: asyncpg.Pool):
         self.db_pool = db_pool
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self, timeout: float = OLLAMA_TIMEOUT) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=timeout,
+                limits=httpx.Limits(max_connections=5, max_keepalive_connections=2),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("BirthplaceEnrichmentService HTTP client closed.")
 
     async def get_clients_needing_enrichment(self, limit: int = BATCH_SIZE) -> list[dict]:
         """
@@ -73,25 +89,25 @@ class BirthplaceEnrichmentService:
             Generated text or None if failed
         """
         try:
-            async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
-                response = await client.post(
-                    f"{OLLAMA_BASE_URL}/api/generate",
-                    json={
-                        "model": OLLAMA_MODEL,
-                        "prompt": prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.7,
-                            "num_predict": 500,
-                        },
+            client = self._get_client(timeout=OLLAMA_TIMEOUT)
+            response = await client.post(
+                f"{OLLAMA_BASE_URL}/api/generate",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.7,
+                        "num_predict": 500,
                     },
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    return data.get("response", "")
-                else:
-                    logger.error(f"Ollama returned status {response.status_code}")
-                    return None
+                },
+            )
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("response", "")
+            else:
+                logger.error(f"Ollama returned status {response.status_code}")
+                return None
         except httpx.TimeoutException:
             logger.error("Ollama request timed out")
             return None
@@ -232,12 +248,12 @@ Return ONLY the JSON object, no additional text."""
 
         # Check if Ollama is available
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
-                if response.status_code != 200:
-                    logger.error("Ollama is not available")
-                    stats["error"] = "Ollama not available"
-                    return stats
+            client = self._get_client(timeout=5.0)
+            response = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
+            if response.status_code != 200:
+                logger.error("Ollama is not available")
+                stats["error"] = "Ollama not available"
+                return stats
         except Exception as e:
             # In production, Ollama might not be available. Log warning and exit gracefully.
             logger.warning(

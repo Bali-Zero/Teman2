@@ -135,24 +135,16 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/integrations/google-drive/callback",  # BUSINESS: Google Drive OAuth callback - required by OAuth 2.0 flow
             "/api/integrations/google-drive/system/status",  # BUSINESS: OAuth status check - REVIEW: Should require auth
             "/api/admin/drive/health",  # BUSINESS: Drive health check - public status for diagnostics
-            "/api/admin/drive/poll",  # BUSINESS: Drive poll trigger - called by Air cron every 5min
-            "/api/admin/drive/backfill",  # BUSINESS: One-time Drive backfill - registers missing schema-compliant files
-            "/api/admin/drive/refresh",  # BUSINESS: Drive token refresh - public for admin use
-            "/api/admin/drive/service-account-status",  # BUSINESS: Service Account status - public for diagnostics
-            "/api/admin/drive/test-list-files",  # BUSINESS: SA file listing test - public for diagnostics
-            "/admin/google-drive/auth-system",  # BUSINESS: Admin OAuth init for system user
-            "/admin/google-drive/callback-system",  # BUSINESS: Admin OAuth callback for system user
-            "/admin/zoho/auth",  # BUSINESS: Admin Zoho OAuth init
-            "/admin/zoho/callback",  # BUSINESS: Admin Zoho OAuth callback
-            "/test/drive-status",  # BUSINESS: Test Drive Service Account connectivity
-            "/test/drive-create-folder",  # BUSINESS: Test Drive folder creation
-            "/test/trigger-sending-invoice",  # BUSINESS: Test invoice automation
-            "/test/trigger-sending-invoice-debug",  # BUSINESS: Test invoice automation with debug
-            "/test/trigger-on-process",  # BUSINESS: Test process start automation
-            "/test/trigger-completed",  # BUSINESS: Test process completion automation
-            "/test/list-practices",  # BUSINESS: List practices for testing
-            "/test/update-client-email",  # BUSINESS: Update client email for testing
-            "/test/zoho-status",  # BUSINESS: Check Zoho OAuth status
+            # SECURITY: /api/admin/drive/poll, /backfill, /refresh, /service-account-status, /test-list-files
+            # moved to API key auth — these are write/admin operations that must not be public.
+            # Air cron must send X-API-Key header for /poll.
+            "/admin/google-drive/callback-system",  # BUSINESS: Admin OAuth callback (public per OAuth 2.0 spec)
+            "/admin/zoho/callback",  # BUSINESS: Admin Zoho OAuth callback (public per OAuth 2.0 spec)
+            # SECURITY: /admin/google-drive/auth-system and /admin/zoho/auth removed from public.
+            # OAuth initiation requires admin auth to prevent unauthorized OAuth flows.
+            # SECURITY: ALL /test/* endpoints REMOVED from public (2026-03-24 security audit).
+            # These allowed unauthenticated invoice triggers, client email updates, and practice listing.
+            # They now require API key or admin JWT auth.
             # ========================================================================
             # CLIENT PORTAL ENDPOINTS (Public for client self-service)
             # ========================================================================

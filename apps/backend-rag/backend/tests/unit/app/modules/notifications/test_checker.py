@@ -224,7 +224,8 @@ class TestBirthdayAlerts:
     def test_birthday_today(self, checker: ExpiryChecker, base_client: ClientInfo):
         """Alert when today is client's birthday."""
         client = base_client.model_copy()
-        today = datetime.now()
+        # Use the same today as checker (UTC-based) to avoid timezone mismatch
+        today = checker.today
         client.date_of_birth = today.replace(year=today.year - 30)
 
         alert = checker._check_birthday(client)
@@ -262,7 +263,8 @@ class TestExpiryCheckerEdgeCases:
 
     def test_multiple_alerts_same_client(self, checker: ExpiryChecker):
         """Client can have multiple alerts (passport + visa + birthday)."""
-        today = datetime.now()
+        # Use checker.today (UTC-based) to avoid timezone mismatch
+        today = checker.today
         client = ClientInfo(
             id=1,
             email="test@example.com",

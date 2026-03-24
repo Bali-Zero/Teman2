@@ -27,6 +27,7 @@ Usage:
 
 import base64
 import logging
+import re
 import time
 from typing import Any
 
@@ -69,9 +70,25 @@ class GitHubPublisher:
         self.token = token or settings.github_token
         self.owner = owner or settings.github_owner
         self.repo = repo or settings.github_repo
+        self._client: httpx.AsyncClient | None = None
 
         if not self.token:
             logger.warning("GitHub token not configured - publishing will fail")
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=30.0,
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("GitHubPublisher HTTP client closed.")
 
     @property
     def is_configured(self) -> bool:
@@ -85,6 +102,41 @@ class GitHubPublisher:
             "Accept": "application/vnd.github.v3+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
+
+    @staticmethod
+    def _validate_path(path: str) -> str:
+        """
+        Validate and normalize a repository-relative file path.
+
+        Prevents path traversal attacks (e.g. ``../../etc/passwd``) by
+        rejecting paths that contain ``..`` segments or an absolute leading
+        slash after normalization.
+
+        Args:
+            path: Repository-relative file path supplied by the caller.
+
+        Returns:
+            The original path, stripped of any leading slash.
+
+        Raises:
+            ValueError: If the path contains traversal sequences or invalid
+                characters that could be exploited in the GitHub API URL.
+        """
+        # Strip accidental leading slash
+        normalized = path.lstrip("/")
+
+        # Reject path traversal sequences
+        if re.search(r"(^|/)\.\.(\/|$)", normalized):
+            raise ValueError(f"Invalid repository path (traversal detected): {path!r}")
+
+        # Reject null bytes or other control characters
+        if any(ord(c) < 0x20 for c in normalized):
+            raise ValueError(f"Invalid repository path (control characters): {path!r}")
+
+        if not normalized:
+            raise ValueError("Repository path must not be empty.")
+
+        return normalized
 
     async def check_file_exists(self, path: str, branch: str = "main") -> bool:
         """
@@ -100,18 +152,19 @@ class GitHubPublisher:
         if not self.is_configured:
             raise GitHubPublisherError("GitHub API not configured")
 
+        path = self._validate_path(path)
         url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/contents/{path}"
         params = {"ref": branch}
 
         logger.debug(f"Checking file exists: {path} (branch: {branch})")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                url,
-                headers=self._get_headers(),
-                params=params,
-                timeout=30.0,
-            )
+        client = self._get_client()
+        response = await client.get(
+            url,
+            headers=self._get_headers(),
+            params=params,
+            timeout=30.0,
+        )
 
         exists = response.status_code == 200
         logger.debug(f"File exists check: {path} → {exists}")
@@ -131,18 +184,19 @@ class GitHubPublisher:
         if not self.is_configured:
             raise GitHubPublisherError("GitHub API not configured")
 
+        path = self._validate_path(path)
         url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/contents/{path}"
         params = {"ref": branch}
 
         logger.debug(f"Getting file SHA: {path}")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                url,
-                headers=self._get_headers(),
-                params=params,
-                timeout=30.0,
-            )
+        client = self._get_client()
+        response = await client.get(
+            url,
+            headers=self._get_headers(),
+            params=params,
+            timeout=30.0,
+        )
 
         if response.status_code == 200:
             sha = response.json().get("sha")
@@ -174,6 +228,7 @@ class GitHubPublisher:
         if not self.is_configured:
             raise GitHubPublisherError("GitHub API not configured")
 
+        path = self._validate_path(path)
         start_time = time.time()
         url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/contents/{path}"
 
@@ -198,13 +253,13 @@ class GitHubPublisher:
             payload["sha"] = existing_sha
             logger.debug(f"Updating existing file (SHA: {existing_sha[:7]})")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.put(
-                url,
-                headers=self._get_headers(),
-                json=payload,
-                timeout=60.0,
-            )
+        client = self._get_client()
+        response = await client.put(
+            url,
+            headers=self._get_headers(),
+            json=payload,
+            timeout=60.0,
+        )
 
         elapsed_ms = (time.time() - start_time) * 1000
 
@@ -224,7 +279,7 @@ class GitHubPublisher:
         commit_sha = result["commit"]["sha"]
 
         logger.info(
-            f"✅ File {'updated' if is_update else 'created'}: {path}",
+            f"File {'updated' if is_update else 'created'}: {path}",
             extra={
                 "path": path,
                 "commit_sha": commit_sha[:7],
@@ -264,6 +319,10 @@ class GitHubPublisher:
         if not self.is_configured:
             raise GitHubPublisherError("GitHub API not configured")
 
+        # Validate all paths up front before touching the GitHub API.
+        for file_info in files:
+            file_info["path"] = self._validate_path(file_info["path"])
+
         start_time = time.time()
         file_paths = [f["path"] for f in files]
         total_size_kb = (
@@ -283,139 +342,139 @@ class GitHubPublisher:
             },
         )
 
-        async with httpx.AsyncClient() as client:
-            # Step 1: Get the current commit SHA of the branch
-            logger.debug(f"Step 1/6: Getting branch ref for '{branch}'")
-            ref_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/ref/heads/{branch}"
-            ref_response = await client.get(
-                ref_url,
+        client = self._get_client()
+        # Step 1: Get the current commit SHA of the branch
+        logger.debug(f"Step 1/6: Getting branch ref for '{branch}'")
+        ref_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/ref/heads/{branch}"
+        ref_response = await client.get(
+            ref_url,
+            headers=self._get_headers(),
+            timeout=30.0,
+        )
+
+        if ref_response.status_code != 200:
+            logger.error(f"Failed to get branch ref: {ref_response.text}")
+            raise GitHubPublisherError(f"Failed to get branch ref: {ref_response.text}")
+
+        current_commit_sha = ref_response.json()["object"]["sha"]
+        logger.debug(f"Current commit SHA: {current_commit_sha[:7]}")
+
+        # Step 2: Get the current tree SHA
+        logger.debug("Step 2/6: Getting current tree SHA")
+        commit_url = (
+            f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/commits/{current_commit_sha}"
+        )
+        commit_response = await client.get(
+            commit_url,
+            headers=self._get_headers(),
+            timeout=30.0,
+        )
+
+        if commit_response.status_code != 200:
+            logger.error(f"Failed to get commit: {commit_response.text}")
+            raise GitHubPublisherError(f"Failed to get commit: {commit_response.text}")
+
+        current_tree_sha = commit_response.json()["tree"]["sha"]
+        logger.debug(f"Current tree SHA: {current_tree_sha[:7]}")
+
+        # Step 3: Create blobs for each file
+        logger.debug(f"Step 3/6: Creating {len(files)} blobs")
+        tree_items = []
+        for idx, file_info in enumerate(files):
+            path = file_info["path"]
+            content = file_info["content"]
+
+            # Encode content to base64
+            if isinstance(content, str):
+                content = content.encode("utf-8")
+            content_base64 = base64.b64encode(content).decode("utf-8")
+
+            # Create blob
+            blob_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/blobs"
+            blob_response = await client.post(
+                blob_url,
                 headers=self._get_headers(),
+                json={"content": content_base64, "encoding": "base64"},
                 timeout=30.0,
             )
 
-            if ref_response.status_code != 200:
-                logger.error(f"Failed to get branch ref: {ref_response.text}")
-                raise GitHubPublisherError(f"Failed to get branch ref: {ref_response.text}")
-
-            current_commit_sha = ref_response.json()["object"]["sha"]
-            logger.debug(f"Current commit SHA: {current_commit_sha[:7]}")
-
-            # Step 2: Get the current tree SHA
-            logger.debug("Step 2/6: Getting current tree SHA")
-            commit_url = (
-                f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/commits/{current_commit_sha}"
-            )
-            commit_response = await client.get(
-                commit_url,
-                headers=self._get_headers(),
-                timeout=30.0,
-            )
-
-            if commit_response.status_code != 200:
-                logger.error(f"Failed to get commit: {commit_response.text}")
-                raise GitHubPublisherError(f"Failed to get commit: {commit_response.text}")
-
-            current_tree_sha = commit_response.json()["tree"]["sha"]
-            logger.debug(f"Current tree SHA: {current_tree_sha[:7]}")
-
-            # Step 3: Create blobs for each file
-            logger.debug(f"Step 3/6: Creating {len(files)} blobs")
-            tree_items = []
-            for idx, file_info in enumerate(files):
-                path = file_info["path"]
-                content = file_info["content"]
-
-                # Encode content to base64
-                if isinstance(content, str):
-                    content = content.encode("utf-8")
-                content_base64 = base64.b64encode(content).decode("utf-8")
-
-                # Create blob
-                blob_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/blobs"
-                blob_response = await client.post(
-                    blob_url,
-                    headers=self._get_headers(),
-                    json={"content": content_base64, "encoding": "base64"},
-                    timeout=30.0,
-                )
-
-                if blob_response.status_code != 201:
-                    logger.error(f"Failed to create blob for {path}: {blob_response.text}")
-                    raise GitHubPublisherError(
-                        f"Failed to create blob for {path}: {blob_response.text}"
-                    )
-
-                blob_sha = blob_response.json()["sha"]
-                logger.debug(f"  Blob {idx + 1}/{len(files)}: {path} → {blob_sha[:7]}")
-
-                tree_items.append(
-                    {
-                        "path": path,
-                        "mode": "100644",  # Regular file
-                        "type": "blob",
-                        "sha": blob_sha,
-                    }
-                )
-
-            # Step 4: Create new tree
-            logger.debug("Step 4/6: Creating new tree")
-            tree_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/trees"
-            tree_response = await client.post(
-                tree_url,
-                headers=self._get_headers(),
-                json={"base_tree": current_tree_sha, "tree": tree_items},
-                timeout=30.0,
-            )
-
-            if tree_response.status_code != 201:
-                logger.error(f"Failed to create tree: {tree_response.text}")
-                raise GitHubPublisherError(f"Failed to create tree: {tree_response.text}")
-
-            new_tree_sha = tree_response.json()["sha"]
-            logger.debug(f"New tree SHA: {new_tree_sha[:7]}")
-
-            # Step 5: Create commit
-            logger.debug("Step 5/6: Creating commit")
-            create_commit_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/commits"
-            commit_create_response = await client.post(
-                create_commit_url,
-                headers=self._get_headers(),
-                json={
-                    "message": message,
-                    "tree": new_tree_sha,
-                    "parents": [current_commit_sha],
-                },
-                timeout=30.0,
-            )
-
-            if commit_create_response.status_code != 201:
-                logger.error(f"Failed to create commit: {commit_create_response.text}")
+            if blob_response.status_code != 201:
+                logger.error(f"Failed to create blob for {path}: {blob_response.text}")
                 raise GitHubPublisherError(
-                    f"Failed to create commit: {commit_create_response.text}"
+                    f"Failed to create blob for {path}: {blob_response.text}"
                 )
 
-            new_commit_sha = commit_create_response.json()["sha"]
-            logger.debug(f"New commit SHA: {new_commit_sha[:7]}")
+            blob_sha = blob_response.json()["sha"]
+            logger.debug(f"  Blob {idx + 1}/{len(files)}: {path} → {blob_sha[:7]}")
 
-            # Step 6: Update branch reference
-            logger.debug("Step 6/6: Updating branch reference")
-            update_ref_response = await client.patch(
-                ref_url,
-                headers=self._get_headers(),
-                json={"sha": new_commit_sha},
-                timeout=30.0,
+            tree_items.append(
+                {
+                    "path": path,
+                    "mode": "100644",  # Regular file
+                    "type": "blob",
+                    "sha": blob_sha,
+                }
             )
 
-            if update_ref_response.status_code != 200:
-                logger.error(f"Failed to update branch ref: {update_ref_response.text}")
-                raise GitHubPublisherError(
-                    f"Failed to update branch ref: {update_ref_response.text}"
-                )
+        # Step 4: Create new tree
+        logger.debug("Step 4/6: Creating new tree")
+        tree_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/trees"
+        tree_response = await client.post(
+            tree_url,
+            headers=self._get_headers(),
+            json={"base_tree": current_tree_sha, "tree": tree_items},
+            timeout=30.0,
+        )
+
+        if tree_response.status_code != 201:
+            logger.error(f"Failed to create tree: {tree_response.text}")
+            raise GitHubPublisherError(f"Failed to create tree: {tree_response.text}")
+
+        new_tree_sha = tree_response.json()["sha"]
+        logger.debug(f"New tree SHA: {new_tree_sha[:7]}")
+
+        # Step 5: Create commit
+        logger.debug("Step 5/6: Creating commit")
+        create_commit_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/commits"
+        commit_create_response = await client.post(
+            create_commit_url,
+            headers=self._get_headers(),
+            json={
+                "message": message,
+                "tree": new_tree_sha,
+                "parents": [current_commit_sha],
+            },
+            timeout=30.0,
+        )
+
+        if commit_create_response.status_code != 201:
+            logger.error(f"Failed to create commit: {commit_create_response.text}")
+            raise GitHubPublisherError(
+                f"Failed to create commit: {commit_create_response.text}"
+            )
+
+        new_commit_sha = commit_create_response.json()["sha"]
+        logger.debug(f"New commit SHA: {new_commit_sha[:7]}")
+
+        # Step 6: Update branch reference
+        logger.debug("Step 6/6: Updating branch reference")
+        update_ref_response = await client.patch(
+            ref_url,
+            headers=self._get_headers(),
+            json={"sha": new_commit_sha},
+            timeout=30.0,
+        )
+
+        if update_ref_response.status_code != 200:
+            logger.error(f"Failed to update branch ref: {update_ref_response.text}")
+            raise GitHubPublisherError(
+                f"Failed to update branch ref: {update_ref_response.text}"
+            )
 
         elapsed_ms = (time.time() - start_time) * 1000
 
         logger.info(
-            f"✅ Atomic commit created: {new_commit_sha[:7]} ({len(files)} files, {elapsed_ms:.0f}ms)",
+            f"Atomic commit created: {new_commit_sha[:7]} ({len(files)} files, {elapsed_ms:.0f}ms)",
             extra={
                 "commit_sha": new_commit_sha,
                 "files_count": len(files),

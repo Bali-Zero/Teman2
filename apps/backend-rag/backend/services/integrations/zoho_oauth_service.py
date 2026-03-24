@@ -56,6 +56,21 @@ class ZohoOAuthService:
         self.redirect_uri = settings.zoho_redirect_uri
         self.accounts_url = settings.zoho_accounts_url
         self.api_domain = settings.zoho_api_domain
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=HttpTimeoutConstants.ZOHO_OAUTH_TIMEOUT,
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
 
     def get_authorization_url(self, state: str) -> str:
         """
@@ -104,50 +119,50 @@ class ZohoOAuthService:
             raise ValueError("Zoho OAuth not configured")
 
         try:
-            async with httpx.AsyncClient(timeout=HttpTimeoutConstants.ZOHO_OAUTH_TIMEOUT) as client:
-                token_url = f"{self.accounts_url}/oauth/v2/token"
+            client = self._get_client()
+            token_url = f"{self.accounts_url}/oauth/v2/token"
 
-                response = await client.post(
-                    token_url,
-                    data={
-                        "grant_type": "authorization_code",
-                        "client_id": self.client_id,
-                        "client_secret": self.client_secret,
-                        "redirect_uri": self.redirect_uri,
-                        "code": code,
-                    },
+            response = await client.post(
+                token_url,
+                data={
+                    "grant_type": "authorization_code",
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                    "redirect_uri": self.redirect_uri,
+                    "code": code,
+                },
+            )
+
+            if response.status_code != 200:
+                error_data = response.json() if response.content else {}
+                logger.error(
+                    f"Zoho token exchange failed: {response.status_code} - {error_data.get('error', 'unknown')}"
+                )
+                raise ValueError(
+                    f"Token exchange failed: {error_data.get('error', 'unknown error')}"
                 )
 
-                if response.status_code != 200:
-                    error_data = response.json() if response.content else {}
-                    logger.error(
-                        f"Zoho token exchange failed: {response.status_code} - {error_data.get('error', 'unknown')}"
-                    )
-                    raise ValueError(
-                        f"Token exchange failed: {error_data.get('error', 'unknown error')}"
-                    )
+            token_data = response.json()
 
-                token_data = response.json()
+            if "error" in token_data:
+                logger.error(f"Zoho OAuth error: {token_data.get('error')}")
+                raise ValueError(f"OAuth error: {token_data.get('error')}")
 
-                if "error" in token_data:
-                    logger.error(f"Zoho OAuth error: {token_data.get('error')}")
-                    raise ValueError(f"OAuth error: {token_data.get('error')}")
+            # Get account information
+            account_info = await self._get_account_info(token_data["access_token"])
 
-                # Get account information
-                account_info = await self._get_account_info(token_data["access_token"])
+            # Store tokens in database
+            await self._store_tokens(
+                user_id=user_id,
+                account_id=account_info["account_id"],
+                email_address=account_info["email"],
+                access_token=token_data["access_token"],
+                refresh_token=token_data.get("refresh_token", ""),
+                expires_in=token_data.get("expires_in", 3600),
+            )
 
-                # Store tokens in database
-                await self._store_tokens(
-                    user_id=user_id,
-                    account_id=account_info["account_id"],
-                    email_address=account_info["email"],
-                    access_token=token_data["access_token"],
-                    refresh_token=token_data.get("refresh_token", ""),
-                    expires_in=token_data.get("expires_in", 3600),
-                )
-
-                logger.info(f"Zoho OAuth connected for user {user_id}: {account_info['email']}")
-                return token_data
+            logger.info(f"Zoho OAuth connected for user {user_id}: {account_info['email']}")
+            return token_data
 
         except httpx.RequestError as e:
             logger.error(f"Zoho OAuth network error: {type(e).__name__}: {e}")
@@ -163,71 +178,71 @@ class ZohoOAuthService:
         Returns:
             Dict with account_id and email
         """
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(
-                f"{self.api_domain}/api/accounts",
-                headers={"Authorization": f"Zoho-oauthtoken {access_token}"},
-            )
+        client = self._get_client()
+        response = await client.get(
+            f"{self.api_domain}/api/accounts",
+            headers={"Authorization": f"Zoho-oauthtoken {access_token}"},
+        )
 
-            if response.status_code != 200:
-                logger.error(f"Failed to get Zoho account info: {response.status_code}")
-                raise ValueError("Failed to get account information")
+        if response.status_code != 200:
+            logger.error(f"Failed to get Zoho account info: {response.status_code}")
+            raise ValueError("Failed to get account information")
 
-            data = response.json()
-            accounts = data.get("data", [])
+        data = response.json()
+        accounts = data.get("data", [])
 
-            if not accounts:
-                raise ValueError("No Zoho Mail accounts found")
+        if not accounts:
+            raise ValueError("No Zoho Mail accounts found")
 
-            # Use first account
-            account = accounts[0]
+        # Use first account
+        account = accounts[0]
 
-            # Extract primary email from email list
-            # Zoho returns email as list: [{"isPrimary": true, "mailId": "...", ...}]
-            email_list = account.get("email", [])
-            primary_email = ""
+        # Extract primary email from email list
+        # Zoho returns email as list: [{"isPrimary": true, "mailId": "...", ...}]
+        email_list = account.get("email", [])
+        primary_email = ""
 
-            if isinstance(email_list, list):
-                for email_entry in email_list:
-                    if isinstance(email_entry, dict) and email_entry.get("isPrimary"):
-                        primary_email = email_entry.get("mailId", "")
-                        break
-                # Fallback to first email if no primary found
-                if not primary_email and email_list and isinstance(email_list[0], dict):
-                    primary_email = email_list[0].get("mailId", "")
-            elif isinstance(email_list, str):
-                primary_email = email_list
+        if isinstance(email_list, list):
+            for email_entry in email_list:
+                if isinstance(email_entry, dict) and email_entry.get("isPrimary"):
+                    primary_email = email_entry.get("mailId", "")
+                    break
+            # Fallback to first email if no primary found
+            if not primary_email and email_list and isinstance(email_list[0], dict):
+                primary_email = email_list[0].get("mailId", "")
+        elif isinstance(email_list, str):
+            primary_email = email_list
 
-            # Also check for emailAddress field as fallback
-            if not primary_email:
-                primary_email = account.get("emailAddress", "")
+        # Also check for emailAddress field as fallback
+        if not primary_email:
+            primary_email = account.get("emailAddress", "")
 
-            # Ensure email is always a string (edge case safeguard)
-            if not isinstance(primary_email, str):
-                logger.warning(f"Unexpected email type: {type(primary_email)}")
-                if isinstance(primary_email, list) and primary_email:
-                    first_item = primary_email[0]
-                    primary_email = (
-                        str(first_item.get("mailId", ""))
-                        if isinstance(first_item, dict)
-                        else str(first_item)
-                        if first_item
-                        else ""
-                    )
-                elif isinstance(primary_email, dict):
-                    primary_email = str(primary_email.get("mailId", ""))
-                else:
-                    primary_email = str(primary_email) if primary_email else ""
+        # Ensure email is always a string (edge case safeguard)
+        if not isinstance(primary_email, str):
+            logger.warning(f"Unexpected email type: {type(primary_email)}")
+            if isinstance(primary_email, list) and primary_email:
+                first_item = primary_email[0]
+                primary_email = (
+                    str(first_item.get("mailId", ""))
+                    if isinstance(first_item, dict)
+                    else str(first_item)
+                    if first_item
+                    else ""
+                )
+            elif isinstance(primary_email, dict):
+                primary_email = str(primary_email.get("mailId", ""))
+            else:
+                primary_email = str(primary_email) if primary_email else ""
 
-            # Final validation
-            if not primary_email or "@" not in primary_email:
-                logger.error(f"Invalid email extracted from Zoho account: '{primary_email}'")
-                raise ValueError("Could not extract valid email address from Zoho account")
+        # Final validation
+        if not primary_email or "@" not in primary_email:
+            logger.error(f"Invalid email extracted from Zoho account: '{primary_email}'")
+            raise ValueError("Could not extract valid email address from Zoho account")
 
-            return {
-                "account_id": str(account.get("accountId", "")),
-                "email": primary_email,
-            }
+        return {
+            "account_id": str(account.get("accountId", "")),
+            "email": primary_email,
+        }
 
     async def _store_tokens(
         self,
@@ -337,60 +352,60 @@ class ZohoOAuthService:
         if not refresh_token:
             raise ValueError("No refresh token available - reconnect required")
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"{self.accounts_url}/oauth/v2/token",
-                data={
-                    "grant_type": "refresh_token",
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
-                    "refresh_token": refresh_token,
-                },
-            )
+        client = self._get_client()
+        response = await client.post(
+            f"{self.accounts_url}/oauth/v2/token",
+            data={
+                "grant_type": "refresh_token",
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "refresh_token": refresh_token,
+            },
+        )
 
-            if response.status_code != 200:
-                error_data = response.json() if response.content else {}
-                logger.error(f"Token refresh failed: {response.status_code} - {error_data}")
-                raise ValueError("Failed to refresh token - reconnect required")
+        if response.status_code != 200:
+            error_data = response.json() if response.content else {}
+            logger.error(f"Token refresh failed: {response.status_code} - {error_data}")
+            raise ValueError("Failed to refresh token - reconnect required")
 
-            token_data = response.json()
+        token_data = response.json()
 
-            if "error" in token_data:
-                logger.error(f"Token refresh error: {token_data}")
-                # Invalidate stored token so we stop retrying on every request
-                async with self.db_pool.acquire() as conn:
-                    await conn.execute(
-                        """
-                        UPDATE zoho_email_tokens
-                        SET token_expires_at = NOW() - INTERVAL '1 year',
-                            updated_at = NOW()
-                        WHERE user_id = $1 AND account_id = $2
-                        """,
-                        user_id,
-                        account_id,
-                    )
-                raise ValueError(f"Refresh error: {token_data.get('error')} — reconnect required")
-
-            # Update stored token
-            expires_at = datetime.now(timezone.utc) + timedelta(
-                seconds=token_data.get("expires_in", 3600)
-            )
-
+        if "error" in token_data:
+            logger.error(f"Token refresh error: {token_data}")
+            # Invalidate stored token so we stop retrying on every request
             async with self.db_pool.acquire() as conn:
                 await conn.execute(
                     """
                     UPDATE zoho_email_tokens
-                    SET access_token = $1, token_expires_at = $2, updated_at = NOW()
-                    WHERE user_id = $3 AND account_id = $4
+                    SET token_expires_at = NOW() - INTERVAL '1 year',
+                        updated_at = NOW()
+                    WHERE user_id = $1 AND account_id = $2
                     """,
-                    token_data["access_token"],
-                    expires_at,
                     user_id,
                     account_id,
                 )
+            raise ValueError(f"Refresh error: {token_data.get('error')} — reconnect required")
 
-            logger.info(f"Zoho token refreshed for user {user_id}")
-            return token_data["access_token"]
+        # Update stored token
+        expires_at = datetime.now(timezone.utc) + timedelta(
+            seconds=token_data.get("expires_in", 3600)
+        )
+
+        async with self.db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE zoho_email_tokens
+                SET access_token = $1, token_expires_at = $2, updated_at = NOW()
+                WHERE user_id = $3 AND account_id = $4
+                """,
+                token_data["access_token"],
+                expires_at,
+                user_id,
+                account_id,
+            )
+
+        logger.info(f"Zoho token refreshed for user {user_id}")
+        return token_data["access_token"]
 
     async def get_account_id(self, user_id: str) -> str:
         """
@@ -474,13 +489,11 @@ class ZohoOAuthService:
             if row and row["refresh_token"]:
                 # Attempt to revoke token (optional, may fail)
                 try:
-                    async with httpx.AsyncClient(
-                        timeout=HttpTimeoutConstants.SHORT_TIMEOUT
-                    ) as client:
-                        await client.post(
-                            f"{self.accounts_url}/oauth/v2/token/revoke",
-                            params={"token": row["refresh_token"]},
-                        )
+                    client = self._get_client()
+                    await client.post(
+                        f"{self.accounts_url}/oauth/v2/token/revoke",
+                        params={"token": row["refresh_token"]},
+                    )
                 except Exception as e:
                     logger.warning(f"Failed to revoke Zoho token: {e}")
 

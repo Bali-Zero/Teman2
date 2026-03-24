@@ -7,6 +7,7 @@ API: OpenAI-compatible
 Fallback chain: Gemini 2.0 Flash → DeepSeek V3 → OpenRouter (free models)
 """
 
+import json
 import logging
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -54,6 +55,22 @@ class DeepSeekClient:
         self.api_key = api_key or settings.deepseek_api_key
         if not self.api_key:
             logger.warning("⚠️ DeepSeek API key not set. Set DEEPSEEK_API_KEY env var.")
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self, timeout: float = 60.0) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=timeout,
+                limits=httpx.Limits(max_connections=20, max_keepalive_connections=5),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("DeepSeekClient HTTP client closed.")
 
     @property
     def is_available(self) -> bool:
@@ -82,35 +99,35 @@ class DeepSeekClient:
         if not self.api_key:
             raise RuntimeError("DeepSeek API key not configured")
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                f"{self.BASE_URL}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                },
-            )
+        client = self._get_client(timeout=60.0)
+        response = await client.post(
+            f"{self.BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            },
+        )
 
-            if response.status_code != 200:
-                error_text = response.text
-                logger.error(f"DeepSeek API error: {response.status_code} - {error_text}")
-                raise RuntimeError(f"DeepSeek API error: {response.status_code}")
+        if response.status_code != 200:
+            error_text = response.text
+            logger.error(f"DeepSeek API error: {response.status_code} - {error_text}")
+            raise RuntimeError(f"DeepSeek API error: {response.status_code}")
 
-            data = response.json()
+        data = response.json()
 
-            return DeepSeekResponse(
-                content=data["choices"][0]["message"]["content"],
-                model_name=data.get("model", model),
-                input_tokens=data.get("usage", {}).get("prompt_tokens", 0),
-                output_tokens=data.get("usage", {}).get("completion_tokens", 0),
-                finish_reason=data["choices"][0].get("finish_reason", "stop"),
-            )
+        return DeepSeekResponse(
+            content=data["choices"][0]["message"]["content"],
+            model_name=data.get("model", model),
+            input_tokens=data.get("usage", {}).get("prompt_tokens", 0),
+            output_tokens=data.get("usage", {}).get("completion_tokens", 0),
+            finish_reason=data["choices"][0].get("finish_reason", "stop"),
+        )
 
     async def complete_stream(
         self,
@@ -134,24 +151,22 @@ class DeepSeekClient:
         if not self.api_key:
             raise RuntimeError("DeepSeek API key not configured")
 
-        async with (
-            httpx.AsyncClient(timeout=120.0) as client,
-            client.stream(
-                "POST",
-                f"{self.BASE_URL}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                    "stream": True,
-                },
-            ) as response,
-        ):
+        client = self._get_client(timeout=120.0)
+        async with client.stream(
+            "POST",
+            f"{self.BASE_URL}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": True,
+            },
+        ) as response:
             if response.status_code != 200:
                 await response.aread()
                 logger.error(f"DeepSeek streaming error: {response.status_code}")
@@ -164,8 +179,6 @@ class DeepSeekClient:
                         break
 
                     try:
-                        import json
-
                         data = json.loads(data_str)
                         delta = data.get("choices", [{}])[0].get("delta", {})
                         content = delta.get("content", "")
