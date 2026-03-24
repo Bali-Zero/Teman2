@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.crm.audit_logger import audit_change, audit_logger
-from backend.app.services.crm.metrics import crm_metrics, metrics_collector, track_client_creation
+from backend.app.services.crm.metrics import metrics_collector, track_client_creation
 from backend.app.utils.crm_utils import (
     extract_json_from_llm_response,
     is_crm_admin,
@@ -23,12 +23,10 @@ from backend.app.utils.crm_utils import (
 )
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
-from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
-
+from backend.app.utils.logging_utils import get_logger, log_success
+from backend.core.cache import cached, invalidate_cache
 from backend.db.repositories.client_repository import ClientRepository
 from backend.services.crm.client_service import ClientService
-
-from backend.core.cache import cached, invalidate_cache
 
 logger = get_logger(__name__)
 
@@ -38,6 +36,7 @@ router = APIRouter(prefix="/api/crm/clients", tags=["crm-clients"])
 def get_client_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> ClientService:
     repository = ClientRepository(db_pool)
     return ClientService(repository)
+
 
 # Constants
 MAX_LIMIT = 200
@@ -286,7 +285,7 @@ async def create_client(
     Create a new client with transactional safety and domain error mapping.
     """
     from backend.app.core.exceptions import ResourceConflictError
-    
+
     try:
         # Estrae i dati validati da FastAPI/Pydantic
         client_data = client.model_dump(exclude_unset=True)
@@ -297,21 +296,23 @@ async def create_client(
             company_data = {
                 "company_name": client.company_name,
                 "status": "active",
-                "kbli_code": client_data.pop("kbli_code", None)
+                "kbli_code": client_data.pop("kbli_code", None),
             }
 
         # Chiama il Business Logic Layer (gestisce transazioni e Domain Errors)
         created_record = await client_service.create_client(
-            client_data=client_data,
-            company_data=company_data
+            client_data=client_data, company_data=company_data
         )
-        
+
         new_client = dict(created_record)
-        user_email = current_user.get("email", "").lower()
-        
+        current_user.get("email", "").lower()
+
         # Logica accessoria: Google Drive
         try:
-            from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
+            from backend.services.integrations.service_account_drive_service import (
+                ServiceAccountDriveService,
+            )
+
             drive_service = ServiceAccountDriveService()
             background_tasks.add_task(
                 drive_service.create_client_folder,
@@ -325,14 +326,12 @@ async def create_client(
 
         # Invalidazione extra cache HTTP (il service invalida la memory cache)
         await invalidate_cache("zantara:crm_clients_stats:*")
-        
+
         return ClientResponse(**new_client)
 
     except ResourceConflictError as e:
         logger.warning(f"Integrity error creating client: {e}")
-        raise HTTPException(
-            status_code=400, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise handle_database_error(e) from e
 
@@ -461,7 +460,9 @@ async def get_client(
             row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
                    client_type, assigned_to, avatar_url, first_contact_date, last_interaction_date,
-                   tags, created_at, updated_at FROM clients WHERE id = $1""",
+                   tags, custom_fields, address, notes, passport_number, passport_expiry,
+                   date_of_birth, lead_source, service_interest, tax_id,
+                   created_at, updated_at, created_by FROM clients WHERE id = $1""",
                 client_id,
             )
 
@@ -492,7 +493,9 @@ async def get_client_by_email(
             row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
                    client_type, assigned_to, avatar_url, first_contact_date, last_interaction_date,
-                   tags, created_at, updated_at FROM clients WHERE email = $1""",
+                   tags, custom_fields, address, notes, passport_number, passport_expiry,
+                   date_of_birth, lead_source, service_interest, tax_id,
+                   created_at, updated_at, created_by FROM clients WHERE email = $1""",
                 email,
             )
 

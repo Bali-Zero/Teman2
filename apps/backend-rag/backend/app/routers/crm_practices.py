@@ -509,13 +509,20 @@ async def get_active_practices(
     request: Request,
     assigned_to: str | None = Query(None),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ) -> list[Any]:
     """
     Get all active practices (in progress, not completed/cancelled)
 
-    Optionally filter by assigned team member
+    Access Control:
+    - Admin users: Can view all active practices
+    - Team members: Can only view practices assigned to them
     """
     try:
+        # RBAC: non-admin users can only see their own practices
+        if not can_view_all_practices(current_user) and not assigned_to:
+            assigned_to = current_user.get("email", "")
+
         async with db_pool.acquire() as conn:
             query_parts = ["SELECT * FROM active_practices_view WHERE 1=1"]
             params: list[Any] = []
@@ -545,22 +552,39 @@ async def get_upcoming_renewals(
         description="Days to look ahead",
     ),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ) -> list[Any]:
     """
     Get practices with upcoming renewal dates
 
+    Access Control:
+    - Admin users: Can view all upcoming renewals
+    - Team members: Can only view renewals for practices assigned to them
+
     Default: next 90 days
     """
     try:
+        # RBAC: non-admin users can only see their own renewals
+        user_email = current_user.get("email", "") if not can_view_all_practices(current_user) else None
+
         async with db_pool.acquire() as conn:
-            # Filter by days parameter - check if view supports filtering or use direct query
-            rows = await conn.fetch(
-                """
-                SELECT * FROM upcoming_renewals_view
-                WHERE days_until_expiry <= $1
-                """,
-                days,
-            )
+            if user_email:
+                rows = await conn.fetch(
+                    """
+                    SELECT * FROM upcoming_renewals_view
+                    WHERE days_until_expiry <= $1 AND assigned_to = $2
+                    """,
+                    days,
+                    user_email,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT * FROM upcoming_renewals_view
+                    WHERE days_until_expiry <= $1
+                    """,
+                    days,
+                )
             return [dict(row) for row in rows]
 
     except Exception as e:
