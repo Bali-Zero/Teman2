@@ -71,16 +71,6 @@ export { useOptimizedList, useInfiniteScroll } from "./useOptimizedList";
 
 // React Query hooks
 export {
-  useClientsQuery,
-  useClientQuery,
-  useCreateClientMutation,
-  useUpdateClientMutation,
-  useDeleteClientMutation,
-  usePrefetchClients,
-  clientKeys,
-} from "./useClientsQuery";
-
-export {
   useArticlesQuery,
   useArticleQuery,
   useNewsFeedQuery,
