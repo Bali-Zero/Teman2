@@ -11,7 +11,7 @@
 │   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐            │
 │   │   MOUTH     │    │  BACKEND    │    │   QDRANT    │    │  POSTGRES   │            │
 │   │  (Next.js)  │───▶│  (FastAPI)  │───▶│  (Vectors)  │    │  (Memory)   │            │
-│   │  Frontend   │    │   RAG API   │    │  53K+ docs  │    │  CRM/Facts  │            │
+│   │  Frontend   │    │   RAG API   │    │  93K+ docs  │    │  CRM/Facts  │            │
 │   └─────────────┘    └──────┬──────┘    └─────────────┘    └─────────────┘            │
 │                             │                                                          │
 │                    ┌────────▼────────┐                                                 │
@@ -156,10 +156,10 @@
 │                                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐   │
 │  │ 1. VECTOR SEARCH TOOL (Primary)                                                 │   │
-│  │    ├── Semantic search across 15+ Qdrant collections                           │   │
-│  │    ├── Hybrid mode: Dense (1536D) + BM25 Sparse                               │   │
-│  │    ├── Ze-Rank 2 API reranking (optional)                                     │   │
-│  │    └── Rate limit: 10 req/min per user                                        │   │
+│  │    ├── Federated search across 8 Qdrant collections (93K+ docs)               │   │
+│  │    ├── Hybrid mode: Dense (1536D) + BM25 Sparse + RRF fusion (ENABLED)        │   │
+│  │    ├── CrossEncoder reranking: ms-marco-MiniLM-L-6-v2 (local, ENABLED)        │   │
+│  │    └── Pipeline: BM25+Dense → RRF → CrossEncoder top-20→top-5                │   │
 │  └─────────────────────────────────────────────────────────────────────────────────┘   │
 │                                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐   │
@@ -270,7 +270,7 @@
 │    └─────────────────────────────────────────────────────────────────────────────────┘ │
 │                                                                                         │
 │    ┌─────────────────────────────────────────────────────────────────────────────────┐ │
-│    │  QDRANT COLLECTIONS (66,595+ documents)                                         │ │
+│    │  QDRANT COLLECTIONS (93,283+ documents)                                         │ │
 │    │  ┌────────────────┬─────────┬────────────────────────────────────────────────┐ │ │
 │    │  │ Collection     │ Docs    │ Content                                        │ │ │
 │    │  ├────────────────┼─────────┼────────────────────────────────────────────────┤ │ │
@@ -288,24 +288,26 @@
                                          │
                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│ 4. RERANKING (Ze-Rank 2 API)                                                           │
+│ 4. CROSS-ENCODER RERANKING (Local, ENABLED 2026-03-24)                                 │
 │    ┌─────────────────────────────────────────────────────────────────────────────────┐ │
 │    │                                                                                 │ │
-│    │   Input: query + 10 candidates                                                 │ │
+│    │   Input: query + 20 candidates (from hybrid search)                            │ │
 │    │                    │                                                            │ │
 │    │                    ▼                                                            │ │
 │    │   ┌────────────────────────────────────────────────────────────────────────┐   │ │
-│    │   │                    Ze-Rank 2 (ZeroEntropy)                             │   │ │
+│    │   │           CrossEncoderReranker (Local Transformer)                     │   │ │
 │    │   │                                                                        │   │ │
-│    │   │   Cross-encoder model for semantic relevance scoring                   │   │ │
-│    │   │   ├── Considers query-document interaction                             │   │ │
-│    │   │   ├── More accurate than bi-encoder retrieval                          │   │ │
-│    │   │   └── Returns relevance scores 0.0-1.0                                 │   │ │
+│    │   │   Model: cross-encoder/ms-marco-MiniLM-L-6-v2 (~80MB)                │   │ │
+│    │   │   ├── Scores each (query, doc) pair via cross-attention               │   │ │
+│    │   │   ├── Async inference in thread pool (non-blocking)                   │   │ │
+│    │   │   ├── Sigmoid normalization → relevance scores 0.0-1.0               │   │ │
+│    │   │   └── Early exit: skip if top result score > 0.9                      │   │ │
 │    │   │                                                                        │   │ │
+│    │   │   Fallback: Ze-Rank 2 API (if ZERANK_API_KEY set)                    │   │ │
 │    │   └────────────────────────────────────────────────────────────────────────┘   │ │
 │    │                    │                                                            │ │
 │    │                    ▼                                                            │ │
-│    │   Output: Top 5 reranked documents                                             │ │
+│    │   Output: Top 5 reranked documents (sorted by cross-encoder score)             │ │
 │    │                                                                                 │ │
 │    └─────────────────────────────────────────────────────────────────────────────────┘ │
 │                                                                                         │

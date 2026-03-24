@@ -78,8 +78,9 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
 - **Knowledge Graph:** 56,113 nodes, 161,173 edges
-- **Vector Collections:** 9 live on Fly.io (66,595 documents), 11 defined in code
+- **Vector Collections:** 10 live on Fly.io (93,283 documents), 11 defined in code
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
+- **Search Pipeline:** Hybrid (BM25+Dense+RRF) + CrossEncoder reranking (enabled 2026-03-24)
 
 ### Key Terms (for new AI agents)
 
@@ -164,6 +165,7 @@ Controlla `shared/escalations.json` — se ci sono pending, gestiscili prima di 
 8. **Clean Logging** - Use `logger`, never `print()` statements.
 9. **Quality Standards** - Tests, error handling, graceful degradation required.
 10. **Verify Sources** - Never presume, always verify against actual data sources.
+11. **Async HTTP Clients** - NEVER instantiate `httpx.AsyncClient()` inside methods or loops. Always use a persistent client managed at the service level (pattern: `_get_client`) and register its closure in the `lifespan` of `app_factory.py`.
 
 ## 4. Development Commands
 
@@ -332,15 +334,16 @@ Classification confidence thresholds:
 
 **Model:** `text-embedding-3-small` (OpenAI)  
 **Dimensions:** 1536  
-**CRITICAL:** This model is FROZEN. Changing it would invalidate 66,595 existing vectors.  
+**CRITICAL:** This model is FROZEN. Changing it would invalidate 93,283 existing vectors.  
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
 ## 7. MCP Servers
 
 **Primary:** `apps/nuzantara-mcp/` (v2.1, FastMCP, stdio transport)
+**Status:** **Federation v3 Phase 2 ACTIVE** (2026-03-23)
 **Capabilities:**
 
-- **109 Tools** across 17 modules (CRM, portal, intel, content, analytics, knowledge, comms, drive, workflows, admin, health, journey, pricing, compliance, generals, memory, heartbeat)
+- **131 Tools** total across Federation bridge (118 Nuzantara + 13 Advanced)
 - **10 Prompts** for guided workflows
 - **5 Resources** for knowledge base access
 - **8 Workflow Chains** for deterministic automation (daily_ops_autopilot, new_client_onboarding, practice_lifecycle_check, intel_pipeline, weekly_report, client_health_monitor, compliance_autopilot, journey_accelerator)
@@ -459,7 +462,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   } catch (error) {
-    console.error("KBLI fetch failed:", error);
+    console.error('KBLI fetch failed:', error);
     return null;
   }
 }
@@ -639,7 +642,7 @@ fly deploy --strategy rolling
 
 ---
 
-**Last Updated:** 2026-03-22
+**Last Updated:** 2026-03-24
 **Maintained by:** Bali Zero AI Team
 
 ---
