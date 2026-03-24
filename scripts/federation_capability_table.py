@@ -1,42 +1,55 @@
 """
-Federation Capability Table — Maps the complete Nuzantara AI arsenal.
+Federation Capability Table v3 — Maps the complete Nuzantara AI arsenal.
 
-Used by the federation orchestrator to provide Qwen classifier with
-routing context. Each capability has: agent, tool_type, domain tags,
-and when_to_use description for intelligent dispatch.
+3-tier taxonomy (2026-03-25):
+  AGENTS    — Autonomous runtimes that accept tasks and return results (dispatchable)
+  SERVICES  — Stateless tools called by agents (not dispatchable, called directly)
+  PIPELINES — Scheduled/triggered multi-step workflows (not dispatchable, cron/manual)
 
-Arsenal inventory (2026-03-23, v2):
+Used by:
+  - federation orchestrator (Qwen classifier routing)
+  - ai-dispatch.sh (CLI dispatch)
+  - generate_agent_cards.py (A2A card generation)
+  - adk_agents.py (ADK agent registration)
+
+Arsenal inventory (2026-03-25, v3):
+  - 7 dispatchable agents
+  - 5 callable services
+  - 4 autonomous pipelines
   - 109 NuzMCP tools (20 modules)
   - 13 NuzMCP-Advanced tools
-  - 35 NotebookLM MCP tools (notebooks, sources, studio, research, pipeline, batch)
+  - 35 NotebookLM MCP tools
+  - 22 GWS CLI tools
   - 16 OpenClaw skills
-  - 5 Gemini CLI extensions
-  - 16 Gemini built-in tools
-  - 8 Claude Code MCP servers (+ google-colab)
-  - 5 AI dispatch commands
-  - 12 Google SDK/APIs installed (ADK, A2A, Translation, DocumentAI, etc.)
-  - gws CLI (unified Google Workspace)
-  - GBP API (Google Business Profile)
+  - 16 Gemini CLI tools (built-in + extensions)
+  - 7 Google SDK/APIs
+  - 8 workflow chains
 """
 
 # ═══════════════════════════════════════════════════════
-# Agent Profiles — WHO can do WHAT
+# TIER 1: AGENTS — Autonomous runtimes that accept tasks
+# These can be dispatched to via ai-dispatch.sh or A2A.
+# Each has its own CLI, reasoning capability, and can
+# decide how to accomplish a task.
 # ═══════════════════════════════════════════════════════
 AGENTS = {
     "claude-code": {
         "name": "Claude Code (Opus 4.6)",
         "role": "Il Re — orchestra, sintetizza, decide, esegue",
+        "tier": "agent",
         "strengths": [
             "multi-file refactor", "deploy pipeline", "architectural decisions",
             "complex debugging", "test writing", "code review synthesis",
         ],
         "limits": "max 200K context window, no Google Search",
         "cost": "$$$",
-        "dispatch_cmd": None,  # Direct execution, no dispatch
+        "dispatch_cmd": None,  # Direct execution — IS the orchestrator
+        "capabilities": ["coding", "refactoring", "debugging", "testing", "deploy", "orchestration"],
     },
     "gemini-search": {
         "name": "Gemini 3.1 Pro (Search)",
         "role": "Il Consigliere — grounded web search",
+        "tier": "agent",
         "strengths": [
             "Indonesian regulations", "KBLI 2025", "visa rules", "tax law",
             "competitor research", "market data", "news", "citations with sources",
@@ -44,10 +57,12 @@ AGENTS = {
         "limits": "read-only, no code execution",
         "cost": "$0 (Google AI Ultra)",
         "dispatch_cmd": "search",
+        "capabilities": ["web_research", "regulations", "citations"],
     },
     "gemini-explore": {
         "name": "Gemini 3.1 Pro (Explore)",
         "role": "Il Consigliere — 1M context codebase analysis",
+        "tier": "agent",
         "strengths": [
             "cross-app dependency mapping", "large refactor planning",
             "codebase_investigator tool", "reading 100+ files at once",
@@ -56,10 +71,12 @@ AGENTS = {
         "limits": "read-only, sandbox mode, no writes",
         "cost": "$0 (Google AI Ultra)",
         "dispatch_cmd": "explore",
+        "capabilities": ["codebase_analysis", "architecture_review", "dependency_mapping"],
     },
     "codex-sandbox": {
         "name": "Codex 5.4 (Sandbox)",
         "role": "Il Soldato — kernel-level sandbox execution",
+        "tier": "agent",
         "strengths": [
             "DB migrations (alembic)", "schema changes", "risky code execution",
             "isolated testing", "upgrade/downgrade verification",
@@ -67,10 +84,12 @@ AGENTS = {
         "limits": "sandbox only, no network access, single file changes",
         "cost": "$0 (OpenAI free tier)",
         "dispatch_cmd": "sandbox",
+        "capabilities": ["sandbox_execution", "migration_testing", "isolated_code"],
     },
     "claude-review": {
         "name": "Claude CLI (Opus 4.6)",
         "role": "Il Giudice — code review, red team",
+        "tier": "agent",
         "strengths": [
             "security review", "pre-deploy audit", "logic errors",
             "red team analysis", "architectural critique",
@@ -78,10 +97,12 @@ AGENTS = {
         "limits": "read-only (plan mode), no code execution",
         "cost": "$0 (Max plan)",
         "dispatch_cmd": "claude-redteam",
+        "capabilities": ["security_review", "red_team", "code_review"],
     },
     "aider": {
         "name": "Aider (OpenRouter/DeepSeek)",
         "role": "Il Mercenario — multi-model coding",
+        "tier": "agent",
         "strengths": [
             "quick targeted fixes", "single-file refactors",
             "DeepSeek V3 for cost-effective coding", "Sonnet for refactors",
@@ -89,71 +110,189 @@ AGENTS = {
         "limits": "no orchestration awareness, single-task focus",
         "cost": "$ (OpenRouter rates)",
         "dispatch_cmd": "aider-fix",
+        "capabilities": ["quick_fix", "single_file_refactor"],
     },
+    "deepseek-reasoning": {
+        "name": "DeepSeek R1 671b (API)",
+        "role": "Il Pensatore — deep chain-of-thought reasoning",
+        "tier": "agent",
+        "strengths": [
+            "architecture decisions", "migration strategies", "complex debugging",
+            "trade-off analysis", "step-by-step reasoning", "27K+ reasoning tokens",
+        ],
+        "limits": "API-only (no CLI tools), slow (30-120s), no code execution",
+        "cost": "¢ ($0.55/M input, $2.19/M output)",
+        "dispatch_cmd": "reasoning",
+        "capabilities": ["deep_reasoning", "architecture_design", "trade_off_analysis"],
+    },
+}
+
+
+# ═══════════════════════════════════════════════════════
+# TIER 2: SERVICES — Stateless tools called by agents
+# These do NOT accept open-ended tasks. They execute
+# specific commands and return structured results.
+# Called directly by the orchestrator (Claude Code) or
+# via ai-dispatch.sh wrapper commands.
+# ═══════════════════════════════════════════════════════
+SERVICES = {
     "notebooklm": {
         "name": "NotebookLM (Google AI Ultra)",
         "role": "L'Oracolo — knowledge synthesis with citations",
-        "strengths": [
-            "multi-document synthesis with exact citations",
-            "cross-domain query (5+ notebooks in 1 call)",
-            "Deep Research (autonomous web search, 120/day)",
-            "audio/podcast generation", "quiz/flashcard/mind map generation",
+        "tier": "service",
+        "tools": [
+            "notebook_query", "cross_notebook_query", "research_start",
+            "studio_create", "source_add", "pipeline", "batch",
         ],
-        "limits": "3-15s latency, cookie auth fragile, 50 sources/notebook, no live DB access",
+        "access": "nlm CLI or NotebookLM MCP (mcp__notebooklm-mcp__*)",
+        "dispatch_cmds": ["oracolo", "oracolo-nb", "research"],  # Multiple entry points
+        "limits": "3-15s latency, cookie auth, 600 sources/notebook max, no live DB",
         "cost": "$0 (Google AI Ultra subscription)",
-        "dispatch_cmd": "nlm-query",
+        "notebooks": {
+            "NB-1": {"id": "f6ecd115-dd89-4c9b-b3dd-071e0e2f1876", "domain": "codebase", "status": "populated"},
+            "NB-2": {"id": "84375bc3-12d0-4405-a774-9b89189d8c39", "domain": "immigration", "status": "created"},
+            "NB-3": {"id": "2e84b9b9-3b99-4bc5-8ec5-351a43c52df4", "domain": "company", "status": "created"},
+            "NB-4": {"id": "837b620b-2aca-43ab-812e-97ca92bdad1d", "domain": "tax", "status": "created"},
+            "NB-5": {"id": "568ec624-ceb8-47d1-a2a2-5b2f793ea7ed", "domain": "property", "status": "created"},
+            "NB-6": {"id": "3e1baa5f-680f-4499-9430-23a901576bcc", "domain": "operations", "status": "created"},
+            "NB-7": {"id": "dd464d8f-6b8e-4543-8647-f62c498589b1", "domain": "editorial", "status": "created"},
+            "NB-8": {"id": "1143b525-dd3f-40d7-a34d-2e9263b44460", "domain": "lifestyle", "status": "created"},
+            "NB-9": {"id": "d2a05271-2f65-4c02-a44d-eefeb7c7f7cd", "domain": "research_lab", "status": "active"},
+        },
     },
     "gws": {
         "name": "Google Workspace CLI (gws)",
         "role": "Il Segretario — unified Google Workspace automation",
-        "strengths": [
-            "Gmail send/search", "Drive CRUD", "Calendar events/free-busy",
-            "Sheets read/write/append", "Docs create/export", "Admin user management",
+        "tier": "service",
+        "tools": [
+            "gmail_send", "gmail_search", "gmail_list", "gmail_draft",
+            "drive_list", "drive_upload", "drive_download", "drive_search",
+            "calendar_create", "calendar_list", "calendar_freebusy",
+            "sheets_read", "sheets_write", "sheets_append",
+            "docs_create", "docs_export", "admin_users_list",
         ],
+        "access": "gws CLI (command line)",
+        "dispatch_cmds": [],  # Called directly by orchestrator, no ai-dispatch wrapper yet
         "limits": "requires Google Workspace account, CLI tool",
         "cost": "$0 (already paying Workspace)",
-        "dispatch_cmd": "gws",
     },
-    "war-room-pipeline": {
-        "name": "War Room Pipeline",
-        "role": "Content Creator — Instagram carousel pipeline for Bali Zero",
-        "strengths": [
-            "Instagram carousel creation", "content strategy", "slide copywriting",
-            "image prompt generation", "Canva automation", "social media content",
+    "ocr": {
+        "name": "OCR Services (Tesseract MCP + Document AI)",
+        "role": "Document scanner — text extraction from images/PDFs",
+        "tier": "service",
+        "tools": ["perform_ocr", "perform_batch_ocr", "perform_pdf_ocr"],
+        "access": "OCR Tesseract MCP (mcp__ocr-tesseract__*) or Google Document AI SDK",
+        "dispatch_cmds": [],
+        "limits": "Indonesian language support varies, PDF quality dependent",
+        "cost": "$0 (Tesseract) / ¢ (Document AI per page)",
+    },
+    "websearch": {
+        "name": "Web Search (Exa + Brave)",
+        "role": "Deep web search with full content and citations",
+        "tier": "service",
+        "tools": ["web_search_exa", "web_search_advanced_exa", "brave_web_search"],
+        "access": "Exa MCP (mcp__exa__*) or Brave API",
+        "dispatch_cmds": ["websearch"],
+        "limits": "Exa: best from Claude Code MCP; Brave: API key needed for bash",
+        "cost": "$0 (Exa free tier) / ¢ (Brave API)",
+    },
+    "canva": {
+        "name": "Canva MCP",
+        "role": "Design automation — create/edit designs, export assets",
+        "tier": "service",
+        "tools": [
+            "generate-design", "create-design-from-candidate", "export-design",
+            "get-design", "search-designs", "list-brand-kits", "upload-asset-from-url",
         ],
-        "limits": "IG carousel only, Canva MCP requires interactive Claude Code session",
-        "cost": "~$0.10 per carousel (ChatGPT + Exa research)",
-        "dispatch_cmd": "war-room-pipeline",
+        "access": "Canva MCP (mcp__claude_ai_Canva__*)",
+        "dispatch_cmds": [],
+        "limits": "requires interactive Claude Code session, Canva Pro account",
+        "cost": "$0 (Canva Pro subscription)",
     },
 }
 
+
+# ═══════════════════════════════════════════════════════
+# TIER 3: PIPELINES — Scheduled/triggered workflows
+# These run autonomously on a schedule or are triggered
+# manually. They are NOT dispatchable by the classifier.
+# ═══════════════════════════════════════════════════════
+PIPELINES = {
+    "core-guardian": {
+        "name": "Core Guardian V3",
+        "role": "Autonomous code quality agent",
+        "tier": "pipeline",
+        "schedule": "every 3h (OpenClaw cron)",
+        "components": ["watchdog", "scout", "surgeon"],
+        "files": "apps/evaluator/core_guardian/",
+        "status": "active (watchdog + scout), surgeon pending OpenClaw bridge",
+    },
+    "intel-scraper": {
+        "name": "Bali Intel Scraper",
+        "role": "News intelligence pipeline — scrape, enrich, publish",
+        "tier": "pipeline",
+        "schedule": "03:00 WITA (OpenClaw cron on Pro)",
+        "trigger": "manual: submit_scraper_job MCP tool",
+        "files": "apps/bali-intel-scraper/",
+        "status": "active, runs ONLY on Pro (NOT on Fly.io)",
+    },
+    "war-room": {
+        "name": "War Room Pipeline",
+        "role": "Instagram carousel content creation for Bali Zero",
+        "tier": "pipeline",
+        "stages": ["research (Exa)", "strategy (ChatGPT)", "copywriting", "image prompts", "Canva carousel"],
+        "files": "apps/war-room/agents/",
+        "trigger": "manual: Claude Code session with Canva MCP",
+        "status": "active, requires interactive session",
+    },
+    "seo-guardian": {
+        "name": "SEO Guardian",
+        "role": "AI SEO coverage monitoring + llms.txt freshness",
+        "tier": "pipeline",
+        "trigger": "manual: audit_geo_aeo() in evaluator",
+        "files": "apps/evaluator/",
+        "status": "active",
+    },
+    "nlm-daily-refresh": {
+        "name": "NLM NB-1 Daily Refresh",
+        "role": "Regenerate codebase bundle and upload to NB-1",
+        "tier": "pipeline",
+        "schedule": "04:30 WITA (OpenClaw cron on Pro)",
+        "files": "scripts/nlm_nb1_daily_refresh.py",
+        "status": "active",
+    },
+}
+
+
 # ═══════════════════════════════════════════════════════
 # Capability Domains — WHAT exists in the arsenal
+# Maps domains to their best handler (agent, service, or
+# "orchestrator" for tasks requiring tool composition)
 # ═══════════════════════════════════════════════════════
 CAPABILITY_DOMAINS = {
     # --- Business Intelligence ---
     "crm": {
         "description": "Client management, profiles, practices, invoicing",
         "tools": "NuzMCP: list_clients, get_client, create_client, update_client, get_client_stats, get_client_timeline, get_client_compliance (12 tools)",
-        "best_agent": "claude-code",
+        "best_handler": "orchestrator",  # Claude Code calls MCP tools directly
         "keywords": ["client", "cliente", "CRM", "practice", "fattura", "invoice"],
     },
     "compliance": {
         "description": "Visa expiry alerts, document tracking, regulatory compliance",
         "tools": "NuzMCP: get_compliance_alerts, track_compliance, get_expiry_alerts, get_compliance_summary (4 tools)",
-        "best_agent": "claude-code",
+        "best_handler": "orchestrator",
         "keywords": ["compliance", "expiry", "scadenza", "document", "rinnovo"],
     },
     "intel": {
         "description": "News intelligence, scraping, trend analysis",
         "tools": "NuzMCP: search_intel, publish_intel, get_intel_trends, get_intel_metrics, submit_scraper_job (8 tools)",
-        "best_agent": "claude-code",
+        "best_handler": "orchestrator",
         "keywords": ["intel", "news", "notizia", "scraping", "trend"],
     },
     "analytics": {
         "description": "Revenue, productivity, GA4, SEO metrics",
         "tools": "NuzMCP: get_revenue_analytics, get_team_productivity, get_completion_rates + GA4 MCP (8 tools) + GSC MCP (19 tools)",
-        "best_agent": "claude-code",
+        "best_handler": "orchestrator",
         "keywords": ["analytics", "revenue", "fatturato", "metrics", "GA4", "SEO", "GSC"],
     },
 
@@ -161,41 +300,41 @@ CAPABILITY_DOMAINS = {
     "regulations": {
         "description": "Indonesian law, KBLI codes, visa rules, tax, permits",
         "tools": "NuzMCP: search_kbli, chat_kbli, inspect_kbli, ask_legal, list_visa_types, get_visa_details + Gemini Search",
-        "best_agent": "gemini-search",
+        "best_handler": "gemini-search",  # Agent: needs Google Search grounding
         "keywords": ["KBLI", "visa", "KITAS", "KITAP", "PMA", "tax", "pajak", "regulation", "normativa", "legge", "permit", "izin"],
     },
     "knowledge": {
-        "description": "Knowledge base queries, legal docs, vector search",
-        "tools": "NuzMCP: recall_similar, search_kbli, ask_legal (7 tools)",
-        "best_agent": "claude-code",
-        "keywords": ["knowledge", "RAG", "search", "cerca", "ask"],
+        "description": "Knowledge base queries, legal docs, vector search, NLM grounded citations",
+        "tools": "NuzMCP: recall_similar, search_kbli, ask_legal + NLM: notebook_query, cross_notebook_query",
+        "best_handler": "orchestrator",  # Orchestrator calls NLM service when needed
+        "keywords": ["knowledge", "RAG", "search", "cerca", "ask", "citation", "citazione"],
     },
     "pricing": {
         "description": "Service pricing, calculations, quotes",
         "tools": "NuzMCP: calculate_pricing, get_all_prices, search_service_pricing (3 tools)",
-        "best_agent": "claude-code",
+        "best_handler": "orchestrator",
         "keywords": ["price", "prezzo", "pricing", "quote", "preventivo", "costo"],
     },
 
     # --- Communications ---
     "comms": {
         "description": "Email, WhatsApp, Telegram, portal messaging",
-        "tools": "NuzMCP: send_email, send_whatsapp, send_portal_message, list_emails, search_emails, list_telegram_conversations (6 tools)",
-        "best_agent": "claude-code",
+        "tools": "NuzMCP: send_email, send_whatsapp, send_portal_message, list_emails, search_emails + gws gmail",
+        "best_handler": "orchestrator",  # Orchestrator calls NuzMCP or gws service
         "keywords": ["email", "whatsapp", "telegram", "message", "messaggio", "send"],
     },
 
     # --- Content & Publishing ---
     "content": {
         "description": "Article composition, publishing, editorial pipeline",
-        "tools": "NuzMCP: compose_article, publish_article, list_articles, get_article (6 tools) + OpenClaw: bz-newsroom, war-room-crew",
-        "best_agent": "claude-code",
+        "tools": "NuzMCP: compose_article, publish_article, list_articles, get_article (6 tools)",
+        "best_handler": "orchestrator",
         "keywords": ["article", "articolo", "blog", "content", "editorial", "publish"],
     },
     "content-creation": {
         "description": "Instagram carousel creation, social media content pipeline",
-        "tools": "War Room Pipeline: research → strategy → copywriting → image prompts → Canva carousel + Canva MCP (20+ tools)",
-        "best_agent": "war-room-pipeline",
+        "tools": "War Room Pipeline (pipeline) + Canva MCP (service)",
+        "best_handler": "orchestrator",  # Orchestrator triggers war-room pipeline + canva service
         "keywords": [
             "carousel", "carosello", "war room", "instagram", "post bali zero",
             "contenuto", "social media", "content creation", "IG post", "slide",
@@ -205,26 +344,26 @@ CAPABILITY_DOMAINS = {
     # --- Infrastructure & DevOps ---
     "infrastructure": {
         "description": "Fly.io deploy, health checks, monitoring, logs",
-        "tools": "NuzMCP-Advanced: check_fly_status, get_fly_logs, analyze_fly_health, check_deployment_readiness, execute_recovery_action (13 tools)",
-        "best_agent": "claude-code",
+        "tools": "NuzMCP-Advanced: check_fly_status, get_fly_logs, analyze_fly_health, check_deployment_readiness (13 tools)",
+        "best_handler": "orchestrator",
         "keywords": ["fly", "deploy", "health", "log", "monitoring", "server", "infra"],
     },
     "codebase": {
         "description": "Multi-app analysis, dependency mapping, architecture review",
-        "tools": "Gemini CLI: codebase_investigator (1M ctx) + NuzMCP-Advanced: search_codebase, get_file_structure, find_documentation",
-        "best_agent": "gemini-explore",
+        "tools": "Gemini CLI: codebase_investigator (1M ctx) + NuzMCP-Advanced: search_codebase, get_file_structure",
+        "best_handler": "gemini-explore",  # Agent: needs 1M context
         "keywords": ["codebase", "architecture", "dependency", "refactor", "multi-app", "monorepo"],
     },
     "database": {
         "description": "Alembic migrations, schema changes, DB operations",
         "tools": "Codex sandbox for safe migration testing + Claude Code for implementation",
-        "best_agent": "codex-sandbox",
+        "best_handler": "codex-sandbox",  # Agent: needs kernel sandbox
         "keywords": ["migration", "alembic", "schema", "database", "DB", "model", "table"],
     },
     "testing": {
         "description": "Running tests, coverage, quality checks",
         "tools": "NuzMCP-Advanced: run_backend_tests, run_linting, run_type_checking + Claude Code pytest",
-        "best_agent": "claude-code",
+        "best_handler": "orchestrator",
         "keywords": ["test", "pytest", "coverage", "lint", "type check", "mypy", "ruff"],
     },
 
@@ -232,21 +371,21 @@ CAPABILITY_DOMAINS = {
     "security": {
         "description": "Pre-deploy review, red team, vulnerability analysis",
         "tools": "Claude CLI: claude-redteam (Opus reasoning) + Claude CLI: claude-review",
-        "best_agent": "claude-review",
+        "best_handler": "claude-review",  # Agent: needs Opus reasoning
         "keywords": ["security", "review", "red team", "vulnerability", "deploy", "audit"],
     },
 
     # --- Google & External ---
     "google-workspace": {
-        "description": "Drive, Sheets, Calendar integration",
-        "tools": "NuzMCP: drive (5 tools), sheets (4 tools) + Gemini ext: google-workspace",
-        "best_agent": "claude-code",
-        "keywords": ["drive", "sheets", "calendar", "google", "spreadsheet"],
+        "description": "Drive, Sheets, Calendar, Gmail, Docs integration",
+        "tools": "gws CLI (22 tools) + NuzMCP: drive/sheets tools + Google Workspace MCP",
+        "best_handler": "orchestrator",  # Orchestrator calls gws service
+        "keywords": ["drive", "sheets", "calendar", "google", "spreadsheet", "gmail", "email"],
     },
     "browser": {
         "description": "Web automation, scraping, visual QA",
-        "tools": "OpenClaw: browser-use + Claude-in-Chrome MCP + Playwright MCP",
-        "best_agent": "claude-code",
+        "tools": "Claude-in-Chrome MCP + Playwright MCP + OpenClaw browser-use",
+        "best_handler": "orchestrator",
         "keywords": ["browser", "screenshot", "scrape", "web", "click", "navigate"],
     },
 
@@ -254,118 +393,95 @@ CAPABILITY_DOMAINS = {
     "workflows": {
         "description": "Deterministic multi-step automation chains",
         "tools": "NuzMCP: chain_daily_ops_autopilot, chain_new_client_onboarding, chain_practice_lifecycle_check, chain_intel_pipeline, chain_weekly_report, chain_client_health_monitor, chain_compliance_autopilot, chain_journey_accelerator (8 chains)",
-        "best_agent": "claude-code",
+        "best_handler": "orchestrator",
         "keywords": ["workflow", "chain", "automazione", "pipeline", "autopilot", "onboarding"],
     },
 
-    # --- Portale & Journey ---
+    # --- Portal & Journey ---
     "portal": {
         "description": "Client portal, visa status, document management",
         "tools": "NuzMCP: get_portal_dashboard, get_portal_visa_status, get_portal_timeline, list_portal_documents, send_portal_message (6 tools)",
-        "best_agent": "claude-code",
+        "best_handler": "orchestrator",
         "keywords": ["portal", "portale", "visa status", "document", "journey"],
     },
 
-    # --- Memory & LangSmith ---
+    # --- Observability ---
     "observability": {
         "description": "LangSmith tracing, query analytics, admin logs",
-        "tools": "NuzMCP: langsmith_project_stats, langsmith_recent_runs, langsmith_run_detail + get_query_analytics, get_failed_queries, get_admin_logs + LangSmith MCP",
-        "best_agent": "claude-code",
+        "tools": "NuzMCP: langsmith_project_stats, langsmith_recent_runs + get_query_analytics, get_failed_queries + LangSmith MCP",
+        "best_handler": "orchestrator",
         "keywords": ["langsmith", "tracing", "log", "admin", "analytics", "monitoring"],
     },
 
-    # --- NotebookLM (NEW) ---
-    "notebook-research": {
-        "description": "Deep web research with auto-import of sources into knowledge base",
-        "tools": "NLM MCP: research_start (Deep Research, autonomous 80+ web searches), cross_notebook_query (multi-domain synthesis)",
-        "best_agent": "notebooklm",
+    # --- Deep Research ---
+    "research": {
+        "description": "Deep web research with auto-import, NLM synthesis, Exa/Brave citations",
+        "tools": "NLM: research_start, cross_notebook_query + Exa MCP + Brave API",
+        "best_handler": "orchestrator",  # Orchestrator calls NLM service + websearch service
         "keywords": ["research", "ricerca", "deep research", "investigate", "indaga", "fonti", "sources"],
     },
-    "notebook-synthesis": {
-        "description": "Multi-document synthesis with exact citations from curated knowledge",
-        "tools": "NLM MCP: notebook_query, cross_notebook_query (across 7+ domain notebooks)",
-        "best_agent": "notebooklm",
-        "keywords": ["synthesis", "sintesi", "compare", "confronta", "multi-domain", "cross-domain", "citazione", "citation"],
-    },
-    "notebook-media": {
-        "description": "AI-generated audio podcasts, quizzes, flashcards, mind maps, study guides from knowledge",
-        "tools": "NLM MCP: studio_create (audio/podcast/video), download_artifact (quiz/flashcard/mind_map/study_guide/timeline/slide_deck/infographic)",
-        "best_agent": "notebooklm",
-        "keywords": ["podcast", "audio", "quiz", "flashcard", "mind map", "study guide", "guida", "briefing"],
-    },
-    "notebook-management": {
-        "description": "Create, populate, and manage knowledge notebooks",
-        "tools": "NLM MCP: notebook_create, notebook_list, notebook_delete, source_add (file/url/text/youtube/drive), source_list, source_delete, pipeline, batch",
-        "best_agent": "notebooklm",
-        "keywords": ["notebook", "create notebook", "add source", "populate", "knowledge base"],
+
+    # --- Reasoning ---
+    "reasoning": {
+        "description": "Complex architecture decisions, trade-off analysis, migration strategies",
+        "tools": "DeepSeek R1 671b API (chain-of-thought with 27K+ reasoning tokens)",
+        "best_handler": "deepseek-reasoning",  # Agent: needs deep reasoning
+        "keywords": [
+            "architecture decision", "design pattern", "migration strategy",
+            "complex debug", "chain of thought", "step by step", "reasoning",
+            "trade-off", "pros and cons", "compare approaches",
+        ],
     },
 
-    # --- Google Workspace unified (NEW) ---
-    "email-automation": {
-        "description": "Email send, search, draft, label management via gws CLI",
-        "tools": "gws gmail send/search/list/draft + NuzMCP: send_email, search_emails, list_emails",
-        "best_agent": "gws",
-        "keywords": ["email", "gmail", "send email", "draft", "invia email", "posta"],
-    },
-    "calendar-scheduling": {
-        "description": "Calendar events, free-busy check, appointment booking",
-        "tools": "gws calendar create/list/free-busy + Google Calendar MCP (gcal_*)",
-        "best_agent": "gws",
-        "keywords": ["calendar", "appuntamento", "appointment", "meeting", "schedule", "disponibilità", "free time"],
-    },
-    "document-generation": {
-        "description": "Create Google Docs, export PDF, proposals, reports, audit trails",
-        "tools": "gws docs create/append/export + gws drive upload",
-        "best_agent": "gws",
-        "keywords": ["document", "documento", "PDF", "proposal", "preventivo", "report", "Google Doc", "audit trail"],
-    },
-
-    # --- Google Business Profile (NEW) ---
-    "reputation": {
-        "description": "Google Business Profile: reviews, posts, Q&A, insights, listing management",
-        "tools": "GBP API: reviews.list/updateReply, localPosts.create, questions.answers.upsert, reportInsights + Places API for competitor monitoring",
-        "best_agent": "claude-code",
-        "keywords": ["review", "recensione", "Google Business", "GBP", "listing", "reputation", "local SEO", "Google Maps"],
-    },
-
-    # --- Translation & OCR (NEW) ---
+    # --- Translation & OCR ---
     "translation": {
         "description": "Indonesian-English translation for documents, articles, client comms",
         "tools": "Google Cloud Translation API (200+ languages) + Gemini inline translation",
-        "best_agent": "claude-code",
+        "best_handler": "orchestrator",
         "keywords": ["translate", "traduci", "translation", "traduzione", "Indonesian", "English", "bahasa"],
     },
     "document-ocr": {
-        "description": "Advanced OCR for Indonesian documents (passports, KITAS, contracts, notarial acts)",
-        "tools": "Google Cloud Document AI (200+ languages, superior to tesseract) + OCR Tesseract MCP (fallback)",
-        "best_agent": "claude-code",
+        "description": "Advanced OCR for Indonesian documents (passports, KITAS, contracts)",
+        "tools": "OCR Tesseract MCP + Google Cloud Document AI",
+        "best_handler": "orchestrator",  # Orchestrator calls ocr service
         "keywords": ["OCR", "scan", "passaporto", "passport", "document scan", "extract text"],
     },
 
-    # --- AI Agent Framework (NEW) ---
-    "agent-framework": {
-        "description": "Multi-agent orchestration framework, agent-to-agent communication",
-        "tools": "Google ADK (Agent Development Kit) for multi-agent graphs + A2A Protocol SDK for inter-agent communication + Agent Cards",
-        "best_agent": "claude-code",
-        "keywords": ["agent", "multi-agent", "A2A", "agent card", "orchestration", "framework", "ADK"],
+    # --- Reputation ---
+    "reputation": {
+        "description": "Google Business Profile: reviews, posts, Q&A, insights",
+        "tools": "GBP API: reviews, localPosts, questions, reportInsights + Places API",
+        "best_handler": "orchestrator",
+        "keywords": ["review", "recensione", "Google Business", "GBP", "listing", "reputation", "local SEO"],
     },
 
-    # --- GPU Compute (NEW) ---
+    # --- Media Generation ---
+    "media-generation": {
+        "description": "AI image generation (Imagen 4) and video generation (Veo 3)",
+        "tools": "google-genai SDK: Imagen 4 ($0.03/img), Veo 3 ($0.35/sec) + Canva MCP",
+        "best_handler": "orchestrator",  # Orchestrator calls canva service + genai SDK
+        "keywords": ["image", "immagine", "generate image", "video", "Imagen", "Veo", "Canva", "design"],
+    },
+
+    # --- GPU Compute ---
     "gpu-compute": {
         "description": "Remote GPU runtime for ML inference, training, heavy computation",
-        "tools": "Google Colab MCP: execute_code, create_notebook, pip_install + Colab free/Pro GPU",
-        "best_agent": "claude-code",
-        "keywords": ["GPU", "training", "inference", "Colab", "compute", "ML", "machine learning"],
-    },
-
-    # --- Image & Video Generation (NEW) ---
-    "media-generation": {
-        "description": "AI image generation (Imagen 4) and video generation (Veo 3) for marketing",
-        "tools": "google-genai SDK: Imagen 4 ($0.03/img), Veo 3 ($0.35/sec) + Canva MCP (20+ tools)",
-        "best_agent": "claude-code",
-        "keywords": ["image", "immagine", "generate image", "video", "Imagen", "Veo", "Canva", "design", "marketing visual"],
+        "tools": "Google Colab MCP: execute_code, create_notebook, pip_install",
+        "best_handler": "orchestrator",
+        "keywords": ["GPU", "training", "inference", "Colab", "compute", "ML"],
     },
 }
+
+
+# ═══════════════════════════════════════════════════════
+# Backward compatibility: best_agent → best_handler
+# Some code still references best_agent in CAPABILITY_DOMAINS.
+# This ensures it works with both old and new field names.
+# ═══════════════════════════════════════════════════════
+for _domain_id, _domain_info in CAPABILITY_DOMAINS.items():
+    if "best_handler" in _domain_info and "best_agent" not in _domain_info:
+        _domain_info["best_agent"] = _domain_info["best_handler"]
+
 
 # ═══════════════════════════════════════════════════════
 # OpenClaw Skills — additional capabilities
@@ -417,32 +533,24 @@ GEMINI_TOOLS = {
 # NotebookLM MCP Tools (35 tools via notebooklm-mcp-cli)
 # ═══════════════════════════════════════════════════════
 NOTEBOOKLM_TOOLS = {
-    # Notebook CRUD
     "notebook_list": "List all notebooks",
     "notebook_create": "Create a new notebook",
     "notebook_delete": "Delete a notebook",
     "notebook_get": "Get notebook details",
-    # Source management
     "source_add": "Add source (file, url, text, youtube, drive)",
     "source_list": "List sources in a notebook",
     "source_delete": "Delete a source",
     "source_refresh": "Refresh source content",
-    # Querying
     "notebook_query": "Chat with notebook sources (grounded, cited)",
     "cross_notebook_query": "Query across multiple notebooks simultaneously",
-    # Deep Research
     "research_start": "Trigger autonomous Deep Research (web search, 80+ sources)",
     "research_status": "Check Deep Research progress",
     "research_import": "Import research results into notebook",
-    # Studio (media generation)
-    "studio_create": "Generate: audio_overview, podcast, video, quiz, flashcards, mind_map, study_guide, slide_deck, infographic, timeline, data_table, report",
+    "studio_create": "Generate: audio, podcast, video, quiz, flashcards, mind_map, study_guide, slides, infographic, timeline",
     "studio_status": "Check studio generation status",
-    # Artifacts
     "download_artifact": "Download generated artifacts (MP3, PDF, PNG, JSON, CSV, PPTX)",
-    # Automation
     "pipeline": "Multi-step workflows (create → add sources → query → generate)",
     "batch": "Batch operations across notebooks",
-    # Authentication
     "login": "Browser-based Google auth (one-time)",
     "profile_list": "List authenticated Google profiles",
     "profile_switch": "Switch active profile",
@@ -490,18 +598,28 @@ GOOGLE_SDKS = {
 }
 
 
+# ═══════════════════════════════════════════════════════
+# Routing functions — used by orchestrator + classifier
+# ═══════════════════════════════════════════════════════
+
 def build_classifier_context() -> str:
     """Build the capability context string for the Qwen classifier prompt."""
-    lines = ["# Federation Capability Table\n"]
-    lines.append("## Agents\n")
-    for agent_id, info in AGENTS.items():
-        lines.append(f"- **{agent_id}**: {info['role']} — strengths: {', '.join(info['strengths'][:4])}")
+    lines = ["# Federation Capability Table v3\n"]
 
-    lines.append("\n## Domain → Best Agent Routing\n")
+    lines.append("## Dispatchable Agents\n")
+    for agent_id, info in AGENTS.items():
+        caps = ", ".join(info.get("capabilities", info["strengths"])[:4])
+        lines.append(f"- **{agent_id}**: {info['role']} — {caps}")
+
+    lines.append("\n## Services (called by orchestrator, NOT dispatchable)\n")
+    for svc_id, info in SERVICES.items():
+        lines.append(f"- **{svc_id}**: {info['role']}")
+
+    lines.append("\n## Domain → Handler Routing\n")
     for domain, info in CAPABILITY_DOMAINS.items():
         kw = ", ".join(info["keywords"][:5])
-        lines.append(f"- **{domain}** ({kw}) → {info['best_agent']}")
-        lines.append(f"  Tools: {info['tools'][:100]}")
+        handler = info["best_handler"]
+        lines.append(f"- **{domain}** ({kw}) → {handler}")
 
     return "\n".join(lines)
 
@@ -519,22 +637,48 @@ def match_domains(task: str) -> list[str]:
 
 
 def suggest_agents(task: str) -> dict[str, bool]:
-    """Suggest which agents to dispatch based on keyword matching.
+    """Suggest which agents/services to use based on keyword matching.
 
-    Returns dict with dispatch flags for all agent types.
+    Returns dict with dispatch flags for agents and service needs.
     This is a heuristic fallback — the Qwen classifier should override this.
     """
     domains = match_domains(task)
-    best_agents = {CAPABILITY_DOMAINS[d]["best_agent"] for d in domains}
+    handlers = {CAPABILITY_DOMAINS[d]["best_handler"] for d in domains}
+
+    task_lower = task.lower()
+
+    # Keyword-based detection beyond domain matching
+    reasoning_keywords = ["architecture decision", "design pattern", "migration strategy",
+                          "complex debug", "chain of thought", "step by step", "reasoning",
+                          "trade-off", "pros and cons", "compare approaches"]
+    oracolo_keywords = ["how does", "come funziona", "trace the flow", "file path",
+                        "which module", "import chain", "dependency"]
+    websearch_keywords = ["latest", "current regulation", "2026 update", "web search",
+                          "find sources", "citations", "aggiornamento"]
+    aider_keywords = ["quick fix", "fix this", "small change", "one-line", "typo"]
+
+    needs_reasoning = any(kw in task_lower for kw in reasoning_keywords)
+    needs_oracolo = any(kw in task_lower for kw in oracolo_keywords)
+    needs_websearch = any(kw in task_lower for kw in websearch_keywords)
+    needs_aider = any(kw in task_lower for kw in aider_keywords)
 
     return {
-        "needs_search": "gemini-search" in best_agents,
-        "needs_explore": "gemini-explore" in best_agents,
-        "needs_sandbox": "codex-sandbox" in best_agents,
-        "needs_redteam": "claude-review" in best_agents,
-        "needs_notebook": "notebooklm" in best_agents,
-        "needs_gws": "gws" in best_agents,
-        "needs_war_room": "war-room-pipeline" in best_agents,
+        # Agent dispatch flags
+        "needs_search": "gemini-search" in handlers,
+        "needs_explore": "gemini-explore" in handlers,
+        "needs_sandbox": "codex-sandbox" in handlers,
+        "needs_reasoning": needs_reasoning or "deepseek-reasoning" in handlers,
+        "needs_redteam": "claude-review" in handlers,
+        "needs_aider": needs_aider,
+        # Service flags (orchestrator calls these directly)
+        "needs_websearch": needs_websearch,
+        "needs_oracolo": needs_oracolo,
+        "needs_oracolo_nb": False,  # Requires explicit domain tag
+        "needs_notebook": "notebooklm" in handlers if False else any(  # NLM is a service now
+            d in domains for d in ["research", "knowledge"]
+        ),
+        "needs_gws": any(d in domains for d in ["google-workspace", "comms"]),
+        "needs_war_room": "content-creation" in domains,
     }
 
 
@@ -542,6 +686,9 @@ def suggest_agents(task: str) -> dict[str, bool]:
 # Summary stats
 # ═══════════════════════════════════════════════════════
 ARSENAL_SUMMARY = {
+    "agents": len(AGENTS),
+    "services": len(SERVICES),
+    "pipelines": len(PIPELINES),
     "nuzmcp_tools": 109,
     "nuzmcp_modules": 20,
     "nuzmcp_advanced_tools": 13,
@@ -550,20 +697,22 @@ ARSENAL_SUMMARY = {
     "google_sdks": len(GOOGLE_SDKS),
     "openclaw_skills": len(OPENCLAW_SKILLS),
     "gemini_tools": len(GEMINI_TOOLS),
-    "claude_code_mcp_servers": 8,  # +google-colab
-    "dispatch_commands": 5,
+    "claude_code_mcp_servers": 8,
     "workflow_chains": 8,
     "capability_domains": len(CAPABILITY_DOMAINS),
-    "agents": len(AGENTS),
     "total_capabilities": (
         109 + 13 + len(NOTEBOOKLM_TOOLS) + len(GWS_TOOLS) + len(GOOGLE_SDKS)
-        + len(OPENCLAW_SKILLS) + len(GEMINI_TOOLS) + 8 + 5 + 8
+        + len(OPENCLAW_SKILLS) + len(GEMINI_TOOLS) + 8 + 8
     ),
 }
 
 
 if __name__ == "__main__":
     print(build_classifier_context())
-    print(f"\n\n--- Arsenal Summary ---")
+    print(f"\n\n--- Arsenal Summary (v3) ---")
     for k, v in ARSENAL_SUMMARY.items():
         print(f"  {k}: {v}")
+    print(f"\n--- Tier Breakdown ---")
+    print(f"  AGENTS ({len(AGENTS)}):    {', '.join(AGENTS.keys())}")
+    print(f"  SERVICES ({len(SERVICES)}):  {', '.join(SERVICES.keys())}")
+    print(f"  PIPELINES ({len(PIPELINES)}): {', '.join(PIPELINES.keys())}")
