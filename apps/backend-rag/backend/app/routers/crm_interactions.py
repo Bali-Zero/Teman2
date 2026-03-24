@@ -381,6 +381,12 @@ async def get_client_timeline(
             if not check:
                 raise HTTPException(status_code=404, detail="Client not found")
 
+            # Get total count for accurate pagination info
+            count_row = await conn.fetchrow(
+                "SELECT COUNT(*) as total FROM interactions WHERE client_id = $1",
+                client_id,
+            )
+
             rows = await conn.fetch(
                 """
                 SELECT
@@ -401,7 +407,7 @@ async def get_client_timeline(
 
             return {
                 "client_id": client_id,
-                "total_interactions": len(rows),
+                "total_interactions": count_row["total"] if count_row else 0,
                 "timeline": [dict(row) for row in rows],
             }
     except HTTPException:

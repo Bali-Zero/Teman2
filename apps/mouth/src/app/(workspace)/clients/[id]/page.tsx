@@ -191,77 +191,7 @@ const getDriveProxyUrl = (url: string, type: 'thumbnail' | 'full' = 'thumbnail')
 };
 
 // Map nationalities to flag emojis
-const NATIONALITY_FLAGS: Record<string, string> = {
-  Italian: '🇮🇹',
-  Italy: '🇮🇹',
-  Russian: '🇷🇺',
-  Russia: '🇷🇺',
-  Ukrainian: '🇺🇦',
-  Ukraine: '🇺🇦',
-  American: '🇺🇸',
-  USA: '🇺🇸',
-  'United States': '🇺🇸',
-  British: '🇬🇧',
-  UK: '🇬🇧',
-  'United Kingdom': '🇬🇧',
-  Australian: '🇦🇺',
-  Australia: '🇦🇺',
-  German: '🇩🇪',
-  Germany: '🇩🇪',
-  French: '🇫🇷',
-  France: '🇫🇷',
-  Spanish: '🇪🇸',
-  Spain: '🇪🇸',
-  Dutch: '🇳🇱',
-  Netherlands: '🇳🇱',
-  Indonesian: '🇮🇩',
-  Indonesia: '🇮🇩',
-  Chinese: '🇨🇳',
-  China: '🇨🇳',
-  Japanese: '🇯🇵',
-  Japan: '🇯🇵',
-  Korean: '🇰🇷',
-  Korea: '🇰🇷',
-  'South Korea': '🇰🇷',
-  Indian: '🇮🇳',
-  India: '🇮🇳',
-  Brazilian: '🇧🇷',
-  Brazil: '🇧🇷',
-  Canadian: '🇨🇦',
-  Canada: '🇨🇦',
-  Mexican: '🇲🇽',
-  Mexico: '🇲🇽',
-  Argentinian: '🇦🇷',
-  Argentina: '🇦🇷',
-  'South African': '🇿🇦',
-  'South Africa': '🇿🇦',
-  'New Zealander': '🇳🇿',
-  'New Zealand': '🇳🇿',
-  Irish: '🇮🇪',
-  Ireland: '🇮🇪',
-  Portuguese: '🇵🇹',
-  Portugal: '🇵🇹',
-  Polish: '🇵🇱',
-  Poland: '🇵🇱',
-  Turkish: '🇹🇷',
-  Turkey: '🇹🇷',
-  Thai: '🇹🇭',
-  Thailand: '🇹🇭',
-  Vietnamese: '🇻🇳',
-  Vietnam: '🇻🇳',
-  Filipino: '🇵🇭',
-  Philippines: '🇵🇭',
-  Malaysian: '🇲🇾',
-  Malaysia: '🇲🇾',
-  Singaporean: '🇸🇬',
-  Singapore: '🇸🇬',
-};
-
-// Get flag emoji from nationality
-const getCountryFlag = (nationality: string | undefined): string | null => {
-  if (!nationality) return null;
-  return NATIONALITY_FLAGS[nationality] || null;
-};
+import { getCountryFlag } from '@/lib/utils/nationality-flags';
 
 // Format phone number with country code detection
 const formatPhoneNumber = (phone: string): string => {
@@ -1593,17 +1523,18 @@ function PassportCard({
 // ============================================
 // ACTUAL VISA CARD COMPONENT (Same size as Passport)
 // ============================================
-// Visa pricing listino (from visa_types table)
-const VISA_PRICES: Record<string, { name: string; price: number }> = {
-  c1: { name: 'C1 Tourist Visa', price: 2500000 },
-  c1_visa: { name: 'C1 Tourist Visa', price: 2500000 },
-  d12: { name: 'D12 Business Visa', price: 3500000 },
-  voa: { name: 'Visa on Arrival', price: 500000 },
-  e33e: { name: 'Retirement KITAS', price: 18000000 },
-  e33g: { name: 'Digital Nomad KITAS', price: 8000000 },
-  e28a: { name: 'Investor KITAS', price: 25000000 },
-  kitas: { name: 'KITAS', price: 15000000 },
-  kitap: { name: 'KITAP', price: 20000000 },
+// NOTE: Visa prices MUST come from PricingTool/backend API, never hardcoded (Golden Rule §6).
+// This map is only used as a display-name fallback — price values are intentionally omitted.
+const VISA_DISPLAY_NAMES: Record<string, string> = {
+  c1: 'C1 Tourist Visa',
+  c1_visa: 'C1 Tourist Visa',
+  d12: 'D12 Business Visa',
+  voa: 'Visa on Arrival',
+  e33e: 'Retirement KITAS',
+  e33g: 'Digital Nomad KITAS',
+  e28a: 'Investor KITAS',
+  kitas: 'KITAS',
+  kitap: 'KITAP',
 };
 
 function VisaCard({
@@ -1682,14 +1613,6 @@ function VisaCard({
       p.practice_type_name?.toLowerCase().includes('visa') ||
       p.practice_type_name?.toLowerCase().includes('kitas')
   );
-
-  // Get price from listino
-  const getVisaPrice = () => {
-    const code = visaProcess?.practice_type_code?.toLowerCase() || '';
-    return VISA_PRICES[code]?.price || null;
-  };
-
-  const visaPrice = getVisaPrice();
 
   // Get visa alert status
   const visaAlert = getVisaAlertStatus(latestVisa?.expiry_date);
