@@ -380,8 +380,17 @@ class SearchService:
         if user_level < 0 or user_level > 3:
             raise ValueError(f"User level must be between 0 and 3, got {user_level}")
 
-        # Generate query embedding
-        query_embedding = await self.embedder.generate_query_embedding(query)
+        # Expand query with keyword translations (IT/EN → EN/ID)
+        # This improves embedding match with Indonesian-language documents
+        from backend.services.search.keyword_translator import get_keyword_translator
+
+        translator = get_keyword_translator()
+        expanded_query = translator.translate(query)
+        if expanded_query != query:
+            logger.debug(f"Query expanded for embedding: '{query}' → '{expanded_query[:100]}...'")
+
+        # Generate query embedding from expanded query
+        query_embedding = await self.embedder.generate_query_embedding(expanded_query)
 
         # Validate embedding was generated
         if not query_embedding or len(query_embedding) == 0:
