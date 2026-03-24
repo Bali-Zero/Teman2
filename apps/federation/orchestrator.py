@@ -1,15 +1,17 @@
 """
-Federation Orchestrator v3 — ADK + A2A native.
+Federation Orchestrator v3.1 — 3-tier taxonomy (agents/services/pipelines).
 
-Replaces scripts/federation_orchestrator.py (LangGraph PoC) with
-Google ADK agents + A2A protocol for inter-agent communication.
-
-Architecture:
-  1. ClassifierTool (Qwen 3.5:9b via Ollama) → classifies task
-  2. RouterAgent (LlmAgent) → reads classification, picks sub-agents
-  3. RemoteA2aAgent(s) → dispatches to federation agents via A2A
+Architecture (v3.1, 2026-03-25):
+  1. Classifier (Qwen 3.5:9b via Ollama) → classifies task type, risk, domains
+  2. Deterministic routing → maps classification to agent dispatch OR orchestrator action
+  3. Parallel dispatch → agents execute, orchestrator calls services directly
   4. Assembler → merges results
   5. Reviewer → optional red team (if high risk)
+
+Key principle: Qwen classifies, deterministic rules dispatch.
+  - AGENTS (7): autonomous runtimes that accept tasks → dispatchable
+  - SERVICES (5): stateless tools → orchestrator calls directly via ai-dispatch.sh
+  - PIPELINES (5): scheduled workflows → NOT dispatched, triggered by cron/manual
 
 Usage:
   python -m apps.federation.orchestrator "add quarterly tax calculation for PT PMA"
@@ -61,29 +63,65 @@ OLLAMA_URL = "http://localhost:11434"
 AGENT_CARDS_DIR = Path(__file__).parent / "agents"
 
 # Compact classifier prompt (must stay <2K tokens for Qwen 9b fast inference)
-CLASSIFY_PROMPT = """Route this task. Available agents:
-- gemini-search: regulations/KBLI/visa/tax/market research (web search)
-- gemini-explore: codebase analysis across 3+ apps (1M context)
-- codex-sandbox: DB migration/schema changes (isolated sandbox)
-- claude-review: pre-deploy security/logic review (red team)
-- notebooklm: multi-document synthesis/research (citations)
-- gws: Google Workspace operations (email/calendar/drive/sheets)
-- war-room-pipeline: Instagram carousel content creation for Bali Zero (topic, research, slides, images, Canva)
+# v3.1: Only AGENTS are dispatchable. Services/pipelines handled by orchestrator.
+CLASSIFY_PROMPT = """Classify this task. You decide TYPE, RISK, and which AGENTS to dispatch.
+
+DISPATCHABLE AGENTS (autonomous, accept tasks):
+- gemini-explore: codebase analysis across 3+ apps (1M context, read-only)
+- gemini-search: Google grounded web search for regulations/market/news
+- codex-sandbox: DB migration/schema changes in isolated kernel sandbox
+- claude-review: pre-deploy security review, red team, architectural critique
+- aider: quick single-file bug fixes and refactoring
+- deepseek-reasoning: complex architecture decisions, trade-off analysis (slow, deep)
+
+ORCHESTRATOR handles these directly (do NOT dispatch, just classify):
+- CRM, compliance, pricing, portal, analytics → orchestrator uses MCP tools
+- Email, WhatsApp, Telegram, Drive, Sheets → orchestrator uses gws/MCP
+- Knowledge queries, NLM citations → orchestrator calls oracolo service
+- Instagram carousels, content creation → orchestrator triggers pipeline
+- OCR, translation, image generation → orchestrator calls service
+
+ROUTING RULES:
+1. Architecture decisions or complex debugging → deepseek-reasoning
+2. Codebase exploration across 3+ apps → gemini-explore
+3. Current regulations, Indonesian law, web info → gemini-search
+4. DB migration or risky code changes → codex-sandbox
+5. Quick single-file fix → aider
+6. Pre-deploy review, security audit → claude-review
+7. Everything else → orchestrator (empty dispatch list)
 
 Pre-matched domains: {matched_domains}
 
 Task: {task}
 
-Respond ONLY with JSON, no other text:
-{{"type":"feature|bugfix|refactor|deploy|research|conversation|content-creation","risk":"low|medium|high","domains":[...],
-"dispatch":[list of agent IDs to dispatch, e.g. "gemini-search","codex-sandbox"]}}"""
+Respond ONLY with JSON:
+{{"type":"feature|bugfix|refactor|deploy|research|reasoning|content-creation","risk":"low|medium|high","domains":[...],"dispatch":["agent-id-1"],"services":["service-needed-1"]}}}"""
 
 
 # ═══════════════════════════════════════════════════════
 # Classifier — Local Qwen 3.5:9b via Ollama
 # ═══════════════════════════════════════════════════════
+# Valid agent IDs that can be dispatched (from AGENTS tier only)
+DISPATCHABLE_AGENTS = {
+    "gemini-search", "gemini-explore", "codex-sandbox",
+    "claude-review", "aider", "deepseek-reasoning",
+}
+# Note: claude-code is not dispatchable — it IS the orchestrator
+
+# Service commands the orchestrator calls directly via ai-dispatch.sh
+SERVICE_COMMANDS = {
+    "oracolo", "oracolo-nb", "research", "websearch",
+}
+
+
 async def classify_task(task: str) -> dict[str, Any]:
-    """Classify the task using Qwen 3.5:9b (local, $0)."""
+    """Classify the task using Qwen 3.5:9b (local, $0).
+
+    Returns classification with:
+      - dispatch: list of AGENT IDs to dispatch (only real agents)
+      - services: list of SERVICE commands the orchestrator should call
+      - type, risk, domains: task metadata
+    """
     matched = match_domains(task)
     keyword_suggestions = suggest_agents(task)
 
@@ -117,56 +155,56 @@ async def classify_task(task: str) -> dict[str, Any]:
         classification = json.loads(raw)
     except Exception as e:
         logger.warning("Classifier failed (%s: %s), using keyword fallback", type(e).__name__, e)
-        dispatch = []
-        if keyword_suggestions.get("needs_search"):
-            dispatch.append("gemini-search")
-        if keyword_suggestions.get("needs_explore"):
-            dispatch.append("gemini-explore")
-        if keyword_suggestions.get("needs_sandbox"):
-            dispatch.append("codex-sandbox")
-        if keyword_suggestions.get("needs_redteam"):
-            dispatch.append("claude-review")
-        if keyword_suggestions.get("needs_notebook"):
-            dispatch.append("notebooklm")
-        if keyword_suggestions.get("needs_gws"):
-            dispatch.append("gws")
-        if keyword_suggestions.get("needs_war_room"):
-            dispatch.append("war-room-pipeline")
-
         classification = {
-            "type": "content-creation" if keyword_suggestions.get("needs_war_room") else "research" if keyword_suggestions.get("needs_search") else "feature",
+            "type": "research" if keyword_suggestions.get("needs_search") else "feature",
             "risk": "medium",
             "domains": matched or ["general"],
-            "dispatch": dispatch,
+            "dispatch": [],
+            "services": [],
         }
 
-    # Ensure dispatch list exists
+    # Ensure dispatch and services lists exist
     if "dispatch" not in classification:
-        dispatch = []
-        # Backward compat with needs_* format from Qwen
-        if classification.get("needs_search"):
-            dispatch.append("gemini-search")
-        if classification.get("needs_explore"):
-            dispatch.append("gemini-explore")
-        if classification.get("needs_sandbox"):
-            dispatch.append("codex-sandbox")
-        if classification.get("needs_redteam"):
-            dispatch.append("claude-review")
-        classification["dispatch"] = dispatch
+        classification["dispatch"] = []
+    if "services" not in classification:
+        classification["services"] = []
 
-    # Merge: if keywords caught something Qwen missed, add it
+    # --- Merge keyword suggestions (agents only) ---
     keyword_to_agent = {
         "needs_search": "gemini-search",
         "needs_explore": "gemini-explore",
         "needs_sandbox": "codex-sandbox",
+        "needs_reasoning": "deepseek-reasoning",
         "needs_redteam": "claude-review",
-        "needs_notebook": "notebooklm",
-        "needs_gws": "gws",
-        "needs_war_room": "war-room-pipeline",
+        "needs_aider": "aider",
     }
     for key, agent_id in keyword_to_agent.items():
         if keyword_suggestions.get(key) and agent_id not in classification["dispatch"]:
             classification["dispatch"].append(agent_id)
+
+    # --- Merge keyword suggestions (services) ---
+    keyword_to_service = {
+        "needs_oracolo": "oracolo",
+        "needs_oracolo_nb": "oracolo-nb",
+        "needs_websearch": "websearch",
+        "needs_notebook": "oracolo",  # NLM queries go through oracolo command
+    }
+    for key, svc_cmd in keyword_to_service.items():
+        if keyword_suggestions.get(key) and svc_cmd not in classification["services"]:
+            classification["services"].append(svc_cmd)
+
+    # --- Sanitize: remove non-agents from dispatch list ---
+    # Qwen might still output service IDs in dispatch — filter them out
+    classification["dispatch"] = [
+        aid for aid in classification["dispatch"]
+        if aid in DISPATCHABLE_AGENTS
+    ]
+
+    # Move any service IDs that Qwen put in dispatch to services
+    raw_dispatch = classification.get("_raw_dispatch", classification["dispatch"])
+    for aid in raw_dispatch:
+        if aid in SERVICE_COMMANDS and aid not in classification["services"]:
+            classification["services"].append(aid)
 
     # Force redteam for high-risk tasks
     if classification.get("risk") == "high" and "claude-review" not in classification["dispatch"]:
@@ -246,10 +284,15 @@ async def dispatch_to_agent(agent_id: str, task: str, port: int) -> dict[str, An
 
 async def dispatch_fallback(agent_id: str, task: str) -> dict[str, Any]:
     """Fallback: use ai-dispatch.sh directly (no A2A service running)."""
-    from scripts.federation_capability_table import AGENTS
+    from scripts.federation_capability_table import AGENTS, SERVICES
 
-    agent = AGENTS.get(agent_id, {})
-    dispatch_cmd = agent.get("dispatch_cmd")
+    # Look up in agents first, then services
+    entity = AGENTS.get(agent_id) or SERVICES.get(agent_id, {})
+    # Services have dispatch_cmds (list), agents have dispatch_cmd (str)
+    dispatch_cmd = entity.get("dispatch_cmd")
+    if not dispatch_cmd and "dispatch_cmds" in entity:
+        cmds = entity["dispatch_cmds"]
+        dispatch_cmd = cmds[0] if cmds else None
     if not dispatch_cmd:
         return {
             "agent_id": agent_id,
@@ -327,13 +370,18 @@ def assemble_context(task: str, classification: dict, results: list[dict]) -> st
     )
 
     agent_labels = {
+        # Agents (dispatchable)
         "gemini-search": "Web Research (Gemini Search)",
         "gemini-explore": "Codebase Analysis (Gemini Explore 1M)",
-        "codex-sandbox": "Sandbox Test (Codex)",
+        "codex-sandbox": "Sandbox Test (Codex GPT-5.4)",
+        "deepseek-reasoning": "Deep Reasoning (DeepSeek R1 671b)",
         "claude-review": "Red Team Review (Claude Opus)",
-        "notebooklm": "Knowledge Synthesis (NotebookLM)",
-        "gws": "Workspace Operations (GWS)",
-        "war-room-pipeline": "Content Creation (War Room Pipeline)",
+        "aider": "Quick Fix (DeepSeek V3 / Claude Sonnet)",
+        # Services (called by orchestrator, shown in results if executed)
+        "oracolo": "Architecture Truth (NB-1 Codebase)",
+        "oracolo-nb": "Domain Knowledge (NLM notebook)",
+        "websearch": "Deep Web Search (Exa/Brave)",
+        "research": "Deep Research (NLM autonomous)",
     }
 
     for r in results:
@@ -401,7 +449,7 @@ async def run_federation(
     CLASSIFY → CHECKPOINT → DISPATCH (parallel) → ASSEMBLE → REVIEW (if high risk) → OUTPUT
     """
     total = ARSENAL_SUMMARY["total_capabilities"]
-    print(f"\n  Federation Orchestrator v3 — ADK+A2A ({total} capabilities)")
+    print(f"\n  Federation Orchestrator v3.1 — 3-tier ({total} capabilities)")
     print(f"  Task: {task[:100]}")
     print()
 
@@ -409,13 +457,16 @@ async def run_federation(
     print("  [1/5] Classifying task (Qwen 3.5:9b)...")
     classification = await classify_task(task)
     dispatch_list = classification.get("dispatch", [])
+    service_list = classification.get("services", [])
 
     # 2. CHECKPOINT — show routing and confirm
-    print(f"\n  {'='*45}")
+    print(f"\n  {'='*50}")
     print(f"  Type:     {classification.get('type')} | Risk: {classification.get('risk')}")
     print(f"  Domains:  {', '.join(classification.get('domains', []))}")
-    print(f"  Dispatch: {', '.join(dispatch_list) or 'none (simple task)'}")
-    print(f"  {'='*45}")
+    print(f"  Agents:   {', '.join(dispatch_list) or 'none (orchestrator handles)'}")
+    if service_list:
+        print(f"  Services: {', '.join(service_list)}")
+    print(f"  {'='*50}")
 
     if telegram_chat_id:
         await send_telegram(telegram_chat_id, f"🤖 Federation routing:\nDispatch: {', '.join(dispatch_list)}")
