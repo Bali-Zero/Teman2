@@ -11,6 +11,8 @@ Features:
 - Real-time monitoring
 - Performance optimization
 """
+from __future__ import annotations
+
 
 import asyncio
 import json

@@ -11,6 +11,8 @@ Features:
 - Comprehensive metrics tracking
 - Multi-provider LLM support
 """
+from __future__ import annotations
+
 
 import ast
 import asyncio
