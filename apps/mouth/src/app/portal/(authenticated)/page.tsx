@@ -127,13 +127,10 @@ export default function PortalHomePage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Welcome Section */}
       <section>
-        <h1
-          className="text-2xl font-bold tracking-tight"
-          style={{ color: "var(--bz-text-1)" }}
-        >
+        <h1 className="text-3xl font-bold tracking-tight lux-text-gradient">
           Welcome Back
         </h1>
-        <p style={{ color: "var(--bz-text-2)" }}>
+        <p className="text-[var(--tx-secondary)] mt-1">
           Here is your Bali life overview.
         </p>
       </section>
@@ -213,21 +210,12 @@ export default function PortalHomePage() {
 
       {/* The Timeline */}
       <section className="space-y-4">
-        <h2
-          className="text-lg font-semibold flex items-center gap-2"
-          style={{ color: "var(--bz-text-1)" }}
-        >
-          <Clock
-            className="w-5 h-5"
-            style={{ color: "var(--bz-accent-warm)" }}
-          />
+        <h2 className="text-lg font-semibold flex items-center gap-2 text-[var(--tx-primary)] mb-6">
+          <Clock className="w-5 h-5 text-[var(--bz-copper)]" />
           Timeline
         </h2>
 
-        <div
-          className="relative border-l-2 ml-3 space-y-8 pb-10"
-          style={{ borderColor: "var(--bz-border)" }}
-        >
+        <div className="relative border-l-2 ml-3 space-y-8 pb-10 border-[var(--glass-rim)]">
           {timeline.map((entry: TimelineEntry, index: number) => (
             <TimelineItem
               key={entry.id}
@@ -279,35 +267,19 @@ function StatusCard({
   daysRemaining?: number | null;
   onClick?: () => void;
 }) {
-  const getStatusStyle = (s: string): React.CSSProperties => {
+  const getStatusStyle = (s: string) => {
     switch (s) {
       case "active":
       case "compliant":
-        return {
-          background: "rgba(16,185,129,0.08)",
-          color: "#34d399",
-          borderColor: "rgba(16,185,129,0.2)",
-        };
+        return "bg-[rgba(16,185,129,0.04)] text-[var(--neon-emerald)] border-[rgba(16,185,129,0.2)]";
       case "warning":
       case "attention":
-        return {
-          background: "rgba(245,158,11,0.08)",
-          color: "#fbbf24",
-          borderColor: "rgba(245,158,11,0.2)",
-        };
+        return "bg-[rgba(245,158,11,0.04)] text-[var(--neon-amber)] border-[rgba(245,158,11,0.2)]";
       case "expired":
       case "overdue":
-        return {
-          background: "rgba(239,68,68,0.08)",
-          color: "#f87171",
-          borderColor: "rgba(239,68,68,0.2)",
-        };
+        return "bg-[rgba(244,63,94,0.04)] text-[var(--neon-rose)] border-[rgba(244,63,94,0.2)]";
       default:
-        return {
-          background: "rgba(255,255,255,0.03)",
-          color: "var(--bz-text-2)",
-          borderColor: "rgba(255,255,255,0.05)",
-        };
+        return "bg-[rgba(255,255,255,0.02)] text-[var(--tx-secondary)] border-[rgba(255,255,255,0.05)]";
     }
   };
 
@@ -346,17 +318,19 @@ function StatusCard({
   return (
     <div
       onClick={onClick}
-      className="rounded-xl border p-4 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-      style={getStatusStyle(status)}
+      className={cn(
+        "crystal-stat-card cursor-pointer !flex !flex-col border",
+        getStatusStyle(status)
+      )}
     >
       <div className="flex justify-between items-start mb-2">
-        <span className="text-xs font-semibold uppercase tracking-wider opacity-70">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)]">
           {title}
         </span>
         {getIcon(status)}
       </div>
-      <div className="font-bold text-lg leading-tight truncate">{label}</div>
-      <div className="text-xs mt-1 opacity-80">{formatExpiry()}</div>
+      <div className="font-bold text-2xl font-mono text-[var(--tx-pure)] leading-tight truncate">{label}</div>
+      <div className="text-[10px] uppercase font-bold tracking-widest mt-2">{formatExpiry()}</div>
     </div>
   );
 }
@@ -402,16 +376,17 @@ function TimelineItem({
 
   const getDotStyle = (): React.CSSProperties => {
     if (isFuture)
-      return { background: "rgba(245,158,11,0.25)", color: "#fbbf24" };
+      return { background: "rgba(245,158,11,0.1)", color: "var(--neon-amber)", borderColor: "var(--neon-amber)" };
     switch (entry.type) {
       case "message":
-        return { background: "rgba(59,130,246,0.25)", color: "#60a5fa" };
+        return { background: "rgba(59,130,246,0.1)", color: "var(--neon-blue)", borderColor: "var(--neon-blue)" };
       case "deadline":
-        return { background: "rgba(239,68,68,0.25)", color: "#f87171" };
+        return { background: "rgba(244,63,94,0.1)", color: "var(--neon-rose)", borderColor: "var(--neon-rose)" };
       default:
         return {
-          background: "rgba(255,255,255,0.05)",
-          color: "var(--bz-text-2)",
+          background: "rgba(255,255,255,0.03)",
+          color: "var(--tx-secondary)",
+          borderColor: "rgba(255,255,255,0.1)",
         };
     }
   };
@@ -419,25 +394,22 @@ function TimelineItem({
   return (
     <div className="relative pl-6">
       <div
-        className="absolute -left-[9px] top-0 w-4 h-4 rounded-full flex items-center justify-center border-2"
-        style={{ ...getDotStyle(), borderColor: "var(--bz-base)" }}
+        className="absolute -left-[9px] top-0 w-4 h-4 rounded-full flex items-center justify-center border-2 border-[var(--anthracite-base)] shadow-[0_0_10px_currentColor]"
+        style={getDotStyle()}
       >
         {/* Dot only */}
       </div>
 
       <div
-        className="rounded-lg border p-3 transition-colors"
+        className="crystal-stat-card !border !p-4 !shadow-none"
         style={{
-          background: isFuture ? "rgba(245,158,11,0.05)" : "var(--bz-card)",
-          borderColor: isFuture ? "rgba(245,158,11,0.25)" : "var(--bz-border)",
+          background: isFuture ? "rgba(245,158,11,0.02)" : "rgba(255,255,255,0.02)",
+          borderColor: isFuture ? "rgba(245,158,11,0.2)" : "var(--glass-rim)",
         }}
       >
-        <div className="flex items-center gap-2 mb-1">
-          <div className={cn("p-1 rounded-md", getBgColor())}>{getIcon()}</div>
-          <span
-            className="text-xs font-medium"
-            style={{ color: "var(--bz-text-2)" }}
-          >
+        <div className="flex items-center gap-2 mb-2">
+          <div className={cn("p-1.5 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)]", getBgColor())}>{getIcon()}</div>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)]">
             {new Date(entry.occurredAt).toLocaleDateString(undefined, {
               month: "short",
               day: "numeric",
@@ -447,20 +419,14 @@ function TimelineItem({
           </span>
         </div>
 
-        <h3 className="font-semibold text-sm">{entry.title}</h3>
-        <p
-          className="text-sm mt-0.5 line-clamp-2"
-          style={{ color: "var(--bz-text-2)" }}
-        >
+        <h3 className="font-bold text-[var(--tx-pure)] text-sm">{entry.title}</h3>
+        <p className="text-xs mt-1.5 text-[var(--tx-secondary)] line-clamp-2">
           {entry.description}
         </p>
 
         {entry.type === "message" && entry.status === "team_to_client" && (
-          <div
-            className="mt-2 text-xs font-medium flex items-center"
-            style={{ color: "var(--bz-accent-warm)" }}
-          >
-            Reply <ChevronRight className="w-3 h-3 ml-0.5" />
+          <div className="mt-3 text-[10px] font-bold uppercase tracking-widest flex items-center text-[var(--bz-copper)] hover:text-white transition-colors cursor-pointer w-fit inline-flex">
+            Reply <ChevronRight className="w-3 h-3 ml-1" />
           </div>
         )}
       </div>
