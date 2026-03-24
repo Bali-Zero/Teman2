@@ -42,7 +42,6 @@ import { FamilyTab } from './components/FamilyTab';
 import { ImmigrationTab } from './components/ImmigrationTab';
 import { CompanyTab } from './components/CompanyTab';
 import { TaxTab } from './components/TaxTab';
-import { TimelineTab } from './components/TimelineTab';
 import { EditClientModal } from './components/modals/EditClientModal';
 import { AddFamilyMemberModal } from './components/modals/AddFamilyMemberModal';
 import { EditFamilyMemberModal } from './components/modals/EditFamilyMemberModal';
@@ -397,7 +396,7 @@ export default function ClientDetailPage() {
         />
       )}
 
-      {activeTab === 'immigration' && (
+      {activeTab === 'visas' && (
         <ImmigrationTab
           clientId={clientId}
           documents={documents}
