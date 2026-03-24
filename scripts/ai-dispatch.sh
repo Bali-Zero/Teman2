@@ -317,7 +317,7 @@ run_claude() {
 
     local start_time exit_code output
     start_time=$(date +%s)
-    output=$(run_with_timeout "$timeout" command claude -p "$prompt" --allowedTools "$allowed_tools" --no-input 2>&1) && exit_code=0 || exit_code=$?
+    output=$(run_with_timeout "$timeout" command claude -p "$prompt" --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
     local duration=$(( $(date +%s) - start_time ))
 
     save_output "claude-$mode" "$output" "$duration"

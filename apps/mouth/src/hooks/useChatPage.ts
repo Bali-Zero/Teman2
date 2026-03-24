@@ -205,7 +205,6 @@ export function useChatPage(): UseChatPageReturn {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // ← Run only once on mount to avoid infinite loop
 
-  
   // Optimistic messages (Source of Truth dal React Context dei messaggi reali)
   const [optimisticMessages, addOptimisticMessage] = useOptimistic<
     OptimisticMessage[],
@@ -230,7 +229,7 @@ export function useChatPage(): UseChatPageReturn {
         const newMsgs = [...prev];
         const lastMsg = newMsgs[newMsgs.length - 1];
         if (lastMsg.role === "assistant") {
-            lastMsg.content = (lastMsg.content || "") + chunk;
+          lastMsg.content = (lastMsg.content || "") + chunk;
         }
         return newMsgs;
       });
@@ -238,44 +237,54 @@ export function useChatPage(): UseChatPageReturn {
     onStep: (step: AgentStep) => {
       // Gestito in streamingSteps da useChatSend
     },
-    onComplete: async (fullResponse: string, sources: any[], metadata?: ChatMessage["metadata"]) => {
-        setMessages((prev) => {
-            if (prev.length === 0) return prev;
-            const newMsgs = [...prev];
-            const lastMsg = newMsgs[newMsgs.length - 1];
-            if (lastMsg.role === "assistant") {
-                lastMsg.content = fullResponse;
-                lastMsg.sources = sources;
-                lastMsg.isStreaming = false;
-                if (metadata) lastMsg.metadata = metadata;
-            }
-            return newMsgs;
-        });
-        
-        // Salvataggio conversazione
-        try {
-          const title =
-            messages.length === 0
-              ? chatInput.input.slice(0, 50) + (chatInput.input.length > 50 ? "..." : "")
-              : "Nuova Conversazione";
-          
-          
-          // L'API di actions.ts si aspetta un oggetto con title, messages, e options
-          
-          // L'API di actions.ts (saveConversation) richiede: sessionId (string) e messages (ChatMessage[])
-          
-          // Force types
-          await saveConversation(sessionId as any, [
-              ...messages.map((m) => ({ role: m.role, content: m.content || "" })) as any,
-              { role: "assistant", content: fullResponse } as any,
-            ] as any);
-        } catch (e) {
-            console.error("Save error:", e);
+    onComplete: async (
+      fullResponse: string,
+      sources: any[],
+      metadata?: ChatMessage["metadata"],
+    ) => {
+      setMessages((prev) => {
+        if (prev.length === 0) return prev;
+        const newMsgs = [...prev];
+        const lastMsg = newMsgs[newMsgs.length - 1];
+        if (lastMsg.role === "assistant") {
+          lastMsg.content = fullResponse;
+          lastMsg.sources = sources;
+          lastMsg.isStreaming = false;
+          if (metadata) lastMsg.metadata = metadata;
         }
+        return newMsgs;
+      });
+
+      // Salvataggio conversazione
+      try {
+        const title =
+          messages.length === 0
+            ? chatInput.input.slice(0, 50) +
+              (chatInput.input.length > 50 ? "..." : "")
+            : "Nuova Conversazione";
+
+        // L'API di actions.ts si aspetta un oggetto con title, messages, e options
+
+        // L'API di actions.ts (saveConversation) richiede: sessionId (string) e messages (ChatMessage[])
+
+        // Force types
+        await saveConversation(
+          sessionId as any,
+          [
+            ...(messages.map((m) => ({
+              role: m.role,
+              content: m.content || "",
+            })) as any),
+            { role: "assistant", content: fullResponse } as any,
+          ] as any,
+        );
+      } catch (e) {
+        console.error("Save error:", e);
+      }
     },
     onError: (error: Error) => {
-        logger.error("Chat error", { component: "useChatPage" }, error);
-    }
+      logger.error("Chat error", { component: "useChatPage" }, error);
+    },
   });
 
   // Handle send message (Thin delegator)
@@ -301,7 +310,16 @@ export function useChatPage(): UseChatPageReturn {
     });
 
     setMessages((prev) => [...prev, { ...userMsg, isPending: false }]);
-    setMessages((prev) => [...prev, { id: `ast_${Date.now()}`, role: "assistant", content: "", isStreaming: true, timestamp: new Date() }]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `ast_${Date.now()}`,
+        role: "assistant",
+        content: "",
+        isStreaming: true,
+        timestamp: new Date(),
+      },
+    ]);
 
     chatInput.setInput("");
     chatInput.setAttachedImages([]);
@@ -313,7 +331,6 @@ export function useChatPage(): UseChatPageReturn {
     }, 100);
 
     await chatSend.sendMessage(trimmedInput, chatInput.attachedImages);
-
   }, [chatInput, isPending, chatSend, addOptimisticMessage]);
 
   // Load user profile

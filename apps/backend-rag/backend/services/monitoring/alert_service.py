@@ -145,8 +145,7 @@ class AlertService:
 
         # Global rate limiter: prevent Telegram spam across ALL error paths
         self._global_send_times = [
-            t for t in self._global_send_times
-            if now - t < self._global_cooldown_seconds
+            t for t in self._global_send_times if now - t < self._global_cooldown_seconds
         ]
         if len(self._global_send_times) >= self._global_max_per_minute:
             logger.debug(

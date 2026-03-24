@@ -142,16 +142,18 @@ class TestRetryHandler:
         """Test that default retryable keywords work"""
         handler = RetryHandler()
 
-        # Test each default keyword
-        for keyword in RETRYABLE_ERROR_KEYWORDS:
-            mock_operation = AsyncMock(side_effect=Exception(f"Error with {keyword}"))
+        # Mock sleep to avoid real delays (10 keywords × retries = 60s+ without mock)
+        with patch("asyncio.sleep"):
+            # Test each default keyword
+            for keyword in RETRYABLE_ERROR_KEYWORDS:
+                mock_operation = AsyncMock(side_effect=Exception(f"Error with {keyword}"))
 
-            with pytest.raises(Exception):
-                await handler.execute_with_retry(operation=mock_operation, operation_name="test_op")
+                with pytest.raises(Exception):
+                    await handler.execute_with_retry(operation=mock_operation, operation_name="test_op")
 
-            # Should retry (fail after max_retries)
-            assert mock_operation.call_count == 3
-            mock_operation.reset_mock()
+                # Should retry (fail after max_retries)
+                assert mock_operation.call_count == 3
+                mock_operation.reset_mock()
 
     @pytest.mark.asyncio
     async def test_execute_with_retry_case_insensitive(self):
