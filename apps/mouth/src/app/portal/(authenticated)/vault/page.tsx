@@ -13,6 +13,7 @@ import {
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/utils/format-date";
 import { logger } from "@/lib/logger";
 import type { PortalDocument } from "@/lib/api/portal/portal.types";
 import { Button } from "@/components/ui/button";
@@ -303,14 +304,14 @@ export default function VaultPage() {
                       className="text-xs mt-1"
                       style={{ color: "var(--bz-text-2)" }}
                     >
-                      Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
+                      Uploaded: {formatDate(doc.uploadDate)}
                     </p>
                     {doc.expiryDate && (
                       <p
                         className="text-xs mt-0.5"
                         style={{ color: "#fbbf24" }}
                       >
-                        Expires: {new Date(doc.expiryDate).toLocaleDateString()}
+                        Expires: {formatDate(doc.expiryDate)}
                       </p>
                     )}
                   </div>
