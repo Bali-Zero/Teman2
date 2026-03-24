@@ -5,7 +5,7 @@ export type TabType =
   | "documents"
   | "process"
   | "family"
-  | "immigration"
+  | "visas"
   | "company"
   | "tax";
 
