@@ -137,7 +137,7 @@ apps/backend-rag/
 
 10 live on Fly.io (93,283 docs). Config: `backend/services/ingestion/collection_manager.py`.
 
-**Search Pipeline (ENABLED 2026-03-24):** Hybrid search (BM25 sparse + Dense vector + RRF fusion) → CrossEncoder reranking (ms-marco-MiniLM-L-6-v2, top-20→top-5). Flags: `ENABLE_HYBRID_SEARCH=true`, `ENABLE_RERANKER=true`, `ENABLE_BM25=true`.
+**Search Pipeline (ENABLED 2026-03-24):** Hybrid search (BM25 sparse + Dense vector + RRF fusion) → CrossEncoder reranking (ms-marco-MiniLM-L-6-v2, top-20→top-5). Flags: `ENABLE_HYBRID_SEARCH=true`, `ENABLE_RERANKER=true`, `ENABLE_BM25=true`, `ENABLE_QUERY_EXPANSION=true`.
 
 | Collection                      | Docs    | Purpose                       |
 | ------------------------------- | ------- | ----------------------------- |
