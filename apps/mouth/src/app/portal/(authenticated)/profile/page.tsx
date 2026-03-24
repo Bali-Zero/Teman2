@@ -89,14 +89,7 @@ const isBirthdayToday = (dateOfBirth: string | undefined): boolean => {
   );
 };
 
-const formatDate = (dateStr: string | undefined): string => {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-};
+import { formatDate } from "@/lib/utils/format-date";
 
 // ============================================================================
 // MAIN COMPONENT
