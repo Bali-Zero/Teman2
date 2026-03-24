@@ -2,6 +2,8 @@
 🤖 AUTONOMOUS CONVERSATION TRAINER
 Learns from successful conversations and improves prompts automatically
 """
+from __future__ import annotations
+
 
 import asyncio
 import json

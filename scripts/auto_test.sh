@@ -47,7 +47,13 @@ export OLLAMA_MODEL="${OLLAMA_MODEL:-qwen2.5:latest}"
 # --- Phase 1: Agent pytest suite ---
 log "--- Phase 1: Agent pytest suite ---"
 cd "$BACKEND_DIR" || exit 1
-export PYTHONPATH="$BACKEND_DIR/backend:${PYTHONPATH:-}"
+# Activate virtualenv for pytest
+if [ -d "$BACKEND_DIR/venv" ]; then
+    source "$BACKEND_DIR/venv/bin/activate"
+elif [ -d "$BACKEND_DIR/.venv" ]; then
+    source "$BACKEND_DIR/.venv/bin/activate"
+fi
+export PYTHONPATH="$BACKEND_DIR:${PYTHONPATH:-}"
 
 PASSED=0
 FAILED=0

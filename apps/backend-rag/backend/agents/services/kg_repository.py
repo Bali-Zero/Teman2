@@ -5,6 +5,8 @@ Responsibility: Database operations for knowledge graph (entities, relationships
 
 UPDATED 2025-12-31: Migrated from legacy kg_entities/kg_relationships to kg_nodes/kg_edges schema.
 """
+from __future__ import annotations
+
 
 import json
 import logging

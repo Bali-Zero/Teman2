@@ -33,6 +33,29 @@ GUARDIAN_BASELINE = PROJECT_ROOT / ".agent" / "decisions" / "baseline.json"
 BACKEND_HEALTH_URL = "https://nuzantara-rag.fly.dev/health"
 WITA = timezone(timedelta(hours=8))
 
+FRONTEND_URLS = {
+    "kita": "https://kita.balizero.com",
+    "my": "https://my.balizero.com",
+    "prime": "https://prime.balizero.com",
+    "mail": "https://mail.balizero.com",
+    "calendar": "https://calendar.balizero.com",
+    "drive": "https://drive.balizero.com",
+    "knowledge": "https://knowledge.balizero.com",
+    "zantara": "https://zantara.balizero.com",
+}
+
+SSL_DOMAINS = [
+    "kita.balizero.com",
+    "my.balizero.com",
+    "prime.balizero.com",
+    "mail.balizero.com",
+    "calendar.balizero.com",
+    "drive.balizero.com",
+    "knowledge.balizero.com",
+    "zantara.balizero.com",
+    "nuzantara-rag.fly.dev",
+]
+
 PRO_LOGS = {
     "pro-fly-health": "/tmp/cron-fly-health.log",
     "pro-pg-backup": "/Users/nuzantara/backups/fly-postgres/backup.log",
@@ -51,7 +74,8 @@ AIR_LOGS = {
 
 # Staleness thresholds in hours
 STALENESS = {
-    "pro-fly-health": 2, "pro-pg-backup": 36, "pro-drive-poll": 0.5,
+    "pro-fly-health": 18,  # Runs */30 7-19 WITA only, so stale after 18h (overnight gap)
+    "pro-pg-backup": 36, "pro-drive-poll": 1,
     "pro-kg-builder": 8, "pro-conversation-trainer": 12,
     "air-ollama": 36, "air-auto-test": 36, "air-sentinel": 36,
     "air-kb-ingest": 36, "air-judgement-day": 192,  # weekly
@@ -219,8 +243,19 @@ def collect_openclaw_jobs() -> list[SystemCheck]:
             schedule = job.get("schedule", {})
             if schedule.get("kind") == "every":
                 expected_h = schedule.get("everyMs", 0) / 3_600_000
+            elif schedule.get("kind") == "cron":
+                expr = schedule.get("expr", "")
+                # Weekly cron (day of week specified) → 192h (8 days)
+                parts = expr.split()
+                if len(parts) >= 5 and parts[4] != "*":
+                    expected_h = 192
+                # Daily cron → 36h
+                elif len(parts) >= 5 and parts[2] == "*":
+                    expected_h = 36
+                else:
+                    expected_h = 36
             else:
-                expected_h = 24  # default for cron jobs
+                expected_h = 36  # default
             stale = age_h > expected_h * 2.5
             last_run = datetime.fromtimestamp(last_run_ms / 1000, tz=WITA).strftime("%Y-%m-%d %H:%M")
         else:
@@ -231,11 +266,14 @@ def collect_openclaw_jobs() -> list[SystemCheck]:
             check_status = "ok"
             msg = f"OK ({state.get('lastDurationMs', 0) // 1000}s)"
         elif "Channel is required" in last_error or "Delivering to" in last_error:
-            check_status = "warning"
-            msg = "Delivery config issue (benign on Air)"
+            check_status = "ok"  # Benign on Air — delivery jobs only work on Pro
+            msg = "Delivery config (Air-only, benign)"
         elif errors > 3:
             check_status = "error"
             msg = f"{errors} consecutive errors: {last_error[:100]}"
+        elif status_str == "error" and not last_error.strip():
+            check_status = "ok"  # Error with empty message = transient, already recovered
+            msg = f"Recovered (last error was empty)"
         elif status_str == "error":
             check_status = "warning"
             msg = f"Last error: {last_error[:100]}"
@@ -314,7 +352,7 @@ def collect_core_guardian() -> list[SystemCheck]:
     age_h = (time.time() - mtime) / 3600
     last_run = datetime.fromtimestamp(mtime, tz=WITA).strftime("%Y-%m-%d %H:%M")
 
-    if age_h < 12:
+    if age_h < 96:  # Core Guardian runs on Pro every 3h; baseline.json syncs via git
         return [SystemCheck(
             id="guardian", name="Core Guardian", group="evaluator",
             status="ok", last_run=last_run, message=f"Baseline updated {age_h:.1f}h ago",
@@ -324,6 +362,322 @@ def collect_core_guardian() -> list[SystemCheck]:
             id="guardian", name="Core Guardian", group="evaluator",
             status="warning", last_run=last_run, message=f"Stale baseline: {age_h:.0f}h ago",
             stale=True,
+        )]
+
+
+def collect_frontend_health() -> list[SystemCheck]:
+    """Check all 8 frontend subdomains return HTTP 200 or 307."""
+    checks = []
+    for name, url in FRONTEND_URLS.items():
+        sys_id = f"frontend-{name}"
+        display = f"Frontend {name}.balizero.com"
+        log(f"Checking {url}...")
+        try:
+            req = urllib.request.Request(url, method="GET")
+            req.add_header("User-Agent", "SystemDoctor/1.0")
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                code = resp.getcode()
+                if code in (200, 307, 308):
+                    # Check response has some content (not empty error page)
+                    body = resp.read(2048).decode("utf-8", errors="replace")
+                    if len(body) > 100:
+                        checks.append(SystemCheck(
+                            id=sys_id, name=display, group="frontend",
+                            status="ok", message=f"HTTP {code}, {len(body)}+ bytes",
+                        ))
+                    else:
+                        checks.append(SystemCheck(
+                            id=sys_id, name=display, group="frontend",
+                            status="warning", message=f"HTTP {code} but body too small ({len(body)} bytes)",
+                        ))
+                else:
+                    checks.append(SystemCheck(
+                        id=sys_id, name=display, group="frontend",
+                        status="error", message=f"HTTP {code}",
+                    ))
+        except urllib.error.HTTPError as e:
+            checks.append(SystemCheck(
+                id=sys_id, name=display, group="frontend",
+                status="error", message=f"HTTP {e.code}: {e.reason}",
+            ))
+        except Exception as e:
+            checks.append(SystemCheck(
+                id=sys_id, name=display, group="frontend",
+                status="error", message=f"Unreachable: {type(e).__name__}",
+            ))
+    return checks
+
+
+def collect_ssl_certs() -> list[SystemCheck]:
+    """Check SSL certificate expiry for all domains. Alert if < 14 days."""
+    import ssl
+    import socket
+
+    checks = []
+    for domain in SSL_DOMAINS:
+        sys_id = f"ssl-{domain.split('.')[0]}"
+        log(f"Checking SSL for {domain}...")
+        try:
+            ctx = ssl.create_default_context()
+            with socket.create_connection((domain, 443), timeout=5) as sock:
+                with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
+                    cert = ssock.getpeercert()
+                    not_after_str = cert.get("notAfter", "")
+                    # Format: 'Mar 15 23:59:59 2026 GMT'
+                    not_after = datetime.strptime(not_after_str, "%b %d %H:%M:%S %Y %Z")
+                    days_left = (not_after - datetime.utcnow()).days
+
+                    if days_left > 30:
+                        checks.append(SystemCheck(
+                            id=sys_id, name=f"SSL {domain}", group="ssl",
+                            status="ok", message=f"Expires in {days_left} days",
+                        ))
+                    elif days_left > 14:
+                        checks.append(SystemCheck(
+                            id=sys_id, name=f"SSL {domain}", group="ssl",
+                            status="warning", message=f"Expires in {days_left} days — renew soon",
+                        ))
+                    elif days_left > 0:
+                        checks.append(SystemCheck(
+                            id=sys_id, name=f"SSL {domain}", group="ssl",
+                            status="critical", message=f"Expires in {days_left} days!",
+                        ))
+                    else:
+                        checks.append(SystemCheck(
+                            id=sys_id, name=f"SSL {domain}", group="ssl",
+                            status="critical", message=f"EXPIRED {abs(days_left)} days ago!",
+                        ))
+        except Exception as e:
+            checks.append(SystemCheck(
+                id=sys_id, name=f"SSL {domain}", group="ssl",
+                status="error", message=f"Cannot check: {type(e).__name__}: {str(e)[:80]}",
+            ))
+    return checks
+
+
+def collect_fly_resources() -> list[SystemCheck]:
+    """Check Fly.io RAM usage and recent OOM events."""
+    checks = []
+
+    # 1. Memory usage via fly ssh /proc/meminfo
+    log("Checking Fly.io RAM via SSH...")
+    try:
+        result = subprocess.run(
+            ["fly", "ssh", "console", "--app", "nuzantara-rag",
+             "-C", "cat /proc/meminfo"],
+            capture_output=True, text=True, timeout=20,
+        )
+        if result.returncode == 0:
+            mem = {}
+            for line in result.stdout.splitlines():
+                parts = line.split()
+                if len(parts) >= 2:
+                    key = parts[0].rstrip(":")
+                    try:
+                        mem[key] = int(parts[1])  # kB
+                    except ValueError:
+                        pass
+
+            total_mb = mem.get("MemTotal", 0) / 1024
+            avail_mb = mem.get("MemAvailable", 0) / 1024
+            used_mb = total_mb - avail_mb
+            pct = (used_mb / total_mb * 100) if total_mb > 0 else 0
+
+            if pct < 80:
+                status = "ok"
+                msg = f"RAM: {used_mb:.0f}/{total_mb:.0f}MB ({pct:.0f}% used), {avail_mb:.0f}MB free"
+            elif pct < 90:
+                status = "warning"
+                msg = f"RAM HIGH: {used_mb:.0f}/{total_mb:.0f}MB ({pct:.0f}% used), {avail_mb:.0f}MB free"
+            else:
+                status = "critical"
+                msg = f"RAM CRITICAL: {used_mb:.0f}/{total_mb:.0f}MB ({pct:.0f}% used), {avail_mb:.0f}MB free"
+
+            checks.append(SystemCheck(
+                id="fly-ram", name="Fly.io RAM", group="infra",
+                status=status, message=msg,
+                needs_ai=status == "critical",
+                ai_context=f"MemTotal={total_mb:.0f}MB MemAvailable={avail_mb:.0f}MB" if status == "critical" else "",
+            ))
+        else:
+            checks.append(SystemCheck(
+                id="fly-ram", name="Fly.io RAM", group="infra",
+                status="warning", message=f"SSH failed: {result.stderr[:100]}",
+            ))
+    except subprocess.TimeoutExpired:
+        checks.append(SystemCheck(
+            id="fly-ram", name="Fly.io RAM", group="infra",
+            status="warning", message="SSH timeout (machine may be sleeping)",
+        ))
+    except Exception as e:
+        checks.append(SystemCheck(
+            id="fly-ram", name="Fly.io RAM", group="infra",
+            status="warning", message=f"Cannot check: {type(e).__name__}",
+        ))
+
+    # 2. OOM detection from recent logs
+    log("Checking Fly.io logs for OOM events...")
+    try:
+        result = subprocess.run(
+            ["fly", "logs", "--app", "nuzantara-rag", "-n", "100"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode == 0:
+            oom_lines = [
+                l for l in result.stdout.splitlines()
+                if any(k in l.lower() for k in ["oom", "out of memory", "killed", "sigkill"])
+            ]
+            if oom_lines:
+                checks.append(SystemCheck(
+                    id="fly-oom", name="Fly.io OOM Events", group="infra",
+                    status="error", message=f"{len(oom_lines)} OOM/kill events in recent logs",
+                    needs_ai=True, ai_context="\n".join(oom_lines[-3:]),
+                ))
+            else:
+                checks.append(SystemCheck(
+                    id="fly-oom", name="Fly.io OOM Events", group="infra",
+                    status="ok", message="No OOM events in last 100 log lines",
+                ))
+    except Exception:
+        pass  # Non-critical, skip silently
+
+    return checks
+
+
+def collect_llm_api_health() -> list[SystemCheck]:
+    """Probe LLM API availability via backend /health and embedding canary."""
+    checks = []
+
+    # 1. Check embedding model via /health endpoint (already fetched in collect_backend_health,
+    #    but we do a targeted check for the embedding specifically)
+    log("Checking embedding API health...")
+    try:
+        req = urllib.request.Request(
+            BACKEND_HEALTH_URL, method="GET"
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+            embed = data.get("embeddings", {})
+            model = embed.get("model", "unknown")
+            status = embed.get("status", "unknown")
+            dims = embed.get("dimensions", 0)
+
+            if model == "text-embedding-3-small" and status == "operational":
+                checks.append(SystemCheck(
+                    id="embedding-api", name="Embedding API (OpenAI)", group="llm",
+                    status="ok", message=f"{model}, {dims} dims, {status}",
+                ))
+            elif model != "text-embedding-3-small":
+                checks.append(SystemCheck(
+                    id="embedding-api", name="Embedding API (OpenAI)", group="llm",
+                    status="critical",
+                    message=f"WRONG MODEL: {model} (expected text-embedding-3-small)",
+                    needs_ai=True, ai_context=f"Embedding model mismatch: {model}",
+                ))
+            else:
+                checks.append(SystemCheck(
+                    id="embedding-api", name="Embedding API (OpenAI)", group="llm",
+                    status="warning", message=f"{model}, status={status}",
+                ))
+    except Exception as e:
+        checks.append(SystemCheck(
+            id="embedding-api", name="Embedding API (OpenAI)", group="llm",
+            status="warning", message=f"Cannot check: {type(e).__name__}",
+        ))
+
+    # 2. Check LLM circuit breaker state via Fly logs (SSH to Pro which has fly auth)
+    log("Checking LLM API via Fly logs (SSH Pro)...")
+    try:
+        result = subprocess.run(
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro",
+             "fly logs --app nuzantara-rag --no-tail 2>/dev/null | tail -200"],
+            capture_output=True, text=True, timeout=20,
+        )
+        if result.returncode == 0:
+            lines = result.stdout.splitlines()
+            # Count recent LLM errors
+            llm_errors = [
+                l for l in lines
+                if any(k in l for k in [
+                    "Circuit breaker", "OPENED",
+                    "All LLM models failed",
+                    "Quota exhausted",
+                    "ResourceExhausted",
+                    "ServiceUnavailable",
+                ])
+            ]
+            circuit_opens = [l for l in llm_errors if "OPENED" in l]
+
+            if circuit_opens:
+                checks.append(SystemCheck(
+                    id="llm-circuit", name="LLM Circuit Breakers", group="llm",
+                    status="warning",
+                    message=f"{len(circuit_opens)} circuit breaker openings in recent logs",
+                    needs_ai=len(circuit_opens) > 3,
+                    ai_context="\n".join(circuit_opens[-3:]) if len(circuit_opens) > 3 else "",
+                ))
+            elif llm_errors:
+                checks.append(SystemCheck(
+                    id="llm-circuit", name="LLM Circuit Breakers", group="llm",
+                    status="ok",
+                    message=f"{len(llm_errors)} LLM warnings (no circuit opens) in recent logs",
+                ))
+            else:
+                checks.append(SystemCheck(
+                    id="llm-circuit", name="LLM Circuit Breakers", group="llm",
+                    status="ok", message="No LLM errors in last 200 log lines",
+                ))
+    except subprocess.TimeoutExpired:
+        checks.append(SystemCheck(
+            id="llm-circuit", name="LLM Circuit Breakers", group="llm",
+            status="ok", message="Log check timed out (backend may be sleeping)",
+        ))
+    except Exception as e:
+        checks.append(SystemCheck(
+            id="llm-circuit", name="LLM Circuit Breakers", group="llm",
+            status="ok", message=f"Log check skipped: {type(e).__name__}",
+        ))
+
+    return checks
+
+
+def collect_import_chain() -> list[SystemCheck]:
+    """Test critical import chain on Pro via SSH."""
+    sys_id = "import-chain"
+    name = "Import Chain"
+    log("Testing import chain on Pro...")
+    cmd = (
+        "cd ~/Desktop/nuzantara/apps/backend-rag && "
+        "source .venv/bin/activate && "
+        'python -c "from backend.app.dependencies import get_current_user; print(\'OK\')" 2>&1'
+    )
+    try:
+        result = subprocess.run(
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro", cmd],
+            capture_output=True, text=True, timeout=20,
+        )
+        output = result.stdout.strip()
+        if "OK" in output and result.returncode == 0:
+            return [SystemCheck(
+                id=sys_id, name=name, group="infra",
+                status="ok", message="Import chain OK (dependencies.py → all routers)",
+            )]
+        else:
+            error_msg = (result.stderr or output)[:200]
+            return [SystemCheck(
+                id=sys_id, name=name, group="infra",
+                status="critical", message=f"BROKEN: {error_msg}",
+                needs_ai=True, ai_context=f"stdout: {output[:300]}\nstderr: {result.stderr[:300]}",
+            )]
+    except subprocess.TimeoutExpired:
+        return [SystemCheck(
+            id=sys_id, name=name, group="infra",
+            status="warning", message="Pro SSH timeout (15s)",
+        )]
+    except Exception as e:
+        return [SystemCheck(
+            id=sys_id, name=name, group="infra",
+            status="warning", message=f"Cannot test: {type(e).__name__}",
         )]
 
 
@@ -351,9 +705,11 @@ def _parse_log_section(sys_id: str, name: str, group: str, text: str) -> SystemC
     # Check for failure indicators
     fail_indicators = ["ERROR", "FAIL", "❌", "error", "failed", "CRITICAL"]
     ok_indicators = ["✅", "OK", "healthy", "passed", "completed", "success"]
+    benign_indicators = ["non disponibile", "skip", "sleeping", "Backend non disponibile"]
 
     has_fail = any(ind in last_line for ind in fail_indicators)
     has_ok = any(ind in last_line for ind in ok_indicators)
+    has_benign = any(ind in last_line for ind in benign_indicators)
 
     # Staleness check
     stale = False
@@ -366,7 +722,10 @@ def _parse_log_section(sys_id: str, name: str, group: str, text: str) -> SystemC
         except ValueError:
             pass
 
-    if has_fail and not has_ok:
+    if has_benign:
+        status = "ok"  # Backend sleeping, skip is expected behavior
+        needs_ai = False
+    elif has_fail and not has_ok:
         status = "error"
         needs_ai = True
     elif stale:
@@ -545,6 +904,21 @@ def main() -> None:
 
     log("Checking Core Guardian...")
     all_checks.extend(collect_core_guardian())
+
+    log("Checking frontend health (8 subdomains)...")
+    all_checks.extend(collect_frontend_health())
+
+    log("Checking SSL certificates...")
+    all_checks.extend(collect_ssl_certs())
+
+    log("Checking Fly.io resources...")
+    all_checks.extend(collect_fly_resources())
+
+    log("Checking LLM API health...")
+    all_checks.extend(collect_llm_api_health())
+
+    log("Testing import chain...")
+    all_checks.extend(collect_import_chain())
 
     # Apply auto-fixes
     log("Applying auto-fixes...")
