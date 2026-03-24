@@ -49,7 +49,7 @@ function ColumnBody({
   if (clients.length === 0) {
     return (
       <div className="p-3 flex-1 flex items-center justify-center">
-        <div className="h-24 border-2 border-dashed border-[var(--border)] rounded-lg flex items-center justify-center text-[var(--foreground-muted)] text-xs opacity-50 w-full">
+        <div className="h-24 border border-dashed border-[var(--glass-rim)] rounded-lg flex items-center justify-center text-[var(--tx-secondary)] uppercase tracking-widest text-[10px] font-bold bg-[rgba(255,255,255,0.01)] w-full transition-all">
           Drop here
         </div>
       </div>
@@ -171,26 +171,21 @@ export const ClientKanban = ({
       {COLUMNS.map((column) => (
         <div
           key={column.id}
-          className="flex-shrink-0 w-80 flex flex-col rounded-xl shadow-xl backdrop-blur-md"
-          style={{
-            background: "rgba(25, 25, 30, 0.45)",
-            border: "1px solid rgba(255, 255, 255, 0.05)",
-          }}
+          className="flex-shrink-0 w-80 flex flex-col ledger-container cursor-default"
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, column.id)}
         >
           {/* Column Header */}
           <div
-            className="p-3 border-b flex items-center justify-between sticky top-0 bg-inherit rounded-t-xl z-10 backdrop-blur-md"
-            style={{ borderColor: "rgba(255,255,255,0.05)" }}
+            className="p-4 border-b border-[var(--glass-rim)] flex items-center justify-between sticky top-0 z-10 bg-[rgba(20,28,43,0.5)] backdrop-blur-md"
           >
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${column.color}`} />
-              <h3 className="font-medium text-sm text-[var(--foreground)]">
+            <div className="flex items-center gap-3">
+              <div className={`w-2 h-2 rounded-full ${column.color} shadow-[0_0_8px_currentColor]`} />
+              <h3 className="font-bold text-[12px] uppercase tracking-widest text-[var(--tx-primary)]">
                 {column.title}
               </h3>
             </div>
-            <span className="text-xs text-[var(--foreground-muted)] bg-[var(--background-elevated)] px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-[var(--tx-pure)] bg-[var(--glass-highlight)] px-2.5 py-1 rounded-full ring-1 ring-inset ring-[var(--glass-rim)]">
               {getClientsByStatus(column.id).length}
             </span>
           </div>
