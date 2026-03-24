@@ -17,12 +17,9 @@ Architecture:
 - Provides backward compatibility with legacy interfaces
 """
 
-import asyncio
 import logging
 import os
 import time
-import uuid
-from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -33,7 +30,6 @@ from pydantic import BaseModel
 from backend.app.core.config import settings
 from backend.app.metrics import metrics_collector
 from backend.app.utils.tracing import (
-    add_span_event,
     trace_span,
 )
 from backend.services.classification.intent_classifier import IntentClassifier
@@ -49,16 +45,12 @@ from backend.services.rag.agentic.pipeline import create_default_pipeline
 from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
 from backend.services.rag.agentic.query_gates import QueryGates
 from backend.services.rag.agentic.query_helpers import (
-    TIER_FLASH,
     is_conversation_recall_query,
     wrap_query_with_language_instruction,
 )
 from backend.services.rag.agentic.reasoning import ReasoningEngine
-from backend.services.rag.agentic.reasoning_utils import detect_team_query
 from backend.services.rag.agentic.schema import CoreResult
-from backend.services.rag.agentic.tool_executor import execute_tool
 from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
-from backend.services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
 from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import BaseTool
 
@@ -435,4 +427,3 @@ class AgenticRAGOrchestrator:
             channel=channel,
         ):
             yield event
-

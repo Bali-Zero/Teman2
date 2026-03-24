@@ -74,11 +74,12 @@ export function useChatSend({
   onError,
   onStep,
 }: UseChatSendOptions): UseChatSendReturn {
-  const { isStreaming, setIsStreaming, sendStreamingMessage } = useChatStreaming({
-    sessionId,
-    isMountedRef,
-    isAbortedRef,
-  });
+  const { isStreaming, setIsStreaming, sendStreamingMessage } =
+    useChatStreaming({
+      sessionId,
+      isMountedRef,
+      isAbortedRef,
+    });
 
   const [streamingSteps, setStreamingSteps] = useState<Array<AgentStep>>([]);
   const [currentStatus, setCurrentStatus] = useState("");
@@ -160,14 +161,35 @@ export function useChatSend({
               onStep(step);
             },
           },
-          mappedImages
+          mappedImages,
         );
       } catch (error) {
-        onToast(error instanceof Error ? error.message : "Errore di rete", "error");
+        onToast(
+          error instanceof Error ? error.message : "Errore di rete",
+          "error",
+        );
       }
     },
-    [isStreaming, conversationHistory, sendStreamingMessage, onChunk, onComplete, onError, onStep, onToast, sessionId, setIsStreaming, showErrorToast]
+    [
+      isStreaming,
+      conversationHistory,
+      sendStreamingMessage,
+      onChunk,
+      onComplete,
+      onError,
+      onStep,
+      onToast,
+      sessionId,
+      setIsStreaming,
+      showErrorToast,
+    ],
   );
 
-  return { isStreaming, sendMessage, streamingSteps, currentStatus, setCurrentStatus };
+  return {
+    isStreaming,
+    sendMessage,
+    streamingSteps,
+    currentStatus,
+    setCurrentStatus,
+  };
 }

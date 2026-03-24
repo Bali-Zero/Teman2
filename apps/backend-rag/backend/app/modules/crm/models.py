@@ -4,7 +4,7 @@ SQLModel models for CRM system (clients, practices, interactions)
 """
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any
 
 from sqlalchemy import DECIMAL, JSON, Column, Text
 from sqlmodel import Field, Relationship, SQLModel
@@ -32,6 +32,7 @@ class Client(SQLModel, table=True):
     whatsapp: str | None = Field(default=None, max_length=50)
     nationality: str | None = Field(default=None, max_length=100)
     passport_number: str | None = Field(default=None, max_length=100)
+    tax_id: str | None = Field(default=None, max_length=50, index=True)
 
     # Status
     status: str = Field(default="active", max_length=50)  # 'active', 'inactive', 'prospect'

@@ -119,8 +119,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-
-
   // === REDIRECT 301: mo.balizero.com → balizero.com ===
   // SEO: Prevent duplicate content and consolidate domain authority
   if (hostname === MOBILE_DOMAIN || hostname === `www.${MOBILE_DOMAIN}`) {
@@ -243,11 +241,11 @@ export function middleware(request: NextRequest) {
 
     // === REDIRECT 301: Category renames (2026-03-23) ===
     const CATEGORY_REDIRECTS: Record<string, string> = {
-      "immigration": "visas",
+      immigration: "visas",
       "tax-legal": "taxes",
-      "lifestyle": "living",
-      "tech": "trends",
-      "bali_news": "living",
+      lifestyle: "living",
+      tech: "trends",
+      bali_news: "living",
       "digital-nomad": "living",
     };
     const oldCat = pathname.split("/")[1];

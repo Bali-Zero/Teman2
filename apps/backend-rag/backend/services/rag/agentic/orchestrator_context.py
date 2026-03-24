@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.misc.context_window_manager import ContextWindowManager
@@ -8,6 +8,7 @@ import backend.services.rag.agentic.context_manager as _context_manager_module
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Enable debug logging for context operations
+
 
 class OrchestratorContextManager:
     """
@@ -29,25 +30,27 @@ class OrchestratorContextManager:
         self,
         user_id: str,
         query: str,
-        session_id: Optional[str] = None,
-        conversation_history: Optional[List[Dict[str, Any]]] = None,
-        deep_think_mode: bool = False
-    ) -> Dict[str, Any]:
+        session_id: str | None = None,
+        conversation_history: list[dict[str, Any]] | None = None,
+        deep_think_mode: bool = False,
+    ) -> dict[str, Any]:
         """
         Recupera il profilo utente, i facts (personali/collettivi), valida e comprime
         la history della conversazione rispettando il budget di token.
         """
-        with trace_span("orchestrator.prepare_query_context") as span:
+        with trace_span("orchestrator.prepare_query_context"):
             start_time = time.time()
             try:
                 # 1. Recupero dati utente base (Profile, Facts, Episodic)
                 context_data = await _context_manager_module.get_user_context(
                     db_pool=self.db_pool,
                     user_id=user_id,
-                    memory_orchestrator=self.memory_handler.memory_orchestrator if hasattr(self.memory_handler, 'memory_orchestrator') else self.memory_handler,
+                    memory_orchestrator=self.memory_handler.memory_orchestrator
+                    if hasattr(self.memory_handler, "memory_orchestrator")
+                    else self.memory_handler,
                     query=query,
                     deep_think_mode=deep_think_mode,
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
                 # 2. Gestione History: diamo priorità a quella passata via API (es. streaming dal frontend)
@@ -57,8 +60,7 @@ class OrchestratorContextManager:
                 # 3. Context Window Management (Trimming/Summarization)
                 if context_data.get("history"):
                     context_data["history"] = await self.context_window_manager.manage_context(
-                        context_data["history"],
-                        query=query
+                        context_data["history"], query=query
                     )
 
                 # Metriche e tracciamento
@@ -71,13 +73,15 @@ class OrchestratorContextManager:
 
             except Exception as e:
                 # Fallback graceful: ritorna un contesto base vuoto per non far fallire l'intera RAG query
-                logger.error(f"Errore critico durante il caricamento del contesto: {e}", exc_info=True)
+                logger.error(
+                    f"Errore critico durante il caricamento del contesto: {e}", exc_info=True
+                )
                 set_span_status("ERROR", str(e))
                 return {
                     "profile": {},
                     "history": conversation_history or [],
                     "memory_facts": [],
-                    "collective_facts": []
+                    "collective_facts": [],
                 }
 
     async def get_full_context(

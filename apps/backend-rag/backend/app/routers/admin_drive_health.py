@@ -13,24 +13,75 @@ logger = logging.getLogger(__name__)
 # Everything else stays in Drive only
 SCHEMA_KEYWORDS: dict[str, list[str]] = {
     "personal": [
-        "passport", "paspor", "pport", "photo", "foto", "selfie", "foto_wajah",
-        "address", "alamat", "ktp", "id card", "domicile",
+        "passport",
+        "paspor",
+        "pport",
+        "photo",
+        "foto",
+        "selfie",
+        "foto_wajah",
+        "address",
+        "alamat",
+        "ktp",
+        "id card",
+        "domicile",
     ],
     "immigration": [
-        "kitas", "kitap", "itas", "visa", "voa", "b211", "e-visa", "evisa",
-        "imk", "itk", "imta", "rptka", "work permit", "stay permit",
-        "telex", "vitas", "merp", "sktt",
+        "kitas",
+        "kitap",
+        "itas",
+        "visa",
+        "voa",
+        "b211",
+        "e-visa",
+        "evisa",
+        "imk",
+        "itk",
+        "imta",
+        "rptka",
+        "work permit",
+        "stay permit",
+        "telex",
+        "vitas",
+        "merp",
+        "sktt",
     ],
     "pma": [
-        "akta", "pendirian", "perubahan", "deed", "nib", "oss", "berusaha",
-        "npwp", "sk ", "sk_", "sk-", "kemenkumham", "menkumham",
-        "profile perseroan", "profil perusahaan", "company profile",
+        "akta",
+        "pendirian",
+        "perubahan",
+        "deed",
+        "nib",
+        "oss",
+        "berusaha",
+        "npwp",
+        "sk ",
+        "sk_",
+        "sk-",
+        "kemenkumham",
+        "menkumham",
+        "profile perseroan",
+        "profil perusahaan",
+        "company profile",
     ],
     "tax": ["spt", "lkpm", "pajak", "pph", "ppn", "bpjs", "bukti potong"],
     "family": [
-        "family", "spouse", "wife", "husband", "child", "son", "daughter",
-        "moglie", "marito", "figlio", "figlia", "marriage", "nikah",
-        "birth", "kelahiran", "kartu keluarga",
+        "family",
+        "spouse",
+        "wife",
+        "husband",
+        "child",
+        "son",
+        "daughter",
+        "moglie",
+        "marito",
+        "figlio",
+        "figlia",
+        "marriage",
+        "nikah",
+        "birth",
+        "kelahiran",
+        "kartu keluarga",
     ],
 }
 
@@ -80,6 +131,7 @@ def _infer_type(filename: str) -> str:
     if any(k in fn for k in ["address", "alamat", "ktp"]):
         return "alamat"
     return "other"
+
 
 router = APIRouter(prefix="/api/admin/drive", tags=["admin"])
 
@@ -187,9 +239,7 @@ async def backfill_drive_documents(
     async def _run_backfill() -> None:
         import os
 
-        pool = await asyncpg.create_pool(
-            os.environ["DATABASE_URL"], min_size=1, max_size=3
-        )
+        pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=3)
         drive = ServiceAccountDriveService()
 
         try:
@@ -203,7 +253,9 @@ async def backfill_drive_documents(
                 )
                 existing_fids = {r["file_id"] for r in existing}
 
-            logger.info(f"Backfill: scanning {len(clients)} clients, {len(existing_fids)} existing docs")
+            logger.info(
+                f"Backfill: scanning {len(clients)} clients, {len(existing_fids)} existing docs"
+            )
 
             added = 0
             skipped = 0
@@ -216,31 +268,55 @@ async def backfill_drive_documents(
                     # List all files recursively (top-level + subfolders + nested)
                     files = []
                     q = f"'{folder_id}' in parents and trashed = false"
-                    top = drive.service.files().list(
-                        q=q, fields="files(id, name, mimeType)", pageSize=100,
-                        supportsAllDrives=True, includeItemsFromAllDrives=True,
-                    ).execute().get("files", [])
+                    top = (
+                        drive.service.files()
+                        .list(
+                            q=q,
+                            fields="files(id, name, mimeType)",
+                            pageSize=100,
+                            supportsAllDrives=True,
+                            includeItemsFromAllDrives=True,
+                        )
+                        .execute()
+                        .get("files", [])
+                    )
 
                     for item in top:
                         if item["mimeType"] == "application/vnd.google-apps.folder":
                             sub_q = f"'{item['id']}' in parents and trashed = false"
-                            subs = drive.service.files().list(
-                                q=sub_q, fields="files(id, name, mimeType)", pageSize=100,
-                                supportsAllDrives=True, includeItemsFromAllDrives=True,
-                            ).execute().get("files", [])
+                            subs = (
+                                drive.service.files()
+                                .list(
+                                    q=sub_q,
+                                    fields="files(id, name, mimeType)",
+                                    pageSize=100,
+                                    supportsAllDrives=True,
+                                    includeItemsFromAllDrives=True,
+                                )
+                                .execute()
+                                .get("files", [])
+                            )
                             for sf in subs:
                                 if sf["mimeType"] == "application/vnd.google-apps.folder":
                                     nested_q = f"'{sf['id']}' in parents and trashed = false"
-                                    nested = drive.service.files().list(
-                                        q=nested_q, fields="files(id, name)", pageSize=50,
-                                        supportsAllDrives=True, includeItemsFromAllDrives=True,
-                                    ).execute().get("files", [])
+                                    nested = (
+                                        drive.service.files()
+                                        .list(
+                                            q=nested_q,
+                                            fields="files(id, name)",
+                                            pageSize=50,
+                                            supportsAllDrives=True,
+                                            includeItemsFromAllDrives=True,
+                                        )
+                                        .execute()
+                                        .get("files", [])
+                                    )
                                     for nf in nested:
                                         files.append((nf["id"], nf["name"], sf["name"]))
                                 else:
                                     files.append((sf["id"], sf["name"], item["name"]))
 
-                    for file_id, file_name, folder_name in files:
+                    for file_id, file_name, _folder_name in files:
                         if file_id in existing_fids:
                             continue
 
@@ -259,7 +335,12 @@ async def backfill_drive_documents(
                                 "google_drive_file_url, status, storage_type, ocr_status) "
                                 "VALUES ($1,$2,$3,$4,$5,$6,'active','google_drive','pending') "
                                 "ON CONFLICT DO NOTHING",
-                                cid, doc_type, category, file_name, file_id, url,
+                                cid,
+                                doc_type,
+                                category,
+                                file_name,
+                                file_id,
+                                url,
                             )
                         existing_fids.add(file_id)
                         added += 1
@@ -270,7 +351,9 @@ async def backfill_drive_documents(
                         logger.warning(f"Backfill client #{cid}: {e}")
 
                 if (i + 1) % 200 == 0:
-                    logger.info(f"Backfill progress: {i+1}/{len(clients)}, +{added}, skip {skipped}")
+                    logger.info(
+                        f"Backfill progress: {i + 1}/{len(clients)}, +{added}, skip {skipped}"
+                    )
 
             logger.info(
                 f"Backfill DONE: {len(clients)} clients, +{added} docs, {skipped} skipped, {errors} errors"

@@ -1,19 +1,21 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
+
 import asyncpg
 
 # Eccezioni custom di Dominio
 from backend.app.core.exceptions import ResourceConflictError
 
-# Validazione e Caching
-from backend.services.crm.validators import ClientValidator
-from backend.services.crm.cache_manager import invalidate_client_cache
-
 # Interfaccia Repository (Type Hinting)
 from backend.db.repositories.client_repository import ClientRepository
+from backend.services.crm.cache_manager import invalidate_client_cache
+
+# Validazione e Caching
+from backend.services.crm.validators import ClientValidator
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 
 class ClientService:
     """
@@ -26,9 +28,7 @@ class ClientService:
         self.repository = repository
 
     async def create_client(
-        self,
-        client_data: Dict[str, Any],
-        company_data: Optional[Dict[str, Any]] = None
+        self, client_data: dict[str, Any], company_data: dict[str, Any] | None = None
     ) -> asyncpg.Record:
         """
         1. Valida l'input tramite Pydantic
@@ -43,15 +43,14 @@ class ClientService:
 
             # 2. Esecuzione tramite Repository (garantisce atomicità se c'è company_data)
             created_record = await self.repository.create_client_with_details(
-                client_data=validated_data,
-                company_data=company_data
+                client_data=validated_data, company_data=company_data
             )
 
             # 3. Invalidazione della Cache
             # Rimuove le chiavi stale per il client appena creato per mantenere consistenza
             client_id = created_record["id"]
             invalidate_client_cache(client_id)
-            
+
             logger.info(f"Cliente creato con successo nel Service Layer: ID {client_id}")
             return created_record
 
@@ -59,17 +58,16 @@ class ClientService:
             # 4. Mappatura eccezioni ("Silent Swallows" replacement)
             # Trasforma l'errore DB in un'eccezione custom riconosciuta dall'applicativo
             logger.error(
-                f"Conflitto di risorse: email o numero di telefono già presenti. Dettagli: {e}", 
-                exc_info=True
+                f"Conflitto di risorse: email o numero di telefono già presenti. Dettagli: {e}",
+                exc_info=True,
             )
             raise ResourceConflictError(
                 "Un cliente con questi dati unici (es. email o telefono) esiste già."
             ) from e
-            
+
         except Exception as e:
             # Propaga altri errori critici mantenendo la traccia nei log
             logger.error(
-                f"Errore imprevisto nella logica di business di create_client: {e}", 
-                exc_info=True
+                f"Errore imprevisto nella logica di business di create_client: {e}", exc_info=True
             )
             raise
