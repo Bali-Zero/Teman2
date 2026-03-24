@@ -662,17 +662,58 @@ fly deploy --strategy rolling
 
 ## 16. AI Dispatch System (ENFORCE PROACTIVELY)
 
-> `scripts/ai-dispatch.sh` v2 — Universale Pro+Air. Run `./scripts/ai-dispatch.sh help` per comandi.
+> `scripts/ai-dispatch.sh` v3 — 3-tier taxonomy. Run `./scripts/ai-dispatch.sh help` per comandi.
 
-### Ruoli
+### 3-Tier Taxonomy (v3.1, 2026-03-25)
 
-| Agente                          | Ruolo                                         | Forza                                                 |
-| ------------------------------- | --------------------------------------------- | ----------------------------------------------------- |
-| **Tu (Claude Code, Opus 4.6)**  | Il Re — orchestra, sintetizza, decide, esegue | Refactor multi-file, deploy, decisioni architetturali |
-| **Claude CLI (Opus 4.6)**       | Il Giudice — review, redteam, read-only       | `claude-review`, `claude-redteam` (Max plan, $0)      |
-| **Gemini 3.1 Pro CLI**          | Il Consigliere — 1M ctx, read-only            | `codebase_investigator`, `google_web_search` grounded |
-| **Codex 5.4 CLI**               | Il Soldato in Fortezza — sandbox kernel-level | Fix isolati, migration, test in ambiente sicuro       |
-| **Aider (OpenRouter/DeepSeek)** | Il Mercenario — multi-model coding            | `aider-fix` (DeepSeek V3), `aider-refactor` (Sonnet)  |
+**AGENTS** — Autonomous runtimes, dispatchable via ai-dispatch.sh:
+
+| Agente                          | Ruolo                                         | Dispatch command                           |
+| ------------------------------- | --------------------------------------------- | ------------------------------------------ |
+| **Tu (Claude Code, Opus 4.6)**  | Il Re — orchestra, sintetizza, decide, esegue | Diretto (IS the orchestrator)              |
+| **Gemini 3.1 Pro CLI**          | Il Consigliere — 1M ctx, read-only            | `explore`, `search`, `redteam`, `gemini-*` |
+| **Codex 5.4 CLI**               | Il Soldato — sandbox kernel-level             | `sandbox`, `codex-*`                       |
+| **Claude CLI (Opus 4.6)**       | Il Giudice — review, redteam, read-only       | `claude-review`, `claude-redteam`          |
+| **DeepSeek R1 671b (API)**      | Il Pensatore — chain-of-thought reasoning     | `reasoning`                                |
+| **Aider (OpenRouter/DeepSeek)** | Il Mercenario — multi-model coding            | `aider-fix`, `aider-refactor`              |
+
+**SERVICES** — Stateless tools, called by orchestrator directly (NOT dispatched by classifier):
+
+| Servizio       | Ruolo                            | Comandi                              |
+| -------------- | -------------------------------- | ------------------------------------ |
+| **NotebookLM** | L'Oracolo — citations grounded   | `oracolo`, `oracolo-nb`, `research`  |
+| **GWS CLI**    | Il Segretario — Google Workspace | Chiamato direttamente da Claude Code |
+| **OCR**        | Scanner — text extraction        | MCP `mcp__ocr-tesseract__*`          |
+| **Websearch**  | Deep web search + content        | `websearch`                          |
+| **Canva**      | Design automation                | MCP `mcp__claude_ai_Canva__*`        |
+| **GitKraken**  | Git workflow intelligence        | MCP `gk mcp` — see rules below       |
+
+**PIPELINES** — Scheduled/triggered, NOT dispatchable:
+
+| Pipeline              | Schedule/Trigger                 |
+| --------------------- | -------------------------------- |
+| **Core Guardian V3**  | every 3h (OpenClaw)              |
+| **Intel Scraper**     | 03:00 WITA (Pro OpenClaw)        |
+| **War Room**          | manual (Claude Code + Canva MCP) |
+| **SEO Guardian**      | manual (`audit_geo_aeo()`)       |
+| **NLM Daily Refresh** | 04:30 WITA (Pro OpenClaw)        |
+
+### GitKraken MCP — Usage Rules (ENFORCE)
+
+GitKraken MCP (`gk mcp`) is installed and provides 23 tools. Use them in these situations:
+
+| Situazione                        | Tool GitKraken da usare            | Invece di                       |
+| --------------------------------- | ---------------------------------- | ------------------------------- |
+| Committing changes                | `gitlens_commit_composer`          | Manual `git add` + `git commit` |
+| Check outstanding PRs             | `gitlens_launchpad`                | `gh pr list`                    |
+| Starting work from a GitHub issue | `gitlens_start_work`               | Manual `git checkout -b`        |
+| Reviewing a PR                    | `gitlens_start_review`             | Manual checkout + read          |
+| Creating a PR                     | `pull_request_create`              | `gh pr create`                  |
+| Getting PR details/comments       | `pull_request_get_detail/comments` | `gh pr view`                    |
+| Checking assigned issues          | `issues_assigned_to_me`            | `gh issue list --assignee`      |
+| Git blame on a file               | `git_blame`                        | `git blame` bash                |
+
+**Rule:** Prefer GitKraken MCP over raw git/gh commands when the GitKraken tool provides richer context (e.g., `gitlens_launchpad` prioritizes PRs by urgency, `commit_composer` organizes changes intelligently).
 
 ### Pattern di Dispatch
 
@@ -681,6 +722,7 @@ fly deploy --strategy rolling
 3. **RED TEAM** (obbligatorio pre-deploy): `redteam "soluzione"` → Se problemi: rivedi. Se clean: deploy.
 4. **MIGRATION**: `codex-migrate "desc"` → Genera e testa upgrade+downgrade in sandbox
 5. **NORMATIVA**: `search "KBLI 2025"` → Gemini Google Search grounded con fonti
+6. **REASONING**: `reasoning "complex architecture problem"` → DeepSeek R1 671b chain-of-thought
 
 ### Sicurezza
 
@@ -701,6 +743,7 @@ fly deploy --strategy rolling
 - **Escalation**: Air scrive finding in `shared/escalations.json`, Pro legge a inizio sessione
 - **Git sync**: post-commit hook → `ssh air 'cd ~/Projects/nuzantara && git pull --ff-only'`
 - **CLAUDE.md**: IDENTICO su entrambe — git-tracked, push/pull obbligatorio
+- **A2A Plan**: pilot con Damar — Gemini CLI agent per team member, Claude Code supervisor
 
 ---
 
