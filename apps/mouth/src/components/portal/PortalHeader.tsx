@@ -70,7 +70,7 @@ export function PortalHeader({
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[rgba(19,19,21,0.65)] backdrop-blur-[20px] border-b border-white/5">
+    <header className="sticky top-0 z-30 w-full bg-[rgba(29,39,59,0.7)] backdrop-blur-[24px] border-b border-[var(--glass-rim)] shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
       <div className="flex items-center justify-between h-16 px-4 md:px-6">
         {/* Left Section */}
         <div className="flex items-center gap-3">
@@ -104,16 +104,16 @@ export function PortalHeader({
 
           {/* Page Title */}
           <div className="hidden sm:block">
-            <h1 className="text-lg font-semibold text-[var(--foreground)]">
+            <h1 className="text-lg font-bold text-[var(--tx-pure)] tracking-wide">
               {getPageTitle()}
             </h1>
-            <p className="text-xs text-[var(--foreground-muted)]">
-              {formatDate()} • {getGreeting()}, {userName.split(" ")[0]}
+            <p className="text-[11px] text-[var(--tx-secondary)] uppercase tracking-widest font-bold mt-0.5">
+              {formatDate()} <span className="text-[var(--bz-copper)] opacity-70 px-1">•</span> {getGreeting()}, {userName.split(" ")[0]}
             </p>
           </div>
 
           {/* Mobile Page Title */}
-          <h1 className="sm:hidden text-lg font-semibold text-[var(--foreground)]">
+          <h1 className="sm:hidden text-lg font-bold text-[var(--tx-pure)] tracking-wide">
             {getPageTitle()}
           </h1>
         </div>

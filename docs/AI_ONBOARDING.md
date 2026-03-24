@@ -4,7 +4,9 @@
 **Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`.
 
 <!-- DOCSYNC:QUICK_NUMBERS_START -->
+
 **Quick Numbers:** 89 routers · 250 services · 416 tests · 131 MCP tools · 10 Qdrant collections (93,283 docs) · 6 channels · 56K KG nodes
+
 <!-- DOCSYNC:QUICK_NUMBERS_END -->
 
 > **Role split:** `CLAUDE.md` = how to act (rules, delegation, language, deploy QA). This file = how to build (architecture, code patterns, debugging, workflows).
@@ -291,7 +293,7 @@ Pages: `src/app/`, Components: `src/components/`, API: `src/lib/api/`
 | **System Map 4D**         | `docs/SYSTEM_MAP_4D.md`                                  | Full architecture overview                                   |
 | **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference                                          |
 | **Deploy Checklist**      | `scripts/preflight.sh` (automated) or `CLAUDE.md §15`    | Before deploying — run `./scripts/preflight.sh full`         |
-| **Monitoring**            | `scripts/system_doctor.py`                               | 47 checks: infra, frontend, SSL, LLM, security, quality     |
+| **Monitoring**            | `scripts/system_doctor.py`                               | 47 checks: infra, frontend, SSL, LLM, security, quality      |
 | **RAG Quality**           | `scripts/rag_canary.py`                                  | Embedding drift + golden query regression (monthly/weekly)   |
 | **Intel Pipeline**        | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper                                                 |
 | **Archive**               | `docs/archive/MANIFEST.md`                               | Old docs & reports                                           |
