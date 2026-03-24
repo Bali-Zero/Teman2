@@ -1,10 +1,12 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-03-25
+**Last Updated:** 2026-03-24
 **Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`.
 
 <!-- DOCSYNC:QUICK_NUMBERS_START -->
+
 **Quick Numbers:** 89 routers · 250 services · 416 tests · 131 MCP tools · 10 Qdrant collections (93,283 docs) · 6 channels · 56K KG nodes
+
 <!-- DOCSYNC:QUICK_NUMBERS_END -->
 
 > **Role split:** `CLAUDE.md` = how to act (rules, delegation, language, deploy QA). This file = how to build (architecture, code patterns, debugging, workflows).
@@ -290,9 +292,7 @@ Pages: `src/app/`, Components: `src/components/`, API: `src/lib/api/`
 | **KG Architecture**       | `docs/KG_LANGGRAPH_ARCHITECTURE.md`                      | Knowledge Graph deep dive                                    |
 | **System Map 4D**         | `docs/SYSTEM_MAP_4D.md`                                  | Full architecture overview                                   |
 | **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference                                          |
-| **Deploy Checklist**      | `scripts/preflight.sh` (automated) or `CLAUDE.md §15`    | Before deploying — run `./scripts/preflight.sh full`         |
-| **Monitoring**            | `scripts/system_doctor.py`                               | 47 checks: infra, frontend, SSL, LLM, security, quality     |
-| **RAG Quality**           | `scripts/rag_canary.py`                                  | Embedding drift + golden query regression (monthly/weekly)   |
+| **Deploy Checklist**      | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying                                             |
 | **Intel Pipeline**        | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper                                                 |
 | **Archive**               | `docs/archive/MANIFEST.md`                               | Old docs & reports                                           |
 
@@ -301,7 +301,7 @@ Pages: `src/app/`, Components: `src/components/`, API: `src/lib/api/`
 ## NOTES FOR AI ASSISTANTS
 
 1. Embedding model + KBLI flat payload = most common source of real bugs
-2. Before deploy run `./scripts/preflight.sh full` (automated import chain + tests + post-deploy health)
+2. Test import chain before deploy: `python -c "from backend.app.dependencies import get_current_user"`
 3. `--no-verify` is OK for non-JS commits (prettier pre-commit hook limitation)
 4. Router registration is in `router_registration.py`, NOT `main_cloud.py`
 5. Lazy loading — health returns 200 during startup, don't panic
@@ -310,5 +310,3 @@ Pages: `src/app/`, Components: `src/components/`, API: `src/lib/api/`
 8. See `.claude/rules/cicatrix-scars.md` before modifying files it references
 9. For behavioral rules, delegation, language protocol → see `CLAUDE.md`
 10. This is a production system serving 5000+ real clients. Be careful.
-11. System Doctor (`scripts/system_doctor.py`) runs 47 health checks — check its output before and after changes
-12. Qdrant + PostgreSQL backed up daily to Tigris S3 (cron 03:00 + 03:30 on Pro)
