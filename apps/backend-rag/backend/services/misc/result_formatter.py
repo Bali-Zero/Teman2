@@ -67,12 +67,9 @@ def format_search_results(
 
     for i in range(len(raw_results.get("documents", []))):
         distance = raw_results["distances"][i] if i < len(raw_results.get("distances", [])) else 1.0
-        # Validate distance to avoid division by zero
-        # Cosine distance should always be >= 0, but validate for safety
         if distance < 0:
-            distance = 0.0  # Clamp negative distances to 0
+            distance = 0.0
         if distance == -1.0:
-            # Avoid division by zero (shouldn't happen with cosine distance, but be safe)
             distance = 1.0
 
         score = 1 / (1 + distance)
