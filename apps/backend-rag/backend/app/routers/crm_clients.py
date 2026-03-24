@@ -454,10 +454,10 @@ async def get_client(
     - Team members: Can only view clients assigned to them
     """
     try:
-        current_user.get("email", "").lower()
-        is_crm_admin(current_user)
-
         async with db_pool.acquire() as conn:
+            # RBAC: verify user has access to this specific client
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+
             row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
                    client_type, assigned_to, avatar_url, first_contact_date, last_interaction_date,
@@ -480,14 +480,18 @@ async def get_client(
 async def get_client_by_email(
     email: EmailStr = Path(..., description="Client email address"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
+    current_user: dict = Depends(get_current_user),
 ) -> ClientResponse:
     """
     Get client by email address
 
-    All authenticated users can view any client.
+    Access Control:
+    - Admin users: Can view any client
+    - Team members: Can only view clients assigned to them
     """
     try:
+        user_email = current_user.get("email", "").lower()
+
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
@@ -498,6 +502,19 @@ async def get_client_by_email(
 
             if not row:
                 raise HTTPException(status_code=404, detail="Client not found")
+
+            # RBAC: non-admin users can only view clients assigned to them
+            if not is_crm_admin(current_user):
+                assigned_to = row["assigned_to"]
+                if not assigned_to or assigned_to.lower() != user_email:
+                    logger.warning(
+                        f"RBAC: User {user_email} denied access to client by email "
+                        f"(assigned_to: {assigned_to})"
+                    )
+                    raise HTTPException(
+                        status_code=403,
+                        detail="You don't have permission to access this client.",
+                    )
 
             return ClientResponse(**dict(row))
 
@@ -704,7 +721,7 @@ async def delete_client(
 async def get_client_summary(
     client_id: int = Path(..., gt=0, description="Client ID"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get comprehensive client summary including:
@@ -713,9 +730,15 @@ async def get_client_summary(
     - Recent interactions
     - Documents
     - Upcoming renewals
+
+    Access Control:
+    - Admin users: Can view any client summary
+    - Team members: Can only view summary of clients assigned to them
     """
     try:
         async with db_pool.acquire() as conn:
+            # RBAC: verify user has access to this specific client
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
             # Get client basic info
             client_row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
@@ -862,15 +885,20 @@ async def get_client_audit_trail(
     client_id: int = Path(..., gt=0, description="Client ID"),
     limit: int = Query(50, ge=1, le=200, description="Max audit entries to return"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),  # noqa: ARG001  # Used for auth
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get audit trail for a specific client.
 
-    All authenticated users can view audit trails for any client.
+    Access Control:
+    - Admin users: Can view audit trail for any client
+    - Team members: Can only view audit trail of clients assigned to them
     """
     try:
         async with db_pool.acquire() as conn:
+            # RBAC: verify user has access to this specific client
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+
             client = await conn.fetchrow(
                 "SELECT id, full_name, assigned_to FROM clients WHERE id = $1", client_id
             )
