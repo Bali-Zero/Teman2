@@ -260,7 +260,11 @@ export default function VisaPage() {
 }
 
 // Sub-components
-function StatusBadge({ status }: { status: "active" | "pending" | "expired" }) {
+function StatusBadge({
+  status,
+}: {
+  status: "active" | "pending" | "warning" | "expired";
+}) {
   const config: Record<
     string,
     { icon: React.ElementType; label: string; style: React.CSSProperties }
@@ -273,6 +277,11 @@ function StatusBadge({ status }: { status: "active" | "pending" | "expired" }) {
     pending: {
       icon: Clock,
       label: "Pending",
+      style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+    },
+    warning: {
+      icon: AlertTriangle,
+      label: "Expiring Soon",
       style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
     },
     expired: {
