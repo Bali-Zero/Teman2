@@ -62,12 +62,11 @@ export const ClientCard = React.memo(
           // Removed layoutId to improve performance with large lists
           // layoutId causes expensive layout calculations with many items
           className={`
-          relative rounded-xl border p-4 cursor-pointer transition-all duration-300 shadow-lg backdrop-blur-xl
-          ${isDragging ? "opacity-50 scale-95 rotate-3" : "hover:-translate-y-1 hover:shadow-2xl hover:bg-[rgba(45,45,50,0.65)]"}
+          relative rounded-[1.125rem] border p-4 cursor-pointer transition-all duration-300 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_10px_20px_-10px_rgba(0,0,0,0.5)] backdrop-blur-xl bg-gradient-to-br from-[rgba(255,255,255,0.03)] to-[rgba(255,255,255,0.01)]
+          ${isDragging ? "opacity-50 scale-95 rotate-3" : "hover:-translate-y-1 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_15px_30px_-10px_rgba(0,0,0,0.6)] hover:bg-[rgba(255,255,255,0.06)]"}
         `}
           style={{
-            background: "rgba(35, 35, 40, 0.55)",
-            borderColor: "rgba(255, 255, 255, 0.05)",
+            borderColor: "var(--glass-rim)",
           }}
           onClick={() => router.push(`/clients/${client.id}`)}
         >
@@ -87,11 +86,11 @@ export const ClientCard = React.memo(
                 />
               ) : null}
               {!client.avatar_url && (
-                <div className="w-full h-full rounded-full bg-[var(--background)] flex items-center justify-center">
+                <div className="w-full h-full rounded-full bg-[rgba(255,255,255,0.05)] flex items-center justify-center text-[var(--tx-pure)]">
                   {countryFlag ? (
                     <span className="text-lg leading-none">{countryFlag}</span>
                   ) : (
-                    <span className="text-xs font-bold text-[var(--foreground)] opacity-60">
+                    <span className="text-xs font-bold opacity-80 uppercase">
                       {client.full_name
                         ?.split(" ")
                         .slice(0, 2)
@@ -118,16 +117,16 @@ export const ClientCard = React.memo(
             </div>
 
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-[var(--foreground)] truncate">
+              <h4 className="font-bold text-[var(--tx-pure)] text-sm truncate">
                 {client.full_name}
               </h4>
-              <div className="flex items-center gap-2 text-xs text-[var(--foreground-muted)]">
+              <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[var(--tx-secondary)] tracking-wide">
                 <span className="truncate">
                   {client.nationality || "Unknown"}
                 </span>
                 {client.company_name && (
                   <>
-                    <span>•</span>
+                    <span className="opacity-50">•</span>
                     <span className="truncate max-w-[80px]">
                       {client.company_name}
                     </span>
@@ -138,26 +137,26 @@ export const ClientCard = React.memo(
           </div>
 
           {/* Strategic Peek Info (Always visible in card, but stylized) */}
-          <div className="space-y-2 text-xs">
+          <div className="space-y-4">
             {/* Last Interaction Summary */}
             {client.last_interaction_summary ? (
-              <div className={`p-2 rounded-lg ${badgeStyle} line-clamp-2`}>
-                <div className="flex items-center gap-1.5 mb-1 opacity-75">
+              <div className={`p-2.5 rounded-[0.75rem] border border-[rgba(255,255,255,0.05)] text-[11px] ${badgeStyle} line-clamp-2`}>
+                <div className="flex items-center gap-1.5 mb-1.5 opacity-80 uppercase tracking-widest text-[9px] font-bold">
                   <MessageCircle className="w-3 h-3" />
-                  <span className="font-medium capitalize">
+                  <span className="capitalize">
                     {sentiment} Interaction
                   </span>
                 </div>
-                "{client.last_interaction_summary}"
+                <span className="leading-relaxed">&quot;{client.last_interaction_summary}&quot;</span>
               </div>
             ) : (
-              <div className="p-2 rounded-lg bg-[var(--background)] text-[var(--foreground-muted)] italic">
+              <div className="p-2.5 rounded-[0.75rem] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] text-[var(--tx-secondary)] italic text-[11px]">
                 No recent interactions
               </div>
             )}
 
             {/* Quick Stats Row */}
-            <div className="flex items-center justify-between pt-2 border-t border-[var(--border)] text-[var(--foreground-muted)]">
+            <div className="flex items-center justify-between pt-3 border-t border-[var(--glass-rim)] text-[var(--tx-secondary)] font-mono text-[10px] uppercase tracking-wider">
               <div className="flex items-center gap-1.5" title="Last Contact">
                 <Clock className="w-3 h-3" />
                 <span>
@@ -165,7 +164,7 @@ export const ClientCard = React.memo(
                     ? isMounted
                       ? new Date(
                           client.last_interaction_date,
-                        ).toLocaleDateString(undefined, {
+                        ).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                         })
@@ -175,11 +174,11 @@ export const ClientCard = React.memo(
               </div>
 
               {/* Action Buttons (Visible on Hover) */}
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="p-1 hover:text-[var(--accent)] transition-colors">
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button className="p-1.5 rounded-md hover:bg-[rgba(255,255,255,0.1)] hover:text-white transition-colors">
                   <Mail className="w-3 h-3" />
                 </button>
-                <button className="p-1 hover:text-green-500 transition-colors">
+                <button className="p-1.5 rounded-md hover:bg-[rgba(16,185,129,0.15)] hover:text-[var(--neon-emerald)] transition-colors">
                   <Phone className="w-3 h-3" />
                 </button>
               </div>
