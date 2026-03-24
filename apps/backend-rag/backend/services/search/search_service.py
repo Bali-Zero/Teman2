@@ -459,6 +459,25 @@ class SearchService:
             Search results with metadata
         """
         try:
+            # Multi-query expansion: generate 2-3 alternative queries, search each, RRF fusion
+            if (
+                getattr(settings, "enable_query_expansion", False)
+                and len(query.split()) > 4
+                and not collection_override  # skip for targeted single-collection searches
+            ):
+                try:
+                    multi_result = await self._search_with_multi_expansion(
+                        query=query,
+                        user_level=user_level,
+                        limit=limit,
+                        tier_filter=tier_filter,
+                        apply_filters=apply_filters,
+                    )
+                    if multi_result and multi_result.get("results"):
+                        return multi_result
+                except Exception as e:
+                    logger.warning("Multi-query expansion failed, falling back: %s", e)
+
             # Query Expansion - translate to multiple languages for better matching
             expanded_query = await self.query_expander.expand(query)
             search_query = expanded_query  # Use expanded query for embedding
@@ -590,6 +609,177 @@ class SearchService:
                 "error": "Search service temporarily unavailable",
             }
             raise
+
+    async def _search_with_multi_expansion(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] | None = None,
+        apply_filters: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Search with LLM-generated multi-query expansion and RRF fusion.
+
+        Generates 2-3 alternative queries via Gemini Flash, searches each,
+        then fuses results using Reciprocal Rank Fusion (RRF).
+
+        Only activated when ENABLE_QUERY_EXPANSION=true and query > 4 words.
+
+        Args:
+            query: Original user query
+            user_level: User access level (0-3)
+            limit: Max final results after fusion
+            tier_filter: Optional tier restriction
+            apply_filters: Whether to apply filters
+
+        Returns:
+            Search results dict with fused results, or empty if expansion fails.
+        """
+        from backend.services.search.query_expander import get_query_expander
+
+        expander = get_query_expander()
+        alt_queries = await expander.expand_multi(query)
+
+        if len(alt_queries) <= 1:
+            # No expansion happened — fall through to normal search
+            return {}
+
+        logger.info(
+            "Multi-query expansion: '%s' → %d queries", query[:40], len(alt_queries)
+        )
+
+        # Search each alternative (limit=3 per query to keep cost/latency down)
+        per_query_limit = max(3, limit)
+        all_results: list[list[dict[str, Any]]] = []
+
+        async def _single_search(q: str) -> list[dict[str, Any]]:
+            try:
+                async with asyncio.timeout(8.0):
+                    res = await self._single_query_search(
+                        query=q,
+                        user_level=user_level,
+                        limit=per_query_limit,
+                        tier_filter=tier_filter,
+                        apply_filters=apply_filters,
+                    )
+                    return res.get("results", [])
+            except Exception as e:
+                logger.warning("Multi-expansion sub-query failed: %s", e)
+                return []
+
+        sub_results = await asyncio.gather(*[_single_search(q) for q in alt_queries])
+        for sr in sub_results:
+            if sr:
+                all_results.append(sr)
+
+        if not all_results:
+            return {}
+
+        # RRF fusion across result sets
+        fused = self._rrf_fuse_multi(all_results, k=60)
+
+        # Deduplicate by document ID
+        seen_ids: set[str] = set()
+        deduped: list[dict[str, Any]] = []
+        for doc in fused:
+            doc_id = doc.get("id", "")
+            if doc_id and doc_id not in seen_ids:
+                seen_ids.add(doc_id)
+                deduped.append(doc)
+            elif not doc_id:
+                # No ID — dedup by first 100 chars of text
+                text_key = doc.get("text", "")[:100]
+                if text_key not in seen_ids:
+                    seen_ids.add(text_key)
+                    deduped.append(doc)
+
+        final_results = deduped[:limit]
+
+        return {
+            "query": query,
+            "results": final_results,
+            "user_level": user_level,
+            "allowed_tiers": [],
+            "collection_used": "multi_expansion",
+            "expansion_queries": len(alt_queries),
+            "expansion_applied": True,
+        }
+
+    async def _single_query_search(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] | None = None,
+        apply_filters: bool | None = None,
+    ) -> dict[str, Any]:
+        """Execute a single search query (no expansion, no recursion)."""
+        embedding_start = time.time() if METRICS_AVAILABLE else None
+        (
+            query_embedding,
+            collection_name,
+            vector_db,
+            chroma_filter,
+            tier_values,
+        ) = await self._prepare_search_context(
+            query, user_level, tier_filter, None, apply_filters
+        )
+        if METRICS_AVAILABLE and embedding_start:
+            rag_embedding_duration.observe(time.time() - embedding_start)
+
+        # Determine vector name
+        use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
+
+        search_start = time.time() if METRICS_AVAILABLE else None
+        raw_results = await vector_db.search(
+            query_embedding=query_embedding,
+            filter=chroma_filter,
+            limit=limit,
+            vector_name=use_vector_name,
+        )
+        if METRICS_AVAILABLE and search_start:
+            rag_vector_search_duration.observe(time.time() - search_start)
+
+        formatted_results = format_search_results(
+            raw_results, collection_name, primary_collection=None
+        )
+        return {
+            "query": query,
+            "results": formatted_results,
+            "collection_used": collection_name,
+        }
+
+    @staticmethod
+    def _rrf_fuse_multi(
+        result_sets: list[list[dict[str, Any]]], k: int = 60
+    ) -> list[dict[str, Any]]:
+        """
+        Reciprocal Rank Fusion across multiple result sets.
+
+        RRF score = sum(1/(k + rank_i)) for each result set containing the doc.
+        """
+        scores: dict[str, float] = {}
+        docs: dict[str, dict[str, Any]] = {}
+
+        for result_set in result_sets:
+            for rank, doc in enumerate(result_set, start=1):
+                doc_id = doc.get("id", doc.get("text", "")[:100])
+                if doc_id not in docs:
+                    docs[doc_id] = doc
+                    scores[doc_id] = 0.0
+                scores[doc_id] += 1.0 / (k + rank)
+
+        # Sort by RRF score descending
+        sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
+
+        result = []
+        for doc_id in sorted_ids:
+            doc = docs[doc_id].copy()
+            doc["rrf_score"] = round(scores[doc_id], 6)
+            result.append(doc)
+
+        return result
 
     def _init_reranker(self) -> Any:
         """Lazy load the re-ranker.
