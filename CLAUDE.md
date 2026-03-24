@@ -74,6 +74,7 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
+
 - **Backend:** Python 3.11+, FastAPI, 89 routers, 250 services, 416 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
@@ -143,13 +144,15 @@ L'orchestratore classifica il task (Haiku), lancia i dispatch necessari (Gemini 
 
 **Trigger che DEVONO passare dall'orchestratore (non fare a mano):**
 
-| Trigger                                            | L'orchestratore lancia | Motivo                                 |
-| -------------------------------------------------- | ---------------------- | -------------------------------------- |
-| KBLI, visa, normativa indonesiana                  | Gemini `search`        | Claude hallucina su regolamenti        |
-| Refactor che tocca 3+ app del monorepo             | Gemini `explore`       | 1M ctx mappa tutte le dipendenze       |
-| Alembic migration / schema change                  | Codex `sandbox`        | Testa upgrade+downgrade in isolamento  |
-| Pre-deploy Fly.io (backend)                        | Gemini `redteam`       | Mai deploy senza red team              |
-| Fix a `dependencies.py` o `service_initializer.py` | Codex `sandbox`        | Import chain = single point of failure |
+| Trigger                                            | L'orchestratore lancia    | Motivo                                 |
+| -------------------------------------------------- | ------------------------- | -------------------------------------- |
+| KBLI, visa, normativa indonesiana                  | Gemini `search`           | Claude hallucina su regolamenti        |
+| Refactor che tocca 3+ app del monorepo             | Gemini `explore`          | 1M ctx mappa tutte le dipendenze       |
+| **Grounding Architettura / Regola Oracolo**        | **NotebookLM `oracolo`**  | **Ground Truth da NB-1 (citations)**   |
+| **Deep Research (nuove tech 2026)**                | **NotebookLM `research`** | **Autonomous web research (sources)**  |
+| Alembic migration / schema change                  | Codex `sandbox`           | Testa upgrade+downgrade in isolamento  |
+| Pre-deploy Fly.io (backend)                        | Gemini `redteam`          | Mai deploy senza red team              |
+| Fix a `dependencies.py` o `service_initializer.py` | Codex `sandbox`           | Import chain = single point of failure |
 
 **Task semplici** (fix un bug, aggiorna un componente): procedi direttamente senza orchestratore.
 
@@ -337,10 +340,14 @@ Classification confidence thresholds:
 ### Embedding Model
 
 **Model:** `text-embedding-3-small` (OpenAI)  
-**Dimensions:** 1536  
+**Dimensions:** 1536
+
 <!-- DOCSYNC:EMBEDDING_FROZEN_START -->
+
 **CRITICAL:** This model is FROZEN. Changing it would invalidate 93,283 existing vectors.
+
 <!-- DOCSYNC:EMBEDDING_FROZEN_END -->
+
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
 ## 7. MCP Servers
@@ -389,13 +396,9 @@ Classification confidence thresholds:
 
 **Backup & Monitoring:**
 
-- `~/scripts/fly-pg-backup.sh` — pg_dump daily → Tigris `nuzantara-backups`, cron 03:00 (3x retry + wake-up)
-- `~/scripts/fly-qdrant-backup.sh` — Qdrant snapshots daily → Tigris, cron 03:30 (10 collections, ~689MB)
-- `~/scripts/fly-health-check.sh` — check ogni 30min 07-19, alert Telegram se down
-- `scripts/system_doctor.py` — **47 check** (pro-cron, air-cron, openclaw, infra, frontend, ssl, llm, security, quality)
-- `scripts/rag_canary.py` — Embedding drift detection + 15 golden query regression (monthly/weekly)
-- `scripts/preflight.sh` — Pre/post deploy validation (`pre`=import+tests+ruff, `post`=health+embedding+agent)
-- Crontab Pro: `*/30 7-19` health, `0 3` pg backup, `30 3` qdrant backup
+- `~/scripts/fly-pg-backup.sh` — pg_dump daily → Tigris `nuzantara-backups`, cron 03:00
+- `~/scripts/fly-health-check.sh` — check ogni 5min, alert Telegram se down
+- Crontab Pro: `*/5` health, `0 3` backup
 
 ### Environment Variables
 
@@ -472,7 +475,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   } catch (error) {
-    console.error('KBLI fetch failed:', error);
+    console.error("KBLI fetch failed:", error);
     return null;
   }
 }
@@ -629,29 +632,20 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 
 ## 15. Pre-Deploy Checklist
 
-Before any production deployment, use the automated preflight script:
+Before any production deployment:
 
 ```bash
-# Automated pre-deploy validation (runs on Pro via SSH)
-./scripts/preflight.sh pre    # Import chain + confidence tests + ruff + rogue changes
-
-# Deploy
-cd apps/backend-rag && fly deploy --strategy rolling
-
-# Automated post-deploy validation
-./scripts/preflight.sh post   # /health + embedding model + agent + collections + KBLI
-
-# Or run both in sequence:
-./scripts/preflight.sh full
-```
-
-**Manual checks (if preflight unavailable):**
-
-```bash
+# 1. Check for rogue AI changes
 git diff --name-only HEAD -- apps/backend-rag/backend/
+
+# 2. Test critical import chain (dependencies.py is imported by ALL routers)
 cd apps/backend-rag && source .venv/bin/activate
 python -c "from backend.app.dependencies import get_current_user; print('OK')"
-PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q
+
+# 3. Run core KG tests (82 tests, <15s)
+PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py -q
+
+# 4. Deploy
 fly deploy --strategy rolling
 ```
 
@@ -661,7 +655,7 @@ fly deploy --strategy rolling
 
 ---
 
-**Last Updated:** 2026-03-25
+**Last Updated:** 2026-03-24
 **Maintained by:** Bali Zero AI Team
 
 ---
