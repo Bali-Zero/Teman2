@@ -92,12 +92,11 @@ from nuzantara_mcp.tools.admin import register as register_admin
 from nuzantara_mcp.tools.health import register as register_health
 from nuzantara_mcp.tools.google_bridge import register as register_google_bridge
 
-# --- Tier 1 expansion: Journey, Pricing, Invoicing, Compliance, Generals ---
+# --- Tier 1 expansion: Journey, Pricing, Invoicing, Compliance ---
 from nuzantara_mcp.tools.journey import register as register_journey
 from nuzantara_mcp.tools.pricing import register as register_pricing
 from nuzantara_mcp.tools.invoicing import register as register_invoicing
 from nuzantara_mcp.tools.compliance import register as register_compliance
-from nuzantara_mcp.tools.generals import register as register_generals
 
 # --- LAM: Memory + Heartbeat ---
 from nuzantara_mcp.tools.memory import register as register_memory
@@ -131,7 +130,6 @@ register_journey(mcp, _call, _call_safe)
 register_pricing(mcp, _call, _call_safe)
 register_invoicing(mcp, _call, _call_safe)
 register_compliance(mcp, _call, _call_safe)
-register_generals(mcp, _call, _call_safe)
 
 # LAM: memory + grounding
 register_memory(mcp, _call, _call_safe)
