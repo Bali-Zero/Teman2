@@ -50,7 +50,7 @@ export interface PortalAction {
 export interface VisaInfo {
   current: {
     type: string;
-    status: "active" | "pending" | "expired";
+    status: "active" | "pending" | "warning" | "expired";
     issueDate: string;
     expiryDate: string;
     daysRemaining: number;
@@ -150,11 +150,11 @@ export interface TaxHistoryItem {
 // ============================================================================
 
 export interface PortalDocument {
-  id: string;
+  id: number | string;
   name: string;
   type: string;
   category: string;
-  status: "verified" | "pending" | "expired";
+  status: "verified" | "pending" | "received" | "rejected" | "expired";
   uploadDate: string;
   expiryDate?: string;
   size: string;
