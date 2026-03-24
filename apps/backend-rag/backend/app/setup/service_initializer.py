@@ -1089,6 +1089,33 @@ async def initialize_services(app: FastAPI) -> None:
     # 11. The Generals Multi-Agent System (DISABLED for omnichannel stabilization)
     # await _init_generals(app, db_pool)
 
+    # 10b. Health Monitor (extracted from _init_background_services)
+    try:
+        from backend.services.monitoring.alert_service import AlertService
+        from backend.services.monitoring.health_monitor import HealthMonitor
+
+        alert_service = getattr(app.state, "alert_service", None)
+        if alert_service is None:
+            alert_service = AlertService()
+            app.state.alert_service = alert_service
+
+        health_monitor = HealthMonitor(alert_service=alert_service, check_interval=60)
+        health_monitor.set_services(
+            memory_service=getattr(app.state, "memory_service", None),
+            intelligent_router=getattr(app.state, "intelligent_router", None),
+            tool_executor=getattr(app.state, "tool_executor", None),
+            app_state=app.state,
+        )
+        await health_monitor.start()
+        app.state.health_monitor = health_monitor
+        service_registry.register("health_monitor", ServiceStatus.HEALTHY, critical=False)
+        logger.info("✅ Health Monitor: Active (check_interval=60s)")
+    except Exception as e:
+        service_registry.register(
+            "health_monitor", ServiceStatus.DEGRADED, error=str(e), critical=False
+        )
+        logger.error(f"❌ Failed to initialize Health Monitor: {e}")
+
     # 12. LangGraph Agent Layer - Inject services into workflow nodes
     logger.debug("Injecting services into LangGraph agent nodes...")
     try:

@@ -419,6 +419,10 @@ class AgenticRAGOrchestrator:
         channel: str | None = None,
     ):
         """Stream query with comprehensive error handling. Delegates to OrchestratorStreamingCore."""
+        # Initialize required arguments for stream_query_core
+        tool_execution_counter: dict[str, int] = {"count": 0}
+        correlation_id: str = str(uuid.uuid4())
+
         # Forward to the refactored Streaming Core
         async for event in self.streaming_core.stream_query_core(
             query=query,
@@ -426,6 +430,8 @@ class AgenticRAGOrchestrator:
             conversation_history=conversation_history,
             session_id=session_id,
             images=images,
+            tool_execution_counter=tool_execution_counter,
+            correlation_id=correlation_id,
             channel=channel,
         ):
             yield event

@@ -23,7 +23,12 @@ def mock_db_pool():
     async def acquire():
         yield conn
 
+    @asynccontextmanager
+    async def mock_transaction():
+        yield None
+
     pool.acquire = acquire
+    conn.transaction = mock_transaction
     return pool, conn
 
 
@@ -147,7 +152,9 @@ class TestCreateClient:
         )
 
         assert response.status_code == 400
-        assert "already exists" in response.json()["detail"].lower()
+        # Message may be in Italian or English depending on locale
+        detail = response.json()["detail"].lower()
+        assert any(kw in detail for kw in ["already exists", "esiste già", "unique", "unicità"])
 
 
 class TestListClients:

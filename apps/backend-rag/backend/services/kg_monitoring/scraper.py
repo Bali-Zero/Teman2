@@ -137,12 +137,32 @@ class LegalScraper:
             "documents_found": 0,
             "last_run": None,
         }
+        self._client: httpx.AsyncClient | None = None
 
         logger.info("✅ LegalScraper initialized")
         logger.info(f"   Sources configured: {len(self.sources)}")
         for _src_id, src in self.sources.items():
             status = "✅ enabled" if src.enabled else "❌ disabled"
             logger.info(f"   - {src.name}: {status}")
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client.
+
+        Headers and timeouts are passed per-request (in _fetch_with_retry) so that
+        each SourceConfig can use its own values without leaking between sources.
+        """
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                follow_redirects=True,
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("LegalScraper HTTP client closed.")
 
     async def scrape_source(
         self,
@@ -172,18 +192,14 @@ class LegalScraper:
         logger.info(f"🔍 Scraping {source.name} (max {max_pages} pages)")
 
         documents = []
-        async with httpx.AsyncClient(
-            headers=source.headers,
-            timeout=source.timeout,
-            follow_redirects=True,
-        ) as client:
-            for page in range(1, max_pages + 1):
-                page_docs = await self._scrape_page(client, source, page, per_page)
-                documents.extend(page_docs)
+        client = self._get_client()
+        for page in range(1, max_pages + 1):
+            page_docs = await self._scrape_page(client, source, page, per_page)
+            documents.extend(page_docs)
 
-                if len(page_docs) < per_page:
-                    logger.info(f"   Reached end of results at page {page}")
-                    break
+            if len(page_docs) < per_page:
+                logger.info(f"   Reached end of results at page {page}")
+                break
 
         self.scrape_stats["documents_found"] += len(documents)
         self.scrape_stats["last_run"] = datetime.now().isoformat()
@@ -256,7 +272,11 @@ class LegalScraper:
         for attempt in range(source.max_retries):
             try:
                 self.scrape_stats["total_requests"] += 1
-                response = await client.get(url)
+                response = await client.get(
+                    url,
+                    headers=source.headers,
+                    timeout=source.timeout,
+                )
                 response.raise_for_status()
                 self.scrape_stats["successful_requests"] += 1
 
@@ -353,37 +373,34 @@ class LegalScraper:
 
         logger.debug(f"   Fetching detail: {document.url}")
 
-        async with httpx.AsyncClient(
-            headers=source.headers,
-            timeout=source.timeout,
-        ) as client:
-            response = await self._fetch_with_retry(client, document.url, source)
-            if not response:
-                return document
+        client = self._get_client()
+        response = await self._fetch_with_retry(client, document.url, source)
+        if not response:
+            return document
 
-            soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text, "html.parser")
 
-            # Extract full content
-            content_selectors = [
-                source.selectors.get("content"),
-                ".document-content",
-                ".full-text",
-                "article",
-                ".content",
-                "#content",
-            ]
+        # Extract full content
+        content_selectors = [
+            source.selectors.get("content"),
+            ".document-content",
+            ".full-text",
+            "article",
+            ".content",
+            "#content",
+        ]
 
-            for selector in content_selectors:
-                if selector:
-                    elem = soup.select_one(selector)
-                    if elem:
-                        document.content = elem.get_text(separator="\n", strip=True)
-                        document.raw_html = str(elem)
-                        # Update hash with new content
-                        document.document_hash = hashlib.md5(
-                            f"{document.title}:{document.content}".encode()
-                        ).hexdigest()
-                        break
+        for selector in content_selectors:
+            if selector:
+                elem = soup.select_one(selector)
+                if elem:
+                    document.content = elem.get_text(separator="\n", strip=True)
+                    document.raw_html = str(elem)
+                    # Update hash with new content
+                    document.document_hash = hashlib.md5(
+                        f"{document.title}:{document.content}".encode()
+                    ).hexdigest()
+                    break
 
         return document
 

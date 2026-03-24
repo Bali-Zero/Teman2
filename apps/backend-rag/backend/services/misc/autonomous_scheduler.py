@@ -35,7 +35,32 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+import httpx
+
 logger = logging.getLogger(__name__)
+
+# Module-level persistent HTTP client for background tasks
+_client: httpx.AsyncClient | None = None
+
+
+def _get_client(timeout: float = 30.0) -> httpx.AsyncClient:
+    """Get or create the shared async client for scheduler tasks."""
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.AsyncClient(
+            timeout=timeout,
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+        )
+    return _client
+
+
+async def close_scheduler_client() -> None:
+    """Close the module-level async client."""
+    global _client
+    if _client and not _client.is_closed:
+        await _client.aclose()
+    logger.info("AutonomousScheduler module HTTP client closed.")
+
 
 # Unique ID for this worker instance (machine + process)
 _WORKER_ID = f"{os.getenv('FLY_MACHINE_ID', 'local')}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
@@ -689,30 +714,28 @@ async def create_and_start_scheduler(
     # 5. Compile and email daily report
     # ═══════════════════════════════════════════════════════════════════════════
     try:
-        import httpx
-
         async def run_daily_ops_autopilot() -> None:
             """Execute chain_daily_ops_autopilot via MCP server"""
             try:
                 # Call MCP server endpoint to execute the chain
                 mcp_base_url = os.getenv("MCP_SERVER_URL", "http://localhost:8000")
-                async with httpx.AsyncClient(timeout=300.0) as client:
-                    response = await client.post(
-                        f"{mcp_base_url}/tools/chain_daily_ops_autopilot",
-                        json={"send_report_to": "zero@balizero.com"},
-                    )
-                    response.raise_for_status()
-                    result = response.json()
+                client = _get_client(timeout=300.0)
+                response = await client.post(
+                    f"{mcp_base_url}/tools/chain_daily_ops_autopilot",
+                    json={"send_report_to": "zero@balizero.com"},
+                )
+                response.raise_for_status()
+                result = response.json()
 
-                    reminders = (
-                        result.get("report", {}).get("expiry_alerts", {}).get("reminders_sent", 0)
-                    )
-                    articles = result.get("report", {}).get("intel", {}).get("articles_composed", 0)
+                reminders = (
+                    result.get("report", {}).get("expiry_alerts", {}).get("reminders_sent", 0)
+                )
+                articles = result.get("report", {}).get("intel", {}).get("articles_composed", 0)
 
-                    logger.info(
-                        f"🤖 Daily Ops Autopilot completed: "
-                        f"{reminders} reminders sent, {articles} articles composed"
-                    )
+                logger.info(
+                    f"🤖 Daily Ops Autopilot completed: "
+                    f"{reminders} reminders sent, {articles} articles composed"
+                )
             except Exception as e:
                 logger.error(f"❌ Daily Ops Autopilot error: {e}", exc_info=True)
 

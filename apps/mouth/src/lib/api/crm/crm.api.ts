@@ -905,6 +905,42 @@ export class CrmApi {
   }
 
   /**
+   * Update company details
+   */
+  async updateCompany(
+    companyId: number,
+    data: Partial<{
+      company_name: string;
+      company_type: string;
+      kbli_code: string;
+      nib: string;
+      npwp_company: string;
+      akta_pendirian_no: string;
+      akta_pendirian_date: string;
+      akta_perubahan_no: string;
+      akta_perubahan_date: string;
+      sk_menhumkam_no: string;
+      sk_menhumkam_date: string;
+      registered_address: string;
+      office_address: string;
+      city: string;
+      province: string;
+      postal_code: string;
+      company_phone: string;
+      company_email: string;
+      status: string;
+    }>
+  ): Promise<{ id: number; company_name: string; message: string }> {
+    return this.client.request<{ id: number; company_name: string; message: string }>(
+      `/api/crm/companies/${companyId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
    * Get company tax record
    */
   async getCompanyTax(companyId: number): Promise<TaxRecord> {

@@ -607,7 +607,7 @@ async def traverse_graph_node(
                 JOIN kg_nodes s ON e.source_entity_id = s.entity_id
                 JOIN kg_nodes t ON e.target_entity_id = t.entity_id
                 WHERE e.source_entity_id = ANY($1::text[])
-                  AND e.relationship_type IN ('REQUIRES', 'ENABLES', 'PART_OF')
+                  AND e.relationship_type IN ('REQUIRES', 'ENABLES', 'PART_OF', 'ISSUED_BY', 'HAS_FEE', 'HAS_DURATION', 'APPLIES_TO', 'TAX_OBLIGATION', 'CLASSIFIED_AS')
                   AND t.confidence > 0.7
                 ORDER BY t.confidence DESC
                 """,

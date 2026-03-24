@@ -145,6 +145,8 @@ async def lifespan(app: FastAPI):
     health_monitor = getattr(app.state, "health_monitor", None)
     if health_monitor:
         await health_monitor.stop()
+        if hasattr(health_monitor, "close"):
+            await health_monitor.close()
         logger.info("✅ Health Monitor stopped")
 
     # Shutdown Compliance Monitor
@@ -157,6 +159,10 @@ async def lifespan(app: FastAPI):
     autonomous_scheduler = getattr(app.state, "autonomous_scheduler", None)
     if autonomous_scheduler:
         await autonomous_scheduler.stop()
+        # Autonomous scheduler might have its own internal client close logic
+        # but we'll try to close it if exposed
+        if hasattr(autonomous_scheduler, "close"):
+            await autonomous_scheduler.close()
         logger.info("✅ Autonomous Scheduler stopped (all agents terminated)")
 
     # Shutdown Metrics Pusher
@@ -205,13 +211,84 @@ async def lifespan(app: FastAPI):
             await db_health_check_task
         logger.info("✅ Database Health Check Loop stopped")
 
-    # Close HTTP clients and Service Connections
-    team_drive_service = getattr(app.state, "team_drive_service", None)
-    if team_drive_service and hasattr(team_drive_service, "close"):
-        await team_drive_service.close()
-        logger.info("✅ Team Drive Service HTTP client closed")
-        
-    logger.info("✅ HTTP clients closed")
+    # SYSTEMATIC CLEANUP of persistent HTTP clients and service connections
+    # This addresses Stream I: HTTP Client Lifecycle Consolidation
+    logger.info("🧹 Performing systematic service cleanup...")
+
+    services_to_close = [
+        "alert_service",
+        "search_service",
+        "ai_client",
+        "intelligent_router",
+        "tool_executor",
+        "mcp_client",
+        "faq_cache",
+        "memory_service",
+        "conversation_service",
+        "activity_logger",
+        "team_drive_service",
+        "vision_rag",
+        "pdf_vision_service",
+        "jurnal_service",
+        "github_publisher",
+        "scraper",
+        "enrichment_service"
+    ]
+
+    for attr_name in services_to_close:
+        service = getattr(app.state, attr_name, None)
+        if service and hasattr(service, "close"):
+            try:
+                # Call async close method
+                if asyncio.iscoroutinefunction(service.close):
+                    await service.close()
+                else:
+                    service.close()
+                logger.info(f"✅ Service '{attr_name}' closed successfully")
+            except Exception as e:
+                logger.warning(f"⚠️ Error closing service '{attr_name}': {e}")
+
+    # Explicitly close any remaining HTTPX clients in state (backup check)
+    for attr_name, attr_val in app.state.__dict__.items():
+        if attr_name not in services_to_close and hasattr(attr_val, "close"):
+            # Check if it looks like an httpx.AsyncClient or our service
+            if "client" in attr_name.lower() or "service" in attr_name.lower():
+                try:
+                    if asyncio.iscoroutinefunction(attr_val.close):
+                        await attr_val.close()
+                    else:
+                        attr_val.close()
+                    logger.info(f"✅ Additional service '{attr_name}' closed")
+                except Exception:
+                    pass
+
+    # Module-level client cleanups (Addressing global clients in specific services)
+    try:
+        from backend.services.rag.kg_subgraph_property import close_property_subgraph_client
+        await close_property_subgraph_client()
+        logger.info("✅ Property Subgraph module client closed")
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning(f"⚠️ Error closing Property Subgraph client: {e}")
+
+    try:
+        from backend.services.misc.autonomous_scheduler import close_scheduler_client
+        await close_scheduler_client()
+        logger.info("✅ Autonomous Scheduler module client closed")
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning(f"⚠️ Error closing Scheduler client: {e}")
+
+    try:
+        from backend.services.rag.agentic.tools import close_agentic_tools_client
+        await close_agentic_tools_client()
+        logger.info("✅ Agentic Tools module client closed")
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning(f"⚠️ Error closing Agentic Tools client: {e}")
 
     logger.info("✅ ZANTARA shutdown complete")
 

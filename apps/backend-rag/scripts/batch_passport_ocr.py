@@ -71,7 +71,12 @@ async def get_oauth_token(client: httpx.AsyncClient) -> str:
 
 
 async def find_passport_file(client: httpx.AsyncClient, client_drive_id: str) -> dict | None:
-    """Find first passport file in 00_Profile subfolder."""
+    """Find passport file in 00_Profile subfolder.
+
+    Priority:
+    1. Files named with 'passport' or 'paspor' (most reliable)
+    2. Any image/PDF in 00_Profile (fallback — will OCR and discard if not a passport)
+    """
     headers = {"Authorization": f"Bearer {await get_oauth_token(client)}"}
 
     # Find 00_Profile
@@ -90,7 +95,7 @@ async def find_passport_file(client: httpx.AsyncClient, client_drive_id: str) ->
     if not profiles:
         return None
 
-    # Find passport file
+    # List all files in 00_Profile
     r2 = await client.get(
         "https://www.googleapis.com/drive/v3/files",
         headers=headers,
@@ -104,9 +109,18 @@ async def find_passport_file(client: httpx.AsyncClient, client_drive_id: str) ->
     )
     files = r2.json().get("files", [])
 
+    # Priority 1: explicitly named passport files
     for f in files:
-        if "passport" in f["name"].lower() or "paspor" in f["name"].lower():
+        name_lower = f["name"].lower()
+        if "passport" in name_lower or "paspor" in name_lower:
             return f
+
+    # Priority 2: any image or PDF (likely ID document)
+    supported_mime = {"image/jpeg", "image/png", "image/jpg", "image/webp", "application/pdf"}
+    for f in files:
+        if f.get("mimeType") in supported_mime:
+            return f
+
     return None
 
 
@@ -267,117 +281,153 @@ async def update_client(conn: asyncpg.Connection, client_id: int, data: dict, dr
     return updated
 
 
+async def update_client_with_retry(client_id: int, data: dict, dry_run: bool) -> int:
+    """Update client using fresh per-call connection with retry on tunnel drops."""
+    max_attempts = 8
+    for attempt in range(max_attempts):
+        conn = None
+        try:
+            conn = await asyncpg.connect(DB, command_timeout=60)
+            result = await update_client(conn, client_id, data, dry_run)
+            return result
+        except (asyncpg.exceptions.ConnectionDoesNotExistError, OSError, ConnectionRefusedError) as e:
+            wait = min(5 * (attempt + 1), 30)
+            logger.warning(f"    ⚠️ Connection error attempt {attempt+1}/{max_attempts}: {e}")
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(wait)
+        except Exception as e:
+            logger.warning(f"    ⚠️ DB error for client {client_id}: {e}")
+            return 0
+        finally:
+            if conn and not conn.is_closed():
+                await conn.close()
+    return 0
+
+
+async def fetch_clients_with_retry(limit: int) -> list:
+    """Fetch candidate clients using a fresh short-lived connection with retry."""
+    max_attempts = 8
+    for attempt in range(max_attempts):
+        conn = None
+        try:
+            conn = await asyncpg.connect(DB, command_timeout=60)
+            rows = await conn.fetch(
+                """
+                SELECT id, full_name, google_drive_folder_id
+                FROM clients
+                WHERE deleted_at IS NULL
+                  AND google_drive_folder_id IS NOT NULL
+                  AND google_drive_folder_id != ''
+                  AND (passport_number IS NULL OR passport_number = '')
+                  AND LENGTH(full_name) > 3
+                ORDER BY id
+                LIMIT $1
+                """,
+                limit,
+            )
+            return list(rows)
+        except (asyncpg.exceptions.ConnectionDoesNotExistError, OSError, ConnectionRefusedError) as e:
+            wait = min(5 * (attempt + 1), 30)
+            logger.warning(f"Connection error attempt {attempt+1}/{max_attempts}: {e}, retrying in {wait}s")
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(wait)
+        finally:
+            if conn and not conn.is_closed():
+                await conn.close()
+    raise RuntimeError("Failed to fetch clients after all retries")
+
+
 async def main(dry_run: bool, limit: int, test: int) -> None:
     logger.info(f"{'DRY RUN — ' if dry_run else ''}Batch Passport OCR")
 
-    conn = await asyncpg.connect(DB)
+    # Fetch client list with fresh short-lived connection
+    clients = await fetch_clients_with_retry(limit)
+    logger.info(f"Clients without passport: {len(clients)}")
 
-    try:
-        # Get clients with Drive folder but no passport
-        clients = await conn.fetch(
-            """
-            SELECT id, full_name, google_drive_folder_id
-            FROM clients
-            WHERE deleted_at IS NULL
-              AND google_drive_folder_id IS NOT NULL
-              AND google_drive_folder_id != ''
-              AND (passport_number IS NULL OR passport_number = '')
-              AND LENGTH(full_name) > 3
-            ORDER BY id
-            LIMIT $1
-        """,
-            limit,
-        )
+    if test > 0:
+        clients = clients[:test]
+        logger.info(f"TEST MODE: processing only {test}")
 
-        logger.info(f"Clients without passport: {len(clients)}")
+    totals = {
+        "processed": 0,
+        "ocr_ok": 0,
+        "fields": 0,
+        "no_passport_file": 0,
+        "ocr_failed": 0,
+        "errors": 0,
+    }
 
-        if test > 0:
-            clients = clients[:test]
-            logger.info(f"TEST MODE: processing only {test}")
+    async with httpx.AsyncClient(timeout=60) as http:
+        await get_oauth_token(http)
 
-        totals = {
-            "processed": 0,
-            "ocr_ok": 0,
-            "fields": 0,
-            "no_passport_file": 0,
-            "ocr_failed": 0,
-            "errors": 0,
-        }
+        for i, cl in enumerate(clients):
+            cid = cl["id"]
+            name = cl["full_name"]
+            drive_id = cl["google_drive_folder_id"]
 
-        async with httpx.AsyncClient(timeout=60) as http:
-            await get_oauth_token(http)
+            try:
+                # Find passport file
+                passport_file = await find_passport_file(http, drive_id)
+                if not passport_file:
+                    totals["no_passport_file"] += 1
+                    continue
 
-            for i, cl in enumerate(clients):
-                cid = cl["id"]
-                name = cl["full_name"]
-                drive_id = cl["google_drive_folder_id"]
-
-                try:
-                    # Find passport file
-                    passport_file = await find_passport_file(http, drive_id)
-                    if not passport_file:
-                        totals["no_passport_file"] += 1
-                        continue
-
-                    # Download
-                    file_data = await download_file(http, passport_file["id"])
-                    if not file_data:
-                        totals["errors"] += 1
-                        continue
-
-                    # Determine mime type
-                    mime = passport_file.get("mimeType", "image/jpeg")
-                    if mime == "application/pdf":
-                        # Convert PDF first page to image
-                        import fitz
-
-                        doc = fitz.open(stream=file_data, filetype="pdf")
-                        pix = doc[0].get_pixmap(matrix=fitz.Matrix(2, 2))
-                        file_data = pix.tobytes("png")
-                        mime = "image/png"
-                        doc.close()
-
-                    # OCR
-                    extracted = await ocr_passport(http, file_data, mime)
-                    if not extracted or not extracted.get("passport_number"):
-                        # Retry once
-                        await asyncio.sleep(2)
-                        extracted = await ocr_passport(http, file_data, mime)
-                    if not extracted or not extracted.get("passport_number"):
-                        totals["ocr_failed"] += 1
-                        logger.info(f"  [{i + 1}] {name[:35]:35s} ✗ OCR failed")
-                        continue
-
-                    # Update DB
-                    fields = await update_client(conn, cid, extracted, dry_run)
-                    totals["ocr_ok"] += 1
-                    totals["fields"] += fields
-                    totals["processed"] += 1
-
-                    logger.info(
-                        f"  [{i + 1}] {name[:35]:35s} ✓ {extracted['passport_number']} +{fields} fields"
-                    )
-
-                except Exception as e:
+                # Download
+                file_data = await download_file(http, passport_file["id"])
+                if not file_data:
                     totals["errors"] += 1
-                    logger.warning(f"  [{i + 1}] {name[:35]:35s} ERROR: {e}")
+                    continue
 
-                if (i + 1) % 50 == 0:
-                    logger.info(
-                        f"\n--- {i + 1}/{len(clients)} | ok={totals['ocr_ok']} fields={totals['fields']} ---\n"
-                    )
+                # Determine mime type
+                mime = passport_file.get("mimeType", "image/jpeg")
+                if mime == "application/pdf":
+                    # Convert PDF first page to image
+                    import fitz
 
-        logger.info(f"\n{'=' * 50}")
-        logger.info(f"Batch Passport OCR {'(DRY RUN)' if dry_run else 'COMPLETE'}")
-        logger.info(f"  Processed  : {totals['processed']}")
-        logger.info(f"  OCR success: {totals['ocr_ok']}")
-        logger.info(f"  Fields     : {totals['fields']}")
-        logger.info(f"  No passport: {totals['no_passport_file']}")
-        logger.info(f"  OCR failed : {totals['ocr_failed']}")
-        logger.info(f"  Errors     : {totals['errors']}")
+                    doc = fitz.open(stream=file_data, filetype="pdf")
+                    pix = doc[0].get_pixmap(matrix=fitz.Matrix(2, 2))
+                    file_data = pix.tobytes("png")
+                    mime = "image/png"
+                    doc.close()
 
-    finally:
-        await conn.close()
+                # OCR
+                extracted = await ocr_passport(http, file_data, mime)
+                if not extracted or not extracted.get("passport_number"):
+                    # Retry once
+                    await asyncio.sleep(2)
+                    extracted = await ocr_passport(http, file_data, mime)
+                if not extracted or not extracted.get("passport_number"):
+                    totals["ocr_failed"] += 1
+                    logger.info(f"  [{i + 1}] {name[:35]:35s} ✗ OCR failed")
+                    continue
+
+                # Update DB — fresh connection per client, with retry
+                fields = await update_client_with_retry(cid, extracted, dry_run)
+                totals["ocr_ok"] += 1
+                totals["fields"] += fields
+                totals["processed"] += 1
+
+                logger.info(
+                    f"  [{i + 1}] {name[:35]:35s} ✓ {extracted['passport_number']} +{fields} fields"
+                )
+
+            except Exception as e:
+                totals["errors"] += 1
+                logger.warning(f"  [{i + 1}] {name[:35]:35s} ERROR: {e}")
+
+            if (i + 1) % 30 == 0:
+                logger.info(
+                    f"\n--- {i + 1}/{len(clients)} | ok={totals['ocr_ok']} fields={totals['fields']} ---\n"
+                )
+
+    logger.info(f"\n{'=' * 50}")
+    logger.info(f"Batch Passport OCR {'(DRY RUN)' if dry_run else 'COMPLETE'}")
+    logger.info(f"  Processed  : {totals['processed']}")
+    logger.info(f"  OCR success: {totals['ocr_ok']}")
+    logger.info(f"  Fields     : {totals['fields']}")
+    logger.info(f"  No passport: {totals['no_passport_file']}")
+    logger.info(f"  OCR failed : {totals['ocr_failed']}")
+    logger.info(f"  Errors     : {totals['errors']}")
 
 
 if __name__ == "__main__":

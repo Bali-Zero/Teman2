@@ -73,13 +73,18 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 
 ### Tech Stack
 
-- **Backend:** Python 3.11+, FastAPI, 88 routers, 244 services, 385 test files
+<!-- DOCSYNC:BACKEND_STATS_START -->
+- **Backend:** Python 3.11+, FastAPI, 89 routers, 249 services, 416 test files
+<!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
 - **Knowledge Graph:** 56,113 nodes, 161,173 edges
-- **Vector Collections:** 9 live on Fly.io (66,595 documents), 11 defined in code
+<!-- DOCSYNC:VECTOR_STATS_START -->
+- **Vector Collections:** 10 live on Fly.io (93,283 documents), 11 defined in code
+<!-- DOCSYNC:VECTOR_STATS_END -->
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
+- **Search Pipeline:** Hybrid (BM25+Dense+RRF) + CrossEncoder reranking (enabled 2026-03-24)
 
 ### Key Terms (for new AI agents)
 
@@ -164,6 +169,7 @@ Controlla `shared/escalations.json` — se ci sono pending, gestiscili prima di 
 8. **Clean Logging** - Use `logger`, never `print()` statements.
 9. **Quality Standards** - Tests, error handling, graceful degradation required.
 10. **Verify Sources** - Never presume, always verify against actual data sources.
+11. **Async HTTP Clients** - NEVER instantiate `httpx.AsyncClient()` inside methods or loops. Always use a persistent client managed at the service level (pattern: `_get_client`) and register its closure in the `lifespan` of `app_factory.py`.
 
 ## 4. Development Commands
 
@@ -332,15 +338,18 @@ Classification confidence thresholds:
 
 **Model:** `text-embedding-3-small` (OpenAI)  
 **Dimensions:** 1536  
-**CRITICAL:** This model is FROZEN. Changing it would invalidate 66,595 existing vectors.  
+<!-- DOCSYNC:EMBEDDING_FROZEN_START -->
+**CRITICAL:** This model is FROZEN. Changing it would invalidate 93,283 existing vectors.
+<!-- DOCSYNC:EMBEDDING_FROZEN_END -->
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
 ## 7. MCP Servers
 
 **Primary:** `apps/nuzantara-mcp/` (v2.1, FastMCP, stdio transport)
+**Status:** **Federation v3 Phase 2 ACTIVE** (2026-03-23)
 **Capabilities:**
 
-- **109 Tools** across 17 modules (CRM, portal, intel, content, analytics, knowledge, comms, drive, workflows, admin, health, journey, pricing, compliance, generals, memory, heartbeat)
+- **131 Tools** total across Federation bridge (118 Nuzantara + 13 Advanced)
 - **10 Prompts** for guided workflows
 - **5 Resources** for knowledge base access
 - **8 Workflow Chains** for deterministic automation (daily_ops_autopilot, new_client_onboarding, practice_lifecycle_check, intel_pipeline, weekly_report, client_health_monitor, compliance_autopilot, journey_accelerator)
@@ -363,7 +372,7 @@ Classification confidence thresholds:
 - **Backend:** Fly.io `nuzantara-rag` (Singapore, shared-cpu-2x, **2GB RAM**, auto_stop=true, min=0)
 - **Databases:**
   - PostgreSQL: Fly.io `nuzantara-postgres` (**2GB RAM**, v0.1.0, upgraded 2026-03-14)
-  - Qdrant: Fly.io `nuzantara-qdrant` (2GB, v1.12.1 — upgrade TODO)
+  - Qdrant: Fly.io `nuzantara-qdrant` (2GB, v1.17.0, upgraded 2026-03-24)
   - Redis: Upstash or Fly.io
 
 ### Fly.io — SOLO 3 APP (updated 2026-03-14)
@@ -372,7 +381,7 @@ Classification confidence thresholds:
 | -------------------- | --------- | --- | ------------- | ----------------------- |
 | `nuzantara-rag`      | shared-2x | 2GB | ✅ yes, min=0 | Cold start ~35s         |
 | `nuzantara-postgres` | shared-1x | 2GB | no            | v0.1.0, backup → Tigris |
-| `nuzantara-qdrant`   | shared-1x | 2GB | no            | v1.12.1                 |
+| `nuzantara-qdrant`   | shared-1x | 2GB | no            | v1.17.0                 |
 
 **Distrutte (2026-03-14):** `nuzantara-rag-staging`, `bali-intel-scraper`, `zantara-media`, `fly-builder-red-flower-7537`
 
@@ -459,7 +468,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   } catch (error) {
-    console.error("KBLI fetch failed:", error);
+    console.error('KBLI fetch failed:', error);
     return null;
   }
 }
@@ -639,7 +648,7 @@ fly deploy --strategy rolling
 
 ---
 
-**Last Updated:** 2026-03-22
+**Last Updated:** 2026-03-24
 **Maintained by:** Bali Zero AI Team
 
 ---
