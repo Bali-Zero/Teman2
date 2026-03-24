@@ -209,6 +209,21 @@ SERVICES = {
         "limits": "requires interactive Claude Code session, Canva Pro account",
         "cost": "$0 (Canva Pro subscription)",
     },
+    "gitkraken": {
+        "name": "GitKraken MCP (Premium Plus)",
+        "role": "Git workflow intelligence — smart commits, PR triage, issue→branch, AI review",
+        "tier": "service",
+        "tools": [
+            "gitlens_commit_composer", "gitlens_launchpad", "gitlens_start_review",
+            "gitlens_start_work", "pull_request_create", "pull_request_get_detail",
+            "pull_request_create_review", "issues_assigned_to_me", "issues_get_detail",
+            "git_blame", "git_worktree", "git_log_or_diff",
+        ],
+        "access": "GitKraken MCP (gk mcp) — authenticated as Balizero1987",
+        "dispatch_cmds": [],
+        "limits": "requires gk auth login, Premium Plus annual subscription",
+        "cost": "$0 (annual Premium Plus subscription)",
+    },
 }
 
 
