@@ -165,31 +165,48 @@ class VectorSearchTool(BaseTool):
             # Execute search across target collections in parallel for better performance
             import asyncio
 
+            # Determine search method based on feature flags
+            from backend.app.core.config import settings as _settings
+
+            use_hybrid = getattr(_settings, "enable_hybrid_search", False)
+
             async def _search_collection(target_col) -> Any:
                 try:
+                    per_col_limit = 5 if len(target_collections) > 1 else top_k
                     # Per-collection timeout to prevent one slow collection from blocking everything
-                    async with asyncio.timeout(10.0):
-                        if hasattr(self.retriever, "search_with_reranking"):
+                    async with asyncio.timeout(15.0 if use_hybrid else 10.0):
+                        if use_hybrid and hasattr(self.retriever, "hybrid_search_with_reranking"):
+                            # Full pipeline: BM25 + Dense + RRF + CrossEncoder reranking
+                            res = await self.retriever.hybrid_search_with_reranking(
+                                query=query,
+                                user_level=self.user_level,
+                                limit=per_col_limit,
+                                collection_override=target_col,
+                            )
+                        elif hasattr(self.retriever, "search_with_reranking"):
                             res = await self.retriever.search_with_reranking(
                                 query=query,
                                 user_level=self.user_level,
-                                limit=5 if len(target_collections) > 1 else top_k,
+                                limit=per_col_limit,
                                 collection_override=target_col,
                             )
                         else:
                             res = await self.retriever.search(
                                 query=query,
                                 user_level=self.user_level,
-                                limit=5 if len(target_collections) > 1 else top_k,
+                                limit=per_col_limit,
                                 collection_override=target_col,
                             )
                         return target_col, res.get("results", [])
                 except asyncio.TimeoutError:
-                    logger.warning(f"⏱️ Search timeout (10s) for collection {target_col}")
+                    logger.warning(f"⏱️ Search timeout for collection {target_col}")
                     return target_col, []
                 except Exception as e:
                     logger.warning(f"Search failed for {target_col}: {e}")
                     return target_col, []
+
+            if use_hybrid:
+                logger.info("🔀 [Hybrid Search] Using BM25+Dense+RRF+CrossEncoder pipeline")
 
             search_results = await asyncio.gather(
                 *[_search_collection(col) for col in target_collections]

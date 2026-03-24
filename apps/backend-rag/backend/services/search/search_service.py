@@ -583,14 +583,27 @@ class SearchService:
             raise
 
     def _init_reranker(self) -> Any:
-        """Lazy load the re-ranker"""
-        if not hasattr(self, "_reranker"):
-            from backend.core.reranker import ReRanker
+        """Lazy load the re-ranker.
 
-            self._reranker = ReRanker()
-            logger.info(
-                f"🔧 ReRanker initialized: enabled={self._reranker.enabled}, url={self._reranker.api_url}"
-            )
+        Uses CrossEncoderReranker (local) when enable_reranker=True,
+        falls back to legacy Ze-Rank API when zerank_api_key is set.
+        """
+        if not hasattr(self, "_reranker"):
+            if getattr(settings, "enable_reranker", False):
+                from backend.services.rag.reranker import CrossEncoderReranker
+
+                self._reranker = CrossEncoderReranker()
+                logger.info(
+                    f"🔧 CrossEncoderReranker initialized: enabled={self._reranker.enabled}, "
+                    f"model={self._reranker.model_name}"
+                )
+            else:
+                from backend.core.reranker import ReRanker
+
+                self._reranker = ReRanker()
+                logger.info(
+                    f"🔧 ReRanker (legacy) initialized: enabled={self._reranker.enabled}"
+                )
         return self._reranker
 
     async def search_with_reranking(
@@ -789,13 +802,13 @@ class SearchService:
         collection_override: str | None = None,
     ) -> dict[str, Any]:
         """
-        Full hybrid search pipeline: BM25 + Dense + RRF + Ze-Rank 2 reranking.
+        Full hybrid search pipeline: BM25 + Dense + RRF + reranking.
 
         This is the most comprehensive search method combining:
         1. Dense vector search (semantic)
         2. BM25 sparse vector search (keyword)
         3. Reciprocal Rank Fusion (combining both)
-        4. Ze-Rank 2 semantic reranking (final precision)
+        4. CrossEncoder or Ze-Rank reranking (final precision)
 
         Args:
             query: Search query
