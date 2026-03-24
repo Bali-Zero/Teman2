@@ -563,17 +563,45 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                 item_id = item.get("id") or item.get("item_id")
                 title = item.get("title", "Unknown")
 
-                # Step 4: Assess via RAG
+                # Step 4: Assess relevance via lightweight Gemini call (NOT full RAG)
+                # Previous: called /api/agentic-rag/query costing ~$0.02/article (35K tok prompt)
+                # Now: direct Gemini API call with ~500 token prompt ($0.0001/article)
                 try:
-                    assessment = await _call_safe("/api/agentic-rag/query", method="POST", json={
-                        "query": f"Is this regulation change significant for foreign investors in Bali? Title: {title}",
-                        "user_id": "autopilot",
-                    }, timeout=long_timeout)
+                    import os as _os
+                    _gemini_key = _os.environ.get("GOOGLE_API_KEY") or _os.environ.get("GOOGLEAISTUDIO_API_KEY", "")
+                    if _gemini_key:
+                        import urllib.request as _ur, json as _json2
+                        _prompt = (
+                            f"Is this news article significant for foreign investors or expats in Bali, Indonesia?\n"
+                            f"Title: {title}\n\n"
+                            f"Reply ONLY with a JSON object: {{\"significant\": true/false, \"confidence\": 0.0-1.0, \"reason\": \"one sentence\"}}"
+                        )
+                        _req = _ur.Request(
+                            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={_gemini_key}",
+                            data=_json2.dumps({"contents": [{"parts": [{"text": _prompt}]}]}).encode(),
+                            headers={"Content-Type": "application/json"},
+                        )
+                        _resp = _ur.urlopen(_req, timeout=15)
+                        _data = _json2.loads(_resp.read())
+                        _text = _data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        # Parse JSON from response
+                        _text_clean = _text.strip().strip("`").strip()
+                        if _text_clean.startswith("json"):
+                            _text_clean = _text_clean[4:].strip()
+                        _result = _json2.loads(_text_clean)
+                        confidence = float(_result.get("confidence", 0))
+                        is_significant = _result.get("significant", False)
+                    else:
+                        # Fallback to RAG if no Gemini key (shouldn't happen)
+                        assessment = await _call_safe("/api/agentic-rag/query", method="POST", json={
+                            "query": f"Is this regulation change significant for foreign investors in Bali? Title: {title}",
+                            "user_id": "autopilot",
+                        }, timeout=long_timeout)
+                        confidence = assessment.get("confidence", 0)
+                        answer = str(assessment.get("answer", "")).lower()
+                        is_significant = confidence > 0.6 and ("significant" in answer or "important" in answer or "yes" in answer)
 
-                    confidence = assessment.get("confidence", 0)
-                    answer = str(assessment.get("answer", "")).lower()
-
-                    if confidence > 0.6 and ("significant" in answer or "important" in answer or "yes" in answer):
+                    if is_significant and confidence > 0.6:
                         # Auto-approve and compose article
                         await _call_safe(f"/api/intel/staging/approve/{item_id}", method="POST")
                         await _call_safe("/api/article-composer/compose", method="POST", json={
