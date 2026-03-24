@@ -74,7 +74,8 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 89 routers, 249 services, 416 test files
+
+- **Backend:** Python 3.11+, FastAPI, 89 routers, 250 services, 416 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
@@ -143,13 +144,15 @@ L'orchestratore classifica il task (Haiku), lancia i dispatch necessari (Gemini 
 
 **Trigger che DEVONO passare dall'orchestratore (non fare a mano):**
 
-| Trigger                                            | L'orchestratore lancia | Motivo                                 |
-| -------------------------------------------------- | ---------------------- | -------------------------------------- |
-| KBLI, visa, normativa indonesiana                  | Gemini `search`        | Claude hallucina su regolamenti        |
-| Refactor che tocca 3+ app del monorepo             | Gemini `explore`       | 1M ctx mappa tutte le dipendenze       |
-| Alembic migration / schema change                  | Codex `sandbox`        | Testa upgrade+downgrade in isolamento  |
-| Pre-deploy Fly.io (backend)                        | Gemini `redteam`       | Mai deploy senza red team              |
-| Fix a `dependencies.py` o `service_initializer.py` | Codex `sandbox`        | Import chain = single point of failure |
+| Trigger                                            | L'orchestratore lancia    | Motivo                                 |
+| -------------------------------------------------- | ------------------------- | -------------------------------------- |
+| KBLI, visa, normativa indonesiana                  | Gemini `search`           | Claude hallucina su regolamenti        |
+| Refactor che tocca 3+ app del monorepo             | Gemini `explore`          | 1M ctx mappa tutte le dipendenze       |
+| **Grounding Architettura / Regola Oracolo**        | **NotebookLM `oracolo`**  | **Ground Truth da NB-1 (citations)**   |
+| **Deep Research (nuove tech 2026)**                | **NotebookLM `research`** | **Autonomous web research (sources)**  |
+| Alembic migration / schema change                  | Codex `sandbox`           | Testa upgrade+downgrade in isolamento  |
+| Pre-deploy Fly.io (backend)                        | Gemini `redteam`          | Mai deploy senza red team              |
+| Fix a `dependencies.py` o `service_initializer.py` | Codex `sandbox`           | Import chain = single point of failure |
 
 **Task semplici** (fix un bug, aggiorna un componente): procedi direttamente senza orchestratore.
 
@@ -337,10 +340,14 @@ Classification confidence thresholds:
 ### Embedding Model
 
 **Model:** `text-embedding-3-small` (OpenAI)  
-**Dimensions:** 1536  
+**Dimensions:** 1536
+
 <!-- DOCSYNC:EMBEDDING_FROZEN_START -->
+
 **CRITICAL:** This model is FROZEN. Changing it would invalidate 93,283 existing vectors.
+
 <!-- DOCSYNC:EMBEDDING_FROZEN_END -->
+
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
 ## 7. MCP Servers
@@ -468,7 +475,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   } catch (error) {
-    console.error('KBLI fetch failed:', error);
+    console.error("KBLI fetch failed:", error);
     return null;
   }
 }
