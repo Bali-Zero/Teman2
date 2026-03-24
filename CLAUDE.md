@@ -74,7 +74,7 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 89 routers, 249 services, 416 test files
+- **Backend:** Python 3.11+, FastAPI, 89 routers, 250 services, 416 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
@@ -389,9 +389,13 @@ Classification confidence thresholds:
 
 **Backup & Monitoring:**
 
-- `~/scripts/fly-pg-backup.sh` — pg_dump daily → Tigris `nuzantara-backups`, cron 03:00
-- `~/scripts/fly-health-check.sh` — check ogni 5min, alert Telegram se down
-- Crontab Pro: `*/5` health, `0 3` backup
+- `~/scripts/fly-pg-backup.sh` — pg_dump daily → Tigris `nuzantara-backups`, cron 03:00 (3x retry + wake-up)
+- `~/scripts/fly-qdrant-backup.sh` — Qdrant snapshots daily → Tigris, cron 03:30 (10 collections, ~689MB)
+- `~/scripts/fly-health-check.sh` — check ogni 30min 07-19, alert Telegram se down
+- `scripts/system_doctor.py` — **47 check** (pro-cron, air-cron, openclaw, infra, frontend, ssl, llm, security, quality)
+- `scripts/rag_canary.py` — Embedding drift detection + 15 golden query regression (monthly/weekly)
+- `scripts/preflight.sh` — Pre/post deploy validation (`pre`=import+tests+ruff, `post`=health+embedding+agent)
+- Crontab Pro: `*/30 7-19` health, `0 3` pg backup, `30 3` qdrant backup
 
 ### Environment Variables
 
@@ -625,20 +629,29 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 
 ## 15. Pre-Deploy Checklist
 
-Before any production deployment:
+Before any production deployment, use the automated preflight script:
 
 ```bash
-# 1. Check for rogue AI changes
-git diff --name-only HEAD -- apps/backend-rag/backend/
+# Automated pre-deploy validation (runs on Pro via SSH)
+./scripts/preflight.sh pre    # Import chain + confidence tests + ruff + rogue changes
 
-# 2. Test critical import chain (dependencies.py is imported by ALL routers)
+# Deploy
+cd apps/backend-rag && fly deploy --strategy rolling
+
+# Automated post-deploy validation
+./scripts/preflight.sh post   # /health + embedding model + agent + collections + KBLI
+
+# Or run both in sequence:
+./scripts/preflight.sh full
+```
+
+**Manual checks (if preflight unavailable):**
+
+```bash
+git diff --name-only HEAD -- apps/backend-rag/backend/
 cd apps/backend-rag && source .venv/bin/activate
 python -c "from backend.app.dependencies import get_current_user; print('OK')"
-
-# 3. Run core KG tests (82 tests, <15s)
-PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py -q
-
-# 4. Deploy
+PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q
 fly deploy --strategy rolling
 ```
 
@@ -648,7 +661,7 @@ fly deploy --strategy rolling
 
 ---
 
-**Last Updated:** 2026-03-24
+**Last Updated:** 2026-03-25
 **Maintained by:** Bali Zero AI Team
 
 ---
