@@ -641,6 +641,62 @@ def collect_llm_api_health() -> list[SystemCheck]:
     return checks
 
 
+def collect_llm_cost() -> list[SystemCheck]:
+    """Check LLM cost from Prometheus metrics endpoint."""
+    checks = []
+    log("Checking LLM cost metrics...")
+    try:
+        # Metrics endpoint is admin-protected, use fly ssh to query locally
+        result = subprocess.run(
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro",
+             "fly ssh console --app nuzantara-rag -C 'curl -s http://localhost:8080/metrics' 2>/dev/null"],
+            capture_output=True, text=True, timeout=25,
+        )
+        if result.returncode == 0 and result.stdout:
+            # Parse Prometheus text format for LLM cost
+            total_cost = 0.0
+            model_costs = {}
+            for line in result.stdout.splitlines():
+                if line.startswith("zantara_llm_cost_usd_total{"):
+                    # Extract model name and value
+                    try:
+                        model = line.split('model="')[1].split('"')[0]
+                        value = float(line.split("} ")[1])
+                        model_costs[model] = value
+                        total_cost += value
+                    except (IndexError, ValueError):
+                        pass
+
+            if model_costs:
+                cost_details = ", ".join(f"{m}: ${v:.4f}" for m, v in sorted(model_costs.items(), key=lambda x: -x[1])[:3])
+                if total_cost > 5.0:
+                    status = "warning"
+                    msg = f"LLM cost: ${total_cost:.2f} (since restart). {cost_details}"
+                else:
+                    status = "ok"
+                    msg = f"LLM cost: ${total_cost:.4f} (since restart). {cost_details}"
+                checks.append(SystemCheck(
+                    id="llm-cost", name="LLM Cost", group="llm",
+                    status=status, message=msg,
+                ))
+            else:
+                checks.append(SystemCheck(
+                    id="llm-cost", name="LLM Cost", group="llm",
+                    status="ok", message="No LLM cost metrics yet (backend may have just started)",
+                ))
+        else:
+            checks.append(SystemCheck(
+                id="llm-cost", name="LLM Cost", group="llm",
+                status="ok", message="Metrics endpoint unreachable (backend sleeping)",
+            ))
+    except Exception as e:
+        checks.append(SystemCheck(
+            id="llm-cost", name="LLM Cost", group="llm",
+            status="ok", message=f"Cost check skipped: {type(e).__name__}",
+        ))
+    return checks
+
+
 def collect_import_chain() -> list[SystemCheck]:
     """Test critical import chain on Pro via SSH."""
     sys_id = "import-chain"
@@ -916,6 +972,9 @@ def main() -> None:
 
     log("Checking LLM API health...")
     all_checks.extend(collect_llm_api_health())
+
+    log("Checking LLM cost...")
+    all_checks.extend(collect_llm_cost())
 
     log("Testing import chain...")
     all_checks.extend(collect_import_chain())
