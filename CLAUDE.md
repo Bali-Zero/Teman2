@@ -366,7 +366,7 @@ Classification confidence thresholds:
 - **Backend:** Fly.io `nuzantara-rag` (Singapore, shared-cpu-2x, **2GB RAM**, auto_stop=true, min=0)
 - **Databases:**
   - PostgreSQL: Fly.io `nuzantara-postgres` (**2GB RAM**, v0.1.0, upgraded 2026-03-14)
-  - Qdrant: Fly.io `nuzantara-qdrant` (2GB, v1.12.1 — upgrade TODO)
+  - Qdrant: Fly.io `nuzantara-qdrant` (2GB, v1.17.0, upgraded 2026-03-24)
   - Redis: Upstash or Fly.io
 
 ### Fly.io — SOLO 3 APP (updated 2026-03-14)
@@ -375,7 +375,7 @@ Classification confidence thresholds:
 | -------------------- | --------- | --- | ------------- | ----------------------- |
 | `nuzantara-rag`      | shared-2x | 2GB | ✅ yes, min=0 | Cold start ~35s         |
 | `nuzantara-postgres` | shared-1x | 2GB | no            | v0.1.0, backup → Tigris |
-| `nuzantara-qdrant`   | shared-1x | 2GB | no            | v1.12.1                 |
+| `nuzantara-qdrant`   | shared-1x | 2GB | no            | v1.17.0                 |
 
 **Distrutte (2026-03-14):** `nuzantara-rag-staging`, `bali-intel-scraper`, `zantara-media`, `fly-builder-red-flower-7537`
 
