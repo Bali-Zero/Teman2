@@ -104,9 +104,12 @@ export default function VaultPage() {
       case "verified":
         return { background: "rgba(16,185,129,0.12)", color: "#34d399" };
       case "pending":
+      case "received":
         return { background: "rgba(245,158,11,0.12)", color: "#fbbf24" };
-      case "expired":
+      case "rejected":
         return { background: "rgba(239,68,68,0.12)", color: "#f87171" };
+      case "expired":
+        return { background: "rgba(239,68,68,0.08)", color: "#fca5a5" };
       default:
         return {
           background: "rgba(255,255,255,0.05)",
