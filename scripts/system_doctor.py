@@ -697,6 +697,167 @@ def collect_llm_cost() -> list[SystemCheck]:
     return checks
 
 
+def collect_dependabot() -> list[SystemCheck]:
+    """Check GitHub Dependabot open vulnerability alerts."""
+    checks = []
+    log("Checking Dependabot alerts...")
+
+    # Load GH_TOKEN from master env
+    master_env = Path.home() / "Desktop" / "NUZANTARA_ENV_KEYS.env"
+    gh_token = None
+    if master_env.exists():
+        for line in master_env.read_text().splitlines():
+            if line.startswith("GH_TOKEN="):
+                gh_token = line.split("=", 1)[1].strip()
+                break
+
+    if not gh_token:
+        checks.append(SystemCheck(
+            id="dependabot", name="Dependabot Alerts", group="security",
+            status="ok", message="GH_TOKEN not found, skipping",
+        ))
+        return checks
+
+    try:
+        req = urllib.request.Request(
+            "https://api.github.com/repos/Balizero1987/Teman2/dependabot/alerts?state=open&per_page=100",
+            headers={
+                "Authorization": f"token {gh_token}",
+                "Accept": "application/vnd.github+json",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            alerts = json.loads(resp.read())
+
+        if isinstance(alerts, dict) and "message" in alerts:
+            checks.append(SystemCheck(
+                id="dependabot", name="Dependabot Alerts", group="security",
+                status="ok", message=f"API error: {alerts['message'][:60]}",
+            ))
+            return checks
+
+        severity_counts: dict[str, int] = {}
+        for a in alerts:
+            sev = a.get("security_advisory", {}).get("severity", "unknown")
+            severity_counts[sev] = severity_counts.get(sev, 0) + 1
+
+        total = len(alerts)
+        critical = severity_counts.get("critical", 0)
+        high = severity_counts.get("high", 0)
+        medium = severity_counts.get("medium", 0)
+        low = severity_counts.get("low", 0)
+
+        parts = [f"{total} open"]
+        if critical:
+            parts.append(f"{critical} critical")
+        if high:
+            parts.append(f"{high} high")
+        if medium:
+            parts.append(f"{medium} medium")
+
+        if critical > 0:
+            status = "critical"
+        elif high > 10:
+            status = "warning"
+        else:
+            status = "ok"
+
+        checks.append(SystemCheck(
+            id="dependabot", name="Dependabot Alerts", group="security",
+            status=status, message=", ".join(parts),
+            needs_ai=critical > 0,
+        ))
+    except Exception as e:
+        checks.append(SystemCheck(
+            id="dependabot", name="Dependabot Alerts", group="security",
+            status="ok", message=f"Check skipped: {type(e).__name__}",
+        ))
+
+    return checks
+
+
+def collect_error_patterns() -> list[SystemCheck]:
+    """Detect recurring error patterns in recent Fly logs."""
+    checks = []
+    log("Analyzing error patterns in Fly logs...")
+
+    try:
+        result = subprocess.run(
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro",
+             "fly logs --app nuzantara-rag --no-tail 2>/dev/null | tail -500"],
+            capture_output=True, text=True, timeout=25,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            checks.append(SystemCheck(
+                id="error-patterns", name="Error Patterns", group="quality",
+                status="ok", message="Log fetch failed (backend sleeping)",
+            ))
+            return checks
+
+        lines = result.stdout.splitlines()
+
+        # Count error categories
+        error_categories: dict[str, int] = {}
+        for line in lines:
+            lower = line.lower()
+            if "error" in lower or "exception" in lower or "traceback" in lower:
+                # Categorize the error
+                if "timeout" in lower or "timed out" in lower:
+                    error_categories["timeout"] = error_categories.get("timeout", 0) + 1
+                elif "connection" in lower or "connect" in lower:
+                    error_categories["connection"] = error_categories.get("connection", 0) + 1
+                elif "memory" in lower or "oom" in lower:
+                    error_categories["memory"] = error_categories.get("memory", 0) + 1
+                elif "auth" in lower or "401" in lower or "403" in lower:
+                    error_categories["auth"] = error_categories.get("auth", 0) + 1
+                elif "qdrant" in lower or "vector" in lower:
+                    error_categories["qdrant"] = error_categories.get("qdrant", 0) + 1
+                elif "rate" in lower and "limit" in lower:
+                    error_categories["rate_limit"] = error_categories.get("rate_limit", 0) + 1
+                elif "import" in lower or "module" in lower:
+                    error_categories["import"] = error_categories.get("import", 0) + 1
+                else:
+                    error_categories["other"] = error_categories.get("other", 0) + 1
+
+        total_errors = sum(error_categories.values())
+
+        if total_errors == 0:
+            checks.append(SystemCheck(
+                id="error-patterns", name="Error Patterns", group="quality",
+                status="ok", message="No errors in last 500 log lines",
+            ))
+        else:
+            # Format top categories
+            sorted_cats = sorted(error_categories.items(), key=lambda x: -x[1])
+            top = ", ".join(f"{cat}:{count}" for cat, count in sorted_cats[:4])
+
+            if total_errors > 50:
+                status = "error"
+                needs_ai = True
+            elif total_errors > 20:
+                status = "warning"
+                needs_ai = False
+            else:
+                status = "ok"
+                needs_ai = False
+
+            checks.append(SystemCheck(
+                id="error-patterns", name="Error Patterns", group="quality",
+                status=status,
+                message=f"{total_errors} errors in 500 lines: {top}",
+                needs_ai=needs_ai,
+                ai_context=f"Error categories: {json.dumps(error_categories)}" if needs_ai else "",
+            ))
+
+    except Exception as e:
+        checks.append(SystemCheck(
+            id="error-patterns", name="Error Patterns", group="quality",
+            status="ok", message=f"Check skipped: {type(e).__name__}",
+        ))
+
+    return checks
+
+
 def collect_import_chain() -> list[SystemCheck]:
     """Test critical import chain on Pro via SSH."""
     sys_id = "import-chain"
@@ -975,6 +1136,12 @@ def main() -> None:
 
     log("Checking LLM cost...")
     all_checks.extend(collect_llm_cost())
+
+    log("Checking Dependabot alerts...")
+    all_checks.extend(collect_dependabot())
+
+    log("Analyzing error patterns...")
+    all_checks.extend(collect_error_patterns())
 
     log("Testing import chain...")
     all_checks.extend(collect_import_chain())
