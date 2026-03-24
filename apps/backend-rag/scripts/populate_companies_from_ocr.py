@@ -346,10 +346,35 @@ async def link_person_to_company(conn, company_id, person_name, role, ownership_
         return True
 
 
-async def main(dry_run: bool, limit: int) -> None:
-    logger.info(f"{'DRY RUN — ' if dry_run else ''}Populate Companies from OCR (Step 2+3)")
-    conn = await asyncpg.connect(DB)
+async def process_company_with_retry(cid: int, cname: str, done: int, dry_run: bool) -> dict:
+    """Process a single company using a fresh connection with retry on connection error."""
+    max_attempts = 10
+    for attempt in range(max_attempts):
+        conn = None
+        try:
+            conn = await asyncpg.connect(DB, command_timeout=60)
+            stats = await update_company_fields(conn, cid, dry_run)
+            return stats
+        except (asyncpg.exceptions.ConnectionDoesNotExistError, OSError, ConnectionRefusedError) as e:
+            wait = min(5 * (attempt + 1), 30)
+            logger.warning(f"  ⚠️ Connection error attempt {attempt+1}/{max_attempts} for [{cid}] {cname}: {e} — retry in {wait}s")
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(wait)
+        except Exception as e:
+            logger.warning(f"  ⚠️ Skipped [{cid}] {cname}: {e}")
+            return {"fields_updated": 0, "directors_linked": 0}
+        finally:
+            if conn and not conn.is_closed():
+                await conn.close()
+    logger.warning(f"  ✗ Giving up on [{cid}] {cname} after {max_attempts} attempts")
+    return {"fields_updated": 0, "directors_linked": 0}
 
+
+async def main(dry_run: bool, limit: int, start_id: int = 0) -> None:
+    logger.info(f"{'DRY RUN — ' if dry_run else ''}Populate Companies from OCR (Step 2+3)")
+
+    # Fetch company list with a single short-lived connection
+    conn = await asyncpg.connect(DB, command_timeout=60)
     try:
         companies = await conn.fetch(
             """
@@ -366,48 +391,49 @@ async def main(dry_run: bool, limit: int) -> None:
                        AND (LOWER(cd.file_name) LIKE '%akta%' OR LOWER(cd.file_name) LIKE '%sk%'
                             OR LOWER(cd.file_name) LIKE '%nib%' OR LOWER(cd.file_name) LIKE '%npwp%'
                             OR LOWER(cd.file_name) LIKE '%profil%perseroan%' OR LOWER(cd.file_name) LIKE '%passport%')) > 0
-               AND count(*) FILTER (WHERE LOWER(cd.file_name) LIKE '%.pdf'
-                       AND (LOWER(cd.file_name) LIKE '%akta%' OR LOWER(cd.file_name) LIKE '%sk%'
-                            OR LOWER(cd.file_name) LIKE '%nib%' OR LOWER(cd.file_name) LIKE '%npwp%'
-                            OR LOWER(cd.file_name) LIKE '%profil%perseroan%' OR LOWER(cd.file_name) LIKE '%passport%'))
-                   = count(*) FILTER (WHERE cd.ocr_status = 'completed')
             ORDER BY c.id
             LIMIT $1
         """,
             limit,
         )
-
-        logger.info(f"Found {len(companies)} fully OCR'd companies")
-
-        totals = {"fields": 0, "directors": 0, "companies": 0}
-
-        for co in companies:
-            cid = co["id"]
-            cname = co["company_name"]
-            logger.info(f"\n📂 [{cid}] {cname} ({co['done']} docs)")
-
-            stats = await update_company_fields(conn, cid, dry_run)
-            totals["fields"] += stats["fields_updated"]
-            totals["directors"] += stats["directors_linked"]
-            if stats["fields_updated"] > 0 or stats["directors_linked"] > 0:
-                totals["companies"] += 1
-
-        logger.info("\n=== SUMMARY ===")
-        logger.info(f"  Companies processed : {len(companies)}")
-        logger.info(f"  Companies updated   : {totals['companies']}")
-        logger.info(f"  Fields populated    : {totals['fields']}")
-        logger.info(f"  Directors linked    : {totals['directors']}")
-        if dry_run:
-            logger.info("  (DRY RUN)")
-
     finally:
         await conn.close()
+
+    # Filter by start_id if provided (resume support)
+    if start_id > 0:
+        companies = [c for c in companies if c["id"] >= start_id]
+        logger.info(f"Resuming from company_id >= {start_id}")
+
+    logger.info(f"Found {len(companies)} fully OCR'd companies")
+
+    totals = {"fields": 0, "directors": 0, "companies": 0}
+
+    for co in companies:
+        cid = co["id"]
+        cname = co["company_name"]
+        logger.info(f"\n📂 [{cid}] {cname} ({co['done']} docs)")
+
+        # Fresh connection per company with retry
+        stats = await process_company_with_retry(cid, cname, co["done"], dry_run)
+        totals["fields"] += stats["fields_updated"]
+        totals["directors"] += stats["directors_linked"]
+        if stats["fields_updated"] > 0 or stats["directors_linked"] > 0:
+            totals["companies"] += 1
+
+    logger.info("\n=== SUMMARY ===")
+    logger.info(f"  Companies processed : {len(companies)}")
+    logger.info(f"  Companies updated   : {totals['companies']}")
+    logger.info(f"  Fields populated    : {totals['fields']}")
+    logger.info(f"  Directors linked    : {totals['directors']}")
+    if dry_run:
+        logger.info("  (DRY RUN)")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=2000)
+    parser.add_argument("--start-id", type=int, default=0, help="Resume from company_id >= N")
     args = parser.parse_args()
 
-    asyncio.run(main(dry_run=args.dry_run, limit=args.limit))
+    asyncio.run(main(dry_run=args.dry_run, limit=args.limit, start_id=args.start_id))

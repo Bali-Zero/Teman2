@@ -23,6 +23,22 @@ class JurnalService:
     def __init__(self, api_key: str | None = None, api_url: str | None = None) -> None:
         self.api_key = api_key or settings.jurnal_api_key
         self.api_url = (api_url or settings.jurnal_api_url).rstrip("/")
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=HttpTimeoutConstants.JURNAL_TIMEOUT,
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("JurnalService HTTP client closed.")
 
     def _headers(self, client_api_key: str | None = None) -> dict[str, str]:
         """Build request headers with API key."""
@@ -61,25 +77,25 @@ class JurnalService:
             params["company_id"] = company_id
 
         try:
-            async with httpx.AsyncClient(timeout=HttpTimeoutConstants.JURNAL_TIMEOUT) as client:
-                response = await client.get(
-                    f"{self.api_url}/journal_entries",
-                    headers=self._headers(api_key),
-                    params=params,
+            client = self._get_client()
+            response = await client.get(
+                f"{self.api_url}/journal_entries",
+                headers=self._headers(api_key),
+                params=params,
+            )
+
+            if response.status_code != 200:
+                logger.error(
+                    f"Jurnal API error: {response.status_code} — {response.text[:200]}"
                 )
+                raise ValueError(f"Jurnal API returned {response.status_code}")
 
-                if response.status_code != 200:
-                    logger.error(
-                        f"Jurnal API error: {response.status_code} — {response.text[:200]}"
-                    )
-                    raise ValueError(f"Jurnal API returned {response.status_code}")
+            data = response.json()
+            entries = data.get("journal_entries", data.get("data", []))
+            pagination = data.get("pagination", {})
 
-                data = response.json()
-                entries = data.get("journal_entries", data.get("data", []))
-                pagination = data.get("pagination", {})
-
-                logger.info(f"Fetched {len(entries)} journal entries (page {page})")
-                return {"entries": entries, "pagination": pagination}
+            logger.info(f"Fetched {len(entries)} journal entries (page {page})")
+            return {"entries": entries, "pagination": pagination}
 
         except httpx.RequestError as e:
             logger.error(f"Jurnal API network error: {type(e).__name__}: {e}")
@@ -135,23 +151,23 @@ class JurnalService:
             params["company_id"] = company_id
 
         try:
-            async with httpx.AsyncClient(timeout=HttpTimeoutConstants.JURNAL_TIMEOUT) as client:
-                response = await client.get(
-                    f"{self.api_url}/chart_of_accounts",
-                    headers=self._headers(api_key),
-                    params=params,
+            client = self._get_client()
+            response = await client.get(
+                f"{self.api_url}/chart_of_accounts",
+                headers=self._headers(api_key),
+                params=params,
+            )
+
+            if response.status_code != 200:
+                logger.error(
+                    f"Jurnal CoA error: {response.status_code} — {response.text[:200]}"
                 )
+                raise ValueError(f"Jurnal API returned {response.status_code}")
 
-                if response.status_code != 200:
-                    logger.error(
-                        f"Jurnal CoA error: {response.status_code} — {response.text[:200]}"
-                    )
-                    raise ValueError(f"Jurnal API returned {response.status_code}")
-
-                data = response.json()
-                accounts = data.get("chart_of_accounts", data.get("data", []))
-                logger.info(f"Fetched {len(accounts)} chart of accounts")
-                return accounts
+            data = response.json()
+            accounts = data.get("chart_of_accounts", data.get("data", []))
+            logger.info(f"Fetched {len(accounts)} chart of accounts")
+            return accounts
 
         except httpx.RequestError as e:
             logger.error(f"Jurnal CoA network error: {type(e).__name__}: {e}")

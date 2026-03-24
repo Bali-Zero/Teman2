@@ -1,0 +1,3 @@
+#!/bin/sh
+# DocSentinel: auto-sync doc stats after commit (non-blocking background)
+python3 scripts/docs_sync.py --quiet 2>/dev/null &

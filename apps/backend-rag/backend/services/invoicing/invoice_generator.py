@@ -8,11 +8,17 @@ Template updated: 2026-03-02 — PT BAYU BALI NOL layout.
 import io
 from datetime import datetime, timedelta
 
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    _REPORTLAB_AVAILABLE = True
+except ImportError:
+    _REPORTLAB_AVAILABLE = False
+    colors = None  # type: ignore[assignment]
+    A4 = (595.27, 841.89)  # type: ignore[assignment]
 
 from backend.app.utils.logging_utils import get_logger
 
@@ -39,13 +45,13 @@ class InvoiceGenerator:
     PAYMENT_TERMS_DAYS = 7
     CURRENCY = "IDR"
 
-    # ── Brand Colors ────────────────────────────────────────────────────────
-    COLOR_ACCENT = colors.HexColor("#1a1a2e")  # dark navy header
-    COLOR_LIGHT = colors.HexColor("#f4f6f9")
-    COLOR_BORDER = colors.HexColor("#dee2e6")
-    COLOR_TEXT = colors.HexColor("#212529")
-    COLOR_MUTED = colors.HexColor("#6c757d")
-    COLOR_WHITE = colors.white
+    # ── Brand Colors (lazy — None when reportlab not installed) ─────────────
+    COLOR_ACCENT = colors.HexColor("#1a1a2e") if _REPORTLAB_AVAILABLE else None
+    COLOR_LIGHT = colors.HexColor("#f4f6f9") if _REPORTLAB_AVAILABLE else None
+    COLOR_BORDER = colors.HexColor("#dee2e6") if _REPORTLAB_AVAILABLE else None
+    COLOR_TEXT = colors.HexColor("#212529") if _REPORTLAB_AVAILABLE else None
+    COLOR_MUTED = colors.HexColor("#6c757d") if _REPORTLAB_AVAILABLE else None
+    COLOR_WHITE = colors.white if _REPORTLAB_AVAILABLE else None
 
     def __init__(self):
         self.styles = getSampleStyleSheet()

@@ -233,6 +233,17 @@ class Settings(BaseSettings):
     # ========================================
     # BM25 HYBRID SEARCH CONFIGURATION
     # ========================================
+    enable_hybrid_search: bool = Field(
+        default=False,
+        description="Enable hybrid search (BM25+dense+RRF+reranking) in the agentic VectorSearchTool pipeline. "
+        "Set via ENABLE_HYBRID_SEARCH env var. When False, uses dense-only search with legacy reranker.",
+    )
+    enable_query_expansion: bool = Field(
+        default=False,
+        description="Enable LLM-based multi-query expansion for complex queries (>5 words). "
+        "Uses Gemini Flash to generate 2-3 alternative queries, then RRF-fuses results. "
+        "Set via ENABLE_QUERY_EXPANSION env var. Adds ~200ms latency but improves recall.",
+    )
     enable_bm25: bool = Field(
         default=True,
         description="Enable BM25 sparse vectors for hybrid search. Set via ENABLE_BM25 env var.",

@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_database_pool as get_db_pool
+from backend.app.routers.team_activity import get_admin_user
 from backend.app.utils.json_utils import to_jsonb
 
 router = APIRouter(prefix="/api/knowledge/visa", tags=["knowledge-visa"])
@@ -266,9 +267,10 @@ class VisaTypeUpdate(BaseModel):
 
 @router.put("/{visa_id}", response_model=VisaTypeResponse)
 async def update_visa_type(
-    visa_id: int, visa: VisaTypeUpdate, pool=Depends(get_db_pool)
+    visa_id: int, visa: VisaTypeUpdate, pool=Depends(get_db_pool),
+    admin_user: dict = Depends(get_admin_user),
 ) -> VisaTypeResponse:
-    """Update a visa type by ID"""
+    """Update a visa type by ID (ADMIN ONLY)"""
     async with pool.acquire() as conn:
         # Check if exists
         existing = await conn.fetchrow("SELECT * FROM visa_types WHERE id = $1", visa_id)
@@ -348,8 +350,11 @@ async def update_visa_type(
 
 
 @router.post("/", response_model=VisaTypeResponse)
-async def create_visa_type(visa: VisaTypeCreate, pool=Depends(get_db_pool)) -> VisaTypeResponse:
-    """Create a new visa type (admin only)"""
+async def create_visa_type(
+    visa: VisaTypeCreate, pool=Depends(get_db_pool),
+    admin_user: dict = Depends(get_admin_user),
+) -> VisaTypeResponse:
+    """Create a new visa type (ADMIN ONLY — requires auth)"""
     async with pool.acquire() as conn:
         # Check if code already exists
         existing = await conn.fetchval(

@@ -21,7 +21,7 @@ class CRMQueryOptimizer:
 
     async def batch_insert_clients(self, clients: list[dict[str, Any]]) -> list[int]:
         """
-        Inserimento batch clienti per massima performance.
+        Inserimento batch clienti in transazione ACID.
 
         Args:
             clients: Lista di dizionari con dati cliente
@@ -32,37 +32,35 @@ class CRMQueryOptimizer:
         if not clients:
             return []
 
-        async with self.db_pool.acquire() as conn:
-            # Usa executemany per batch insert
-            query = """
-                INSERT INTO clients (
-                    full_name, email, phone, whatsapp, nationality,
-                    passport_number, status, client_type, assigned_to,
-                    custom_fields, created_at, updated_at
-                ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()
-                )
-                RETURNING id
-            """
+        query = """
+            INSERT INTO clients (
+                full_name, email, phone, whatsapp, nationality,
+                passport_number, status, client_type, assigned_to,
+                custom_fields, created_at, updated_at
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()
+            )
+            RETURNING id
+        """
 
-            # Prepara parametri
-            params = [
-                (
-                    c.get("full_name"),
-                    c.get("email"),
-                    c.get("phone"),
-                    c.get("whatsapp"),
-                    c.get("nationality"),
-                    c.get("passport_number"),
-                    c.get("status", "active"),
-                    c.get("client_type", "individual"),
-                    c.get("assigned_to"),
-                    c.get("custom_fields", {}),
-                )
-                for c in clients
-            ]
+        params = [
+            (
+                c.get("full_name"),
+                c.get("email"),
+                c.get("phone"),
+                c.get("whatsapp"),
+                c.get("nationality"),
+                c.get("passport_number"),
+                c.get("status", "active"),
+                c.get("client_type", "individual"),
+                c.get("assigned_to"),
+                c.get("custom_fields", {}),
+            )
+            for c in clients
+        ]
 
-            # Esegui batch insert con singole query (asyncpg non ha fetchmany per batch)
+        # Transazione ACID: tutti o nessuno
+        async with self.db_pool.acquire() as conn, conn.transaction():
             ids = []
             for p in params:
                 row = await conn.fetchrow(query, *p)
@@ -329,11 +327,11 @@ async def health_check_crm_tables(db_pool: asyncpg.Pool) -> dict[str, Any]:
     async with db_pool.acquire() as conn:
         checks = {}
 
-        # Conta record per tabella
-        tables = ["clients", "practices", "practice_types", "interactions"]
-        for table in tables:
-            count = await conn.fetchval(f"SELECT COUNT(*) FROM {table}")
-            checks[table] = {"count": count}
+        # Conta record per tabella (query separate — nessuna interpolazione di nomi tabella)
+        checks["clients"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM clients")}
+        checks["practices"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM practices")}
+        checks["practice_types"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM practice_types")}
+        checks["interactions"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM interactions")}
 
         # Verifica clienti senza pratiche
         orphan_clients = await conn.fetchval("""

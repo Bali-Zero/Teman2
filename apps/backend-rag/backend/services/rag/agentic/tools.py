@@ -22,12 +22,37 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.pricing.pricing_service import get_pricing_service
 from backend.services.rag.vision_rag import VisionRAGService
 from backend.services.tools.definitions import BaseTool
 
 logger = logging.getLogger(__name__)
+
+# Module-level persistent HTTP client for agentic tools
+_client: httpx.AsyncClient | None = None
+
+
+def _get_client(timeout: float = 30.0) -> httpx.AsyncClient:
+    """Get or create the shared async client for agentic tools."""
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.AsyncClient(
+            timeout=timeout,
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+        )
+    return _client
+
+
+async def close_agentic_tools_client() -> None:
+    """Close the module-level async client."""
+    global _client
+    if _client and not _client.is_closed:
+        await _client.aclose()
+    logger.info("Agentic tools module HTTP client closed.")
+
 
 # Available collections - NO domain mapping, NO keywords
 # The LLM reads the description and decides which to use
@@ -140,31 +165,48 @@ class VectorSearchTool(BaseTool):
             # Execute search across target collections in parallel for better performance
             import asyncio
 
+            # Determine search method based on feature flags
+            from backend.app.core.config import settings as _settings
+
+            use_hybrid = getattr(_settings, "enable_hybrid_search", False)
+
             async def _search_collection(target_col) -> Any:
                 try:
+                    per_col_limit = 5 if len(target_collections) > 1 else top_k
                     # Per-collection timeout to prevent one slow collection from blocking everything
-                    async with asyncio.timeout(10.0):
-                        if hasattr(self.retriever, "search_with_reranking"):
+                    async with asyncio.timeout(15.0 if use_hybrid else 10.0):
+                        if use_hybrid and hasattr(self.retriever, "hybrid_search_with_reranking"):
+                            # Full pipeline: BM25 + Dense + RRF + CrossEncoder reranking
+                            res = await self.retriever.hybrid_search_with_reranking(
+                                query=query,
+                                user_level=self.user_level,
+                                limit=per_col_limit,
+                                collection_override=target_col,
+                            )
+                        elif hasattr(self.retriever, "search_with_reranking"):
                             res = await self.retriever.search_with_reranking(
                                 query=query,
                                 user_level=self.user_level,
-                                limit=5 if len(target_collections) > 1 else top_k,
+                                limit=per_col_limit,
                                 collection_override=target_col,
                             )
                         else:
                             res = await self.retriever.search(
                                 query=query,
                                 user_level=self.user_level,
-                                limit=5 if len(target_collections) > 1 else top_k,
+                                limit=per_col_limit,
                                 collection_override=target_col,
                             )
                         return target_col, res.get("results", [])
                 except asyncio.TimeoutError:
-                    logger.warning(f"⏱️ Search timeout (10s) for collection {target_col}")
+                    logger.warning(f"⏱️ Search timeout for collection {target_col}")
                     return target_col, []
                 except Exception as e:
                     logger.warning(f"Search failed for {target_col}: {e}")
                     return target_col, []
+
+            if use_hybrid:
+                logger.info("🔀 [Hybrid Search] Using BM25+Dense+RRF+CrossEncoder pipeline")
 
             search_results = await asyncio.gather(
                 *[_search_collection(col) for col in target_collections]
@@ -559,7 +601,6 @@ class ImageGenerationTool(BaseTool):
 
     async def execute(self, prompt: str, aspect_ratio: str = "1:1", **kwargs) -> str:
         """Generate an image using Google Imagen API."""
-        import httpx
 
         from backend.app.core.config import settings
 
@@ -593,44 +634,44 @@ class ImageGenerationTool(BaseTool):
 
                 logger.info(f"🎨 [ImageGen] Generating image: {prompt[:50]}...")
 
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    response = await client.post(url, json=payload, headers=headers)
+                client = _get_client()
+                response = await client.post(url, json=payload, headers=headers, timeout=60.0)
 
-                    if response.status_code == 403:
-                        # Fallback to pollinations.ai
-                        logger.warning("⚠️ [ImageGen] Imagen API not available, using fallback")
-                        fallback_url = (
-                            f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
-                        )
-                        set_span_attribute("fallback", "pollinations")
+                if response.status_code == 403:
+                    # Fallback to pollinations.ai
+                    logger.warning("⚠️ [ImageGen] Imagen API not available, using fallback")
+                    fallback_url = (
+                        f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
+                    )
+                    set_span_attribute("fallback", "pollinations")
+                    return json.dumps(
+                        {
+                            "success": True,
+                            "image_url": fallback_url,
+                            "service": "pollinations_fallback",
+                            "message": f"Generated image for: {prompt}",
+                        }
+                    )
+
+                response.raise_for_status()
+                result = response.json()
+
+                # Extract image
+                if "generatedImages" in result and result["generatedImages"]:
+                    img_data = result["generatedImages"][0].get("bytesBase64Encoded", "")
+                    if img_data:
+                        image_data_url = f"data:image/png;base64,{img_data}"
+                        set_span_attribute("success", True)
                         return json.dumps(
                             {
                                 "success": True,
-                                "image_url": fallback_url,
-                                "service": "pollinations_fallback",
+                                "image_data": image_data_url,
+                                "service": "google_imagen",
                                 "message": f"Generated image for: {prompt}",
                             }
                         )
 
-                    response.raise_for_status()
-                    result = response.json()
-
-                    # Extract image
-                    if "generatedImages" in result and result["generatedImages"]:
-                        img_data = result["generatedImages"][0].get("bytesBase64Encoded", "")
-                        if img_data:
-                            image_data_url = f"data:image/png;base64,{img_data}"
-                            set_span_attribute("success", True)
-                            return json.dumps(
-                                {
-                                    "success": True,
-                                    "image_data": image_data_url,
-                                    "service": "google_imagen",
-                                    "message": f"Generated image for: {prompt}",
-                                }
-                            )
-
-                    return json.dumps({"success": False, "error": "No image generated"})
+                return json.dumps({"success": False, "error": "No image generated"})
 
             except Exception as e:
                 logger.error(f"❌ [ImageGen] Failed: {e}")
@@ -722,8 +763,6 @@ class WebSearchTool(BaseTool):
 
     async def _search_tavily(self, query: str, num_results: int, api_key: str) -> dict[str, Any]:
         """Search using Tavily API (AI-optimized)."""
-        import httpx
-
         url = "https://api.tavily.com/search"
         headers = {
             "Content-Type": "application/json",
@@ -736,15 +775,13 @@ class WebSearchTool(BaseTool):
             "include_answer": True,
         }
 
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            return response.json()
+        client = _get_client()
+        response = await client.post(url, headers=headers, json=payload, timeout=15.0)
+        response.raise_for_status()
+        return response.json()
 
     async def _search_brave(self, query: str, num_results: int, api_key: str) -> dict[str, Any]:
         """Search using Brave Search API (fallback)."""
-        import httpx
-
         url = "https://api.search.brave.com/res/v1/web/search"
         headers = {
             "Accept": "application/json",
@@ -758,10 +795,10 @@ class WebSearchTool(BaseTool):
             "search_lang": "en",
         }
 
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            return response.json()
+        client = _get_client()
+        response = await client.get(url, headers=headers, params=params, timeout=15.0)
+        response.raise_for_status()
+        return response.json()
 
     async def execute(self, query: str, num_results: int = 5, **kwargs) -> str:
         """

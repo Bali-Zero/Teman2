@@ -430,6 +430,7 @@ class QdrantClient:
                     "distances": [
                         1.0 - r["score"] for r in results
                     ],  # Convert similarity to distance
+                    "scores": [r["score"] for r in results],  # Raw similarity scores
                     "total_found": len(results),
                 }
 
@@ -504,6 +505,7 @@ class QdrantClient:
                             "documents": [r["payload"].get("text", "") for r in results],
                             "metadatas": [r["payload"].get("metadata", {}) for r in results],
                             "distances": [1.0 - r["score"] for r in results],
+                            "scores": [r["score"] for r in results],
                             "total_found": len(results),
                         }
                     except Exception as retry_err:
@@ -515,6 +517,7 @@ class QdrantClient:
                     "documents": [],
                     "metadatas": [],
                     "distances": [],
+                    "scores": [],
                     "total_found": 0,
                 }
             except Exception as e:
