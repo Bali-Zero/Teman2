@@ -1,9 +1,9 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-03-22
+**Last Updated:** 2026-03-24
 **Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`.
 
-**Quick Numbers:** 88 routers · 244 services · 385 tests · 109 MCP tools · 9 Qdrant collections (66,595 docs) · 7 channels · 56K KG nodes
+**Quick Numbers:** 88 routers · 244 services · 385 tests · 109 MCP tools · 10 Qdrant collections (93,283 docs) · 7 channels · 56K KG nodes
 
 > **Role split:** `CLAUDE.md` = how to act (rules, delegation, language, deploy QA). This file = how to build (architecture, code patterns, debugging, workflows).
 
@@ -34,7 +34,7 @@ PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=no && 
 
 - [ ] Virtualenv: `.venv` (NEVER `venv/` or system Python)
 - [ ] Absolute imports, async-first (`httpx`), type hints, `logger` not `print()`
-- [ ] Embedding model `text-embedding-3-small` is **FROZEN** (66,595 vectors depend on it)
+- [ ] Embedding model `text-embedding-3-small` is **FROZEN** (93,283 vectors depend on it)
 
 ---
 
@@ -42,7 +42,7 @@ PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=no && 
 
 ### Embedding Model — FROZEN
 
-All vectors use `text-embedding-3-small` (1536 dims). Changing it invalidates 66,595 existing vectors.
+All vectors use `text-embedding-3-small` (1536 dims). Changing it invalidates 93,283 existing vectors.
 
 ```bash
 curl https://nuzantara-rag.fly.dev/health | jq '.embeddings.model'  # Must be "text-embedding-3-small"
@@ -84,23 +84,23 @@ Agentic RAG (`/api/agentic-rag/query`) requires JWT.
 
 **System 1 — Response behavior** (`reasoning.py`): Decides what Zantara says to the user.
 
-| Score | Action | Threshold |
-|-------|--------|-----------|
-| < 0.15 | ABSTAIN (refuse to answer) | Too uncertain |
-| 0.15-0.60 | CAUTIOUS (answer + disclaimer) | Low confidence |
-| > 0.60 | NORMAL (confident answer) | Sufficient evidence |
+| Score     | Action                         | Threshold           |
+| --------- | ------------------------------ | ------------------- |
+| < 0.15    | ABSTAIN (refuse to answer)     | Too uncertain       |
+| 0.15-0.60 | CAUTIOUS (answer + disclaimer) | Low confidence      |
+| > 0.60    | NORMAL (confident answer)      | Sufficient evidence |
 
 **Bypass:** If LLM had tools and produced an answer, trust it (fixes English query ABSTAIN bug).
 **Trusted tools** (bypass evidence check): `calculator`, `get_pricing`, `team_knowledge`.
 
 **System 2 — KG confidence** (`confidence.py`): Rates Knowledge Graph chain quality.
 
-| Level | Score | Meaning |
-|-------|-------|---------|
-| High | >= 0.80 | Strong chain |
-| Medium | >= 0.55 | Decent chain |
-| Low | >= 0.35 | Weak chain |
-| Very Low | < 0.35 | Unreliable |
+| Level    | Score   | Meaning      |
+| -------- | ------- | ------------ |
+| High     | >= 0.80 | Strong chain |
+| Medium   | >= 0.55 | Decent chain |
+| Low      | >= 0.35 | Weak chain   |
+| Very Low | < 0.35  | Unreliable   |
 
 6-factor scoring: chain base (30%), entity confidence (20%), relationship strength (20%), multi-source boost (15%), recency (10%), intent clarity (5%).
 
@@ -135,21 +135,23 @@ apps/backend-rag/
 
 ## QDRANT COLLECTIONS
 
-9 live on Fly.io (66,595 docs). Config: `backend/services/ingestion/collection_manager.py`.
+10 live on Fly.io (93,283 docs). Config: `backend/services/ingestion/collection_manager.py`.
 
-| Collection | Docs | Purpose |
-|---|---|---|
-| `collective_memories` | dynamic | Conversation memories |
-| `bali_zero_pricing_hybrid` | 29 | Service pricing |
-| `bali_zero_team` | 22 | Team profiles |
-| `visa_oracle` | 1,612 | Visa requirements |
-| `kbli_2025_final` | 8,886 | KBLI codes (**FLAT payload**) |
-| `tax_genius` | 895 | Tax knowledge |
-| `legal_unified` | 5,041 | Legal documents |
-| `legal_unified_hybrid` | 47,959 | Legal hybrid search |
-| `tax_genius_hybrid` | 332 | Tax hybrid search |
-| `training_conversations_hybrid` | 2,898 | Training data |
-| `immigration_circulars` | 4 | Immigration circulars |
+**Search Pipeline (ENABLED 2026-03-24):** Hybrid search (BM25 sparse + Dense vector + RRF fusion) → CrossEncoder reranking (ms-marco-MiniLM-L-6-v2, top-20→top-5). Flags: `ENABLE_HYBRID_SEARCH=true`, `ENABLE_RERANKER=true`, `ENABLE_BM25=true`.
+
+| Collection                      | Docs    | Purpose                       |
+| ------------------------------- | ------- | ----------------------------- |
+| `collective_memories`           | dynamic | Conversation memories         |
+| `bali_zero_pricing_hybrid`      | 29      | Service pricing               |
+| `bali_zero_team`                | 22      | Team profiles                 |
+| `visa_oracle`                   | 1,612   | Visa requirements             |
+| `kbli_2025_final`               | 8,886   | KBLI codes (**FLAT payload**) |
+| `tax_genius`                    | 895     | Tax knowledge                 |
+| `legal_unified`                 | 5,041   | Legal documents               |
+| `legal_unified_hybrid`          | 47,959  | Legal hybrid search           |
+| `tax_genius_hybrid`             | 332     | Tax hybrid search             |
+| `training_conversations_hybrid` | 2,898   | Training data                 |
+| `immigration_circulars`         | 4       | Immigration circulars         |
 
 **Aliases:** `legal_architect`, `kb_indonesian`, `kbli_comprehensive`, `zantara_books`, `cultural_insights`, `tax_updates`, `tax_knowledge`, `property_listings`, `property_knowledge`, `legal_updates`, `legal_intelligence`.
 
@@ -168,19 +170,19 @@ apps/backend-rag/
 
 ## LANGGRAPH KNOWLEDGE GRAPH
 
-**Status:** Production ready (2026-02-09) · 82/82 tests passing · Feature flag: `ENABLE_KG_LANGGRAPH`
+**Status:** ✅ ENABLED in production (2026-03-24) · 82/82 tests passing · `ENABLE_KG_LANGGRAPH=true` on Fly.io
 
 **5 Core Nodes:** understand_query → resolve_entities → traverse_graph → reason_over_graph → synthesize_workflow
 
 **4 Domain Subgraphs:** Company (PT PMA, CV), Visa (KITAS, KITAP), Property (Hak Pakai, HGB), Tax (PPh, PPN, NPWP)
 
-| File | Purpose |
-|---|---|
-| `backend/services/rag/kg_graph_state.py` | State definitions |
-| `backend/services/rag/kg_graph_nodes.py` | 5 core nodes |
-| `backend/services/rag/kg_langgraph_orchestrator.py` | StateGraph + routing |
-| `backend/services/rag/kg_subgraph_{company,visa,property,tax}.py` | Domain subgraphs |
-| `backend/services/rag/confidence.py` | 6-factor scoring |
+| File                                                              | Purpose              |
+| ----------------------------------------------------------------- | -------------------- |
+| `backend/services/rag/kg_graph_state.py`                          | State definitions    |
+| `backend/services/rag/kg_graph_nodes.py`                          | 5 core nodes         |
+| `backend/services/rag/kg_langgraph_orchestrator.py`               | StateGraph + routing |
+| `backend/services/rag/kg_subgraph_{company,visa,property,tax}.py` | Domain subgraphs     |
+| `backend/services/rag/confidence.py`                              | 6-factor scoring     |
 
 **Integration:** 3-way parallel in `orchestrator_core.py`: Entity Extraction + KG Legacy + KG LangGraph
 
@@ -232,15 +234,15 @@ fly ssh console -a nuzantara-rag
 
 ## ENVIRONMENT VARIABLES
 
-| Variable | Purpose | Where |
-|---|---|---|
-| `DATABASE_URL` | PostgreSQL connection | Backend |
-| `QDRANT_URL` | Vector DB | Backend |
-| `OPENAI_API_KEY` | Embeddings | Backend |
+| Variable          | Purpose                          | Where   |
+| ----------------- | -------------------------------- | ------- |
+| `DATABASE_URL`    | PostgreSQL connection            | Backend |
+| `QDRANT_URL`      | Vector DB                        | Backend |
+| `OPENAI_API_KEY`  | Embeddings                       | Backend |
 | `EMBEDDING_MODEL` | Must be `text-embedding-3-small` | Backend |
-| `GOOGLE_API_KEY` | Gemini LLM | Backend |
-| `JWT_SECRET_KEY` | Auth tokens | Backend |
-| `PORT` | Server port | Fly.io |
+| `GOOGLE_API_KEY`  | Gemini LLM                       | Backend |
+| `JWT_SECRET_KEY`  | Auth tokens                      | Backend |
+| `PORT`            | Server port                      | Fly.io  |
 
 ```bash
 fly secrets list -a nuzantara-rag
@@ -279,16 +281,16 @@ Pages: `src/app/`, Components: `src/components/`, API: `src/lib/api/`
 
 ## ESSENTIAL DOCUMENTATION
 
-| Document | Path | When to Read |
-|---|---|---|
-| **CLAUDE.md** | Root | Behavioral rules, golden rules, deploy QA, language protocol |
-| **Cicatrix Scars** | `.claude/rules/cicatrix-scars.md` | 20 known bugs/gotchas — before modifying referenced files |
-| **KG Architecture** | `docs/KG_LANGGRAPH_ARCHITECTURE.md` | Knowledge Graph deep dive |
-| **System Map 4D** | `docs/SYSTEM_MAP_4D.md` | Full architecture overview |
-| **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md` | DB schema reference |
-| **Deploy Checklist** | `docs/operations/DEPLOY_CHECKLIST.md` | Before deploying |
-| **Intel Pipeline** | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper |
-| **Archive** | `docs/archive/MANIFEST.md` | Old docs & reports |
+| Document                  | Path                                                     | When to Read                                                 |
+| ------------------------- | -------------------------------------------------------- | ------------------------------------------------------------ |
+| **CLAUDE.md**             | Root                                                     | Behavioral rules, golden rules, deploy QA, language protocol |
+| **Cicatrix Scars**        | `.claude/rules/cicatrix-scars.md`                        | 20 known bugs/gotchas — before modifying referenced files    |
+| **KG Architecture**       | `docs/KG_LANGGRAPH_ARCHITECTURE.md`                      | Knowledge Graph deep dive                                    |
+| **System Map 4D**         | `docs/SYSTEM_MAP_4D.md`                                  | Full architecture overview                                   |
+| **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference                                          |
+| **Deploy Checklist**      | `docs/operations/DEPLOY_CHECKLIST.md`                    | Before deploying                                             |
+| **Intel Pipeline**        | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper                                                 |
+| **Archive**               | `docs/archive/MANIFEST.md`                               | Old docs & reports                                           |
 
 ---
 
