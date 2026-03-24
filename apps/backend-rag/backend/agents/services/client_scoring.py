@@ -3,6 +3,8 @@ Client Scoring Service
 
 Responsibility: Calculate client lifetime value (LTV) scores from database data.
 """
+from __future__ import annotations
+
 
 import logging
 from datetime import datetime, timezone

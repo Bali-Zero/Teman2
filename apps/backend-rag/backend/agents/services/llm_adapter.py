@@ -13,6 +13,8 @@ ENHANCED FEATURES (Best Practice 2026):
 
 Metriche e logging integrati.
 """
+from __future__ import annotations
+
 
 import asyncio
 import logging

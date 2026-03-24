@@ -9,6 +9,7 @@ Raccoglie coverage da TUTTI i componenti del sistema:
 
 Calcola coverage complessivo e differenziale.
 """
+from __future__ import annotations
 
 import json
 import logging

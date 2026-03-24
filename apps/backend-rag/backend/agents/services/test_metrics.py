@@ -4,6 +4,8 @@
 Comprehensive metrics collection and logging for Test Force agents.
 Tracks coverage, performance, and agent effectiveness.
 """
+from __future__ import annotations
+
 
 import json
 import logging
