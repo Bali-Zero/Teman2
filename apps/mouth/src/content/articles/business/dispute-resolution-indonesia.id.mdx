@@ -1,10 +1,11 @@
 ---
 aiGenerated: true
 aiOptimization:
-  answerSnippet: 'Indonesian dispute resolution options: negotiation (free, 1-3 months),
+  answerSnippet:
+    "Indonesian dispute resolution options: negotiation (free, 1-3 months),
     mediation (IDR 5-20M, 2-4 months), BANI arbitration (IDR 50-200M, 6-12 months),
     or court litigation (IDR 10-100M, 1-3 years). Arbitration is preferred for foreign
-    investors.'
+    investors."
   entityMentions:
     - name: BANI (Indonesian National Arbitration Board)
       sameAs: https://www.baniarbitration.org
@@ -25,20 +26,24 @@ contentStructure:
   hasHowTo: false
   hasTable: true
 coverImage: /static/insights/business/dispute-resolution-indonesia.jpg
-description: Resolving business disputes in Indonesia. Negotiation, mediation, arbitration,
+description:
+  Resolving business disputes in Indonesia. Negotiation, mediation, arbitration,
   and litigation explained.
 difficulty: intermediate
 excerpt: Business conflict in Indonesia? Here are your options for resolution.
 faq:
-  - answer: Yes. BANI arbitration is faster (6-12 months vs 1-3 years), more predictable,
+  - answer:
+      Yes. BANI arbitration is faster (6-12 months vs 1-3 years), more predictable,
       confidential, and enforceable internationally under the New York Convention. Indonesian
       courts can be unpredictable for foreign parties.
     question: Is arbitration better than court for foreign businesses in Indonesia?
-  - answer: BANI arbitration costs IDR 50-200 million depending on claim value and complexity.
+  - answer:
+      BANI arbitration costs IDR 50-200 million depending on claim value and complexity.
       This includes registration fees, arbitrator fees, and administrative costs. Much
       cheaper than prolonged litigation when factoring in legal fees and business disruption.
     question: How much does business arbitration cost in Indonesia?
-  - answer: Yes. Indonesia is a signatory to the New York Convention. Foreign arbitration
+  - answer:
+      Yes. Indonesia is a signatory to the New York Convention. Foreign arbitration
       awards can be enforced through the Central Jakarta District Court, though the
       process takes 2-6 months and requires certification.
     question: Can I enforce a foreign arbitration award in Indonesia?
@@ -50,35 +55,37 @@ kbSources:
   - collection: business_docs
     documentsUsed: 14
 lang: id
-lastKbSync: '2026-01-15T10:00:00Z'
+lastKbSync: "2026-01-15T10:00:00Z"
 ogImage: /static/insights/business/dispute-resolution-indonesia.jpg
 ogType: article
-publishedAt: '2026-01-15'
+publishedAt: "2026-01-15"
 readingTime: 10
 relatedArticles:
   - contracts-indonesian-law
   - due-diligence-indonesia
   - pt-pma-registration-guide
 seo:
-  description: 'Resolve business disputes in Indonesia: negotiation, BANI arbitration,
-    mediation, and litigation options compared for foreign investors in 2026.'
+  description:
+    "Resolve business disputes in Indonesia: negotiation, BANI arbitration,
+    mediation, and litigation options compared for foreign investors in 2026."
   keywords:
     - dispute resolution indonesia
     - BANI arbitration
     - business litigation
   title: Business Dispute Resolution Indonesia 2026 | Legal Options
-seoDescription: 'Resolve business disputes in Indonesia: negotiation, mediation, BANI
-  arbitration, and litigation. Costs, timelines, and best method for foreigners.'
+seoDescription:
+  "Resolve business disputes in Indonesia: negotiation, mediation, BANI
+  arbitration, and litigation. Costs, timelines, and best method for foreigners."
 seoTitle: Business Dispute Resolution Indonesia 2026 | Guide
 slug: dispute-resolution-indonesia
 tableOfContents: true
 tags: []
-title: 'Business Dispute Resolution Indonesia 2026: Legal Options'
-translatedAt: '2026-03-08'
+title: "Business Dispute Resolution Indonesia 2026: Legal Options"
+translatedAt: "2026-03-08"
 translatedBy: Gemma3:12b + Gemini 3.1 Pro
 translatedFrom: en
 twitterCard: summary_large_image
-updatedAt: '2026-01-15'
+updatedAt: "2026-01-15"
 ---
 
 import {
@@ -87,7 +94,7 @@ import {
   JourneyMap,
   InfoCard,
   AskZantara,
-} from '@/components/insights/interactive';
+} from "@/components/insights/interactive";
 
 # Penyelesaian Sengketa Bisnis Indonesia 2026: Opsi Hukum
 
@@ -100,37 +107,37 @@ Ketika hubungan bisnis tidak berjalan sesuai rencana, Anda perlu memahami langka
   description="Temukan metode penyelesaian sengketa yang sesuai untuk bisnis Anda"
   nodes={[
     {
-      id: 'start',
-      question: 'Bagaimana situasi sengketa Anda?',
+      id: "start",
+      question: "Bagaimana situasi sengketa Anda?",
       options: [
-        { label: 'Ingin tetap menjaga hubungan bisnis', next: 'preserve' },
-        { label: 'Membutuhkan penyelesaian yang cepat', next: 'quick' },
-        { label: 'Klaim finansial bernilai besar', next: 'large' },
-        { label: 'Pihak lawan tidak kooperatif', next: 'uncooperative' },
+        { label: "Ingin tetap menjaga hubungan bisnis", next: "preserve" },
+        { label: "Membutuhkan penyelesaian yang cepat", next: "quick" },
+        { label: "Klaim finansial bernilai besar", next: "large" },
+        { label: "Pihak lawan tidak kooperatif", next: "uncooperative" },
       ],
     },
     {
-      id: 'preserve',
+      id: "preserve",
       result: {
-        title: 'Negosiasi atau Mediasi',
+        title: "Negosiasi atau Mediasi",
         description:
-          'Diskusi langsung atau mediasi terfasilitasi. Metode terbaik untuk menjaga keberlangsungan hubungan bisnis. Bersifat fleksibel, rahasia, dan lebih efisien secara biaya.',
+          "Diskusi langsung atau mediasi terfasilitasi. Metode terbaik untuk menjaga keberlangsungan hubungan bisnis. Bersifat fleksibel, rahasia, dan lebih efisien secara biaya.",
       },
     },
     {
-      id: 'quick',
-      question: 'Apakah terdapat klausul arbitrase dalam kontrak?',
+      id: "quick",
+      question: "Apakah terdapat klausul arbitrase dalam kontrak?",
       options: [
-        { label: 'Ya, tercantum dalam kontrak', next: 'arbitration' },
-        { label: 'Tidak ada, atau tidak yakin', next: 'consider-arb' },
+        { label: "Ya, tercantum dalam kontrak", next: "arbitration" },
+        { label: "Tidak ada, atau tidak yakin", next: "consider-arb" },
       ],
     },
     {
-      id: 'large',
+      id: "large",
       result: {
-        title: 'Arbitrase (BANI atau SIAC)',
+        title: "Arbitrase (BANI atau SIAC)",
         description:
-          'Pilihan utama untuk sengketa komersial berskala besar. Melibatkan arbiter ahli dengan putusan yang bersifat final, mengikat, dan dapat ditegakkan secara internasional.',
+          "Pilihan utama untuk sengketa komersial berskala besar. Melibatkan arbiter ahli dengan putusan yang bersifat final, mengikat, dan dapat ditegakkan secara internasional.",
       },
     },
   ]}

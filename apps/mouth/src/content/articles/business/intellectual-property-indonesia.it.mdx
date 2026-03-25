@@ -83,7 +83,7 @@ import {
   Checklist,
   InfoCard,
   AskZantara,
-} from '@/components/insights/interactive';
+} from "@/components/insights/interactive";
 
 # Proprietà Intellettuale in Indonesia 2026: Guida alla Protezione
 
@@ -96,45 +96,45 @@ Proteggere la tua proprietà intellettuale è essenziale quando fai affari in In
   description="Trova la protezione giusta per i tuoi asset"
   nodes={[
     {
-      id: 'start',
-      question: 'Cosa stai proteggendo?',
+      id: "start",
+      question: "Cosa stai proteggendo?",
       options: [
-        { label: 'Nome marchio/logo', next: 'trademark' },
-        { label: 'Invenzione/process', next: 'patent' },
-        { label: 'Opera creativa', next: 'copyright' },
-        { label: 'Segreti commerciali', next: 'trade-secret' },
+        { label: "Nome marchio/logo", next: "trademark" },
+        { label: "Invenzione/process", next: "patent" },
+        { label: "Opera creativa", next: "copyright" },
+        { label: "Segreti commerciali", next: "trade-secret" },
       ],
     },
     {
-      id: 'trademark',
+      id: "trademark",
       result: {
-        title: 'Marchio (Merek)',
+        title: "Marchio (Merek)",
         description:
-          'Registra il tuo nome commerciale, logo o slogan con DGIP. La protezione dura 10 anni, rinnovabile. Essenziale per qualsiasi impresa che opera in Indonesia.',
+          "Registra il tuo nome commerciale, logo o slogan con DGIP. La protezione dura 10 anni, rinnovabile. Essenziale per qualsiasi impresa che opera in Indonesia.",
       },
     },
     {
-      id: 'patent',
+      id: "patent",
       result: {
-        title: 'Brevetto (Paten)',
+        title: "Brevetto (Paten)",
         description:
-          'Proteggi invenzioni, processi o soluzioni tecniche. Brevetto standard: 20 anni. Brevetto semplice: 10 anni. Devono essere nuovi e industrialmente applicabili.',
+          "Proteggi invenzioni, processi o soluzioni tecniche. Brevetto standard: 20 anni. Brevetto semplice: 10 anni. Devono essere nuovi e industrialmente applicabili.",
       },
     },
     {
-      id: 'copyright',
+      id: "copyright",
       result: {
         title: "Diritto d'Autore (Hak Cipta)",
         description:
-          'Protezione automatica per opere creative. Registrazione opzionale ma consigliata come prova. Dura 70 anni dopo la morte del creatore per la maggior parte delle opere.',
+          "Protezione automatica per opere creative. Registrazione opzionale ma consigliata come prova. Dura 70 anni dopo la morte del creatore per la maggior parte delle opere.",
       },
     },
     {
-      id: 'trade-secret',
+      id: "trade-secret",
       result: {
-        title: 'Segreto Commerciale (Rahasia Dagang)',
+        title: "Segreto Commerciale (Rahasia Dagang)",
         description:
-          'Proteggi informazioni commerciali confidenziali attraverso contratti e misure di sicurezza. Nessuna registrazione richiesta. La protezione dura finché il segreto è mantenuto.',
+          "Proteggi informazioni commerciali confidenziali attraverso contratti e misure di sicurezza. Nessuna registrazione richiesta. La protezione dura finché il segreto è mantenuto.",
       },
     },
   ]}
@@ -149,44 +149,44 @@ Proteggere la tua proprietà intellettuale è essenziale quando fai affari in In
   description="Scegli la protezione giusta"
   items={[
     {
-      name: 'Marchio',
-      subtitle: 'Protezione del brand',
+      name: "Marchio",
+      subtitle: "Protezione del brand",
       values: {
-        Protects: 'Nomi, logo, slogan',
-        Duration: '10 anni (rinnovabile)',
-        Registration: 'Richiesta',
-        Cost: 'IDR 2-10M',
+        Protects: "Nomi, logo, slogan",
+        Duration: "10 anni (rinnovabile)",
+        Registration: "Richiesta",
+        Cost: "IDR 2-10M",
       },
       highlight: true,
     },
     {
-      name: 'Brevetto',
-      subtitle: 'Protezione invenzioni',
+      name: "Brevetto",
+      subtitle: "Protezione invenzioni",
       values: {
-        Protects: 'Invenzioni, processi',
-        Duration: '20 anni (standard)',
-        Registration: 'Richiesta',
-        Cost: 'IDR 10-50M+',
+        Protects: "Invenzioni, processi",
+        Duration: "20 anni (standard)",
+        Registration: "Richiesta",
+        Cost: "IDR 10-50M+",
       },
     },
     {
       name: "Diritto d'Autore",
-      subtitle: 'Opere creative',
+      subtitle: "Opere creative",
       values: {
-        Protects: 'Arte, musica, software, scrittura',
-        Duration: '70 anni post-morte',
-        Registration: 'Opzionale',
-        Cost: 'IDR 500K-2M',
+        Protects: "Arte, musica, software, scrittura",
+        Duration: "70 anni post-morte",
+        Registration: "Opzionale",
+        Cost: "IDR 500K-2M",
       },
     },
     {
-      name: 'Design Industriale',
-      subtitle: 'Aspetto prodotto',
+      name: "Design Industriale",
+      subtitle: "Aspetto prodotto",
       values: {
-        Protects: 'Forma, pattern, colore',
-        Duration: '10 anni',
-        Registration: 'Richiesta',
-        Cost: 'IDR 3-8M',
+        Protects: "Forma, pattern, colore",
+        Duration: "10 anni",
+        Registration: "Richiesta",
+        Cost: "IDR 3-8M",
       },
     },
   ]}
@@ -217,65 +217,89 @@ L'Indonesia usa il sistema **first-to-file**:
   estimatedTotal="12-18 mesi"
   steps={[
     {
-      id: 'search',
-      title: 'Ricerca Marchio',
-      description: 'Verifica disponibilità',
-      duration: '1-2 settimane',
-      status: 'required',
-      tips: ['Cerca database DGIP', 'Verifica marchi simili', 'Considera somiglianze fonetiche'],
-    },
-    {
-      id: 'prepare',
-      title: 'Prepara Domanda',
-      description: 'Raccogli documenti',
-      duration: '1-2 settimane',
-      status: 'required',
-      documents: [
-        'Campione marchio (logo)',
-        'Elenco beni/servizi',
-        'Dettagli richiedente',
-        'Procura (se usi agente)',
+      id: "search",
+      title: "Ricerca Marchio",
+      description: "Verifica disponibilità",
+      duration: "1-2 settimane",
+      status: "required",
+      tips: [
+        "Cerca database DGIP",
+        "Verifica marchi simili",
+        "Considera somiglianze fonetiche",
       ],
     },
     {
-      id: 'file',
-      title: 'Deposita Domanda',
-      description: 'Invia a DGIP',
-      duration: '1-2 giorni',
-      status: 'required',
-      tips: ['Online via sistema DGIP', 'O tramite agente PI', 'Paga tassa di deposito'],
+      id: "prepare",
+      title: "Prepara Domanda",
+      description: "Raccogli documenti",
+      duration: "1-2 settimane",
+      status: "required",
+      documents: [
+        "Campione marchio (logo)",
+        "Elenco beni/servizi",
+        "Dettagli richiedente",
+        "Procura (se usi agente)",
+      ],
     },
     {
-      id: 'examine',
-      title: 'Esame Formale',
-      description: 'DGIP verifica documenti',
-      duration: '1-2 mesi',
-      status: 'required',
-      tips: ['Revisione amministrativa', 'Può richiedere correzioni', 'Data deposito assegnata'],
+      id: "file",
+      title: "Deposita Domanda",
+      description: "Invia a DGIP",
+      duration: "1-2 giorni",
+      status: "required",
+      tips: [
+        "Online via sistema DGIP",
+        "O tramite agente PI",
+        "Paga tassa di deposito",
+      ],
     },
     {
-      id: 'substantive',
-      title: 'Esame Sostanziale',
-      description: 'Revisione merito marchio',
-      duration: '6-9 mesi',
-      status: 'required',
-      tips: ['Verifica distintività', 'Ricerca conflitti', 'Può incontrare opposizioni'],
+      id: "examine",
+      title: "Esame Formale",
+      description: "DGIP verifica documenti",
+      duration: "1-2 mesi",
+      status: "required",
+      tips: [
+        "Revisione amministrativa",
+        "Può richiedere correzioni",
+        "Data deposito assegnata",
+      ],
     },
     {
-      id: 'publish',
-      title: 'Pubblicazione',
-      description: 'Sulla Gazzetta Ufficiale',
-      duration: '2 mesi',
-      status: 'required',
-      tips: ['Periodo opposizione', 'Terzi possono obiettare', 'Rispondi se contestato'],
+      id: "substantive",
+      title: "Esame Sostanziale",
+      description: "Revisione merito marchio",
+      duration: "6-9 mesi",
+      status: "required",
+      tips: [
+        "Verifica distintività",
+        "Ricerca conflitti",
+        "Può incontrare opposizioni",
+      ],
     },
     {
-      id: 'certificate',
-      title: 'Certificato Rilasciato',
-      description: 'Marchio registrato',
-      duration: '1-2 mesi',
-      status: 'final',
-      tips: ['Inizia protezione 10 anni', 'Puoi usare simbolo ®', 'Rinnova prima della scadenza'],
+      id: "publish",
+      title: "Pubblicazione",
+      description: "Sulla Gazzetta Ufficiale",
+      duration: "2 mesi",
+      status: "required",
+      tips: [
+        "Periodo opposizione",
+        "Terzi possono obiettare",
+        "Rispondi se contestato",
+      ],
+    },
+    {
+      id: "certificate",
+      title: "Certificato Rilasciato",
+      description: "Marchio registrato",
+      duration: "1-2 mesi",
+      status: "final",
+      tips: [
+        "Inizia protezione 10 anni",
+        "Puoi usare simbolo ®",
+        "Rinnova prima della scadenza",
+      ],
     },
   ]}
 />
@@ -312,58 +336,58 @@ Devi registrarti in ogni classe pertinente separatamente.
   persistKey="patent-checklist"
   items={[
     {
-      id: 'novel',
-      label: 'Novità',
-      description: 'Non conosciuta prima del deposito',
+      id: "novel",
+      label: "Novità",
+      description: "Non conosciuta prima del deposito",
       required: true,
-      category: 'requirements',
+      category: "requirements",
     },
     {
-      id: 'inventive',
-      label: 'Attività inventiva',
-      description: 'Non ovvia per esperti',
+      id: "inventive",
+      label: "Attività inventiva",
+      description: "Non ovvia per esperti",
       required: true,
-      category: 'requirements',
+      category: "requirements",
     },
     {
-      id: 'industrial',
-      label: 'Applicabilità industriale',
-      description: 'Può essere prodotta/utilizzata',
+      id: "industrial",
+      label: "Applicabilità industriale",
+      description: "Può essere prodotta/utilizzata",
       required: true,
-      category: 'requirements',
+      category: "requirements",
     },
     {
-      id: 'description',
-      label: 'Descrizione completa',
-      description: 'Dettagli tecnici',
+      id: "description",
+      label: "Descrizione completa",
+      description: "Dettagli tecnici",
       required: true,
-      category: 'documents',
+      category: "documents",
     },
     {
-      id: 'claims',
-      label: 'Rivendicazioni brevetto',
-      description: 'Ambito protezione',
+      id: "claims",
+      label: "Rivendicazioni brevetto",
+      description: "Ambito protezione",
       required: true,
-      category: 'documents',
+      category: "documents",
     },
     {
-      id: 'drawings',
-      label: 'Disegni tecnici',
-      description: 'Se applicabile',
+      id: "drawings",
+      label: "Disegni tecnici",
+      description: "Se applicabile",
       required: false,
-      category: 'documents',
+      category: "documents",
     },
     {
-      id: 'abstract',
-      label: 'Abstract',
-      description: 'Riassunto invenzione',
+      id: "abstract",
+      label: "Abstract",
+      description: "Riassunto invenzione",
       required: true,
-      category: 'documents',
+      category: "documents",
     },
   ]}
   categories={[
-    { id: 'requirements', label: 'Requisiti', color: 'blue' },
-    { id: 'documents', label: 'Documenti', color: 'green' },
+    { id: "requirements", label: "Requisiti", color: "blue" },
+    { id: "documents", label: "Documenti", color: "green" },
   ]}
   showProgress={true}
 />
@@ -521,10 +545,10 @@ Questo retrodata il tuo deposito indonesiano.
   context="Proprietà intellettuale Indonesia, marchio, brevetto, diritto d'autore, segreto commerciale"
   placeholder="Chiedi informazioni sulla protezione PI..."
   suggestedQuestions={[
-    'Posso registrare un marchio in inglese?',
-    'Come fermo qualcuno che usa il mio brand?',
-    'Il mio brevetto USA mi protegge in Indonesia?',
-    'Cosa succede se qualcuno ha già registrato il mio marchio?',
+    "Posso registrare un marchio in inglese?",
+    "Come fermo qualcuno che usa il mio brand?",
+    "Il mio brevetto USA mi protegge in Indonesia?",
+    "Cosa succede se qualcuno ha già registrato il mio marchio?",
   ]}
 />
 

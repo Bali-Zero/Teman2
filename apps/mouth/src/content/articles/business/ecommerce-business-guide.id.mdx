@@ -1,10 +1,11 @@
 ---
 aiGenerated: true
 aiOptimization:
-  answerSnippet: 'Foreign e-commerce entrepreneurs need a PT PMA with KBLI 47911 (online
+  answerSnippet:
+    "Foreign e-commerce entrepreneurs need a PT PMA with KBLI 47911 (online
     retail) or 62012 (e-commerce platform). Selling on Tokopedia/Shopee requires Indonesian
     business entity. PT PMA minimum investment IDR 10B. Alternative: partner with
-    local distributor.'
+    local distributor."
   entityMentions:
     - name: Kemendag (Ministry of Trade)
       sameAs: https://www.kemendag.go.id
@@ -25,21 +26,26 @@ contentStructure:
   hasHowTo: true
   hasTable: true
 coverImage: /static/insights/business/ecommerce-business-guide.jpg
-description: How to start an e-commerce business in Indonesia as a foreigner. Platform
+description:
+  How to start an e-commerce business in Indonesia as a foreigner. Platform
   selling, online retail, and digital commerce regulations.
 difficulty: intermediate
-excerpt: Want to sell online in Indonesia? Here's what foreign entrepreneurs need
+excerpt:
+  Want to sell online in Indonesia? Here's what foreign entrepreneurs need
   to know.
 faq:
-  - answer: KBLI 47911 (Online/Media Retail) for selling products online. If building
+  - answer:
+      KBLI 47911 (Online/Media Retail) for selling products online. If building
       a marketplace platform, add 62012 (E-Commerce Application Development). Both are
       medium risk with PMA allowed.
     question: What KBLI code do I need for an online store in Indonesia?
-  - answer: Yes. PT PMA companies can register as official sellers on Indonesian marketplaces.
+  - answer:
+      Yes. PT PMA companies can register as official sellers on Indonesian marketplaces.
       You need NIB, NPWP, and business bank account. Some platforms have minimum capital
       or sales volume requirements for foreign sellers.
     question: Can I sell on Tokopedia and Shopee with a PT PMA?
-  - answer: E-commerce businesses pay 11% VAT (PPN) on sales, 22% corporate income tax,
+  - answer:
+      E-commerce businesses pay 11% VAT (PPN) on sales, 22% corporate income tax,
       and 0.5% final tax if qualifying as UMKM. Cross-border digital goods also face
       11% VAT. Marketplace platforms may withhold taxes on your behalf.
     question: What taxes apply to e-commerce in Indonesia?
@@ -51,35 +57,37 @@ kbSources:
   - collection: business_docs
     documentsUsed: 16
 lang: id
-lastKbSync: '2026-01-15T10:00:00Z'
+lastKbSync: "2026-01-15T10:00:00Z"
 ogImage: /static/insights/business/ecommerce-business-guide.jpg
 ogType: article
-publishedAt: '2026-01-15'
+publishedAt: "2026-01-15"
 readingTime: 10
 relatedArticles:
   - pt-pma-registration-guide
   - export-import-business-guide
   - tech-startup-guide
 seo:
-  description: 'Start an e-commerce business in Indonesia as a foreigner: KBLI codes,
-    marketplace regulations, platform rules, and PT PMA setup guide for 2026.'
+  description:
+    "Start an e-commerce business in Indonesia as a foreigner: KBLI codes,
+    marketplace regulations, platform rules, and PT PMA setup guide for 2026."
   keywords:
     - ecommerce indonesia
     - online business indonesia
     - sell online indonesia foreigner
   title: E-commerce Business Indonesia 2026 | Online Selling Guide
-seoDescription: 'Start an e-commerce business in Indonesia as a foreigner: PT PMA,
-  KBLI 47911, marketplace regulations, platform options, and digital commerce rules.'
+seoDescription:
+  "Start an e-commerce business in Indonesia as a foreigner: PT PMA,
+  KBLI 47911, marketplace regulations, platform options, and digital commerce rules."
 seoTitle: E-Commerce Business Indonesia 2026 | Foreigner Guide
 slug: ecommerce-business-guide
 tableOfContents: true
 tags: []
 title: "E-commerce Business in Indonesia 2026: Foreigner's Guide"
-translatedAt: '2026-03-08'
+translatedAt: "2026-03-08"
 translatedBy: Gemma3:12b + Gemini 3.1 Pro
 translatedFrom: en
 twitterCard: summary_large_image
-updatedAt: '2026-01-15'
+updatedAt: "2026-01-15"
 ---
 
 import {
@@ -88,7 +96,7 @@ import {
   Checklist,
   InfoCard,
   AskZantara,
-} from '@/components/insights/interactive';
+} from "@/components/insights/interactive";
 
 # Bisnis E-commerce di Indonesia 2026: Panduan bagi WNA
 
@@ -104,8 +112,8 @@ Potensi ekonomi digital Indonesia:
 - Pasar yang mengutamakan perangkat seluler (_mobile-first_)
 
 <InfoCard variant="note" title="Peluang Luar Biasa">
-  Indonesia adalah pasar e-commerce terbesar di Asia Tenggara. Platform utama yang mendominasi
-  pasar: Tokopedia, Shopee, Lazada, Blibli, dan Bukalapak.
+  Indonesia adalah pasar e-commerce terbesar di Asia Tenggara. Platform utama
+  yang mendominasi pasar: Tokopedia, Shopee, Lazada, Blibli, dan Bukalapak.
 </InfoCard>
 
 ---
@@ -117,26 +125,26 @@ Potensi ekonomi digital Indonesia:
   description="Temukan pendekatan yang paling sesuai untuk strategi bisnis Anda"
   nodes={[
     {
-      id: 'start',
-      question: 'Apa yang ingin Anda jual?',
+      id: "start",
+      question: "Apa yang ingin Anda jual?",
       options: [
-        { label: 'Produk fisik', next: 'physical' },
-        { label: 'Produk atau layanan digital', next: 'digital' },
+        { label: "Produk fisik", next: "physical" },
+        { label: "Produk atau layanan digital", next: "digital" },
       ],
     },
     {
-      id: 'physical',
-      question: 'Dari mana asal pasokan produk Anda?',
+      id: "physical",
+      question: "Dari mana asal pasokan produk Anda?",
       options: [
-        { label: 'Impor dari luar negeri', next: 'import' },
-        { label: 'Produk lokal Indonesia', next: 'local' },
-        { label: 'Manufaktur di Indonesia', next: 'manufacture' },
+        { label: "Impor dari luar negeri", next: "import" },
+        { label: "Produk lokal Indonesia", next: "local" },
+        { label: "Manufaktur di Indonesia", next: "manufacture" },
       ],
     },
     {
-      id: 'digital',
-      question: 'Apa jenis bisnis digital Anda?',
-      options: [{ label: 'SaaS / Perangkat Lunak', next: 'saas' }],
+      id: "digital",
+      question: "Apa jenis bisnis digital Anda?",
+      options: [{ label: "SaaS / Perangkat Lunak", next: "saas" }],
     },
   ]}
 />
