@@ -65,11 +65,14 @@ def _load_env() -> dict[str, str]:
 
 
 def _query_expiries() -> list[dict]:
-    """Query CRM for upcoming expirations via fly ssh to backend."""
+    """Query CRM for upcoming expirations AND overdue practices via fly ssh to backend."""
     import base64
     code = '''import asyncio,os,asyncpg,json
 async def m():
  c=await asyncpg.connect(os.environ["DATABASE_URL"])
+ items = []
+
+ # 1. Passport/visa expirations within 30 days
  r=await c.fetch("""
   SELECT DISTINCT ON (c.id, exp_type)
    c.id as client_id, c.full_name, c.email as client_email, c.phone,
@@ -94,7 +97,6 @@ async def m():
    )
   ORDER BY c.id, exp_type, expiry_date
  """)
- items = []
  for x in r:
   items.append({
    "client_id": x["client_id"],
@@ -107,6 +109,32 @@ async def m():
    "expiry_date": str(x["expiry_date"])[:10] if x["expiry_date"] else None,
    "passport_expiry": str(x["passport_expiry"])[:10] if x["passport_expiry"] else None,
   })
+
+ # 2. Overdue practices (expected_completion_date passed, still active)
+ r2=await c.fetch("""
+  SELECT c.id as client_id, c.full_name, c.email as client_email, c.phone,
+   c.assigned_to, p.title as practice_title, p.status,
+   p.expected_completion_date
+  FROM practices p
+  JOIN clients c ON p.client_id = c.id
+  WHERE p.expected_completion_date < now()
+   AND p.status NOT IN ('completed','cancelled','inquiry')
+   AND c.assigned_to IS NOT NULL
+  ORDER BY p.expected_completion_date
+ """)
+ for x in r2:
+  items.append({
+   "client_id": x["client_id"],
+   "full_name": x["full_name"],
+   "client_email": x["client_email"],
+   "phone": x["phone"],
+   "assigned_to": x["assigned_to"],
+   "exp_type": "overdue_practice",
+   "practice_title": x["practice_title"] or x["status"],
+   "expiry_date": str(x["expected_completion_date"])[:10],
+   "passport_expiry": None,
+  })
+
  print(json.dumps(items))
  await c.close()
 asyncio.run(m())
@@ -220,7 +248,12 @@ def _build_team_email(assigned_to: str, items: list[dict]) -> tuple[str, str]:
     ]
 
     for item in sorted(items, key=lambda x: x["days"]):
-        exp_type = "Paspor" if item["exp_type"] == "passport" else item.get("practice_title", "Visa/Izin")
+        if item["exp_type"] == "passport":
+            exp_type = "Paspor"
+        elif item["exp_type"] == "overdue_practice":
+            exp_type = f"Praktik: {item.get('practice_title', 'Tanpa judul')}"
+        else:
+            exp_type = item.get("practice_title", "Visa/Izin")
         lines.append(f"{item['emoji']} {item['full_name']} — {exp_type}")
         lines.append(f"   {item['label']}")
         if item.get("client_email"):
@@ -254,14 +287,24 @@ def _build_telegram_summary(all_items: list[dict], emails_sent: int) -> str:
     if critical:
         lines.append(f"🔴 <b>{len(critical)} CRITICI:</b>")
         for i in critical:
-            exp_type = "PP" if i["exp_type"] == "passport" else i.get("practice_title", "Visa")[:20]
+            if i["exp_type"] == "passport":
+                exp_type = "PP"
+            elif i["exp_type"] == "overdue_practice":
+                exp_type = f"⏰{(i.get('practice_title') or '?')[:15]}"
+            else:
+                exp_type = (i.get("practice_title") or "Visa")[:15]
             lines.append(f"  • {i['full_name']} ({exp_type}) → {i['assigned_to'].split('@')[0]} | {i['label']}")
         lines.append("")
 
     if warning:
         lines.append(f"🟡 <b>{len(warning)} warning:</b>")
         for i in warning[:10]:
-            exp_type = "PP" if i["exp_type"] == "passport" else i.get("practice_title", "Visa")[:20]
+            if i["exp_type"] == "passport":
+                exp_type = "PP"
+            elif i["exp_type"] == "overdue_practice":
+                exp_type = f"⏰{(i.get('practice_title') or '?')[:15]}"
+            else:
+                exp_type = (i.get("practice_title") or "Visa")[:15]
             lines.append(f"  • {i['full_name']} ({exp_type}) → {i['assigned_to'].split('@')[0]} | {i['label']}")
         if len(warning) > 10:
             lines.append(f"  ...+{len(warning) - 10} altri")
