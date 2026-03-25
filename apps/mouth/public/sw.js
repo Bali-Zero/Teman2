@@ -5,16 +5,16 @@
  *            Cache-First per assets statici
  */
 
-const CACHE_NAME = "balizero-v3";
-const STATIC_CACHE = "balizero-static-v3";
-const API_CACHE = "balizero-api-v3";
+const CACHE_NAME = "balizero-v4";
+const STATIC_CACHE = "balizero-static-v4";
+const API_CACHE = "balizero-api-v4";
 
 // Assets da cacheare immediatamente
 const STATIC_ASSETS = ["/", "/offline"];
 
 // Install: Cache static assets
 self.addEventListener("install", (event) => {
-  console.log("[SW] Install v2");
+  console.log("[SW] Install v4");
 
   event.waitUntil(
     caches
@@ -34,7 +34,7 @@ self.addEventListener("install", (event) => {
 
 // Activate: Clean old caches
 self.addEventListener("activate", (event) => {
-  console.log("[SW] Activate v2");
+  console.log("[SW] Activate v4");
 
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -189,4 +189,4 @@ self.addEventListener("message", (event) => {
   }
 });
 
-console.log("[SW] Service Worker loaded v3");
+console.log("[SW] Service Worker loaded v4");
