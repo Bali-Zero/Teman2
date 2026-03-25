@@ -55,6 +55,20 @@ function normalizeCategory(rawCategory: string): ArticleCategory {
   return CATEGORY_MAP[rawCategory] || "living";
 }
 
+/** Default cover images per normalized category (files that actually exist in public/static/blog/) */
+const CATEGORY_COVER_DEFAULTS: Record<string, string> = {
+  visas: "/static/blog/kitas-guide.jpg",
+  business: "/static/blog/oss-guide.jpg",
+  taxes: "/static/blog/tax-calendar.jpg",
+  property: "/static/blog/golden-visa.jpg",
+  living: "/static/blog/north-bali.jpg",
+  trends: "/static/blog/nomad-comparison.jpg",
+};
+
+function defaultCoverImage(category: ArticleCategory): string {
+  return CATEGORY_COVER_DEFAULTS[category] || "/static/blog/golden-visa.jpg";
+}
+
 // ============================================================================
 // Backend API Functions
 // ============================================================================
@@ -85,7 +99,7 @@ function backendToArticleListItem(item: BackendNewsItem): ArticleListItem {
     title: item.title,
     excerpt: item.summary || item.ai_summary || "",
     coverImage:
-      item.image_url || `/static/blog/${item.category}/${item.slug}.jpg`,
+      item.image_url || defaultCoverImage(normalizeCategory(item.category)),
     category: normalizeCategory(item.category),
     author: {
       id: "zantara-ai",
@@ -115,7 +129,7 @@ function backendToArticle(item: BackendNewsItem): Article {
     excerpt: item.summary || item.ai_summary || "",
     content: item.content || "",
     coverImage:
-      item.image_url || `/static/blog/${item.category}/${item.slug}.jpg`,
+      item.image_url || defaultCoverImage(normalizeCategory(item.category)),
     coverImageAlt: item.title,
     category: normalizeCategory(item.category),
     tags: item.ai_tags || [],
