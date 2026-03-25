@@ -19,19 +19,19 @@ interface ClientCardProps {
 }
 
 const SENTIMENT_COLORS = {
-  positive: "ring-green-500",
-  neutral: "ring-yellow-500",
-  negative: "ring-red-500",
-  mixed: "ring-purple-500",
-  none: "ring-gray-200 dark:ring-gray-700",
+  positive: "ring-[var(--neon-emerald)]",
+  neutral: "ring-[var(--neon-amber)]",
+  negative: "ring-[var(--neon-rose)]",
+  mixed: "ring-[var(--neon-purple)]",
+  none: "ring-[var(--glass-rim)]",
 };
 
 const SENTIMENT_BG = {
-  positive: "bg-green-500/10 text-green-600 dark:text-green-400",
-  neutral: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  negative: "bg-red-500/10 text-red-600 dark:text-red-400",
-  mixed: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  none: "bg-gray-100 dark:bg-gray-800 text-gray-500",
+  positive: "bg-[rgba(16,185,129,0.1)] text-[var(--neon-emerald)]",
+  neutral: "bg-[rgba(245,158,11,0.1)] text-[var(--neon-amber)]",
+  negative: "bg-[rgba(244,63,94,0.1)] text-[var(--neon-rose)]",
+  mixed: "bg-[rgba(139,92,246,0.1)] text-[var(--neon-purple)]",
+  none: "bg-[rgba(255,255,255,0.05)] text-[var(--tx-tertiary)]",
 };
 
 import { getCountryFlag } from "@/lib/utils/nationality-flags";
@@ -106,12 +106,12 @@ export const ClientCard = React.memo(
                 className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-[var(--background-secondary)]
               ${
                 {
-                  lead: "bg-blue-500",
-                  active: "bg-green-500",
-                  completed: "bg-purple-500",
-                  inactive: "bg-gray-500",
-                  lost: "bg-red-500",
-                }[client.status] || "bg-gray-400"
+                  lead: "bg-[var(--neon-blue)]",
+                  active: "bg-[var(--neon-emerald)]",
+                  completed: "bg-[var(--neon-purple)]",
+                  inactive: "bg-[var(--tx-tertiary)]",
+                  lost: "bg-[var(--neon-rose)]",
+                }[client.status] || "bg-[var(--tx-tertiary)]"
               }`}
               />
             </div>
@@ -140,14 +140,16 @@ export const ClientCard = React.memo(
           <div className="space-y-4">
             {/* Last Interaction Summary */}
             {client.last_interaction_summary ? (
-              <div className={`p-2.5 rounded-[0.75rem] border border-[rgba(255,255,255,0.05)] text-[11px] ${badgeStyle} line-clamp-2`}>
+              <div
+                className={`p-2.5 rounded-[0.75rem] border border-[rgba(255,255,255,0.05)] text-[11px] ${badgeStyle} line-clamp-2`}
+              >
                 <div className="flex items-center gap-1.5 mb-1.5 opacity-80 uppercase tracking-widest text-[9px] font-bold">
                   <MessageCircle className="w-3 h-3" />
-                  <span className="capitalize">
-                    {sentiment} Interaction
-                  </span>
+                  <span className="capitalize">{sentiment} Interaction</span>
                 </div>
-                <span className="leading-relaxed">&quot;{client.last_interaction_summary}&quot;</span>
+                <span className="leading-relaxed">
+                  &quot;{client.last_interaction_summary}&quot;
+                </span>
               </div>
             ) : (
               <div className="p-2.5 rounded-[0.75rem] border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] text-[var(--tx-secondary)] italic text-[11px]">
@@ -190,7 +192,7 @@ export const ClientCard = React.memo(
         <div className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 translate-y-2 group-hover:translate-y-0">
           <div className="bg-black/90 backdrop-blur-md text-white p-3 rounded-lg shadow-xl text-xs">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-gray-400">Sentiment:</span>
+              <span className="text-[var(--tx-secondary)]">Sentiment:</span>
               <span className="capitalize text-white font-medium">
                 {sentiment}
               </span>

@@ -11,11 +11,11 @@ interface ClientKanbanProps {
 }
 
 const COLUMNS = [
-  { id: "lead", title: "Leads", color: "bg-blue-500" },
-  { id: "active", title: "Active", color: "bg-green-500" },
-  { id: "completed", title: "Completed", color: "bg-purple-500" },
-  { id: "inactive", title: "Inactive", color: "bg-gray-500" },
-  { id: "lost", title: "Lost", color: "bg-red-500" },
+  { id: "lead", title: "Leads", color: "bg-[var(--neon-blue)]" },
+  { id: "active", title: "Active", color: "bg-[var(--neon-emerald)]" },
+  { id: "completed", title: "Completed", color: "bg-[var(--neon-purple)]" },
+  { id: "inactive", title: "Inactive", color: "bg-[var(--tx-tertiary)]" },
+  { id: "lost", title: "Lost", color: "bg-[var(--neon-rose)]" },
 ];
 
 // Estimated height for ClientCard (for virtualization)
@@ -176,11 +176,11 @@ export const ClientKanban = ({
           onDrop={(e) => handleDrop(e, column.id)}
         >
           {/* Column Header */}
-          <div
-            className="p-4 border-b border-[var(--glass-rim)] flex items-center justify-between sticky top-0 z-10 bg-[rgba(20,28,43,0.5)] backdrop-blur-md"
-          >
+          <div className="p-4 border-b border-[var(--glass-rim)] flex items-center justify-between sticky top-0 z-10 bg-[rgba(20,28,43,0.5)] backdrop-blur-md">
             <div className="flex items-center gap-3">
-              <div className={`w-2 h-2 rounded-full ${column.color} shadow-[0_0_8px_currentColor]`} />
+              <div
+                className={`w-2 h-2 rounded-full ${column.color} shadow-[0_0_8px_currentColor]`}
+              />
               <h3 className="font-bold text-[12px] uppercase tracking-widest text-[var(--tx-primary)]">
                 {column.title}
               </h3>
