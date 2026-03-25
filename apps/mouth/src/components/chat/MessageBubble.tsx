@@ -168,6 +168,8 @@ const EmotionalBadge = ({ emotion }: { emotion: string }) => {
   );
 };
 
+const nlmUiEnabled = process.env.NEXT_PUBLIC_ENABLE_NLM_UI !== "false";
+
 function MessageBubbleComponent({
   message,
   userAvatar,
@@ -512,7 +514,8 @@ function MessageBubbleComponent({
             )}
 
             {/* NLM Team Verification Badge */}
-            {!isUser &&
+            {nlmUiEnabled &&
+              !isUser &&
               message.metadata?.nlm_status &&
               message.metadata.nlm_status !== "not_needed" && (
                 <TeamVerificationBadge
@@ -523,7 +526,8 @@ function MessageBubbleComponent({
               )}
 
             {/* NLM Citation Panel */}
-            {showCitations &&
+            {nlmUiEnabled &&
+              showCitations &&
               message.metadata?.nlm_citations &&
               message.metadata.nlm_citations.length > 0 && (
                 <NLMCitationPanel
