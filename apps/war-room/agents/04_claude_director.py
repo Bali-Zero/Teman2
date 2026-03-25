@@ -1,15 +1,30 @@
 #!/usr/bin/env python3
 """
-FASE 2 — Gemini 3.1 Pro — Direttore Creativo
+FASE 2 — Claude Code (Opus 4.6) — Direttore Creativo
 Pick best concept, validate claims, generate slide JSON + image prompts
-Uses gemini CLI (Google Ultra, $0)
+Uses claude CLI (Opus 4.6, $API) with gemini CLI as fallback ($0)
 """
 import json, argparse, sys, subprocess, time
 from pathlib import Path
 
 
+def call_claude(prompt: str, timeout: int = 300) -> str:
+    """Chiama Claude via CLI (claude -p "prompt"). Uses OAuth (Max subscription).
+    MUST strip ANTHROPIC_API_KEY from env — otherwise CLI uses the (invalid) API key
+    instead of the OAuth token."""
+    import os
+    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    result = subprocess.run(
+        ["claude", "-p", prompt],
+        capture_output=True, text=True, timeout=timeout, env=env
+    )
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    raise RuntimeError(f"Claude CLI error (rc={result.returncode}): {result.stderr[:300]}")
+
+
 def call_gemini(prompt: str, timeout: int = 300) -> str:
-    """Chiama Gemini via CLI (gemini -p "prompt", $0). Raises RuntimeError on failure."""
+    """Fallback: Gemini via CLI (gemini -p "prompt", $0)."""
     result = subprocess.run(
         ["gemini", "-p", prompt],
         capture_output=True, text=True, timeout=timeout
@@ -141,49 +156,36 @@ def main():
         .replace("{gemini_concepts}", gemini_str)
     ) + f"\n\nTOPIC: {args.topic}\n\nBRAND RULES: {json.dumps(brand, ensure_ascii=False)}"
 
-    print("🎬 Gemini (direttore) — generando copy + JSON slides...", file=sys.stderr)
+    print("🎬 Claude (direttore) — generando copy + JSON slides...", file=sys.stderr)
 
     slides_data = None
     last_error = None
 
-    # Up to 2 attempts (initial + 1 retry after 30s)
-    for attempt in range(2):
-        if attempt > 0:
-            print(f"   ↩️  Retry #{attempt} in 30s...", file=sys.stderr)
-            time.sleep(30)
-
+    # Try Claude first, then Gemini fallback, then static fallback
+    for provider_name, provider_fn in [("Claude", call_claude), ("Gemini", call_gemini)]:
         try:
-            response = call_gemini(prompt, timeout=300)
+            print(f"   ▶ Trying {provider_name}...", file=sys.stderr)
+            response = provider_fn(prompt, timeout=300)
 
-            # Extract JSON block
             cleaned = extract_json(response)
+            slides_data = json.loads(cleaned)
+            if not isinstance(slides_data, dict):
+                raise ValueError(f"Expected dict, got {type(slides_data)}")
+            print(f"   ✅ {provider_name} OK", file=sys.stderr)
+            break  # success
 
-            try:
-                slides_data = json.loads(cleaned)
-                if not isinstance(slides_data, dict):
-                    raise ValueError(f"Expected dict, got {type(slides_data)}")
-                break  # success
-            except (json.JSONDecodeError, ValueError) as e:
-                print(f"⚠️  Attempt {attempt+1}: invalid JSON from Gemini: {e}", file=sys.stderr)
-                print(f"   Raw (first 300): {cleaned[:300]}", file=sys.stderr)
-                last_error = e
-                # Don't retry for JSON errors — Gemini responded but output was bad
-                # Use fallback immediately
-                break
-
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"   ⚠️  {provider_name}: invalid JSON: {e}", file=sys.stderr)
+            last_error = e
         except subprocess.TimeoutExpired:
-            print(f"⚠️  Attempt {attempt+1}: Gemini timeout (300s)", file=sys.stderr)
+            print(f"   ⚠️  {provider_name}: timeout (300s)", file=sys.stderr)
             last_error = "timeout"
-        except RuntimeError as e:
-            print(f"⚠️  Attempt {attempt+1}: Gemini unavailable: {e}", file=sys.stderr)
+        except (RuntimeError, FileNotFoundError) as e:
+            print(f"   ⚠️  {provider_name}: unavailable: {e}", file=sys.stderr)
             last_error = str(e)
-        except FileNotFoundError:
-            print("⚠️  Gemini CLI not found — using fallback slides", file=sys.stderr)
-            last_error = "gemini not found"
-            break  # No point retrying
 
     if not slides_data:
-        print(f"⚠️  All Gemini attempts failed ({last_error}) — using fallback slides", file=sys.stderr)
+        print(f"⚠️  All providers failed ({last_error}) — using fallback slides", file=sys.stderr)
         slides_data = fallback_slides(args.topic, concepts)
         print(f"   ↩️  Fallback: {len(slides_data['slides'])} slides generati", file=sys.stderr)
 

@@ -96,6 +96,78 @@ echo "✅ Delivery completata"
 echo "   Archive: $ARCHIVE"
 echo "   Drive: $DRIVE_LINK"
 
+# ── Send image prompts to Damar (separate message) ──────────────────────────
+SLIDES_JSON="$WAR_ROOM/output/strategy/claude_slides.json"
+if [[ -f "$SLIDES_JSON" ]]; then
+  IMAGE_MSG=$("$PYTHON" -c "
+import json, sys
+d = json.load(open('$SLIDES_JSON'))
+slides = d.get('slides', [])
+img_slides = [s for s in slides if s.get('image_prompt')]
+if not img_slides:
+    sys.exit(0)
+
+lines = ['🎨 <b>IMAGE PROMPTS — ' + d.get('topic','')[:50] + '</b>', '']
+lines.append('Carousel ready di CLAUDE IN CANVA!')
+lines.append(str(len(img_slides)) + ' gambar yang perlu kamu bikin:')
+lines.append('')
+
+for s in img_slides:
+    num = s.get('slide_number', '?')
+    stype = s.get('slide_type', '?')
+    placement = s.get('image_placement', '?')
+    prompt = s.get('image_prompt', '')
+    if stype == 'A':
+        fmt = '1080x1350 portrait (full-bleed)'
+    elif placement == 'bottom_half':
+        fmt = '1080x675 landscape (bottom half)'
+    else:
+        fmt = '1080x1350'
+    lines.append('━' * 30)
+    lines.append(f'🖼️ <b>SLIDE {num} — {placement}</b>')
+    lines.append(f'Format: {fmt}')
+    lines.append(f'<i>{prompt[:300]}</i>')
+    lines.append('')
+
+lines.append('━' * 30)
+lines.append('📋 <b>STEP KAMU:</b>')
+lines.append('1. Buka CLAUDE IN CANVA')
+lines.append('2. Copy ke folder carousel')
+lines.append('3. Generate gambar di atas')
+lines.append('4. Pasang di copy kamu')
+lines.append('5. Kirim ✅ done')
+lines.append('')
+lines.append('Gas! 🔥')
+print('\n'.join(lines))
+" 2>/dev/null)
+
+  if [[ -n "$IMAGE_MSG" ]]; then
+    "$PYTHON" -c "
+import urllib.request, urllib.parse, json, sys
+token='$BOT_TOKEN'; chat='$DAMAR_CHAT_ID'
+msg=sys.stdin.read()
+data=urllib.parse.urlencode({'chat_id':chat,'text':msg,'parse_mode':'HTML'}).encode()
+req=urllib.request.Request(f'https://api.telegram.org/bot{token}/sendMessage',data=data)
+try:
+    resp=urllib.request.urlopen(req,timeout=10)
+    r=json.loads(resp.read())
+    if r.get('ok'):
+        print('✅ Image prompts inviati a Damar (DM)')
+    else:
+        raise Exception('DM not ok')
+except:
+    print('⚠️  DM Damar fallito — mando al gruppo')
+# Always send to group too (Damar + team visibility)
+data2=urllib.parse.urlencode({'chat_id':'$CHAT_IDS','text':msg,'parse_mode':'HTML'}).encode()
+req2=urllib.request.Request(f'https://api.telegram.org/bot{token}/sendMessage',data=data2)
+urllib.request.urlopen(req2,timeout=10)
+print('✅ Image prompts inviati al gruppo')
+" <<< "$IMAGE_MSG" 2>/dev/null || echo "⚠️  Invio prompt immagine fallito"
+  else
+    echo "ℹ️  Nessun image prompt in questo carousel"
+  fi
+fi
+
 # ── FASE 4b: Canva auto-executor via claude -p ──────────────────────────────
 # claude -p headless usa ~/.claude/token (Max OAuth) senza ANTHROPIC_API_KEY
 # Il MCP Canva è disponibile solo in sessione interattiva → usiamo claude -p
