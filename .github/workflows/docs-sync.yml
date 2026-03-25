@@ -3,16 +3,16 @@ name: Docs Sync Check
 on:
   pull_request:
     paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'scripts/docs_sync.py'
+      - "apps/**"
+      - "packages/**"
+      - "scripts/docs_sync.py"
   push:
     branches: [main]
     paths:
-      - 'apps/backend-rag/backend/app/setup/router_registration.py'
-      - 'apps/backend-rag/backend/services/**'
-      - 'apps/backend-rag/backend/tests/**'
-      - 'package.json'
+      - "apps/backend-rag/backend/app/setup/router_registration.py"
+      - "apps/backend-rag/backend/services/**"
+      - "apps/backend-rag/backend/tests/**"
+      - "package.json"
 
 jobs:
   check-docs-sync:
@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Check docs are in sync
         run: python scripts/docs_sync.py --check
