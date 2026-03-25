@@ -659,6 +659,8 @@ class ReasoningEngine:
             )
             trusted_tools_used = True
 
+        state.trusted_tools_used = trusted_tools_used
+
         if (
             state.final_answer
             and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
@@ -1462,6 +1464,8 @@ Do not invent information. If the context is insufficient, admit it.
                 f"and produced answer, skipping strict evidence check"
             )
             trusted_tools_used = True
+
+        state.trusted_tools_used = trusted_tools_used
 
         if (
             state.final_answer
