@@ -58,3 +58,6 @@ class CoreResult(BaseModel):
     # KG LangGraph outputs (Phase 3)
     workflow: dict[str, Any] | None = None  # Synthesized workflow from KG LangGraph
     reasoning: str | None = None  # Reasoning chain from KG exploration
+
+    # NLM Knowledge Fabric enrichment (CAUTIOUS zone)
+    nlm_enrichment: dict[str, Any] | None = None  # NLM citations/summary when evidence is CAUTIOUS
