@@ -118,7 +118,8 @@ async def m():
   FROM practices p
   JOIN clients c ON p.client_id = c.id
   WHERE p.expected_completion_date < now()
-   AND p.status NOT IN ('completed','cancelled','inquiry')
+   AND p.status NOT IN ('completed','cancelled','inquiry','declined')
+   AND (p.title IS NULL OR p.title NOT ILIKE '%tax%')
    AND c.assigned_to IS NOT NULL
   ORDER BY p.expected_completion_date
  """)
@@ -235,38 +236,55 @@ def _build_team_email(assigned_to: str, items: list[dict]) -> tuple[str, str]:
     critical = [i for i in items if i["emoji"] == "🔴"]
     warning = [i for i in items if i["emoji"] == "🟡"]
 
-    if critical:
-        subject = f"🔴 URGENT: {len(critical)} klien butuh tindakan segera"
-    else:
-        subject = f"🟡 Pengingat: {len(warning)} klien mendekati tenggat"
+    n_items = len(items)
+    subject = f"📋 Daily Update: {n_items} klien perlu di-update — {datetime.now(WITA).strftime('%d/%m')}"
+
+    overdue = [i for i in items if i["exp_type"] == "overdue_practice"]
+    expiries = [i for i in items if i["exp_type"] != "overdue_practice"]
 
     lines = [
         f"Halo {name},",
         "",
-        "Ini pengingat otomatis dari Zantara AI.",
+        f"Ini pengingat harian dari Zantara AI. Ada {n_items} klien yang perlu perhatian kamu hari ini:",
         "",
     ]
 
-    for item in sorted(items, key=lambda x: x["days"]):
-        if item["exp_type"] == "passport":
-            exp_type = "Paspor"
-        elif item["exp_type"] == "overdue_practice":
-            exp_type = f"Praktik: {item.get('practice_title', 'Tanpa judul')}"
-        else:
-            exp_type = item.get("practice_title", "Visa/Izin")
-        lines.append(f"{item['emoji']} {item['full_name']} — {exp_type}")
-        lines.append(f"   {item['label']}")
-        if item.get("client_email"):
-            lines.append(f"   Email: {item['client_email']}")
-        if item.get("phone"):
-            lines.append(f"   Phone: {item['phone']}")
+    if overdue:
+        lines.append("📌 PRAKTIK OVERDUE — update status atau tutup:")
         lines.append("")
+        for item in sorted(overdue, key=lambda x: x["days"]):
+            title = item.get("practice_title", "?")
+            days_late = abs(item["days"])
+            lines.append(f"  • {item['full_name']} — {title} (telat {days_late} hari)")
+            lines.append(f"    → Jika klien tidak lanjut, ubah status ke 'declined'")
+            lines.append(f"    → Jika masih jalan, update step terbaru di CRM")
+            if item.get("phone"):
+                lines.append(f"    📞 {item['phone']}")
+            lines.append("")
+
+    if expiries:
+        lines.append("🛂 DOKUMEN MENDEKATI/MELEWATI TENGGAT:")
+        lines.append("")
+        for item in sorted(expiries, key=lambda x: x["days"]):
+            exp_type = "Paspor" if item["exp_type"] == "passport" else item.get("practice_title", "Visa")
+            lines.append(f"  • {item['full_name']} — {exp_type}: {item['label']}")
+            if item["days"] < 0:
+                lines.append(f"    → Jika klien sudah pergi/tidak aktif, update profil di CRM")
+            else:
+                lines.append(f"    → Hubungi klien untuk mulai proses perpanjangan")
+            if item.get("phone"):
+                lines.append(f"    📞 {item['phone']}")
+            lines.append("")
 
     lines.extend([
-        "Mohon segera:",
-        "1. Hubungi klien yang terdaftar di atas",
-        "2. Update status di CRM",
-        "3. Balas email ini dengan konfirmasi tindakan",
+        "─" * 40,
+        "🔄 REMINDER HARIAN:",
+        "  1. Upload dokumen baru ke Drive klien",
+        "  2. Update status praktik di CRM (jangan biarkan 'on_process' berminggu-minggu)",
+        "  3. Buat profil klien baru untuk setiap inquiry yang masuk",
+        "  4. Jika klien tidak jadi → set status 'declined' (jangan dibiarkan menggantung)",
+        "",
+        "Balas email ini dengan update singkat.",
         "",
         "Terima kasih,",
         "Zantara AI — Bali Zero Operations",
