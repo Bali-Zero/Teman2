@@ -35,6 +35,14 @@ if _env_file.exists():
             key, _, val = line.partition('=')
             os.environ.setdefault(key.strip(), val.strip())
 
+# Telegram recipient config: chat_id → lang/name/role
+RECIPIENT_CONFIG = {
+    "1813875994": {"lang": "id", "name": "Damar", "role": "designer"},
+    # Owner is auto-detected as first chat_id not in this config
+}
+
+NEWS_ROOM_URL = "https://kita.balizero.com/intelligence/news-room"
+
 # Pipeline steps
 PIPELINE_STEPS = [
     '1_scraping',
@@ -1329,46 +1337,148 @@ IMPORTANT:
         review_file.write_text('\n'.join(review_lines), encoding='utf-8')
         self.log(f'Review file saved: {review_file.name} ({len(enriched)} articles)')
 
-        # Send Telegram notification ONLY to owner (first chat ID)
+        # Send Telegram notifications to all recipients (bilingual)
         import urllib.request as _ur, urllib.parse as _up
+        import json as _json
         BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
         TG_RECIPIENTS = os.environ.get('TELEGRAM_APPROVAL_CHAT_ID', os.environ.get('TELEGRAM_GROUP_ID', ''))
+        BACKEND_URL = os.environ.get('BACKEND_URL', 'https://nuzantara-rag.fly.dev')
+        API_KEY = os.environ.get('SCRAPER_API_KEY', '')
 
-        # Only send to FIRST recipient (owner)
-        owner_chat_id = TG_RECIPIENTS.split(',')[0].strip() if TG_RECIPIENTS else ''
+        all_chat_ids = [cid.strip() for cid in TG_RECIPIENTS.split(',') if cid.strip()] if TG_RECIPIENTS else []
 
-        if owner_chat_id and BOT_TOKEN:
-            # Build compact summary with article headlines
-            lines = [f"<b>Intel Pipeline — {len(enriched)} articoli pronti per review</b>\n"]
-            for i, art in enumerate(enriched[:20], 1):
-                enr = art.get('enrichment', {})
-                headline = enr.get('headline', art.get('title', ''))[:70]
-                headline = headline.replace('<', '&lt;').replace('>', '&gt;')
-                cat = art.get('category', '?')
-                featured_icon = "***" if art.get('featured') else ""
-                priority = enr.get('metadata', {}).get('priority', '?')
-                lines.append(f"{i}. {featured_icon}<b>[{priority.upper()}]</b> <i>{cat}</i>\n   {headline}")
+        for chat_id in all_chat_ids:
+            if not BOT_TOKEN:
+                break
+            recipient = RECIPIENT_CONFIG.get(chat_id, {"lang": "it", "role": "owner"})
 
-            if len(enriched) > 20:
-                lines.append(f"\n... +{len(enriched) - 20} altri")
+            if recipient["role"] == "designer":
+                # --- DAMAR: welcome message (one-time) ---
+                welcome_flag = self.project_root / 'data' / 'damar_welcomed.flag'
+                if not welcome_flag.exists():
+                    welcome_msg = (
+                        "👋 <b>Halo Damar!</b>\n\n"
+                        "Mulai sekarang, kamu akan menerima notifikasi artikel dari Intel Pipeline Bali Zero.\n\n"
+                        "⚠️ <b>PENTING:</b> Kamu <b>TIDAK perlu</b> membuat gambar untuk semua artikel.\n\n"
+                        "📋 <b>Cara kerjanya:</b>\n"
+                        "1️⃣ Buka <b>News Room</b> dan review artikel yang tersedia\n"
+                        "2️⃣ Pilih artikel yang menurutmu layak dipublikasikan\n"
+                        "3️⃣ Untuk artikel yang dipilih, buat gambar cover berdasarkan prompt di bawah setiap notifikasi\n"
+                        "4️⃣ Simpan gambar di folder Desktop kamu\n"
+                        "5️⃣ Kirim gambar ke chat ini — <b>reply langsung</b> ke notifikasi artikel yang bersangkutan\n"
+                        "6️⃣ Setelah semua gambar diunggah, buka News Room dan klik <b>Publish</b>\n\n"
+                        "💡 Cara alternatif: kirim foto dengan caption <code>/cover [kode_artikel]</code>\n\n"
+                        f"🔗 <a href=\"{NEWS_ROOM_URL}\">Buka News Room</a>\n\n"
+                        "Terima kasih! 🙏"
+                    )
+                    try:
+                        data = _up.urlencode({"chat_id": chat_id, "text": welcome_msg, "parse_mode": "HTML"}).encode()
+                        _ur.urlopen(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", data, timeout=15)
+                        welcome_flag.write_text(datetime.now().isoformat())
+                        self.log(f'Welcome message sent to Damar ({chat_id})')
+                    except Exception as e:
+                        self.log(f'Welcome message failed: {e}', 'WARN')
 
-            lines.append(f"\nReview file: data/review_{self.run_id}.txt")
-            lines.append(f"Run: {self.run_id} | {datetime.now().strftime('%H:%M')}")
-            msg = '\n'.join(lines)
+                # --- DAMAR: individual article messages with image prompt ---
+                try:
+                    from gemini_image_generator import build_image_prompt as _build_prompt
+                except ImportError:
+                    _build_prompt = None
 
-            try:
-                data = _up.urlencode({
-                    "chat_id": owner_chat_id,
-                    "text": msg,
-                    "parse_mode": "HTML",
-                }).encode()
-                _ur.urlopen(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", data, timeout=15)
-                self.log(f'Telegram notification sent to owner ({owner_chat_id})')
-            except Exception as e:
-                self.log(f'Telegram notification failed: {e}', 'WARN')
+                for i, art in enumerate(enriched[:20], 1):
+                    enr = art.get('enrichment', {})
+                    headline = enr.get('headline', art.get('title', ''))[:80]
+                    headline_safe = headline.replace('<', '&lt;').replace('>', '&gt;')
+                    cat = art.get('category', '?')
+                    priority = enr.get('metadata', {}).get('priority', '?')
+                    item_id = art.get('_staging_item_id', f'art_{i}')
+                    intel_type = art.get('_staging_intel_type', 'news')
+
+                    # Build image prompt
+                    img_prompt = ""
+                    if _build_prompt:
+                        try:
+                            img_prompt = _build_prompt(art)
+                        except Exception:
+                            img_prompt = ""
+
+                    prompt_section = ""
+                    if img_prompt:
+                        prompt_section = (
+                            f"\n\n{'─' * 30}\n"
+                            f"🎨 <b>Prompt gambar</b> <i>(untuk referensi pembuatan gambar)</i>:\n\n"
+                            f"<pre>{img_prompt[:800]}</pre>"
+                        )
+
+                    msg = (
+                        f"📰 <b>Artikel #{i}</b> — Intel Pipeline\n\n"
+                        f"📝 <b>{headline_safe}</b>\n"
+                        f"📂 {cat} | ⚡ {priority.upper()}\n\n"
+                        f"🔗 <a href=\"{NEWS_ROOM_URL}\">Buka News Room</a>\n"
+                        f"🏷️ Kode: <code>{item_id}</code>"
+                        f"{prompt_section}"
+                    )
+
+                    try:
+                        data = _up.urlencode({"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}).encode()
+                        resp = _ur.urlopen(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", data, timeout=15)
+                        resp_data = _json.loads(resp.read())
+                        tg_msg_id = resp_data.get('result', {}).get('message_id')
+
+                        # Register mapping for cover image reply matching
+                        if tg_msg_id and API_KEY and BACKEND_URL:
+                            try:
+                                mapping_payload = _json.dumps({
+                                    "telegram_message_id": tg_msg_id,
+                                    "chat_id": int(chat_id),
+                                    "intel_type": intel_type,
+                                    "item_id": item_id,
+                                    "title": headline,
+                                }).encode()
+                                req = _ur.Request(
+                                    f"{BACKEND_URL}/api/intel/staging/register-notification",
+                                    data=mapping_payload,
+                                    headers={"Content-Type": "application/json", "X-API-Key": API_KEY},
+                                )
+                                _ur.urlopen(req, timeout=15)
+                            except Exception as e:
+                                self.log(f'Notification mapping failed for {item_id}: {e}', 'WARN')
+
+                        import time as _time
+                        _time.sleep(1)  # Rate limit: avoid Telegram flood
+                    except Exception as e:
+                        self.log(f'Damar notification failed for art #{i}: {e}', 'WARN')
+
+                self.log(f'Sent {min(len(enriched), 20)} article notifications to Damar ({chat_id})')
+
+            else:
+                # --- OWNER: compact Italian summary (unchanged) ---
+                lines = [f"<b>Intel Pipeline — {len(enriched)} articoli pronti per review</b>\n"]
+                for i, art in enumerate(enriched[:20], 1):
+                    enr = art.get('enrichment', {})
+                    headline = enr.get('headline', art.get('title', ''))[:70]
+                    headline = headline.replace('<', '&lt;').replace('>', '&gt;')
+                    cat = art.get('category', '?')
+                    featured_icon = "***" if art.get('featured') else ""
+                    priority = enr.get('metadata', {}).get('priority', '?')
+                    lines.append(f"{i}. {featured_icon}<b>[{priority.upper()}]</b> <i>{cat}</i>\n   {headline}")
+
+                if len(enriched) > 20:
+                    lines.append(f"\n... +{len(enriched) - 20} altri")
+
+                lines.append(f"\n🔗 <a href=\"{NEWS_ROOM_URL}\">News Room</a>")
+                lines.append(f"Run: {self.run_id} | {datetime.now().strftime('%H:%M')}")
+                msg = '\n'.join(lines)
+
+                try:
+                    data = _up.urlencode({"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}).encode()
+                    _ur.urlopen(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", data, timeout=15)
+                    self.log(f'Telegram notification sent to owner ({chat_id})')
+                except Exception as e:
+                    self.log(f'Telegram notification failed: {e}', 'WARN')
 
         self.update_step_status('6_approval', 'auto_approved', {
-            'notified': bool(owner_chat_id and BOT_TOKEN),
+            'notified': len(all_chat_ids) > 0 and bool(BOT_TOKEN),
             'articles_count': len(enriched),
             'review_file': str(review_file),
         })
@@ -1484,22 +1594,33 @@ IMPORTANT:
                     self.log(f'Publish error: {e}', 'WARN')
 
         _asyncio.run(_run())
-        self.log(f'✅ Pubblicati {published}/{len(enriched)} articoli')
+        self.log(f'✅ Inviati {published}/{len(enriched)} articoli alla News Room per approvazione')
 
-        # Notifica Telegram a tutti i destinatari
-        msg = (
-            f"🦞 <b>Intel Scraper completato</b>\n"
-            f"📰 Articoli pubblicati: {published}/{len(enriched)}\n"
-            f"🕐 {datetime.now().strftime('%Y-%m-%d %H:%M')} Bali"
-        )
-        import urllib.request as _ur, urllib.parse as _up
+        # Notifica Telegram a tutti i destinatari (bilingue)
+        import urllib.request as _ur2, urllib.parse as _up2
+        _timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
         for chat_id in TG_RECIPIENTS.split(','):
             chat_id = chat_id.strip()
             if not chat_id or not BOT_TOKEN:
                 continue
+            recipient = RECIPIENT_CONFIG.get(chat_id, {"lang": "it"})
+            if recipient["lang"] == "id":
+                msg = (
+                    f"🦞 <b>Intel Scraper selesai</b>\n"
+                    f"📰 Artikel di News Room: {published}/{len(enriched)} — menunggu persetujuan\n"
+                    f"🔗 <a href=\"{NEWS_ROOM_URL}\">Buka News Room</a>\n"
+                    f"🕐 {_timestamp} Bali"
+                )
+            else:
+                msg = (
+                    f"🦞 <b>Intel Scraper completato</b>\n"
+                    f"📰 Articoli in News Room: {published}/{len(enriched)} — in attesa di approvazione\n"
+                    f"🔗 <a href=\"{NEWS_ROOM_URL}\">News Room</a>\n"
+                    f"🕐 {_timestamp} Bali"
+                )
             try:
-                data = _up.urlencode({"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}).encode()
-                _ur.urlopen(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", data, timeout=10)
+                data = _up2.urlencode({"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}).encode()
+                _ur2.urlopen(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", data, timeout=10)
                 self.log(f'✅ Notifica Telegram inviata a {chat_id}')
             except Exception as e:
                 self.log(f'⚠️  Telegram notify error ({chat_id}): {e}', 'WARN')
