@@ -48,6 +48,16 @@ export type AgentStep =
         details?: Record<string, unknown>;
       };
       timestamp: Date;
+    }
+  | {
+      type: "nlm_status";
+      data: Record<string, unknown>;
+      timestamp: Date;
+    }
+  | {
+      type: "nlm_enrichment";
+      data: Record<string, unknown>;
+      timestamp: Date;
     };
 
 export interface Message {

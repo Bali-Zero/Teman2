@@ -567,6 +567,61 @@ export class ChatApi {
               if (isRecord(data.data) && typeof data.data.url === "string") {
                 generatedImageUrl = data.data.url;
               }
+            } else if (data.type === "nlm_status") {
+              resetIdleTimeout();
+              if (
+                onStep &&
+                isRecord(data.data) &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                onStep({
+                  type: "nlm_status",
+                  data: data.data,
+                  timestamp: new Date(),
+                });
+              }
+              finalMetadata = {
+                ...(finalMetadata ?? {}),
+                nlm_status: isRecord(data.data)
+                  ? (data.data.status as string)
+                  : undefined,
+                nlm_domain_label: isRecord(data.data)
+                  ? (data.data.domain_label as string)
+                  : undefined,
+              };
+            } else if (data.type === "nlm_enrichment") {
+              resetIdleTimeout();
+              finalMetadata = {
+                ...(finalMetadata ?? {}),
+                nlm_status: "verified",
+                nlm_citations: isRecord(data.data)
+                  ? (data.data.citations as unknown[])
+                  : undefined,
+                nlm_domain_label: isRecord(data.data)
+                  ? (data.data.domain_label as string)
+                  : undefined,
+              };
+              if (
+                onStep &&
+                isRecord(data.data) &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                onStep({
+                  type: "nlm_enrichment",
+                  data: data.data,
+                  timestamp: new Date(),
+                });
+              }
+            } else if (data.type === "evidence_score") {
+              resetIdleTimeout();
+              finalMetadata = {
+                ...(finalMetadata ?? {}),
+                evidence_score: isRecord(data.data)
+                  ? (data.data.score as number)
+                  : undefined,
+              };
             } else if (data.type === "error") {
               const errorData = data.data;
               if (
