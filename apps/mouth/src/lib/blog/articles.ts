@@ -285,8 +285,19 @@ async function getMdxArticleBySlug(
 
   if (!filePath) return null;
 
-  const fileContents = fs.readFileSync(filePath, "utf8");
-  const { data: frontmatter, content } = matter(fileContents);
+  let fileContents: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let frontmatter: Record<string, any>;
+  let content: string;
+  try {
+    fileContents = fs.readFileSync(filePath, "utf8");
+    const parsed = matter(fileContents);
+    frontmatter = parsed.data;
+    content = parsed.content;
+  } catch {
+    // Skip articles with corrupted frontmatter (bad YAML)
+    return null;
+  }
 
   const author =
     typeof frontmatter.author === "object"
@@ -399,8 +410,18 @@ export async function getArticleByLocale(
       `${slug}.${locale}.mdx`,
     );
     if (fs.existsSync(localePath)) {
-      const fileContents = fs.readFileSync(localePath, "utf8");
-      const { data: frontmatter, content } = matter(fileContents);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let frontmatter: Record<string, any>;
+      let content: string;
+      try {
+        const fileContents = fs.readFileSync(localePath, "utf8");
+        const parsed = matter(fileContents);
+        frontmatter = parsed.data;
+        content = parsed.content;
+      } catch {
+        // Skip locale files with corrupted frontmatter
+        continue;
+      }
 
       const author =
         typeof frontmatter.author === "object"
