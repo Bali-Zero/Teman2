@@ -43,7 +43,29 @@ echo "   Drive link: $DRIVE_LINK"
 echo "📱 Invio notifica Telegram..."
 CAPTION=$(cat "$MASTER_DIR/instagram_caption.txt" 2>/dev/null | head -c 500 || echo "")
 
-MSG="🚨 *Bali Zero War Room conclusa.*
+# Notifica: Telegram Bot API diretta (affidabile, no middleware)
+BOT_TOKEN="${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN env var}"
+CHAT_IDS="${TELEGRAM_GROUP_ID:?Set TELEGRAM_GROUP_ID env var}"
+
+# Bilingual notifications: Italian for owner, Indonesian for Damar
+DAMAR_CHAT_ID="1813875994"
+
+IFS=',' read -ra CHAT_ID_ARRAY <<< "$CHAT_IDS"
+for CID in "${CHAT_ID_ARRAY[@]}"; do
+  CID=$(echo "$CID" | xargs)  # trim whitespace
+  [[ -z "$CID" ]] && continue
+
+  if [[ "$CID" == "$DAMAR_CHAT_ID" ]]; then
+    MSG="🚨 *Bali Zero War Room selesai.*
+| Topik: $TOPIC.
+| Nada: $TONE.
+| Konten disetujui, tidak ada halusinasi AI.
+| Master di Google Drive: $DRIVE_LINK.
+${CANVA_URL:+| Canva carousel: $CANVA_URL.}
+| Menunggu review untuk publikasi.
+${CAPTION:+| Caption: $CAPTION}"
+  else
+    MSG="🚨 *Bali Zero War Room conclusa.*
 | Argomento: $TOPIC.
 | Tono: $TONE.
 | Creatività approvata, zero allucinazioni lette.
@@ -51,19 +73,18 @@ MSG="🚨 *Bali Zero War Room conclusa.*
 ${CANVA_URL:+| Canva carousel: $CANVA_URL.}
 | In attesa di review per la pubblicazione.
 ${CAPTION:+| Caption: $CAPTION}"
+  fi
 
-# Notifica: Telegram Bot API diretta (affidabile, no middleware)
-BOT_TOKEN="${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN env var}"
-CHAT_ID="${TELEGRAM_GROUP_ID:?Set TELEGRAM_GROUP_ID env var}"
-"$PYTHON" -c "
+  "$PYTHON" -c "
 import urllib.request, urllib.parse, json, sys
-token='$BOT_TOKEN'; chat='$CHAT_ID'
+token='$BOT_TOKEN'; chat='$CID'
 msg=sys.stdin.read()
 data=urllib.parse.urlencode({'chat_id':chat,'text':msg}).encode()
 req=urllib.request.Request(f'https://api.telegram.org/bot{token}/sendMessage',data=data)
 resp=urllib.request.urlopen(req,timeout=10)
-print('✅ Telegram inviato' if json.loads(resp.read()).get('ok') else '⚠️ Telegram ko')
-" <<< "$MSG" || echo "⚠️  Telegram fallito"
+print(f'✅ Telegram inviato a {chat}' if json.loads(resp.read()).get('ok') else f'⚠️ Telegram ko per {chat}')
+" <<< "$MSG" || echo "⚠️  Telegram fallito per $CID"
+done
 
 # WhatsApp opzionale
 if [[ -n "${WHATSAPP_TEAM_NUMBER:-}" ]]; then

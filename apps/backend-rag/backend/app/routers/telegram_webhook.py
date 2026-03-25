@@ -214,6 +214,23 @@ async def telegram_webhook(
 
         logger.info(f"📨 Telegram update {update_id}: chat_id={chat_id}, text={text[:50]}...")
 
+        # Handle cover image uploads from Damar
+        from_id = message.get("from", {}).get("id")
+        has_photo = bool(message.get("photo")) or (
+            message.get("document", {}).get("mime_type", "").startswith("image/")
+        )
+
+        if has_photo and from_id == 1813875994:  # Damar's chat_id
+            try:
+                from backend.services.intel.intel_cover_handler import intel_cover_handler
+
+                result = await intel_cover_handler.handle_photo_message(message)
+                if result:
+                    return {"ok": True, "update_id": update_id, "type": "cover_image_upload"}
+            except Exception as e:
+                logger.error(f"Cover image handler failed: {e}", exc_info=True)
+            # Fall through to channel router if handler didn't match
+
         # Route message through ChannelRouter
         await channel_router.route_message("telegram", update)
 
