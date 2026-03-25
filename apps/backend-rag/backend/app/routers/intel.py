@@ -129,6 +129,16 @@ class CoverImageUploadRequest(BaseModel):
     cover_image_filename: str | None = Field(None, description="Image filename (optional)")
 
 
+class RegisterNotificationRequest(BaseModel):
+    """Register Telegram message_id → staging item mapping for cover image uploads."""
+
+    telegram_message_id: int = Field(..., description="Telegram message_id sent to Damar")
+    chat_id: int = Field(..., description="Damar's Telegram chat_id")
+    intel_type: str = Field(..., description="news or visa")
+    item_id: str = Field(..., description="Staging item ID")
+    title: str = Field("", description="Article title for display")
+
+
 class PublishToSiteRequest(BaseModel):
     """Optional request body for publish with homepage position."""
 
@@ -406,6 +416,28 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 
 
 # --- SCRAPER INTEGRATION ENDPOINTS ---
+
+
+@router.post("/api/intel/staging/register-notification")
+async def register_notification(
+    request: RegisterNotificationRequest,
+    _api_key_verified=Depends(verify_internal_api_key),
+) -> dict[str, Any]:
+    """Register Telegram message_id → staging item mapping for Damar's cover image uploads."""
+    from backend.services.intel.intel_cover_handler import intel_cover_handler
+
+    intel_cover_handler.register_notification(
+        telegram_message_id=request.telegram_message_id,
+        chat_id=request.chat_id,
+        intel_type=request.intel_type,
+        item_id=request.item_id,
+        title=request.title,
+    )
+    return {
+        "success": True,
+        "message_id": request.telegram_message_id,
+        "item_id": request.item_id,
+    }
 
 
 @router.post("/api/intel/scraper/submit")

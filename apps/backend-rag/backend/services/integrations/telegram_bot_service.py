@@ -332,6 +332,51 @@ class TelegramBotService:
             logger.error(f"Failed to answer callback query: {e}")
             raise
 
+    async def get_file(self, file_id: str) -> dict[str, Any]:
+        """Get file path from Telegram servers for downloading."""
+        if not self.token:
+            raise ValueError("Telegram bot token not configured")
+
+        client = await self._get_client()
+
+        try:
+            response = await client.post(
+                f"{self.api_url}/getFile",
+                json={"file_id": file_id},
+            )
+            result = response.json()
+
+            if not result.get("ok"):
+                error_code = result.get("error_code", "unknown")
+                description = result.get("description", "Unknown error")
+                logger.error(f"Telegram getFile error [{error_code}]: {description}")
+                raise ValueError(f"Telegram getFile error [{error_code}]: {description}")
+
+            logger.info(f"Got file info for {file_id}")
+            return result.get("result", {})
+
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to get file: {e}")
+            raise
+
+    async def download_file(self, file_path: str) -> bytes:
+        """Download a file from Telegram servers."""
+        if not self.token:
+            raise ValueError("Telegram bot token not configured")
+
+        client = await self._get_client()
+        url = f"https://api.telegram.org/file/bot{self.token}/{file_path}"
+
+        try:
+            response = await client.get(url)
+            response.raise_for_status()
+            logger.info(f"Downloaded file: {file_path} ({len(response.content)} bytes)")
+            return response.content
+
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to download file {file_path}: {e}")
+            raise
+
     async def edit_message_text(
         self,
         chat_id: int | str,

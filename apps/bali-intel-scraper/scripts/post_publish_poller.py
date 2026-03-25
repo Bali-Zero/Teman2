@@ -70,10 +70,12 @@ def wait_for_ollama_free(max_wait: int = 60 * 30) -> bool:
 
 def run_translate(slug: str, category: str) -> bool:
     wait_for_ollama_free()
-    log(f"▶ translate_articles.py --slug {slug} --category {category}")
+    # translate-articles.py lives in monorepo root scripts/, not in scraper scripts/
+    translate_script = SCRIPT_DIR.parent.parent.parent / "scripts" / "translate-articles.py"
+    log(f"▶ translate-articles.py --slug {slug} --category {category} --lang both")
     result = subprocess.run(
-        [str(VENV_PYTHON), str(SCRIPT_DIR / "translate_articles.py"),
-         "--slug", slug, "--category", category],
+        [str(VENV_PYTHON), str(translate_script),
+         "--slug", slug, "--category", category, "--lang", "all"],
         capture_output=True, text=True, timeout=15 * 60  # 15 min max per singolo articolo
     )
     ok = result.returncode == 0

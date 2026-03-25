@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+    size: A4;
+    margin: 2cm 2.5cm;
+    @bottom-center {
+      content: "Bali Zero — Intel Pipeline Guide — Halaman " counter(page);
+      font-size: 9px;
+      color: #666;
+    }
+  }
+
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: #1a1a1e;
+    color: #e0e0e0;
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+
+  .cover {
+    page-break-after: always;
+    text-align: center;
+    padding-top: 6cm;
+  }
+
+  .cover img {
+    width: 180px;
+    border-radius: 50%;
+    margin-bottom: 2cm;
+  }
+
+  .cover h1 {
+    color: #fff;
+    font-size: 28pt;
+    margin-bottom: 0.3cm;
+    letter-spacing: 1px;
+  }
+
+  .cover h2 {
+    color: #c0392b;
+    font-size: 14pt;
+    font-weight: 400;
+    margin-bottom: 2cm;
+  }
+
+  .cover .meta {
+    color: #888;
+    font-size: 10pt;
+  }
+
+  h1 {
+    color: #c0392b;
+    font-size: 18pt;
+    border-bottom: 2px solid #c0392b;
+    padding-bottom: 6px;
+    margin-top: 1.5cm;
+  }
+
+  h2 {
+    color: #e74c3c;
+    font-size: 14pt;
+    margin-top: 1cm;
+  }
+
+  h3 {
+    color: #f0a0a0;
+    font-size: 12pt;
+    margin-top: 0.7cm;
+  }
+
+  p, li {
+    color: #d0d0d0;
+  }
+
+  strong {
+    color: #fff;
+  }
+
+  code {
+    background: #2a2a2e;
+    color: #e74c3c;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10pt;
+  }
+
+  .highlight-box {
+    background: #2a2a2e;
+    border-left: 4px solid #c0392b;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 0 6px 6px 0;
+  }
+
+  .highlight-box.green {
+    border-left-color: #27ae60;
+  }
+
+  .highlight-box.blue {
+    border-left-color: #2980b9;
+  }
+
+  .highlight-box.yellow {
+    border-left-color: #f39c12;
+  }
+
+  .step-num {
+    display: inline-block;
+    background: #c0392b;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    text-align: center;
+    line-height: 28px;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 13pt;
+    margin-right: 8px;
+  }
+
+  .flow-diagram {
+    background: #222226;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    color: #aaa;
+    line-height: 1.8;
+    margin: 16px 0;
+  }
+
+  .flow-diagram strong {
+    color: #e74c3c;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+  }
+
+  th {
+    background: #2a2a2e;
+    color: #e74c3c;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 10pt;
+  }
+
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #333;
+    font-size: 10pt;
+  }
+
+  .faq dt {
+    color: #e74c3c;
+    font-weight: bold;
+    margin-top: 10px;
+  }
+
+  .faq dd {
+    margin-left: 0;
+    margin-bottom: 8px;
+    color: #ccc;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  ul {
+    padding-left: 20px;
+  }
+
+  li {
+    margin-bottom: 4px;
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <img src="file:///Users/antonellosiano/Desktop/bz_logo.jpg" alt="Bali Zero Logo">
+  <h1>Panduan Intel Pipeline</h1>
+  <h2>Untuk Damar — Designer & Content Reviewer</h2>
+  <p class="meta">Bali Zero Internal Guide &bull; Maret 2026<br>Versi 1.0 &bull; Rahasia Perusahaan</p>
+</div>
+
+<!-- PAGE 2: OVERVIEW -->
+<h1>Apa Itu Intel Pipeline?</h1>
+
+<p>Setiap malam pukul <strong>03:00 WITA</strong>, sistem otomatis (scraper) mengumpulkan artikel dari sumber berita internasional tentang:</p>
+
+<ul>
+  <li><strong>Imigrasi</strong> — visa, KITAS, KITAP, kebijakan baru</li>
+  <li><strong>Bisnis</strong> — PT PMA, investasi, regulasi usaha</li>
+  <li><strong>Pajak</strong> — peraturan pajak, PPN, compliance</li>
+  <li><strong>Properti</strong> — real estate, Hak Pakai, investasi properti</li>
+  <li><strong>Gaya Hidup</strong> — tren ekspat, digital nomad, Bali</li>
+</ul>
+
+<p>Artikel-artikel ini diperkaya dengan AI (ringkasan, FAQ, metadata SEO) lalu ditempatkan di <strong>News Room</strong> untuk direview oleh kamu.</p>
+
+<div class="highlight-box">
+  <strong>Peran kamu:</strong> Memilih artikel yang layak dipublikasikan, membuat gambar cover, dan menekan tombol Publish.
+</div>
+
+<!-- PAGE 3: DAILY WORKFLOW -->
+<h1 class="page-break">Alur Kerja Harian</h1>
+
+<div class="flow-diagram">
+  <strong>03:00</strong> &nbsp; Scraper mengumpulkan artikel secara otomatis<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+  <strong>Pagi</strong> &nbsp;&nbsp; Kamu menerima notifikasi di Telegram<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+  <strong>Review</strong> &nbsp;Buka News Room, pilih artikel yang bagus<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+  <strong>Desain</strong> &nbsp;Buat gambar cover untuk artikel terpilih<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+  <strong>Upload</strong> &nbsp;Kirim gambar via Telegram (reply ke artikel)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+  <strong>Publish</strong> Klik Publish di News Room<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&darr;<br>
+  <strong>Auto</strong> &nbsp;&nbsp; Sistem terjemahkan ke 4 bahasa + optimasi SEO
+</div>
+
+<!-- STEP 1 -->
+<h2><span class="step-num">1</span> Terima Notifikasi di Telegram</h2>
+
+<p>Setiap pagi, bot <strong>@Balizerobot</strong> di Telegram akan mengirim pesan untuk setiap artikel baru. Setiap pesan berisi:</p>
+
+<ul>
+  <li>Judul artikel</li>
+  <li>Kategori (immigration, business, tax, dll.)</li>
+  <li>Prioritas (<strong>HIGH</strong>, MEDIUM, LOW)</li>
+  <li>Link ke News Room</li>
+  <li>Kode artikel (contoh: <code>news_20260325_a1b2c3d4</code>)</li>
+  <li><strong>Prompt gambar</strong> — deskripsi detail gaya foto untuk referensi pembuatan cover</li>
+</ul>
+
+<div class="highlight-box yellow">
+  <strong>PENTING:</strong> Kamu <strong>TIDAK perlu</strong> membuat gambar untuk semua artikel. Prompt gambar hanya untuk referensi. Pertama, review dulu di News Room.
+</div>
+
+<!-- STEP 2 -->
+<h2><span class="step-num">2</span> Review di News Room</h2>
+
+<p>Buka News Room: <strong>https://kita.balizero.com/intelligence/news-room</strong></p>
+
+<p>Di sini kamu bisa:</p>
+<ul>
+  <li>Membaca konten lengkap setiap artikel (klik untuk membuka preview)</li>
+  <li>Melihat sumber asli artikel</li>
+  <li>Mengedit judul, konten, atau kategori jika perlu</li>
+  <li>Memfilter berdasarkan status: NEW, UPDATED, Critical only</li>
+  <li>Mengurutkan berdasarkan tanggal atau judul</li>
+</ul>
+
+<div class="highlight-box green">
+  <strong>Kriteria pemilihan artikel:</strong><br>
+  &bull; Relevan untuk klien Bali Zero (ekspat, investor, pebisnis)<br>
+  &bull; Konten berkualitas dan informatif<br>
+  &bull; Berita yang masih aktual<br>
+  &bull; Prioritas HIGH = lebih penting
+</div>
+
+<!-- STEP 3 -->
+<h2 class="page-break"><span class="step-num">3</span> Buat Gambar Cover</h2>
+
+<p>Hanya untuk artikel yang kamu pilih untuk dipublikasikan:</p>
+
+<ol>
+  <li>Kembali ke Telegram, temukan notifikasi artikel yang dipilih</li>
+  <li>Baca <strong>prompt gambar</strong> di bagian bawah pesan — ini menjelaskan gaya, komposisi, dan warna</li>
+  <li>Gunakan prompt sebagai referensi untuk membuat gambar dengan tool favoritmu (Canva, Photoshop, AI image generator, dll.)</li>
+  <li>Simpan gambar di folder Desktop (contoh: <code>Cover Intel Pipeline</code>)</li>
+</ol>
+
+<div class="highlight-box">
+  <strong>Spesifikasi gambar:</strong><br>
+  &bull; Format: JPG atau PNG<br>
+  &bull; Ukuran minimum: 1200 x 675 pixel<br>
+  &bull; Rasio: 16:9 (landscape)<br>
+  &bull; <strong>DILARANG:</strong> Teks, tulisan, logo, atau watermark di dalam gambar
+</div>
+
+<!-- STEP 4 -->
+<h2><span class="step-num">4</span> Kirim Gambar ke Bot Telegram</h2>
+
+<p>Untuk setiap gambar yang sudah dibuat:</p>
+
+<h3>Cara Utama — Reply</h3>
+<ol>
+  <li>Buka chat dengan <strong>@Balizerobot</strong></li>
+  <li>Temukan pesan notifikasi artikel yang bersangkutan</li>
+  <li><strong>Swipe ke kiri</strong> pada pesan tersebut (atau long-press &rarr; Reply)</li>
+  <li>Lampirkan foto dan kirim</li>
+</ol>
+
+<p>Bot akan membalas dengan konfirmasi:</p>
+<div class="highlight-box green">
+  &#10003; <strong>Gambar cover berhasil diunggah!</strong><br>
+  Artikel: PT PMA in Bali: What Foreign Investors Must Know<br>
+  Gambar sudah tersedia di News Room.
+</div>
+
+<h3>Cara Alternatif — Kode Artikel</h3>
+<p>Kirim foto dengan caption:</p>
+<p><code>/cover news_20260325_a1b2c3d4</code></p>
+<p>(gunakan kode artikel dari notifikasi)</p>
+
+<h3>Tips Kualitas Gambar</h3>
+<p>Untuk menjaga kualitas asli tanpa kompresi Telegram, kirim gambar sebagai <strong>dokumen</strong>: tekan ikon klip kertas (&#128206;) &rarr; pilih <strong>File</strong> (bukan Foto) &rarr; pilih gambar dari folder.</p>
+
+<div class="highlight-box yellow">
+  <strong>Jika salah kirim</strong> (foto tanpa reply atau tanpa caption):<br>
+  Bot akan menampilkan daftar artikel yang belum ada cover beserta instruksi cara mengirim ulang.
+</div>
+
+<!-- STEP 5 -->
+<h2><span class="step-num">5</span> Publish di News Room</h2>
+
+<p>Setelah semua gambar cover diunggah:</p>
+
+<ol>
+  <li>Kembali ke <strong>News Room</strong></li>
+  <li>Pastikan artikel yang dipilih sudah menampilkan gambar cover</li>
+  <li>Pilih <strong>posisi di homepage</strong> untuk setiap artikel</li>
+  <li>Klik <strong>Publish</strong></li>
+</ol>
+
+<h3>Posisi di Homepage</h3>
+<p>Saat publish, kamu memilih di mana artikel muncul di <strong>kita.balizero.com</strong>:</p>
+
+<table>
+  <tr>
+    <th>Posisi</th>
+    <th>Lokasi di Homepage</th>
+    <th>Cocok Untuk</th>
+  </tr>
+  <tr>
+    <td><strong>Hero Main</strong></td>
+    <td>Kotak besar di bagian paling atas halaman. Artikel utama yang pertama kali dilihat pengunjung.</td>
+    <td>Berita HIGH paling penting</td>
+  </tr>
+  <tr>
+    <td><strong>Hero 2-5</strong></td>
+    <td>4 kotak lebih kecil di samping/bawah Hero Main, masih di bagian atas.</td>
+    <td>Berita HIGH/MEDIUM penting</td>
+  </tr>
+  <tr>
+    <td><strong>Insight 1-3</strong></td>
+    <td>Bagian "Insights" di tengah halaman, 3 card berjajar.</td>
+    <td>Analisis, MEDIUM priority</td>
+  </tr>
+  <tr>
+    <td><strong>Latest</strong></td>
+    <td>Daftar kronologis di bawah. Bergeser ke bawah saat artikel baru masuk.</td>
+    <td>Default, semua prioritas</td>
+  </tr>
+</table>
+
+<div class="highlight-box blue">
+  <strong>Aturan praktis:</strong> HIGH &rarr; Hero. MEDIUM &rarr; Insight. LOW &rarr; Latest.
+</div>
+
+<p><strong>Publish Massal:</strong> Kamu bisa memilih beberapa artikel sekaligus (centang), lalu gunakan tombol <strong>Publish</strong> di bar bawah layar.</p>
+
+<!-- STEP 6 -->
+<h2 class="page-break"><span class="step-num">6</span> Apa yang Terjadi Setelah Publish</h2>
+
+<p>Setelah kamu klik Publish, sistem otomatis melakukan:</p>
+
+<table>
+  <tr>
+    <th>Proses</th>
+    <th>Waktu</th>
+    <th>Detail</th>
+  </tr>
+  <tr>
+    <td>Publikasi artikel (EN)</td>
+    <td>Langsung</td>
+    <td>Artikel bahasa Inggris live di website</td>
+  </tr>
+  <tr>
+    <td>Terjemahan otomatis</td>
+    <td>~5 menit</td>
+    <td>Bahasa Indonesia, Italia, Rusia, Prancis</td>
+  </tr>
+  <tr>
+    <td>Optimasi SEO</td>
+    <td>~5 menit</td>
+    <td>Title, description, keywords untuk Google & AI Search</td>
+  </tr>
+  <tr>
+    <td>Gambar fallback</td>
+    <td>~5 menit</td>
+    <td>Jika belum ada cover, sistem generate otomatis (tapi gambar buatanmu selalu lebih bagus!)</td>
+  </tr>
+</table>
+
+<p><strong>Kamu tidak perlu melakukan apa-apa lagi.</strong> Semua proses di atas berjalan otomatis.</p>
+
+<!-- FAQ -->
+<h1 class="page-break">Pertanyaan yang Sering Diajukan (FAQ)</h1>
+
+<dl class="faq">
+  <dt>Apakah saya harus membuat gambar untuk semua artikel?</dt>
+  <dd>Tidak. Buat gambar hanya untuk artikel yang kamu pilih untuk dipublikasikan.</dd>
+
+  <dt>Bagaimana jika saya publish tanpa gambar cover?</dt>
+  <dd>Sistem akan generate gambar otomatis sebagai fallback. Tapi gambar buatanmu selalu lebih berkualitas.</dd>
+
+  <dt>Bolehkah saya mengedit teks artikel?</dt>
+  <dd>Ya, di News Room kamu bisa mengedit judul, konten, dan kategori sebelum publish.</dd>
+
+  <dt>Format gambar apa yang diterima?</dt>
+  <dd>JPG atau PNG. Minimum 1200x675 pixel. Rasio 16:9 landscape. Tidak boleh ada teks dalam gambar.</dd>
+
+  <dt>Berapa lama artikel tetap di News Room?</dt>
+  <dd>Artikel tetap di sana sampai dipublish atau ditolak. Tidak ada batas waktu, tapi berita kehilangan relevansi seiring waktu.</dd>
+
+  <dt>Bagaimana jika bot tidak mengenali foto saya?</dt>
+  <dd>Pastikan kamu melakukan <strong>reply</strong> ke pesan artikel yang benar. Atau gunakan caption <code>/cover [kode_artikel]</code>. Bot akan memberikan instruksi jika ada kesalahan.</dd>
+
+  <dt>Apakah saya bisa mengirim gambar sebagai dokumen?</dt>
+  <dd>Ya! Malah disarankan untuk menjaga kualitas. Tekan ikon klip &rarr; File &rarr; pilih gambar.</dd>
+
+  <dt>Terjemahan dilakukan secara otomatis?</dt>
+  <dd>Ya. Setelah publish, artikel otomatis diterjemahkan ke Bahasa Indonesia, Italia, Rusia, dan Prancis dalam ~5 menit.</dd>
+</dl>
+
+<!-- CONTACT -->
+<h1>Kontak</h1>
+
+<p>Jika ada masalah teknis atau pertanyaan, hubungi <strong>Zero</strong> melalui Telegram atau email.</p>
+
+<div class="highlight-box blue" style="margin-top: 2cm; text-align: center;">
+  <strong>Bali Zero</strong> &bull; Intel Pipeline v1.0 &bull; Maret 2026<br>
+  <em>Dokumen ini bersifat rahasia dan hanya untuk penggunaan internal.</em>
+</div>
+
+</body>
+</html>
