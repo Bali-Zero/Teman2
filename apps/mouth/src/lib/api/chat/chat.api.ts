@@ -558,7 +558,9 @@ export class ChatApi {
                 ? (data.data as Array<{ title?: string; content?: string }>)
                 : [];
             } else if (data.type === "metadata") {
-              finalMetadata = isRecord(data.data) ? data.data : undefined;
+              finalMetadata = isRecord(data.data)
+                ? { ...(finalMetadata ?? {}), ...data.data }
+                : finalMetadata;
             } else if (data.type === "image") {
               // Handle generated images from image generation tool
               resetIdleTimeout();
@@ -614,7 +616,9 @@ export class ChatApi {
                   ? (data.data as Array<{ title?: string; content?: string }>)
                   : [];
               } else if (isRecord(data) && data.type === "metadata") {
-                finalMetadata = isRecord(data.data) ? data.data : undefined;
+                finalMetadata = isRecord(data.data)
+                  ? { ...(finalMetadata ?? {}), ...data.data }
+                  : finalMetadata;
               }
             }
           } catch {
