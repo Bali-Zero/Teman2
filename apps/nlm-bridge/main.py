@@ -10,6 +10,7 @@ Usage:
 import asyncio
 import json
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -73,7 +74,7 @@ app = FastAPI(title="NLM HTTP Bridge", version="1.0.0", lifespan=lifespan)
 class NLMQueryRequest(BaseModel):
     notebook_id: str
     question: str
-    timeout: int = Field(default=10, ge=1, le=30)
+    timeout: int = Field(default=60, ge=1, le=120)
 
 
 class NLMCitation(BaseModel):
@@ -141,9 +142,10 @@ async def _query_via_subprocess(
     notebook_id: str, question: str, timeout: int
 ) -> dict[str, Any]:
     """Query NLM using the CLI as a subprocess fallback."""
+    nlm_bin = os.getenv("NLM_BIN", os.path.expanduser("~/.local/bin/nlm"))
     cmd = [
-        "nlm", "notebook", "query", notebook_id, question,
-        "--json", "--timeout", str(timeout),
+        nlm_bin, "notebook", "query", notebook_id, question,
+        "--timeout", str(timeout),
     ]
     try:
         proc = await asyncio.wait_for(
@@ -167,7 +169,11 @@ async def _query_via_subprocess(
         raise HTTPException(status_code=502, detail=f"NLM query failed: {error_msg}")
 
     try:
-        return json.loads(stdout.decode())
+        parsed = json.loads(stdout.decode())
+        # NLM CLI wraps response in {"value": {...}} — unwrap if present
+        if isinstance(parsed, dict) and "value" in parsed:
+            parsed = parsed["value"]
+        return parsed
     except json.JSONDecodeError:
         # CLI returned non-JSON — wrap as plain answer
         return {"answer": stdout.decode().strip(), "citations": []}
