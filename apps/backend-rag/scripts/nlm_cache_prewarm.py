@@ -192,7 +192,13 @@ async def prewarm(
     """
     stats = {"cached": 0, "skipped": 0, "failed": 0, "total": 0}
 
-    # Initialize cache service (needs Redis)
+    # Initialize Redis first (required for cache service)
+    from backend.core.redis_manager import RedisManager
+    manager = RedisManager.get_instance()
+    manager.initialize()
+    logger.info("Redis available: %s", manager.available)
+
+    # Initialize cache service
     cache = NotebookLMCacheService()
     await cache.initialize()
 
