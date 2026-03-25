@@ -75,7 +75,7 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
 
-- **Backend:** Python 3.11+, FastAPI, 89 routers, 251 services, 418 test files
+- **Backend:** Python 3.11+, FastAPI, 89 routers, 251 services, 419 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
