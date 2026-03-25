@@ -72,6 +72,7 @@ class OrchestratorCore:
         faq_cache: Any = None,  # NotebookLMCacheService
         db_pool: Any = None,
         kg_langgraph_orchestrator: Any = None,  # KGLangGraphOrchestrator
+        nlm_enrichment_service: Any = None,  # NLMEnrichmentService
     ):
         """
         Inizializza OrchestratorCore.
@@ -89,6 +90,7 @@ class OrchestratorCore:
             faq_cache: Optional NotebookLMCacheService per FAQ caching (exact match)
             db_pool: Optional database pool
             kg_langgraph_orchestrator: Optional KGLangGraphOrchestrator (Phase 3)
+            nlm_enrichment_service: Optional NLMEnrichmentService for CAUTIOUS-zone enrichment
         """
         self.llm_gateway = llm_gateway
         self.reasoning_engine = reasoning_engine
@@ -99,6 +101,7 @@ class OrchestratorCore:
         self.semantic_cache = semantic_cache
         self.faq_cache = faq_cache  # FAQ cache (exact match, < 1ms)
         self.kg_langgraph_orchestrator = kg_langgraph_orchestrator  # Phase 3: LangGraph KG
+        self.nlm_enrichment_service = nlm_enrichment_service  # NLM CAUTIOUS-zone enrichment
         self.db_pool = db_pool  # Store for later use
 
         # Initialize specialized managers
@@ -703,6 +706,35 @@ class OrchestratorCore:
             except Exception as e:
                 logger.warning(f"⚠️ [Phase 6] Multi-agent failed, falling back to ReAct: {e}")
 
+        # 3c. NLM Speculative Fire — launch in parallel with the rest of the pipeline.
+        # Placed AFTER all early-return gates/cache checks to avoid task leaks.
+        # The result is consumed only if evidence lands in the CAUTIOUS zone (0.15–0.60).
+        nlm_task: asyncio.Task | None = None
+        nlm_cached_result: dict | None = None
+        nlm_domain: dict | None = None
+
+        if self.nlm_enrichment_service:
+            from backend.services.oracle.nlm_notebook_registry import resolve_notebook
+
+            nlm_match = resolve_notebook(query)
+            if nlm_match:
+                nlm_domain = nlm_match
+                # Check NLM cache first (scoped by notebook_id)
+                if self.faq_cache:
+                    try:
+                        nlm_cached_result = await self.faq_cache.get(
+                            query, notebook_id=nlm_match["notebook_id"]
+                        )
+                    except Exception:
+                        pass
+                # Launch async NLM query only on cache miss
+                if not nlm_cached_result:
+                    nlm_task = asyncio.create_task(
+                        self.nlm_enrichment_service.query(
+                            nlm_match["notebook_id"], query
+                        )
+                    )
+
         # 4. Route query (intent classification + tier selection)
         model_tier, deep_think_mode, state = await self.routing_manager.route_query(query)
 
@@ -824,6 +856,59 @@ class OrchestratorCore:
             logger.info(
                 f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}"
             )
+
+        # 13. NLM Enrichment merge — only in CAUTIOUS zone
+        evidence_score = getattr(state, "evidence_score", None)
+        trusted = getattr(state, "trusted_tools_used", True)
+        cautious = (
+            evidence_score is not None
+            and 0.15 <= evidence_score <= 0.60
+            and not trusted
+        )
+
+        nlm_result: dict | None = None
+        if cautious and (nlm_cached_result or nlm_task):
+            try:
+                if nlm_cached_result:
+                    nlm_result = nlm_cached_result
+                elif nlm_task:
+                    nlm_result = await asyncio.wait_for(nlm_task, timeout=3.0)
+            except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
+                logger.warning("NLM enrichment skipped (timeout/cancel): %s", exc)
+                nlm_result = None
+            except Exception as exc:
+                logger.warning("NLM enrichment skipped (error): %s", exc)
+                nlm_result = None
+        elif nlm_task and not nlm_task.done():
+            # Not in CAUTIOUS zone — cancel the speculative task
+            nlm_task.cancel()
+            try:
+                await nlm_task
+            except (asyncio.CancelledError, Exception):
+                pass
+
+        if nlm_result and nlm_domain:
+            result.nlm_enrichment = {
+                "domain": nlm_domain.get("domain", ""),
+                "domain_label": nlm_domain.get("label", ""),
+                "citations": nlm_result.get("citations", []),
+                "summary": nlm_result.get("answer", ""),
+            }
+            logger.info(
+                "NLM enrichment merged (non-streaming) for domain=%s",
+                nlm_domain.get("domain"),
+            )
+            # Cache the result for future queries
+            if self.faq_cache and not nlm_cached_result:
+                try:
+                    await self.faq_cache.set(
+                        query,
+                        nlm_result.get("answer", ""),
+                        metadata=nlm_result,
+                        notebook_id=nlm_domain.get("notebook_id", ""),
+                    )
+                except Exception:
+                    pass
 
         return result
 

@@ -558,13 +558,70 @@ export class ChatApi {
                 ? (data.data as Array<{ title?: string; content?: string }>)
                 : [];
             } else if (data.type === "metadata") {
-              finalMetadata = isRecord(data.data) ? data.data : undefined;
+              finalMetadata = isRecord(data.data)
+                ? { ...(finalMetadata ?? {}), ...data.data }
+                : finalMetadata;
             } else if (data.type === "image") {
               // Handle generated images from image generation tool
               resetIdleTimeout();
               if (isRecord(data.data) && typeof data.data.url === "string") {
                 generatedImageUrl = data.data.url;
               }
+            } else if (data.type === "nlm_status") {
+              resetIdleTimeout();
+              if (
+                onStep &&
+                isRecord(data.data) &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                onStep({
+                  type: "nlm_status",
+                  data: data.data,
+                  timestamp: new Date(),
+                });
+              }
+              finalMetadata = {
+                ...(finalMetadata ?? {}),
+                nlm_status: isRecord(data.data)
+                  ? (data.data.status as string)
+                  : undefined,
+                nlm_domain_label: isRecord(data.data)
+                  ? (data.data.domain_label as string)
+                  : undefined,
+              };
+            } else if (data.type === "nlm_enrichment") {
+              resetIdleTimeout();
+              finalMetadata = {
+                ...(finalMetadata ?? {}),
+                nlm_status: "verified",
+                nlm_citations: isRecord(data.data)
+                  ? (data.data.citations as unknown[])
+                  : undefined,
+                nlm_domain_label: isRecord(data.data)
+                  ? (data.data.domain_label as string)
+                  : undefined,
+              };
+              if (
+                onStep &&
+                isRecord(data.data) &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                onStep({
+                  type: "nlm_enrichment",
+                  data: data.data,
+                  timestamp: new Date(),
+                });
+              }
+            } else if (data.type === "evidence_score") {
+              resetIdleTimeout();
+              finalMetadata = {
+                ...(finalMetadata ?? {}),
+                evidence_score: isRecord(data.data)
+                  ? (data.data.score as number)
+                  : undefined,
+              };
             } else if (data.type === "error") {
               const errorData = data.data;
               if (
@@ -614,7 +671,9 @@ export class ChatApi {
                   ? (data.data as Array<{ title?: string; content?: string }>)
                   : [];
               } else if (isRecord(data) && data.type === "metadata") {
-                finalMetadata = isRecord(data.data) ? data.data : undefined;
+                finalMetadata = isRecord(data.data)
+                  ? { ...(finalMetadata ?? {}), ...data.data }
+                  : finalMetadata;
               }
             }
           } catch {
@@ -657,9 +716,23 @@ export class ChatApi {
           });
 
           // Merge generated image into metadata if present
-          const metadataWithImage = generatedImageUrl
+          let metadataWithImage = generatedImageUrl
             ? { ...finalMetadata, generated_image: generatedImageUrl }
             : finalMetadata;
+
+          // Graceful NLM badge fade: if response landed outside CAUTIOUS zone
+          // but the badge was still showing "consulting", clear it to "not_needed"
+          if (
+            isRecord(metadataWithImage) &&
+            metadataWithImage.confidence_zone !== "cautious" &&
+            metadataWithImage.nlm_status === "consulting"
+          ) {
+            metadataWithImage = {
+              ...metadataWithImage,
+              nlm_status: "not_needed",
+            };
+          }
+
           // Note: Image cleaning is handled by backend (clean_image_generation_response)
           // Backend processes token events during streaming, so fullResponse is already cleaned
           onDone(fullResponse, sources, metadataWithImage);

@@ -16,32 +16,34 @@ Code Change → docs_sync.py extracts stats → Injects into marker regions → 
 
 ### Stats Extracted
 
-| Stat | Source | Method |
-|------|--------|--------|
-| Router count | `router_registration.py` | regex `api.include_router(` |
-| Service count | `backend/services/**/*.py` | file count (excl. `__init__`) |
-| Test file count | `backend/tests/**/test_*.py` | file count |
-| App count | `apps/*/` | directory count |
-| Version | `package.json` | JSON parse |
-| Qdrant collections | `/health` endpoint | HTTP GET with cache fallback |
-| Qdrant documents | `/health` endpoint | HTTP GET with cache fallback |
-| Embedding model | `/health` endpoint | HTTP GET with cache fallback |
-| Channel count | `backend/channels/*/` | directory count |
-| KG nodes/edges | cached | hardcoded (changes rarely) |
+| Stat               | Source                       | Method                        |
+| ------------------ | ---------------------------- | ----------------------------- |
+| Router count       | `router_registration.py`     | regex `api.include_router(`   |
+| Service count      | `backend/services/**/*.py`   | file count (excl. `__init__`) |
+| Test file count    | `backend/tests/**/test_*.py` | file count                    |
+| App count          | `apps/*/`                    | directory count               |
+| Version            | `package.json`               | JSON parse                    |
+| Qdrant collections | `/health` endpoint           | HTTP GET with cache fallback  |
+| Qdrant documents   | `/health` endpoint           | HTTP GET with cache fallback  |
+| Embedding model    | `/health` endpoint           | HTTP GET with cache fallback  |
+| Channel count      | `backend/channels/*/`        | directory count               |
+| KG nodes/edges     | cached                       | hardcoded (changes rarely)    |
 
 ### Markers in Docs
 
-| File | Markers | Content |
-|------|---------|---------|
-| `README.md` | `TECH_STATS`, `FEATURE_FLAGS` | Tech stack table, feature flags table |
-| `CLAUDE.md` | `BACKEND_STATS`, `VECTOR_STATS`, `EMBEDDING_FROZEN` | Backend metrics, vector counts, frozen warning |
-| `docs/AI_ONBOARDING.md` | `QUICK_NUMBERS` | One-line stats summary |
+| File                    | Markers                                             | Content                                        |
+| ----------------------- | --------------------------------------------------- | ---------------------------------------------- |
+| `README.md`             | `TECH_STATS`, `FEATURE_FLAGS`                       | Tech stack table, feature flags table          |
+| `CLAUDE.md`             | `BACKEND_STATS`, `VECTOR_STATS`, `EMBEDDING_FROZEN` | Backend metrics, vector counts, frozen warning |
+| `docs/AI_ONBOARDING.md` | `QUICK_NUMBERS`                                     | One-line stats summary                         |
 
 ### Marker Format
 
 ```markdown
 <!-- DOCSYNC:KEY_START -->
+
 Content that gets auto-replaced
+
 <!-- DOCSYNC:KEY_END -->
 ```
 
@@ -68,12 +70,12 @@ python scripts/docs_sync.py --quiet
 
 ## Triggers
 
-| Trigger | File | When | Blocking |
-|---------|------|------|----------|
-| **Manual** | `python scripts/docs_sync.py` | On demand | — |
-| **Post-commit** | `.husky/post-commit` | After every git commit | No (background) |
-| **CI/CD** | `.github/workflows/docs-sync.yml` | PRs touching `apps/` | Yes (fails if stale) |
-| **Cron** | `scripts/docs_sync_cron.sh` | Daily at 03:17 | No (auto-commits) |
+| Trigger         | File                              | When                   | Blocking             |
+| --------------- | --------------------------------- | ---------------------- | -------------------- |
+| **Manual**      | `python scripts/docs_sync.py`     | On demand              | —                    |
+| **Post-commit** | `.husky/post-commit`              | After every git commit | No (background)      |
+| **CI/CD**       | `.github/workflows/docs-sync.yml` | PRs touching `apps/`   | Yes (fails if stale) |
+| **Cron**        | `scripts/docs_sync_cron.sh`       | Daily at 03:17         | No (auto-commits)    |
 
 ### Setting Up Cron
 
@@ -99,14 +101,18 @@ crontab -e
 ## Adding New Markers
 
 1. Add a template to `TEMPLATES` dict in `docs_sync.py`:
+
 ```python
 TEMPLATES["MY_NEW_STAT"] = lambda s: f"My stat: {s['routers']} routers"
 ```
 
 2. Add markers to target .md file:
+
 ```markdown
 <!-- DOCSYNC:MY_NEW_STAT_START -->
+
 placeholder
+
 <!-- DOCSYNC:MY_NEW_STAT_END -->
 ```
 

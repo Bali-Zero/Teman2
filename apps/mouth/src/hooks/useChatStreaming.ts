@@ -104,11 +104,11 @@ export function useChatStreaming(
               content: s.content || "",
             }));
 
-            callbacks.onComplete(fullResponse, formattedSources as Source[], {
-              conversation_id: metadata?.conversation_id as number | undefined,
-              execution_time: metadata?.execution_time as number | undefined,
-              persisted: metadata?.persisted as boolean | undefined,
-            });
+            callbacks.onComplete(
+              fullResponse,
+              formattedSources as Source[],
+              metadata ? (metadata as Message["metadata"]) : undefined,
+            );
 
             if (isMountedRef.current && !isAbortedRef.current) {
               setIsStreaming(false);

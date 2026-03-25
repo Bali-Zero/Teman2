@@ -67,9 +67,9 @@ class NotebookLMCacheService:
         # Don't close the shared RedisManager client
         pass
 
-    def _hash_question(self, question: str) -> str:
+    def _hash_question(self, question: str, notebook_id: str = "") -> str:
         """
-        Generate cache key from question.
+        Generate cache key from question and optional notebook_id.
 
         Normalization:
         - Lowercase
@@ -77,25 +77,33 @@ class NotebookLMCacheService:
         - Remove punctuation variations
         - MD5 hash for consistent length
 
+        When notebook_id is provided, it is prepended to the normalized
+        question before hashing so that identical questions against
+        different notebooks produce distinct cache keys.
+
         Args:
             question: User question
+            notebook_id: Optional notebook identifier to scope the cache key
 
         Returns:
-            MD5 hash of normalized question
+            MD5 hash of normalized question (scoped by notebook_id if given)
         """
         # Normalize question
         normalized = question.lower().strip()
         # Remove common punctuation variations
         normalized = normalized.replace("?", "").replace("!", "").replace(".", "")
+        # Include notebook_id in hash input to prevent cross-notebook collisions
+        key_input = f"{notebook_id}:{normalized}" if notebook_id else normalized
         # Hash to fixed length
-        return hashlib.md5(normalized.encode()).hexdigest()
+        return hashlib.md5(key_input.encode()).hexdigest()
 
-    async def get(self, question: str) -> dict | None:
+    async def get(self, question: str, notebook_id: str = "") -> dict | None:
         """
         Get cached answer for question.
 
         Args:
             question: User question
+            notebook_id: Optional notebook identifier to scope the lookup
 
         Returns:
             Cached response dict or None if not found
@@ -113,7 +121,7 @@ class NotebookLMCacheService:
             return None
 
         try:
-            key = self.cache_prefix + self._hash_question(question)
+            key = self.cache_prefix + self._hash_question(question, notebook_id)
             cached = await self.redis_client.get(key)
 
             if cached:
@@ -126,7 +134,13 @@ class NotebookLMCacheService:
             logger.error(f"❌ Cache get error: {e}")
             return None
 
-    async def set(self, question: str, answer: str, metadata: dict | None = None) -> bool:
+    async def set(
+        self,
+        question: str,
+        answer: str,
+        metadata: dict | None = None,
+        notebook_id: str = "",
+    ) -> bool:
         """
         Cache answer for question.
 
@@ -134,6 +148,7 @@ class NotebookLMCacheService:
             question: User question
             answer: Response answer
             metadata: Optional metadata (domain, language, etc.)
+            notebook_id: Optional notebook identifier to scope the cache key
 
         Returns:
             True if cached successfully
@@ -143,7 +158,7 @@ class NotebookLMCacheService:
             return False
 
         try:
-            key = self.cache_prefix + self._hash_question(question)
+            key = self.cache_prefix + self._hash_question(question, notebook_id)
 
             # Build cache entry
             from datetime import datetime
@@ -167,12 +182,13 @@ class NotebookLMCacheService:
             logger.error(f"❌ Cache set error: {e}")
             return False
 
-    async def delete(self, question: str) -> bool:
+    async def delete(self, question: str, notebook_id: str = "") -> bool:
         """
         Delete cached answer.
 
         Args:
             question: Question to remove from cache
+            notebook_id: Optional notebook identifier to scope the cache key
 
         Returns:
             True if deleted
@@ -181,7 +197,7 @@ class NotebookLMCacheService:
             return False
 
         try:
-            key = self.cache_prefix + self._hash_question(question)
+            key = self.cache_prefix + self._hash_question(question, notebook_id)
             await self.redis_client.delete(key)
             logger.info(f"✅ Deleted cache: {question[:50]}...")
             return True

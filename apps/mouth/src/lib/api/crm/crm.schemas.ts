@@ -5,56 +5,74 @@
  * Types are derived from these schemas via z.infer<>.
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
 // ============================================
 // SHARED ENUMS & CONSTANTS
 // ============================================
 
-export const clientStatusEnum = z.enum(['lead', 'active', 'completed', 'lost', 'inactive']);
-export const clientTypeEnum = z.enum(['individual', 'company']);
-export const genderEnum = z.enum(['M', 'F']);
+export const clientStatusEnum = z.enum([
+  "lead",
+  "active",
+  "completed",
+  "lost",
+  "inactive",
+]);
+export const clientTypeEnum = z.enum(["individual", "company"]);
+export const genderEnum = z.enum(["M", "F"]);
 export const leadSourceEnum = z.enum([
-  'website',
-  'whatsapp',
-  'referral',
-  'social_media',
-  'walk_in',
-  'other',
+  "website",
+  "whatsapp",
+  "referral",
+  "social_media",
+  "walk_in",
+  "other",
 ]);
 
 export const practiceTypeCodeEnum = z.enum([
-  'visa',
-  'extension_visa',
-  'kitas',
-  'extension_kitas',
-  'tax',
-  'new_pt',
-  'revision_pt',
-  'accessories',
+  "visa",
+  "extension_visa",
+  "kitas",
+  "extension_kitas",
+  "tax",
+  "new_pt",
+  "revision_pt",
+  "accessories",
 ]);
 
 export const practiceStatusEnum = z.enum([
-  'inquiry',
-  'quotation_sent',
-  'payment_pending',
-  'in_progress',
-  'completed',
-  'cancelled',
-  'on_hold',
+  "inquiry",
+  "quotation_sent",
+  "payment_pending",
+  "in_progress",
+  "completed",
+  "cancelled",
+  "on_hold",
 ]);
 
-export const practicePriorityEnum = z.enum(['low', 'normal', 'high', 'urgent']);
+export const practicePriorityEnum = z.enum(["low", "normal", "high", "urgent"]);
 
-export const familyRelationshipEnum = z.enum(['spouse', 'child', 'parent', 'sibling', 'other']);
+export const familyRelationshipEnum = z.enum([
+  "spouse",
+  "child",
+  "parent",
+  "sibling",
+  "other",
+]);
 
-export const documentCategoryEnum = z.enum(['immigration', 'pma', 'tax', 'personal', 'other']);
+export const documentCategoryEnum = z.enum([
+  "immigration",
+  "pma",
+  "tax",
+  "personal",
+  "other",
+]);
 export const documentStatusEnum = z.enum([
-  'pending',
-  'received',
-  'verified',
-  'rejected',
-  'expired',
+  "pending",
+  "received",
+  "verified",
+  "rejected",
+  "expired",
 ]);
 
 // ============================================
@@ -65,18 +83,18 @@ export const documentStatusEnum = z.enum([
 const emptyToUndefined = z
   .string()
   .optional()
-  .transform((v) => (v === '' ? undefined : v));
+  .transform((v) => (v === "" ? undefined : v));
 
 /** ISO date string (YYYY-MM-DD) — rejects empty strings */
 const optionalDate = z
   .string()
   .optional()
-  .transform((v) => (v === '' ? undefined : v))
+  .transform((v) => (v === "" ? undefined : v))
   .pipe(
     z
       .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)')
-      .optional()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)")
+      .optional(),
   );
 
 // ============================================
@@ -85,8 +103,15 @@ const optionalDate = z
 
 export const createClientSchema = z
   .object({
-    full_name: z.string().min(2, 'Name must be at least 2 characters').max(200, 'Name is too long'),
-    email: z.string().email('Invalid email address').optional().or(z.literal('')),
+    full_name: z
+      .string()
+      .min(2, "Name must be at least 2 characters")
+      .max(200, "Name is too long"),
+    email: z
+      .string()
+      .email("Invalid email address")
+      .optional()
+      .or(z.literal("")),
     phone: emptyToUndefined,
     whatsapp: emptyToUndefined,
     company_name: emptyToUndefined,
@@ -97,8 +122,8 @@ export const createClientSchema = z
     gender: genderEnum.optional(),
     birthplace: emptyToUndefined,
     notes: emptyToUndefined,
-    status: clientStatusEnum.default('lead'),
-    client_type: clientTypeEnum.default('individual'),
+    status: clientStatusEnum.default("lead"),
+    client_type: clientTypeEnum.default("individual"),
     assigned_to: emptyToUndefined,
     tags: z.array(z.string()).optional(),
     address: emptyToUndefined,
@@ -110,22 +135,24 @@ export const createClientSchema = z
     if (data.date_of_birth) {
       const dob = new Date(data.date_of_birth);
       const today = new Date();
-      const age = Math.floor((today.getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      const age = Math.floor(
+        (today.getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+      );
       if (age < 18) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: `Client is ${age} years old. Minors cannot have a standalone profile — add them as a Family Member instead.`,
-          path: ['date_of_birth'],
+          path: ["date_of_birth"],
         });
       }
     }
 
     // If client_type is company, company_name should be provided
-    if (data.client_type === 'company' && !data.company_name) {
+    if (data.client_type === "company" && !data.company_name) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Company name is required for company clients',
-        path: ['company_name'],
+        message: "Company name is required for company clients",
+        path: ["company_name"],
       });
     }
   });
@@ -138,13 +165,15 @@ export type CreateClientOutput = z.output<typeof createClientSchema>;
 // ============================================
 
 export const createPracticeSchema = z.object({
-  client_id: z.number({ required_error: 'Client is required' }).positive('Invalid client ID'),
+  client_id: z
+    .number({ required_error: "Client is required" })
+    .positive("Invalid client ID"),
   practice_type_code: practiceTypeCodeEnum,
-  status: practiceStatusEnum.default('inquiry'),
-  priority: practicePriorityEnum.default('normal'),
+  status: practiceStatusEnum.default("inquiry"),
+  priority: practicePriorityEnum.default("normal"),
   notes: emptyToUndefined,
   internal_notes: emptyToUndefined,
-  quoted_price: z.number().nonnegative('Price cannot be negative').optional(),
+  quoted_price: z.number().nonnegative("Price cannot be negative").optional(),
   start_date: optionalDate,
 });
 
@@ -156,7 +185,10 @@ export type CreatePracticeOutput = z.output<typeof createPracticeSchema>;
 // ============================================
 
 export const createFamilyMemberSchema = z.object({
-  full_name: z.string().min(2, 'Name must be at least 2 characters').max(200, 'Name is too long'),
+  full_name: z
+    .string()
+    .min(2, "Name must be at least 2 characters")
+    .max(200, "Name is too long"),
   relationship: familyRelationshipEnum,
   date_of_birth: optionalDate,
   nationality: emptyToUndefined,
@@ -164,7 +196,7 @@ export const createFamilyMemberSchema = z.object({
   passport_expiry: optionalDate,
   current_visa_type: emptyToUndefined,
   visa_expiry: optionalDate,
-  email: z.string().email('Invalid email address').optional().or(z.literal('')),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone: emptyToUndefined,
   notes: emptyToUndefined,
 });
@@ -176,12 +208,16 @@ export type CreateFamilyMemberInput = z.input<typeof createFamilyMemberSchema>;
 // ============================================
 
 export const createDocumentSchema = z.object({
-  document_type: z.string().min(1, 'Document type is required'),
+  document_type: z.string().min(1, "Document type is required"),
   document_category: documentCategoryEnum.optional(),
   file_name: emptyToUndefined,
   file_id: emptyToUndefined,
-  file_url: z.string().url('Invalid file URL').optional().or(z.literal('')),
-  google_drive_file_url: z.string().url('Invalid Google Drive URL').optional().or(z.literal('')),
+  file_url: z.string().url("Invalid file URL").optional().or(z.literal("")),
+  google_drive_file_url: z
+    .string()
+    .url("Invalid Google Drive URL")
+    .optional()
+    .or(z.literal("")),
   expiry_date: optionalDate,
   notes: emptyToUndefined,
   family_member_id: z.number().positive().optional(),
@@ -202,7 +238,7 @@ export type CreateDocumentInput = z.input<typeof createDocumentSchema>;
 export function flattenErrors(error: z.ZodError): Record<string, string> {
   const fieldErrors: Record<string, string> = {};
   for (const issue of error.issues) {
-    const path = issue.path.join('.');
+    const path = issue.path.join(".");
     if (path && !fieldErrors[path]) {
       fieldErrors[path] = issue.message;
     }
