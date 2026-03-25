@@ -47,11 +47,11 @@ export default function PortalHomePage() {
         <section>
           <div
             className="h-8 rounded w-48 mb-2 animate-pulse"
-            style={{ background: "rgba(255,255,255,0.03)" }}
+            style={{ background: "var(--glass-rim)" }}
           />
           <div
             className="h-4 rounded w-64 animate-pulse"
-            style={{ background: "rgba(255,255,255,0.03)" }}
+            style={{ background: "var(--glass-rim)" }}
           />
         </section>
 
@@ -64,7 +64,7 @@ export default function PortalHomePage() {
         <section className="space-y-4">
           <div
             className="h-6 rounded w-32 animate-pulse"
-            style={{ background: "rgba(255,255,255,0.03)" }}
+            style={{ background: "var(--glass-rim)" }}
           />
           <PortalListSkeleton count={5} />
         </section>
@@ -191,10 +191,10 @@ export default function PortalHomePage() {
                 className={cn(
                   "flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.01]",
                   action.priority === "high"
-                    ? "bg-red-500/10 border-red-500/20 text-red-400"
+                    ? "bg-[rgba(244,63,94,0.1)] border-[rgba(244,63,94,0.2)] text-[var(--neon-rose)]"
                     : action.priority === "medium"
-                      ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
-                      : "bg-blue-500/10 border-blue-500/20 text-blue-400",
+                      ? "bg-[rgba(245,158,11,0.1)] border-[rgba(245,158,11,0.2)] text-[var(--neon-amber)]"
+                      : "bg-[rgba(59,130,246,0.1)] border-[rgba(59,130,246,0.2)] text-[var(--neon-blue)]",
                 )}
               >
                 <div>
@@ -279,7 +279,7 @@ function StatusCard({
       case "overdue":
         return "bg-[rgba(244,63,94,0.04)] text-[var(--neon-rose)] border-[rgba(244,63,94,0.2)]";
       default:
-        return "bg-[rgba(255,255,255,0.02)] text-[var(--tx-secondary)] border-[rgba(255,255,255,0.05)]";
+        return "bg-[rgba(255,255,255,0.02)] text-[var(--tx-secondary)] border-[var(--glass-rim)]";
     }
   };
 
@@ -320,7 +320,7 @@ function StatusCard({
       onClick={onClick}
       className={cn(
         "crystal-stat-card cursor-pointer !flex !flex-col border",
-        getStatusStyle(status)
+        getStatusStyle(status),
       )}
     >
       <div className="flex justify-between items-start mb-2">
@@ -329,8 +329,12 @@ function StatusCard({
         </span>
         {getIcon(status)}
       </div>
-      <div className="font-bold text-2xl font-mono text-[var(--tx-pure)] leading-tight truncate">{label}</div>
-      <div className="text-[10px] uppercase font-bold tracking-widest mt-2">{formatExpiry()}</div>
+      <div className="font-bold text-2xl font-mono text-[var(--tx-pure)] leading-tight truncate">
+        {label}
+      </div>
+      <div className="text-[10px] uppercase font-bold tracking-widest mt-2">
+        {formatExpiry()}
+      </div>
     </div>
   );
 }
@@ -363,28 +367,40 @@ function TimelineItem({
   };
 
   const getBgColor = () => {
-    if (isFuture) return "bg-amber-900/30 text-amber-400";
+    if (isFuture) return "bg-[rgba(245,158,11,0.15)] text-[var(--neon-amber)]";
     switch (entry.type) {
       case "message":
-        return "bg-blue-900/30 text-blue-400";
+        return "bg-[rgba(59,130,246,0.15)] text-[var(--neon-blue)]";
       case "deadline":
-        return "bg-red-900/30 text-red-400";
+        return "bg-[rgba(244,63,94,0.15)] text-[var(--neon-rose)]";
       default:
-        return "text-neutral-400";
+        return "text-[var(--tx-secondary)]";
     }
   };
 
   const getDotStyle = (): React.CSSProperties => {
     if (isFuture)
-      return { background: "rgba(245,158,11,0.1)", color: "var(--neon-amber)", borderColor: "var(--neon-amber)" };
+      return {
+        background: "rgba(245,158,11,0.1)",
+        color: "var(--neon-amber)",
+        borderColor: "var(--neon-amber)",
+      };
     switch (entry.type) {
       case "message":
-        return { background: "rgba(59,130,246,0.1)", color: "var(--neon-blue)", borderColor: "var(--neon-blue)" };
+        return {
+          background: "rgba(59,130,246,0.1)",
+          color: "var(--neon-blue)",
+          borderColor: "var(--neon-blue)",
+        };
       case "deadline":
-        return { background: "rgba(244,63,94,0.1)", color: "var(--neon-rose)", borderColor: "var(--neon-rose)" };
+        return {
+          background: "rgba(244,63,94,0.1)",
+          color: "var(--neon-rose)",
+          borderColor: "var(--neon-rose)",
+        };
       default:
         return {
-          background: "rgba(255,255,255,0.03)",
+          background: "var(--glass-rim)",
           color: "var(--tx-secondary)",
           borderColor: "rgba(255,255,255,0.1)",
         };
@@ -403,12 +419,21 @@ function TimelineItem({
       <div
         className="crystal-stat-card !border !p-4 !shadow-none"
         style={{
-          background: isFuture ? "rgba(245,158,11,0.02)" : "rgba(255,255,255,0.02)",
+          background: isFuture
+            ? "rgba(245,158,11,0.02)"
+            : "rgba(255,255,255,0.02)",
           borderColor: isFuture ? "rgba(245,158,11,0.2)" : "var(--glass-rim)",
         }}
       >
         <div className="flex items-center gap-2 mb-2">
-          <div className={cn("p-1.5 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)]", getBgColor())}>{getIcon()}</div>
+          <div
+            className={cn(
+              "p-1.5 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)]",
+              getBgColor(),
+            )}
+          >
+            {getIcon()}
+          </div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)]">
             {new Date(entry.occurredAt).toLocaleDateString(undefined, {
               month: "short",
@@ -419,7 +444,9 @@ function TimelineItem({
           </span>
         </div>
 
-        <h3 className="font-bold text-[var(--tx-pure)] text-sm">{entry.title}</h3>
+        <h3 className="font-bold text-[var(--tx-pure)] text-sm">
+          {entry.title}
+        </h3>
         <p className="text-xs mt-1.5 text-[var(--tx-secondary)] line-clamp-2">
           {entry.description}
         </p>
