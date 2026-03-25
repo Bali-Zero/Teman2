@@ -30,15 +30,18 @@ logging.basicConfig(
 logger = logging.getLogger("nlm-bridge")
 
 # ---------------------------------------------------------------------------
-# NLM backend — library import with subprocess fallback
+# NLM backend — persistent singleton client (warm session, ~5s queries)
 # ---------------------------------------------------------------------------
+_nlm_client: Any = None
+_HAS_NLM_LIB = False
+
 try:
-    import notebooklm_tools  # type: ignore[import-untyped]
+    from notebooklm_tools import NotebookLMClient
+    from notebooklm_tools.core.auth import load_cached_tokens
 
     _HAS_NLM_LIB = True
-    logger.info("notebooklm_tools library available")
+    logger.info("notebooklm_tools library available — will use persistent client")
 except ImportError:
-    _HAS_NLM_LIB = False
     logger.info("notebooklm_tools not installed — using CLI subprocess fallback")
 
 # ---------------------------------------------------------------------------
@@ -54,14 +57,39 @@ _RATE_WINDOW_SECONDS = 60
 
 
 # ---------------------------------------------------------------------------
-# Lifespan
+# Lifespan — warm up NLM client once at startup
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
-    global _start_time
+    global _start_time, _nlm_client
     _start_time = time.monotonic()
+
+    # Create persistent NLM client with cached tokens (same pattern as MCP server)
+    if _HAS_NLM_LIB:
+        try:
+            tokens = load_cached_tokens()
+            if tokens and tokens.cookies:
+                _nlm_client = NotebookLMClient(
+                    cookies=tokens.cookies,
+                    csrf_token=tokens.csrf_token or "",
+                    session_id=getattr(tokens, "session_id", "") or "",
+                    build_label=getattr(tokens, "build_label", "") or "",
+                )
+                logger.info("✅ NLM client initialized with cached tokens (warm session)")
+            else:
+                logger.warning("⚠️ No cached NLM tokens — run 'nlm login' first")
+        except Exception as e:
+            logger.error("❌ Failed to initialize NLM client: %s", e)
+
     logger.info("NLM Bridge started on port 18790")
     yield
+
+    # Cleanup
+    if _nlm_client and hasattr(_nlm_client, "close"):
+        try:
+            _nlm_client.close()
+        except Exception:
+            pass
     logger.info("NLM Bridge shutting down")
 
 
@@ -126,15 +154,26 @@ def _verify_hmac(body: bytes, signature: str | None) -> None:
 async def _query_via_library(
     notebook_id: str, question: str, timeout: int
 ) -> dict[str, Any]:
-    """Query NLM using the Python library."""
+    """Query NLM using the persistent singleton client (warm session, ~5s)."""
+    if _nlm_client is None:
+        raise HTTPException(status_code=503, detail="NLM client not initialized — run 'nlm login'")
+
     result = await asyncio.wait_for(
         asyncio.to_thread(
-            notebooklm_tools.notebook_query,  # type: ignore[union-attr]
+            _nlm_client.query,
             notebook_id,
             question,
+            None,   # source_ids
+            None,   # conversation_id
+            timeout,
         ),
-        timeout=timeout,
+        timeout=timeout + 5,  # Extra buffer for thread scheduling
     )
+    if result is None:
+        return {"answer": "", "citations": []}
+    # Unwrap if needed
+    if isinstance(result, dict) and "value" in result:
+        result = result["value"]
     return result if isinstance(result, dict) else {"answer": str(result), "citations": []}
 
 
@@ -225,7 +264,14 @@ async def nlm_query(
     processing_time = round(time.monotonic() - t0, 2)
 
     answer = raw.get("answer", "")
-    citations = raw.get("citations", [])
+    raw_citations = raw.get("citations", raw.get("sources_used", []))
+    # Normalize citations: NLM client may return dict or list
+    if isinstance(raw_citations, dict):
+        citations = [{"source": v} if isinstance(v, str) else v for v in raw_citations.values()]
+    elif isinstance(raw_citations, list):
+        citations = raw_citations
+    else:
+        citations = []
     confidence = raw.get("confidence", 0.5 if answer else 0.0)
 
     logger.info(
