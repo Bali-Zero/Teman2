@@ -72,6 +72,7 @@ class OrchestratorCore:
         faq_cache: Any = None,  # NotebookLMCacheService
         db_pool: Any = None,
         kg_langgraph_orchestrator: Any = None,  # KGLangGraphOrchestrator
+        nlm_enrichment_service: Any = None,  # NLMEnrichmentService
     ):
         """
         Inizializza OrchestratorCore.
@@ -89,6 +90,7 @@ class OrchestratorCore:
             faq_cache: Optional NotebookLMCacheService per FAQ caching (exact match)
             db_pool: Optional database pool
             kg_langgraph_orchestrator: Optional KGLangGraphOrchestrator (Phase 3)
+            nlm_enrichment_service: Optional NLMEnrichmentService for CAUTIOUS-zone enrichment
         """
         self.llm_gateway = llm_gateway
         self.reasoning_engine = reasoning_engine
@@ -99,6 +101,7 @@ class OrchestratorCore:
         self.semantic_cache = semantic_cache
         self.faq_cache = faq_cache  # FAQ cache (exact match, < 1ms)
         self.kg_langgraph_orchestrator = kg_langgraph_orchestrator  # Phase 3: LangGraph KG
+        self.nlm_enrichment_service = nlm_enrichment_service  # NLM CAUTIOUS-zone enrichment
         self.db_pool = db_pool  # Store for later use
 
         # Initialize specialized managers
