@@ -36,7 +36,7 @@ import { RefreshCw } from "lucide-react";
 const CATEGORY_COLOR: Record<string, string> = {
   visas: "#4a8ec4",
   business: "#5cb88a",
-  "taxes": "#b89a40",
+  taxes: "#b89a40",
   property: "#9880d8",
   living: "#d4845a",
   emerging_trends: "#4ab8c4",
@@ -253,15 +253,17 @@ function PipelineRow({ p }: { p: PraticaPreview }) {
 function IntelRow({ article }: { article: IntelArticle }) {
   const color = getCategoryColor(article.category);
   const catLabel = article.category.replace(/[-_]/g, " ").toUpperCase();
-  const href = `/${article.category}/${article.slug}`;
+  const href = `https://balizero.com/${article.category}/${article.slug}`;
   const date = new Date(article.publishedAt).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
   });
 
   return (
-    <Link
+    <a
       href={href}
+      target="_blank"
+      rel="noopener noreferrer"
       className="group flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors"
     >
       {/* Color stripe */}
@@ -285,7 +287,7 @@ function IntelRow({ article }: { article: IntelArticle }) {
           {article.title}
         </p>
       </div>
-    </Link>
+    </a>
   );
 }
 
