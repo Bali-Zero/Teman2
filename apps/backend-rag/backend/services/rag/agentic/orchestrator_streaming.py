@@ -222,6 +222,8 @@ class OrchestratorStreamingManager:
         self,
         execution_time: float,
         route_used: str,
+        evidence_score: float | None = None,
+        confidence_zone: str | None = None,
     ) -> dict[str, Any]:
         """
         Crea done event per stream completion.
@@ -229,17 +231,21 @@ class OrchestratorStreamingManager:
         Args:
             execution_time: Durata esecuzione
             route_used: Route usata per processing
+            evidence_score: Optional evidence score from RAG pipeline
+            confidence_zone: Optional confidence zone (ABSTAIN/CAUTIOUS/NORMAL)
 
         Returns:
             Done event dict
         """
-        return {
-            "type": "done",
-            "data": {
-                "execution_time": execution_time,
-                "route_used": route_used,
-            },
+        data: dict[str, Any] = {
+            "execution_time": round(execution_time, 2),
+            "route_used": route_used,
         }
+        if evidence_score is not None:
+            data["evidence_score"] = round(evidence_score, 3)
+        if confidence_zone is not None:
+            data["confidence_zone"] = confidence_zone
+        return {"type": "done", "data": data}
 
     def create_metadata_event(self, metadata: dict[str, Any]) -> dict[str, Any]:
         """
