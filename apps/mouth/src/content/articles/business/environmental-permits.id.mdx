@@ -1,10 +1,11 @@
 ---
 aiGenerated: true
 aiOptimization:
-  answerSnippet: 'Environmental permits depend on business impact: AMDAL for major
+  answerSnippet:
+    "Environmental permits depend on business impact: AMDAL for major
     projects (factories, hotels 100+ rooms), UKL-UPL for medium impact businesses,
     SPPL for low impact. Your KBLI code risk level and project scale determine which
-    applies. Processing: 3-6 months for AMDAL.'
+    applies. Processing: 3-6 months for AMDAL."
   entityMentions:
     - name: KLHK (Ministry of Environment and Forestry)
       sameAs: https://www.menlhk.go.id
@@ -25,22 +26,27 @@ contentStructure:
   hasHowTo: true
   hasTable: true
 coverImage: /static/insights/business/environmental-permits.jpg
-description: Environmental permit requirements in Indonesia. AMDAL, UKL-UPL, SPPL
+description:
+  Environmental permit requirements in Indonesia. AMDAL, UKL-UPL, SPPL
   explained for businesses and investors.
 difficulty: intermediate
-excerpt: Most businesses need environmental approval in Indonesia. Here's what you
+excerpt:
+  Most businesses need environmental approval in Indonesia. Here's what you
   need to know.
 faq:
-  - answer: AMDAL is a full Environmental Impact Assessment for major projects (IDR
+  - answer:
+      AMDAL is a full Environmental Impact Assessment for major projects (IDR
       50-200M, 3-6 months). UKL-UPL is a lighter environmental management plan for medium
       projects (IDR 10-30M, 1-2 months). SPPL is a simple environmental declaration
       for low-impact businesses (free, instant through OSS).
     question: What is the difference between AMDAL, UKL-UPL, and SPPL?
-  - answer: Most restaurants need SPPL (low impact) or UKL-UPL (if producing significant
+  - answer:
+      Most restaurants need SPPL (low impact) or UKL-UPL (if producing significant
       waste). Large restaurants or food factories need full AMDAL. The requirement is
       determined by your OSS risk classification based on KBLI code and business scale.
     question: Does my restaurant need an environmental permit?
-  - answer: For SPPL businesses, yes — it's issued instantly through OSS. For UKL-UPL
+  - answer:
+      For SPPL businesses, yes — it's issued instantly through OSS. For UKL-UPL
       and AMDAL, you cannot begin construction or operations until the environmental
       document is approved. Operating without proper environmental clearance carries
       heavy penalties.
@@ -53,35 +59,37 @@ kbSources:
   - collection: business_docs
     documentsUsed: 14
 lang: id
-lastKbSync: '2026-01-15T10:00:00Z'
+lastKbSync: "2026-01-15T10:00:00Z"
 ogImage: /static/insights/business/environmental-permits.jpg
 ogType: article
-publishedAt: '2026-01-15'
+publishedAt: "2026-01-15"
 readingTime: 10
 relatedArticles:
   - business-licenses-overview
   - pt-pma-registration-guide
   - manufacturing-business-guide
 seo:
-  description: Which environmental permit does your business need in Indonesia? AMDAL,
+  description:
+    Which environmental permit does your business need in Indonesia? AMDAL,
     UKL-UPL, and SPPL requirements, thresholds, and approval process explained.
   keywords:
     - environmental permit indonesia
     - AMDAL
     - UKL-UPL
   title: Environmental Permits Indonesia 2026 | AMDAL UKL-UPL Guide
-seoDescription: 'Environmental permits for Indonesia businesses: AMDAL, UKL-UPL, and
-  SPPL explained. Which permit your business needs based on risk classification 2026.'
+seoDescription:
+  "Environmental permits for Indonesia businesses: AMDAL, UKL-UPL, and
+  SPPL explained. Which permit your business needs based on risk classification 2026."
 seoTitle: Environmental Permits Indonesia 2026 | AMDAL Guide
 slug: environmental-permits
 tableOfContents: true
 tags: []
-title: 'Environmental Permits Indonesia 2026: Business Guide'
-translatedAt: '2026-03-08'
+title: "Environmental Permits Indonesia 2026: Business Guide"
+translatedAt: "2026-03-08"
 translatedBy: Gemma3:12b + Gemini 3.1 Pro
 translatedFrom: en
 twitterCard: summary_large_image
-updatedAt: '2026-01-15'
+updatedAt: "2026-01-15"
 ---
 
 import {
@@ -90,7 +98,7 @@ import {
   Checklist,
   InfoCard,
   AskZantara,
-} from '@/components/insights/interactive';
+} from "@/components/insights/interactive";
 
 # Izin Lingkungan Indonesia 2026: Panduan Bisnis
 
@@ -103,37 +111,37 @@ Kepatuhan lingkungan bersifat wajib bagi sebagian besar pelaku usaha di Indonesi
   description="Persetujuan mana yang bisnis Anda butuhkan?"
   nodes={[
     {
-      id: 'start',
-      question: 'Apa kategori kegiatan usaha Anda?',
+      id: "start",
+      question: "Apa kategori kegiatan usaha Anda?",
       options: [
-        { label: 'Industri besar/dampak signifikan', next: 'amdal' },
-        { label: 'Usaha menengah/dampak sedang', next: 'ukl' },
-        { label: 'Usaha kecil/dampak rendah', next: 'sppl' },
-        { label: 'Hanya kantor/ritel', next: 'minimal' },
+        { label: "Industri besar/dampak signifikan", next: "amdal" },
+        { label: "Usaha menengah/dampak sedang", next: "ukl" },
+        { label: "Usaha kecil/dampak rendah", next: "sppl" },
+        { label: "Hanya kantor/ritel", next: "minimal" },
       ],
     },
     {
-      id: 'amdal',
+      id: "amdal",
       result: {
-        title: 'Wajib AMDAL',
+        title: "Wajib AMDAL",
         description:
-          'Analisis Mengenai Dampak Lingkungan (AMDAL) diperlukan. Ini adalah proses perizinan paling komprehensif untuk aktivitas berdampak tinggi seperti manufaktur skala besar, pertambangan, atau pengembangan properti utama.',
+          "Analisis Mengenai Dampak Lingkungan (AMDAL) diperlukan. Ini adalah proses perizinan paling komprehensif untuk aktivitas berdampak tinggi seperti manufaktur skala besar, pertambangan, atau pengembangan properti utama.",
       },
     },
     {
-      id: 'ukl',
+      id: "ukl",
       result: {
-        title: 'Wajib UKL-UPL',
+        title: "Wajib UKL-UPL",
         description:
-          'Upaya Pengelolaan Lingkungan dan Upaya Pemantauan Lingkungan (UKL-UPL) diperlukan. Berlaku untuk bisnis berdampak sedang seperti restoran, pabrik kecil, atau proyek konstruksi menengah.',
+          "Upaya Pengelolaan Lingkungan dan Upaya Pemantauan Lingkungan (UKL-UPL) diperlukan. Berlaku untuk bisnis berdampak sedang seperti restoran, pabrik kecil, atau proyek konstruksi menengah.",
       },
     },
     {
-      id: 'sppl',
+      id: "sppl",
       result: {
-        title: 'SPPL Mencukupi',
+        title: "SPPL Mencukupi",
         description:
-          'Surat Pernyataan Kesanggupan Pengelolaan dan Pemantauan Lingkungan Hidup (SPPL) sudah mencukupi. Ini merupakan komitmen pengelolaan lingkungan yang disederhanakan untuk usaha skala mikro dan kecil dengan dampak lingkungan rendah.',
+          "Surat Pernyataan Kesanggupan Pengelolaan dan Pemantauan Lingkungan Hidup (SPPL) sudah mencukupi. Ini merupakan komitmen pengelolaan lingkungan yang disederhanakan untuk usaha skala mikro dan kecil dengan dampak lingkungan rendah.",
       },
     },
   ]}
