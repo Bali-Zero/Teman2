@@ -1142,6 +1142,43 @@ async def initialize_services(app: FastAPI) -> None:
         logger.warning(f"⚠️ LangGraph agent service injection failed: {e}")
         logger.info("Agent workflow will continue with fallback behavior")
 
+    # 13. NLM Enrichment Service (feature-flagged, non-critical)
+    nlm_enrichment_enabled = os.getenv("ENABLE_NLM_ENRICHMENT", "false").lower() in (
+        "true",
+        "1",
+    )
+    if nlm_enrichment_enabled:
+        try:
+            from backend.services.oracle.nlm_enrichment_service import (
+                NLMEnrichmentService,
+            )
+
+            nlm_service = NLMEnrichmentService(
+                bridge_url=os.getenv(
+                    "NLM_BRIDGE_URL", "http://100.107.22.111:18790"
+                ),
+                bridge_secret=os.getenv("NLM_BRIDGE_SECRET", ""),
+            )
+            app.state.nlm_enrichment_service = nlm_service
+            service_registry.register(
+                "nlm_enrichment", ServiceStatus.HEALTHY, critical=False
+            )
+            logger.info(
+                "✅ NLM Enrichment Service initialized (ENABLE_NLM_ENRICHMENT=true)"
+            )
+        except Exception as e:
+            app.state.nlm_enrichment_service = None
+            service_registry.register(
+                "nlm_enrichment",
+                ServiceStatus.DEGRADED,
+                error=str(e),
+                critical=False,
+            )
+            logger.warning(f"⚠️ NLM Enrichment Service initialization failed: {e}")
+    else:
+        app.state.nlm_enrichment_service = None
+        logger.info("⚠️ NLM Enrichment Service DISABLED (set ENABLE_NLM_ENRICHMENT=true to enable)")
+
     logger.info("DEBUG: Setting services_initialized to True")
     app.state.services_initialized = True
     logger.info("✅ ZANTARA Services Initialization Complete.")

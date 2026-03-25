@@ -20,6 +20,7 @@ Architecture:
 import logging
 import os
 import time
+import uuid
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -101,6 +102,7 @@ class AgenticRAGOrchestrator:
         clarification_service: ClarificationService = None,
         entity_extractor: EntityExtractionService = None,
         llm_gateway: LLMGateway = None,
+        nlm_enrichment_service: Any = None,
     ):
         """Initialize the AgenticRAGOrchestrator.
 
@@ -117,6 +119,7 @@ class AgenticRAGOrchestrator:
             clarification_service: Optional service for resolving ambiguous queries
             entity_extractor: Optional EntityExtractionService instance
             llm_gateway: Optional LLMGateway instance
+            nlm_enrichment_service: Optional NLM enrichment service for CAUTIOUS-zone queries
         Note:
             - Initializes Gemini models (Pro, Flash, Flash-Lite) for cascade fallback
             - Lazy loads OpenRouter client and MemoryOrchestrator on first use
@@ -131,6 +134,7 @@ class AgenticRAGOrchestrator:
         self.faq_cache = faq_cache  # FAQ cache (exact match, reduces API costs)
         self.retriever = retriever
         self.clarification_service = clarification_service
+        self.nlm_enrichment_service = nlm_enrichment_service
         self.llm_gateway = llm_gateway or LLMGateway()  # Initialize LLMGateway here
 
         # Convert tools to Gemini function declarations for native calling
@@ -268,6 +272,7 @@ class AgenticRAGOrchestrator:
             faq_cache=self.faq_cache,  # FAQ cache (exact match, < 1ms)
             db_pool=db_pool,
             kg_langgraph_orchestrator=self.kg_langgraph_orchestrator,
+            nlm_enrichment_service=self.nlm_enrichment_service,
         )
 
         # Initialize streaming components

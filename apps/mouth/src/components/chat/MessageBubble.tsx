@@ -33,6 +33,8 @@ import { Message } from "@/types";
 import { PricingTable } from "./PricingTable";
 import { PricingResponse } from "@/types/pricing";
 import { TIMEOUTS, ANIMATION } from "@/constants";
+import { TeamVerificationBadge } from "./TeamVerificationBadge";
+import { NLMCitationPanel } from "./NLMCitationPanel";
 
 interface MessageBubbleProps {
   message: Message;
@@ -166,6 +168,8 @@ const EmotionalBadge = ({ emotion }: { emotion: string }) => {
   );
 };
 
+const nlmUiEnabled = process.env.NEXT_PUBLIC_ENABLE_NLM_UI !== "false";
+
 function MessageBubbleComponent({
   message,
   userAvatar,
@@ -184,6 +188,7 @@ function MessageBubbleComponent({
   const isUser = role === "user";
   const [copied, setCopied] = useState(false);
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
+  const [showCitations, setShowCitations] = useState(false);
   const copyTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Typewriter Effect State
@@ -507,6 +512,31 @@ function MessageBubbleComponent({
             {!isUser && verification_score !== undefined && (
               <VerificationBadge score={verification_score} />
             )}
+
+            {/* NLM Team Verification Badge */}
+            {nlmUiEnabled &&
+              !isUser &&
+              message.metadata?.nlm_status &&
+              message.metadata.nlm_status !== "not_needed" && (
+                <TeamVerificationBadge
+                  status={message.metadata.nlm_status}
+                  domainLabel={message.metadata.nlm_domain_label}
+                  onToggleCitations={() => setShowCitations((prev) => !prev)}
+                />
+              )}
+
+            {/* NLM Citation Panel */}
+            {nlmUiEnabled &&
+              showCitations &&
+              message.metadata?.nlm_citations &&
+              message.metadata.nlm_citations.length > 0 && (
+                <NLMCitationPanel
+                  citations={message.metadata.nlm_citations}
+                  domainLabel={message.metadata.nlm_domain_label ?? ""}
+                  expanded={showCitations}
+                  onToggle={() => setShowCitations(false)}
+                />
+              )}
 
             {/* Pricing Table */}
             {!isUser && pricingData && <PricingTable data={pricingData} />}

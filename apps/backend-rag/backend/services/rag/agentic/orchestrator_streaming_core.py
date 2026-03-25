@@ -211,6 +211,45 @@ class OrchestratorStreamingCore:
         # Show reasoning indicator before ReAct loop
         yield thinking_service.create_thinking_event(ThinkingPhase.REASONING)
 
+        # ==================== NLM SPECULATIVE FIRE ====================
+        # Fire-and-forget NLM query in parallel with ReAct loop.
+        # Result is consumed later only if the evidence score lands in
+        # the CAUTIOUS zone (0.15–0.60 without trusted tools).
+        nlm_task: asyncio.Task | None = None
+        nlm_cached_result: dict | None = None
+        nlm_domain: dict | None = None
+
+        if self.core.nlm_enrichment_service:
+            from backend.services.oracle.nlm_notebook_registry import resolve_notebook
+
+            nlm_match = resolve_notebook(query)
+            if nlm_match:
+                nlm_domain = nlm_match
+                # Check NLM cache first (scoped by notebook_id)
+                if self.core.faq_cache:
+                    try:
+                        nlm_cached_result = await self.core.faq_cache.get(
+                            query, notebook_id=nlm_match["notebook_id"]
+                        )
+                    except Exception:
+                        pass
+                # Launch async NLM query only on cache miss
+                if not nlm_cached_result:
+                    nlm_task = asyncio.create_task(
+                        self.core.nlm_enrichment_service.query(
+                            nlm_match["notebook_id"], query
+                        )
+                    )
+                # Inform client that NLM is being consulted
+                yield {
+                    "type": "nlm_status",
+                    "data": {
+                        "status": "consulting",
+                        "domain_label": nlm_match["label"],
+                    },
+                    "timestamp": time.time(),
+                }
+
         try:
             # Stream ReAct loop events
             async for raw_event in self.core.reasoning_engine.execute_react_loop_stream(
@@ -262,6 +301,71 @@ class OrchestratorStreamingCore:
                 }
                 logger.info(f"🔗 [Stream] Workflow metadata sent: {langgraph_workflow.get('type')}")
 
+            # ==================== NLM LATE MERGE ====================
+            # Decide whether to consume the speculative NLM result based
+            # on evidence score and trusted-tool usage from the ReAct loop.
+            nlm_result: dict | None = None
+            evidence_score = getattr(state, "evidence_score", None)
+            trusted = getattr(state, "trusted_tools_used", True)
+
+            # Determine confidence zone
+            confidence_zone: str = "confident"
+            if evidence_score is not None:
+                if evidence_score < 0.15:
+                    confidence_zone = "abstain"
+                elif evidence_score <= 0.60 and not trusted:
+                    confidence_zone = "cautious"
+
+            cautious = confidence_zone == "cautious"
+
+            if cautious and (nlm_cached_result or nlm_task):
+                try:
+                    if nlm_cached_result:
+                        nlm_result = nlm_cached_result
+                    elif nlm_task:
+                        nlm_result = await asyncio.wait_for(nlm_task, timeout=3.0)
+                except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
+                    logger.warning("NLM enrichment skipped (timeout/cancel): %s", exc)
+                    nlm_result = None
+                except Exception as exc:
+                    logger.warning("NLM enrichment skipped (error): %s", exc)
+                    nlm_result = None
+            elif nlm_task and not nlm_task.done():
+                # Not in CAUTIOUS zone — cancel the speculative task
+                nlm_task.cancel()
+                try:
+                    await nlm_task
+                except (asyncio.CancelledError, Exception):
+                    pass
+
+            if nlm_result and nlm_domain:
+                yield {
+                    "type": "nlm_enrichment",
+                    "data": {
+                        "domain": nlm_domain.get("domain", ""),
+                        "domain_label": nlm_domain.get("label", ""),
+                        "citations": nlm_result.get("citations", []),
+                        "summary": nlm_result.get("answer", ""),
+                    },
+                    "timestamp": time.time(),
+                }
+                logger.info(
+                    "NLM enrichment merged for domain=%s (zone=%s)",
+                    nlm_domain.get("domain"),
+                    confidence_zone,
+                )
+                # Cache the result for future queries
+                if self.core.faq_cache and not nlm_cached_result:
+                    try:
+                        await self.core.faq_cache.set(
+                            query,
+                            nlm_result.get("answer", ""),
+                            metadata=nlm_result,
+                            notebook_id=nlm_domain.get("notebook_id", ""),
+                        )
+                    except Exception:
+                        pass
+
             # 6. Yield done event with metrics
             execution_time = time.time() - start_time
             route_used = "agentic" if tool_execution_counter["count"] > 0 else "direct"
@@ -269,6 +373,8 @@ class OrchestratorStreamingCore:
             yield self.streaming_manager.create_done_event(
                 execution_time=execution_time,
                 route_used=route_used,
+                evidence_score=evidence_score,
+                confidence_zone=confidence_zone,
             )
 
             # 7. Log to query_analytics (fire-and-forget)
@@ -303,6 +409,14 @@ class OrchestratorStreamingCore:
                 message=str(e),
                 correlation_id=correlation_id,
             )
+        finally:
+            # Ensure speculative NLM task is cleaned up on ANY exit
+            if nlm_task is not None and not nlm_task.done():
+                nlm_task.cancel()
+                try:
+                    await nlm_task
+                except (asyncio.CancelledError, Exception):
+                    pass
 
     async def _stream_core_result(
         self,

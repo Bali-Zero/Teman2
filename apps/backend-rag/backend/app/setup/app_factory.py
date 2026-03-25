@@ -232,7 +232,8 @@ async def lifespan(app: FastAPI):
         "jurnal_service",
         "github_publisher",
         "scraper",
-        "enrichment_service"
+        "enrichment_service",
+        "nlm_enrichment_service",
     ]
 
     for attr_name in services_to_close:
