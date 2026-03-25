@@ -5,7 +5,7 @@
 
 <!-- DOCSYNC:QUICK_NUMBERS_START -->
 
-**Quick Numbers:** 89 routers · 251 services · 418 tests · 131 MCP tools · 10 Qdrant collections (93,283 docs) · 6 channels · 56K KG nodes
+**Quick Numbers:** 89 routers · 251 services · 419 tests · 131 MCP tools · 10 Qdrant collections (93,283 docs) · 6 channels · 56K KG nodes
 
 <!-- DOCSYNC:QUICK_NUMBERS_END -->
 
