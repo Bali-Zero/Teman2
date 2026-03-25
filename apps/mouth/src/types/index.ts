@@ -75,6 +75,8 @@ export interface Message {
     followup_questions?: string[];
     // Generated images from image generation tool
     generated_image?: string;
+    // Allow additional metadata fields (e.g. NLM enrichment, evidence_score)
+    [key: string]: unknown;
   };
 }
 
