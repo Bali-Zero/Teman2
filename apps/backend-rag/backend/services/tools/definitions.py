@@ -104,6 +104,8 @@ class AgentState:
     current_step: int = 0
     skip_rag: bool = False  # Skip RAG evidence requirements for general tasks (translation, etc.)
     intent_type: str = "simple"  # Intent category from classifier (business_complex, etc.)
+    evidence_score: float | None = None  # Confidence score from evidence evaluation (0.0–1.0)
+    trusted_tools_used: bool = False  # Whether trusted tools (PricingTool, DB) were invoked
 
 
 class BaseTool(ABC):
@@ -147,7 +149,7 @@ class BaseTool(ABC):
         Example:
             >>> tool = VectorSearchTool(retriever)
             >>> declaration = tool.to_gemini_function_declaration()
-            >>> print(declaration)
+            >>> declaration  # noqa: T201
             {
                 "name": "vector_search",
                 "description": "Search the legal document knowledge base...",

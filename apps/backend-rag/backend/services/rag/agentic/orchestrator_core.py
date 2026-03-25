@@ -656,34 +656,6 @@ class OrchestratorCore:
             session_id=session_id,
         )
 
-        # 1b. NLM Speculative Fire — launch in parallel with the rest of the pipeline.
-        # The result is consumed only if evidence lands in the CAUTIOUS zone (0.15–0.60).
-        nlm_task: asyncio.Task | None = None
-        nlm_cached_result: dict | None = None
-        nlm_domain: dict | None = None
-
-        if self.nlm_enrichment_service:
-            from backend.services.oracle.nlm_notebook_registry import resolve_notebook
-
-            nlm_match = resolve_notebook(query)
-            if nlm_match:
-                nlm_domain = nlm_match
-                # Check NLM cache first (scoped by notebook_id)
-                if self.faq_cache:
-                    try:
-                        nlm_cached_result = await self.faq_cache.get(
-                            query, notebook_id=nlm_match["notebook_id"]
-                        )
-                    except Exception:
-                        pass
-                # Launch async NLM query only on cache miss
-                if not nlm_cached_result:
-                    nlm_task = asyncio.create_task(
-                        self.nlm_enrichment_service.query(
-                            nlm_match["notebook_id"], query
-                        )
-                    )
-
         # 2. Check gates (security, greeting, etc.)
         gate_result = self.query_gates.run_all_gates(
             query=query,
@@ -733,6 +705,35 @@ class OrchestratorCore:
                     )
             except Exception as e:
                 logger.warning(f"⚠️ [Phase 6] Multi-agent failed, falling back to ReAct: {e}")
+
+        # 3c. NLM Speculative Fire — launch in parallel with the rest of the pipeline.
+        # Placed AFTER all early-return gates/cache checks to avoid task leaks.
+        # The result is consumed only if evidence lands in the CAUTIOUS zone (0.15–0.60).
+        nlm_task: asyncio.Task | None = None
+        nlm_cached_result: dict | None = None
+        nlm_domain: dict | None = None
+
+        if self.nlm_enrichment_service:
+            from backend.services.oracle.nlm_notebook_registry import resolve_notebook
+
+            nlm_match = resolve_notebook(query)
+            if nlm_match:
+                nlm_domain = nlm_match
+                # Check NLM cache first (scoped by notebook_id)
+                if self.faq_cache:
+                    try:
+                        nlm_cached_result = await self.faq_cache.get(
+                            query, notebook_id=nlm_match["notebook_id"]
+                        )
+                    except Exception:
+                        pass
+                # Launch async NLM query only on cache miss
+                if not nlm_cached_result:
+                    nlm_task = asyncio.create_task(
+                        self.nlm_enrichment_service.query(
+                            nlm_match["notebook_id"], query
+                        )
+                    )
 
         # 4. Route query (intent classification + tier selection)
         model_tier, deep_think_mode, state = await self.routing_manager.route_query(query)
