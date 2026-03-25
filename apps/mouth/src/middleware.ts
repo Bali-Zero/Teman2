@@ -60,6 +60,37 @@ const WELCOME_BOTS =
 const SCRAPER_SIGNATURES =
   /python-requests|scrapy|curl\/|wget\/|Go-http-client|node-fetch|axios\/\d|PhantomJS|HeadlessChrome|Selenium|Nightmare|puppeteer/i;
 
+/**
+ * Detect RSC/prefetch requests that should NOT be cross-origin redirected.
+ * Next.js Link prefetches trigger RSC fetches; redirecting these cross-origin
+ * causes CORS errors that flood the console and slow down the page.
+ */
+function isRSCOrPrefetch(request: NextRequest): boolean {
+  return (
+    request.nextUrl.searchParams.has("_rsc") ||
+    request.headers.get("RSC") === "1" ||
+    request.headers.get("Next-Router-Prefetch") === "1" ||
+    request.headers.get("Purpose") === "prefetch"
+  );
+}
+
+/**
+ * Redirect to a cross-origin URL, but return 204 for RSC/prefetch requests
+ * to prevent CORS errors in the browser console.
+ */
+function crossOriginRedirect(
+  request: NextRequest,
+  targetUrl: URL,
+  status: 301 | 302 = 301,
+): NextResponse {
+  if (isRSCOrPrefetch(request)) {
+    return new NextResponse(null, { status: 204 });
+  }
+  const redirectResponse = NextResponse.redirect(targetUrl, status);
+  redirectResponse.headers.set("x-pathname", request.nextUrl.pathname);
+  return redirectResponse;
+}
+
 function classifyRequest(
   request: NextRequest,
 ): "human" | "welcome-bot" | "suspicious" {
@@ -172,12 +203,10 @@ export function middleware(request: NextRequest) {
       return redirectResponse;
     }
 
-    // Redirect non-portal routes to public domain
+    // Redirect non-portal routes to public domain (with RSC/prefetch protection)
     const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
     publicUrl.search = request.nextUrl.search;
-    const redirectResponse = NextResponse.redirect(publicUrl, 301);
-    redirectResponse.headers.set("x-pathname", pathname);
-    return redirectResponse;
+    return crossOriginRedirect(request, publicUrl);
   }
 
   // === ZANTARA DOMAIN (zantara.balizero.com) ===
@@ -330,12 +359,10 @@ export function middleware(request: NextRequest) {
     const firstSegment = pathname.split("/")[1];
 
     if (PUBLIC_CATEGORIES.includes(firstSegment)) {
-      // Redirect category pages to public domain
+      // Redirect category pages to public domain (with RSC/prefetch protection)
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
-      const redirectResponse = NextResponse.redirect(publicUrl, 301);
-      redirectResponse.headers.set("x-pathname", pathname);
-      return redirectResponse;
+      return crossOriginRedirect(request, publicUrl);
     }
 
     // Redirect /services to public domain (except API routes)
@@ -345,30 +372,14 @@ export function middleware(request: NextRequest) {
     ) {
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
-      const redirectResponse = NextResponse.redirect(publicUrl, 301);
-      redirectResponse.headers.set("x-pathname", pathname);
-      return redirectResponse;
+      return crossOriginRedirect(request, publicUrl);
     }
 
-    // Redirect /contact and /team to public domain
-    // For RSC requests (_rsc param or RSC header), return 404 instead of cross-origin
-    // redirect to prevent CORS errors in the browser console
+    // Redirect /contact and /team to public domain (with RSC/prefetch protection)
     if (pathname === "/contact" || pathname === "/team") {
-      const isRSC =
-        request.nextUrl.searchParams.has("_rsc") ||
-        request.headers.get("RSC") === "1" ||
-        request.headers.get("Next-Router-Prefetch") === "1" ||
-        request.headers.get("Purpose") === "prefetch";
-      if (isRSC) {
-        // RSC/prefetch: return 204 to silently skip cross-origin redirect
-        // This prevents CORS errors from Next.js client-side navigation prefetches
-        return new NextResponse(null, { status: 204 });
-      }
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
-      const redirectResponse = NextResponse.redirect(publicUrl, 301);
-      redirectResponse.headers.set("x-pathname", pathname);
-      return redirectResponse;
+      return crossOriginRedirect(request, publicUrl);
     }
 
     // Allow all other routes on app domain
