@@ -40,7 +40,7 @@ nuzantara/
 
 | Layer               | Technology                                                          |
 | ------------------- | ------------------------------------------------------------------- |
-| **Backend**         | Python 3.11, FastAPI, 89 routers, 250 services                      |
+| **Backend**         | Python 3.11, FastAPI, 89 routers, 251 services                      |
 | **Frontend**        | Next.js, TypeScript, Tailwind CSS                                   |
 | **Databases**       | PostgreSQL (relational), Qdrant v1.17.0 (vector), Redis (cache)     |
 | **Infrastructure**  | Fly.io (backend, Singapore), Vercel (frontend)                      |
