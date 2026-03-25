@@ -999,15 +999,16 @@ export class CrmApi {
       company_phone: string;
       company_email: string;
       status: string;
-    }>
+    }>,
   ): Promise<{ id: number; company_name: string; message: string }> {
-    return this.client.request<{ id: number; company_name: string; message: string }>(
-      `/api/crm/companies/${companyId}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      }
-    );
+    return this.client.request<{
+      id: number;
+      company_name: string;
+      message: string;
+    }>(`/api/crm/companies/${companyId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
   }
 
   /**

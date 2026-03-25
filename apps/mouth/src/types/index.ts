@@ -48,6 +48,16 @@ export type AgentStep =
         details?: Record<string, unknown>;
       };
       timestamp: Date;
+    }
+  | {
+      type: "nlm_status";
+      data: Record<string, unknown>;
+      timestamp: Date;
+    }
+  | {
+      type: "nlm_enrichment";
+      data: Record<string, unknown>;
+      timestamp: Date;
     };
 
 export interface Message {
@@ -75,6 +85,19 @@ export interface Message {
     followup_questions?: string[];
     // Generated images from image generation tool
     generated_image?: string;
+    // NLM Knowledge Fabric enrichment
+    nlm_status?: "consulting" | "verified" | "not_needed";
+    nlm_domain_label?: string;
+    nlm_citations?: Array<{
+      source_file: string;
+      section: string;
+      excerpt: string;
+      page?: number;
+    }>;
+    evidence_score?: number;
+    confidence_zone?: "abstain" | "cautious" | "confident";
+    // Allow additional metadata fields
+    [key: string]: unknown;
   };
 }
 

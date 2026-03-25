@@ -35,6 +35,9 @@ archives/kbli-feb2026/KBLI_2025_*.json
 # Shell scripts (not supported by Prettier)
 *.sh
 
+# macOS plist files (not supported by Prettier)
+*.plist
+
 # Mypy cache
 **/.mypy_cache/
 

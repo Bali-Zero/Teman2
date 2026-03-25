@@ -114,6 +114,7 @@ def create_agentic_rag(
     _web_search_client=None,
     semantic_cache: "SemanticCache" = None,
     clarification_service: "ClarificationService" = None,
+    nlm_enrichment_service: Any = None,
 ) -> AgenticRAGOrchestrator:
     """
     Factory function to create a fully configured AgenticRAGOrchestrator.
@@ -128,6 +129,7 @@ def create_agentic_rag(
         _web_search_client: Optional web search client (disabled by default)
         semantic_cache: Optional semantic cache for query results
         clarification_service: Optional service for resolving ambiguous queries
+        nlm_enrichment_service: Optional NLM enrichment service for CAUTIOUS-zone queries
 
     Returns:
         Configured AgenticRAGOrchestrator instance
@@ -174,6 +176,7 @@ def create_agentic_rag(
         semantic_cache=semantic_cache,
         retriever=retriever,
         clarification_service=clarification_service,
+        nlm_enrichment_service=nlm_enrichment_service,
     )
     logger.debug("create_agentic_rag: Orchestrator instantiated")
     return orchestrator
