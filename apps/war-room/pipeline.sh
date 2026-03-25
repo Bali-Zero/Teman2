@@ -7,7 +7,7 @@
 # Override env vars:
 #   CANVA_ROW=upper|lower   (default: upper)
 #   CANVA_PAGE=1|2|3        (default: 1)
-#   CANVA_DESIGN_ID=...     (default: DAHEME4mocU)
+#   CANVA_DESIGN_ID=...     (default: DAHE6lx1lf8)
 # ============================================================
 
 set -euo pipefail
@@ -73,7 +73,7 @@ T_START=$(date +%s)
 # ── Canva params (overridable) ───────────────────────────────
 CANVA_ROW="${CANVA_ROW:-upper}"
 CANVA_PAGE="${CANVA_PAGE:-1}"
-CANVA_DESIGN="${CANVA_DESIGN_ID:-DAHEME4mocU}"
+CANVA_DESIGN="${CANVA_DESIGN_ID:-DAHE6lx1lf8}"
 
 # ── Cleanup output precedente ────────────────────────────────
 mkdir -p "$OUTPUT/raw" "$OUTPUT/strategy" "$OUTPUT/images" \
@@ -114,13 +114,12 @@ print(json.dumps(intel, ensure_ascii=False, indent=2))
       SELECTED_TOPIC_FILE="$OUTPUT/strategy/selected_topic.json"
       mkdir -p "$OUTPUT/strategy"
 
-      TOPIC=$(run_phase "topic_selector" 240 \
+      run_phase "topic_selector" 240 \
         $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/00_topic_selector.py" \
         --intel  "$INTEL_LATEST" \
         --output "$SELECTED_TOPIC_FILE" \
-        2>>"$LOG_FILE" && \
-        python3 -c "import json; print(json.load(open('$SELECTED_TOPIC_FILE'))['topic'])" 2>/dev/null \
-        || echo "")
+        2>>"$LOG_FILE" 1>>"$LOG_FILE"
+      TOPIC=$(python3 -c "import json; print(json.load(open('$SELECTED_TOPIC_FILE'))['topic'])" 2>/dev/null || echo "")
 
       if [[ -n "$TOPIC" ]]; then
         TOPIC_ANGLE=$(python3 -c "import json; print(json.load(open('$SELECTED_TOPIC_FILE')).get('angle',''))" 2>/dev/null || echo "")
@@ -158,19 +157,48 @@ log "📌 Topic: $TOPIC"
 # FASE 1 — CHATGPT RESEARCH
 # ══════════════════════════════════════════════════════════
 log ""
-log "━━━ FASE 1: CHATGPT RESEARCH (T+00:00) ━━━"
+log "━━━ FASE 1: RESEARCH (ChatGPT + Exa + Gemini parallelo) (T+00:00) ━━━"
 
 if ! $DRY_RUN; then
+  # Launch all 3 researchers in parallel
   run_phase "chatgpt_researcher" 600 \
     $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/01_chatgpt_researcher.py" \
     --topic "$TOPIC" \
     --output "$OUTPUT/raw/chatgpt_dump.json" \
     --sentiment-output "$OUTPUT/raw/social_dump.json" \
-    || log "⚠️  ChatGPT research fallito — continuo con intel pre-seed"
+    &
+  CHATGPT_PID=$!
+
+  run_phase "exa_researcher" 300 \
+    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/09_exa_researcher.py" \
+    --topic "$TOPIC" \
+    --output "$OUTPUT/raw/exa_dump.json" \
+    &
+  EXA_PID=$!
+
+  run_phase "gemini_researcher" 240 \
+    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/02_gemini_researcher.py" \
+    --topic "$TOPIC" \
+    --output "$OUTPUT/raw/gemini_dump.json" \
+    &
+  GEMINI_PID=$!
+
+  # Wait for all (non-blocking failures)
+  wait $CHATGPT_PID 2>/dev/null || log "⚠️  ChatGPT research fallito"
+  wait $EXA_PID 2>/dev/null || log "⚠️  Exa research fallito"
+  wait $GEMINI_PID 2>/dev/null || log "⚠️  Gemini research fallito"
 
   if [[ -f "$OUTPUT/raw/chatgpt_dump.json" ]]; then
-    CHATGPT_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/chatgpt_dump.json')); print(d.get('count', 0))" 2>/dev/null || echo "?")
-    log "✅ ChatGPT: $CHATGPT_COUNT facts+sentiment"
+    CHATGPT_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/chatgpt_dump.json')); print(d.get('count', 0))" 2>/dev/null || echo "0")
+    log "✅ ChatGPT: $CHATGPT_COUNT facts"
+  fi
+  if [[ -f "$OUTPUT/raw/exa_dump.json" ]]; then
+    EXA_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/exa_dump.json')); print(len(d.get('facts', d.get('results', []))))" 2>/dev/null || echo "0")
+    log "✅ Exa: $EXA_COUNT facts"
+  fi
+  if [[ -f "$OUTPUT/raw/gemini_dump.json" ]]; then
+    GEMINI_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/gemini_dump.json')); print(d.get('count', 0))" 2>/dev/null || echo "0")
+    log "✅ Gemini: $GEMINI_COUNT legal facts"
   fi
 fi
 
@@ -187,6 +215,8 @@ sources_used = []
 
 for name, path in [
     ('chatgpt', output_raw / 'chatgpt_dump.json'),
+    ('exa',     output_raw / 'exa_dump.json'),
+    ('gemini',  output_raw / 'gemini_dump.json'),
     ('intel',   output_raw / 'intel_preseed.json'),
 ]:
     if not path.exists():
@@ -317,7 +347,7 @@ fi
 
 # ══════════════════════════════════════════════════════════
 # FASE 4 — CANVA CAROUSEL BUILDER
-# Bridge: claude -p → MCP Canva → design DAHEME4mocU
+# Bridge: claude -p → MCP Canva → design DAHE6lx1lf8
 # ══════════════════════════════════════════════════════════
 log ""
 log "━━━ FASE 4: CANVA CAROUSEL (T+07:00) ━━━"
