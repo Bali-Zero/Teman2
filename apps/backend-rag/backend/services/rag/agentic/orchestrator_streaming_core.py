@@ -409,6 +409,14 @@ class OrchestratorStreamingCore:
                 message=str(e),
                 correlation_id=correlation_id,
             )
+        finally:
+            # Ensure speculative NLM task is cleaned up on ANY exit
+            if nlm_task is not None and not nlm_task.done():
+                nlm_task.cancel()
+                try:
+                    await nlm_task
+                except (asyncio.CancelledError, Exception):
+                    pass
 
     async def _stream_core_result(
         self,

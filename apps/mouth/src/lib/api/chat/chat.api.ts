@@ -716,9 +716,23 @@ export class ChatApi {
           });
 
           // Merge generated image into metadata if present
-          const metadataWithImage = generatedImageUrl
+          let metadataWithImage = generatedImageUrl
             ? { ...finalMetadata, generated_image: generatedImageUrl }
             : finalMetadata;
+
+          // Graceful NLM badge fade: if response landed outside CAUTIOUS zone
+          // but the badge was still showing "consulting", clear it to "not_needed"
+          if (
+            isRecord(metadataWithImage) &&
+            metadataWithImage.confidence_zone !== "cautious" &&
+            metadataWithImage.nlm_status === "consulting"
+          ) {
+            metadataWithImage = {
+              ...metadataWithImage,
+              nlm_status: "not_needed",
+            };
+          }
+
           // Note: Image cleaning is handled by backend (clean_image_generation_response)
           // Backend processes token events during streaming, so fullResponse is already cleaned
           onDone(fullResponse, sources, metadataWithImage);
