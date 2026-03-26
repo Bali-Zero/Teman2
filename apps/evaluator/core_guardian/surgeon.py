@@ -506,6 +506,77 @@ def run_ruff_in_worktree(worktree_path: Path) -> str | None:
         return f"Ruff check failed: {e}"
 
 
+# --- Merge Bot ---
+
+def merge_to_main(branch_name: str) -> str | None:
+    """
+    Merge a cg/fix-* branch into main using --ff-only and push.
+    Returns error string or None on success.
+
+    Safety: --ff-only never creates a merge commit. Fails if diverged.
+    On success, triggers GitHub Actions deploy pipeline automatically.
+    """
+    default_branch = get_default_branch()
+    try:
+        # Ensure we have latest remote state
+        subprocess.run(
+            ["git", "fetch", "origin"],
+            cwd=str(PROJECT_ROOT), capture_output=True, timeout=30,
+        )
+        # Checkout default branch
+        r = subprocess.run(
+            ["git", "checkout", default_branch],
+            cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=15,
+        )
+        if r.returncode != 0:
+            return f"checkout {default_branch} failed: {r.stderr[:200]}"
+
+        # Fast-forward only — never create a merge commit
+        r = subprocess.run(
+            ["git", "merge", "--ff-only", branch_name],
+            cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=30,
+        )
+        if r.returncode != 0:
+            # Abort: restore clean state
+            subprocess.run(
+                ["git", "checkout", default_branch],
+                cwd=str(PROJECT_ROOT), capture_output=True, timeout=10,
+            )
+            return f"merge --ff-only failed: {r.stderr[:300]}"
+
+        # Push → triggers GitHub Actions
+        r = subprocess.run(
+            ["git", "push", "origin", default_branch],
+            cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=60,
+        )
+        if r.returncode != 0:
+            return f"push failed: {r.stderr[:200]}"
+
+        logger.info(f"✅ Merged {branch_name} → {default_branch} + pushed (CI triggered)")
+        return None
+    except Exception as e:
+        return f"merge_to_main exception: {e}"
+
+
+def write_last_json(
+    job_id: str,
+    status: str,
+    detail: str = "",
+    state_dir: Path | None = None,
+) -> None:
+    """Write ~/.agent/decisions/state/<job_id>.last.json for Sentinel monitoring."""
+    if state_dir is None:
+        state_dir = AGENT_DIR / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "job": job_id,
+        "status": status,  # "ok" | "failed" | "skipped"
+        "detail": detail,
+        "ts": datetime.now(timezone.utc).isoformat(),
+    }
+    atomic_write_json(state_dir / f"{job_id}.last.json", payload)
+
+
 # --- Claude Code Bridge ---
 
 CLAUDE_CODE_BIN = "/Users/nuzantara/.local/bin/claude"
@@ -944,6 +1015,7 @@ def _surgeon_core(
         if err:
             _record_failure(state, run_id, ruff_code, err)
             cleanup_worktree(worktree_path, branch_name)
+            write_last_json("core_guardian", "failed", detail=f"TEST FAILED: {err[:200]}")
             return _fail(run_id, f"TEST FAILED: {err}")
 
         # --- COMMIT ---
@@ -972,6 +1044,15 @@ def _surgeon_core(
         # 15. Cleanup worktree (keep the branch!)
         cleanup_worktree(worktree_path, branch_name, keep_branch=True)
 
+        # --- MERGE BOT: merge cg/fix-* → main on all-green ---
+        merge_error = merge_to_main(branch_name)
+        if merge_error:
+            logger.warning(f"Merge to main failed (branch kept for manual review): {merge_error}")
+            send_telegram_alert(f"⚠️ Surgeon fix committed but merge failed:\n{branch_name}\n{merge_error}")
+            write_last_json("core_guardian", "failed", detail=f"merge failed: {merge_error}")
+        else:
+            write_last_json("core_guardian", "ok", detail=f"merged {branch_name}")
+
         # 16. Record success
         state["consecutive_failures"] = 0
         _record_run(state, run_id, ruff_code, target_file, "success", cost_usd)
@@ -999,6 +1080,7 @@ def _surgeon_core(
         logger.error(f"Surgeon error: {e}", exc_info=True)
         _record_failure(state, run_id, ruff_code, str(e))
         cleanup_worktree(worktree_path, branch_name)
+        write_last_json("core_guardian", "failed", detail=f"exception: {str(e)[:200]}")
         return _fail(run_id, f"Unexpected error: {e}")
 
 
