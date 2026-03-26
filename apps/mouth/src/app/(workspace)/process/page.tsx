@@ -488,6 +488,36 @@ export default function PratichePage() {
     }
   }, [searchQuery, filteredPractices.length]);
 
+  const exportCSV = useCallback(() => {
+    const rows = filteredPractices.map((p) => ({
+      ID: p.id,
+      Client: p.client_name || "",
+      Type: p.practice_type_code || "",
+      Status: p.status || "",
+      "Assigned To": p.client_lead?.split("@")[0] || "",
+      "Payment Status": p.payment_status || "",
+      "Quoted Price": p.quoted_price || "",
+      "Actual Price": p.actual_price || "",
+      "Created At": p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB") : "",
+      "Updated At": p.updated_at ? new Date(p.updated_at).toLocaleDateString("en-GB") : "",
+    }));
+    const headers = Object.keys(rows[0] || {});
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) =>
+        headers.map((h) => `"${String(r[h as keyof typeof r]).replace(/"/g, '""')}"`).join(",")
+      ),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `processes_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Exported", `${rows.length} processes downloaded`);
+  }, [filteredPractices, toast]);
+
   // Pagination for list view
   const paginatedPractices = useMemo(() => {
     const startIdx = (listPageNumber - 1) * itemsPerPage;
@@ -560,6 +590,15 @@ export default function PratichePage() {
                   {activeFiltersCount}
                 </span>
               )}
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md text-[var(--bz-text-2)] hover:bg-[rgba(45,45,50,0.8)] hover:text-[var(--bz-text-1)]"
+              onClick={exportCSV}
+              title={`Export ${filteredPractices.length} processes as CSV`}
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
             <div className="flex rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md overflow-hidden">
               <button
