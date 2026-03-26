@@ -51,6 +51,7 @@ def include_routers(api: FastAPI) -> None:
         documents_proxy,
         dream,
         episodic_memory,
+        federation,
         feedback,
         google_drive,
         handlers,
@@ -127,6 +128,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(session.router)
     api.include_router(collective_memory.router)
     api.include_router(episodic_memory.router)
+    api.include_router(federation.router)
     api.include_router(feedback.router)
 
     # CRM routers

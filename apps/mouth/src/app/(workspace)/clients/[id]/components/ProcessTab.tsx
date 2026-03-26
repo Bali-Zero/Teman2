@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, FolderOpen, Calendar, Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export function ProcessTab({
   onRefresh: () => void;
 }) {
   const router = useRouter();
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
 
   return (
     <div className="space-y-4">
@@ -86,12 +87,14 @@ export function ProcessTab({
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
+                        if (deletingIds.has(practice.id)) return;
                         if (
                           !window.confirm(
                             `Delete process "${practice.practice_type_name}"?\n\nThis will mark the process as cancelled.`,
                           )
                         )
                           return;
+                        setDeletingIds((prev) => new Set(prev).add(practice.id));
                         try {
                           const user = await api.getProfile();
                           await api.crm.deletePractice(practice.id, user.email);
@@ -101,9 +104,15 @@ export function ProcessTab({
                           toast.error("Error", {
                             description: (err as Error).message,
                           });
+                          setDeletingIds((prev) => {
+                            const next = new Set(prev);
+                            next.delete(practice.id);
+                            return next;
+                          });
                         }
                       }}
-                      className="p-1 rounded hover:bg-red-500/20 text-[var(--bz-text-2)] hover:text-red-500"
+                      disabled={deletingIds.has(practice.id)}
+                      className="p-1 rounded hover:bg-red-500/20 text-[var(--bz-text-2)] hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Delete process"
                     >
                       <Trash2 className="w-4 h-4" />
