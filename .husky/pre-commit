@@ -78,4 +78,38 @@ if [ -n "$PY_FILES" ]; then
     cd ../..
 fi
 
+# ── ANTI-ROGUE-AI GATES ───────────────────────────────────────────────────────
+# Prevents Gemini/Windsurf/Cursor from silently breaking the import chain
+# or modifying OFF-LIMITS files. History: 5+ production crashes (feb-mar 2026).
+
+# Gate 1: Block edits to OFF-LIMITS files
+echo "🛡️  Checking for OFF-LIMITS file modifications..."
+PROTECTED=$(git diff --cached --name-only 2>/dev/null | grep -E "(zantara_core\.py|fly\.toml|alembic/env\.py)" || true)
+if [ -n "$PROTECTED" ]; then
+    echo "❌ BLOCKED: modifica a file protetto rilevata:"
+    echo "$PROTECTED"
+    echo "   Questi file NON devono essere modificati da AI agent senza review esplicita."
+    echo "   Se la modifica è intenzionale, fai unstage e commetti con --no-verify + spiegazione."
+    exit 1
+fi
+
+# Gate 2: Import chain test (only if backend Python files changed)
+PY_BACKEND_CHANGED=$(git diff --cached --name-only | grep '^apps/backend-rag/backend/' || true)
+if [ -n "$PY_BACKEND_CHANGED" ]; then
+    echo "🔗 Testing FastAPI import chain (anti-rogue-AI check)..."
+    if [ -d "apps/backend-rag/.venv" ]; then
+        VENV_PYTHON="apps/backend-rag/.venv/bin/python"
+    else
+        VENV_PYTHON="python3"
+    fi
+    PYTHONPATH=apps/backend-rag $VENV_PYTHON -c \
+        "from backend.app.dependencies import get_current_user; print('✅ import chain OK')" \
+        2>/dev/null || {
+        echo "❌ CRITICO: import chain rotta dopo questa modifica!"
+        echo "   Verifica: cd apps/backend-rag && python -c 'from backend.app.dependencies import get_current_user'"
+        echo "   Questo blocco protegge dalla rimozione accidentale di import critici da parte di AI."
+        exit 1
+    }
+fi
+
 echo "✅ All pre-commit checks passed!"

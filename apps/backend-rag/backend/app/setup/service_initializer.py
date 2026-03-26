@@ -316,6 +316,8 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 # 30s ensures stale connections are dropped before the first request hits
                 # after a Fly.io cold start (~35s). Previously 300s caused
                 # "connection was closed in the middle of operation" on POST /api/crm/clients.
+                # Combined with _database_health_check_loop (every 15s) and InterfaceError
+                # handler in exception_handlers.py → full stale connection coverage.
                 "max_inactive_connection_lifetime": 30.0,
                 "init": init_db_connection,
             }
