@@ -950,6 +950,7 @@ function ClientsListContent() {
               },
               { field: 'status' as SortField, label: 'Status' },
               { field: 'passport_expiry' as SortField, label: 'Passport Exp.' },
+              { field: 'active_practices' as SortField, label: 'Processes' },
             ].map(({ field, label }) => (
               <button
                 key={field}
@@ -1108,14 +1109,54 @@ function ClientsListContent() {
                             {client.assigned_to ? client.assigned_to.split('@')[0] : '—'}
                           </span>
                         </td>
-                        <td className="px-3 py-2 text-xs" style={{ color: 'var(--bz-text-2)' }}>
+                        <td className="px-3 py-2 text-xs">
                           {client.last_interaction_date
-                            ? new Date(client.last_interaction_date).toLocaleDateString('en-GB', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: '2-digit',
-                              })
-                            : '—'}
+                            ? (() => {
+                                const ageDays = Math.floor(
+                                  (Date.now() -
+                                    new Date(client.last_interaction_date).getTime()) /
+                                    86400000
+                                );
+                                const label =
+                                  ageDays === 0
+                                    ? 'today'
+                                    : ageDays === 1
+                                      ? '1d ago'
+                                      : ageDays >= 30
+                                        ? `${Math.floor(ageDays / 30)}mo ago`
+                                        : ageDays >= 7
+                                          ? `${Math.floor(ageDays / 7)}w ago`
+                                          : `${ageDays}d ago`;
+                                return (
+                                  <span
+                                    className="tabular-nums px-1.5 py-0.5 rounded"
+                                    style={{
+                                      background:
+                                        ageDays === 0
+                                          ? 'rgba(34,197,94,0.12)'
+                                          : ageDays > 30
+                                            ? 'rgba(239,68,68,0.10)'
+                                            : 'transparent',
+                                      color:
+                                        ageDays === 0
+                                          ? '#4ade80'
+                                          : ageDays > 30
+                                            ? '#f87171'
+                                            : 'var(--bz-text-2)',
+                                    }}
+                                    title={new Date(
+                                      client.last_interaction_date
+                                    ).toLocaleDateString('en-GB', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric',
+                                    })}
+                                  >
+                                    {label}
+                                  </span>
+                                );
+                              })()
+                            : <span style={{ color: 'var(--bz-text-2)' }}>—</span>}
                         </td>
                         <td className="px-3 py-2 text-xs">
                           {passportExpiry ? (
