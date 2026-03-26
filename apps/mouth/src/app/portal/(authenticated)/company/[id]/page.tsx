@@ -466,19 +466,26 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
             })}
           </p>
           {license.daysRemaining !== undefined && (
-            <p
-              className="text-xs font-medium mt-1"
-              style={{
-                color:
-                  license.daysRemaining <= 30
-                    ? '#f87171'
-                    : license.daysRemaining <= 60
-                      ? '#fbbf24'
-                      : '#34d399',
-              }}
+            <span
+              className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-semibold mt-1.5 ${
+                license.daysRemaining <= 0
+                  ? 'bg-red-500/10 text-red-400'
+                  : license.daysRemaining <= 30
+                    ? 'bg-amber-500/10 text-amber-400'
+                    : license.daysRemaining <= 90
+                      ? 'bg-yellow-500/10 text-yellow-300'
+                      : 'bg-emerald-500/10 text-emerald-400'
+              }`}
+              title={new Date(license.expiryDate).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              })}
             >
-              {license.daysRemaining} days remaining
-            </p>
+              {license.daysRemaining <= 0
+                ? `Expired ${Math.abs(license.daysRemaining)}d ago`
+                : `${license.daysRemaining}d left`}
+            </span>
           )}
         </div>
         <div
@@ -543,21 +550,48 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h3 className="font-semibold text-sm">{item.name}</h3>
-          <p
-            className="text-xs mt-1"
-            style={{
-              color: isPast ? '#f87171' : 'var(--bz-text-2)',
-              fontWeight: isPast ? 500 : 400,
-            }}
-          >
-            {isPast ? 'Was due: ' : 'Due: '}
-            {dueDate.toLocaleDateString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
-          </p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <p
+              className="text-xs"
+              style={{
+                color: isPast ? '#f87171' : 'var(--bz-text-2)',
+                fontWeight: isPast ? 500 : 400,
+              }}
+            >
+              {isPast ? 'Was due: ' : 'Due: '}
+              {dueDate.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </p>
+            {(() => {
+              const days = Math.ceil((dueDate.getTime() - Date.now()) / 86400000);
+              if (item.status === 'completed') return null;
+              const chipColor =
+                days <= 0
+                  ? 'bg-red-500/10 text-red-400'
+                  : days <= 7
+                    ? 'bg-red-500/10 text-red-400'
+                    : days <= 30
+                      ? 'bg-amber-500/10 text-amber-400'
+                      : 'bg-emerald-500/10 text-emerald-400';
+              const chipText =
+                days <= 0
+                  ? `${Math.abs(days)}d overdue`
+                  : days === 1
+                    ? 'tomorrow'
+                    : `${days}d left`;
+              return (
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}
+                >
+                  {chipText}
+                </span>
+              );
+            })()}
+          </div>
         </div>
         <div
           className="px-2.5 py-1 rounded-full flex items-center gap-1 text-xs font-medium"
