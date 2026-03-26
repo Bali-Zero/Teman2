@@ -825,3 +825,79 @@ tools = [{"name": "kbli_search", "eager_input_streaming": True, ...}]
 | Routing / classificazione | `claude-haiku-4-5-20251001` | $1/$5 MTok, velocissimo                      |
 | Task critici              | `claude-opus-4-6`           | 128K output, effort=max                      |
 | Spiegazioni KBLI          | `claude-haiku-4-5-20251001` | Già configurato in kbli_notebook.py          |
+
+---
+
+## 18. CRITICAL OPERATIONAL RULES — Non Documentate Altrove
+
+> Queste regole non sono deducibili dal codice. Sono qui per tutti gli agenti AI (Claude, Gemini, Codex, Windsurf).
+
+### Virtualenv (CRITICAL)
+
+- **Air:** `venv` (NON `.venv`) — path: `apps/backend-rag/venv/bin/python`
+- **Pro:** potrebbe essere `.venv` — verificare con `ls apps/backend-rag/ | grep venv`
+- **pip rotto su Air:** usare `/Users/antonellosiano/.pyenv/shims/python3 -m pip` invece di `pip`
+- **Nei cron su Air:** usare path assoluto `venv/bin/python` NON `source venv/bin/activate`
+
+### Drive Polling (CRITICAL)
+
+- Drive polling gira **SOLO su Air** via cron ogni 5min (`scripts/drive_poll_cron.sh`)
+- **NON mettere su Fly.io scheduler** — incompatibile con `auto_stop=true` (perde `page_token` a ogni cold start)
+- `page_token` è salvato in `system_settings` table — perderlo causa re-scan completo Drive
+- Circuit breaker attivo: 3 failures → circuit OPEN + Telegram alert → auto-recovery 5min
+
+### Drive OAuth (CRITICAL)
+
+- Token OAuth in `google_drive_tokens` table — scade ogni ~90 giorni
+- **Watchdog attivo:** `scripts/drive_token_watchdog.py` — alert 7gg prima via Telegram
+- Re-auth: `https://kita.balizero.com/settings/integrations`
+- Se scade silenziosamente → nessun documento viene processato → clienti non vedono file
+
+### OCR Multi-page (IMPORTANT)
+
+- Leggere **SEMPRE tutte le pagine** del PDF, non solo pagina 0
+- I direttori delle PT/CV (perseroan) sono tipicamente in pagina 2-3 dell'akta
+- Timeout: 120s per PDF > 3 pagine
+- Vision model: `qwen2.5vl:7b` ONLY (qwen3.5 Q4_K_M strips vision weights)
+
+### Cache Invalidation (IMPORTANT)
+
+- Pattern **obbligatorio** dopo ogni mutation:
+  ```python
+  await invalidate_cache("zantara:namespace:*")
+  ```
+- Namespace attivi: `zantara:crm_clients_stats:*`, `zantara:crm_practices:*`
+- Mutation senza invalidation → dati stale → confusione clienti
+- Core Guardian AST audit: `apps/evaluator/core_guardian/checks/cache_invalidation_audit.py`
+
+### KG Subgraph Status (2026-03-26)
+
+| Subgraph | Stato | Note |
+|----------|-------|------|
+| Company  | ✅ wired KG reale | Query asyncpg su kg_nodes/kg_edges |
+| Visa     | ⚠️ parziale | Sezione RPTKA ancora hardcoded in `kg_subgraph_visa.py` |
+| Property | ❓ da verificare | |
+| Tax      | ❓ da verificare | |
+
+### Cron Air (aggiornato 2026-03-26)
+
+| Job | Schedule | Script |
+|-----|----------|--------|
+| Ollama start | 01:00 | `ollama_cron_window.sh start` |
+| Auto test | 02:15 | `auto_test.sh` |
+| Sentinel | 03:00 | `auto_sentinel.sh` |
+| KB Ingest | 05:00 | `auto_kb_ingest.sh` |
+| Ollama stop | 06:05 | `ollama_cron_window.sh stop` |
+| **RAG Canary** | ***/6h :30** | **`rag_canary.py`** |
+| **System Doctor** | **08:00** | **`system_doctor.py --notify-telegram`** |
+| **Drive Watchdog** | ***/6h :00** | **`drive_token_watchdog.py`** |
+| Judgement Day | Sun 16:00 | `auto_judgement_day.sh` |
+| **RAGAS Eval** | **Sun 06:00** | **`ragas_eval.py`** |
+
+### GitHub Secrets richiesti per CI/CD
+
+- `FLY_API_TOKEN` — per `fly-deploy.yml`
+- `TELEGRAM_BOT_TOKEN` — per alert deploy
+- `TELEGRAM_OWNER_CHAT_ID` — chat ID owner (413539912)
+
+**Last Updated:** 2026-03-26
