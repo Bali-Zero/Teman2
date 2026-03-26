@@ -29,7 +29,7 @@ export interface Practice {
   status_transitions?: StatusTransition[];
 }
 
-import type { JsonObject } from "../../types/common";
+import type { JsonObject } from '../../types/common';
 
 export interface Interaction {
   id: number;
@@ -37,14 +37,14 @@ export interface Interaction {
   client_name?: string;
   practice_id?: number;
   conversation_id?: number;
-  interaction_type: "chat" | "email" | "whatsapp" | "call" | "meeting" | "note";
+  interaction_type: 'chat' | 'email' | 'whatsapp' | 'call' | 'meeting' | 'note';
   channel?: string;
   subject?: string;
   summary?: string;
   full_content?: string;
   sentiment?: string;
   team_member: string;
-  direction: "inbound" | "outbound";
+  direction: 'inbound' | 'outbound';
   interaction_date: string;
   created_at: string;
   read_receipt?: boolean; // [NEW] Real read receipt status
@@ -89,13 +89,13 @@ export interface Client {
   passport_number?: string;
   passport_expiry?: string;
   date_of_birth?: string;
-  gender?: "M" | "F";
+  gender?: 'M' | 'F';
   birthplace?: string;
   address?: string;
   notes?: string;
   google_drive_folder_id?: string;
-  status: "lead" | "active" | "completed" | "lost" | "inactive";
-  client_type: "individual" | "company";
+  status: 'lead' | 'active' | 'completed' | 'lost' | 'inactive';
+  client_type: 'individual' | 'company';
   assigned_to?: string;
   avatar_url?: string;
   company_name?: string;
@@ -104,6 +104,7 @@ export interface Client {
   last_sentiment?: string;
   last_interaction_summary?: string;
   tags?: string[];
+  active_practices?: number;
   created_at: string;
   updated_at: string;
 }
@@ -116,13 +117,7 @@ export interface FamilyMember {
   id: number;
   client_id: number;
   full_name: string;
-  relationship:
-    | "spouse"
-    | "child"
-    | "parent"
-    | "sibling"
-    | "dependent"
-    | "other";
+  relationship: 'spouse' | 'child' | 'parent' | 'sibling' | 'dependent' | 'other';
   date_of_birth?: string;
   nationality?: string;
   passport_number?: string;
@@ -132,8 +127,8 @@ export interface FamilyMember {
   email?: string;
   phone?: string;
   notes?: string;
-  passport_alert?: "green" | "yellow" | "red" | "expired";
-  visa_alert?: "green" | "yellow" | "red" | "expired";
+  passport_alert?: 'green' | 'yellow' | 'red' | 'expired';
+  visa_alert?: 'green' | 'yellow' | 'red' | 'expired';
   created_at?: string;
   updated_at?: string;
 }
@@ -156,12 +151,7 @@ export interface FamilyMemberCreate {
 // DOCUMENTS
 // ============================================
 
-export type DocumentCategoryType =
-  | "immigration"
-  | "pma"
-  | "tax"
-  | "personal"
-  | "other";
+export type DocumentCategoryType = 'immigration' | 'pma' | 'tax' | 'personal' | 'other';
 
 export interface ClientDocument {
   id: number;
@@ -172,7 +162,7 @@ export interface ClientDocument {
   file_id?: string;
   file_url?: string;
   google_drive_file_url?: string;
-  status?: "pending" | "received" | "verified" | "rejected" | "expired";
+  status?: 'pending' | 'received' | 'verified' | 'rejected' | 'expired';
   issue_date?: string;
   expiry_date?: string;
   notes?: string;
@@ -180,7 +170,7 @@ export interface ClientDocument {
   family_member_id?: number;
   family_member_name?: string;
   practice_id?: number;
-  alert_color?: "green" | "yellow" | "red" | "expired";
+  alert_color?: 'green' | 'yellow' | 'red' | 'expired';
   created_at?: string;
   updated_at?: string;
 }
@@ -201,7 +191,7 @@ export interface DocumentCreate {
 export interface DocumentCategory {
   code: string;
   name: string;
-  category_group: "immigration" | "pma" | "tax" | "personal" | "other";
+  category_group: 'immigration' | 'pma' | 'tax' | 'personal' | 'other';
   description?: string;
   has_expiry: boolean;
 }
@@ -211,7 +201,7 @@ export interface DocumentCategory {
 // ============================================
 
 export interface ExpiryAlert {
-  entity_type: "client" | "family_member" | "document";
+  entity_type: 'client' | 'family_member' | 'document';
   entity_id: number;
   entity_name: string;
   client_id: number;
@@ -219,7 +209,7 @@ export interface ExpiryAlert {
   document_type: string;
   expiry_date: string;
   days_until_expiry: number;
-  alert_color: "green" | "yellow" | "red" | "expired";
+  alert_color: 'green' | 'yellow' | 'red' | 'expired';
   assigned_to?: string;
 }
 
@@ -308,80 +298,74 @@ export interface CreateClientParams {
   passport_number?: string;
   passport_expiry?: string;
   date_of_birth?: string;
-  gender?: "M" | "F";
+  gender?: 'M' | 'F';
   birthplace?: string;
   notes?: string;
-  status?: "lead" | "active" | "completed" | "lost" | "inactive";
-  client_type?: "individual" | "company";
+  status?: 'lead' | 'active' | 'completed' | 'lost' | 'inactive';
+  client_type?: 'individual' | 'company';
   assigned_to?: string;
   tags?: string[];
   address?: string;
-  lead_source?:
-    | "website"
-    | "whatsapp"
-    | "referral"
-    | "social_media"
-    | "walk_in"
-    | "other";
+  lead_source?: 'website' | 'whatsapp' | 'referral' | 'social_media' | 'walk_in' | 'other';
   service_interest?: string[]; // e.g., ['kitas', 'pt_pma', 'tax']
   avatar_url?: string;
 }
 
 // Common nationalities for dropdown
 export const COMMON_NATIONALITIES = [
-  "Australian",
-  "American",
-  "British",
-  "Canadian",
-  "Chinese",
-  "Dutch",
-  "French",
-  "German",
-  "Indian",
-  "Indonesian",
-  "Italian",
-  "Japanese",
-  "Korean",
-  "Malaysian",
-  "Russian",
-  "Singaporean",
-  "Spanish",
-  "Swedish",
-  "Swiss",
-  "Ukrainian",
+  'Australian',
+  'American',
+  'British',
+  'Canadian',
+  'Chinese',
+  'Dutch',
+  'French',
+  'German',
+  'Indian',
+  'Indonesian',
+  'Italian',
+  'Japanese',
+  'Korean',
+  'Malaysian',
+  'Russian',
+  'Singaporean',
+  'Spanish',
+  'Swedish',
+  'Swiss',
+  'Ukrainian',
 ] as const;
 
 // Client statuses
 export const CLIENT_STATUSES = [
-  { value: "lead", label: "Lead", color: "blue" },
-  { value: "active", label: "Active", color: "green" },
-  { value: "completed", label: "Completed", color: "purple" },
-  { value: "lost", label: "Lost", color: "red" },
-  { value: "inactive", label: "Inactive", color: "gray" },
+  { value: 'lead', label: 'Lead', color: 'blue' },
+  { value: 'active', label: 'Active', color: 'green' },
+  { value: 'completed', label: 'Completed', color: 'purple' },
+  { value: 'lost', label: 'Lost', color: 'red' },
+  { value: 'inactive', label: 'Inactive', color: 'gray' },
 ] as const;
 
 // Lead sources
 export const LEAD_SOURCES = [
-  { value: "website", label: "Website" },
-  { value: "whatsapp", label: "WhatsApp" },
-  { value: "referral", label: "Referral" },
-  { value: "social_media", label: "Social Media" },
-  { value: "walk_in", label: "Walk-in" },
-  { value: "other", label: "Other" },
+  { value: 'website', label: 'Website' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'other', label: 'Other' },
 ] as const;
 
 // Service interests
 export const SERVICE_INTERESTS = [
-  { value: "kitas_work", label: "KITAS Work Permit" },
-  { value: "kitas_investor", label: "KITAS Investor" },
-  { value: "kitas_spouse", label: "KITAS Spouse" },
-  { value: "kitap", label: "KITAP Permanent" },
-  { value: "pt_pma", label: "PT PMA Setup" },
-  { value: "tax_consulting", label: "Tax Consulting" },
-  { value: "visa_extension", label: "Visa Extension" },
-  { value: "retirement_visa", label: "Retirement Visa" },
-  { value: "second_home", label: "Second Home Visa" },
-  { value: "other", label: "Other" },
+  { value: 'kitas_work', label: 'KITAS Work Permit' },
+  { value: 'kitas_investor', label: 'KITAS Investor' },
+  { value: 'kitas_spouse', label: 'KITAS Spouse' },
+  { value: 'kitap', label: 'KITAP Permanent' },
+  { value: 'pt_pma', label: 'PT PMA Setup' },
+  { value: 'tax_consulting', label: 'Tax Consulting' },
+  { value: 'visa_extension', label: 'Visa Extension' },
+  { value: 'retirement_visa', label: 'Retirement Visa' },
+  { value: 'second_home', label: 'Second Home Visa' },
+  { value: 'other', label: 'Other' },
 ] as const;
 
 // ============================================
@@ -392,7 +376,7 @@ export interface Company {
   id: number;
   uuid: string;
   company_name: string;
-  company_type: "PT PMA" | "PT Perorangan" | "CV" | "Other";
+  company_type: 'PT PMA' | 'PT Perorangan' | 'CV' | 'Other';
   brand_name?: string;
   kbli_code?: string;
   kbli_description?: string;
@@ -411,7 +395,7 @@ export interface Company {
   postal_code?: string;
   company_phone?: string;
   company_email?: string;
-  status: "active" | "dormant" | "dissolved" | "in_setup";
+  status: 'active' | 'dormant' | 'dissolved' | 'in_setup';
   setup_progress: number;
   google_drive_folder_id?: string;
   custom_fields?: Record<string, unknown>;
@@ -465,7 +449,7 @@ export interface CompanyDocument {
   description?: string;
   issue_date?: string;
   expiry_date?: string;
-  status: "active" | "expired" | "archived" | "pending";
+  status: 'active' | 'expired' | 'archived' | 'pending';
   google_drive_file_id?: string;
   google_drive_file_url?: string;
   file_name?: string;
@@ -476,7 +460,7 @@ export interface CompanyDocument {
 export interface TaxRecord {
   id: number;
   uuid: string;
-  entity_type: "client" | "company";
+  entity_type: 'client' | 'company';
   entity_id: number;
   npwp?: string;
   npwp_status?: string;
@@ -489,7 +473,7 @@ export interface TaxRecord {
   tax_year?: number;
   reporting_period?: string;
   next_filing_date?: string;
-  compliance_status: "compliant" | "overdue" | "warning" | "exempt";
+  compliance_status: 'compliant' | 'overdue' | 'warning' | 'exempt';
 }
 
 export interface TaxDocument {
@@ -503,49 +487,49 @@ export interface TaxDocument {
   filing_date?: string;
   reported_amount?: number;
   paid_amount?: number;
-  status: "filed" | "paid" | "corrected" | "amended";
+  status: 'filed' | 'paid' | 'corrected' | 'amended';
   google_drive_file_id?: string;
   file_name?: string;
 }
 
 // Company document types
 export const COMPANY_DOCUMENT_TYPES = [
-  { value: "akta_pendirian", label: "Akta Pendirian" },
-  { value: "akta_perubahan", label: "Akta Perubahan" },
-  { value: "sk_menhumkam", label: "SK Kemenkumham" },
-  { value: "nib", label: "NIB (Business ID)" },
-  { value: "npwp", label: "NPWP Company" },
-  { value: "skt", label: "SKT (Tax Registration)" },
-  { value: "sppkp", label: "SPPKP" },
-  { value: "tdp", label: "TDP" },
-  { value: "domicile_letter", label: "Domicile Letter" },
-  { value: "decrees", label: "Decrees" },
-  { value: "licenses", label: "Licenses" },
-  { value: "contracts", label: "Contracts" },
-  { value: "others", label: "Others" },
+  { value: 'akta_pendirian', label: 'Akta Pendirian' },
+  { value: 'akta_perubahan', label: 'Akta Perubahan' },
+  { value: 'sk_menhumkam', label: 'SK Kemenkumham' },
+  { value: 'nib', label: 'NIB (Business ID)' },
+  { value: 'npwp', label: 'NPWP Company' },
+  { value: 'skt', label: 'SKT (Tax Registration)' },
+  { value: 'sppkp', label: 'SPPKP' },
+  { value: 'tdp', label: 'TDP' },
+  { value: 'domicile_letter', label: 'Domicile Letter' },
+  { value: 'decrees', label: 'Decrees' },
+  { value: 'licenses', label: 'Licenses' },
+  { value: 'contracts', label: 'Contracts' },
+  { value: 'others', label: 'Others' },
 ] as const;
 
 // Company roles
 export const COMPANY_ROLES = [
-  { value: "Director", label: "Director" },
-  { value: "Commissioner", label: "Commissioner" },
-  { value: "Shareholder", label: "Shareholder" },
-  { value: "Employee", label: "Employee" },
-  { value: "Agent", label: "Agent" },
-  { value: "Beneficial_Owner", label: "Beneficial Owner" },
-  { value: "Authorized_Signatory", label: "Authorized Signatory" },
+  { value: 'Director', label: 'Director' },
+  { value: 'Commissioner', label: 'Commissioner' },
+  { value: 'Shareholder', label: 'Shareholder' },
+  { value: 'Employee', label: 'Employee' },
+  { value: 'Agent', label: 'Agent' },
+  { value: 'Beneficial_Owner', label: 'Beneficial Owner' },
+  { value: 'Authorized_Signatory', label: 'Authorized Signatory' },
 ] as const;
 
 // Tax document types
 export const TAX_DOCUMENT_TYPES = [
-  { value: "SPT", label: "SPT (Tax Return)" },
-  { value: "Bukti_Potong", label: "Bukti Potong" },
-  { value: "SSP", label: "SSP (Payment Slip)" },
-  { value: "Faktur_Pajak", label: "Faktur Pajak (Tax Invoice)" },
-  { value: "SKT", label: "SKT" },
-  { value: "SPPKP", label: "SPPKP" },
-  { value: "Tax_Certificate", label: "Tax Certificate" },
-  { value: "Others", label: "Others" },
+  { value: 'SPT', label: 'SPT (Tax Return)' },
+  { value: 'Bukti_Potong', label: 'Bukti Potong' },
+  { value: 'SSP', label: 'SSP (Payment Slip)' },
+  { value: 'Faktur_Pajak', label: 'Faktur Pajak (Tax Invoice)' },
+  { value: 'SKT', label: 'SKT' },
+  { value: 'SPPKP', label: 'SPPKP' },
+  { value: 'Tax_Certificate', label: 'Tax Certificate' },
+  { value: 'Others', label: 'Others' },
 ] as const;
 
 export interface RenewalAlert {
@@ -577,7 +561,7 @@ export interface CreatePracticeParams {
 
 export interface SearchResult {
   id: number;
-  type: "client" | "practice" | "document";
+  type: 'client' | 'practice' | 'document';
   title: string;
   subtitle?: string;
   status?: string;
