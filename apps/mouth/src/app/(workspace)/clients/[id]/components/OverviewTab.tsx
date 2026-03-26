@@ -778,9 +778,34 @@ export function OverviewTab({
                         {p.practice_type_name || `Practice #${p.id}`}
                       </p>
                       {p.completion_date && (
-                        <p className="text-[10px] text-[var(--bz-text-2)]">
-                          Completed {formatDate(p.completion_date)}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-[10px] text-[var(--bz-text-2)]">
+                            Completed {formatDate(p.completion_date)}
+                          </p>
+                          {(() => {
+                            const ageDays = Math.floor(
+                              (Date.now() - new Date(p.completion_date).getTime()) / 86400000
+                            );
+                            if (ageDays < 7) return null;
+                            const label =
+                              ageDays >= 365
+                                ? `${Math.floor(ageDays / 365)}y ago`
+                                : ageDays >= 30
+                                  ? `${Math.floor(ageDays / 30)}mo ago`
+                                  : `${ageDays}d ago`;
+                            return (
+                              <span
+                                className="text-[9px] px-1 py-0.5 rounded tabular-nums"
+                                style={{
+                                  background: 'rgba(255,255,255,0.04)',
+                                  color: 'var(--bz-text-3)',
+                                }}
+                              >
+                                {label}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
