@@ -6,6 +6,7 @@ import signal
 import sys
 
 import httpx
+import redis.asyncio as aioredis
 
 from cell.core.config import settings
 from cell.core.dna import DNALoader
@@ -54,15 +55,14 @@ async def main() -> None:
     interpreter = DNAInterpreter()
     logger.info("SLOW layer initialized (Qwen local + Gemini Flash)")
 
+    # Safety gate — real Redis kill switch
+    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    redis_client = aioredis.from_url(redis_url, decode_responses=True)
+    safety_gate = SafetyGate(redis=redis_client)
+    logger.info(f"Safety gate connected to Redis: {redis_url.split('@')[-1]}")
+
     async with httpx.AsyncClient() as http_client:
         health_sensor = HealthSensor(client=http_client, url=settings.backend_health_url)
-
-        # Safety gate with mock Redis for now
-        from unittest.mock import AsyncMock
-
-        mock_redis = AsyncMock()
-        mock_redis.get = AsyncMock(return_value=None)
-        safety_gate = SafetyGate(redis=mock_redis)
 
         # Telegram alerter — CELL's voice
         tg_token = os.environ.get("CELL_TELEGRAM_BOT_TOKEN", "")
@@ -110,6 +110,7 @@ async def main() -> None:
             except asyncio.TimeoutError:
                 pass
 
+    await redis_client.aclose()
     from cell.core.db import close_pool
     await close_pool()
     logger.info("CELL organism shutdown complete.")
