@@ -70,6 +70,10 @@ export function PassportCard({
   // Get passport validity color and alert level
   const passportValidity = getPassportValidityColor(client.passport_expiry);
   const passportImageUrl = passportDoc?.google_drive_file_url;
+  const passportIsPdf =
+    passportDoc?.file_name?.toLowerCase().endsWith('.pdf') ||
+    passportImageUrl?.toLowerCase().includes('.pdf') ||
+    passportDoc?.file_name?.toLowerCase().includes('.pdf');
 
   // Check if birthday today
   const isBirthday = isBirthdayToday(client.date_of_birth);
@@ -277,19 +281,27 @@ export function PassportCard({
               title="Click to download passport"
             >
               <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--bz-border)] bg-[var(--bz-base)]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={getDriveProxyUrl(passportImageUrl) || passportImageUrl}
-                  alt="Passport"
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    // Fallback to Google preview if proxy fails
-                    (e.target as HTMLImageElement).src = passportImageUrl.replace(
-                      '/view',
-                      '/preview'
-                    );
-                  }}
-                />
+                {passportIsPdf ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-[var(--bz-text-2)]">
+                    <FileText className="w-12 h-12 opacity-60" />
+                    <span className="text-xs font-medium">PDF Document</span>
+                    <span className="text-[10px] opacity-60">Click to download</span>
+                  </div>
+                ) : (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={getDriveProxyUrl(passportImageUrl) || passportImageUrl}
+                    alt="Passport"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      // Fallback to Google preview if proxy fails
+                      (e.target as HTMLImageElement).src = passportImageUrl.replace(
+                        '/view',
+                        '/preview'
+                      );
+                    }}
+                  />
+                )}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                   <div className="flex items-center gap-2 bg-white/90 rounded-lg px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Download className="w-4 h-4 text-gray-700" />
