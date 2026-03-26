@@ -235,7 +235,7 @@ export function useCrmStats() {
     queryFn: async () => {
       const [clientStats, practiceStats, interactionStats] = await Promise.all([
         api.crm.request<{
-          total_clients: number;
+          total: number;
           by_status: Record<string, number>;
           by_team_member: Array<{ assigned_to: string; count: number }>;
         }>('/api/crm/clients/stats/overview'),
@@ -244,7 +244,7 @@ export function useCrmStats() {
       ]);
 
       return {
-        totalClients: clientStats.total_clients,
+        totalClients: clientStats.total,
         activePractices: practiceStats.active_practices,
         revenue: {
           total: practiceStats.revenue.total_revenue,
