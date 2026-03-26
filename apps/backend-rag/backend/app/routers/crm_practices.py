@@ -301,6 +301,7 @@ async def create_practice(
             log_database_operation(logger, "CREATE", "practices", record_id=new_practice["id"])
 
             await invalidate_cache("zantara:crm_practices_stats:*")
+            await invalidate_cache("zantara:crm_clients_stats:*")
             return PracticeResponse(**new_practice)
 
     except HTTPException:
@@ -869,6 +870,21 @@ async def update_practice(
                     practice_id,
                 )
 
+            # 🚀 Waiting Documents Automation: Trigger when status changes to 'waiting_documents'
+            if updates.status == "waiting_documents":
+                from backend.services.crm.waiting_documents_service import WaitingDocumentsService
+
+                waiting_docs_service = WaitingDocumentsService(db_pool)
+                asyncio.create_task(
+                    waiting_docs_service.trigger_on_waiting_documents(
+                        practice_id=practice_id,
+                        triggered_by=user_email,
+                    )
+                )
+                logger.info(
+                    f"🚀 Waiting documents automation triggered for practice {practice_id}"
+                )
+
             # 🚀 Invoice Automation: Trigger when status changes to 'sending_invoice'
             if updates.status == "sending_invoice":
                 invoice_service = InvoiceAutomationService(db_pool)
@@ -916,6 +932,7 @@ async def update_practice(
                 updated_by=user_email,
             )
             await invalidate_cache("zantara:crm_practices_stats:*")
+            await invalidate_cache("zantara:crm_clients_stats:*")
             return updated_practice
 
     except HTTPException:
@@ -1003,6 +1020,7 @@ async def delete_practice(
                 deleted_by=user_email,
             )
             await invalidate_cache("zantara:crm_practices_stats:*")
+            await invalidate_cache("zantara:crm_clients_stats:*")
             return {"success": True, "message": "Practice marked as cancelled"}
 
     except HTTPException:
@@ -1066,6 +1084,7 @@ async def add_document_to_practice(
                 document_name=document_name,
             )
 
+            await invalidate_cache("zantara:crm_practices_stats:*")
             return {"success": True, "document": new_doc, "total_documents": len(documents)}
 
     except HTTPException:
@@ -1409,6 +1428,7 @@ async def add_required_document(
                 },
             )
 
+            await invalidate_cache("zantara:crm_practices_stats:*")
             return {
                 "id": row["id"],
                 "practice_id": row["practice_id"],
@@ -1460,6 +1480,7 @@ async def delete_required_document(
                 },
             )
 
+            await invalidate_cache("zantara:crm_practices_stats:*")
             return {"success": True, "message": "Document requirement deleted"}
     except HTTPException:
         raise
@@ -1522,6 +1543,7 @@ async def update_required_document(
                 },
             )
 
+            await invalidate_cache("zantara:crm_practices_stats:*")
             return {
                 "id": row["id"],
                 "practice_id": row["practice_id"],
@@ -1640,6 +1662,7 @@ async def upload_client_document(
                 },
             )
 
+            await invalidate_cache("zantara:crm_practices_stats:*")
             return {
                 "success": True,
                 "document_id": doc_row["id"],

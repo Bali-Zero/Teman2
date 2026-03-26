@@ -51,6 +51,15 @@ from backend.services.tools.definitions import AgentState, AgentStep
 
 logger = logging.getLogger(__name__)
 
+# Trusted tools bypass evidence scoring — tool output IS the evidence
+_TRUSTED_TOOL_NAMES: frozenset[str] = frozenset({
+    "calculator",
+    "get_pricing",
+    "team_knowledge",
+    "timesheet",
+    "vector_search",
+})
+
 
 # NOTE: Deprecated local functions removed 2026-02-08 (System Audit).
 # get_critical_domain_type, is_critical_domain, is_valid_tool_call,
@@ -561,13 +570,7 @@ class ReasoningEngine:
         # These tools provide their own evidence and don't need KB sources
         # MOVED BEFORE EVIDENCE SCORE: If trusted tools used, skip keyword-based scoring
         trusted_tools_used = False
-        trusted_tool_names = {
-            "calculator",
-            "get_pricing",
-            "team_knowledge",
-            "timesheet",
-            "vector_search",  # Added: vector search is also a trusted tool
-        }
+        trusted_tool_names = _TRUSTED_TOOL_NAMES
         for step in state.steps:
             if step.action and hasattr(step.action, "tool_name"):
                 if step.action.tool_name in trusted_tool_names and step.observation:
@@ -1319,13 +1322,7 @@ Do not invent information. If the context is insufficient, admit it.
         # Check if trusted tools were used successfully BEFORE calculating evidence score
         # This ensures RAG-native behavior: tool success = high evidence
         trusted_tools_used = False
-        trusted_tool_names = {
-            "calculator",
-            "get_pricing",
-            "team_knowledge",
-            "timesheet",
-            "vector_search",
-        }
+        trusted_tool_names = _TRUSTED_TOOL_NAMES
         for step in state.steps:
             if step.action and hasattr(step.action, "tool_name"):
                 if step.action.tool_name in trusted_tool_names and step.observation:
