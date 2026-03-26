@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import React, { useState, useRef, useCallback, memo } from "react";
-import { User, Building2, Calendar, FileText, Upload, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { api } from "@/lib/api";
-import { fileToBase64 } from "@/lib/utils";
+import React, { useState, useRef, useCallback, memo } from 'react';
+import { User, Building2, Calendar, FileText, Upload, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { api } from '@/lib/api';
+import { fileToBase64 } from '@/lib/utils';
 
 // ============================================
 // TAX TYPES AND INTERFACES
 // ============================================
 type TaxYear = number;
-type TaxSection = "personal" | "annual" | "monthly" | "lkpm";
+type TaxSection = 'personal' | 'annual' | 'monthly' | 'lkpm';
 
 interface TaxDocument {
   id?: string;
   file?: File;
   fileName?: string;
   uploadedAt?: string;
-  status: "pending" | "uploaded" | "verified";
+  status: 'pending' | 'uploaded' | 'verified';
 }
 
 interface PersonalTaxData {
@@ -86,11 +86,11 @@ const FileUploadField = memo(function FileUploadField({
   subLabel,
   file,
   error,
-  accept = ".pdf,.jpg,.jpeg,.png",
+  accept = '.pdf,.jpg,.jpeg,.png',
   onChange,
   onClear,
   extraButton,
-  className = "",
+  className = '',
 }: FileUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -100,34 +100,29 @@ const FileUploadField = memo(function FileUploadField({
       if (selectedFile) {
         // Validate file size (10MB max)
         if (selectedFile.size > 10 * 1024 * 1024) {
-          toast.error("File too large", {
-            description: "Maximum size is 10MB",
+          toast.error('File too large', {
+            description: 'Maximum size is 10MB',
           });
           return;
         }
         // Validate file type
-        const allowedTypes = [
-          "application/pdf",
-          "image/jpeg",
-          "image/jpg",
-          "image/png",
-        ];
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
         if (!allowedTypes.includes(selectedFile.type)) {
-          toast.error("Invalid file type", {
-            description: "Please upload PDF, JPG, or PNG",
+          toast.error('Invalid file type', {
+            description: 'Please upload PDF, JPG, or PNG',
           });
           return;
         }
         onChange(selectedFile);
       }
     },
-    [onChange],
+    [onChange]
   );
 
   const handleClear = useCallback(() => {
     onClear();
     if (inputRef.current) {
-      inputRef.current.value = "";
+      inputRef.current.value = '';
     }
   }, [onClear]);
 
@@ -135,9 +130,7 @@ const FileUploadField = memo(function FileUploadField({
     <div className={className}>
       <label className="block text-xs font-medium mb-1.5">
         {label}
-        {subLabel && (
-          <span className="text-[var(--bz-text-2)]"> {subLabel}</span>
-        )}
+        {subLabel && <span className="text-[var(--bz-text-2)]"> {subLabel}</span>}
       </label>
       <div className="flex items-center gap-2">
         <input
@@ -154,8 +147,8 @@ const FileUploadField = memo(function FileUploadField({
             flex-1 px-3 py-2 rounded-lg border border-dashed cursor-pointer transition-colors text-sm truncate
             ${
               error
-                ? "border-red-500 bg-red-500/10 text-red-500"
-                : "border-[var(--bz-border)] bg-[var(--bz-surface)] hover:border-[var(--accent)]"
+                ? 'border-red-500 bg-red-500/10 text-red-500'
+                : 'border-[var(--bz-border)] bg-[var(--bz-surface)] hover:border-[var(--accent)]'
             }
           `}
         >
@@ -189,10 +182,7 @@ interface YearSelectorProps {
   onYearChange: (year: TaxYear) => void;
 }
 
-const YearSelector = memo(function YearSelector({
-  selectedYear,
-  onYearChange,
-}: YearSelectorProps) {
+const YearSelector = memo(function YearSelector({ selectedYear, onYearChange }: YearSelectorProps) {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
@@ -203,7 +193,7 @@ const YearSelector = memo(function YearSelector({
         {years.map((year) => (
           <Button
             key={year}
-            variant={selectedYear === year ? "default" : "outline"}
+            variant={selectedYear === year ? 'default' : 'outline'}
             size="sm"
             className="h-8 px-3 text-xs"
             onClick={() => onYearChange(year)}
@@ -242,9 +232,7 @@ const TaxCard = memo(function TaxCard({
 }: TaxCardProps) {
   const isActive = activeSection === section;
   const now = new Date();
-  const daysUntilDeadline = Math.ceil(
-    (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-  );
+  const daysUntilDeadline = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   const isOverdue = daysUntilDeadline < 0;
   const isUrgent = daysUntilDeadline >= 0 && daysUntilDeadline <= 30;
 
@@ -252,16 +240,14 @@ const TaxCard = memo(function TaxCard({
     <div
       className={`rounded-xl border bg-[var(--bz-surface)] p-5 cursor-pointer transition-all ${
         isActive
-          ? "border-[var(--accent)] ring-1 ring-[var(--accent)]/30"
-          : "border-[var(--bz-border)] hover:border-[var(--bz-border)]/80"
+          ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]/30'
+          : 'border-[var(--bz-border)] hover:border-[var(--bz-border)]/80'
       }`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div
-            className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}
-          >
+          <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}>
             <Icon className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -273,29 +259,34 @@ const TaxCard = memo(function TaxCard({
           <p className="text-xs text-[var(--bz-text-2)]">Deadline</p>
           <p
             className={`text-sm font-medium ${
-              isOverdue
-                ? "text-red-500"
-                : isUrgent
-                  ? "text-yellow-500"
-                  : "text-[var(--bz-text-1)]"
+              isOverdue ? 'text-red-500' : isUrgent ? 'text-yellow-500' : 'text-[var(--bz-text-1)]'
             }`}
           >
-            {deadline.toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
+            {deadline.toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
             })}
           </p>
-          {isOverdue && (
-            <p className="text-xs text-red-500">
-              {Math.abs(daysUntilDeadline)} days overdue
-            </p>
-          )}
-          {isUrgent && !isOverdue && (
-            <p className="text-xs text-yellow-500">
-              {daysUntilDeadline} days left
-            </p>
-          )}
+          <div className="flex justify-end mt-1">
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                isOverdue
+                  ? 'bg-red-500/15 text-red-400'
+                  : isUrgent
+                    ? 'bg-yellow-500/15 text-yellow-400'
+                    : 'bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)]'
+              }`}
+            >
+              {isOverdue
+                ? `${Math.abs(daysUntilDeadline)}d overdue`
+                : daysUntilDeadline === 0
+                  ? 'today'
+                  : daysUntilDeadline <= 365
+                    ? `⏰ ${daysUntilDeadline}d left`
+                    : `${Math.floor(daysUntilDeadline / 30)}mo left`}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -315,35 +306,35 @@ interface SideWorkspaceProps {
 
 const DOC_TYPES: Record<TaxSection, { key: string; label: string }[]> = {
   personal: [
-    { key: "form1770", label: "Form 1770" },
-    { key: "buktiPotong", label: "Bukti Potong" },
-    { key: "sptTahunan", label: "SPT Tahunan" },
+    { key: 'form1770', label: 'Form 1770' },
+    { key: 'buktiPotong', label: 'Bukti Potong' },
+    { key: 'sptTahunan', label: 'SPT Tahunan' },
   ],
   annual: [
-    { key: "sptTahunan", label: "SPT Tahunan Badan" },
-    { key: "laporanKeuangan", label: "Laporan Keuangan" },
-    { key: "buktiPembayaran", label: "Bukti Pembayaran" },
-    { key: "formTaxAmnesty", label: "Form Tax Amnesty" },
+    { key: 'sptTahunan', label: 'SPT Tahunan Badan' },
+    { key: 'laporanKeuangan', label: 'Laporan Keuangan' },
+    { key: 'buktiPembayaran', label: 'Bukti Pembayaran' },
+    { key: 'formTaxAmnesty', label: 'Form Tax Amnesty' },
   ],
   monthly: [
-    { key: "pph21", label: "PPH 21" },
-    { key: "pph23", label: "PPH 23" },
-    { key: "ppn", label: "PPN" },
-    { key: "pph25", label: "PPH 25" },
+    { key: 'pph21', label: 'PPH 21' },
+    { key: 'pph23', label: 'PPH 23' },
+    { key: 'ppn', label: 'PPN' },
+    { key: 'pph25', label: 'PPH 25' },
   ],
   lkpm: [
-    { key: "lkpmReport", label: "LKPM Report" },
-    { key: "investmentRealization", label: "Investment Realization" },
-    { key: "employeeReport", label: "Employee Report" },
-    { key: "productionReport", label: "Production Report" },
+    { key: 'lkpmReport', label: 'LKPM Report' },
+    { key: 'investmentRealization', label: 'Investment Realization' },
+    { key: 'employeeReport', label: 'Employee Report' },
+    { key: 'productionReport', label: 'Production Report' },
   ],
 };
 
 const SECTION_TITLES: Record<TaxSection, string> = {
-  personal: "Personal Tax Documents",
-  annual: "Annual Company Documents",
-  monthly: "Monthly Report Documents",
-  lkpm: "LKPM Documents",
+  personal: 'Personal Tax Documents',
+  annual: 'Annual Company Documents',
+  monthly: 'Monthly Report Documents',
+  lkpm: 'LKPM Documents',
 };
 
 const SideWorkspace = memo(function SideWorkspace({
@@ -358,12 +349,9 @@ const SideWorkspace = memo(function SideWorkspace({
   const docTypes = DOC_TYPES[activeSection];
   const title = SECTION_TITLES[activeSection];
 
-  const handleFileChange = useCallback(
-    (docKey: string, file: File | undefined) => {
-      setFiles((prev) => ({ ...prev, [docKey]: file }));
-    },
-    [],
-  );
+  const handleFileChange = useCallback((docKey: string, file: File | undefined) => {
+    setFiles((prev) => ({ ...prev, [docKey]: file }));
+  }, []);
 
   const handleFileClear = useCallback((docKey: string) => {
     setFiles((prev) => ({ ...prev, [docKey]: undefined }));
@@ -376,15 +364,13 @@ const SideWorkspace = memo(function SideWorkspace({
       onFileUpload(activeSection, docKey, file);
       setFiles((prev) => ({ ...prev, [docKey]: undefined }));
     },
-    [files, activeSection, onFileUpload],
+    [files, activeSection, onFileUpload]
   );
 
   return (
     <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-5 sticky top-4">
       <h4 className="font-semibold text-[var(--bz-text-1)] mb-1">{title}</h4>
-      <p className="text-xs text-[var(--bz-text-2)] mb-4">
-        Tax year {selectedYear}
-      </p>
+      <p className="text-xs text-[var(--bz-text-2)] mb-4">Tax year {selectedYear}</p>
 
       {uploadError && (
         <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400">
@@ -412,7 +398,7 @@ const SideWorkspace = memo(function SideWorkspace({
                   disabled={isUploading}
                 >
                   <Upload className="w-3 h-3" />
-                  {isUploading ? "..." : "Upload"}
+                  {isUploading ? '...' : 'Upload'}
                 </Button>
               ) : undefined
             }
@@ -433,10 +419,8 @@ export function TaxTab({
   clientId: number;
   formatDate: (d: string) => string;
 }) {
-  const [selectedYear, setSelectedYear] = useState<TaxYear>(
-    new Date().getFullYear(),
-  );
-  const [activeSection, setActiveSection] = useState<TaxSection>("personal");
+  const [selectedYear, setSelectedYear] = useState<TaxYear>(new Date().getFullYear());
+  const [activeSection, setActiveSection] = useState<TaxSection>('personal');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -461,15 +445,13 @@ export function TaxTab({
         });
         toast.success(`${docType} uploaded successfully`);
       } catch (err) {
-        setUploadError(
-          `Failed to upload ${docType}: ${(err as Error).message}`,
-        );
-        toast.error("Upload failed", { description: (err as Error).message });
+        setUploadError(`Failed to upload ${docType}: ${(err as Error).message}`);
+        toast.error('Upload failed', { description: (err as Error).message });
       } finally {
         setIsUploading(false);
       }
     },
-    [clientId, selectedYear],
+    [clientId, selectedYear]
   );
 
   return (
@@ -477,17 +459,10 @@ export function TaxTab({
       {/* Header with year selector */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
-            Tax Overview
-          </h3>
-          <p className="text-sm text-[var(--bz-text-2)]">
-            Manage tax obligations and filings
-          </p>
+          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">Tax Overview</h3>
+          <p className="text-sm text-[var(--bz-text-2)]">Manage tax obligations and filings</p>
         </div>
-        <YearSelector
-          selectedYear={selectedYear}
-          onYearChange={setSelectedYear}
-        />
+        <YearSelector selectedYear={selectedYear} onYearChange={setSelectedYear} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -501,7 +476,7 @@ export function TaxTab({
             color="bg-gradient-to-br from-emerald-500 to-teal-600"
             section="personal"
             activeSection={activeSection}
-            onClick={() => setActiveSection("personal")}
+            onClick={() => setActiveSection('personal')}
           />
 
           <TaxCard
@@ -512,7 +487,7 @@ export function TaxTab({
             color="bg-gradient-to-br from-blue-500 to-cyan-600"
             section="annual"
             activeSection={activeSection}
-            onClick={() => setActiveSection("annual")}
+            onClick={() => setActiveSection('annual')}
           />
 
           <TaxCard
@@ -523,7 +498,7 @@ export function TaxTab({
             color="bg-gradient-to-br from-purple-500 to-pink-600"
             section="monthly"
             activeSection={activeSection}
-            onClick={() => setActiveSection("monthly")}
+            onClick={() => setActiveSection('monthly')}
           />
 
           {/* LKPM with 4 quarters */}
@@ -534,18 +509,16 @@ export function TaxTab({
                   <FileText className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-[var(--bz-text-1)]">
-                    LKPM
-                  </h4>
+                  <h4 className="font-semibold text-[var(--bz-text-1)]">LKPM</h4>
                   <p className="text-xs text-[var(--bz-text-2)]">
                     Laporan Kegiatan Penanaman Modal
                   </p>
                 </div>
               </div>
               <Button
-                variant={activeSection === "lkpm" ? "default" : "outline"}
+                variant={activeSection === 'lkpm' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setActiveSection("lkpm")}
+                onClick={() => setActiveSection('lkpm')}
               >
                 Manage
               </Button>
@@ -556,17 +529,17 @@ export function TaxTab({
                 <div
                   key={q}
                   className={`text-center p-3 rounded-lg border ${
-                    activeSection === "lkpm"
-                      ? "border-[var(--accent)] bg-[var(--bz-accent)]/10"
-                      : "border-[var(--bz-border)]"
+                    activeSection === 'lkpm'
+                      ? 'border-[var(--accent)] bg-[var(--bz-accent)]/10'
+                      : 'border-[var(--bz-border)]'
                   }`}
                 >
                   <p className="text-lg font-bold">Q{q}</p>
                   <p className="text-xs text-[var(--bz-text-2)]">
-                    {q === 1 && "Jan-Mar"}
-                    {q === 2 && "Apr-Jun"}
-                    {q === 3 && "Jul-Sep"}
-                    {q === 4 && "Oct-Dec"}
+                    {q === 1 && 'Jan-Mar'}
+                    {q === 2 && 'Apr-Jun'}
+                    {q === 3 && 'Jul-Sep'}
+                    {q === 4 && 'Oct-Dec'}
                   </p>
                 </div>
               ))}
