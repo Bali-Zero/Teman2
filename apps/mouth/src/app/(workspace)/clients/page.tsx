@@ -49,7 +49,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   inactive: { bg: 'bg-gray-500/20', text: 'text-gray-400' },
 };
 
-type SortField = 'full_name' | 'created_at' | 'last_interaction_date' | 'status' | 'passport_expiry';
+type SortField = 'full_name' | 'created_at' | 'last_interaction_date' | 'status' | 'passport_expiry' | 'active_practices';
 type SortOrder = 'asc' | 'desc';
 type ViewMode = 'list' | 'kanban' | 'table';
 
@@ -400,6 +400,9 @@ function ClientsListContent() {
           comparison = aExp - bExp;
           break;
         }
+        case 'active_practices':
+          comparison = (a.active_practices ?? 0) - (b.active_practices ?? 0);
+          break;
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
@@ -1023,7 +1026,7 @@ function ClientsListContent() {
                       { key: 'assigned_to', label: 'Assigned' },
                       { key: 'last_interaction_date', label: 'Last Contact' },
                       { key: 'passport_expiry', label: 'Passport Exp.' },
-                      { key: 'processes', label: 'Processes' },
+                      { key: 'active_practices', label: 'Processes' },
                     ].map((col) => (
                       <th
                         key={col.key}
