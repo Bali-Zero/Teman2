@@ -17,6 +17,8 @@ import {
   FolderOpen,
   CheckCircle2,
   ArrowRight,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ClientProfile, ClientDocument, Interaction } from '@/lib/api/crm/crm.types';
@@ -69,6 +71,14 @@ export function OverviewTab({
 }) {
   const isClientBirthday = isBirthdayToday(client.date_of_birth);
   const [showAllInteractions, setShowAllInteractions] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = (value: string, field: string) => {
+    void navigator.clipboard.writeText(value).then(() => {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    });
+  };
   const TIMELINE_PREVIEW = 5;
   const visibleInteractions = showAllInteractions
     ? interactions
@@ -129,23 +139,45 @@ export function OverviewTab({
                   <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                     Email
                   </p>
-                  <p className="text-sm font-medium truncate">
-                    {client.email || (
-                      <span className="text-[var(--bz-text-2)] italic text-xs">—</span>
+                  <div className="flex items-center gap-1.5 group/copy">
+                    <p className="text-sm font-medium truncate">
+                      {client.email || (
+                        <span className="text-[var(--bz-text-2)] italic text-xs">—</span>
+                      )}
+                    </p>
+                    {client.email && (
+                      <button
+                        onClick={() => copyToClipboard(client.email!, 'email')}
+                        className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
+                        title="Copy email"
+                      >
+                        {copiedField === 'email' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />}
+                      </button>
                     )}
-                  </p>
+                  </div>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                     Phone
                   </p>
-                  <p className="text-sm font-medium">
-                    {client.phone ? (
-                      formatPhoneNumber(client.phone)
-                    ) : (
-                      <span className="text-[var(--bz-text-2)] italic text-xs">—</span>
+                  <div className="flex items-center gap-1.5 group/copy">
+                    <p className="text-sm font-medium">
+                      {client.phone ? (
+                        formatPhoneNumber(client.phone)
+                      ) : (
+                        <span className="text-[var(--bz-text-2)] italic text-xs">—</span>
+                      )}
+                    </p>
+                    {client.phone && (
+                      <button
+                        onClick={() => copyToClipboard(client.phone!, 'phone')}
+                        className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
+                        title="Copy phone"
+                      >
+                        {copiedField === 'phone' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />}
+                      </button>
                     )}
-                  </p>
+                  </div>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
@@ -183,7 +215,16 @@ export function OverviewTab({
                         <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           Passport
                         </p>
-                        <p className="text-sm font-semibold font-mono">{client.passport_number}</p>
+                        <div className="flex items-center gap-1.5 group/copy">
+                          <p className="text-sm font-semibold font-mono">{client.passport_number}</p>
+                          <button
+                            onClick={() => copyToClipboard(client.passport_number!, 'passport')}
+                            className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
+                            title="Copy passport number"
+                          >
+                            {copiedField === 'passport' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />}
+                          </button>
+                        </div>
                       </div>
                     )}
                     {client.passport_expiry && (
