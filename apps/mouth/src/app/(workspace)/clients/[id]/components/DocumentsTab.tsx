@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 import {
   User,
   Globe,
@@ -9,9 +9,9 @@ import {
   Users,
   FileText,
   Plus,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import type { ClientDocument } from '@/lib/api/crm/crm.types';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { ClientDocument } from "@/lib/api/crm/crm.types";
 
 export function DocumentsTab({
   clientId,
@@ -31,12 +31,12 @@ export function DocumentsTab({
   onRefresh: () => Promise<void>;
 }) {
   const categoryLabels: Record<string, string> = {
-    immigration: 'Immigration',
-    pma: 'Company',
-    tax: 'Tax',
-    personal: 'Personal',
-    family: 'Family',
-    other: 'Other',
+    immigration: "Immigration",
+    pma: "Company",
+    tax: "Tax",
+    personal: "Personal",
+    family: "Family",
+    other: "Other",
   };
 
   const categoryIcons: Record<string, React.ElementType> = {
@@ -49,7 +49,7 @@ export function DocumentsTab({
   };
 
   const sortedCategories = Object.keys(documentsByCategory).sort((a, b) => {
-    const order = ['immigration', 'pma', 'tax', 'personal', 'family', 'other'];
+    const order = ["immigration", "pma", "tax", "personal", "family", "other"];
     return order.indexOf(a) - order.indexOf(b);
   });
 
@@ -73,9 +73,12 @@ export function DocumentsTab({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">Documents</h3>
+          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
+            Documents
+          </h3>
           <p className="text-sm text-[var(--bz-text-2)]">
-            {documents.length} documents across {sortedCategories.length} categories
+            {documents.length} documents across {sortedCategories.length}{" "}
+            categories
           </p>
         </div>
         <Button size="sm" onClick={onAddClick} className="gap-2">
@@ -111,10 +114,14 @@ export function DocumentsTab({
                         {doc.file_name || doc.document_type}
                       </p>
                       <p className="text-xs text-[var(--bz-text-2)] capitalize">
-                        {doc.document_type?.replace(/_/g, ' ')}
-                        {doc.expiry_date ? ` · Expires ${formatDate(doc.expiry_date)}` : ''}
-                        {doc.status === 'verified' && (
-                          <span className="ml-1 text-green-500">· ✓ Verified</span>
+                        {doc.document_type?.replace(/_/g, " ")}
+                        {doc.expiry_date
+                          ? ` · Expires ${formatDate(doc.expiry_date)}`
+                          : ""}
+                        {doc.status === "verified" && (
+                          <span className="ml-1 text-green-500">
+                            · ✓ Verified
+                          </span>
                         )}
                       </p>
                     </div>

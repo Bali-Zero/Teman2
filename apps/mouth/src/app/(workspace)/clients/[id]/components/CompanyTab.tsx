@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Building2,
   FileText,
@@ -11,12 +11,16 @@ import {
   CheckCircle2,
   Edit2,
   X,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import { fileToBase64 } from '@/lib/utils';
-import type { ClientProfile, ClientDocument, CompanyDocument } from '@/lib/api/crm/crm.types';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { fileToBase64 } from "@/lib/utils";
+import type {
+  ClientProfile,
+  ClientDocument,
+  CompanyDocument,
+} from "@/lib/api/crm/crm.types";
 
 // ============================================
 // COMPANY DOC UPLOAD (internal)
@@ -61,7 +65,9 @@ function CompanyDocUpload({
     const poll = async () => {
       if (ocrAbortedRef.current) return;
       try {
-        const status = (await api.request(`/api/crm/clients/${clientId}/ocr-status`)) as {
+        const status = (await api.request(
+          `/api/crm/clients/${clientId}/ocr-status`,
+        )) as {
           pending_ocr: number;
         };
         if (status.pending_ocr === 0 || attempts >= 10) {
@@ -83,80 +89,94 @@ function CompanyDocUpload({
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "application/pdf",
+    ];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Invalid file type', {
-        description: 'Please upload JPG, PNG, or PDF',
+      toast.error("Invalid file type", {
+        description: "Please upload JPG, PNG, or PDF",
       });
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('File too large', { description: 'Maximum 10MB' });
+      toast.error("File too large", { description: "Maximum 10MB" });
       return;
     }
     setIsUploading(true);
     try {
       const base64 = await fileToBase64(file);
-      const response = (await api.post(`/api/crm/clients/${clientId}/documents/upload`, {
-        file: base64,
-        file_name: file.name,
-        document_type: docType,
-        document_category: 'pma',
-        mime_type: file.type,
-        company_id: companyId,
-      })) as { success: boolean; message?: string };
+      const response = (await api.post(
+        `/api/crm/clients/${clientId}/documents/upload`,
+        {
+          file: base64,
+          file_name: file.name,
+          document_type: docType,
+          document_category: "pma",
+          mime_type: file.type,
+          company_id: companyId,
+        },
+      )) as { success: boolean; message?: string };
       if (response.success) {
         setUploadedFile(file.name);
         toast.success(`${label} uploaded for ${companyName} — OCR in corso...`);
         pollOcrStatus();
       } else {
-        toast.error('Upload failed', { description: response.message });
+        toast.error("Upload failed", { description: response.message });
       }
     } catch (err) {
-      toast.error('Upload failed', { description: (err as Error).message });
+      toast.error("Upload failed", { description: (err as Error).message });
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const hasDoc = existingDoc?.google_drive_file_id || uploadedFile;
 
   const docIcon: Record<string, string> = {
-    akta_pendirian: '\u{1F4DC}',
-    npwp: '\u{1F3DB}\uFE0F',
-    nib: '\u{1F4CB}',
-    company_profile: '\u{1F3E2}',
-    sk_decree: '\u2696\uFE0F',
+    akta_pendirian: "\u{1F4DC}",
+    npwp: "\u{1F3DB}\uFE0F",
+    nib: "\u{1F4CB}",
+    company_profile: "\u{1F3E2}",
+    sk_decree: "\u2696\uFE0F",
   };
 
   return (
     <div
       className={`rounded-xl overflow-hidden transition-all ${
         hasDoc
-          ? 'bg-gradient-to-br from-[var(--bz-base)] to-[var(--bz-surface)] border border-[var(--bz-border)] shadow-sm'
-          : 'border border-dashed border-[var(--bz-border)] hover:border-[var(--bz-accent)]/40 bg-[var(--bz-base)]/50'
+          ? "bg-gradient-to-br from-[var(--bz-base)] to-[var(--bz-surface)] border border-[var(--bz-border)] shadow-sm"
+          : "border border-dashed border-[var(--bz-border)] hover:border-[var(--bz-accent)]/40 bg-[var(--bz-base)]/50"
       }`}
     >
       {/* Top accent bar */}
-      {hasDoc && <div className="h-1 bg-gradient-to-r from-green-500/60 to-emerald-500/30" />}
+      {hasDoc && (
+        <div className="h-1 bg-gradient-to-r from-green-500/60 to-emerald-500/30" />
+      )}
 
       <div className="p-3.5">
         <div className="flex items-start gap-3">
           <div
             className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0 ${
-              hasDoc ? 'bg-green-500/10' : 'bg-[var(--bz-text-2)]/5'
+              hasDoc ? "bg-green-500/10" : "bg-[var(--bz-text-2)]/5"
             }`}
           >
-            {docIcon[docType] || '\u{1F4C4}'}
+            {docIcon[docType] || "\u{1F4C4}"}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-[var(--bz-text-1)]">{label}</span>
+              <span className="text-sm font-semibold text-[var(--bz-text-1)]">
+                {label}
+              </span>
               {hasDoc ? (
                 <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
               ) : (
-                <span className="text-[10px] text-[var(--bz-text-2)]">{hint}</span>
+                <span className="text-[10px] text-[var(--bz-text-2)]">
+                  {hint}
+                </span>
               )}
             </div>
 
@@ -167,7 +187,9 @@ function CompanyDocUpload({
               </p>
             )}
             {uploadedFile && (
-              <p className="text-[11px] text-green-400 mt-0.5 truncate">{uploadedFile}</p>
+              <p className="text-[11px] text-green-400 mt-0.5 truncate">
+                {uploadedFile}
+              </p>
             )}
           </div>
         </div>
@@ -181,7 +203,10 @@ function CompanyDocUpload({
                 size="sm"
                 className="gap-1.5 text-xs h-7 px-2.5 flex-1 hover:bg-[var(--bz-accent)]/10 hover:text-[var(--bz-accent)]"
                 onClick={() => {
-                  window.open(`/api/documents/proxy/${existingDoc.google_drive_file_id}`, '_blank');
+                  window.open(
+                    `/api/documents/proxy/${existingDoc.google_drive_file_id}`,
+                    "_blank",
+                  );
                 }}
               >
                 <Eye className="w-3 h-3" />
@@ -192,7 +217,10 @@ function CompanyDocUpload({
                 size="sm"
                 className="gap-1.5 text-xs h-7 px-2.5 flex-1 hover:bg-blue-500/10 hover:text-blue-400"
                 onClick={() => {
-                  window.open(`/api/documents/proxy/${existingDoc.google_drive_file_id}`, '_blank');
+                  window.open(
+                    `/api/documents/proxy/${existingDoc.google_drive_file_id}`,
+                    "_blank",
+                  );
                 }}
               >
                 <Download className="w-3 h-3" />
@@ -212,7 +240,7 @@ function CompanyDocUpload({
           <Button
             variant="outline"
             size="sm"
-            className={`gap-1.5 text-xs h-7 ${hasDoc ? 'px-2.5' : 'w-full px-3'}`}
+            className={`gap-1.5 text-xs h-7 ${hasDoc ? "px-2.5" : "w-full px-3"}`}
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading || ocrPolling}
           >
@@ -221,7 +249,13 @@ function CompanyDocUpload({
             ) : (
               <Upload className="w-3 h-3" />
             )}
-            {isUploading ? '...' : ocrPolling ? 'OCR...' : hasDoc ? '' : `Upload`}
+            {isUploading
+              ? "..."
+              : ocrPolling
+                ? "OCR..."
+                : hasDoc
+                  ? ""
+                  : `Upload`}
           </Button>
         </div>
       </div>
@@ -264,25 +298,26 @@ function EditCompanyModal({
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({
-    company_name: initialData.company_name || '',
-    company_type: initialData.company_type || 'PT PMA',
-    kbli_code: initialData.kbli_code || '',
-    nib: initialData.nib || '',
-    npwp_company: initialData.npwp_company || '',
-    registered_address: initialData.registered_address || initialData.office_address || '',
-    city: initialData.city || '',
-    province: initialData.province || '',
-    akta_pendirian_no: initialData.akta_pendirian_no || '',
-    akta_pendirian_date: initialData.akta_pendirian_date?.split('T')[0] || '',
-    akta_perubahan_no: initialData.akta_perubahan_no || '',
-    akta_perubahan_date: initialData.akta_perubahan_date?.split('T')[0] || '',
-    sk_menhumkam_no: initialData.sk_menhumkam_no || '',
-    sk_menhumkam_date: initialData.sk_menhumkam_date?.split('T')[0] || '',
-    status: initialData.company_status || 'active',
+    company_name: initialData.company_name || "",
+    company_type: initialData.company_type || "PT PMA",
+    kbli_code: initialData.kbli_code || "",
+    nib: initialData.nib || "",
+    npwp_company: initialData.npwp_company || "",
+    registered_address:
+      initialData.registered_address || initialData.office_address || "",
+    city: initialData.city || "",
+    province: initialData.province || "",
+    akta_pendirian_no: initialData.akta_pendirian_no || "",
+    akta_pendirian_date: initialData.akta_pendirian_date?.split("T")[0] || "",
+    akta_perubahan_no: initialData.akta_perubahan_no || "",
+    akta_perubahan_date: initialData.akta_perubahan_date?.split("T")[0] || "",
+    sk_menhumkam_no: initialData.sk_menhumkam_no || "",
+    sk_menhumkam_date: initialData.sk_menhumkam_date?.split("T")[0] || "",
+    status: initialData.company_status || "active",
   });
 
   const inputClass =
-    'w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50';
+    "w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50";
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -290,13 +325,15 @@ function EditCompanyModal({
       // Only send non-empty fields
       const updates: Record<string, string> = {};
       Object.entries(form).forEach(([k, v]) => {
-        if (v !== '') updates[k] = v;
+        if (v !== "") updates[k] = v;
       });
       await api.crm.updateCompany(companyId, updates);
-      toast.success('Company updated');
+      toast.success("Company updated");
       onSave();
     } catch (err) {
-      toast.error('Failed to update company', { description: (err as Error).message });
+      toast.error("Failed to update company", {
+        description: (err as Error).message,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -306,14 +343,19 @@ function EditCompanyModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div
         className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
-        style={{ background: 'var(--bz-card)', border: '1px solid rgba(255,255,255,0.08)' }}
+        style={{
+          background: "var(--bz-card)",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-4 border-b"
-          style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+          style={{ borderColor: "rgba(255,255,255,0.06)" }}
         >
-          <h2 className="text-lg font-semibold text-[var(--bz-text-1)]">Edit Company</h2>
+          <h2 className="text-lg font-semibold text-[var(--bz-text-1)]">
+            Edit Company
+          </h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-white/10 text-[var(--bz-text-2)] transition-colors"
@@ -333,7 +375,9 @@ function EditCompanyModal({
               <input
                 className={inputClass}
                 value={form.company_name}
-                onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, company_name: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -343,7 +387,9 @@ function EditCompanyModal({
               <select
                 className={inputClass}
                 value={form.company_type}
-                onChange={(e) => setForm((f) => ({ ...f, company_type: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, company_type: e.target.value }))
+                }
               >
                 <option value="PT PMA">PT PMA</option>
                 <option value="PT Perorangan">PT Perorangan</option>
@@ -356,75 +402,191 @@ function EditCompanyModal({
           {/* KBLI + NIB + NPWP */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">KBLI Code</label>
-              <input className={inputClass} value={form.kbli_code} placeholder="e.g. 56101" onChange={(e) => setForm((f) => ({ ...f, kbli_code: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                KBLI Code
+              </label>
+              <input
+                className={inputClass}
+                value={form.kbli_code}
+                placeholder="e.g. 56101"
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, kbli_code: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">NIB</label>
-              <input className={inputClass} value={form.nib} placeholder="Nomor Induk Berusaha" onChange={(e) => setForm((f) => ({ ...f, nib: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                NIB
+              </label>
+              <input
+                className={inputClass}
+                value={form.nib}
+                placeholder="Nomor Induk Berusaha"
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, nib: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">NPWP</label>
-              <input className={inputClass} value={form.npwp_company} placeholder="NPWP Perusahaan" onChange={(e) => setForm((f) => ({ ...f, npwp_company: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                NPWP
+              </label>
+              <input
+                className={inputClass}
+                value={form.npwp_company}
+                placeholder="NPWP Perusahaan"
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, npwp_company: e.target.value }))
+                }
+              />
             </div>
           </div>
 
           {/* Address */}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-3 sm:col-span-1">
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">Address</label>
-              <input className={inputClass} value={form.registered_address} onChange={(e) => setForm((f) => ({ ...f, registered_address: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                Address
+              </label>
+              <input
+                className={inputClass}
+                value={form.registered_address}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, registered_address: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">City</label>
-              <input className={inputClass} value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                City
+              </label>
+              <input
+                className={inputClass}
+                value={form.city}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, city: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">Province</label>
-              <input className={inputClass} value={form.province} onChange={(e) => setForm((f) => ({ ...f, province: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                Province
+              </label>
+              <input
+                className={inputClass}
+                value={form.province}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, province: e.target.value }))
+                }
+              />
             </div>
           </div>
 
           {/* Akta Pendirian */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">Akta Pendirian No.</label>
-              <input className={inputClass} value={form.akta_pendirian_no} onChange={(e) => setForm((f) => ({ ...f, akta_pendirian_no: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                Akta Pendirian No.
+              </label>
+              <input
+                className={inputClass}
+                value={form.akta_pendirian_no}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, akta_pendirian_no: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">Akta Pendirian Date</label>
-              <input type="date" className={inputClass} value={form.akta_pendirian_date} onChange={(e) => setForm((f) => ({ ...f, akta_pendirian_date: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                Akta Pendirian Date
+              </label>
+              <input
+                type="date"
+                className={inputClass}
+                value={form.akta_pendirian_date}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    akta_pendirian_date: e.target.value,
+                  }))
+                }
+              />
             </div>
           </div>
 
           {/* Akta Perubahan */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">Akta Perubahan No.</label>
-              <input className={inputClass} value={form.akta_perubahan_no} onChange={(e) => setForm((f) => ({ ...f, akta_perubahan_no: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                Akta Perubahan No.
+              </label>
+              <input
+                className={inputClass}
+                value={form.akta_perubahan_no}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, akta_perubahan_no: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">Akta Perubahan Date</label>
-              <input type="date" className={inputClass} value={form.akta_perubahan_date} onChange={(e) => setForm((f) => ({ ...f, akta_perubahan_date: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                Akta Perubahan Date
+              </label>
+              <input
+                type="date"
+                className={inputClass}
+                value={form.akta_perubahan_date}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    akta_perubahan_date: e.target.value,
+                  }))
+                }
+              />
             </div>
           </div>
 
           {/* SK Kemenkumham */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">SK Kemenkumham No.</label>
-              <input className={inputClass} value={form.sk_menhumkam_no} onChange={(e) => setForm((f) => ({ ...f, sk_menhumkam_no: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                SK Kemenkumham No.
+              </label>
+              <input
+                className={inputClass}
+                value={form.sk_menhumkam_no}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, sk_menhumkam_no: e.target.value }))
+                }
+              />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">SK Date</label>
-              <input type="date" className={inputClass} value={form.sk_menhumkam_date} onChange={(e) => setForm((f) => ({ ...f, sk_menhumkam_date: e.target.value }))} />
+              <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+                SK Date
+              </label>
+              <input
+                type="date"
+                className={inputClass}
+                value={form.sk_menhumkam_date}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, sk_menhumkam_date: e.target.value }))
+                }
+              />
             </div>
           </div>
 
           {/* Status */}
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">Status</label>
-            <select className={inputClass} value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}>
+            <label className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1 block">
+              Status
+            </label>
+            <select
+              className={inputClass}
+              value={form.status}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, status: e.target.value }))
+              }
+            >
               <option value="active">Active</option>
               <option value="in_setup">In Setup</option>
               <option value="dormant">Dormant</option>
@@ -436,7 +598,7 @@ function EditCompanyModal({
         {/* Footer */}
         <div
           className="flex items-center justify-end gap-3 px-6 py-4 border-t"
-          style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+          style={{ borderColor: "rgba(255,255,255,0.06)" }}
         >
           <button
             onClick={onClose}
@@ -469,13 +631,13 @@ export function CompanyTab({
   onRefresh,
 }: {
   clientId: number;
-  client: ClientProfile['client'];
+  client: ClientProfile["client"];
   documents: ClientDocument[];
   formatDate: (d: string) => string;
   onRefresh: () => Promise<void>;
 }) {
   // Company docs from client's documents (category = pma)
-  const pmaDocs = documents.filter((d) => d.document_category === 'pma');
+  const pmaDocs = documents.filter((d) => d.document_category === "pma");
 
   // Company data: try linked companies first, then fallback to search by name
   const [companyData, setCompanyData] = useState<{
@@ -554,7 +716,7 @@ export function CompanyTab({
               role: l.role,
               ownership_percentage: l.ownership_percentage,
               shares_count: l.shares_count,
-            }))
+            })),
           );
           // Load company documents if we have a company_id
           if (co.company_id) {
@@ -597,7 +759,7 @@ export function CompanyTab({
                   role: a.role,
                   ownership_percentage: a.ownership_percentage,
                   shares_count: a.shares_count,
-                }))
+                })),
               );
             }
             // Load company documents
@@ -650,14 +812,16 @@ export function CompanyTab({
     if (!shares) return null;
     const nom = nominal || 1000000;
     const total = shares * nom;
-    if (total >= 1e12) return `Rp ${(total / 1e12).toFixed(total % 1e12 === 0 ? 0 : 1)}T`;
-    if (total >= 1e9) return `Rp ${(total / 1e9).toFixed(total % 1e9 === 0 ? 0 : 1)}B`;
+    if (total >= 1e12)
+      return `Rp ${(total / 1e12).toFixed(total % 1e12 === 0 ? 0 : 1)}T`;
+    if (total >= 1e9)
+      return `Rp ${(total / 1e9).toFixed(total % 1e9 === 0 ? 0 : 1)}B`;
     if (total >= 1e6) return `Rp ${(total / 1e6).toFixed(0)}M`;
     return `Rp ${total.toLocaleString()}`;
   };
 
-  const companyName = co?.company_name || client.company_name || 'Company';
-  const companyType = co?.company_type || '';
+  const companyName = co?.company_name || client.company_name || "Company";
+  const companyType = co?.company_type || "";
   const capital = formatCapital(co?.shares_count, co?.share_nominal_value);
 
   // Merge client pma docs + company docs for the strip
@@ -690,16 +854,23 @@ export function CompanyTab({
       : null;
 
   // Address string
-  const addressStr = [co?.registered_address || co?.office_address, co?.city, co?.province]
+  const addressStr = [
+    co?.registered_address || co?.office_address,
+    co?.city,
+    co?.province,
+  ]
     .filter(Boolean)
-    .join(', ');
+    .join(", ");
 
   return (
     <div className="space-y-5">
       {/* COMPANY CARD */}
       <div
         className="rounded-xl overflow-hidden"
-        style={{ border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(32,32,36,0.7)' }}
+        style={{
+          border: "1px solid rgba(255,255,255,0.06)",
+          background: "rgba(32,32,36,0.7)",
+        }}
       >
         {/* Header band */}
         <div className="px-6 py-5 bg-gradient-to-r from-purple-500/8 to-blue-500/8">
@@ -728,21 +899,23 @@ export function CompanyTab({
                     {companyType}
                   </span>
                 )}
-                {(co?.company_status || 'active') !== 'dissolved' && (
+                {(co?.company_status || "active") !== "dissolved" && (
                   <span
                     className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      (co?.company_status || 'active') === 'active'
-                        ? 'bg-green-500/20 text-green-400'
-                        : (co?.company_status || '') === 'in_setup'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'bg-gray-500/20 text-gray-400'
+                      (co?.company_status || "active") === "active"
+                        ? "bg-green-500/20 text-green-400"
+                        : (co?.company_status || "") === "in_setup"
+                          ? "bg-yellow-500/20 text-yellow-400"
+                          : "bg-gray-500/20 text-gray-400"
                     }`}
                   >
-                    {(co?.company_status || 'active').replace(/_/g, ' ')}
+                    {(co?.company_status || "active").replace(/_/g, " ")}
                   </span>
                 )}
                 {foundingYear && (
-                  <span className="text-xs text-[var(--bz-text-2)]">Est. {foundingYear}</span>
+                  <span className="text-xs text-[var(--bz-text-2)]">
+                    Est. {foundingYear}
+                  </span>
                 )}
               </div>
             </div>
@@ -754,17 +927,33 @@ export function CompanyTab({
           {/* Row 1: KBLI + NIB + NPWP */}
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">KBLI</p>
-              <p className="text-sm text-[var(--bz-text-1)] font-medium font-mono">{co?.kbli_code || '\u2014'}</p>
-              {co?.kbli_description && <p className="text-xs text-[var(--bz-text-2)] truncate">{co.kbli_description}</p>}
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
+                KBLI
+              </p>
+              <p className="text-sm text-[var(--bz-text-1)] font-medium font-mono">
+                {co?.kbli_code || "\u2014"}
+              </p>
+              {co?.kbli_description && (
+                <p className="text-xs text-[var(--bz-text-2)] truncate">
+                  {co.kbli_description}
+                </p>
+              )}
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">NIB</p>
-              <p className="text-sm text-[var(--bz-text-1)] font-mono">{co?.nib || '\u2014'}</p>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
+                NIB
+              </p>
+              <p className="text-sm text-[var(--bz-text-1)] font-mono">
+                {co?.nib || "\u2014"}
+              </p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">NPWP</p>
-              <p className="text-sm text-[var(--bz-text-1)] font-mono">{co?.npwp_company || '\u2014'}</p>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
+                NPWP
+              </p>
+              <p className="text-sm text-[var(--bz-text-1)] font-mono">
+                {co?.npwp_company || "\u2014"}
+              </p>
             </div>
           </div>
 
@@ -772,16 +961,24 @@ export function CompanyTab({
           <div className="grid grid-cols-2 gap-4">
             {addressStr && (
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">Address</p>
+                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
+                  Address
+                </p>
                 <p className="text-sm text-[var(--bz-text-1)]">{addressStr}</p>
               </div>
             )}
             {capital && (
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">Capital</p>
-                <p className="text-sm text-[var(--bz-text-1)] font-semibold">{capital}</p>
+                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
+                  Capital
+                </p>
+                <p className="text-sm text-[var(--bz-text-1)] font-semibold">
+                  {capital}
+                </p>
                 {co?.shares_count && (
-                  <p className="text-xs text-[var(--bz-text-2)]">{co.shares_count.toLocaleString()} shares</p>
+                  <p className="text-xs text-[var(--bz-text-2)]">
+                    {co.shares_count.toLocaleString()} shares
+                  </p>
                 )}
               </div>
             )}
@@ -790,17 +987,28 @@ export function CompanyTab({
           {/* Shareholders */}
           {associates.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-2">Shareholders</p>
+              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-2">
+                Shareholders
+              </p>
               <div className="space-y-1.5">
                 {associates.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
+                  <div
+                    key={i}
+                    className="flex items-center justify-between text-sm"
+                  >
                     <span className="text-[var(--bz-text-1)]">
-                      {a.role || 'Shareholder'} —{' '}
-                      <span className="font-medium">{a.client_name || client.full_name}</span>
+                      {a.role || "Shareholder"} —{" "}
+                      <span className="font-medium">
+                        {a.client_name || client.full_name}
+                      </span>
                     </span>
                     <span className="text-[var(--bz-text-2)]">
-                      {a.ownership_percentage ? `${a.ownership_percentage}%` : ''}
-                      {a.shares_count ? ` · ${a.shares_count.toLocaleString()} shares` : ''}
+                      {a.ownership_percentage
+                        ? `${a.ownership_percentage}%`
+                        : ""}
+                      {a.shares_count
+                        ? ` · ${a.shares_count.toLocaleString()} shares`
+                        : ""}
                     </span>
                   </div>
                 ))}
@@ -809,28 +1017,54 @@ export function CompanyTab({
           )}
 
           {/* Akta & SK */}
-          {(co?.akta_pendirian_no || co?.akta_perubahan_no || co?.sk_menhumkam_no) && (
+          {(co?.akta_pendirian_no ||
+            co?.akta_perubahan_no ||
+            co?.sk_menhumkam_no) && (
             <div className="pt-3 border-t border-[var(--bz-border)]">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 {co?.akta_pendirian_no && (
                   <div>
-                    <span className="text-[var(--bz-text-2)]">Akta Pendirian</span>
-                    <p className="text-[var(--bz-text-1)] font-mono">No. {co.akta_pendirian_no}</p>
-                    {co.akta_pendirian_date && <p className="text-[var(--bz-text-2)]">{formatDate(co.akta_pendirian_date)}</p>}
+                    <span className="text-[var(--bz-text-2)]">
+                      Akta Pendirian
+                    </span>
+                    <p className="text-[var(--bz-text-1)] font-mono">
+                      No. {co.akta_pendirian_no}
+                    </p>
+                    {co.akta_pendirian_date && (
+                      <p className="text-[var(--bz-text-2)]">
+                        {formatDate(co.akta_pendirian_date)}
+                      </p>
+                    )}
                   </div>
                 )}
                 {co?.akta_perubahan_no && (
                   <div>
-                    <span className="text-[var(--bz-text-2)]">Akta Perubahan</span>
-                    <p className="text-[var(--bz-text-1)] font-mono">No. {co.akta_perubahan_no}</p>
-                    {co.akta_perubahan_date && <p className="text-[var(--bz-text-2)]">{formatDate(co.akta_perubahan_date)}</p>}
+                    <span className="text-[var(--bz-text-2)]">
+                      Akta Perubahan
+                    </span>
+                    <p className="text-[var(--bz-text-1)] font-mono">
+                      No. {co.akta_perubahan_no}
+                    </p>
+                    {co.akta_perubahan_date && (
+                      <p className="text-[var(--bz-text-2)]">
+                        {formatDate(co.akta_perubahan_date)}
+                      </p>
+                    )}
                   </div>
                 )}
                 {co?.sk_menhumkam_no && (
                   <div>
-                    <span className="text-[var(--bz-text-2)]">SK Kemenkumham</span>
-                    <p className="text-[var(--bz-text-1)] font-mono">{co.sk_menhumkam_no}</p>
-                    {co.sk_menhumkam_date && <p className="text-[var(--bz-text-2)]">{formatDate(co.sk_menhumkam_date)}</p>}
+                    <span className="text-[var(--bz-text-2)]">
+                      SK Kemenkumham
+                    </span>
+                    <p className="text-[var(--bz-text-1)] font-mono">
+                      {co.sk_menhumkam_no}
+                    </p>
+                    {co.sk_menhumkam_date && (
+                      <p className="text-[var(--bz-text-2)]">
+                        {formatDate(co.sk_menhumkam_date)}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -842,19 +1076,23 @@ export function CompanyTab({
         {allDocs.length > 0 && (
           <div className="px-6 py-3 border-t border-[var(--bz-border)] bg-[rgba(0,0,0,0.15)]">
             <div className="flex items-center gap-4">
-              <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] shrink-0">Documents</span>
+              <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] shrink-0">
+                Documents
+              </span>
               <div className="flex items-center gap-2 overflow-x-auto">
                 {allDocs.map((doc) => (
                   <a
                     key={doc.key}
-                    href={doc.url || '#'}
+                    href={doc.url || "#"}
                     target="_blank"
                     rel="noopener noreferrer"
                     title={doc.name}
                     className="shrink-0 w-10 h-10 rounded border border-[var(--bz-border)] overflow-hidden bg-[var(--bz-base)] hover:border-[var(--bz-accent)] transition-colors flex items-center justify-center flex-col gap-1"
                   >
                     <FileText className="w-4 h-4 text-[var(--bz-text-2)]" />
-                    <span className="text-[8px] text-[var(--bz-text-2)] truncate max-w-[36px] text-center">{doc.type}</span>
+                    <span className="text-[8px] text-[var(--bz-text-2)] truncate max-w-[36px] text-center">
+                      {doc.type}
+                    </span>
                   </a>
                 ))}
               </div>
