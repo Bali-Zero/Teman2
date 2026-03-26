@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
@@ -182,6 +182,7 @@ class PracticeResponse(BaseModel):
 async def create_practice(
     request: Request,
     practice: PracticeCreate,
+    background_tasks: BackgroundTasks,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> PracticeResponse:
@@ -302,6 +303,21 @@ async def create_practice(
 
             await invalidate_cache("zantara:crm_practices_stats:*")
             await invalidate_cache("zantara:crm_clients_stats:*")
+
+            # Practice kickoff communications (Trigger 2)
+            try:
+                from backend.services.crm.welcome.welcome_practice_service import send_practice_kickoff
+
+                background_tasks.add_task(
+                    send_practice_kickoff,
+                    new_practice["id"],
+                    practice.client_id,
+                    practice.practice_type_code,
+                    db_pool,
+                )
+            except Exception as e:
+                logger.error(f"Practice kickoff communication setup failed: {e}")
+
             return PracticeResponse(**new_practice)
 
     except HTTPException:
