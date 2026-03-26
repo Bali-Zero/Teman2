@@ -630,6 +630,27 @@ export default function CaseDetailPage() {
                 <span className="capitalize">{practice.payment_status || 'unpaid'}</span>
               </button>
             )}
+            {(practice.actual_price || practice.quoted_price) && (
+              <div
+                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg tabular-nums"
+                style={{
+                  background: 'rgba(99,102,241,0.10)',
+                  color: '#818cf8',
+                  border: '1px solid rgba(99,102,241,0.20)',
+                }}
+                title={
+                  practice.actual_price
+                    ? 'Actual price'
+                    : 'Quoted price (not yet invoiced)'
+                }
+              >
+                <DollarSign className="w-3.5 h-3.5" />
+                {formatCurrency(practice.actual_price ?? practice.quoted_price)}
+                {!practice.actual_price && (
+                  <span className="opacity-60 font-normal ml-0.5">est</span>
+                )}
+              </div>
+            )}
             <Button variant="outline" size="sm" onClick={handleEditClick}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
@@ -1294,14 +1315,24 @@ export default function CaseDetailPage() {
                         <span
                           className="text-[10px] px-1.5 py-0.5 rounded"
                           style={{
-                            background: durationDays > 14 ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.05)',
+                            background:
+                              durationDays > 14
+                                ? 'rgba(245,158,11,0.12)'
+                                : 'rgba(255,255,255,0.05)',
                             color: durationDays > 14 ? '#fbbf24' : 'var(--bz-text-2)',
                           }}
                           title={`Entered: ${formatDate(t.at)}`}
                         >
                           {durationLabel}
                         </span>
-                        <span className="text-[10px]" style={{ color: 'var(--bz-text-2)', minWidth: '60px', textAlign: 'right' }}>
+                        <span
+                          className="text-[10px]"
+                          style={{
+                            color: 'var(--bz-text-2)',
+                            minWidth: '60px',
+                            textAlign: 'right',
+                          }}
+                        >
                           {formatDate(t.at)}
                         </span>
                       </div>
