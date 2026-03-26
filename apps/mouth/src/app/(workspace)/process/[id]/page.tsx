@@ -585,6 +585,51 @@ export default function CaseDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {practice.payment_status !== undefined && (
+              <button
+                onClick={cyclePaymentStatus}
+                disabled={isUpdatingPayment}
+                title="Click to cycle payment status: unpaid → partial → paid"
+                className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                style={{
+                  background:
+                    practice.payment_status === 'paid'
+                      ? 'rgba(34,197,94,0.12)'
+                      : practice.payment_status === 'partial'
+                        ? 'rgba(245,158,11,0.12)'
+                        : 'rgba(239,68,68,0.12)',
+                  color:
+                    practice.payment_status === 'paid'
+                      ? '#4ade80'
+                      : practice.payment_status === 'partial'
+                        ? '#fbbf24'
+                        : '#f87171',
+                  border:
+                    practice.payment_status === 'paid'
+                      ? '1px solid rgba(34,197,94,0.25)'
+                      : practice.payment_status === 'partial'
+                        ? '1px solid rgba(245,158,11,0.25)'
+                        : '1px solid rgba(239,68,68,0.25)',
+                }}
+              >
+                {isUpdatingPayment ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      background:
+                        practice.payment_status === 'paid'
+                          ? '#4ade80'
+                          : practice.payment_status === 'partial'
+                            ? '#fbbf24'
+                            : '#f87171',
+                    }}
+                  />
+                )}
+                <span className="capitalize">{practice.payment_status || 'unpaid'}</span>
+              </button>
+            )}
             <Button variant="outline" size="sm" onClick={handleEditClick}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
