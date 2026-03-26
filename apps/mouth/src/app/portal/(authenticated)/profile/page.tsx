@@ -319,7 +319,30 @@ export default function ProfilePage() {
                   }}
                 >
                   {formatDate(profile.passportExpiry)}
-                  <span className="ml-2 text-xs">({passportValidity.label})</span>
+                  {(() => {
+                    const days = Math.ceil(
+                      (new Date(profile.passportExpiry).getTime() - Date.now()) / 86400000
+                    );
+                    const chipColor =
+                      days <= 0
+                        ? 'bg-red-500/15 text-red-400'
+                        : days <= 270
+                          ? 'bg-amber-500/10 text-amber-400'
+                          : 'bg-emerald-500/10 text-emerald-400';
+                    const chipText =
+                      days <= 0
+                        ? `Expired ${Math.abs(days)}d ago`
+                        : days <= 30
+                          ? `${days}d left`
+                          : `${Math.floor(days / 30)}mo left`;
+                    return (
+                      <span
+                        className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}
+                      >
+                        {chipText}
+                      </span>
+                    );
+                  })()}
                 </p>
                 {/* Alert Messages */}
                 {passportValidity.alertLevel === 'warning' && (
