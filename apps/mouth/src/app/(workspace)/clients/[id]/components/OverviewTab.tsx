@@ -230,6 +230,21 @@ export function OverviewTab({
                   </div>
                 </>
               )}
+
+              {/* Notes */}
+              {client.notes && (
+                <>
+                  <div className="border-t border-[var(--bz-border)]" />
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1">
+                      Notes
+                    </p>
+                    <p className="text-sm text-[var(--bz-text-2)] leading-relaxed whitespace-pre-line">
+                      {client.notes}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
