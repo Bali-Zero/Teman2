@@ -82,7 +82,7 @@ async def auth_callback_system(
     if secret != admin_secret:
         raise HTTPException(status_code=401, detail="Invalid admin secret")
 
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     import asyncpg
     import httpx
@@ -128,7 +128,7 @@ async def auth_callback_system(
         """,
             access_token,
             refresh_token,
-            datetime.now() + timedelta(seconds=expires_in),
+            datetime.now(tz=timezone.utc).replace(tzinfo=None) + timedelta(seconds=expires_in),
         )
 
         return {
