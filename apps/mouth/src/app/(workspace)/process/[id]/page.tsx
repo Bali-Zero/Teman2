@@ -86,6 +86,11 @@ export default function CaseDetailPage() {
   // Inline payment status update
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
 
+  // Inline price edit
+  const [editingPrice, setEditingPrice] = useState<'quoted' | 'actual' | null>(null);
+  const [priceValue, setPriceValue] = useState('');
+  const [isSavingPrice, setIsSavingPrice] = useState(false);
+
   // Performance tracking
   const startTime = useRef(performance.now());
   const userEmail = useRef<string | null>(null);
@@ -232,6 +237,24 @@ export default function CaseDetailPage() {
       toast.error('Failed to update payment status', (err as Error).message);
     } finally {
       setIsUpdatingPayment(false);
+    }
+  };
+
+  const savePrice = async (field: 'quoted_price' | 'actual_price') => {
+    if (!practice || !caseId) return;
+    const num = Number(priceValue);
+    if (isNaN(num) || num < 0) { setEditingPrice(null); return; }
+    setIsSavingPrice(true);
+    try {
+      const user = await api.getProfile();
+      await api.crm.updatePractice(caseId, { [field]: num }, user.email);
+      setPractice((prev) => prev ? { ...prev, [field]: num } : prev);
+      toast.success('Price updated');
+    } catch (err) {
+      toast.error('Failed to update price', (err as Error).message);
+    } finally {
+      setIsSavingPrice(false);
+      setEditingPrice(null);
     }
   };
 
@@ -717,18 +740,72 @@ export default function CaseDetailPage() {
                 <label className="text-sm mb-1 block" style={{ color: 'var(--bz-text-2)' }}>
                   Quoted Price
                 </label>
-                <p className="font-medium" style={{ color: 'var(--bz-text-1)' }}>
-                  {formatCurrency(practice.quoted_price)}
-                </p>
+                {editingPrice === 'quoted' ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      type="number"
+                      min="0"
+                      step="100000"
+                      value={priceValue}
+                      onChange={(e) => setPriceValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') savePrice('quoted_price');
+                        if (e.key === 'Escape') setEditingPrice(null);
+                      }}
+                      className="w-32 px-2 py-1 rounded text-sm focus:outline-none"
+                      style={{ background: 'var(--bz-base)', border: '1px solid var(--bz-accent)', color: 'var(--bz-text-1)' }}
+                    />
+                    {isSavingPrice ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                      <button onClick={() => savePrice('quoted_price')} className="text-xs text-green-400">✓</button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setEditingPrice('quoted'); setPriceValue(practice.quoted_price?.toString() || ''); }}
+                    className="font-medium hover:underline text-left transition-colors"
+                    style={{ color: 'var(--bz-text-1)' }}
+                    title="Click to edit"
+                  >
+                    {formatCurrency(practice.quoted_price)}
+                  </button>
+                )}
               </div>
 
               <div>
                 <label className="text-sm mb-1 block" style={{ color: 'var(--bz-text-2)' }}>
                   Actual Price
                 </label>
-                <p className="font-medium" style={{ color: 'var(--bz-text-1)' }}>
-                  {formatCurrency(practice.actual_price)}
-                </p>
+                {editingPrice === 'actual' ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      type="number"
+                      min="0"
+                      step="100000"
+                      value={priceValue}
+                      onChange={(e) => setPriceValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') savePrice('actual_price');
+                        if (e.key === 'Escape') setEditingPrice(null);
+                      }}
+                      className="w-32 px-2 py-1 rounded text-sm focus:outline-none"
+                      style={{ background: 'var(--bz-base)', border: '1px solid var(--bz-accent)', color: 'var(--bz-text-1)' }}
+                    />
+                    {isSavingPrice ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                      <button onClick={() => savePrice('actual_price')} className="text-xs text-green-400">✓</button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setEditingPrice('actual'); setPriceValue(practice.actual_price?.toString() || ''); }}
+                    className="font-medium hover:underline text-left transition-colors"
+                    style={{ color: 'var(--bz-text-1)' }}
+                    title="Click to edit"
+                  >
+                    {formatCurrency(practice.actual_price)}
+                  </button>
+                )}
               </div>
 
               <div>
