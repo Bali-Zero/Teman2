@@ -9,13 +9,111 @@ Runs every 5 minutes via the autonomous scheduler.
 
 import logging
 import os
-from typing import Any
+import time
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass, field
+from typing import Any, Callable, Awaitable
 
 import asyncpg
 
 from backend.services.crm.document_categorizer import auto_categorize_document
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DriveCircuitBreaker:
+    """
+    Circuit breaker per il Drive polling.
+
+    Stati:
+    - closed: normale, poll eseguito
+    - open: troppi errori consecutivi, poll saltato
+    - half-open: tentativo di recovery dopo timeout
+
+    Invia alert Telegram quando il circuit si apre.
+    """
+
+    failure_threshold: int = 3
+    recovery_timeout: int = 300  # 5 minuti
+    _failures: int = field(default=0, init=False)
+    _last_failure_time: float = field(default=0.0, init=False)
+    _state: str = field(default="closed", init=False)
+
+    @property
+    def state(self) -> str:
+        if self._state == "open":
+            if time.time() - self._last_failure_time > self.recovery_timeout:
+                self._state = "half-open"
+        return self._state
+
+    def record_success(self) -> None:
+        self._failures = 0
+        self._state = "closed"
+
+    def record_failure(self) -> None:
+        self._failures += 1
+        self._last_failure_time = time.time()
+        if self._failures >= self.failure_threshold:
+            if self._state != "open":
+                logger.error(
+                    f"Drive circuit breaker OPEN dopo {self._failures} errori consecutivi"
+                )
+            self._state = "open"
+
+    async def call(
+        self,
+        fn: Callable[[], Awaitable[dict[str, Any]]],
+        on_open: Callable[[str], None] | None = None,
+    ) -> dict[str, Any] | None:
+        """
+        Esegue fn() se il circuit è closed/half-open.
+        Ritorna None se il circuit è open (poll saltato silenziosamente).
+        """
+        current = self.state
+        if current == "open":
+            logger.warning("Drive circuit OPEN — poll saltato")
+            return None
+
+        try:
+            result = await fn()
+            self.record_success()
+            if current == "half-open":
+                logger.info("Drive circuit breaker: recovery OK — tornato CLOSED")
+            return result
+        except Exception as e:
+            self.record_failure()
+            if self._state == "open" and on_open:
+                on_open(str(e))
+            raise
+
+
+# Singleton circuit breaker (persiste tra i poll della stessa sessione)
+_drive_circuit_breaker = DriveCircuitBreaker()
+
+
+def _send_telegram_alert(message: str) -> None:
+    """Invia alert Telegram quando il circuit breaker si apre."""
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "413539912")
+    if not bot_token:
+        logger.warning("TELEGRAM_BOT_TOKEN non trovato — skip alert circuit breaker")
+        return
+    try:
+        data = urllib.parse.urlencode({
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "HTML",
+        }).encode()
+        urllib.request.urlopen(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            data,
+            timeout=10,
+        )
+        logger.info("Telegram alert circuit breaker inviato")
+    except Exception as ex:
+        logger.warning(f"Telegram alert fallito: {ex}")
 
 
 async def poll_drive_changes() -> dict[str, Any]:
@@ -28,7 +126,28 @@ async def poll_drive_changes() -> dict[str, Any]:
     4. Save new page_token
 
     Returns summary of what was processed.
+    Gestito da DriveCircuitBreaker: si apre dopo 3 errori consecutivi.
     """
+    def _on_circuit_open(error: str) -> None:
+        alert_msg = (
+            f"⚠️ <b>Drive Polling</b>: circuit breaker APERTO\n"
+            f"Dopo {_drive_circuit_breaker.failure_threshold} errori consecutivi.\n"
+            f"Ultimo errore: <code>{error[:200]}</code>\n"
+            f"Recovery automatico in {_drive_circuit_breaker.recovery_timeout // 60} minuti."
+        )
+        _send_telegram_alert(alert_msg)
+
+    try:
+        result = await _drive_circuit_breaker.call(_do_poll_drive_changes, on_open=_on_circuit_open)
+        if result is None:
+            return {"status": "circuit_open", "processed": 0}
+        return result
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+async def _do_poll_drive_changes() -> dict[str, Any]:
+    """Logica effettiva del polling — chiamata tramite circuit breaker."""
     db_pool = None
     try:
         from backend.app.routers.crm_enhanced import _dispatch_ocr_by_folder
@@ -234,7 +353,7 @@ async def poll_drive_changes() -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Drive poll failed: {e}", exc_info=True)
-        return {"status": "error", "error": str(e)}
+        raise  # ri-lancia per permettere al circuit breaker di contare i failures
     finally:
         if db_pool:
             await db_pool.close()
