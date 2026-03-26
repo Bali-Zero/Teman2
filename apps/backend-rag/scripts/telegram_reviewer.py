@@ -37,35 +37,61 @@ def get_updates(token: str, offset: int = 0) -> list[dict]:  # type: ignore[type
     return data.get("result", [])  # type: ignore[no-any-return]
 
 
-def build_review_message(report: dict, document_name: str) -> str:  # type: ignore[type-arg]
-    failed = report.get("failed", [])
-    ratio = report.get("verified_ratio", 0)
-    total = report.get("unique_claim_ids", 0)
-    verified = report.get("verified", 0)
+def build_review_message(report: object, document_name: str) -> str:
+    """Build Telegram review message from a VerificationReport (dataclass or dict)."""
+    # Handle both dataclass and dict (e.g. deserialized from JSON)
+    if isinstance(report, dict):
+        blocked = report.get("blocked_claims", [])
+        ratio = report.get("verified_ratio", 0)
+        total = report.get("total_claims", 0)
+        verified = report.get("verified_count", 0)
+        results = report.get("results", [])
+    else:
+        blocked = getattr(report, "blocked_claims", [])
+        ratio = getattr(report, "verified_ratio", 0)
+        total = getattr(report, "total_claims", 0)
+        verified = getattr(report, "verified_count", 0)
+        results = getattr(report, "results", [])
+
+    failed_results = []
+    for r in results:
+        if isinstance(r, dict):
+            if r.get("verdict") != "FAITHFUL":
+                failed_results.append(r)
+        else:
+            if getattr(r, "verdict", None) != "FAITHFUL":
+                failed_results.append(r)
 
     lines = [
         "\u26a0\ufe0f *NB Pipeline \u2014 Human Review Required*",
         f"\U0001f4c4 Document: `{document_name}`",
         f"\U0001f4ca Verification: {verified}/{total} claims verified ({ratio:.0%})",
         "",
-        "*Failed claims:*",
+        "*Blocked claims:*",
     ]
-    for i, result in enumerate(failed[:10], 1):
-        cid = result.get("claim_id", "?")
-        found = result.get("found_in_db", False)
-        verdict = result.get("haiku_verdict", "NOT IN DB") if found else "NOT IN DB"
-        reason = result.get("haiku_reason") or "Claim ID not found in claims_db"
+    for i, result in enumerate(failed_results[:10], 1):
+        if isinstance(result, dict):
+            cid = result.get("claim_id", "?")
+            verdict = result.get("verdict", "UNCERTAIN")
+            reason = result.get("reason", "")
+        else:
+            cid = getattr(result, "claim_id", "?")
+            verdict = getattr(result, "verdict", "UNCERTAIN")
+            reason = getattr(result, "reason", "")
         lines.append(f"{i}. `{cid}` \u2192 {verdict}")
         lines.append(f"   _{reason}_")
-    if len(failed) > 10:
-        lines.append(f"   ...and {len(failed) - 10} more")
+    if len(blocked) > 10:
+        lines.append(f"   ...and {len(blocked) - 10} more")
 
     lines += ["", "Reply with:", "/approve \u2014 upload to NLM", "/reject \u2014 discard, fix required"]
     return "\n".join(lines)
 
 
-def poll_for_decision(token: str, chat_id: str) -> str:
-    """Poll Telegram for /approve or /reject. Returns 'approved', 'rejected', or 'timeout'."""
+def poll_for_decision(token: str, chat_id: str, message: str) -> str:
+    """Send message to Telegram, then poll for /approve or /reject.
+    Returns 'approved', 'rejected', or 'timeout'."""
+    send_telegram_message(token, chat_id, message)
+
     offset = 0
     updates = get_updates(token, offset=0)
     if updates:
@@ -106,11 +132,8 @@ def main() -> None:
     report = json.loads(Path(args.report).read_text())
     message = build_review_message(report, args.document_name)
 
-    print("Sending review request to Telegram...")  # noqa: T201
-    send_telegram_message(token, chat_id, message)
-
-    print("Waiting for Zero's decision (/approve or /reject)...")  # noqa: T201
-    decision = poll_for_decision(token, chat_id)
+    print("Sending review request to Telegram and waiting for Zero's decision (/approve or /reject)...")  # noqa: T201
+    decision = poll_for_decision(token, chat_id, message)
 
     if decision == "approved":
         print("\nApproved — proceeding with NLM upload")  # noqa: T201
