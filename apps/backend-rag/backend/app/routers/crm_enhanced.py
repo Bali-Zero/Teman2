@@ -875,11 +875,14 @@ async def get_client_profile(
             client_id,
         )
 
-        # Get active practices summary
+        # Get practices with financial + assignment fields for frontend
         practices = await conn.fetch(
             """
             SELECT
-                p.id, p.status, p.expiry_date, p.title,
+                p.id, p.status, p.priority, p.expiry_date, p.start_date,
+                p.completion_date, p.title,
+                p.quoted_price, p.actual_price, p.payment_status,
+                p.assigned_to,
                 COALESCE(pt.code, p.practice_type_code) as practice_type_code,
                 COALESCE(pt.name, p.title) as practice_type_name,
                 CASE
