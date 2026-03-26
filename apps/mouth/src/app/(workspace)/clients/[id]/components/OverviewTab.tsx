@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   User,
@@ -68,6 +68,11 @@ export function OverviewTab({
   clientId: number;
 }) {
   const isClientBirthday = isBirthdayToday(client.date_of_birth);
+  const [showAllInteractions, setShowAllInteractions] = useState(false);
+  const TIMELINE_PREVIEW = 5;
+  const visibleInteractions = showAllInteractions
+    ? interactions
+    : interactions.slice(0, TIMELINE_PREVIEW);
 
   return (
     <div className="space-y-6">
@@ -309,10 +314,10 @@ export function OverviewTab({
             </span>
           </div>
 
-          <div className="p-4 max-h-[400px] overflow-y-auto">
+          <div className="p-4 max-h-[480px] overflow-y-auto">
             {interactions.length > 0 ? (
               <div className="space-y-1">
-                {interactions.map((interaction, idx) => {
+                {visibleInteractions.map((interaction, idx) => {
                   const Icon = INTERACTION_ICONS[interaction.interaction_type] || MessageCircle;
                   const sentimentClass = interaction.sentiment
                     ? SENTIMENT_COLORS[interaction.sentiment] || 'text-gray-400'
@@ -334,7 +339,7 @@ export function OverviewTab({
                         >
                           <Icon className="w-3.5 h-3.5" />
                         </div>
-                        {idx < interactions.length - 1 && (
+                        {idx < visibleInteractions.length - 1 && (
                           <div className="w-px flex-1 bg-[var(--bz-border)] mt-1" />
                         )}
                       </div>
@@ -385,6 +390,16 @@ export function OverviewTab({
                     </div>
                   );
                 })}
+                {interactions.length > TIMELINE_PREVIEW && (
+                  <button
+                    onClick={() => setShowAllInteractions((v) => !v)}
+                    className="w-full mt-2 py-2 text-xs text-[var(--bz-accent)] hover:text-[var(--bz-accent)]/80 border border-[var(--bz-border)] hover:border-[var(--bz-accent)]/40 rounded-lg transition-colors"
+                  >
+                    {showAllInteractions
+                      ? 'Show less'
+                      : `Show ${interactions.length - TIMELINE_PREVIEW} more interactions`}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="py-8 text-center">
@@ -425,10 +440,11 @@ export function OverviewTab({
                 activePractices.map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer group/p"
+                    onClick={() => router.push(`/process/${p.id}`)}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-[var(--bz-text-1)] truncate">
+                      <p className="text-sm text-[var(--bz-text-1)] truncate group-hover/p:text-[var(--bz-accent)] transition-colors">
                         {p.practice_type_name || `Practice #${p.id}`}
                       </p>
                       <p className="text-[10px] text-[var(--bz-text-2)]">
@@ -440,6 +456,7 @@ export function OverviewTab({
                         {formatCurrency(p.quoted_price)}
                       </span>
                     )}
+                    <ArrowRight className="w-3 h-3 text-[var(--bz-text-2)] ml-1 opacity-0 group-hover/p:opacity-100 transition-opacity shrink-0" />
                   </div>
                 ))
               ) : (
@@ -473,10 +490,11 @@ export function OverviewTab({
                 completedPractices.slice(0, 5).map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer group/p"
+                    onClick={() => router.push(`/process/${p.id}`)}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-[var(--bz-text-1)] truncate">
+                      <p className="text-sm text-[var(--bz-text-1)] truncate group-hover/p:text-green-400 transition-colors">
                         {p.practice_type_name || `Practice #${p.id}`}
                       </p>
                       {p.completion_date && (
@@ -490,6 +508,7 @@ export function OverviewTab({
                         {formatCurrency(p.actual_price)}
                       </span>
                     )}
+                    <ArrowRight className="w-3 h-3 text-[var(--bz-text-2)] ml-1 opacity-0 group-hover/p:opacity-100 transition-opacity shrink-0" />
                   </div>
                 ))
               ) : (
