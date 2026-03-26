@@ -872,15 +872,28 @@ async def get_clients_stats(
                 STATS_DAYS_RECENT,
             )
 
+            # Practices by type — single GROUP BY query (avoids N+1 per-type loop)
+            by_practice_type_rows = await conn.fetch(
+                """
+                SELECT pt.name as practice_type, COUNT(p.id) as count
+                FROM practices p
+                JOIN practice_types pt ON p.practice_type_id = pt.id
+                GROUP BY pt.name
+                ORDER BY count DESC
+                """
+            )
+
             by_status = {row["status"]: row["count"] for row in by_status_rows}
             by_team_member = [dict(row) for row in by_team_member_rows]
             new_last_30_days = new_last_30_days_row["count"] if new_last_30_days_row else 0
+            by_practice_type = {row["practice_type"]: row["count"] for row in by_practice_type_rows}
 
             return {
                 "total": sum(by_status.values()),
                 "by_status": by_status,
                 "by_team_member": by_team_member,
                 "new_last_30_days": new_last_30_days,
+                "by_practice_type": by_practice_type,
             }
 
     except HTTPException:
@@ -1010,7 +1023,7 @@ class PassportExtractResponse(BaseModel):
 @router.post("/extract-passport", response_model=PassportExtractResponse)
 async def extract_passport_data(
     request: PassportExtractRequest,
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> PassportExtractResponse:
     """
@@ -1022,6 +1035,10 @@ async def extract_passport_data(
     import httpx
 
     try:
+        # RBAC: verify caller has access to this client before reading/writing
+        async with db_pool.acquire() as conn:
+            await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
+
         from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 
         if not GENAI_AVAILABLE:
@@ -1138,6 +1155,8 @@ IMPORTANT: Return ONLY the JSON object, no additional text."""
             message="Passport data extracted successfully",
         )
 
+    except HTTPException:
+        raise
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse OCR JSON: {e}")
         return PassportExtractResponse(success=False, message="Failed to parse extracted data")
@@ -1453,6 +1472,9 @@ async def delete_client_document(
 
             if not doc:
                 raise HTTPException(status_code=404, detail="Document not found")
+
+            # RBAC: verify caller has access to the client this document belongs to
+            await verify_client_access(doc["client_id"], current_user, conn, allow_assigned=True)
 
             if doc["status"] == "deleted":
                 return {

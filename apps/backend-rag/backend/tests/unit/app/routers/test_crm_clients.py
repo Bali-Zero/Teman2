@@ -373,9 +373,14 @@ class TestGetClientsStats:
         mock_team_row = TestCreateClient._create_mock_row(
             {"assigned_to": "team@example.com", "count": 5}
         )
+        mock_practice_type_row = TestCreateClient._create_mock_row(
+            {"practice_type": "KITAS", "count": 7}
+        )
         mock_count_row = TestCreateClient._create_mock_row({"count": 3})
 
-        conn.fetch = AsyncMock(side_effect=[[mock_status_row], [mock_team_row]])
+        conn.fetch = AsyncMock(
+            side_effect=[[mock_status_row], [mock_team_row], [mock_practice_type_row]]
+        )
         conn.fetchrow = AsyncMock(return_value=mock_count_row)
 
         response = client.get("/api/crm/clients/stats/overview")
@@ -385,6 +390,7 @@ class TestGetClientsStats:
         assert "by_status" in response.json()
         assert "by_team_member" in response.json()
         assert "new_last_30_days" in response.json()
+        assert "by_practice_type" in response.json()
 
 
 class TestExtractPassportEnhancedRBAC:
