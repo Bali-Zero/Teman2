@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "../styles/kbli-theme.css";
+@import 'tailwindcss';
+@import '../styles/kbli-theme.css';
 
 :root {
   /* Map design system vars to kbli theme */
@@ -19,38 +19,38 @@
   --accent-hover: var(--kbli-accent-hover);
 
   /* Warm Depth tokens (Legacy) */
-  --bz-base: #0c0c0e;
-  --bz-elevated: #131315;
-  --bz-surface: #1a1a1e;
-  --bz-card: #202024;
-  --bz-card-hover: #262629;
+  --bz-base: #1d273b;
+  --bz-elevated: #243047;
+  --bz-surface: #2a3655;
+  --bz-card: #2a3655;
+  --bz-card-hover: #2f3d5e;
   --bz-accent: #d4845a;
   --bz-accent-hover: #bf7350;
   --bz-accent-warm: #c9a96e;
   --bz-accent-cool: #5e7fb5;
 
   /* God Tier Anthracite Tokens */
-  --anthracite-base: #1d273b; 
+  --anthracite-base: #1d273b;
   --anthracite-elevated: #243047;
-  
+
   /* Cinematic Border Tokens */
   --glass-highlight: rgba(255, 255, 255, 0.12);
   --glass-rim: rgba(255, 255, 255, 0.03);
-  
+
   /* Typography */
   --tx-pure: #ffffff;
-  --tx-primary: #f8fafc;  
+  --tx-primary: #f8fafc;
   --tx-secondary: #94a3b8;
   --tx-tertiary: #475569;
 
   /* Neon Accents */
-  --neon-blue: #3b82f6;     
-  --neon-purple: #8b5cf6;   
-  --neon-emerald: #10b981;  
+  --neon-blue: #3b82f6;
+  --neon-purple: #8b5cf6;
+  --neon-emerald: #10b981;
   --neon-amber: #f59e0b;
   --neon-rose: #f43f5e;
-  --neon-cyan: #06b6d4;     
-  --bz-copper: #d4845a; 
+  --neon-cyan: #06b6d4;
+  --bz-copper: #d4845a;
 
   /* Sidebar */
   --sidebar-active-bg: rgba(212, 132, 90, 0.08);
@@ -81,10 +81,10 @@ body {
   background: var(--kbli-bg-base);
   color: var(--kbli-text-primary);
   font-family:
-    "Inter",
+    'Inter',
     -apple-system,
     BlinkMacSystemFont,
-    "Segoe UI",
+    'Segoe UI',
     system-ui,
     sans-serif;
   min-height: 100vh;
@@ -105,13 +105,13 @@ body {
 
 /* Subtle ambient gradients — God Tier Anthracite */
 body::before {
-  content: "";
+  content: '';
   position: fixed;
   inset: -25vh -25vw;
-  background: 
-    radial-gradient(circle at 15% 30%, rgba(59, 130, 246, 0.04) 0%, transparent 40%),  /* Blue */
-    radial-gradient(circle at 85% 70%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),  /* Purple */
-    radial-gradient(circle at 50% 10%, rgba(212, 132, 90, 0.02) 0%, transparent 40%);  /* Copper top */
+  background:
+    radial-gradient(circle at 15% 30%, rgba(59, 130, 246, 0.04) 0%, transparent 40%),
+    /* Blue */ radial-gradient(circle at 85% 70%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
+    /* Purple */ radial-gradient(circle at 50% 10%, rgba(212, 132, 90, 0.02) 0%, transparent 40%); /* Copper top */
   pointer-events: none;
   z-index: 0;
   mix-blend-mode: color-dodge;
@@ -119,7 +119,7 @@ body::before {
 
 /* Noise texture overlay */
 body::after {
-  content: "";
+  content: '';
   position: fixed;
   inset: 0;
   opacity: 0.015;
@@ -187,7 +187,7 @@ main,
 }
 
 @property --border-angle {
-  syntax: "<angle>";
+  syntax: '<angle>';
   inherits: true;
   initial-value: 0deg;
 }
@@ -207,7 +207,7 @@ main,
 }
 
 .holographic-card::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: -1px;
   border-radius: 1.1rem;
