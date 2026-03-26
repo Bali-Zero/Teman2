@@ -900,4 +900,23 @@ tools = [{"name": "kbli_search", "eager_input_streaming": True, ...}]
 - `TELEGRAM_BOT_TOKEN` — per alert deploy
 - `TELEGRAM_OWNER_CHAT_ID` — chat ID owner (413539912)
 
-**Last Updated:** 2026-03-26
+**Last Updated:** 2026-03-27
+
+---
+
+## 19. Claude Code Escalation Tasks (leggere a inizio sessione)
+
+Quando il DLQ Autopilot non riesce a fixare un job (Aider fallisce o confidenza bassa),
+crea un file in `~/.agent/decisions/claude_tasks/`. **Leggi sempre questa directory
+a inizio sessione**, esattamente come `shared/escalations.json`.
+
+```bash
+ls ~/.agent/decisions/claude_tasks/ 2>/dev/null | head -10
+```
+
+Ogni file contiene `job`, `error_summary`, `log_tail`, `files_implicated`,
+`dlq_reasoning` (output Claude CLI reasoning), `fix_instruction`, `test_cmd`.
+
+**Regola:** lavora sui claude_tasks in ordine di `priority` (HIGH prima), poi `created_at`.
+Dopo aver fixato: cancella il file con `rm ~/.agent/decisions/claude_tasks/<filename>.json`
+e verifica con `test_cmd`.
