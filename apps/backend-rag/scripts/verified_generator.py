@@ -118,8 +118,8 @@ async def generate_document(
             domain=domain, topic=topic, claims_summary=claims_summary
         )
 
-    client = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    response = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}],
@@ -135,9 +135,10 @@ def validate_markers(document_text: str, claims_db: dict[str, dict[str, Any]]) -
     return valid, missing
 
 
-def run_auto_verifier(document_path: str, claims_db_path: str) -> int:
-    """Step 4: Run auto_verifier.py subprocess. Returns exit code (int)."""
-    report_path = tempfile.mktemp(suffix="_verification_report.json")
+def run_auto_verifier(document_path: str, claims_db_path: str) -> tuple[int, str]:
+    """Step 4: Run auto_verifier.py subprocess. Returns (exit_code, report_path)."""
+    fd, report_path = tempfile.mkstemp(suffix="_verification_report.json")
+    os.close(fd)
     result = subprocess.run(
         [sys.executable, str(SCRIPTS_DIR / "auto_verifier.py"),
          "--document", document_path,
@@ -145,7 +146,7 @@ def run_auto_verifier(document_path: str, claims_db_path: str) -> int:
          "--output", report_path],
         capture_output=True, text=True,
     )
-    return result.returncode
+    return result.returncode, report_path
 
 
 def run_telegram_review(document_path: str, report_path: str, document_name: str) -> str:
@@ -203,16 +204,7 @@ def main() -> None:
     # Step 4
     print("\nStep 4: Running auto-verifier (CRAG-light)...")  # noqa: T201
     claims_db_path = str(CLAIMS_DB_DIR / f"{args.domain}_claims_db.json")
-    report_path = tempfile.mktemp(suffix="_verification_report.json")
-
-    verifier_result = subprocess.run(
-        [sys.executable, str(SCRIPTS_DIR / "auto_verifier.py"),
-         "--document", str(output_path),
-         "--claims-db", claims_db_path,
-         "--output", report_path],
-        capture_output=True, text=True,
-    )
-    exit_code = verifier_result.returncode
+    exit_code, report_path = run_auto_verifier(str(output_path), claims_db_path)
 
     if exit_code == 0:
         print("  PASSED — all claims verified")  # noqa: T201
