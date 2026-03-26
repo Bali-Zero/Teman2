@@ -1,0 +1,665 @@
+JABATAN AMMESSE PER TKA — KEPMENAKER 228/2019
+SETTORI KBLI E POSIZIONI APERTE AI LAVORATORI STRANIERI IN INDONESIA
+
+Guida normativa verificata | Kepmenaker 228/2019, PP 34/2021
+Prodotta da Bali Zero / Zantara Intelligence
+Versione 2025-03-27
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+1. BASE NORMATIVA
+
+[IMM-389] La disciplina delle posizioni lavorative ammesse ai Tenaga Kerja Asing (TKA) in
+Indonesia e regolata in via primaria dal Keputusan Menteri Ketenagakerjaan Nomor 228 Tahun
+2019 (Kepmenaker 228/2019), emanato dal Ministero del Lavoro indonesiano. Tale decreto
+costituisce la lista tassativa (daftar jabatan) delle mansioni che possono essere affidate a
+lavoratori stranieri sul territorio nazionale, suddivisa per settore di classificazione delle
+attivita economiche KBLI 2017.
+
+Il quadro normativo primario si compone dei seguenti atti:
+
+Kepmenaker 228/2019 — Jabatan Tertentu yang Dapat Diduduki oleh Tenaga Kerja Asing:
+  Fonte primaria. Elenca settori KBLI e jabatan specifiche per ciascun settore.
+  Rimpiazza il precedente Permenaker 16/2015 e Kepmenaker 40/2012.
+
+Peraturan Pemerintah Nomor 34 Tahun 2021 (PP 34/2021) — Penggunaan Tenaga Kerja Asing:
+  Disciplina procedurale. Regolamenta RPTKA, IMTA (ora ITAS/ITAP), sponsor e responsabilita
+  datore di lavoro. Sostituisce PP 78/2015 Pasal 42-49.
+
+Peraturan Menteri Ketenagakerjaan Nomor 8 Tahun 2021 (Permenaker 8/2021):
+  Attuazione di PP 34/2021. Procedure di approvazione RPTKA, obblighi formativi TKI
+  pendamping, relazioni periodiche.
+
+Undang-Undang Nomor 11 Tahun 2020 — Cipta Kerja (Omnibus Law):
+  Ha modificato alcune disposizioni della UU 13/2003 sul lavoro, semplificando
+  l'iter di approvazione per TKA in talune categorie.
+
+[IMM-403] Il principio cardine e la corrispondenza obbligatoria: la jabatan indicata nella
+RPTKA deve corrispondere sia alla qualifica accademica/professionale del TKA documentata
+dal curriculum vitae e dai titoli di studio, sia al codice KBLI del datore di lavoro sponsor.
+Una discrepanza tra KBLI aziendale e jabatan richiesta costituisce causa di rigetto
+automatico della RPTKA.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+2. PRINCIPIO GENERALE — SETTORI AMMESSI
+
+[IMM-390] Il regime indonesiano di impiego di lavoratori stranieri si fonda su un principio
+di lista positiva (daftar jabatan terbuka): solo le jabatan espressamente elencate nel
+Kepmenaker 228/2019 all'interno dei 20 settori KBLI ivi indicati sono accessibili a TKA.
+Tutto cio che non figura nella lista e per definizione precluso.
+
+Questo approccio si distingue nettamente dal regime di lista negativa vigente per gli
+investimenti stranieri (Peraturan Presiden 10/2021 sul Daftar Negatif Investasi): in materia
+di impiego TKA, la lista e di tipo positivo e tassativo, non residuale.
+
+Implicazioni operative per Bali Zero:
+
+Prima di avviare qualsiasi pratica TKA, il team deve verificare due condizioni cumulative:
+
+Condizione 1 — KBLI del datore di lavoro:
+  Il codice KBLI indicato nell'atto pendirian (akta pendirian) e nel Nomor Induk Berusaha
+  (NIB) dell'azienda sponsor deve rientrare in uno dei 20 settori elencati in Kepmenaker
+  228/2019. Se il KBLI aziendale appartiene a un settore non coperto (es. pubblica
+  amministrazione, associazioni politiche, culto religioso, attivita domestiche), l'assunzione
+  di TKA e strutturalmente impossibile indipendentemente dalla posizione richiesta.
+
+Condizione 2 — Jabatan nella lista settoriale:
+  La mansione specifica che si intende affidare al TKA deve figurare nell'elenco jabatan del
+  settore corrispondente al KBLI aziendale. Non e sufficiente che il settore sia ammesso:
+  anche la singola jabatan deve essere esplicitamente presente.
+
+Azione raccomandata se il KBLI non rientra nei settori ammessi:
+  Valutare la possibilita di aggiungere un codice KBLI secondario compatibile tramite
+  modifica statutaria dell'entita giuridica. Questa operazione richiede atto notarile di
+  modifica anggaran dasar, aggiornamento OSS-RBA e eventuale rivalutazione del profilo
+  risiko. I tempi medi sono 4-8 settimane. Consultare il team legale Bali Zero per
+  la fattibilita caso per caso.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+3. TABELLA RIEPILOGATIVA — 20 SETTORI AMMESSI AI SENSI DI KEPMENAKER 228/2019
+
+[IMM-389] [IMM-390]
+
+Di seguito la tabella integrale dei 20 settori KBLI coperti dal decreto. Il numero di jabatan
+indicato fa riferimento alle posizioni elencate nelle appendici ufficiali del Kepmenaker
+228/2019. I valori per il Sezione C sono articolati per sub-sezione data la complessita del
+manifatturiero indonesiano.
+
+Sezione | Nome Settore (Bahasa)                              | KBLI Range | N. Jabatan | Note operative
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A       | Pertanian, Kehutanan, dan Perikanan                | 01-03      | 8          | Agri/silvicoltura/pesca
+B       | Pertambangan dan Penggalian                        | 05-09      | ~771       | Tre sub-liste: Minyak&Gas (661), Batubara (95), Panas Bumi (15); unico con Dir. Utama
+C       | Industri Pengolahan (manifatturiero)               | 10-33      | ~700+      | 20 sub-categorie; vedi dettaglio Sezione C sotto
+D       | Pengadaan Listrik, Gas, Uap/Air Panas              | 35         | 40         | Utilities energetiche
+E       | Pengelolaan Air, Pengelolaan Air Limbah            | 36-39      | 19         | Gestione idrica e rifiuti
+F       | Konstruksi                                         | 41-43      | 181        | Ampia lista; rilevante per sviluppo immobiliare [IMM-394]
+G       | Perdagangan Besar dan Eceran; Reparasi             | 45-47      | 48 (42+2+4)| Commercio all ingrosso, veicoli, dettaglio
+H       | Transportasi dan Pergudangan                       | 49-53      | 51 (28+5+2+3+13) | Logistica, aviazione, navigazione
+I       | Penyediaan Akomodasi dan Makan Minum               | 55-56      | 12         | CORE Bali: hotel, F&B [IMM-391]
+J       | Informasi dan Komunikasi                           | 58-63      | 244 (239+5)| ICT, media digitali, telecomunicazioni
+K       | Aktivitas Keuangan dan Asuransi                    | 64-66      | 32         | Banche, assicurazioni, fondi
+L       | Real Estat                                         | 68         | 6          | CORE Bali: proprieta e gestione [IMM-392]
+M       | Aktivitas Profesional, Ilmiah, dan Teknis          | 69-75      | 20 (3+13+4)| Consulenza, ricerca, tecnica specializzata
+N       | Aktivitas Penyewaan dan Sewa Guna Tanpa Hak Opsi   | 77-82      | 3 (2+1)    | ATTENZIONE: lista molto limitata
+P       | Pendidikan                                         | 85         | 143        | Istruzione a tutti i livelli
+Q       | Aktivitas Kesehatan Manusia dan Aktivitas Sosial   | 86-88      | 4          | Sanita e servizi sociali; limitato
+R       | Kesenian, Hiburan, dan Rekreasi                    | 90-93      | 57         | CORE Bali: arte, sport, intrattenimento [IMM-393]
+S       | Aktivitas Jasa Lainnya                             | 94-96      | 8 (5+3)    | Servizi associativi, riparazione, personali
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOTALE COMPLESSIVO                                                      | ~2.374     | Approssimativo (variazioni per emendamenti)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dettaglio sub-sezioni Sezione C — Industri Pengolahan (KBLI 10-33):
+
+Sub-settore | KBLI | N. Jabatan
+Industri makanan                    | 10   | 33
+Industri minuman                    | 11   | 31
+Industri pengolahan tembakau        | 12   | 19
+Industri tekstil                    | 13   | 36
+Industri pakaian jadi               | 14   | 44
+Industri kulit, barang dari kulit   | 15   | 36
+Industri kayu                       | 16   | 13
+Industri kertas                     | 17   | 40
+Industri percetakan                 | 18   | 23
+Industri produk dari batubara/kilang| 19   | 21
+Industri kimia                      | 20   | 19
+Industri farmasi                    | 21   | 11
+Industri karet dan plastik          | 22   | 74
+Industri barang galian bukan logam  | 23   | 24
+Industri logam dasar                | 24   | 174
+Industri barang dari logam          | 25   | 66
+Industri komputer/elektronik        | 26   | 13
+Industri peralatan listrik          | 27   | 17
+Industri mesin                      | 28   | 5
+Industri kendaraan bermotor         | 29   | 9
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+4. DETTAGLIO SETTORI RILEVANTI PER BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1 SEZIONE I — PENYEDIAAN AKOMODASI DAN MAKAN MINUM (HOSPITALITY)
+    Codici KBLI: 55 (Akomodasi) — 56 (Makan Minum)
+    N. jabatan ammesse: 12 [IMM-391]
+
+Questo settore costituisce il nucleo delle pratiche TKA gestite da Bali Zero, in ragione
+della concentrazione di strutture ricettive, ristoranti gourmet e venue di lusso sull'isola.
+La lista e relativamente contenuta (12 jabatan) rispetto alla complessita del comparto, il
+che implica una selezione rigorosa dei titoli ammissibili.
+
+Lista integrale jabatan — Sezione I:
+
+Nr.  | Jabatan (Bahasa Indonesia)              | Denominazione Inglese equivalente      | Note / Qualifica tipica
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1    | General Manager Hotel                   | Hotel General Manager                  | Min. D3/S1 Perhotelan; 5+ anni exp.
+2    | Executive Chef / Chef de Cuisine        | Executive Chef                         | Min. D3 Culinary Arts o equivalente
+3    | Food and Beverage Manager               | F&B Manager                            | Min. D3 Hospitality Management
+4    | Executive Housekeeper                   | Executive Housekeeper                  | Min. D3 Hospitality; esperienza housekeeping
+5    | Front Office Manager                    | Front Office Manager                   | Min. D3; competenza GDS/PMS systems
+6    | Revenue Manager                         | Revenue Manager / Yield Manager        | Min. S1; competenza revenue management systems
+7    | Director of Sales and Marketing         | Director of Sales                      | Min. S1; tracciato vendite F&B/rooms
+8    | Sommelier                               | Sommelier / Wine Specialist            | Certificazione WSET o Court of Master Sommeliers
+9    | Executive Pastry Chef                   | Executive Pastry Chef                  | Formazione pasticceria professionale certificata
+10   | Spa Manager / Spa Director              | Spa Manager                            | Min. D3; certificazione spa/wellness
+11   | Dive Instructor                         | Scuba Dive Instructor                  | PADI/SSI/NAUI Divemaster o Instructor cert.
+12   | Water Sports Instructor                 | Water Sports Instructor                | Certificazione federazione internazionale di sport acquatici
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Avvertenze operative — Sezione I:
+
+La lista di 12 jabatan e esaustiva. Posizioni comuni nel settore hospitalita che NON figurano
+nella lista (es. Bartender, Barista, Room Attendant, Receptionist, Night Auditor, Event
+Coordinator junior) non sono accessibili a TKA. Questo implica che i candidati stranieri
+per queste mansioni non potranno ottenere RPTKA approvata.
+
+[IMM-403] Il datore di lavoro deve avere KBLI 55 (55110 Hotel Bintang, 55120 Hotel Melati,
+55130 Penginapan, 55192 Villa, 55193 Bungalow, ecc.) o KBLI 56 (56101 Restoran, 56102
+Rumah Makan, 56103 Kafe, ecc.) nel proprio NIB per poter sponsorizzare TKA in queste
+jabatan. Un F&B Manager assunto da una societa con KBLI prevalente 68 (Real Estate)
+anziche 56 non sara approvato.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.2 SEZIONE L — REAL ESTAT
+    Codici KBLI: 68
+    N. jabatan ammesse: 6 [IMM-392]
+
+Il settore immobiliare e rilevantissimo per Bali in considerazione dell'elevato volume di
+transazioni che coinvolgono acquirenti stranieri, investitori e sviluppatori internazionali.
+Tuttavia il numero di jabatan ammesse e estremamente limitato: solo 6 posizioni, il che
+richiede una valutazione puntuale di ciascun caso.
+
+Lista integrale jabatan — Sezione L:
+
+Nr.  | Jabatan (Bahasa Indonesia)              | Denominazione Inglese equivalente      | Note / Qualifica tipica
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1    | Konsultan Properti                      | Property Consultant                    | Min. S1; esperienza intermediazione immobiliare
+2    | Agen Real Estat / Agen Properti         | Real Estate Agent / Broker             | Licenza AREBI o equivalente raccomandato
+3    | Manajer Properti                        | Property Manager                       | Min. D3/S1; exp. gestione asset immobiliari
+4    | Ahli Penilai Properti / Penilai         | Property Valuation Expert / Appraiser  | Sertifikat MAPPI o equivalente internazionale (RICS)
+5    | Pengembang Properti / Developer         | Property Developer                     | Min. S1; tracciato sviluppo progetti immobiliari
+6    | Manajer Fasilitas                       | Facilities Manager                     | Min. D3; exp. gestione tecnica edifici/complessi
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Avvertenze operative — Sezione L:
+
+[IMM-403] KBLI 68 comprende 68100 (Real estat dengan hak milik sendiri) e 68200 (Real estat
+berdasarkan balas jasa). La societa sponsor deve avere uno di questi codici nel proprio NIB
+come attivita utama o attivita pendukung.
+
+Caso frequente Bali: le societa di gestione villa (Villa Management Company) operano spesso
+con codici KBLI misti 55192 (Villa) e 68200 (Real Estate as a Service). In questo caso
+occorre determinare quale KBLI e il prevalente nel NIB per stabilire quale lista jabatan
+applicare. Se la jabatan richiesta e Property Manager, si applica la lista Sezione L (KBLI 68).
+Se la jabatan e invece Spa Manager o General Manager Villa, si applica la lista Sezione I
+(KBLI 55).
+
+La jabatan "Direktur" o "Komisaris" non figura nella lista Sezione L, a differenza della
+Sezione B (Pertambangan). Un direttore straniero in una Real Estate company richiede
+diverso inquadramento normativo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.3 SEZIONE R — KESENIAN, HIBURAN, DAN REKREASI (ARTS/ENTERTAINMENT)
+    Codici KBLI: 90 (Seni Budaya) — 91 (Perpustakaan/Museum) — 92 (Perjudian — N/A Bali) — 93 (Olahraga/Rekreasi)
+    N. jabatan ammesse: 57 [IMM-393]
+
+Con 57 jabatan, la Sezione R offre la maggiore diversificazione per i profili creativi,
+sportivi e ricreativi. E il settore di riferimento per istruttori di yoga e benessere,
+artisti internazionali, tecnici di produzione eventi, istruttori sportivi specializzati
+molto presenti a Bali.
+
+Lista jabatan principali per sub-settore — Sezione R:
+
+Sub-settore 90 — Seni Pertunjukan e Seni Rupa:
+
+Nr.  | Jabatan (Bahasa Indonesia)              | Denominazione Inglese equivalente
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1    | Seniman Pertunjukan                     | Performing Artist (Music, Dance, Theater)
+2    | Sutradara / Pengarah                    | Director / Stage Director
+3    | Produser Pertunjukan                    | Event / Show Producer
+4    | Desainer Panggung                       | Stage / Set Designer
+5    | Penata Cahaya                           | Lighting Designer / Technician
+6    | Penata Suara                            | Sound Designer / Audio Engineer
+7    | Penata Kostum                           | Costume Designer
+8    | Koreografer                             | Choreographer
+9    | Komposer / Musisi                       | Composer / Session Musician
+10   | Fotografer Profesional                  | Professional Photographer
+11   | Videografer / Sinematografer            | Videographer / Cinematographer
+12   | Seniman Rupa / Pelukis                  | Visual Artist / Fine Art Painter
+13   | Pematung                                | Sculptor
+14   | Desainer Grafis Senior                  | Senior Graphic Designer
+15   | Animator / Motion Designer              | Animator / Motion Graphics Designer
+
+Sub-settore 91 — Perpustakaan, Arsip, Museum:
+
+16   | Kurator Museum / Galeri                 | Curator / Gallery Director
+17   | Ahli Restorasi                          | Conservation / Restoration Expert
+
+Sub-settore 93 — Olahraga e Rekreasi:
+
+18   | Pelatih Olahraga Profesional            | Professional Sports Coach / Trainer
+19   | Instruktur Yoga / Pilates               | Yoga / Pilates Instructor
+20   | Instruktur Senam / Fitness              | Fitness / Aerobics Instructor
+21   | Instruktur Selam / Penyelam Profesional | Scuba Dive Instructor (KBLI 93)
+22   | Atlet Profesional                       | Professional Athlete
+23   | Manajer Olahraga                        | Sports Manager
+24   | Instruktur Golf                         | Golf Instructor / Golf Pro
+25   | Instruktur Selancar / Surfing           | Surfing Instructor / Coach
+26   | Instruktur Berkuda                      | Horse Riding Instructor
+27   | Instruktur Panjat Tebing                | Rock Climbing Instructor
+28   | Pelatih Renang                          | Swimming Coach / Instructor
+29   | Instruktur Olahraga Air Lainnya         | Other Water Sports Instructor
+30   | Manajer Fasilitas Olahraga              | Sports Facility Manager
+31   | Wasit Internasional                     | International Referee / Umpire
+32   | Fisioterapis Olahraga                   | Sports Physiotherapist
+33   | Analis Kinerja Atlet                    | Sports Performance Analyst
+34   | Pengelola Taman Hiburan / Resort        | Amusement Park / Recreation Resort Manager
+35   | Instruktur Seni Bela Diri               | Martial Arts Instructor
+36   | Instruktur Memanah                      | Archery Instructor
+37   | Manajer Event Olahraga                  | Sports Event Manager
+38   | Konsultan Kebugaran                     | Wellness / Fitness Consultant
+39   | Instruktur Siklus / Cycling             | Cycling Instructor
+40   | Instruktur Tari                         | Dance Instructor
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Nota: la lista sopra riporta le jabatan principali della Sezione R per un totale
+rappresentativo. Il numero ufficiale di 57 jabatan include ulteriori posizioni tecniche
+di supporto alla produzione e alla gestione degli impianti sportivi. Consultare sempre
+l'appendice originale Kepmenaker 228/2019 per verifica puntuale.
+
+Avvertenze operative — Sezione R:
+
+Per gli istruttori di yoga (Instruktur Yoga/Pilates), il KBLI applicabile e solitamente
+93194 (Aktivitas Kebugaran). L'entita sponsor deve avere questo codice nel NIB. Molti yoga
+studio a Bali operano con KBLI 85 (Pendidikan) se offrono corsi certificati, o KBLI 96
+(Jasa Perorangan) se rientrano in servizi personali. La scelta del KBLI incide
+direttamente su quale lista jabatan applicare.
+
+[IMM-403] Un istruttore di surf con KBLI 93 e jabatan "Instruktur Selancar" sara
+approvabile. Lo stesso profilo con KBLI 55 (villaggio turistico con beach club) richiedera
+invece la verifica della lista Sezione I, dove Water Sports Instructor e presente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.4 SEZIONE M — AKTIVITAS PROFESIONAL, ILMIAH DAN TEKNIS (CONSULENZA)
+    Codici KBLI: 69 (Hukum/Akuntan) — 70 (Manajemen/Konsultasi) — 71-75 (Teknik, R&D, Pub/Media)
+    N. jabatan ammesse: 20 (3+13+4) [IMM-390]
+
+La Sezione M copre le professioni intellettuali avanzate. E il settore di riferimento per
+i consulenti manageriali stranieri, advisor fiscali internazionali e professionisti tecnici
+specializzati che operano come consulenti per aziende indonesiane o internazionali attive
+in Indonesia.
+
+Lista jabatan per sub-settore — Sezione M:
+
+Sub-settore 69 — Aktivitas Hukum dan Akuntansi (3 jabatan):
+
+Nr.  | Jabatan (Bahasa Indonesia)              | Denominazione Inglese equivalente      | Note
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1    | Konsultan Hukum / Legal Advisor         | Legal Advisor / Foreign Legal Consultant| Non puo praticare hukum positif Indonesia
+2    | Konsultan Pajak / Akuntan               | Tax Advisor / Accountant               | Non puo firmare laporan keuangan auditati
+3    | Konsultan Keuangan                      | Financial Consultant                   | Min. S1 Keuangan/Akuntansi
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sub-settore 70 — Aktivitas Kantor Pusat dan Konsultasi Manajemen (13 jabatan):
+
+Nr.  | Jabatan (Bahasa Indonesia)              | Denominazione Inglese equivalente
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4    | Konsultan Manajemen                     | Management Consultant
+5    | Konsultan Strategi Bisnis               | Business Strategy Consultant
+6    | Konsultan Sumber Daya Manusia           | HR Consultant
+7    | Konsultan Operasional                   | Operations Consultant
+8    | Konsultan Pemasaran / Marketing         | Marketing Consultant
+9    | Konsultan Teknologi Informasi           | IT Consultant (non developer)
+10   | Konsultan Lingkungan                    | Environmental Consultant
+11   | Analis Bisnis Senior                    | Senior Business Analyst
+12   | Manajer Proyek Senior                   | Senior Project Manager
+13   | Kepala Kantor Perwakilan                | Representative Office Head / Chief Rep
+14   | Direktur Operasional (holding/KP)       | COO / Operations Director (holding co.)
+15   | Konsultan Investasi                     | Investment Consultant
+16   | Konsultan Rantai Pasok                  | Supply Chain Consultant
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sub-settore 71-75 — Arsitektur, R&D, Periklanan (4 jabatan):
+
+Nr.  | Jabatan (Bahasa Indonesia)              | Denominazione Inglese equivalente
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+17   | Arsitek Senior / Desainer Interior      | Senior Architect / Interior Designer
+18   | Peneliti Senior / Scientist             | Senior Researcher / Scientist
+19   | Spesialis Pengujian Teknis              | Technical Testing / QA Specialist
+20   | Direktur Kreatif / Art Director         | Creative Director / Art Director
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Avvertenze operative — Sezione M:
+
+Il consulente legale straniero (Konsultan Hukum) non puo svolgere pratiche di hukum positif
+indonesiano, ossia non puo rappresentare clienti davanti a tribunali indonesiani ne firmare
+atti giuridici regolati dal diritto interno. Il suo ruolo e limitato a consulenza su diritto
+internazionale, diritto comparato e transazioni cross-border.
+
+[IMM-403] Per il KBLI 70 (Konsultasi Manajemen), la jabatan "Konsultan Manajemen" richiede
+che il TKA dimostri specializzazione documentata (curriculum vitae, referenze, pubblicazioni,
+portfolio progetti) coerente con la tipologia di consulenza indicata nel RPTKA. Una
+descrizione generica senza evidenza della specializzazione porta al rigetto.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.5 SEZIONE F — KONSTRUKSI
+    Codici KBLI: 41 (Gedung) — 42 (Bangunan Sipil) — 43 (Konstruksi Khusus)
+    N. jabatan ammesse: 181 [IMM-394]
+
+Con 181 jabatan, la Sezione F e tra i settori piu capaci in termini di assorbimento di TKA.
+E rilevante per il settore immobiliare balinese in quanto molti developer stranieri
+coinvolgono professionisti tecnici internazionali nei cantieri di lusso.
+
+Lista jabatan principali — Sezione F (sintesi):
+
+Categoria Dirigenziale/Manageriale:
+  Project Director / Direttore di Progetto
+  Construction Manager / Site Manager Senior
+  Project Manager Infrastrutture Civili
+  Contract Manager / Commercial Manager
+  QHSE Manager (Quality, Health, Safety, Environment)
+  BIM Manager / BIM Coordinator Senior
+
+Categoria Ingegneristica:
+  Structural Engineer Senior / Ahli Struktur Madya-Utama
+  Civil Engineer Senior / Ahli Teknik Sipil Utama
+  Mechanical & Electrical Engineer / Ahli ME Senior
+  Geotechnical Engineer / Ahli Geoteknik
+  Environmental Engineer / Ahli Lingkungan
+  Cost Estimator / Quantity Surveyor Senior (SQS/RICS)
+  Commissioning Engineer (MEP, industria)
+  Facade Engineer / Ahli Selubung Bangunan
+  Fire Protection Engineer
+  Acoustics Engineer / Noise Consultant
+  Landscape Architect Senior
+
+Categoria Tecnica Specializzata:
+  Ahli Jembatan / Bridge Specialist
+  Tunnel Engineer / Ahli Terowongan
+  Foundation / Piling Specialist
+  Asphalt / Pavement Specialist
+  Concrete Technology Specialist
+  NDT Inspector (Non-Destructive Testing)
+  Welding Inspector / CWI Internazionale
+  Cranes & Lifting Specialist
+  Scaffolding Supervisor Senior
+  Waterproofing Specialist
+
+[IMM-394] La ricchezza della lista jabatan della Sezione F e particolarmente rilevante per
+le pratiche TKA connesse a sviluppi immobiliari e turistici di grande dimensione a Bali,
+dove le specifiche tecniche internazionali richiedono frequentemente la presenza di
+ingegneri e tecnici specializzati non reperibili localmente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+5. NOTA SPECIALE — SEZIONE B PERTAMBANGAN (MINING)
+   Codici KBLI: 05-09 (Batubara, Minyak & Gas, Logam, Non-logam, Panas Bumi)
+   N. jabatan ammesse: ~771 totali su tre sotto-liste
+
+[IMM-395] La Sezione B — Pertambangan e Penggalian costituisce un caso normativo del tutto
+eccezionale nell'intero sistema Kepmenaker 228/2019: e il SOLO settore in cui la jabatan
+"Direktur Utama" (Chief Executive Officer / Managing Director) e esplicitamente inclusa
+nella lista delle posizioni ammesse a TKA.
+
+Questa eccezione e prevista per i sub-settori estrattivi piu critici:
+
+Sub-settore Minyak dan Gas Bumi (KBLI 06-09): 661 jabatan
+  Comprende: Direktur Utama, Direktur Keuangan, Direktur Operasional, Direktur Teknis.
+  Requisiti minimi per Direktur Utama: S1 (laurea triennale o magistrale) in ingegneria,
+  geologia, economia o disciplina tecnica pertinente, piu ALMENO 15 (quindici) anni di
+  esperienza documentata nel settore petrolifero o del gas naturale.
+
+Sub-settore Batubara (KBLI 05): 95 jabatan
+  Comprende posizioni direttoriali con analoghi requisiti di esperienza quindicennale.
+
+Sub-settore Panas Bumi / Geothermal (KBLI 09): 15 jabatan
+  Lista piu ridotta; include posizioni di supervisione tecnica di impianti geotermici.
+
+Motivazione normativa:
+  Il legislatore indonesiano ha concesso questa deroga eccezionale al principio di esclusione
+  dei livelli direttoriali dal regime TKA in ragione della specificita tecnica del settore
+  estrattivo, della necessita di trasferimento tecnologico internazionale e degli obblighi
+  assunti dall'Indonesia nelle concessioni di produzione condivisa (PSC/KKS) con societa
+  petrolifere straniere.
+
+Rilevanza per Bali Zero:
+  Pratiche TKA nel settore Pertambangan a Bali sono statisticamente rare data la morfologia
+  dell'isola e il divieto di attivita estrattive nelle zone UNESCO Subak. Tuttavia questa
+  norma puo essere rilevante per clienti che operano nelle province petrolifere di Kalimantan,
+  Sumatera o Papua e utilizzano Bali come base operativa.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+6. SETTORI NON AMMESSI — CONSEGUENZE E ALTERNATIVE
+
+I seguenti settori sono ESCLUSI dal Kepmenaker 228/2019 e pertanto non consentono
+l'impiego regolare di TKA in nessuna jabatan:
+
+Sezione O — Administrasi Pemerintahan (KBLI 84):
+  Pubblica Amministrazione, difesa, sicurezza sociale obbligatoria.
+  Ratio: sovranita statale. TKA strutturalmente vietati per disposizione costituzionale.
+
+Sezione T — Aktivitas Rumah Tangga (KBLI 97-98):
+  Attivita domestiche come datori di lavoro (personale domestico).
+  I lavoratori domestici stranieri sono regolati da regime separato non rientrante nel TKA.
+
+Sezione U — Aktivitas Badan Internasional (KBLI 99):
+  Organizzazioni internazionali e corpo diplomatico.
+  Disciplinati da privilegi e immunita diplomatiche, non da normativa TKA.
+
+Sezione non inclusa nella lista:
+  Partiti politici, organizzazioni di massa (ormas), associazioni religiose, confraternite:
+  Non presenti in Kepmenaker 228/2019. TKA non applicabile.
+
+Cosa fare se il KBLI aziendale non e coperto:
+
+Opzione 1 — Aggiunta KBLI secondario compatibile:
+  Se l'azienda svolge anche attivita rientranti in un settore ammesso, e possibile aggiungere
+  un secondo codice KBLI tramite modifica statutaria (perubahan anggaran dasar). Questo
+  consente di sponsorizzare TKA per la jabatan nel settore secondario ammesso.
+  Esempio: una ONG con KBLI non coperto che gestisce anche un centro formativo puo aggiungere
+  KBLI 85 (Pendidikan) per assumere istruttori stranieri.
+
+Opzione 2 — Valutazione jabatan in settore collegato:
+  In alcuni casi la mansione richiesta figura in un settore diverso da quello prevalente.
+  Il team Bali Zero deve verificare se esiste corrispondenza funzionale in un settore ammesso.
+
+Opzione 3 — Struttura alternativa:
+  Se l'assunzione TKA e bloccata per incompatibilita strutturale di KBLI, valutare la
+  costituzione di entita giuridica separata con KBLI compatibile che agisca da datore
+  di lavoro formale. Questa opzione richiede analisi legale approfondita per evitare
+  rischi di abuso di forma giuridica (penyelundupan hukum).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+7. REQUISITI DI QUALIFICA PER TKA
+
+[IMM-403] Il principio di corrispondenza qualifica-jabatan e fondamentale e non derogabile.
+
+7.1 Titolo di Studio
+
+Per la grande maggioranza delle jabatan ammesse, Kepmenaker 228/2019 e PP 34/2021
+richiedono il seguente minimo accademico in ordine di priorita:
+
+S2/S3 (Master/Dottorato): richiesto per posizioni di ricerca senior (Sezione M, sub 70-75),
+  professioni regolamentate (medicine, diritto internazionale), e posizioni direttoriali
+  in settori eccezionali (Sezione B con 15 anni esperienza).
+
+S1 (Laurea triennale o quadriennale): requisito standard per la maggior parte delle jabatan
+  manageriali e tecniche nelle Sezioni C, F, J, K, M.
+
+D3 (Diploma accademico 3 anni): accettabile per jabatan operative qualificate nei settori
+  hospitalita (Sezione I), costruzioni (Sezione F livello supervisore), e manifatturiero.
+
+Certificazione professionale internazionale equivalente:
+  Per Sommelier (WSET/CMS), Dive Instructor (PADI/SSI/NAUI), istruttori sportivi
+  (federazioni internazionali riconosciute), la certificazione professionale puo sostituire
+  o integrare il titolo accademico formale, a condizione che sia riconosciuta nel paese
+  di origine del TKA.
+
+7.2 Documentazione Richiesta per RPTKA
+
+Documento                                     | Formato        | Note
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Curriculum Vitae                              | Format bebas   | Min. 2 pagine; evidenzia esperienza pertinente
+Fotocopia Ijazah / Diploma / Degree           | Legalized copy | Apostille o legalizzazione consolato Indonesia
+Transkrip Akademik                            | Legalized copy | Per titoli universitari
+Sertifikat Profesi Internasional              | Original/copy  | Per posizioni con requisito certificazione
+Referenze Kerja / Reference Letters           | Lettere orig.  | Min. 2 referenze da datori di lavoro precedenti
+Foto KTP/Paspor                               | Scan           | Passaporto valido min. 18 mesi
+Surat Penugasan Perusahaan Pemberi Kerja      | Lettera aziend.| Se intra-company transfer
+Foto Formal                                   | 4x6 cm         | Sfondo merah (rosso)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7.3 Obbligo di TKI Pendamping
+
+Ai sensi di Permenaker 8/2021, ogni TKA deve essere affiancato da almeno un TKI pendamping
+(lavoratore indonesiano di accompagnamento) che venga formato per acquisire le competenze
+del TKA. Il rapporto TKA:TKI pendamping e 1:1 per le posizioni operative, e 1:N per
+le posizioni manageriali. Il piano di alih teknologi (trasferimento di competenze) deve
+essere allegato alla RPTKA e viene monitorato dall'ispettorato del lavoro.
+
+Eccezioni all'obbligo TKI pendamping:
+  Posizioni con carattere non ricorrente (film/spettacolo, eventi sportivi internazionali,
+  missioni tecniche a tempo determinato inferiore a 3 mesi) possono richiedere deroghe
+  all'obbligo di pendamping tramite apposita richiesta al Kemenaker.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+8. NOTE OPERATIVE BALI ZERO
+
+8.1 Workflow Standard Verifica Ammissibilita TKA
+
+Step 1 — Identificare KBLI datore di lavoro:
+  Richiedere al cliente copia del NIB (Nomor Induk Berusaha) estratto da OSS-RBA.
+  Verificare il codice KBLI principale e tutti i codici secondari registrati.
+  Controllare che il KBLI rientri nei 20 settori coperti da Kepmenaker 228/2019.
+
+Step 2 — Identificare jabatan richiesta:
+  Definire con precisione la mansione che il TKA dovra svolgere.
+  Verificare che la jabatan sia presente nell'appendice del settore KBLI corrispondente.
+  In caso di dubbio su denominazione, cercare la jabatan piu vicina per contenuto funzionale.
+
+Step 3 — Verifica qualifica TKA:
+  [IMM-403] Confrontare il curriculum vitae del candidato con i requisiti minimi
+  della jabatan identificata.
+  Verificare che titoli di studio e certificazioni siano legalmente riconoscibili.
+  Valutare l'ottenimento di apostille o legalizzazione consolare per i documenti esteri.
+
+Step 4 — Calcolo costi servizio:
+  Consultare PricingTool per ottenere il preventivo aggiornato del servizio RPTKA.
+  Non usare tariffe memorizzate: le fees governative (PNBP) sono soggette a variazioni.
+  Includere nel preventivo: RPTKA processing, ITAS/ITAS baru, eventuali endorsement SKCK.
+
+Step 5 — Apertura pratica:
+  Creare pratica TKA nel sistema CRM con tutti i documenti allegati.
+  Definire timeline basata sulla tipologia di RPTKA:
+    Nuova RPTKA standard: 7-14 giorni lavorativi
+    RPTKA baru per nuova azienda: 14-21 giorni lavorativi
+    RPTKA perpanjangan (rinnovo): 5-10 giorni lavorativi
+
+8.2 Casistiche Speciali a Bali
+
+Villa Management con personale straniero specializzato:
+  Scenario frequente: proprietario straniero vuole assumere General Manager straniero
+  per villa privata o complesso villa. Verificare che la societa gestrice abbia KBLI 55192
+  (Villa) o KBLI 68 (Real Estate) nel NIB. La jabatan General Manager Hotel e in lista
+  Sezione I, ma solo se KBLI e 55; per KBLI 68 la jabatan piu vicina e Manajer Properti.
+
+Yoga Retreat e Wellness Center:
+  Dipende dal KBLI:
+    KBLI 93194 (Kebugaran/Fitness): lista Sezione R, jabatan Instruktur Yoga/Pilates ammessa
+    KBLI 85 (Pendidikan): lista Sezione P, jabatan Instruktur/Guru ammessa (143 jabatan)
+    KBLI 56 (F&B/Cafe): lista Sezione I, jabatan limitata a 12 posizioni; yoga non inclusa
+
+Artisti/Performer per resort e hotel:
+  Se il contratto e con la struttura ricettiva (KBLI 55), la jabatan deve essere nella
+  lista Sezione I. Poiche "Seniman Pertunjukan" non figura nella Sezione I, un artista
+  che si esibisce stabilmente in un hotel dovra operare con KBLI 90 (Seni Pertunjukan)
+  tramite contratto con una agenzia/societa di produzione separata con quel KBLI.
+
+Istruttori sportivi per surf school e dive center:
+  Surf school: KBLI 93 (Olahraga) → lista Sezione R → Instruktur Selancar ammessa
+  Dive center: KBLI 93 o KBLI 55 (se annesso a resort) → lista corrispondente
+  In caso di dual KBLI scegliere il codice prevalente nell'atto pendirian.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+9. APPENDICE — NOTE SU AGGIORNAMENTI E VERIFICHE SUCCESSIVE
+
+9.1 Vigenza e Possibili Aggiornamenti
+
+Il Kepmenaker 228/2019 e in vigore dal 2019 e non ha subito revisioni integrali alla data
+di produzione di questo documento (marzo 2025). Tuttavia il Ministero del Lavoro ha gia
+in passato emesso kepmen successivi che hanno modificato liste specifiche per settori
+particolari. Si raccomanda:
+
+Verifica periodica: controllare il portale Kemenaker (kemnaker.go.id) e JDIH (jdih.kemnaker.go.id)
+  per eventuali kepmen o permenaker successivi che aggiornino o integrino la lista jabatan.
+
+Monitoraggio KBLI 2025: il KBLI 2025 (nuova classificazione, in fase di implementazione
+  progressiva da parte BPS per deadline giugno 2026) potrebbe generare aggiornamenti
+  al Kepmenaker con nuovi codici. Le pratiche avviate nel 2025 con KBLI 2020 rimangono
+  valide; le nuove aperture di impresa da meta 2025 useranno KBLI 2025.
+
+9.2 Interazione con Altri Regimi di Visto Lavorativo
+
+ITAS (Izin Tinggal Terbatas) per TKA:
+  Visto lavorativo principale. Durata 12 mesi, rinnovabile. Richiede RPTKA approvata.
+
+ITAP (Izin Tinggal Tetap) per TKA senior:
+  Permesso di soggiorno permanente. Accessibile dopo 5 anni continuativi di ITAS.
+  Non dipende da rinnovo annuale RPTKA.
+
+Visa Kunjungan Bisnis (B211A):
+  NON autorizza attivita lavorativa subordinata. Solo per trattative, survey, incontri
+  preliminari. Duranta max 60 giorni + 1 estensione 30 giorni.
+
+Visa on Arrival (VoA) e E-Visa:
+  Assolutamente vietato per attivita lavorativa anche temporanea. Violazione sanzionata
+  con deportazione e blacklist dall'immigrazione.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+CLAIM IDS RIFERIMENTO: IMM-389, IMM-390, IMM-391, IMM-392, IMM-393, IMM-394, IMM-395, IMM-403
+
+Fine documento
+Versione 2025-03-27
+Generato da Zantara Intelligence — Bali Zero
+Per uso interno operativo. Non distribuire a terzi senza autorizzazione.

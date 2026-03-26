@@ -1,0 +1,894 @@
+IZIN KERJA TKA — PROCEDURA COMPLETA 2025
+RPTKA, DKP-TKA E KITAS E23 PER LAVORATORI STRANIERI IN INDONESIA
+
+Guida normativa verificata | PP 34/2021, Kepmenaker 228/2019, Kepmenaker 349/2019
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+1. BASE NORMATIVA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il quadro giuridico che disciplina l'impiego di lavoratori stranieri (Tenaga Kerja Asing,
+di seguito TKA) in Indonesia si articola su tre livelli normativi principali, ciascuno con
+ambito di applicazione distinto e complementare agli altri.
+
+Il livello primario e costituito dal Peraturan Pemerintah Nomor 34 Tahun 2021, comunemente
+noto come PP 34/2021. Tale regolamento governativo definisce le condizioni generali e
+obbligatorie per l'impiego dei TKA: stabilisce l'obbligo di predisporre il RPTKA (Rencana
+Penggunaan Tenaga Kerja Asing), introduce il meccanismo della DKP-TKA (Dana Kompensasi
+Penggunaan Tenaga Kerja Asing), e abolisce formalmente il vecchio sistema IMTA (Izin
+Mempekerjakan Tenaga Kerja Asing) come documento fisico distinto. Con l'entrata in vigore
+del PP 34/2021, l'approvazione del RPTKA costituisce di per se l'autorizzazione al lavoro e
+consente l'ottenimento del visto E23 e della KITAS relativa. [IMM-399]
+
+Il livello secondario riguarda la selezione delle jabatan (mansioni/qualifiche) ammesse
+settore per settore. Il Keputusan Menteri Ketenagakerjaan Nomor 228 Tahun 2019, in seguito
+denominato Kepmenaker 228/2019, cataloga in modo tassativo i settori KBLI in cui e
+consentito impiegare lavoratori stranieri, nonche le specifiche jabatan autorizzate per
+ciascun settore. Sono elencati esattamente 20 settori KBLI nei quali l'impiego di TKA e
+permesso, ognuno con la relativa lista di jabatan eligibili. Al di fuori di questi settori,
+l'assunzione di personale straniero non e autorizzata, indipendentemente dalla qualifica del
+candidato o dalle necessita operative del datore di lavoro. [IMM-389] [IMM-390]
+
+Il livello terziario e speculare: il Keputusan Menteri Ketenagakerjaan Nomor 349 Tahun 2019,
+denominato Kepmenaker 349/2019, specifica le 19 jabatan universalmente vietate ai TKA,
+ovvero quelle mansioni che non possono mai essere ricoperte da personale straniero
+indipendentemente dal settore, dalla qualifica o dall'esperienza del candidato. Si tratta
+principalmente di posizioni legate alla gestione delle risorse umane e alle relazioni
+industriali, ambiti nei quali il legislatore indonesiano ha ritenuto necessario riservare
+l'accesso esclusivamente a cittadini nazionali. [IMM-396]
+
+La corretta comprensione della gerarchia tra questi tre livelli normativi e fondamentale per
+impostare correttamente la procedura: prima si verifica se il settore KBLI del datore di
+lavoro rientra nei 20 settori ammessi (Kepmenaker 228), poi si verifica che la jabatan
+desiderata non figuri tra le 19 vietate (Kepmenaker 349), infine si avvia la procedura
+amministrativa secondo PP 34/2021.
+
+
+2. PANORAMICA DEL FLUSSO IZIN KERJA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il flusso complessivo per portare un lavoratore straniero in Indonesia in posizione lavorativa
+regolare si articola in quattro fasi principali, strettamente sequenziali. Nessuna fase puo
+essere avviata prima del completamento di quella precedente. Di seguito una rappresentazione
+schematica testuale del percorso:
+
+STEP 1 — RPTKA (Rencana Penggunaan Tenaga Kerja Asing)
+         Presentazione domanda sul portale Molina da parte del datore di lavoro
+         Selezione settore KBLI + jabatan ammessa
+         Approvazione Kemnaker
+              |
+              v
+STEP 2 — DKP-TKA (Dana Kompensasi Penggunaan Tenaga Kerja Asing)
+         Versamento USD 100 per jabatan per mese per tutta la durata del contratto
+         Pagamento obbligatorio prima dell'emissione del documento finale
+              |
+              v
+STEP 3 — VISTO E23
+         Richiesta visto presso consolato/ambasciata indonesiana nel paese di origine
+         o cambio di stato visa in Indonesia (se gia presenti con altro permesso)
+         Validita: 60 gg singolo ingresso
+              |
+              v
+STEP 4 — KITAS E23 (Kartu Izin Tinggal Terbatas)
+         Conversione del visto E23 in permesso di soggiorno a tempo determinato
+         Validita: 6 mesi, 1 anno o 2 anni a seconda del contratto
+         Documento finale che autorizza la permanenza e il lavoro in Indonesia
+
+CONFRONTO VECCHIO VS NUOVO SISTEMA
+
+Prima del PP 34/2021, il sistema prevedeva tre documenti distinti e separati: l'IMTA (Izin
+Mempekerjakan Tenaga Kerja Asing), il VITAS (Visto Tinggal Terbatas) e la KITAS. Ogni
+documento richiedeva una procedura autonoma e tempi aggiuntivi. Il processo totale poteva
+richiedere da 3 a 6 mesi, con costi amministrativi moltiplicati.
+
+Con l'entrata in vigore del PP 34/2021, l'IMTA fisico e stato abolito come documento
+separato. [IMM-402] L'approvazione del RPTKA assorbe la funzione dell'IMTA e abilita
+direttamente la richiesta del visto E23, semplificando in modo sostanziale il percorso
+burocratico. Il numero totale di documenti da ottenere si riduce a due: RPTKA approvato
+(che sostituisce IMTA) e KITAS E23. I tempi stimati si contraggono a 4-10 settimane per
+l'intero processo in condizioni normali.
+
+Nota operativa: la semplificazione normativa non ha eliminato la complessita tecnica
+nella selezione della jabatan corretta. Gli errori piu frequenti si verificano esattamente
+in questa fase e comportano il rigetto dell'intera domanda con conseguente ripartenza
+dell'iter. Per questo motivo, la corretta identificazione della jabatan prima della
+presentazione del RPTKA rimane il momento piu critico dell'intera procedura.
+
+
+3. STEP 1 — RPTKA (RENCANA PENGGUNAAN TKA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il RPTKA, acronimo di Rencana Penggunaan Tenaga Kerja Asing, e il documento programmatico
+obbligatorio che ogni datore di lavoro indonesiano deve presentare per ottenere
+l'autorizzazione a impiegare personale straniero. La sua presentazione e approvazione sono
+il primo atto imprescindibile dell'intera procedura. [IMM-399]
+
+CHI PRESENTA IL RPTKA
+
+Il soggetto obbligato alla presentazione e sempre il datore di lavoro indonesiano (pemberi
+kerja), ovvero l'entita giuridica che intende assumere il TKA. Puo trattarsi di:
+- PT (Perseroan Terbatas): societa a responsabilita limitata
+- PT PMA (Penanaman Modal Asing): societa a investimento straniero
+- CV (Commanditaire Vennootschap): societa in accomandita
+- Yayasan: fondazione
+- Lembaga pemerintah: ente pubblico
+- Perwakilan perusahaan asing (KPPA, BUJKA, ecc.): rappresentanze di societa straniere
+
+Il TKA stesso non puo presentare il RPTKA in prima persona: e il datore di lavoro che si
+assume la responsabilita giuridica dell'impiego e che presenta la documentazione.
+
+DOVE SI PRESENTA
+
+Il RPTKA si presenta esclusivamente tramite il portale digitale Molina, accessibile
+all'indirizzo molina.kemnaker.go.id. Il portale e gestito dal Kementerian Ketenagakerjaan
+(Kemnaker), Ministero del Lavoro della Repubblica d'Indonesia. Non esiste una procedura
+cartacea parallela: la digitalizzazione e totale. [IMM-401]
+
+L'accesso al portale richiede la registrazione preventiva dell'azienda con numero NIB
+(Nomor Induk Berusaha) valido e attivo nel sistema OSS (Online Single Submission).
+
+COSA CONTIENE IL RPTKA
+
+La domanda RPTKA deve includere obbligatoriamente:
+
+a) Dati aziendali: ragione sociale, NPWP, NIB, indirizzo sede, KBLI principale e secondari,
+   rappresentante legale con KTP/NIK valido.
+
+b) Dati del TKA: nome completo come da passaporto, nazionalita, numero passaporto, data
+   nascita, ultima qualifica conseguita, titolo di studio (con legalization se straniero).
+
+c) Jabatan: la mansione specifica che il TKA ricoprira, che deve corrispondere alla
+   nomenclatura ufficiale prevista dal Kepmenaker 228/2019 per il settore KBLI del datore.
+   [IMM-403] Non e sufficiente indicare una descrizione generica: la jabatan deve essere
+   selezionata dall'elenco ufficiale o essere dimostrata la corrispondenza.
+
+d) Durata contratto: periodo di impiego previsto in mesi. Questo dato e critico perche
+   determina il calcolo della DKP-TKA. [IMM-400]
+
+e) Numero di TKA: quanti lavoratori stranieri si intende assumere nella stessa jabatan.
+   Ogni TKA aggiuntivo genera un obbligo DKP-TKA separato.
+
+f) Lokasi kerja: la provincia e il distretto in cui il TKA prestava la propria attivita
+   lavorativa. Questo campo incide sulla giurisdizione competente per eventuali controlli.
+
+g) Pendamping TKA: per ogni posizione TKA e obbligatoria la designazione di un lavoratore
+   indonesiano (tenaga kerja lokal pendamping) che affianca il lavoratore straniero a fini
+   di trasferimento di conoscenze. La mancanza del pendamping e causa automatica di rigetto.
+
+SELEZIONE JABATAN NEL RPTKA
+
+La selezione della jabatan corretta all'interno del portale Molina e l'operazione tecnica
+piu delicata dell'intera procedura. Il portale propone una lista di jabatan filtrata per
+codice KBLI del datore di lavoro: se il KBLI non rientra nei 20 settori ammessi dal
+Kepmenaker 228/2019, il portale non mostra alcuna jabatan disponibile. [IMM-389]
+
+In caso di dubbio sulla corrispondenza tra la mansione effettiva e la jabatan ufficiale,
+e necessario condurre un'analisi comparativa sulla base delle job description contenute
+nell'allegato tecnico del Kepmenaker 228/2019 prima di procedere con la compilazione.
+
+TIMING DI APPROVAZIONE
+
+I tempi di approvazione del RPTKA variano in base a diversi fattori:
+- Jabatan standard in settori ad alto volume (es. Konstruksi, KBLI 41-43): 5-10 giorni lavorativi
+- Jabatan in settori a basso volume o con jabatan meno frequenti: 10-20 giorni lavorativi
+- Casi con documentazione incompleta o jabatan da verificare manualmente: 20-45 giorni lavorativi
+- Casi con richiesta di chiarimenti da parte di Kemnaker: timing variabile, potenzialmente 60+ gg
+
+Una volta approvato, il RPTKA ha validita pari alla durata indicata nel contratto di lavoro.
+Non e rinnovabile automaticamente: al termine del periodo, un nuovo RPTKA deve essere
+presentato per eventuali proroghe.
+
+
+4. STEP 2 — DKP-TKA (DANA KOMPENSASI)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La DKP-TKA, Dana Kompensasi Penggunaan Tenaga Kerja Asing, e il contributo economico
+obbligatorio che il datore di lavoro versa allo Stato indonesiano in corrispondenza
+dell'impiego di ciascun lavoratore straniero. La sua ratio giuridica e compensare il
+sistema previdenziale e formativo nazionale per ogni posizione occupata da un TKA anziche
+da un lavoratore locale. [IMM-400]
+
+IMPORTO E CALCOLO
+
+L'importo e fissato in USD 100 per jabatan per mese per l'intera durata del contratto.
+[IMM-400] La valuta di riferimento e il dollaro statunitense (USD), indipendentemente
+dalla valuta in cui e denominato il contratto di lavoro.
+
+Formula di calcolo:
+
+DKP-TKA totale = USD 100 x numero di jabatan x numero di mesi del contratto
+
+Esempi pratici:
+
+Esempio 1: Un TKA con contratto di 12 mesi su singola jabatan:
+DKP-TKA = USD 100 x 1 x 12 = USD 1.200
+
+Esempio 2: Due TKA con contratti di 24 mesi su due jabatan distinte:
+DKP-TKA = USD 100 x 2 x 24 = USD 4.800
+
+Esempio 3: Un TKA con contratto di 6 mesi:
+DKP-TKA = USD 100 x 1 x 6 = USD 600
+
+Nota: se lo stesso TKA ricopre piu jabatan (caso ammesso in alcune strutture organizzative),
+il calcolo si applica per ogni jabatan separatamente.
+
+MODALITA DI PAGAMENTO
+
+Il versamento avviene tramite il portale Molina al termine del processo di approvazione
+del RPTKA. Il sistema genera automaticamente il codice di pagamento (kode bayar) valido
+per il trasferimento bancario. I canali accettati includono trasferimento interbancario
+indonesiano (RTGS, BI-FAST), pagamento tramite virtual account presso le banche partner
+Kemnaker, e in alcuni casi pagamento tramite gateway digitale autorizzato.
+
+Il pagamento deve essere completato entro la scadenza indicata nel codice di pagamento,
+che tipicamente e di 3 giorni lavorativi dalla generazione del codice. Il mancato
+pagamento entro la scadenza invalida il codice e richiede la generazione di uno nuovo.
+
+DESTINAZIONE DEI FONDI
+
+Per norma, il gettito DKP-TKA viene ripartito tra:
+- Badan Pengembangan Sumber Daya Manusia Ketenagakerjaan (BPSDMK): formazione forza lavoro
+- Pemerintah daerah setempat: governo regionale ove il TKA presta servizio
+- Badan Pengelola Jaminan Sosial Ketenagakerjaan (BPJS TK): sistema previdenziale
+
+OBBLIGHI CONTRIBUTIVI SEPARATI
+
+La DKP-TKA non sostituisce gli altri obblighi contributivi del datore di lavoro. Restano
+dovuti separatamente:
+- BPJS Ketenagakerjaan: previdenza e infortuni anche per TKA (obbligatorio)
+- BPJS Kesehatan: assicurazione sanitaria (facoltativa per TKA con copertura equivalente)
+- PPh Pasal 26: ritenuta fiscale sui redditi di lavoro dipendente di soggetti non residenti
+  pari al 20% del gross salary o aliquota ridotta da convenzione fiscale (P3B) se applicabile
+
+
+5. STEP 3 — VISTO E23 E KITAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Una volta completata l'approvazione del RPTKA e il versamento della DKP-TKA, il datore di
+lavoro e il TKA dispongono di tutti i presupposti per avviare la fase migratoria della
+procedura: l'ottenimento del visto E23 e della successiva KITAS.
+
+COSA SUCCEDE DOPO L'APPROVAZIONE RPTKA
+
+L'approvazione del RPTKA genera nel sistema Molina un documento di approvazione ufficiale
+(surat keputusan RPTKA) che serve come prova dell'autorizzazione al lavoro. Come stabilito
+dal PP 34/2021, questo documento sostituisce a tutti gli effetti il vecchio IMTA fisico che
+in precedenza doveva essere ottenuto separatamente. [IMM-402]
+
+Il datore di lavoro trasmette copia del RPTKA approvato all'Istituto Nazionale per la
+Migrazione (Direktorat Jenderal Imigrasi, DJI) per la generazione del Telex Visa, ovvero
+l'autorizzazione che permette al TKA di richiedere il visto E23 presso il consolato o
+ambasciata indonesiana nel paese di residenza.
+
+VISTO E23 — CARATTERISTICHE
+
+Il visto E23 e il visto di soggiorno temporaneo (VITAS, Visa Tinggal Terbatas) specificamente
+destinato ai lavoratori stranieri. Le sue caratteristiche principali:
+
+- Categoria: VITAS — Visa Tinggal Terbatas
+- Codice visto: E23 (lavoratore straniero su RPTKA approvato)
+- Validita post-rilascio: 60 giorni per ingresso in Indonesia
+- Tipo: single entry (ingresso singolo)
+- Dove si richiede: consolato/ambasciata indonesiana nel paese di residenza del TKA
+  o, in alcuni casi, tramite procedura Alih Status in Indonesia
+
+Il TKA deve presentarsi di persona al consolato con il Telex Visa emesso da DJI, il passaporto
+originale con validita residua di almeno 18 mesi, la copia del RPTKA approvato, e la
+documentazione personale (foto, modulo visto, prova dei titoli di studio o qualifiche).
+
+KITAS E23 — CONVERSIONE E CARATTERISTICHE
+
+Entro 30 giorni dall'ingresso in Indonesia con il visto E23, il TKA deve recarsi all'ufficio
+imigrasi competente per territorio (Kantor Imigrasi) per la conversione del visto in KITAS
+(Kartu Izin Tinggal Terbatas), ovvero il permesso di soggiorno a tempo determinato.
+
+La KITAS E23 ha le seguenti caratteristiche:
+- Validita: 6 mesi, 1 anno o 2 anni a seconda della durata del contratto RPTKA
+- Forma: tessera fisica (kartu) con dati biometrici e chip RFID
+- Multiplo ingresso: la KITAS E23 include il Tanda Bertolak (exit-reentry permit) automatico
+  che consente uscite e rientri multipli in Indonesia durante la sua validita
+- Obblighi: il titolare deve registrarsi all'ufficio anagrafe locale (Kelurahan) entro 14 gg
+
+RINNOVO KITAS
+
+Al termine della validita, se il contratto e stato prorogato e un nuovo RPTKA e stato
+approvato, la KITAS puo essere rinnovata presentando la documentazione aggiornata all'ufficio
+imigrasi. Il rinnovo richiede in media 7-14 giorni lavorativi.
+
+ALIH STATUS (CAMBIO STATO VISA IN INDONESIA)
+
+In determinate circostanze e possibile procedere all'Alih Status (cambio di stato), ovvero
+convertire un visto turista o un visto di altro tipo gia presente in Indonesia in KITAS E23
+senza necessita di tornare nel paese di origine. Questa procedura e subordinata all'approvazione
+di Imigrasi e al completamento del RPTKA e DKP-TKA. I tempi sono generalmente piu lunghi
+rispetto alla procedura standard.
+
+LINK CON ALTRE GUIDE BALI ZERO
+
+Per la procedura dettagliata di richiesta del visto E23 al consolato, vedere:
+Guide: visto_e23_procedura_consolato_2025.txt
+
+Per la procedura KITAS con modalita Alih Status:
+Guide: kitas_alih_status_2025.txt
+
+Per la gestione del MERP (Multiple Exit Re-Entry Permit) e degli spostamenti internazionali:
+Guide: merp_kitas_e23_2025.txt
+
+
+6. SELEZIONE JABATAN — REGOLE CRITICHE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La selezione della jabatan corretta e il momento decisivo dell'intera procedura RPTKA.
+Un errore in questa fase comporta il rigetto della domanda, la perdita dei costi sostenuti
+e la necessita di ricominciare l'iter da capo. Le regole che seguono sono vincolanti.
+
+REGOLA 1 — CORRISPONDENZA TRA JABATAN E KBLI DEL DATORE
+
+La jabatan selezionata nel RPTKA deve essere tra quelle ammesse nel settore KBLI del datore
+di lavoro secondo il Kepmenaker 228/2019. Non e possibile selezionare una jabatan di un
+settore diverso, anche se la mansione effettiva fosse simile o equivalente. [IMM-403]
+
+Il portale Molina filtra automaticamente le jabatan disponibili in base al KBLI principale
+del datore di lavoro. Se il KBLI non e tra i 20 ammessi, nessuna jabatan sara disponibile.
+[IMM-389] [IMM-390]
+
+Esempio: un datore di lavoro con KBLI 55 (Akomodasi) non puo selezionare una jabatan dal
+catalogo del settore Konstruksi (KBLI 41-43), anche se il TKA svolge lavori edili presso
+la struttura alberghiera.
+
+REGOLA 2 — VERIFICA PRELIMINARE JABATAN VIETATE
+
+Prima di selezionare qualsiasi jabatan, e obbligatorio verificare che non figuri tra le
+19 jabatan universalmente vietate ai TKA dal Kepmenaker 349/2019. [IMM-396]
+
+Questa verifica deve essere condotta anche se la jabatan appare disponibile nel menu
+del portale Molina, poiche in alcuni casi di inconsistenza del sistema potrebbero figurare
+jabatan che in realta sono soggette a divieto assoluto. La responsabilita della verifica
+ricade sul datore di lavoro.
+
+ERRORI COMUNI NELLA SELEZIONE JABATAN
+
+I seguenti errori sono ricorrenti nelle pratiche RPTKA presentate senza assistenza
+professionale:
+
+Errore 1 — Jabatan troppo generica: indicare "Manajer" senza specificare il settore di
+pertinenza. La jabatan deve essere specifica: es. "Manajer Restoran" nel settore F&B,
+"Manajer Konstruksi" nel settore edilizio.
+
+Errore 2 — Jabatan HR: tentare di inserire un TKA in posizioni di gestione delle risorse
+umane (Direktur Personalia, Manajer Personalia, Manajer Hubungan Industrial, ecc.) che
+rientrano nelle 19 jabatan vietate dal Kepmenaker 349/2019. Il rigetto e automatico.
+[IMM-397]
+
+Errore 3 — Traduzione libera: inventare una denominazione in bahasa Indonesia sulla base
+di una traduzione letterale della job title inglese o italiana, senza verificarne
+la corrispondenza nel catalogo ufficiale. Il sistema Molina confronta la jabatan inserita
+con un database strutturato: denominazioni non standard vengono rifiutate.
+
+Errore 4 — KBLI errato del datore: selezionare un KBLI che non corrisponde all'attivita
+principale dell'azienda solo per accedere a jabatan altrimenti non disponibili. Si tratta
+di dichiarazione mendace soggetta a sanzione amministrativa e penale.
+
+Errore 5 — Direktur Utama in settori non estrattivi: come stabilito dal Kepmenaker 228/2019,
+solo nel settore Pertambangan (KBLI pertambangan, codici estrattivi) un TKA puo ricoprire
+la jabatan di Direktur Utama. In tutti gli altri settori, questa qualifica e inaccessibile
+ai lavoratori stranieri. [IMM-395] Tentare di inserirla in settori diversi dal Pertambangan
+risultera in rigetto certo della domanda.
+
+LA JABATAN CEO — CONDIZIONALE
+
+La jabatan Kepala Eksekutif Kantor (CEO/Chief Executive Officer) e di natura condizionale:
+non e universalmente vietata, ma non e nemmeno automaticamente disponibile in tutti i
+settori e per tutti i soggetti giuridici. [IMM-398]
+
+La sua ammissibilita dipende da:
+- Il settore KBLI del datore di lavoro (non tutti i 20 settori includono questa jabatan)
+- La struttura giuridica dell'azienda (le PT PMA hanno maggiori probabilita di accesso)
+- La quota di capitale straniero e la configurazione del management board
+- La specificita del ruolo dimostrata nella documentazione allegata
+
+In caso di dubbio sull'ammissibilita del CEO, e fortemente raccomandata una verifica
+preventiva con Kemnaker prima della presentazione formale del RPTKA.
+
+DOCUMENTAZIONE A SUPPORTO DELLA JABATAN
+
+Per ogni jabatan selezionata, la documentazione a supporto deve includere:
+- Curriculum vitae del TKA con dettaglio esperienze lavorative nella jabatan indicata
+- Titolo di studio (diploma/laurea) pertinente alla jabatan, con legalization apostille
+  o legalizzazione consolare indonesiana se il titolo e stato conseguito all'estero
+- Job description dettagliata in bahasa Indonesia che dimostri la corrispondenza tra
+  le mansioni effettive e la jabatan ufficiale del Kepmenaker 228/2019
+- Per jabatan senior (Direktur, Manajer di primo livello): prova delle anni di esperienza
+  richiesti come prerequisito dalla normativa settoriale specifica
+
+
+7. SETTORI KBLI AMMESSI (SINTESI)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il Kepmenaker 228/2019 elenca tassativamente i settori KBLI nei quali e consentito impiegare
+TKA. Il totale e di 20 settori. [IMM-389] [IMM-390] Al di fuori di questi settori non esiste
+possibilita legale di assumere lavoratori stranieri con contratto di dipendenza.
+
+La tabella seguente riporta una sintesi dei settori ammessi, con indicazione del range KBLI
+di riferimento, del numero indicativo di jabatan disponibili e delle note operative rilevanti.
+
+SETTORE                       KBLI RANGE    JABATAN    NOTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Pertambangan e Penggalian     05-09         varie      UNICO settore con Direktur Utama [IMM-395]
+Industri Pengolahan           10-33         varie      Manifatturiero
+Pengadaan Listrik, Gas        35            varie      Utilities
+Pengadaan Air                 36-39         varie      Acqua, rifiuti
+Konstruksi                    41-43         181        Il settore con piu jabatan ammesse [IMM-394]
+Perdagangan Besar             46            varie      Commercio all'ingrosso
+Perdagangan Eceran            47            varie      Commercio al dettaglio
+Transportasi dan Pergudangan  49-53         varie      Trasporti e logistica
+Akomodasi, Makanan/Minuman    55-56         12         Alberghiero e ristorazione [IMM-391]
+Informasi dan Komunikasi      58-63         varie      ICT, media, telecomunicazioni
+Jasa Keuangan                 64-66         varie      Finanza e assicurazioni
+Real Estate                   68            6          [IMM-392]
+Aktivitas Profesional         69-75         varie      Servizi professionali
+Jasa Persewaan                77-82         varie      Noleggio e servizi alle imprese
+Administrasi Pemerintah       84            varie      Solo enti pubblici autorizzati
+Pendidikan                    85            varie      Istruzione e formazione
+Kesehatan dan Sosial          86-88         varie      Sanita e servizi sociali
+Kesenian, Hiburan, Rekreasi   90-93         57         Settore arte, intrattenimento [IMM-393]
+Aktivitas Jasa Lainnya        94-96         varie      Altri servizi
+Aktivitas Rumah Tangga        97-98         limitata   Con restrizioni specifiche
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOTE DETTAGLIATE PER I SETTORI PIU RILEVANTI A BALI
+
+Settore Akomodasi e Makanan/Minuman (KBLI 55-56) — 12 jabatan ammesse [IMM-391]
+
+Questo e il settore piu rilevante per il mercato lavorativo di Bali, che concentra una
+quota significativa dell'attivita economica dell'isola nel comparto alberghiero, resort,
+villa, ristorante e food & beverage. Le 12 jabatan ammesse riflettono la necessita di
+figure specializzate internazionali nel management alberghiero:
+
+Le jabatan tipicamente incluse riguardano ruoli di direzione generale (General Manager),
+gestione culinaria specializzata (Executive Chef per cucine internazionali), sommelier
+e professionisti del vino, animatori e intrattenitori stranieri, responsabili di specifici
+reparti operativi a carattere internazionale. Il numero ridotto di jabatan rispetto ad
+altri settori riflette la politica protezionistica del legislatore per il personale
+operativo di base, che deve essere di nazionalita indonesiana.
+
+Settore Real Estate (KBLI 68) — 6 jabatan ammesse [IMM-392]
+
+Il settore immobiliare e uno dei piu restrittivi in termini di jabatan disponibili per TKA.
+Le 6 posizioni ammesse si concentrano su ruoli di consulenza specializzata ad alto valore
+aggiunto, tipicamente per operatori internazionali o per progetti a forte componente di
+investimento straniero. La funzione di Property Manager generica per strutture ordinarie
+non rientra generalmente tra le jabatan ammesse.
+
+Settore Kesenian, Hiburan e Rekreasi (KBLI 90-93) — 57 jabatan ammesse [IMM-393]
+
+Con 57 jabatan disponibili, questo settore e uno dei piu aperti all'impiego di TKA. Include
+artisti, performer, istruttori sportivi specializzati, registi, tecnici del suono e
+dell'immagine, istruttori di discipline sportive o artistiche non presenti nella tradizione
+locale, DJ professionisti in contesti specifici, animatori di parchi tematici e strutture
+ricreative di standard internazionale. La varieta e ampiezza del catalogo riflette la
+necessita di competenze globali in un settore fortemente orientato al turismo internazionale.
+
+Settore Konstruksi (KBLI 41-43) — 181 jabatan ammesse [IMM-394]
+
+Con 181 jabatan ammesse, il settore costruzioni e quello con il catalogo piu esteso di
+tutto il Kepmenaker 228/2019. Questo riflette le esigenze dell'industria edilizia indonesiana,
+che in alcune specializzazioni tecniche dipende ancora in misura significativa da competenze
+straniere, specialmente per progetti infrastrutturali di grande scala, costruzioni specializzate
+(ponti, tunnel, impianti industriali complessi) e per il trasferimento di know-how verso
+la forza lavoro locale (ruolo del pendamping).
+
+NOTA SUL SETTORE PERTAMBANGAN — DIREKTUR UTAMA
+
+Come gia evidenziato nella sezione sulla selezione della jabatan, il settore estrattivo
+(Pertambangan e Penggalian, KBLI 05-09) costituisce l'unica eccezione alla regola generale
+per la quale un TKA non puo ricoprire la carica di Direktur Utama (Direttore Generale
+con poteri esecutivi pieni). [IMM-395] I requisiti per questa eccezione sono stringenti:
+titolo di studio minimo S1 (laurea di primo livello) pertinente al settore estrattivo e
+almeno 15 anni di esperienza documentata nella specifica jabatan. La documentazione a
+supporto deve essere particolarmente robusta e solitamente richiede verifica da parte
+di enti tecnici riconosciuti.
+
+
+8. JABATAN UNIVERSALMENTE VIETATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il Kepmenaker 349/2019 stabilisce che 19 jabatan specifiche sono riservate esclusivamente
+a cittadini indonesiani e non possono mai essere ricoperte da TKA, indipendentemente dal
+settore, dalla qualifica del candidato, dall'esperienza maturata o dalla nazionalita
+dell'investitore. [IMM-396] Si tratta di un divieto assoluto, non derogabile nemmeno
+tramite accordi aziendali o disposizioni contrattuali speciali.
+
+ELENCO DELLE 19 JABATAN VIETATE [IMM-397]
+
+La lista completa delle 19 jabatan soggette a divieto assoluto comprende:
+
+1. Direktur Personalia (Direttore del Personale)
+   Massima responsabilita strategica sulla gestione delle risorse umane aziendali.
+   Vietata a TKA in quanto posizione che incide sulle relazioni industriali nazionali.
+
+2. Manajer Hubungan Industrial (Responsabile Relazioni Industriali)
+   Gestione dei rapporti tra azienda e sindacati, mediazione nelle controversie lavorative.
+   Vietata per ragioni di politica industriale e relazioni sociali nazionali.
+
+3. Manajer Personalia (Responsabile Gestione del Personale)
+   Operativa quotidiana della gestione HR: assunzioni, licenziamenti, piani di sviluppo.
+   Vietata per proteggere l'accesso dei cittadini indonesiani a posizioni gestionali HR.
+
+4. Supervisor Pengembangan Personalia (Supervisore Sviluppo del Personale)
+   Pianificazione e implementazione programmi di formazione e crescita professionale interna.
+
+5. Supervisor Perekrutan Personalia (Supervisore Selezione del Personale)
+   Responsabile dei processi di recruiting e selezione del personale.
+
+6. Supervisor Penempatan Personalia (Supervisore Collocamento del Personale)
+   Gestione dell'assegnazione delle risorse umane alle diverse funzioni aziendali.
+
+7. Supervisor Pembinaan Personalia (Supervisore Orientamento del Personale)
+   Gestione dell'onboarding e del mantenimento del personale.
+
+8. Kepala Eksekutif Kantor (CEO/Chief Executive Officer)
+   Nota: questa jabatan ha uno status condizionale, non di divieto assoluto in tutti
+   i contesti. Si veda la trattazione specifica nella sezione 6. [IMM-398]
+
+9. Ahli Pengembangan Personalia (Esperto Sviluppo HR)
+   Figura specialistica per la pianificazione dello sviluppo delle risorse umane.
+
+10. Analis Jabatan (Analista delle Mansioni)
+    Analisi e classificazione delle posizioni lavorative aziendali.
+
+11. Penata Usaha Personalia (Amministratore del Personale)
+    Ruolo amministrativo di back-office per la gestione documentale HR.
+
+12. Mediator Hubungan Industrial (Mediatore Relazioni Industriali)
+    Mediazione professionale nelle controversie tra lavoratori e datori di lavoro.
+
+13. Konsiliator Hubungan Industrial (Conciliatore Relazioni Industriali)
+    Ruolo di conciliazione nelle dispute lavorative formali.
+
+14. Arbitrator Hubungan Industrial (Arbitro Relazioni Industriali)
+    Arbitraggio nelle controversie lavorative sottoposte a procedura formale.
+
+15. Kepala Personalia (Responsabile Personale)
+    Variante operativa della direzione HR nelle aziende di dimensione media.
+
+16. Manajer Pelatihan Kerja (Responsabile Formazione Professionale)
+    Gestione strategica dei programmi di formazione e aggiornamento professionale.
+
+17. Manajer Keterlibatan Karyawan (Responsabile Employee Engagement)
+    Pianificazione e implementazione di iniziative di coinvolgimento dei dipendenti.
+
+18. Analis Sumber Daya Manusia (Analista Risorse Umane)
+    Analisi quantitativa e qualitativa della forza lavoro aziendale.
+
+19. Kepala Pengadaan (Responsabile Procurement/Approvvigionamenti)
+    Gestione degli acquisti e della supply chain nella funzione amministrativa.
+
+CONSEGUENZE IN CASO DI TENTATIVO DI ASSUNZIONE IN JABATAN VIETATE
+
+Il tentativo di presentare un RPTKA con una jabatan vietata comporta conseguenze
+a piu livelli:
+
+Livello amministrativo immediato: rigetto automatico della domanda RPTKA sul portale
+Molina. Il sistema e configurato per intercettare le jabatan vietate al momento della
+compilazione. Il datore di lavoro non riceve rimborso delle commissioni administrative
+sostenute per la presentazione.
+
+Livello sanzionatorio in caso di impiego irregolare: qualora un TKA venisse effettivamente
+impiegato in una jabatan vietata in assenza di RPTKA (o con RPTKA per jabatan diversa),
+il datore di lavoro e soggetto a sanzione amministrativa ai sensi del PP 34/2021, che
+prevede sanzioni pecuniarie significative (da 1 miliardo a 5 miliardi di rupie a seconda
+della gravita) e, nei casi di recidiva, la revoca dei permessi operativi aziendali.
+
+Livello migratorio per il TKA: il lavoratore straniero trovato a svolgere mansioni non
+corrispondenti alla jabatan del proprio RPTKA (o KITAS) e soggetto a deportazione e
+inserimento nella lista di allontanamento (cekal), con conseguente impossibilita di
+ottenere visti indonesiani per un periodo determinato.
+
+
+9. RIEPILOGO TIMELINE E COSTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Di seguito una tabella riassuntiva delle fasi, delle durate stimate e dei costi governativi
+ufficiali (escluse le fee di servizio professionale). I tempi indicati sono calcolati in
+condizioni operative normali, senza ritardi dovuti a documentazione incompleta.
+
+FASE                        DURATA STIMATA      COSTO GOVERNATIVO UFFICIALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Preparazione documentale    5-10 gg lavorativi  Nessuno (costo solo di servizio)
+RPTKA — presentazione       1 gg                Nessuno (portale Molina gratuito)
+RPTKA — approvazione        5-20 gg lavorativi  Nessuno (costo governativo solo DKP)
+DKP-TKA                     1-3 gg (pagamento)  USD 100 x jabatan x mesi [IMM-400]
+Telex Visa (DJI)             3-7 gg lavorativi   Costo PNBP variabile (circa IDR 1M)
+Visto E23 al consolato       3-10 gg             Costo console variabile per paese
+Ingresso + applicazione KITAS 1 gg              Nessuno
+KITAS E23 — emissione        7-14 gg lavorativi  Costo PNBP KITAS (1 anno: ~IDR 1.5M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOTALE STIMATO              4-10 settimane       DKP-TKA + PNBP (variabile)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOTE SULLA TIMELINE
+
+Il tempo minimo teorico di 4 settimane si applica solo quando:
+- La documentazione e completa e corretta al momento della presentazione
+- La jabatan e chiaramente ammessa e presente nel catalogo Molina
+- Il KBLI del datore di lavoro non presenta anomalie nel registro OSS
+- Il TKA ha la possibilita di recarsi prontamente al consolato dopo il Telex Visa
+- Non vi sono periodi festivi nazionali indonesiani (Lebaran, Natale, Nyepi a Bali)
+  che rallentano i tempi di elaborazione della pubblica amministrazione
+
+Il tempo massimo di 10+ settimane si verifica tipicamente in presenza di:
+- Richieste di chiarimenti o documentazione integrativa da parte di Kemnaker
+- Jabatan con necessita di verifica manuale da parte degli uffici tecnici
+- Consolati indonesiani con carichi di lavoro elevati (particolarmente Jakarta, Kuala
+  Lumpur, Sydney, Dubai per i flussi di TKA piu frequenti)
+- Periodi di alta stagione amministrativa (inizio anno fiscale, fine giugno)
+
+COSTI DI SERVIZIO BALI ZERO
+
+I costi governativi sopra indicati non includono le fee di assistenza professionale per
+la gestione della pratica. Per i costi del servizio di gestione RPTKA e KITAS E23 offerti
+da Bali Zero, consultare il PricingTool aggiornato. I prezzi pubblicati in questa guida
+potrebbero non essere attuali: fare sempre riferimento al PricingTool per informazioni
+tariffarie vincolanti. Le tariffe di servizio coprono: consulenza pre-RPTKA sulla selezione
+jabatan, compilazione e presentazione del RPTKA su portale Molina, gestione del pagamento
+DKP-TKA, coordinamento con DJI per Telex Visa, accompagnamento alla procedura KITAS e
+monitoraggio dello status per tutta la durata della pratica.
+
+
+10. NOTE OPERATIVE BALI ZERO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Bali Zero gestisce procedure RPTKA e KITAS E23 per conto di datori di lavoro e TKA
+operanti prevalentemente in Bali e nelle province circostanti. Questo paragrafo descrive
+il ruolo operativo di Bali Zero nel processo e le modalita di engagement.
+
+COSA FA BALI ZERO NEL PROCESSO RPTKA/KITAS E23
+
+Fase 0 — Analisi preliminare di ammissibilita (pre-screening):
+Bali Zero conduce un'analisi preventiva per verificare: (a) che il KBLI del datore di
+lavoro rientri nei 20 settori ammessi dal Kepmenaker 228/2019, (b) che la jabatan
+desiderata sia tra quelle ammesse per il settore specifico, (c) che la jabatan non figuri
+tra le 19 vietate dal Kepmenaker 349/2019. Questo pre-screening e gratuito e viene
+effettuato prima di qualsiasi impegno contrattuale. [IMM-389] [IMM-396]
+
+Se il pre-screening rileva impedimenti normativi insuperabili, Bali Zero lo comunica
+chiaramente e non procede con la pratiche. Non vengono addebitate commissioni per pratiche
+non avviabili.
+
+Fase 1 — Raccolta e verifica documentazione:
+Bali Zero fornisce una checklist documentale personalizzata per la specifica jabatan
+e settore del cliente. Verifica la completezza e la correttezza formale di ogni documento
+prima della presentazione, con particolare attenzione alla legalization dei titoli di
+studio stranieri, che rappresenta uno dei principali motivi di rigetto nelle pratiche
+non assistite.
+
+Fase 2 — Presentazione RPTKA:
+Bali Zero presenta il RPTKA sul portale Molina per conto del datore di lavoro, con
+accesso tramite credenziali aziendali condivise o mediante delega formale. Monitora
+lo stato di avanzamento della domanda e gestisce eventuali richieste di integrazioni
+da parte di Kemnaker entro i termini previsti.
+
+Fase 3 — Gestione DKP-TKA:
+Bali Zero coordina il pagamento della DKP-TKA, genera il codice di pagamento tramite
+il portale Molina e assiste il cliente nelle operazioni di trasferimento bancario,
+fornendo la documentazione contabile necessaria per la registrazione fiscale del costo.
+[IMM-400] [IMM-401]
+
+Fase 4 — Coordinamento Telex Visa e visto E23:
+Una volta approvato il RPTKA, Bali Zero coordina con la Direktorat Jenderal Imigrasi
+per l'emissione del Telex Visa. Fornisce al TKA le istruzioni precise per la richiesta
+del visto E23 presso il consolato indonesiano competente, includendo checklist documenti,
+moduli precompilati e note sulla procedura specifica del consolato di destinazione.
+[IMM-402]
+
+Fase 5 — Assistenza KITAS E23:
+Bali Zero accompagna il TKA alla fase di conversione del visto in KITAS, assiste nella
+compilazione della documentazione per l'ufficio imigrasi locale, monitora l'emissione
+della KITAS e verifica la correttezza dei dati riportati sul documento fisico.
+
+Fase 6 — Monitoraggio e rinnovi:
+Bali Zero mantiene un registro delle scadenze della KITAS del cliente e invia notifiche
+di rinnovo con congruo anticipo. In caso di rinnovo del contratto di lavoro, avvia
+automaticamente la procedura di rinnovo RPTKA per garantire la continuita giuridica
+del TKA senza interruzioni.
+
+LIVELLI DI SERVIZIO
+
+Il servizio Bali Zero e disponibile in due configurazioni principali:
+
+Gestione completa (Full Service): Bali Zero gestisce tutte le fasi dall'analisi preliminare
+alla consegna della KITAS. Il cliente e coinvolto unicamente per la firma dei documenti e
+il pagamento delle fee governative. Questo livello e raccomandato per datori di lavoro
+senza esperienza pregressa di pratiche TKA o per jabatan complesse.
+
+Consulenza e supervisione (Advisory): il datore di lavoro o il TKA gestisce autonomamente
+le fasi operative, con Bali Zero in ruolo di consulenza tecnica, verifica documentale
+e supporto su richiesta. Questo livello e adatto a chi ha esperienza della procedura
+ma richiede supporto su aspetti specifici (es. selezione jabatan, gestione DKP-TKA).
+
+DOCUMENTAZIONE RILASCIATA A COMPLETAMENTO
+
+Al termine della procedura gestita da Bali Zero, il cliente riceve:
+- Copia del RPTKA approvato con numero di approvazione Kemnaker
+- Ricevuta di pagamento DKP-TKA con codice univoco di versamento
+- Copia del Telex Visa emesso da DJI
+- Copia della KITAS E23 emessa da Imigrasi
+- Dossier completo digitale (PDF) di tutta la documentazione presentata
+- Promemoria scadenze con data di rinnovo KITAS e RPTKA
+
+Tutta la documentazione viene archiviata nel sistema Drive di Bali Zero e resa accessibile
+al cliente tramite il portale kita.balizero.com nella sezione pratiche/documenti.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+APPENDICE — GLOSSARIO DEI TERMINI TECNICI
+
+Per facilitare la comprensione del testo da parte di clienti non familiari con la
+terminologia giuridico-amministrativa indonesiana, si fornisce il glossario dei
+principali termini utilizzati in questa guida.
+
+Alih Status: Procedura di cambio del tipo di visto o permesso senza uscita dall'Indonesia.
+Consente la conversione di un visto turistico o di altro tipo in KITAS E23, previa
+approvazione dell'ufficio imigrasi competente.
+
+BPJS Ketenagakerjaan: Badan Penyelenggara Jaminan Sosial Ketenagakerjaan. Ente gestione
+previdenza sociale per il lavoro. Equivalente funzionale dell'INPS italiano. I TKA sono
+obbligati a registrarsi e a versare i contributi.
+
+Cekal (Cegah dan Tangkal): Lista di allontanamento e divieto di ingresso. Un TKA deportato
+o che ha violato norme sull'impiego rischia l'inserimento in lista cekal, che impedisce
+l'ottenimento di visti indonesiani per un periodo determinato (tipicamente 6 mesi - 3 anni).
+
+DJI (Direktorat Jenderal Imigrasi): Direzione Generale dell'Immigrazione, ufficio del
+Ministero della Giustizia e dei Diritti Umani competente per il rilascio di visti, KITAS,
+KITAP e per il controllo del movimento di stranieri in Indonesia.
+
+DKP-TKA: Dana Kompensasi Penggunaan Tenaga Kerja Asing. Contributo di compensazione
+obbligatorio per l'impiego di lavoratori stranieri. Importo: USD 100 per jabatan per
+mese. [IMM-400]
+
+E23: Codice classificativo del visto indonesiano per lavoratori stranieri su RPTKA
+approvato. Corrisponde al vecchio VITAS (Visa Tinggal Terbatas) per lavoratori.
+
+IMTA (Izin Mempekerjakan Tenaga Kerja Asing): Vecchio documento di autorizzazione
+all'impiego di stranieri. Formalmente abolito dal PP 34/2021, la cui funzione e ora
+assorbita dall'approvazione del RPTKA. [IMM-402]
+
+Jabatan: Termine indonesiano per mansione o qualifica professionale. Nell'ambito della
+normativa TKA, indica la specifica posizione lavorativa per cui viene richiesto il RPTKA.
+La corrispondenza tra jabatan nel RPTKA e mansione effettiva e obbligatoria. [IMM-403]
+
+Kantor Imigrasi: Ufficio immigrazione locale (a livello di kabupaten/kota). E l'ufficio
+competente per il rilascio e il rinnovo della KITAS e della KITAP.
+
+Kemnaker (Kementerian Ketenagakerjaan): Ministero del Lavoro della Repubblica d'Indonesia.
+Ente responsabile per la normativa sull'impiego dei TKA, per l'approvazione del RPTKA
+e per il catalogo delle jabatan ammesse.
+
+Kepmenaker: Keputusan Menteri Ketenagakerjaan. Decreto ministeriale del Ministero del Lavoro.
+Viene numerato con il numero del decreto e l'anno di emissione (es. Kepmenaker 228/2019).
+
+KITAS (Kartu Izin Tinggal Terbatas): Carta di permesso di soggiorno a tempo determinato.
+Il documento fisico che autorizza la permanenza e il lavoro in Indonesia per il TKA.
+La KITAS E23 ha validita da 6 mesi a 2 anni.
+
+KITAP (Kartu Izin Tinggal Tetap): Carta di permesso di soggiorno permanente. Richiede
+5 anni continuativi di residenza con KITAS. Non trattata in questa guida.
+
+KBLI (Klasifikasi Baku Lapangan Usaha Indonesia): Classificazione standard delle attivita
+economiche indonesiane. Equivalente al codice NACE/ATECO italiano. Ogni azienda ha
+un KBLI principale registrato nel sistema OSS. Il KBLI determina i settori e le jabatan
+disponibili per i TKA.
+
+Molina: Portale digitale del Kemnaker per la presentazione e gestione del RPTKA.
+Accessibile a molina.kemnaker.go.id. E il canale esclusivo per la procedura TKA. [IMM-401]
+
+NIB (Nomor Induk Berusaha): Numero Identificativo dell'Impresa nel sistema OSS. Equivalente
+alla Partita IVA italiana. Obbligatorio per la registrazione al portale Molina.
+
+NPWP (Nomor Pokok Wajib Pajak): Codice fiscale/partita IVA per fini tributari. Obbligatorio
+per tutte le entita giuridiche e per i TKA che percepiscono reddito in Indonesia.
+
+OSS (Online Single Submission): Sistema informatico unificato per la registrazione e
+gestione delle licenze commerciali in Indonesia. Il NIB e emesso tramite OSS.
+
+Pendamping TKA: Lavoratore locale indonesiano assegnato ad affiancare il TKA. La sua
+designazione e obbligatoria per ogni RPTKA e ha la funzione di garantire il trasferimento
+di competenze e know-how dal TKA ai lavoratori locali.
+
+PP 34/2021: Peraturan Pemerintah Nomor 34 Tahun 2021. Regolamento governativo principale
+che disciplina l'impiego dei TKA in Indonesia. Norma quadro della materia. [IMM-399]
+
+RPTKA (Rencana Penggunaan Tenaga Kerja Asing): Piano di utilizzo dei lavoratori stranieri.
+Documento programmatico obbligatorio che il datore di lavoro presenta su portale Molina.
+La sua approvazione e il presupposto per tutti i passi successivi.
+
+TKA (Tenaga Kerja Asing): Lavoratore straniero. Termine utilizzato nell'ordinamento
+indonesiano per indicare qualsiasi cittadino non indonesiano che presti attivita lavorativa
+dipendente in territorio indonesiano.
+
+VITAS (Visa Tinggal Terbatas): Visto di soggiorno temporaneo. Nella nomenclatura post-2021,
+il visto E23 e il VITAS specifico per lavoratori stranieri con RPTKA approvato.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+APPENDICE — RIFERIMENTI NORMATIVI
+
+Normativa primaria citata in questa guida:
+
+PP 34/2021 — Peraturan Pemerintah Nomor 34 Tahun 2021 tentang Penggunaan Tenaga Kerja
+Asing. Gazzetta Ufficiale Indonesia. Norma quadro generale sull'impiego dei TKA.
+Riferimento claim: [IMM-399] [IMM-401] [IMM-402]
+
+Kepmenaker 228/2019 — Keputusan Menteri Ketenagakerjaan Nomor 228 Tahun 2019 tentang
+Jabatan Tertentu Yang Dapat Diduduki Oleh Tenaga Kerja Asing. Catalogo settori KBLI
+ammessi e jabatan disponibili per TKA.
+Riferimento claim: [IMM-389] [IMM-390] [IMM-391] [IMM-392] [IMM-393] [IMM-394] [IMM-395]
+[IMM-403]
+
+Kepmenaker 349/2019 — Keputusan Menteri Ketenagakerjaan Nomor 349 Tahun 2019 tentang
+Jabatan Tertentu Yang Dilarang Diduduki Oleh Tenaga Kerja Asing. Lista delle 19 jabatan
+universalmente vietate ai TKA.
+Riferimento claim: [IMM-396] [IMM-397] [IMM-398]
+
+Note di applicazione: questa guida riflette il quadro normativo vigente alla data di
+redazione (2025-03-27). Il diritto del lavoro indonesiano e soggetto ad aggiornamenti
+periodici tramite Kepmenaker. Prima di avviare una procedura, verificare sempre che le
+jabatan di interesse non abbiano subito modifiche nel catalogo Molina o nel testo delle
+normative secondarie.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+APPENDICE — DOMANDE FREQUENTI (FAQ OPERATIVE)
+
+Q: Un TKA puo avere piu di un RPTKA attivo contemporaneamente?
+A: In linea teorica, un TKA puo essere menzionato in RPTKA di datori di lavoro diversi,
+ma ogni RPTKA genera una jabatan specifica e richiede DKP-TKA separata. Nella pratica,
+la KITAS E23 e legata a un singolo datore di lavoro. Il cambio di datore di lavoro richiede
+un nuovo RPTKA e, nella maggior parte dei casi, il rinnovo della KITAS.
+
+Q: Cosa succede se il TKA vuole cambiare jabatan durante il contratto?
+A: Il cambio di jabatan richiede un emendamento al RPTKA (perubahan RPTKA). E necessario
+presentare la modifica sul portale Molina e, se la nuova jabatan ha un DKP-TKA superiore,
+versare la differenza. Il cambio jabatan non richiede necessariamente un nuovo visto, ma
+deve essere approvato prima che il TKA inizi a svolgere le nuove mansioni.
+
+Q: Il pendamping deve avere la stessa qualifica del TKA?
+A: Non necessariamente la stessa qualifica formale, ma il pendamping deve avere competenze
+sufficienti per apprendere le specifiche tecniche che il TKA e chiamato a trasferire.
+Il piano di trasferimento competenze (rencana transfer keahlian) e parte della documentazione
+RPTKA e viene valutato da Kemnaker al momento dell'approvazione.
+
+Q: Come funziona il DKP-TKA per contratti a tempo determinato rinnovati?
+A: Ogni rinnovo del contratto richiede un nuovo RPTKA e il corrispondente versamento di
+DKP-TKA per il periodo di rinnovo. Non esiste un meccanismo di versamento anticipato
+globale che copra rinnovi futuri. [IMM-400]
+
+Q: Un TKA con KITAS E23 puo lavorare per un secondo datore di lavoro in modo part-time?
+A: No. La KITAS E23 autorizza il lavoro esclusivamente per il datore di lavoro indicato
+nel RPTKA corrispondente. Qualsiasi attivita lavorativa per soggetti terzi e considerata
+violazione dei termini della KITAS e del PP 34/2021, indipendentemente dalla natura
+(part-time, consulenza occasionale, prestazione professionale).
+
+Q: Cosa succede se il datore di lavoro cancella il contratto prima della scadenza del RPTKA?
+A: Il datore di lavoro e obbligato a notificare a Kemnaker la cessazione anticipata del
+rapporto di lavoro tramite portale Molina. Il TKA deve poi regolarizzare la propria
+posizione migratoria: puo richiedere il cambio di stato a visto turistico o, se ha una
+nuova offerta di lavoro, avviare un nuovo RPTKA con il nuovo datore. La DKP-TKA gia versata
+non viene rimborsata per i mesi non fruiti.
+
+Q: La guida Bali Zero si applica anche alle PT locali senza componente straniera?
+A: Si. L'obbligo di RPTKA riguarda qualsiasi datore di lavoro indonesiano (PT locale, PT PMA,
+yayasan, lembaga pemerintah) che intenda impiegare un TKA. Non esiste distinzione in base
+alla composizione societaria del datore di lavoro. Anche una PT interamente a capitale
+indonesiano deve seguire l'intera procedura RPTKA/DKP-TKA/KITAS E23.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS: IMM-389 attraverso IMM-403
+
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
