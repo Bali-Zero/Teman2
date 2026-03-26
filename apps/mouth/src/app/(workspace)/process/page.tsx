@@ -881,7 +881,7 @@ export default function PratichePage() {
                 />
 
                 <div className="p-4 flex flex-col flex-1">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${colors.dotColor}`} />
                       <h3 className="font-semibold text-sm" style={{ color: colors.textColor }}>
@@ -898,6 +898,23 @@ export default function PratichePage() {
                       {columnPractices.length}
                     </span>
                   </div>
+                  {columnPractices.length > 0 && (() => {
+                    const colRevenue = columnPractices.reduce(
+                      (sum, p) => sum + (p.actual_price || p.quoted_price || 0),
+                      0
+                    );
+                    if (colRevenue === 0) return null;
+                    return (
+                      <div className="mb-3 text-[10px] font-medium tabular-nums opacity-70" style={{ color: colors.textColor }}>
+                        {new Intl.NumberFormat('id-ID', {
+                          notation: 'compact',
+                          currency: 'IDR',
+                          style: 'currency',
+                          maximumFractionDigits: 1,
+                        }).format(colRevenue)}
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex-1 space-y-3">
                     {isLoading ? (
