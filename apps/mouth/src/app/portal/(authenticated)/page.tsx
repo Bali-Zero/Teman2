@@ -338,9 +338,9 @@ function StatusCard({
         return { text: `Expired ${Math.abs(daysRemaining)}d ago`, color: 'text-red-400' };
       if (daysRemaining === 0) return { text: 'Expires today', color: 'text-red-400' };
       if (daysRemaining <= 30)
-        return { text: `${daysRemaining}d remaining`, color: 'text-amber-400' };
+        return { text: `⏰ ${daysRemaining}d left`, color: 'text-amber-400' };
       if (daysRemaining <= 90)
-        return { text: `${daysRemaining}d remaining`, color: 'text-yellow-300' };
+        return { text: `⏰ ${daysRemaining}d left`, color: 'text-yellow-300' };
     }
     return { text: `Expires: ${formatted}`, color: 'text-emerald-400' };
   };
