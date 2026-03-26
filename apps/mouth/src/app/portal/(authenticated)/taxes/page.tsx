@@ -123,14 +123,40 @@ export default function TaxesPage() {
             <p className="text-xs mb-1" style={{ color: 'var(--bz-text-2)' }}>
               Next Deadline
             </p>
-            <p className="text-lg font-bold">
-              {taxData.summary.nextDeadline
-                ? new Date(taxData.summary.nextDeadline).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })
-                : 'None'}
-            </p>
+            {taxData.summary.nextDeadline
+              ? (() => {
+                  const dl = new Date(taxData.summary.nextDeadline);
+                  const daysLeft = Math.ceil((dl.getTime() - Date.now()) / 86400000);
+                  const chipColor =
+                    daysLeft <= 0
+                      ? 'bg-red-500/15 text-red-400'
+                      : daysLeft <= 7
+                        ? 'bg-red-500/10 text-red-400'
+                        : daysLeft <= 30
+                          ? 'bg-amber-500/10 text-amber-400'
+                          : 'bg-emerald-500/10 text-emerald-400';
+                  const chipLabel =
+                    daysLeft <= 0
+                      ? `${Math.abs(daysLeft)}d overdue`
+                      : daysLeft === 1
+                        ? 'tomorrow'
+                        : `${daysLeft}d left`;
+                  return (
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <p className="text-lg font-bold">
+                        {dl.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}>
+                        {chipLabel}
+                      </span>
+                    </div>
+                  );
+                })()
+              : <p className="text-lg font-bold">None</p>}
           </div>
         </div>
 
@@ -343,6 +369,28 @@ function ObligationCard({
             day: 'numeric',
             year: 'numeric',
           })}
+          {(() => {
+            const daysLeft = Math.ceil(
+              (new Date(obligation.dueDate).getTime() - Date.now()) / 86400000
+            );
+            const chipColor =
+              daysLeft <= 0
+                ? 'bg-red-500/15 text-red-400'
+                : daysLeft <= 7
+                  ? 'bg-red-500/10 text-red-400'
+                  : daysLeft <= 30
+                    ? 'bg-amber-500/10 text-amber-400'
+                    : undefined;
+            const chipLabel =
+              daysLeft <= 0
+                ? `${Math.abs(daysLeft)}d overdue`
+                : `${daysLeft}d left`;
+            return chipColor ? (
+              <span className={`ml-1 px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}>
+                {chipLabel}
+              </span>
+            ) : null;
+          })()}
         </div>
         {obligation.amount && (
           <span className="text-sm font-bold">{formatCurrency(obligation.amount)}</span>
@@ -377,6 +425,26 @@ function HistoryCard({
               day: 'numeric',
               year: 'numeric',
             })}
+            {(() => {
+              const ageDays = Math.floor(
+                (Date.now() - new Date(item.filedDate).getTime()) / 86400000
+              );
+              if (ageDays < 7) return null;
+              const label =
+                ageDays >= 365
+                  ? `${Math.floor(ageDays / 365)}y ago`
+                  : ageDays >= 30
+                    ? `${Math.floor(ageDays / 30)}mo ago`
+                    : `${ageDays}d ago`;
+              return (
+                <span
+                  className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]"
+                  style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--bz-text-3)' }}
+                >
+                  {label}
+                </span>
+              );
+            })()}
           </p>
         </div>
         <div className="text-right">
