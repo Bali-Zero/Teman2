@@ -1,0 +1,55 @@
+'use client';
+
+import { useState } from 'react';
+import Image from 'next/image';
+import { LazyMotion, domAnimation, m } from 'framer-motion';
+import { TEAM_MEMBERS, type TeamMember } from './book-data';
+import { TeamModal } from './TeamModal';
+
+export function TeamGrid() {
+  const [selected, setSelected] = useState<TeamMember | null>(null);
+
+  return (
+    <LazyMotion features={domAnimation}>
+      <div className="px-8 md:px-16 py-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {TEAM_MEMBERS.map((member, i) => (
+            <m.button
+              key={member.name}
+              onClick={() => setSelected(member)}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: Math.min(i * 0.05, 0.5) }}
+              viewport={{ once: true }}
+              className="group text-center p-4 rounded-xl border border-white/5 hover:border-[#d4845a]/40 transition-all bg-white/[0.02] hover:bg-white/[0.05]"
+            >
+              <div className="w-16 h-16 rounded-full mx-auto mb-3 overflow-hidden bg-[#d4845a]/10 flex items-center justify-center">
+                {member.photo ? (
+                  <Image
+                    src={member.photo}
+                    alt={member.name}
+                    width={64}
+                    height={64}
+                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <span className="text-[#d4845a] font-bold text-lg font-[family-name:var(--font-spartan)]">
+                    {member.name.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <p className="font-[family-name:var(--font-spartan)] text-white text-sm font-semibold leading-tight">
+                {member.name}
+              </p>
+              <p className="font-[family-name:var(--font-montserrat)] text-white/40 text-xs mt-1">
+                {member.role}
+              </p>
+            </m.button>
+          ))}
+        </div>
+      </div>
+
+      <TeamModal member={selected} open={selected !== null} onClose={() => setSelected(null)} />
+    </LazyMotion>
+  );
+}
