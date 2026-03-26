@@ -436,6 +436,35 @@ function TimelineItem({ entry, isLast }: { entry: TimelineEntry; isLast: boolean
             })}
             {isFuture && ' (Upcoming)'}
           </span>
+          {(() => {
+            const diff = Math.round((new Date(entry.occurredAt).getTime() - Date.now()) / 86400000);
+            if (diff === 0)
+              return (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold">
+                  Today
+                </span>
+              );
+            if (diff > 0)
+              return (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-semibold">
+                  In {diff}d
+                </span>
+              );
+            const abs = Math.abs(diff);
+            if (abs <= 7)
+              return (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[rgba(255,255,255,0.05)] text-[var(--bz-text-2)] font-semibold">
+                  {abs}d ago
+                </span>
+              );
+            if (abs <= 30)
+              return (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[rgba(255,255,255,0.05)] text-[var(--bz-text-2)] font-semibold">
+                  {Math.floor(abs / 7)}w ago
+                </span>
+              );
+            return null;
+          })()}
         </div>
 
         <h3 className="font-bold text-[var(--tx-pure)] text-sm">{entry.title}</h3>
