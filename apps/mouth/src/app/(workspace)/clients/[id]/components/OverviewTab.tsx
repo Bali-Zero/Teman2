@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Copy,
   Check,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ClientProfile, ClientDocument, Interaction } from '@/lib/api/crm/crm.types';
@@ -94,9 +95,13 @@ export function OverviewTab({
           <div
             className="rounded-xl border shadow-xl backdrop-blur-xl transition-all duration-300 overflow-hidden flex-1 flex flex-col h-full hover:shadow-2xl hover:-translate-y-1"
             style={{
-              border: isClientBirthday ? '1px solid rgba(251,191,36,0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
+              border: isClientBirthday
+                ? '1px solid rgba(251,191,36,0.4)'
+                : '1px solid rgba(255, 255, 255, 0.05)',
               background: isClientBirthday ? 'rgba(45,38,20,0.8)' : 'rgba(32, 32, 36, 0.65)',
-              boxShadow: isClientBirthday ? '0 0 24px rgba(251,191,36,0.15), 0 10px 20px -10px rgba(0,0,0,0.5)' : undefined,
+              boxShadow: isClientBirthday
+                ? '0 0 24px rgba(251,191,36,0.15), 0 10px 20px -10px rgba(0,0,0,0.5)'
+                : undefined,
             }}
           >
             <div
@@ -105,7 +110,11 @@ export function OverviewTab({
             >
               <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
                 Client Info
-                {isClientBirthday && <span className="text-base" title="Birthday today!">🎂</span>}
+                {isClientBirthday && (
+                  <span className="text-base" title="Birthday today!">
+                    🎂
+                  </span>
+                )}
               </h3>
               <div className="flex items-center gap-2">
                 <Button
@@ -151,7 +160,11 @@ export function OverviewTab({
                         className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
                         title="Copy email"
                       >
-                        {copiedField === 'email' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />}
+                        {copiedField === 'email' ? (
+                          <Check className="w-3 h-3 text-green-400" />
+                        ) : (
+                          <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />
+                        )}
                       </button>
                     )}
                   </div>
@@ -174,7 +187,11 @@ export function OverviewTab({
                         className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
                         title="Copy phone"
                       >
-                        {copiedField === 'phone' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />}
+                        {copiedField === 'phone' ? (
+                          <Check className="w-3 h-3 text-green-400" />
+                        ) : (
+                          <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />
+                        )}
                       </button>
                     )}
                   </div>
@@ -216,13 +233,19 @@ export function OverviewTab({
                           Passport
                         </p>
                         <div className="flex items-center gap-1.5 group/copy">
-                          <p className="text-sm font-semibold font-mono">{client.passport_number}</p>
+                          <p className="text-sm font-semibold font-mono">
+                            {client.passport_number}
+                          </p>
                           <button
                             onClick={() => copyToClipboard(client.passport_number!, 'passport')}
                             className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
                             title="Copy passport number"
                           >
-                            {copiedField === 'passport' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />}
+                            {copiedField === 'passport' ? (
+                              <Check className="w-3 h-3 text-green-400" />
+                            ) : (
+                              <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -487,9 +510,18 @@ export function OverviewTab({
                 <FolderOpen className="w-4 h-4 text-yellow-500" />
                 Active
               </h3>
-              <span className="text-xs font-bold text-[var(--bz-accent)]">
-                {activePractices.length}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[var(--bz-accent)]">
+                  {activePractices.length}
+                </span>
+                <button
+                  onClick={() => router.push(`/process/new?client_id=${clientId}`)}
+                  className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)] hover:text-[var(--bz-accent)] transition-colors"
+                  title="New process"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
             <div className="p-3 space-y-2 max-h-[180px] overflow-y-auto">
               {activePractices.length > 0 ? (
