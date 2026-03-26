@@ -743,7 +743,7 @@ class MetricsCollector:
     stream_event_validation_failed_total = stream_event_validation_failed_total
     stream_event_processing_error_total = stream_event_processing_error_total
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.session_count = 0
         self.last_redis_check = 0
         self.last_sse_latency = 0
