@@ -62,13 +62,17 @@ export const ClientCard = React.memo(
     const countryFlag = getCountryFlag(client.nationality);
 
     // Passport expiry alert
-    const passportAlert = client.passport_expiry
-      ? new Date(client.passport_expiry) < new Date()
-        ? 'expired'
-        : new Date(client.passport_expiry) < new Date(Date.now() + 180 * 86400000)
-          ? 'soon'
-          : null
+    const passportDaysLeft = client.passport_expiry
+      ? Math.ceil((new Date(client.passport_expiry).getTime() - Date.now()) / 86400000)
       : null;
+    const passportAlert =
+      passportDaysLeft !== null
+        ? passportDaysLeft < 0
+          ? 'expired'
+          : passportDaysLeft <= 180
+            ? 'soon'
+            : null
+        : null;
 
     // Silence streak (days since last contact)
     const silenceDays =
@@ -169,7 +173,7 @@ export const ClientCard = React.memo(
                   className={`mt-1 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${passportAlert === 'expired' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}
                 >
                   <AlertCircle className="w-2.5 h-2.5" />
-                  {passportAlert === 'expired' ? 'Passport expired' : 'Passport expiring'}
+                  {passportDaysLeft !== null && passportDaysLeft < 0 ? `Passport exp ${Math.abs(passportDaysLeft)}d ago` : passportDaysLeft !== null ? `⏰ Passport ${passportDaysLeft}d left` : 'Passport expiring'}
                 </div>
               )}
               {/* Silence badge — only shown client-side after isMounted */}
@@ -397,7 +401,7 @@ export const ClientCard = React.memo(
               <div className="flex items-center justify-between">
                 <span className="text-[var(--tx-secondary)]">Passport:</span>
                 <span className={passportAlert === 'expired' ? 'text-red-400' : 'text-yellow-400'}>
-                  {passportAlert === 'expired' ? '⚠ Expired' : '⚠ Expiring'}
+                  {passportDaysLeft !== null && passportDaysLeft < 0 ? `⚠ Expired ${Math.abs(passportDaysLeft)}d ago` : passportDaysLeft !== null ? `⚠ ${passportDaysLeft}d left` : '⚠ Expiring'}
                 </span>
               </div>
             )}
