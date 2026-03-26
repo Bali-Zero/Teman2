@@ -16,23 +16,17 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
 import logging
-import os
 import re
+import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
 BACKEND_PATH = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = BACKEND_PATH.parents[1]
-sys.path.insert(0, str(BACKEND_PATH))
-sys.path.insert(0, str(BACKEND_PATH / "backend"))
-
-from dotenv import load_dotenv
-
-load_dotenv(BACKEND_PATH / ".env", override=True)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -176,23 +170,21 @@ Source text:
 ---"""
 
 
-async def extract_from_chunk(
+def extract_from_chunk(
     chunk: str,
     instrument_id: str,
     domain: str,
-    client: Any,
     chunk_idx: int,
     total_chunks: int,
 ) -> list[dict[str, Any]]:
-    """Extract claims from a single text chunk."""
+    """Extract claims from a single text chunk via claude CLI (Max subscription)."""
     prompt = build_prompt(chunk, instrument_id, domain)
     try:
-        response = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
+        result = subprocess.run(
+            ["claude", "--print", "--dangerously-skip-permissions"],
+            input=prompt, capture_output=True, text=True, timeout=120,
         )
-        raw = response.content[0].text
+        raw = result.stdout if result.returncode == 0 else ""
         claims = parse_claims_response(raw)
         logger.info("  Chunk %d/%d → %d claims", chunk_idx, total_chunks, len(claims))
         return claims
@@ -201,10 +193,9 @@ async def extract_from_chunk(
         return []
 
 
-async def process_document(
+def process_document(
     doc: dict[str, str],
     domain: str,
-    client: Any,
     existing_verbatim: set[str],
 ) -> list[dict[str, Any]]:
     """Extract all claims from a single document."""
@@ -225,12 +216,9 @@ async def process_document(
 
     all_claims: list[dict[str, Any]] = []
     for i, chunk in enumerate(chunks, 1):
-        claims = await extract_from_chunk(
-            chunk, doc["instrument_id"], domain, client, i, len(chunks)
-        )
+        claims = extract_from_chunk(chunk, doc["instrument_id"], domain, i, len(chunks))
         all_claims.extend(claims)
-        # Small delay to avoid rate limiting
-        await asyncio.sleep(0.5)
+        time.sleep(0.5)  # brief pause between CLI invocations
 
     # Deduplicate by verbatim
     new_claims = []
@@ -245,14 +233,7 @@ async def process_document(
     return new_claims
 
 
-async def run(domain: str) -> None:
-    import anthropic
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        logger.error("ANTHROPIC_API_KEY not set")
-        sys.exit(1)
-
+def run(domain: str) -> None:
     docs = TIER1_BY_DOMAIN.get(domain)
     if not docs:
         logger.error("No Tier 1 docs for domain: %s", domain)
@@ -264,11 +245,10 @@ async def run(domain: str) -> None:
     logger.info("Domain: %s | Existing claims: %d | Documents to process: %d",
                 domain, len(existing), len(docs))
 
-    client = anthropic.AsyncAnthropic(api_key=api_key)
     new_claims: list[dict[str, Any]] = []
 
     for doc in docs:
-        doc_claims = await process_document(doc, domain, client, existing_verbatim)
+        doc_claims = process_document(doc, domain, existing_verbatim)
         new_claims.extend(doc_claims)
 
     if not new_claims:
@@ -297,9 +277,9 @@ def main() -> None:
             logger.info("=" * 60)
             logger.info("Processing domain: %s", domain.upper())
             logger.info("=" * 60)
-            asyncio.run(run(domain))
+            run(domain)
     elif args.domain:
-        asyncio.run(run(args.domain))
+        run(args.domain)
     else:
         parser.print_help()
         sys.exit(1)

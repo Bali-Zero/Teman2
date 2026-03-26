@@ -17,19 +17,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
 import logging
-import os
 import re
+import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
-
-from dotenv import load_dotenv
-
-load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
 
 logger = logging.getLogger(__name__)
 
@@ -86,20 +81,16 @@ VERDICT: <FAITHFUL|UNFAITHFUL|UNCERTAIN>
 REASON: <one sentence>"""
 
 
-async def call_haiku_verifier(
+def call_claude_verifier(
     claim_id: str, claim_text: str, document_excerpt: str
 ) -> ClaimVerificationResult:
-    """Call Claude Haiku 4.5 to verify a single claim. Returns ClaimVerificationResult."""
-    import anthropic
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    client = anthropic.AsyncAnthropic(api_key=api_key)
-    response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=256,
-        messages=[{"role": "user", "content": build_haiku_verification_prompt(claim_text, document_excerpt)}],
+    """Verify a single claim via claude CLI (Max subscription)."""
+    prompt = build_haiku_verification_prompt(claim_text, document_excerpt)
+    result = subprocess.run(
+        ["claude", "--print", "--dangerously-skip-permissions"],
+        input=prompt, capture_output=True, text=True, timeout=60,
     )
-    text = response.content[0].text.strip()
+    text = result.stdout.strip() if result.returncode == 0 else ""
     verdict, reason = "UNCERTAIN", text
     for line in text.split("\n"):
         if line.startswith("VERDICT:"):
@@ -109,7 +100,7 @@ async def call_haiku_verifier(
     return ClaimVerificationResult(claim_id=claim_id, verdict=verdict, reason=reason)
 
 
-async def verify_document(document_text: str, claims_db_path: str) -> VerificationReport:
+def verify_document(document_text: str, claims_db_path: str) -> VerificationReport:
     """Run full CRAG-light verification on a document."""
     claims_db = load_claims_db(claims_db_path)
     claim_ids = extract_claim_ids(document_text)
@@ -129,7 +120,7 @@ async def verify_document(document_text: str, claims_db_path: str) -> Verificati
         else:
             cd = claims_db[cid]
             document_excerpt = f"{cd.get('verbatim', '')} ({cd.get('pasal_ref', '')})"
-            result = await call_haiku_verifier(cid, cd["claim"], document_excerpt)
+            result = call_claude_verifier(cid, cd["claim"], document_excerpt)
             if result.verdict == "FAITHFUL":
                 verified_count += 1
             else:
@@ -159,13 +150,8 @@ def main() -> None:
     parser.add_argument("--output", default="/tmp/verification_report.json")
     args = parser.parse_args()
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not set", file=sys.stderr)  # noqa: T201
-        sys.exit(1)
-
     document_text = Path(args.document).read_text(encoding="utf-8")
-    report = asyncio.run(verify_document(document_text, args.claims_db))
+    report = verify_document(document_text, args.claims_db)
 
     with open(args.output, "w") as f:
         json.dump(asdict(report), f, ensure_ascii=False, indent=2)
