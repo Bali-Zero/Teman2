@@ -156,6 +156,67 @@ def build_report(ranked: list[dict], total_violations: int) -> str:
     return "\n".join(lines)
 
 
+# --- mypy + vulture ---
+
+def run_mypy() -> dict:
+    """
+    Run mypy on backend/app/ and backend/services/.
+    Returns {"errors": int, "output": str, "status": "ok"|"failed"|"unavailable"}.
+    Informational only — does not block fixes.
+    """
+    cmd = [
+        str(VENV_PYTHON), "-m", "mypy",
+        "backend/app/", "backend/services/",
+        "--ignore-missing-imports",
+        "--no-error-summary",
+        "--no-pretty",
+        "--output", "json",
+    ]
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True,
+            cwd=str(BACKEND_DIR), timeout=180,
+            env=build_test_env(),
+        )
+        lines = [l for l in result.stdout.splitlines() if l.strip()]
+        errors = len(lines)
+        return {"errors": errors, "output": result.stdout[:2000], "status": "ok" if errors == 0 else "failed"}
+    except FileNotFoundError:
+        return {"errors": -1, "output": "mypy not installed", "status": "unavailable"}
+    except subprocess.TimeoutExpired:
+        return {"errors": -1, "output": "mypy timeout (180s)", "status": "unavailable"}
+    except Exception as e:
+        return {"errors": -1, "output": str(e), "status": "unavailable"}
+
+
+def run_vulture() -> dict:
+    """
+    Run vulture on backend/ to detect dead code.
+    Returns {"dead_code": int, "output": str, "status": "ok"|"found"|"unavailable"}.
+    Informational only — does not block fixes.
+    """
+    cmd = [
+        str(VENV_PYTHON), "-m", "vulture",
+        "backend/",
+        "--min-confidence", "80",
+    ]
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True,
+            cwd=str(BACKEND_DIR), timeout=120,
+            env=build_test_env(),
+        )
+        lines = [l for l in result.stdout.splitlines() if l.strip()]
+        dead = len(lines)
+        return {"dead_code": dead, "output": result.stdout[:2000], "status": "ok" if dead == 0 else "found"}
+    except FileNotFoundError:
+        return {"dead_code": -1, "output": "vulture not installed", "status": "unavailable"}
+    except subprocess.TimeoutExpired:
+        return {"dead_code": -1, "output": "vulture timeout (120s)", "status": "unavailable"}
+    except Exception as e:
+        return {"dead_code": -1, "output": str(e), "status": "unavailable"}
+
+
 def scout_run() -> None:
     """Esecuzione principale dello Scout."""
     logger.info("=== Scout Run ===")
@@ -170,19 +231,35 @@ def scout_run() -> None:
         violations = run_ruff_json()
         logger.info(f"Found {len(violations)} total violations")
 
+        # 2. mypy (informational)
+        mypy_result = run_mypy()
+        logger.info(f"mypy: {mypy_result['errors']} errors ({mypy_result['status']})")
+
+        # 3. vulture (informational)
+        vulture_result = run_vulture()
+        logger.info(f"vulture: {vulture_result['dead_code']} dead-code items ({vulture_result['status']})")
+
         if not violations:
-            logger.info("No violations found. Nothing to report.")
+            logger.info("No ruff violations found.")
+            # Still send mypy/vulture summary if noteworthy
+            extra = []
+            if mypy_result["status"] == "failed":
+                extra.append(f"mypy: {mypy_result['errors']} errors")
+            if vulture_result["status"] == "found":
+                extra.append(f"vulture: {vulture_result['dead_code']} dead-code items")
+            if extra:
+                send_telegram_alert("Scout: 0 ruff violations\n" + "\n".join(extra))
             release_lock(lock_fd)
             return
 
-        # 2. Analizza
+        # 4. Analizza
         ranked = analyze_violations(violations)
 
-        # 3. Report
+        # 5. Report
         report = build_report(ranked, len(violations))
         logger.info(f"\n{report}")
 
-        # 4. Salva report
+        # 6. Salva report
         SCOUT_REPORTS_DIR.mkdir(parents=True, exist_ok=True)
         report_file = SCOUT_REPORTS_DIR / f"scout_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
         atomic_write_json(report_file, {
@@ -190,13 +267,18 @@ def scout_run() -> None:
             "total_violations": len(violations),
             "ranked": ranked[:20],
             "safe_candidates": [r for r in ranked if r["classification"] == "SAFE"][:10],
+            "mypy": mypy_result,
+            "vulture": vulture_result,
         })
 
-        # 5. Telegram
-        # Messaggio conciso per Telegram
+        # 7. Telegram — include mypy/vulture summary
         tg_lines = [f"Scout Report ({len(violations)} violations)"]
         for item in ranked[:5]:
             tg_lines.append(f"[{item['classification']}] {item['code']} {item['file']} ({item['count']}x)")
+        if mypy_result["status"] == "failed":
+            tg_lines.append(f"mypy: {mypy_result['errors']} type errors")
+        if vulture_result["status"] == "found":
+            tg_lines.append(f"vulture: {vulture_result['dead_code']} dead-code items")
         send_telegram_alert("\n".join(tg_lines))
 
     finally:
