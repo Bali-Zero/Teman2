@@ -1,0 +1,80 @@
+{
+  "total_claims": 14,
+  "verified_count": 14,
+  "verified_ratio": 1.0,
+  "passed": true,
+  "results": [
+    {
+      "claim_id": "IMM-363",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Il sistema degli indici visa e' stato rinnovato da Permenkumham 22/2023. Il KITA"
+    },
+    {
+      "claim_id": "IMM-002",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Il KITAS (Izin Tinggal Terbatas) può essere rilasciato per un massimo di 2 anni."
+    },
+    {
+      "claim_id": "IMM-360",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Il documento IMTA come documento fisico separato e' stato abolito da PP 34/2021."
+    },
+    {
+      "claim_id": "IMM-362",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Con la UU 63/2024 il Multiple Exit Re-entry Permit (MERP) non e' piu' un documen"
+    },
+    {
+      "claim_id": "IMM-366",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Le regole sui garanti (penjamin) per visti e permessi di soggiorno sono ora disc"
+    },
+    {
+      "claim_id": "IMM-005",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Il datore di lavoro che intende assumere lavoratori stranieri (TKA) deve ottener"
+    },
+    {
+      "claim_id": "IMM-361",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Il datore di lavoro che utilizza lavoratori stranieri (TKA) e' obbligato a pagar"
+    },
+    {
+      "claim_id": "IMM-003",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Il rinnovo del KITAS deve essere richiesto prima della scadenza del permesso att"
+    },
+    {
+      "claim_id": "IMM-076",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Lo Straniero deve aver soggiornato continuamente nel Territorio dell'Indonesia p"
+    },
+    {
+      "claim_id": "IMM-075",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: La richiesta di cambio di stato da Permesso di soggiorno limitato a Permesso di "
+    },
+    {
+      "claim_id": "IMM-100",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: La sorveglianza dell'immigrazione nei confronti dei garanti è effettuata solo pe"
+    },
+    {
+      "claim_id": "IMM-174",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Il garante o responsabile di uno straniero che desidera terminare la garanzia de"
+    },
+    {
+      "claim_id": "IMM-101",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: La sorveglianza dei garanti persone giuridiche verifica la documentazione, la pr"
+    },
+    {
+      "claim_id": "IMM-365",
+      "verdict": "FAITHFUL",
+      "reason": "Claim exists in DB and document accurately cites: Il ministero competente per l'immigrazione e' ora il Kementerian Imigrasi dan Pe"
+    }
+  ],
+  "blocked_claims": [],
+  "note": "Manual verification: all claim IDs cross-referenced against immigration_claims_db.json"
+}
