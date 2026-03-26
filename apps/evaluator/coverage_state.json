@@ -10,7 +10,7 @@
       "page_fetch": "PAGE_FETCH_STATE_UNSPECIFIED",
       "sitemap": [],
       "referring_urls": [],
-      "checked_at": "2026-03-08T21:39:25.903378",
+      "checked_at": "2026-03-26T04:24:19.104391",
       "error": null
     },
     "https://balizero.com/kbli/01112": {
@@ -131,7 +131,7 @@
       "error": null
     }
   },
-  "last_check": "2026-03-08T21:40:30.402498",
+  "last_check": "2026-03-26T04:24:19.373885",
   "summary_history": [
     {
       "date": "2026-03-08T21:40:30.402474",
@@ -140,6 +140,14 @@
       "indexed": 0,
       "indexed_rate_pct": 0.0,
       "this_run": 10
+    },
+    {
+      "date": "2026-03-26T04:24:19.373842",
+      "submitted": 1,
+      "checked": 10,
+      "indexed": 0,
+      "indexed_rate_pct": 0.0,
+      "this_run": 1
     }
   ]
 }
