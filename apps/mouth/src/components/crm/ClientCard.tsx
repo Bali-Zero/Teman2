@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Clock, AlertCircle, Mail, Phone, User, BellOff } from 'lucide-react';
+import {
+  MessageCircle,
+  Clock,
+  AlertCircle,
+  Mail,
+  Phone,
+  Building2,
+  BellOff,
+  Tag,
+} from 'lucide-react';
 import { Client } from '@/lib/api/crm/crm.types';
 import { useRouter } from 'next/navigation';
 
@@ -134,9 +143,16 @@ export const ClientCard = React.memo(
             </div>
 
             <div className="flex-1 min-w-0">
-              <h4 className="font-bold text-[var(--tx-pure)] text-sm truncate">
-                {client.full_name}
-              </h4>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h4 className="font-bold text-[var(--tx-pure)] text-sm truncate">
+                  {client.full_name}
+                </h4>
+                {client.client_type === 'company' && (
+                  <span title="Company">
+                    <Building2 className="w-3 h-3 shrink-0 text-[var(--tx-tertiary)]" />
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[var(--tx-secondary)] tracking-wide">
                 <span className="truncate">{client.nationality || 'Unknown'}</span>
                 {client.company_name && (
@@ -207,6 +223,31 @@ export const ClientCard = React.memo(
               </div>
             )}
 
+            {/* Tags row */}
+            {client.tags && client.tags.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                <Tag className="w-2.5 h-2.5 text-[var(--tx-tertiary)] shrink-0" />
+                {client.tags.slice(0, 3).map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-1.5 py-0.5 rounded-full text-[9px] font-medium uppercase tracking-wide"
+                    style={{
+                      background: 'rgba(212,132,90,0.12)',
+                      color: 'var(--bz-accent)',
+                      border: '1px solid rgba(212,132,90,0.2)',
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+                {client.tags.length > 3 && (
+                  <span className="text-[9px] text-[var(--tx-tertiary)]">
+                    +{client.tags.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Quick Stats Row */}
             <div className="flex items-center justify-between pt-3 border-t border-[var(--glass-rim)] text-[var(--tx-secondary)] font-mono text-[10px] uppercase tracking-wider">
               <div className="flex items-center gap-1.5" title="Last Contact">
@@ -222,6 +263,31 @@ export const ClientCard = React.memo(
                     : 'Never'}
                 </span>
               </div>
+
+              {/* Status label */}
+              <span
+                className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide"
+                style={{
+                  background:
+                    {
+                      lead: 'rgba(59,130,246,0.15)',
+                      active: 'rgba(16,185,129,0.15)',
+                      completed: 'rgba(139,92,246,0.15)',
+                      inactive: 'rgba(107,114,128,0.15)',
+                      lost: 'rgba(239,68,68,0.15)',
+                    }[client.status] || 'rgba(107,114,128,0.15)',
+                  color:
+                    {
+                      lead: '#60a5fa',
+                      active: '#34d399',
+                      completed: '#a78bfa',
+                      inactive: '#9ca3af',
+                      lost: '#f87171',
+                    }[client.status] || '#9ca3af',
+                }}
+              >
+                {client.status}
+              </span>
 
               {/* Action Buttons (Visible on Hover) */}
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
