@@ -1023,6 +1023,7 @@ function ClientsListContent() {
                       { key: 'assigned_to', label: 'Assigned' },
                       { key: 'last_interaction_date', label: 'Last Contact' },
                       { key: 'passport_expiry', label: 'Passport Exp.' },
+                      { key: 'processes', label: 'Processes' },
                     ].map((col) => (
                       <th
                         key={col.key}
@@ -1142,6 +1143,21 @@ function ClientsListContent() {
                             </span>
                           ) : (
                             <span style={{ color: 'var(--bz-text-2)' }}>—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-center">
+                          {client.active_practices && client.active_practices > 0 ? (
+                            <span
+                              className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold"
+                              style={{
+                                background: 'rgba(212,132,90,0.2)',
+                                color: 'var(--bz-accent)',
+                              }}
+                            >
+                              {client.active_practices}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'rgba(255,255,255,0.2)' }}>—</span>
                           )}
                         </td>
                       </tr>
