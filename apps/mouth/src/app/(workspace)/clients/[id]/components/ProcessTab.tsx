@@ -2,12 +2,26 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, FolderOpen, Calendar, Eye, Trash2 } from "lucide-react";
+import { Plus, FolderOpen, Calendar, Eye, Trash2, DollarSign, ArrowUpCircle, ArrowDownCircle, MinusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type { ClientProfile } from "@/lib/api/crm/crm.types";
 import { STATUS_COLORS, ALERT_COLORS } from "./constants";
+import { formatCurrency } from "./utils";
+
+const PRIORITY_STYLES: Record<string, { icon: typeof ArrowUpCircle; color: string }> = {
+  high: { icon: ArrowUpCircle, color: "text-red-400" },
+  medium: { icon: MinusCircle, color: "text-yellow-400" },
+  low: { icon: ArrowDownCircle, color: "text-blue-400" },
+};
+
+const PAYMENT_STYLES: Record<string, string> = {
+  paid: "bg-green-500/20 text-green-400",
+  partial: "bg-yellow-500/20 text-yellow-400",
+  unpaid: "bg-red-500/20 text-red-400",
+  pending: "bg-orange-500/20 text-orange-400",
+};
 
 export function ProcessTab({
   clientId,
@@ -53,17 +67,23 @@ export function ProcessTab({
             >
               <div className="flex items-center justify-between mb-2">
                 <div
-                  className="flex-1 cursor-pointer"
+                  className="flex-1 cursor-pointer min-w-0"
                   onClick={() => router.push(`/process/${practice.id}`)}
                 >
-                  <span className="text-sm font-medium text-[var(--bz-text-1)]">
-                    {practice.practice_type_name}
-                  </span>
-                  <span className="text-xs text-[var(--bz-text-2)] ml-2">
-                    #{practice.id}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {practice.priority && PRIORITY_STYLES[practice.priority] && (() => {
+                      const { icon: PIcon, color } = PRIORITY_STYLES[practice.priority!];
+                      return <PIcon className={`w-3.5 h-3.5 shrink-0 ${color}`} />;
+                    })()}
+                    <span className="text-sm font-medium text-[var(--bz-text-1)] truncate">
+                      {practice.practice_type_name}
+                    </span>
+                    <span className="text-xs text-[var(--bz-text-2)] shrink-0">
+                      #{practice.id}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${
                       STATUS_COLORS[practice.status] ||
@@ -122,16 +142,35 @@ export function ProcessTab({
                   </div>
                 </div>
               </div>
-              {practice.expiry_date && (
-                <div
-                  className={`text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded ${
-                    ALERT_COLORS[practice.alert_color || "green"]
-                  }`}
-                >
-                  <Calendar className="w-3 h-3" />
-                  Expires: {formatDate(practice.expiry_date)}
-                </div>
-              )}
+              <div className="flex items-center gap-2 flex-wrap mt-1">
+                {practice.expiry_date && (
+                  <div
+                    className={`text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded ${
+                      ALERT_COLORS[practice.alert_color || "green"]
+                    }`}
+                  >
+                    <Calendar className="w-3 h-3" />
+                    Expires: {formatDate(practice.expiry_date)}
+                  </div>
+                )}
+                {(practice.quoted_price || practice.actual_price) && (
+                  <div className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--bz-base)] text-[var(--bz-text-2)]">
+                    <DollarSign className="w-3 h-3" />
+                    {practice.actual_price
+                      ? formatCurrency(practice.actual_price)
+                      : formatCurrency(practice.quoted_price!)}
+                  </div>
+                )}
+                {practice.payment_status && practice.payment_status !== "unpaid" && (
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded ${
+                      PAYMENT_STYLES[practice.payment_status] || "bg-gray-500/20 text-gray-400"
+                    }`}
+                  >
+                    {practice.payment_status}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
