@@ -346,6 +346,30 @@ export default function PratichePage() {
     setMenuPosition({ x: rect.right - 10, y: rect.bottom + 5 });
   };
 
+  const handlePriorityChange = async (practiceId: number, newPriority: string) => {
+    setUpdatingId(practiceId);
+    try {
+      const user = await api.getProfile();
+      await api.crm.updatePractice(practiceId, { priority: newPriority }, user.email);
+      setPractices((prev) =>
+        prev.map((p) => (p.id === practiceId ? { ...p, priority: newPriority } : p))
+      );
+      setSelectedPractice((prev) =>
+        prev?.id === practiceId ? { ...prev, priority: newPriority } : prev
+      );
+      toast.success('Priority Updated', `→ ${newPriority}`);
+    } catch (error) {
+      logger.error(
+        'Failed to update priority',
+        { component: 'Process', action: 'updatePriority' },
+        toError(error)
+      );
+      toast.error('Error', 'Failed to update priority');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const handlePaymentChange = async (practiceId: number, newPaymentStatus: string) => {
     setUpdatingId(practiceId);
     try {
@@ -1769,6 +1793,39 @@ export default function PratichePage() {
                   {ps}
                 </button>
               ))}
+            </div>
+          </div>
+          {/* Priority Section */}
+          <div className="border-t border-[rgba(255,255,255,0.05)] px-3 py-2">
+            <p className="text-[10px] text-[var(--bz-text-2)] mb-1.5 font-medium uppercase tracking-wide">
+              Priority
+            </p>
+            <div className="flex gap-1">
+              {(
+                [
+                  { value: 'normal', label: 'Normal', color: '#9ca3af', active: 'rgba(156,163,175,0.25)', border: 'rgba(156,163,175,0.4)' },
+                  { value: 'high', label: 'High', color: '#fb923c', active: 'rgba(249,115,22,0.25)', border: 'rgba(249,115,22,0.4)' },
+                  { value: 'urgent', label: 'Urgent', color: '#f87171', active: 'rgba(239,68,68,0.25)', border: 'rgba(239,68,68,0.4)' },
+                ] as const
+              ).map((p) => {
+                const isCurrent =
+                  (selectedPractice.priority || 'normal') === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    onClick={() => handlePriorityChange(selectedPractice.id, p.value)}
+                    disabled={isCurrent || updatingId !== null}
+                    className="flex-1 text-[10px] py-1 rounded font-medium transition-all disabled:opacity-40 disabled:cursor-default capitalize"
+                    style={{
+                      background: isCurrent ? p.active : 'rgba(255,255,255,0.05)',
+                      color: isCurrent ? p.color : 'var(--bz-text-2)',
+                      border: isCurrent ? `1px solid ${p.border}` : '1px solid rgba(255,255,255,0.06)',
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
