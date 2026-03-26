@@ -535,6 +535,61 @@ export default function CaseDetailPage() {
         </div>
       </div>
 
+      {/* Workflow Progress Stepper */}
+      {(() => {
+        const STEPS = [
+          { key: 'inquiry', label: 'Inquiry', color: '#6b7280' },
+          { key: 'waiting_documents', label: 'Documents', color: '#f59e0b' },
+          { key: 'sending_invoice', label: 'Invoice', color: '#f97316' },
+          { key: 'on_process', label: 'Processing', color: '#6366f1' },
+          { key: 'completed', label: 'Done', color: '#22c55e' },
+        ];
+        const currentIdx = STEPS.findIndex((s) => {
+          if (practice.status === s.key) return true;
+          // map legacy statuses
+          if (s.key === 'sending_invoice' && (practice.status === 'waiting_payment' || practice.status === 'quotation_sent')) return true;
+          if (s.key === 'on_process' && (practice.status === 'in_progress' || practice.status === 'submitted_to_gov' || practice.status === 'approved')) return true;
+          return false;
+        });
+        return (
+          <div className="mb-6 flex items-center gap-0">
+            {STEPS.map((step, idx) => {
+              const isDone = idx < currentIdx;
+              const isCurrent = idx === currentIdx;
+              return (
+                <React.Fragment key={step.key}>
+                  <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                        isDone ? 'text-white' : isCurrent ? 'text-white ring-2 ring-offset-2 ring-offset-[var(--bz-base)]' : 'text-[var(--bz-text-2)]'
+                      }`}
+                      style={{
+                        background: isDone || isCurrent ? step.color : 'rgba(255,255,255,0.06)',
+                        ...(isCurrent ? { outline: `2px solid ${step.color}`, outlineOffset: '2px' } : {}),
+                      }}
+                    >
+                      {isDone ? '✓' : idx + 1}
+                    </div>
+                    <span
+                      className="text-[9px] font-medium whitespace-nowrap hidden sm:block"
+                      style={{ color: isCurrent ? step.color : isDone ? 'var(--bz-text-2)' : 'var(--bz-text-2)', opacity: isDone ? 0.6 : 1 }}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
+                  {idx < STEPS.length - 1 && (
+                    <div
+                      className="flex-1 h-[2px] mx-1 mb-3"
+                      style={{ background: idx < currentIdx ? step.color : 'rgba(255,255,255,0.08)' }}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
