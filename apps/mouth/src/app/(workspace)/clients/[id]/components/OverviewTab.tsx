@@ -151,7 +151,7 @@ export function OverviewTab({
                   <div className="flex items-center gap-1.5 group/copy">
                     <p className="text-sm font-medium truncate">
                       {client.email || (
-                        <span className="text-[var(--bz-text-2)] italic text-xs">—</span>
+                        <span className="text-[var(--bz-text-2)] italic text-xs">Not provided</span>
                       )}
                     </p>
                     {client.email && (
@@ -178,7 +178,7 @@ export function OverviewTab({
                       {client.phone ? (
                         formatPhoneNumber(client.phone)
                       ) : (
-                        <span className="text-[var(--bz-text-2)] italic text-xs">—</span>
+                        <span className="text-[var(--bz-text-2)] italic text-xs">Not provided</span>
                       )}
                     </p>
                     {client.phone && (
