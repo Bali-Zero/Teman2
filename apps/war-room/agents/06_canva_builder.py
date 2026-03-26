@@ -17,15 +17,14 @@ Workflow:
   4. Scrive output/master/canva_pending.json (copia master)
   5. Notifica via Telegram (se disponibile)
 
-TEMPLATE_SLOTS: element IDs pagina 1 del design DAHEME4mocU
-  upper row (y < 400): slots 0-5 → cover + 5 pannelli
-  lower row (y > 500): slots 0-3 → 4 pannelli seconda riga
-  Totale: 10 slot disponibili per 6-10 slide
+TEMPLATE_SLOTS: element IDs design DAHE6lx1lf8 (CLAUDE IN CANVA)
+  1 slide per pagina, 11 pagine totali
+  Element IDs recuperati via start-editing-transaction il 2026-03-26
 
-Numero slide: range decisionale 6-10
+Numero slide: range decisionale 6-11
   - Director può generare qualsiasi numero nel range
-  - Slot in eccesso → FINISH marker (slot vuoto pulito)
   - Slide in eccesso rispetto agli slot → troncate (con warning)
+  - Slot in eccesso rispetto alle slide → lasciati intatti
 """
 
 import json
@@ -38,34 +37,28 @@ from typing import Optional
 
 
 # ── Canva Design ──────────────────────────────────────────────────────────────
-DEFAULT_DESIGN_ID = "DAHEME4mocU"
+DEFAULT_DESIGN_ID = "DAHE6lx1lf8"
 
-# ── Template element IDs (War_Room design, identici su tutte le pagine) ───────
-# Struttura: (heading_element_id, body_element_id)
-# upper row = riga superiore (y < 400px): cover + 5 pannelli
-# lower row = riga inferiore (y > 500px): 4 pannelli
-TEMPLATE_SLOTS = {
-    "upper": [
-        ("PBsLhMw2tzZTd6V7-LBNh3LV9Wpg3J3yh", "PBsLhMw2tzZTd6V7-LBnxWRM9N3TnpjhD"),  # cover/slide 1
-        ("PBsLhMw2tzZTd6V7-LBHHjHgS87kxWQtR", "PBsLhMw2tzZTd6V7-LBdyFlLnfRvGlLFY"),  # slide 2
-        ("PBsLhMw2tzZTd6V7-LB41FkdMcJjvFVy6", "PBsLhMw2tzZTd6V7-LBBGg07F7zXrT7wv"),  # slide 3
-        ("PBsLhMw2tzZTd6V7-LBZjVnkTKs8G3DmH", "PBsLhMw2tzZTd6V7-LBNqRfkszx0hmt6K"),  # slide 4
-        ("PBsLhMw2tzZTd6V7-LBYYRwyhQKY0Rgsp", "PBsLhMw2tzZTd6V7-LBvdBlbBdzkDQfJQ"),  # slide 5
-        ("PBsLhMw2tzZTd6V7-LBPMtk8fRcwYm3jF", "PBsLhMw2tzZTd6V7-LB7TgRGdpRKVsRLY"),  # slide 6
-    ],
-    "lower": [
-        ("PBsLhMw2tzZTd6V7-LBpj4gW2zMQ6phJM", "PBsLhMw2tzZTd6V7-LBFGYmXTfF9n1Jkn"),  # slide 7
-        ("PBsLhMw2tzZTd6V7-LBtqPts7PGJ2kRqT", "PBsLhMw2tzZTd6V7-LBvDCd7CP36nK9dG"),  # slide 8
-        ("PBsLhMw2tzZTd6V7-LBlYBx8wF8NrVWNF", "PBsLhMw2tzZTd6V7-LB1JKgk4QfKBpwVX"),  # slide 9
-        ("PBsLhMw2tzZTd6V7-LBkddNpJPn8G8jzd", "PBsLhMw2tzZTd6V7-LBmS0210M4PRnHdQ"),  # slide 10
-    ],
-    "all": [],  # populated below
-}
-TEMPLATE_SLOTS["all"] = TEMPLATE_SLOTS["upper"] + TEMPLATE_SLOTS["lower"]
+# ── Template element IDs (CLAUDE IN CANVA — design DAHE6lx1lf8) ───────────────
+# Struttura: 1 slide per pagina, ogni pagina ha heading + body distinti
+# Recuperati via start-editing-transaction il 2026-03-26
+# (page_index, heading_element_id, body_element_id)
+TEMPLATE_SLOTS = [
+    (1,  "PB6Rxs8n5DZkNS9Z-LB7Ms2Np5mWMHmSS", "PB6Rxs8n5DZkNS9Z-LBKpxy8Y8VM8g5sm"),  # cover
+    (2,  "PBRnkF5C2FHvWPPp-LBwYVgC9yVwkqB5w",  "PBRnkF5C2FHvWPPp-LBSxs84s03skX2bJ"),   # slide 2
+    (3,  "PBswT8p6LMg6vyX4-LBZ0XDG56kG2Vclt",  "PBswT8p6LMg6vyX4-LBR7pfgBKZYHQxLJ"),   # slide 3
+    (4,  "PB9rgJ5tQj1yNJrD-LBtDrMM3Bp4nJ4v9",  "PB9rgJ5tQj1yNJrD-LBGHjSsS3lj7VY3Z"),   # slide 4
+    (5,  "PBZjXPTPh9tnvx82-LBSZHpqHtJfq43QC",  "PBZjXPTPh9tnvx82-LB9q34XMJhYmJcVV"),   # slide 5
+    (6,  "PBgr2GbZD3DJkPP0-LB0cZMDY3BRdprNk",  "PBgr2GbZD3DJkPP0-LB1kPFcPYqsqQYfQ"),   # slide 6
+    (7,  "PBk1XphW0PnpKMh2-LBbh37qB3S4DrdrD",  "PBk1XphW0PnpKMh2-LB2XL6f0tjmwhgk8"),   # slide 7
+    (8,  "PBNffcgkNpZKTtmM-LBFg8s6hy6DF3HvB",  "PBNffcgkNpZKTtmM-LBY2F75l9NJp4bpf"),   # slide 8
+    (9,  "PBqdbS4QcwHgGN0F-LBFxtRbKJBx5qKch",  None),                                    # slide 9 (heading only)
+    (10, "PBz4hjP71RbnjKhb-LBbCpkK9wH5C1KQX",  "PBz4hjP71RbnjKhb-LBTVJsF8WVLZBx8L"),   # slide 10
+    (11, "PBxns7m6jJJm3BKT-LBtXZ6mvNj5TH3n0",  None),                                    # slide 11 (heading only)
+]
 
-FINISH_MARKER = "FINISH"
 MIN_SLIDES = 6
-MAX_SLIDES = 10
+MAX_SLIDES = 11
 
 
 # ── Slide → operations list ───────────────────────────────────────────────────
@@ -74,14 +67,13 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
     """
     Converte slide JSON in lista di operazioni replace_text per Canva.
 
-    Range decisionale: 6-10 slide.
-    - Slide in eccesso (>10): troncate con warning
-    - Slot in eccesso (slide < slot): FINISH_MARKER (slot vuoto)
+    Design DAHE6lx1lf8: 1 slide per pagina (11 pagine totali).
+    - Ogni slot in TEMPLATE_SLOTS corrisponde a una pagina specifica
+    - page_index viene preso dallo slot, non dal parametro `page` (ignorato)
+    - Slide in eccesso (>MAX_SLIDES): troncate con warning
+    - Slot in eccesso rispetto alle slide: saltati (non si toccano)
     - image_prompt: annotazione testuale nel body, non generazione immagini
     """
-    slots = TEMPLATE_SLOTS["all"]
-    n_slots = len(slots)  # 10
-
     if len(slides) > MAX_SLIDES:
         print(f"  ⚠️  {len(slides)} slide > MAX {MAX_SLIDES} — troncate",
               file=sys.stderr)
@@ -94,10 +86,10 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
     ops = []
 
     for i, slide in enumerate(slides):
-        if i >= n_slots:
+        if i >= len(TEMPLATE_SLOTS):
             break
 
-        heading_id, body_id = slots[i]
+        page_index, heading_id, body_id = TEMPLATE_SLOTS[i]
         headline = slide.get("headline", "").upper()
         subhead  = (slide.get("subhead") or "").strip()
         body     = (slide.get("body") or "").strip()
@@ -110,15 +102,24 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
         if subhead and not is_cover:
             heading_text = f"{headline}\n{subhead.upper()}"
 
-        # Body: testo principale
+        ops.append({
+            "type": "replace_text",
+            "element_id": heading_id,
+            "text": heading_text,
+            "page_index": page_index,
+        })
+
+        # Body: solo se l'elemento esiste per questa pagina
+        if body_id is None:
+            continue
+
         body_parts = []
         if is_cover and subhead:
-            # Cover: subhead come body (es. "It's in the hands of an algorithm.")
             body_parts.append(subhead)
         elif body:
             body_parts.append(body)
 
-        # Annotazione image prompt (non generazione — solo testo per designer)
+        # Annotazione image prompt (solo testo per designer)
         if image_prompt:
             note = f"\n(IMAGE PROMPT: {image_prompt}"
             if image_placement:
@@ -126,28 +127,14 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
             note += ")"
             body_parts.append(note)
 
-        body_text = "\n".join(body_parts) if body_parts else FINISH_MARKER
-
-        ops.append({
-            "type": "replace_text",
-            "element_id": heading_id,
-            "text": heading_text,
-            "page_index": page,
-        })
-        ops.append({
-            "type": "replace_text",
-            "element_id": body_id,
-            "text": body_text,
-            "page_index": page,
-        })
-
-    # Slot rimanenti → FINISH marker (slot puliti)
-    for j in range(len(slides), n_slots):
-        heading_id, body_id = slots[j]
-        ops.append({"type": "replace_text", "element_id": heading_id,
-                    "text": FINISH_MARKER, "page_index": page})
-        ops.append({"type": "replace_text", "element_id": body_id,
-                    "text": FINISH_MARKER, "page_index": page})
+        body_text = "\n".join(body_parts) if body_parts else ""
+        if body_text:
+            ops.append({
+                "type": "replace_text",
+                "element_id": body_id,
+                "text": body_text,
+                "page_index": page_index,
+            })
 
     return ops
 
@@ -178,11 +165,6 @@ def main() -> None:
     ap.add_argument("--output",    required=True,  help="Output dir (es. output/canva/)")
     ap.add_argument("--master",    required=True,  help="Master dir (es. output/master/)")
     ap.add_argument("--design-id", default=DEFAULT_DESIGN_ID)
-    ap.add_argument("--row",       default="all",
-                    choices=["upper", "lower", "all"],
-                    help="Slot da usare (default: all = tutte e 10)")
-    ap.add_argument("--page",      type=int, default=1,
-                    help="page_index Canva (default: 1)")
     ap.add_argument("--dry-run",   action="store_true",
                     help="Mostra operazioni senza scrivere file")
     args = ap.parse_args()
@@ -210,19 +192,9 @@ def main() -> None:
     print(f"   Design:  {args.design_id}", file=sys.stderr)
     print(f"   Topic:   {topic}", file=sys.stderr)
     print(f"   Slides:  {len(slides)} (range: {MIN_SLIDES}-{MAX_SLIDES})", file=sys.stderr)
-    print(f"   Row:     {args.row}  Page: {args.page}", file=sys.stderr)
 
     # ── Build operations ──
-    # Override slots if specific row requested
-    if args.row != "all":
-        # Monkey-patch per compatibilità
-        original_all = TEMPLATE_SLOTS["all"]
-        TEMPLATE_SLOTS["all"] = TEMPLATE_SLOTS[args.row]
-
-    operations = slides_to_operations(slides, page=args.page)
-
-    if args.row != "all":
-        TEMPLATE_SLOTS["all"] = original_all
+    operations = slides_to_operations(slides)
 
     print(f"   Ops:     {len(operations)} replace_text", file=sys.stderr)
 
@@ -236,8 +208,6 @@ def main() -> None:
         dry = {
             "design_id": args.design_id,
             "topic": topic,
-            "row": args.row,
-            "page": args.page,
             "operations_count": len(operations),
             "dry_run": True,
             "slides": slides,
