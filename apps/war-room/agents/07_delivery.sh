@@ -50,7 +50,7 @@ CHAT_IDS="${TELEGRAM_GROUP_ID:?Set TELEGRAM_GROUP_ID env var}"
 # Bilingual notifications: Italian for owner, Indonesian for Damar
 DAMAR_CHAT_ID="1813875994"
 
-IFS=',' read -ra CHAT_ID_ARRAY <<< "$CHAT_IDS"
+CHAT_ID_ARRAY=("${(@s:,:)CHAT_IDS}")
 for CID in "${CHAT_ID_ARRAY[@]}"; do
   CID=$(echo "$CID" | xargs)  # trim whitespace
   [[ -z "$CID" ]] && continue
@@ -218,7 +218,7 @@ Topic: $PENDING_TOPIC. Procedi senza chiedere conferma."
             "$PYTHON" -c "
 import urllib.request, urllib.parse
 msg = '🎨 Canva carousel aggiornato automaticamente!\nTopic: $PENDING_TOPIC\nLink: $CANVA_URL'
-data = urllib.parse.urlencode({'chat_id': '$CHAT_ID', 'text': msg}).encode()
+data = urllib.parse.urlencode({'chat_id': '$CHAT_IDS', 'text': msg}).encode()
 urllib.request.urlopen('https://api.telegram.org/bot${BOT_TOKEN}/sendMessage', data=data, timeout=10)
 " 2>/dev/null && echo "   📱 Notifica Canva inviata"
         else
@@ -227,7 +227,7 @@ urllib.request.urlopen('https://api.telegram.org/bot${BOT_TOKEN}/sendMessage', d
             "$PYTHON" -c "
 import urllib.request, urllib.parse
 msg = '⚠️ Canva auto-executor fallito.\nApri Claude Code e digita:\napplica canva pending per: $PENDING_TOPIC\n\nFile: $PENDING_FILE'
-data = urllib.parse.urlencode({'chat_id': '$CHAT_ID', 'text': msg}).encode()
+data = urllib.parse.urlencode({'chat_id': '$CHAT_IDS', 'text': msg}).encode()
 urllib.request.urlopen('https://api.telegram.org/bot${BOT_TOKEN}/sendMessage', data=data, timeout=10)
 " 2>/dev/null
         fi

@@ -11,11 +11,13 @@ from pathlib import Path
 def call_claude(prompt: str, timeout: int = 300) -> str:
     """Chiama Claude via CLI (claude -p "prompt"). Uses OAuth (Max subscription).
     MUST strip ANTHROPIC_API_KEY from env — otherwise CLI uses the (invalid) API key
-    instead of the OAuth token."""
-    import os
+    instead of the OAuth token.
+    Uses absolute path so launchd (limited PATH, no ~/.local/bin) can find the binary."""
+    import os, shutil
     env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    claude_bin = shutil.which("claude") or "/Users/nuzantara/.local/bin/claude"
     result = subprocess.run(
-        ["claude", "-p", prompt],
+        [claude_bin, "-p", prompt],
         capture_output=True, text=True, timeout=timeout, env=env
     )
     if result.returncode == 0 and result.stdout.strip():
