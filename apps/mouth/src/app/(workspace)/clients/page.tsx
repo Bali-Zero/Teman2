@@ -245,6 +245,26 @@ function ClientsListContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [silentFilter, setSilentFilter] = useState<number | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut: '/' to focus search, Escape to clear
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isEditing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if (e.key === '/' && !isEditing) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+      if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        searchInputRef.current?.blur();
+        setSearchQuery('');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // Load current user profile
   useEffect(() => {
@@ -658,10 +678,12 @@ function ClientsListContent() {
               style={{ color: 'var(--bz-text-2)' }}
             />
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder="Search clients..."
+              placeholder="Search clients… (press / to focus)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              title="Press / to focus, Escape to clear"
               className="w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 transition-all duration-300 shadow-sm hover:shadow-md"
               style={
                 {
