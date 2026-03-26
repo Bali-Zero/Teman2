@@ -349,14 +349,27 @@ export function PassportCard({
                         const days = Math.ceil(
                           (new Date(client.passport_expiry!).getTime() - Date.now()) / 86400000
                         );
-                        if (days < 0) return null;
+                        const label =
+                          days < 0
+                            ? `Exp ${Math.abs(days)}d ago`
+                            : days === 0
+                              ? 'today'
+                              : days <= 365
+                                ? `⏰ ${days}d`
+                                : `${Math.floor(days / 30)}mo`;
                         return (
-                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                            days < 30 ? 'bg-red-500/20 text-red-400' :
-                            days < 180 ? 'bg-yellow-500/20 text-yellow-400' :
-                            'bg-green-500/10 text-green-400'
-                          }`}>
-                            {days}d
+                          <span
+                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                              days < 0
+                                ? 'bg-red-500/20 text-red-400'
+                                : days < 30
+                                  ? 'bg-red-500/15 text-red-400'
+                                  : days < 180
+                                    ? 'bg-yellow-500/20 text-yellow-400'
+                                    : 'bg-green-500/10 text-green-400'
+                            }`}
+                          >
+                            {label}
                           </span>
                         );
                       })()}
@@ -477,9 +490,39 @@ export function PassportCard({
                         <span className="text-[10px] uppercase tracking-wider opacity-80">
                           Expiry:
                         </span>
-                        <span className={`text-xs font-semibold ${passportValidity.textClass}`}>
-                          {formatDate(client.passport_expiry)}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-xs font-semibold ${passportValidity.textClass}`}>
+                            {formatDate(client.passport_expiry)}
+                          </span>
+                          {(() => {
+                            const days = Math.ceil(
+                              (new Date(client.passport_expiry!).getTime() - Date.now()) / 86400000
+                            );
+                            const label =
+                              days < 0
+                                ? `Exp ${Math.abs(days)}d ago`
+                                : days === 0
+                                  ? 'today'
+                                  : days <= 365
+                                    ? `⏰ ${days}d`
+                                    : `${Math.floor(days / 30)}mo`;
+                            return (
+                              <span
+                                className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                                  days < 0
+                                    ? 'bg-red-500/20 text-red-400'
+                                    : days < 30
+                                      ? 'bg-red-500/15 text-red-400'
+                                      : days < 180
+                                        ? 'bg-yellow-500/20 text-yellow-400'
+                                        : 'bg-green-500/10 text-green-400'
+                                }`}
+                              >
+                                {label}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
                       {passportValidity.alertLevel === 'expired' && (
                         <div className="mt-1 text-[10px] text-red-600 dark:text-red-300 font-bold">
