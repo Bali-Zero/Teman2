@@ -41,6 +41,15 @@ export function ProcessTab({
 
   const activeStatuses = Array.from(new Set(practices.map((p) => p.status)));
 
+  const revenueSummary = useMemo(() => {
+    const total = practices.reduce((sum, p) => sum + (p.actual_price || p.quoted_price || 0), 0);
+    const paid = practices
+      .filter((p) => p.payment_status === 'paid')
+      .reduce((sum, p) => sum + (p.actual_price || p.quoted_price || 0), 0);
+    const outstanding = total - paid;
+    return { total, paid, outstanding };
+  }, [practices]);
+
   const sortedPractices = useMemo(() => {
     let list = [...practices];
     if (filterStatus !== "all") list = list.filter((p) => p.status === filterStatus);
@@ -83,6 +92,24 @@ export function ProcessTab({
           New Process
         </Button>
       </div>
+
+      {/* Revenue Summary Bar */}
+      {practices.length > 0 && revenueSummary.total > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-lg bg-[var(--bz-surface)] border border-[var(--bz-border)] p-3">
+            <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">Total Value</p>
+            <p className="text-sm font-bold text-[var(--bz-text-1)]">{formatCurrency(revenueSummary.total)}</p>
+          </div>
+          <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3">
+            <p className="text-[10px] uppercase tracking-wider text-green-400 mb-0.5">Paid</p>
+            <p className="text-sm font-bold text-green-400">{formatCurrency(revenueSummary.paid)}</p>
+          </div>
+          <div className={`rounded-lg p-3 border ${revenueSummary.outstanding > 0 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-[var(--bz-surface)] border-[var(--bz-border)]'}`}>
+            <p className={`text-[10px] uppercase tracking-wider mb-0.5 ${revenueSummary.outstanding > 0 ? 'text-orange-400' : 'text-[var(--bz-text-2)]'}`}>Outstanding</p>
+            <p className={`text-sm font-bold ${revenueSummary.outstanding > 0 ? 'text-orange-400' : 'text-[var(--bz-text-1)]'}`}>{formatCurrency(revenueSummary.outstanding)}</p>
+          </div>
+        </div>
+      )}
 
       {practices.length > 1 && (
         <div className="flex items-center gap-2 flex-wrap">
