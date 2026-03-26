@@ -66,7 +66,8 @@ class SMTPProvider(EmailProvider):
         self.host = os.getenv("SMTP_HOST", "smtp.gmail.com")
         self.port = int(os.getenv("SMTP_PORT", "587"))
         self.user = os.getenv("SMTP_USER")
-        self.password = os.getenv("SMTP_PASSWORD")
+        # ZOHO_SMTP_PASSWORD is the app-specific SMTP password (preferred over SMTP_PASSWORD)
+        self.password = os.getenv("ZOHO_SMTP_PASSWORD") or os.getenv("SMTP_PASSWORD")
         self.use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
         self.from_email = os.getenv("SMTP_FROM", self.user)
 
