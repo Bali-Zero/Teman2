@@ -318,6 +318,65 @@ export function OverviewTab({
                   </div>
                 </>
               )}
+
+              {/* Quick Actions */}
+              {(client.phone || client.email) && (
+                <>
+                  <div className="border-t border-[var(--bz-border)]" />
+                  <div className="flex items-center gap-2">
+                    {client.phone && (() => {
+                      const wa = client.phone.replace(/[^0-9]/g, '').replace(/^0/, '62');
+                      return (
+                        <a
+                          href={`https://wa.me/${wa}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                          style={{
+                            background: 'rgba(37,211,102,0.12)',
+                            color: '#25d366',
+                            border: '1px solid rgba(37,211,102,0.25)',
+                          }}
+                          title={`WhatsApp ${client.phone}`}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          WhatsApp
+                        </a>
+                      );
+                    })()}
+                    {client.email && (
+                      <a
+                        href={`mailto:${client.email}`}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                        style={{
+                          background: 'rgba(99,102,241,0.12)',
+                          color: '#818cf8',
+                          border: '1px solid rgba(99,102,241,0.25)',
+                        }}
+                        title={`Email ${client.email}`}
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        Email
+                      </a>
+                    )}
+                    {client.phone && (
+                      <a
+                        href={`tel:${client.phone}`}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                        style={{
+                          background: 'rgba(59,130,246,0.12)',
+                          color: '#60a5fa',
+                          border: '1px solid rgba(59,130,246,0.25)',
+                        }}
+                        title={`Call ${client.phone}`}
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        Call
+                      </a>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
