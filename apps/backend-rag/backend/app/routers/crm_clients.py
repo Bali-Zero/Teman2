@@ -465,11 +465,22 @@ async def get_client(
             await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
             row = await conn.fetchrow(
-                """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
-                   client_type, assigned_to, avatar_url, first_contact_date, last_interaction_date,
-                   tags, custom_fields, address, notes, passport_number, passport_expiry,
-                   date_of_birth, lead_source, service_interest, tax_id,
-                   created_at, updated_at, created_by FROM clients WHERE id = $1""",
+                """SELECT c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
+                   c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
+                   c.tags, c.custom_fields, c.address, c.notes, c.passport_number, c.passport_expiry,
+                   c.date_of_birth, c.lead_source, c.service_interest, c.tax_id,
+                   c.created_at, c.updated_at, c.created_by,
+                   i.sentiment as last_sentiment,
+                   i.summary as last_interaction_summary
+                   FROM clients c
+                   LEFT JOIN LATERAL (
+                       SELECT sentiment, summary
+                       FROM interactions
+                       WHERE client_id = c.id
+                       ORDER BY interaction_date DESC
+                       LIMIT 1
+                   ) i ON true
+                   WHERE c.id = $1""",
                 client_id,
             )
 
@@ -502,11 +513,22 @@ async def get_client_by_email(
 
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
-                   client_type, assigned_to, avatar_url, first_contact_date, last_interaction_date,
-                   tags, custom_fields, address, notes, passport_number, passport_expiry,
-                   date_of_birth, lead_source, service_interest, tax_id,
-                   created_at, updated_at, created_by FROM clients WHERE email = $1""",
+                """SELECT c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
+                   c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
+                   c.tags, c.custom_fields, c.address, c.notes, c.passport_number, c.passport_expiry,
+                   c.date_of_birth, c.lead_source, c.service_interest, c.tax_id,
+                   c.created_at, c.updated_at, c.created_by,
+                   i.sentiment as last_sentiment,
+                   i.summary as last_interaction_summary
+                   FROM clients c
+                   LEFT JOIN LATERAL (
+                       SELECT sentiment, summary
+                       FROM interactions
+                       WHERE client_id = c.id
+                       ORDER BY interaction_date DESC
+                       LIMIT 1
+                   ) i ON true
+                   WHERE c.email = $1""",
                 email,
             )
 

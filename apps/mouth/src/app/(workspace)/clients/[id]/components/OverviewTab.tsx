@@ -7,12 +7,38 @@ import {
   Edit2,
   Users,
   FileText,
+  MessageCircle,
+  Mail,
+  Phone,
+  Send,
+  Calendar,
+  Clock,
+  Activity,
+  FolderOpen,
+  CheckCircle2,
+  ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { ClientProfile, ClientDocument } from '@/lib/api/crm/crm.types';
+import type { ClientProfile, ClientDocument, Interaction } from '@/lib/api/crm/crm.types';
 import { formatPhoneNumber, isBirthdayToday } from './utils';
 import { PassportCard } from './PassportCard';
 import { VisaCard } from './VisaCard';
+
+const INTERACTION_ICONS: Record<string, typeof MessageCircle> = {
+  chat: MessageCircle,
+  whatsapp: MessageCircle,
+  email: Mail,
+  call: Phone,
+  telegram: Send,
+  meeting: Calendar,
+  note: FileText,
+};
+
+const SENTIMENT_COLORS: Record<string, string> = {
+  positive: 'text-green-400',
+  neutral: 'text-gray-400',
+  negative: 'text-red-400',
+};
 
 export function OverviewTab({
   client,
@@ -20,6 +46,7 @@ export function OverviewTab({
   documents,
   activePractices,
   completedPractices,
+  interactions,
   formatDate,
   formatCurrency,
   router,
@@ -32,6 +59,7 @@ export function OverviewTab({
   documents: ClientDocument[];
   activePractices: ClientProfile['practices'];
   completedPractices: ClientProfile['practices'];
+  interactions: Interaction[];
   formatDate: (d: string) => string;
   formatCurrency: (n: number) => string;
   router: ReturnType<typeof useRouter>;
@@ -249,6 +277,229 @@ export function OverviewTab({
             onRefresh={onRefresh}
             clientId={clientId}
           />
+        </div>
+      </div>
+
+      {/* Bottom Section: Activity Timeline + Quick Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Activity Timeline — spans 2 columns */}
+        <div
+          className="lg:col-span-2 rounded-xl border shadow-xl backdrop-blur-xl overflow-hidden"
+          style={{
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            background: 'rgba(32, 32, 36, 0.65)',
+          }}
+        >
+          <div
+            className="flex items-center justify-between px-4 py-3 border-b"
+            style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+          >
+            <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
+              <Activity className="w-4 h-4 text-[var(--bz-accent)]" />
+              Activity Timeline
+            </h3>
+            <span className="text-xs text-[var(--bz-text-2)]">
+              {interactions.length > 0
+                ? `${interactions.length} interactions`
+                : 'No interactions yet'}
+            </span>
+          </div>
+
+          <div className="p-4 max-h-[400px] overflow-y-auto">
+            {interactions.length > 0 ? (
+              <div className="space-y-1">
+                {interactions.map((interaction, idx) => {
+                  const Icon = INTERACTION_ICONS[interaction.interaction_type] || MessageCircle;
+                  const sentimentClass = interaction.sentiment
+                    ? SENTIMENT_COLORS[interaction.sentiment] || 'text-gray-400'
+                    : '';
+
+                  return (
+                    <div
+                      key={interaction.id}
+                      className="group flex gap-3 py-2.5 px-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+                    >
+                      {/* Timeline line + icon */}
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            interaction.direction === 'inbound'
+                              ? 'bg-blue-500/15 text-blue-400'
+                              : 'bg-green-500/15 text-green-400'
+                          }`}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                        </div>
+                        {idx < interactions.length - 1 && (
+                          <div className="w-px flex-1 bg-[var(--bz-border)] mt-1" />
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0 pb-2">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-sm font-medium text-[var(--bz-text-1)] capitalize">
+                            {interaction.interaction_type}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.05] text-[var(--bz-text-2)]">
+                            {interaction.direction === 'inbound' ? '← In' : '→ Out'}
+                          </span>
+                          {interaction.channel &&
+                            interaction.channel !== interaction.interaction_type && (
+                              <span className="text-[10px] text-[var(--bz-text-2)]">
+                                via {interaction.channel}
+                              </span>
+                            )}
+                          {interaction.sentiment && (
+                            <span className={`text-[10px] ${sentimentClass}`}>
+                              {interaction.sentiment}
+                            </span>
+                          )}
+                        </div>
+                        {interaction.subject && (
+                          <p className="text-sm text-[var(--bz-text-1)] font-medium truncate">
+                            {interaction.subject}
+                          </p>
+                        )}
+                        {interaction.summary && (
+                          <p className="text-xs text-[var(--bz-text-2)] line-clamp-2 mt-0.5">
+                            {interaction.summary}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          <Clock className="w-3 h-3 text-[var(--bz-text-2)]" />
+                          <span className="text-[10px] text-[var(--bz-text-2)]">
+                            {formatDate(interaction.interaction_date)}
+                          </span>
+                          {interaction.team_member && (
+                            <span className="text-[10px] text-[var(--bz-text-2)]">
+                              • {interaction.team_member.split('@')[0]}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-8 text-center">
+                <MessageCircle className="w-10 h-10 mx-auto mb-3 text-[var(--bz-text-2)] opacity-30" />
+                <p className="text-sm text-[var(--bz-text-2)]">No interactions recorded yet</p>
+                <p className="text-xs text-[var(--bz-text-2)] mt-1 opacity-60">
+                  Interactions from WhatsApp, Email, Telegram and other channels will appear here
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right column: Practices Summary */}
+        <div className="space-y-4">
+          {/* Active Practices */}
+          <div
+            className="rounded-xl border shadow-xl backdrop-blur-xl overflow-hidden"
+            style={{
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              background: 'rgba(32, 32, 36, 0.65)',
+            }}
+          >
+            <div
+              className="flex items-center justify-between px-4 py-3 border-b"
+              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+            >
+              <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-yellow-500" />
+                Active
+              </h3>
+              <span className="text-xs font-bold text-[var(--bz-accent)]">
+                {activePractices.length}
+              </span>
+            </div>
+            <div className="p-3 space-y-2 max-h-[180px] overflow-y-auto">
+              {activePractices.length > 0 ? (
+                activePractices.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-[var(--bz-text-1)] truncate">
+                        {p.practice_type_name || `Practice #${p.id}`}
+                      </p>
+                      <p className="text-[10px] text-[var(--bz-text-2)]">
+                        {p.status} • {p.priority}
+                      </p>
+                    </div>
+                    {p.quoted_price != null && p.quoted_price > 0 && (
+                      <span className="text-xs font-medium text-[var(--bz-accent)] ml-2 shrink-0">
+                        {formatCurrency(p.quoted_price)}
+                      </span>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-[var(--bz-text-2)] text-center py-3 opacity-60">
+                  No active processes
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Completed Practices */}
+          <div
+            className="rounded-xl border shadow-xl backdrop-blur-xl overflow-hidden"
+            style={{
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              background: 'rgba(32, 32, 36, 0.65)',
+            }}
+          >
+            <div
+              className="flex items-center justify-between px-4 py-3 border-b"
+              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+            >
+              <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                Completed
+              </h3>
+              <span className="text-xs font-bold text-green-400">{completedPractices.length}</span>
+            </div>
+            <div className="p-3 space-y-2 max-h-[180px] overflow-y-auto">
+              {completedPractices.length > 0 ? (
+                completedPractices.slice(0, 5).map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/[0.03] transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-[var(--bz-text-1)] truncate">
+                        {p.practice_type_name || `Practice #${p.id}`}
+                      </p>
+                      {p.completion_date && (
+                        <p className="text-[10px] text-[var(--bz-text-2)]">
+                          Completed {formatDate(p.completion_date)}
+                        </p>
+                      )}
+                    </div>
+                    {p.actual_price != null && p.actual_price > 0 && (
+                      <span className="text-xs font-medium text-green-400 ml-2 shrink-0">
+                        {formatCurrency(p.actual_price)}
+                      </span>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-[var(--bz-text-2)] text-center py-3 opacity-60">
+                  No completed processes
+                </p>
+              )}
+              {completedPractices.length > 5 && (
+                <p className="text-[10px] text-[var(--bz-text-2)] text-center">
+                  +{completedPractices.length - 5} more
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
