@@ -160,7 +160,7 @@ class LLMAdapter:
         circuit_breaker_failure_threshold: int = 10,  # Failures before opening circuit (increased for slow but working Ollama)
         circuit_breaker_timeout: float = 30.0,  # Seconds before trying half-open (reduced for faster recovery)
         circuit_breaker_success_threshold: int = 2,  # Successes to close circuit
-    ):
+    ) -> None:
         self.primary_provider = primary_provider
         self.ollama_url = ollama_url
         self.ollama_model = ollama_model
