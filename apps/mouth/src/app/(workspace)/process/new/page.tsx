@@ -12,6 +12,8 @@ import {
   Search,
   Check,
   Briefcase,
+  DollarSign,
+  UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -37,6 +39,8 @@ export default function NewPracticePage() {
     client_id: searchParams?.get("client_id")
       ? Number(searchParams.get("client_id"))
       : undefined,
+    quoted_price: "",
+    assigned_to: "",
   });
 
   // Client Search State
@@ -226,6 +230,8 @@ export default function NewPracticePage() {
         status: "inquiry",
         priority: "normal",
         notes: result.data.notes,
+        ...(formData.quoted_price ? { quoted_price: Number(formData.quoted_price) } : {}),
+        ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
       };
 
       const createdPractice = await api.crm.createPractice(
@@ -454,6 +460,45 @@ export default function NewPracticePage() {
                 <option value="revision_pt">REVISION PT</option>
                 <option value="accessories">ACCESSORIES</option>
               </select>
+            </div>
+          </div>
+
+          {/* Quoted Price + Assigned To (optional, side by side) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className={labelClass}>
+                Quoted Price <span className="text-[var(--foreground-muted)] font-normal">(IDR, optional)</span>
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
+                <input
+                  type="number"
+                  min="0"
+                  step="100000"
+                  value={formData.quoted_price}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, quoted_price: e.target.value }))}
+                  className={inputClass}
+                  placeholder="e.g. 5000000"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className={labelClass}>
+                Assigned To <span className="text-[var(--foreground-muted)] font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
+                <select
+                  value={formData.assigned_to}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, assigned_to: e.target.value }))}
+                  className={`${inputClass} appearance-none cursor-pointer`}
+                >
+                  <option value="">— unassigned —</option>
+                  <option value="zero@balizero.com">Zero</option>
+                  <option value="asya@balizero.com">Asya</option>
+                  <option value="antonellosiano@gmail.com">Antonello</option>
+                </select>
+              </div>
             </div>
           </div>
 

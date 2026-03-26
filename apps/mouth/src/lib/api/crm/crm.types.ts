@@ -550,6 +550,7 @@ export interface CreatePracticeParams {
   notes?: string; // Maps from frontend "title"
   internal_notes?: string;
   quoted_price?: number;
+  assigned_to?: string; // team member email
   start_date?: string;
 }
 
