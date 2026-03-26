@@ -171,6 +171,7 @@ export const ClientCard = React.memo(
               {passportAlert && (
                 <div
                   className={`mt-1 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${passportAlert === 'expired' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}
+                  title={client.passport_expiry ? new Date(client.passport_expiry).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : undefined}
                 >
                   <AlertCircle className="w-2.5 h-2.5" />
                   {passportDaysLeft !== null && passportDaysLeft < 0 ? `Passport exp ${Math.abs(passportDaysLeft)}d ago` : passportDaysLeft !== null ? `⏰ Passport ${passportDaysLeft}d left` : 'Passport expiring'}
