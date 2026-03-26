@@ -129,6 +129,7 @@ export const createClientSchema = z
     address: emptyToUndefined,
     lead_source: leadSourceEnum.optional(),
     service_interest: z.array(z.string()).optional(),
+    avatar_url: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     // Minor check: block standalone profiles for under-18
