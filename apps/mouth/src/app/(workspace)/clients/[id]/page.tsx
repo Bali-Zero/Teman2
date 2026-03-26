@@ -188,6 +188,60 @@ export default function ClientDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* Expiry Alert Banner — shown when there are urgent docs */}
+      {expiry_alerts.filter((a) => a.alert_color === 'expired' || a.alert_color === 'red').length > 0 && (
+        <div
+          className="flex items-start gap-3 rounded-xl px-4 py-3 border"
+          style={{
+            background: 'rgba(239,68,68,0.08)',
+            borderColor: 'rgba(239,68,68,0.3)',
+          }}
+        >
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-red-400">
+              {expiry_alerts.filter((a) => a.alert_color === 'expired').length > 0 && (
+                <span>
+                  {expiry_alerts.filter((a) => a.alert_color === 'expired').length} expired
+                  {expiry_alerts.filter((a) => a.alert_color === 'red').length > 0 ? ' · ' : ''}
+                </span>
+              )}
+              {expiry_alerts.filter((a) => a.alert_color === 'red').length > 0 && (
+                <span>
+                  {expiry_alerts.filter((a) => a.alert_color === 'red').length} expiring soon
+                </span>
+              )}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {expiry_alerts
+                .filter((a) => a.alert_color === 'expired' || a.alert_color === 'red')
+                .slice(0, 4)
+                .map((alert, i) => (
+                  <span
+                    key={i}
+                    className={`text-xs px-2 py-0.5 rounded-full ${
+                      alert.alert_color === 'expired'
+                        ? 'bg-red-500/20 text-red-400'
+                        : 'bg-orange-500/20 text-orange-400'
+                    }`}
+                  >
+                    {alert.document_type?.replace(/_/g, ' ')}
+                    {alert.entity_type === 'family_member' ? ` (${alert.entity_name})` : ''}
+                    {alert.alert_color === 'expired'
+                      ? ' — expired'
+                      : ` — ${alert.days_until_expiry}d`}
+                  </span>
+                ))}
+              {expiry_alerts.filter((a) => a.alert_color === 'expired' || a.alert_color === 'red').length > 4 && (
+                <span className="text-xs text-red-400 opacity-70">
+                  +{expiry_alerts.filter((a) => a.alert_color === 'expired' || a.alert_color === 'red').length - 4} more
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Go back">
