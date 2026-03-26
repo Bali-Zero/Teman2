@@ -331,6 +331,14 @@ def main():
     # Staleness alert: warn if the log hasn't recorded any refresh in >48h
     _check_staleness_alert(log_file)
 
+    # Sentinel heartbeat
+    import pathlib
+    state_dir = pathlib.Path.home() / ".agent" / "decisions" / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "nlm_nb1_daily_refresh.last.json").write_text(
+        f'{{"job":"nlm_nb1_daily_refresh","ts":{int(time.time())},"status":"ok","host":"{__import__(\"socket\").gethostname()}"}}'
+    )
+
 
 def _check_staleness_alert(log_file: Path) -> None:
     """Alert via Telegram if no NB-1 refresh has been logged in the last 48 hours."""
