@@ -124,6 +124,7 @@ interface FilterState {
   type: string;
   assigned_to: string;
   payment_filter: string;
+  priority: string;
 }
 
 export default function PratichePage() {
@@ -139,6 +140,7 @@ export default function PratichePage() {
     type: '',
     assigned_to: '',
     payment_filter: '',
+    priority: '',
   });
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -321,7 +323,7 @@ export default function PratichePage() {
   };
 
   const clearFilters = () => {
-    setFilters({ status: '', type: '', assigned_to: '', payment_filter: '' });
+    setFilters({ status: '', type: '', assigned_to: '', payment_filter: '', priority: '' });
   };
 
   const toggleSort = useCallback((field: SortField) => {
@@ -385,6 +387,11 @@ export default function PratichePage() {
             if (p.payment_status !== 'unpaid' && p.payment_status !== 'partial') {
               return false;
             }
+          }
+
+          // Priority filter
+          if (filters.priority && p.priority !== filters.priority) {
+            return false;
           }
 
           return true;
@@ -666,6 +673,36 @@ export default function PratichePage() {
           >
             <span className="w-1.5 h-1.5 rounded-full bg-current" />
             Unpaid
+          </button>
+          <button
+            onClick={() =>
+              setFilters((f) => ({
+                ...f,
+                priority: f.priority === 'urgent' ? '' : 'urgent',
+              }))
+            }
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+              filters.priority === 'urgent'
+                ? 'bg-red-500/20 text-red-400 border-red-500/40'
+                : 'bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-red-500/30 hover:text-red-400'
+            }`}
+          >
+            🔥 Urgent
+          </button>
+          <button
+            onClick={() =>
+              setFilters((f) => ({
+                ...f,
+                priority: f.priority === 'high' ? '' : 'high',
+              }))
+            }
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+              filters.priority === 'high'
+                ? 'bg-orange-500/20 text-orange-400 border-orange-500/40'
+                : 'bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-orange-500/30 hover:text-orange-400'
+            }`}
+          >
+            ↑ High
           </button>
         </div>
 
