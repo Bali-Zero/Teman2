@@ -1,6 +1,7 @@
 """CELL — Entry point. Runs the pulse loop. This is the organism."""
 import asyncio
 import logging
+import os
 import signal
 import sys
 
@@ -8,10 +9,12 @@ import httpx
 
 from cell.core.config import settings
 from cell.core.dna import DNALoader
+from cell.core.dna_interpreter import DNAInterpreter
 from cell.core.pulse import PulseEngine
 from cell.core.safety import SafetyGate
 from cell.metabolism.tracker import MetabolismTracker
 from cell.sensors.health_sensor import HealthSensor
+from cell.slow.reasoner import SlowReasoner
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,10 +46,17 @@ async def main() -> None:
         partitions=constraints["budget_partitions"],
     )
 
+    # SLOW layer — the brain
+    reasoner = SlowReasoner(
+        gemini_api_key=os.environ.get("GOOGLE_API_KEY", ""),
+    )
+    interpreter = DNAInterpreter()
+    logger.info("SLOW layer initialized (Qwen local + Gemini Flash)")
+
     async with httpx.AsyncClient() as http_client:
         health_sensor = HealthSensor(client=http_client, url=settings.backend_health_url)
 
-        # Safety gate with mock Redis for now (real Redis in Task 9)
+        # Safety gate with mock Redis for now
         from unittest.mock import AsyncMock
 
         mock_redis = AsyncMock()
@@ -58,10 +68,12 @@ async def main() -> None:
             safety_gate=safety_gate,
             health_sensor=health_sensor,
             metabolism=metabolism,
+            reasoner=reasoner,
+            dna_interpreter=interpreter,
             dna_expected_hash=dna_hash,
         )
 
-        logger.info("CELL organism online. Starting pulse loop.")
+        logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")
         pulse_count = 0
 
         while not _shutdown.is_set():
@@ -71,10 +83,12 @@ async def main() -> None:
                 if result.halted:
                     logger.critical(f"ORGANISM HALTED: {result.halt_reason}")
                     sys.exit(1)
-                logger.info(
-                    f"Pulse #{pulse_count} complete. "
-                    f"Health: {result.health_status.value if result.health_status else 'N/A'}"
-                )
+
+                status_str = result.health_status.value if result.health_status else "N/A"
+                action_str = f" → {result.action_taken}" if result.action_taken else ""
+                tier_str = f" (tier {result.thought_tier})" if result.thought_tier is not None else ""
+                logger.info(f"Pulse #{pulse_count} complete. Health: {status_str}{action_str}{tier_str}")
+
             except Exception as e:
                 logger.error(f"Pulse #{pulse_count} error: {e}", exc_info=True)
 

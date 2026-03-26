@@ -872,27 +872,27 @@ tools = [{"name": "kbli_search", "eager_input_streaming": True, ...}]
 
 ### KG Subgraph Status (2026-03-26)
 
-| Subgraph | Stato | Note |
-|----------|-------|------|
-| Company  | ✅ wired KG reale | Query asyncpg su kg_nodes/kg_edges |
-| Visa     | ⚠️ parziale | Sezione RPTKA ancora hardcoded in `kg_subgraph_visa.py` |
-| Property | ❓ da verificare | |
-| Tax      | ❓ da verificare | |
+| Subgraph | Stato             | Note                                                    |
+| -------- | ----------------- | ------------------------------------------------------- |
+| Company  | ✅ wired KG reale | Query asyncpg su kg_nodes/kg_edges                      |
+| Visa     | ⚠️ parziale       | Sezione RPTKA ancora hardcoded in `kg_subgraph_visa.py` |
+| Property | ❓ da verificare  |                                                         |
+| Tax      | ❓ da verificare  |                                                         |
 
 ### Cron Air (aggiornato 2026-03-26)
 
-| Job | Schedule | Script |
-|-----|----------|--------|
-| Ollama start | 01:00 | `ollama_cron_window.sh start` |
-| Auto test | 02:15 | `auto_test.sh` |
-| Sentinel | 03:00 | `auto_sentinel.sh` |
-| KB Ingest | 05:00 | `auto_kb_ingest.sh` |
-| Ollama stop | 06:05 | `ollama_cron_window.sh stop` |
-| **RAG Canary** | ***/6h :30** | **`rag_canary.py`** |
-| **System Doctor** | **08:00** | **`system_doctor.py --notify-telegram`** |
-| **Drive Watchdog** | ***/6h :00** | **`drive_token_watchdog.py`** |
-| Judgement Day | Sun 16:00 | `auto_judgement_day.sh` |
-| **RAGAS Eval** | **Sun 06:00** | **`ragas_eval.py`** |
+| Job                | Schedule      | Script                                   |
+| ------------------ | ------------- | ---------------------------------------- |
+| Ollama start       | 01:00         | `ollama_cron_window.sh start`            |
+| Auto test          | 02:15         | `auto_test.sh`                           |
+| Sentinel           | 03:00         | `auto_sentinel.sh`                       |
+| KB Ingest          | 05:00         | `auto_kb_ingest.sh`                      |
+| Ollama stop        | 06:05         | `ollama_cron_window.sh stop`             |
+| **RAG Canary**     | **\*/6h :30** | **`rag_canary.py`**                      |
+| **System Doctor**  | **08:00**     | **`system_doctor.py --notify-telegram`** |
+| **Drive Watchdog** | **\*/6h :00** | **`drive_token_watchdog.py`**            |
+| Judgement Day      | Sun 16:00     | `auto_judgement_day.sh`                  |
+| **RAGAS Eval**     | **Sun 06:00** | **`ragas_eval.py`**                      |
 
 ### GitHub Secrets richiesti per CI/CD
 
