@@ -14,6 +14,7 @@ import {
   Briefcase,
   DollarSign,
   UserCheck,
+  Calendar,
 } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -41,6 +42,7 @@ export default function NewPracticePage() {
     quoted_price: '',
     assigned_to: '',
     priority: 'normal',
+    start_date: '',
   });
 
   // Client Search State
@@ -230,6 +232,7 @@ export default function NewPracticePage() {
         notes: result.data.notes,
         ...(formData.quoted_price ? { quoted_price: Number(formData.quoted_price) } : {}),
         ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
+        ...(formData.start_date ? { start_date: formData.start_date } : {}),
       };
 
       const createdPractice = await api.crm.createPractice(backendData, user.email);
@@ -520,6 +523,23 @@ export default function NewPracticePage() {
                   {p.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Start Date */}
+          <div className="space-y-2">
+            <label className={labelClass}>
+              Start Date{' '}
+              <span className="text-[var(--foreground-muted)] font-normal">(optional)</span>
+            </label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
+              <input
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => setFormData((prev) => ({ ...prev, start_date: e.target.value }))}
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all"
+              />
             </div>
           </div>
 
