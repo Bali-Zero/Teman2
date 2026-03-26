@@ -22,7 +22,8 @@ import { STATUS_COLORS, ALERT_COLORS } from './constants';
 import { formatCurrency } from './utils';
 
 const PRIORITY_STYLES: Record<string, { icon: typeof ArrowUpCircle; color: string }> = {
-  high: { icon: ArrowUpCircle, color: 'text-red-400' },
+  urgent: { icon: ArrowUpCircle, color: 'text-red-500' },
+  high: { icon: ArrowUpCircle, color: 'text-orange-400' },
   medium: { icon: MinusCircle, color: 'text-yellow-400' },
   low: { icon: ArrowDownCircle, color: 'text-blue-400' },
 };
@@ -65,8 +66,8 @@ export function ProcessTab({
     let list = [...practices];
     if (filterStatus !== 'all') list = list.filter((p) => p.status === filterStatus);
     if (sortBy === 'priority') {
-      const order: Record<string, number> = { high: 0, medium: 1, low: 2 };
-      list.sort((a, b) => (order[a.priority || 'low'] ?? 2) - (order[b.priority || 'low'] ?? 2));
+      const order: Record<string, number> = { urgent: 0, high: 1, medium: 2, normal: 3, low: 4 };
+      list.sort((a, b) => (order[a.priority || 'normal'] ?? 3) - (order[b.priority || 'normal'] ?? 3));
     } else if (sortBy === 'expiry') {
       list.sort((a, b) => {
         if (!a.expiry_date) return 1;
@@ -315,9 +316,7 @@ export function ProcessTab({
                         className="text-[10px] px-1.5 py-0.5 rounded tabular-nums"
                         style={{
                           background:
-                            ageDays > 14
-                              ? 'rgba(239,68,68,0.10)'
-                              : 'rgba(255,255,255,0.04)',
+                            ageDays > 14 ? 'rgba(239,68,68,0.10)' : 'rgba(255,255,255,0.04)',
                           color: ageDays > 14 ? '#f87171' : 'var(--bz-text-2)',
                         }}
                         title={`Last updated ${ageDays} days ago`}
