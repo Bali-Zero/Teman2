@@ -127,6 +127,7 @@ interface FilterState {
   payment_filter: string;
   priority: string;
   expiring: boolean;
+  stale: boolean;
 }
 
 export default function PratichePage() {
@@ -144,6 +145,7 @@ export default function PratichePage() {
     payment_filter: '',
     priority: '',
     expiring: false,
+    stale: false,
   });
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -408,6 +410,7 @@ export default function PratichePage() {
       payment_filter: '',
       priority: '',
       expiring: false,
+      stale: false,
     });
   };
 
@@ -484,6 +487,14 @@ export default function PratichePage() {
             if (!p.expiry_date) return false;
             const daysLeft = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / 86400000);
             if (daysLeft < 0 || daysLeft > 30) return false;
+          }
+
+          // Stale filter: not updated in >14 days (only non-completed)
+          if (filters.stale) {
+            if (p.status === 'completed') return false;
+            if (!p.updated_at) return true;
+            const ageDays = Math.floor((Date.now() - new Date(p.updated_at).getTime()) / 86400000);
+            if (ageDays <= 14) return false;
           }
 
           return true;
@@ -854,6 +865,17 @@ export default function PratichePage() {
             }`}
           >
             ⏰ Expiring 30d
+          </button>
+          <button
+            onClick={() => setFilters((f) => ({ ...f, stale: !f.stale }))}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+              filters.stale
+                ? 'bg-purple-500/20 text-purple-400 border-purple-500/40'
+                : 'bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-purple-500/30 hover:text-purple-400'
+            }`}
+            title="Show processes not updated in >14 days"
+          >
+            🕰 Stale 14d+
           </button>
         </div>
 
