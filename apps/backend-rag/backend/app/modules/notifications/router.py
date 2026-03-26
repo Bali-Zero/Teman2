@@ -19,7 +19,8 @@ from pydantic import BaseModel
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.modules.notifications.checker import ExpiryChecker
 from backend.app.modules.notifications.models import ClientInfo
-from backend.app.modules.notifications.service import NotificationService
+from backend.app.modules.notifications.service import NotificationService, SMTPProvider
+from backend.app.utils.internal_api_auth import verify_internal_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,22 @@ class StatusResponse(BaseModel):
     pending_alerts: int
     last_check: datetime | None
     email_provider: str
+
+
+class SendEmailRequest(BaseModel):
+    """Request body for sending a direct email."""
+
+    to: str
+    subject: str
+    body: str
+    cc: str | None = None
+
+
+class SendEmailResponse(BaseModel):
+    """Response from direct email send."""
+
+    success: bool
+    message: str
 
 
 async def get_clients_from_db(pool, client_id: int | None = None) -> list[ClientInfo]:
@@ -258,6 +275,56 @@ async def send_pending_alerts(
     except Exception as e:
         logger.error("Failed to send pending alerts", exc_info=e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/send-email", response_model=SendEmailResponse)
+async def send_direct_email(
+    request: SendEmailRequest,
+    _auth: dict = Depends(verify_internal_api_key),
+) -> SendEmailResponse:
+    """
+    Send a direct email via SMTP (Zoho nuzantara@balizero.com).
+
+    Auth: X-API-Key header (valid key from API_KEYS env var).
+    Used by MCP tools to send team notifications, CRM reports, etc.
+    """
+
+    smtp = SMTPProvider()
+    cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
+
+    try:
+        msg_obj = __import__("email.mime.multipart", fromlist=["MIMEMultipart"]).MIMEMultipart("alternative")
+        msg_obj["Subject"] = request.subject
+        msg_obj["From"] = f"Bali Zero Team <{smtp.from_email or smtp.user}>"
+        msg_obj["To"] = request.to
+        if cc_list:
+            msg_obj["Cc"] = ", ".join(cc_list)
+
+        from email.mime.text import MIMEText
+        msg_obj.attach(MIMEText(request.body, "html", "utf-8"))
+
+        import aiosmtplib
+        use_tls = smtp.port == 465
+        start_tls = smtp.port == 587
+        recipients = [request.to] + (cc_list or [])
+
+        await aiosmtplib.send(
+            msg_obj,
+            hostname=smtp.host,
+            port=smtp.port,
+            username=smtp.user,
+            password=smtp.password,
+            use_tls=use_tls,
+            start_tls=start_tls,
+            recipients=recipients,
+        )
+
+        logger.info(f"Direct email sent to {request.to} — {request.subject!r}")
+        return SendEmailResponse(success=True, message=f"Email sent to {request.to}")
+
+    except Exception as e:
+        logger.error(f"Failed to send direct email to {request.to}: {e}")
+        return SendEmailResponse(success=False, message=str(e))
 
 
 # Include test endpoints only in non-production environments

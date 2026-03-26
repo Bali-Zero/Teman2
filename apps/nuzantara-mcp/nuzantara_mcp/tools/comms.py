@@ -12,21 +12,25 @@ def register(mcp, _call, _call_safe):
         cc: Optional[str] = None,
     ) -> dict:
         """
-        Send an email via Zoho Mail integration.
+        Send an email from nuzantara@balizero.com via SMTP (Zoho).
 
         Args:
-            to: Recipient email address
+            to: Recipient email address (e.g. "surya@balizero.com")
             subject: Email subject
             body: Email body (supports HTML)
             cc: CC recipients (comma-separated)
 
         Returns:
-            Send status with message ID.
+            Send status: {success: bool, message: str}
+
+        Note:
+            Uses /api/notifications/send-email endpoint with SMTP Zoho.
+            From address is always nuzantara@balizero.com.
         """
         payload: dict = {"to": to, "subject": subject, "body": body}
         if cc:
             payload["cc"] = cc
-        return await _call("/api/zoho/emails", method="POST", json=payload)
+        return await _call("/api/notifications/send-email", method="POST", json=payload)
 
     @mcp.tool()
     async def list_emails(
