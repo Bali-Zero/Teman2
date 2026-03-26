@@ -1159,31 +1159,28 @@ function ClientsListContent() {
                             : <span style={{ color: 'var(--bz-text-2)' }}>—</span>}
                         </td>
                         <td className="px-3 py-2 text-xs">
-                          {passportExpiry ? (
+                          {passportExpiry && passportDaysLeft !== null ? (
                             <span
                               className={
-                                passportDaysLeft !== null && passportDaysLeft < 0
+                                passportDaysLeft < 0
                                   ? 'text-red-400'
-                                  : passportDaysLeft !== null && passportDaysLeft <= 90
+                                  : passportDaysLeft <= 90
                                     ? 'text-yellow-400'
-                                    : ''
+                                    : 'text-[var(--bz-text-2)]'
                               }
-                              style={
-                                passportDaysLeft !== null && passportDaysLeft >= 90
-                                  ? { color: 'var(--bz-text-2)' }
-                                  : undefined
-                              }
-                            >
-                              {passportExpiry.toLocaleDateString('en-GB', {
+                              title={passportExpiry.toLocaleDateString('en-GB', {
                                 day: '2-digit',
                                 month: 'short',
-                                year: '2-digit',
+                                year: 'numeric',
                               })}
-                              {passportDaysLeft !== null && passportDaysLeft < 0 && ' (exp)'}
-                              {passportDaysLeft !== null &&
-                                passportDaysLeft >= 0 &&
-                                passportDaysLeft <= 90 &&
-                                ` (${passportDaysLeft}d)`}
+                            >
+                              {passportDaysLeft < 0
+                                ? `exp ${Math.abs(passportDaysLeft)}d ago`
+                                : passportDaysLeft === 0
+                                  ? 'expires today'
+                                  : passportDaysLeft <= 365
+                                    ? `⏰ ${passportDaysLeft}d`
+                                    : `${Math.floor(passportDaysLeft / 30)}mo`}
                             </span>
                           ) : (
                             <span style={{ color: 'var(--bz-text-2)' }}>—</span>
