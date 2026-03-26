@@ -116,6 +116,7 @@ type SortField =
   | 'client_name'
   | 'client_lead'
   | 'status'
+  | 'priority'
   | 'created_at'
   | 'updated_at';
 type SortOrder = 'asc' | 'desc';
@@ -525,6 +526,13 @@ export default function PratichePage() {
             case 'status':
               comparison = (a.status || '').localeCompare(b.status || '');
               break;
+            case 'priority': {
+              const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2 };
+              comparison =
+                (priorityOrder[a.priority || 'normal'] ?? 2) -
+                (priorityOrder[b.priority || 'normal'] ?? 2);
+              break;
+            }
             case 'created_at':
               comparison =
                 new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
@@ -1460,6 +1468,23 @@ export default function PratichePage() {
                         {sortField !== 'status' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                       </div>
                     </th>
+                    <th
+                      onClick={() => toggleSort('priority')}
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        Priority
+                        {sortField === 'priority' &&
+                          (sortOrder === 'asc' ? (
+                            <ArrowUp className="w-4 h-4" />
+                          ) : (
+                            <ArrowDown className="w-4 h-4" />
+                          ))}
+                        {sortField !== 'priority' && (
+                          <ArrowUpDown className="w-4 h-4 opacity-30" />
+                        )}
+                      </div>
+                    </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)]">
                       Payment
                     </th>
@@ -1532,7 +1557,7 @@ export default function PratichePage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <div className="inline-flex items-center gap-1.5 flex-wrap">
+                        <div className="inline-flex items-center gap-1.5">
                           <span
                             className={`w-2 h-2 rounded-full shrink-0 ${
                               {
@@ -1553,17 +1578,20 @@ export default function PratichePage() {
                             {practice.status?.replace(/_/g, ' ').charAt(0).toUpperCase() +
                               practice.status?.replace(/_/g, ' ').slice(1) || '-'}
                           </span>
-                          {practice.priority === 'urgent' && (
-                            <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-red-500/20 text-red-400 uppercase">
-                              🔥
-                            </span>
-                          )}
-                          {practice.priority === 'high' && (
-                            <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-orange-500/15 text-orange-400 uppercase tracking-wide">
-                              ↑hi
-                            </span>
-                          )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {practice.priority === 'urgent' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-red-500/15 text-red-400">
+                            🔥 urgent
+                          </span>
+                        ) : practice.priority === 'high' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-orange-500/12 text-orange-400">
+                            ↑ high
+                          </span>
+                        ) : (
+                          <span className="text-[var(--bz-text-2)] text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {practice.payment_status ? (
