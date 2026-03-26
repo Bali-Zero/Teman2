@@ -15,6 +15,7 @@ interface UseCrmClientsOptions {
   assigned_to?: string;
   search?: string;
   nationality?: string;
+  passport_expiring_days?: number;
   limit?: number;
   enabled?: boolean;
 }
@@ -37,7 +38,7 @@ const debug = (...args: unknown[]) => {
  * Hook per gestione lista clienti
  */
 export function useCrmClients(options: UseCrmClientsOptions = {}) {
-  const { status, assigned_to, search, nationality, limit = 50, enabled = true } = options;
+  const { status, assigned_to, search, nationality, passport_expiring_days, limit = 50, enabled = true } = options;
   const queryClient = useQueryClient();
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [offset, setOffset] = useState(0);
@@ -49,7 +50,7 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
   const generationRef = useRef(0);
 
   // Base query key (without offset — we accumulate results)
-  const queryKey = ['crm', 'clients', { status, assigned_to, search, nationality }];
+  const queryKey = ['crm', 'clients', { status, assigned_to, search, nationality, passport_expiring_days }];
 
   const {
     data,
@@ -65,6 +66,7 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
         status: status || undefined,
         assigned_to: assigned_to || undefined,
         nationality: nationality || undefined,
+        passport_expiring_days: passport_expiring_days,
         limit,
         offset,
       });
