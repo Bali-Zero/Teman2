@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -19,6 +19,10 @@ import {
   AlertTriangle,
   Activity,
   Mail,
+  PenLine,
+  Phone,
+  Calendar,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -67,6 +71,13 @@ export default function ClientDetailPage() {
   const [editingDocument, setEditingDocument] = useState<ClientDocument | null>(null);
   const [editingFamilyMember, setEditingFamilyMember] = useState<FamilyMember | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [showLogPanel, setShowLogPanel] = useState(false);
+  const [logType, setLogType] = useState<
+    'note' | 'call' | 'whatsapp' | 'email' | 'meeting' | 'chat'
+  >('note');
+  const [logSummary, setLogSummary] = useState('');
+  const [isLogging, setIsLogging] = useState(false);
+  const logTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const refreshProfile = async () => {
     try {
@@ -74,6 +85,31 @@ export default function ClientDetailPage() {
       setProfile(profileData);
     } catch (err) {
       logger.error('Failed to refresh client data:', {}, err as Error);
+    }
+  };
+
+  const submitLog = async () => {
+    if (!logSummary.trim()) return;
+    setIsLogging(true);
+    try {
+      const user = await api.getProfile();
+      const newInteraction = await api.crm.createInteraction({
+        client_id: clientId,
+        interaction_type: logType,
+        summary: logSummary.trim(),
+        team_member: user.email,
+        direction: 'outbound',
+      });
+      setInteractions((prev) => [newInteraction, ...prev]);
+      toast.success('Interaction logged');
+      setLogSummary('');
+      setShowLogPanel(false);
+      // Refresh to update last_interaction_date in header
+      refreshProfile();
+    } catch (err) {
+      toast.error('Failed to log interaction', { description: (err as Error).message });
+    } finally {
+      setIsLogging(false);
     }
   };
 
@@ -117,7 +153,16 @@ export default function ClientDetailPage() {
     const tabParam = searchParams?.get('tab');
     if (
       tabParam &&
-      ['overview', 'documents', 'process', 'family', 'visas', 'company', 'tax', 'timeline'].includes(tabParam)
+      [
+        'overview',
+        'documents',
+        'process',
+        'family',
+        'visas',
+        'company',
+        'tax',
+        'timeline',
+      ].includes(tabParam)
     ) {
       setActiveTab(tabParam as TabType);
     }
@@ -190,7 +235,8 @@ export default function ClientDetailPage() {
   return (
     <div className="space-y-6">
       {/* Expiry Alert Banner — shown when there are urgent docs */}
-      {expiry_alerts.filter((a) => a.alert_color === 'expired' || a.alert_color === 'red').length > 0 && (
+      {expiry_alerts.filter((a) => a.alert_color === 'expired' || a.alert_color === 'red').length >
+        0 && (
         <div
           className="flex items-start gap-3 rounded-xl px-4 py-3 border"
           style={{
@@ -233,9 +279,14 @@ export default function ClientDetailPage() {
                       : ` — ${alert.days_until_expiry}d`}
                   </span>
                 ))}
-              {expiry_alerts.filter((a) => a.alert_color === 'expired' || a.alert_color === 'red').length > 4 && (
+              {expiry_alerts.filter((a) => a.alert_color === 'expired' || a.alert_color === 'red')
+                .length > 4 && (
                 <span className="text-xs text-red-400 opacity-70">
-                  +{expiry_alerts.filter((a) => a.alert_color === 'expired' || a.alert_color === 'red').length - 4} more
+                  +
+                  {expiry_alerts.filter(
+                    (a) => a.alert_color === 'expired' || a.alert_color === 'red'
+                  ).length - 4}{' '}
+                  more
                 </span>
               )}
             </div>
@@ -272,25 +323,33 @@ export default function ClientDetailPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">{client.full_name}</h1>
               {/* Status badge */}
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${{
-                lead: 'bg-blue-500/20 text-blue-400',
-                active: 'bg-green-500/20 text-green-400',
-                completed: 'bg-purple-500/20 text-purple-400',
-                lost: 'bg-red-500/20 text-red-400',
-                inactive: 'bg-gray-500/20 text-gray-400',
-              }[client.status] || 'bg-gray-500/20 text-gray-400'}`}>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  {
+                    lead: 'bg-blue-500/20 text-blue-400',
+                    active: 'bg-green-500/20 text-green-400',
+                    completed: 'bg-purple-500/20 text-purple-400',
+                    lost: 'bg-red-500/20 text-red-400',
+                    inactive: 'bg-gray-500/20 text-gray-400',
+                  }[client.status] || 'bg-gray-500/20 text-gray-400'
+                }`}
+              >
                 {client.status}
               </span>
             </div>
             <p className="text-sm text-[var(--bz-text-2)]">
               Client #{client.id} • {client.client_type || 'Individual'}
               {client.company_name && ` • ${client.company_name}`}
-              {isMounted && client.last_interaction_date && (() => {
-                const days = Math.floor((Date.now() - new Date(client.last_interaction_date).getTime()) / 86400000);
-                if (days > 30) return <span className="text-red-400"> • Silent {days}d</span>;
-                if (days > 14) return <span className="text-yellow-400"> • {days}d ago</span>;
-                return null;
-              })()}
+              {isMounted &&
+                client.last_interaction_date &&
+                (() => {
+                  const days = Math.floor(
+                    (Date.now() - new Date(client.last_interaction_date).getTime()) / 86400000
+                  );
+                  if (days > 30) return <span className="text-red-400"> • Silent {days}d</span>;
+                  if (days > 14) return <span className="text-yellow-400"> • {days}d ago</span>;
+                  return null;
+                })()}
             </p>
           </div>
 
@@ -394,8 +453,91 @@ export default function ClientDetailPage() {
               Email
             </Button>
           )}
+          <Button
+            variant={showLogPanel ? 'default' : 'outline'}
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              setShowLogPanel((v) => !v);
+              if (!showLogPanel) setTimeout(() => logTextareaRef.current?.focus(), 80);
+            }}
+          >
+            <PenLine className="w-4 h-4" />
+            Log
+          </Button>
         </div>
       </div>
+
+      {/* Inline Log Interaction Panel */}
+      {showLogPanel && (
+        <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 space-y-3 animate-in slide-in-from-top-2 duration-150">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-[var(--bz-text-1)]">Log interaction</p>
+            <button
+              onClick={() => {
+                setShowLogPanel(false);
+                setLogSummary('');
+              }}
+              className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)]"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {/* Type chips */}
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { key: 'note', label: 'Note', Icon: FileText },
+                { key: 'call', label: 'Call', Icon: Phone },
+                { key: 'whatsapp', label: 'WhatsApp', Icon: MessageCircle },
+                { key: 'email', label: 'Email', Icon: Mail },
+                { key: 'meeting', label: 'Meeting', Icon: Calendar },
+                { key: 'chat', label: 'Chat', Icon: MessageCircle },
+              ] as const
+            ).map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                onClick={() => setLogType(key)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  logType === key
+                    ? 'bg-[var(--bz-accent)] text-white border-[var(--bz-accent)]'
+                    : 'bg-[var(--bz-base)] text-[var(--bz-text-2)] border-[var(--bz-border)] hover:border-[var(--bz-accent)]/50'
+                }`}
+              >
+                <Icon className="w-3 h-3" />
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* Summary textarea */}
+          <textarea
+            ref={logTextareaRef}
+            value={logSummary}
+            onChange={(e) => setLogSummary(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitLog();
+            }}
+            placeholder={`Add a ${logType} note… (⌘↵ to save)`}
+            rows={3}
+            className="w-full rounded-lg bg-[var(--bz-base)] border border-[var(--bz-border)] text-sm text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] px-3 py-2 resize-none focus:outline-none focus:border-[var(--bz-accent)] transition-colors"
+          />
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              disabled={!logSummary.trim() || isLogging}
+              onClick={submitLog}
+              className="gap-2"
+            >
+              {isLogging ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <PenLine className="w-4 h-4" />
+              )}
+              Save
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-[var(--bz-border)] pb-2 overflow-x-auto">
@@ -522,11 +664,7 @@ export default function ClientDetailPage() {
       {activeTab === 'tax' && <TaxTab clientId={clientId} formatDate={formatDate} />}
 
       {activeTab === 'timeline' && (
-        <TimelineTab
-          interactions={interactions}
-          formatDate={formatDate}
-          formatTime={formatTime}
-        />
+        <TimelineTab interactions={interactions} formatDate={formatDate} formatTime={formatTime} />
       )}
 
       {/* Modals */}
