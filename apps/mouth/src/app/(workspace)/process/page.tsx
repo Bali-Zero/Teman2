@@ -877,9 +877,23 @@ export default function PratichePage() {
                                 ) : (
                                   <div />
                                 )}
-                                <span className="text-[10px] text-[var(--bz-text-2)]">
-                                  #{practice.id}
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  {(practice.actual_price || practice.quoted_price) ? (
+                                    <span className={`text-[10px] font-medium ${
+                                      practice.payment_status === 'paid' ? 'text-green-400' : 'text-[var(--bz-accent)]'
+                                    }`}>
+                                      {new Intl.NumberFormat('id-ID', {
+                                        notation: 'compact',
+                                        currency: 'IDR',
+                                        style: 'currency',
+                                        maximumFractionDigits: 0,
+                                      }).format(practice.actual_price || practice.quoted_price || 0)}
+                                    </span>
+                                  ) : null}
+                                  <span className="text-[10px] text-[var(--bz-text-2)]">
+                                    #{practice.id}
+                                  </span>
+                                </div>
                               </div>
 
                               {/* Quick Actions */}
