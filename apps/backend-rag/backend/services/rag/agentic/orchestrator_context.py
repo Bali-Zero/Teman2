@@ -1,10 +1,10 @@
 import logging
 import time
-from typing import Any
+from typing import Any, Dict, List, Optional
 
+import backend.services.rag.agentic.context_manager as _context_manager_module
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.services.misc.context_window_manager import ContextWindowManager
-import backend.services.rag.agentic.context_manager as _context_manager_module
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Enable debug logging for context operations
@@ -88,9 +88,9 @@ class OrchestratorContextManager:
         self,
         user_id: str,
         query: str,
-        conversation_history: Optional[List[Dict[str, Any]]] = None,
-        session_id: Optional[str] = None,
-    ) -> tuple[Dict[str, Any], List[Dict[str, Any]]]:
+        conversation_history: list[dict[str, Any]] | None = None,
+        session_id: str | None = None,
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         """
         Load full user context and return (context_dict, optimized_history) tuple.
 
@@ -117,8 +117,8 @@ class OrchestratorContextManager:
 
     async def apply_context_window_management(
         self,
-        history: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
+        history: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
         """
         Apply context window trimming and summarization to conversation history.
 
@@ -155,10 +155,10 @@ class OrchestratorContextManager:
 
     async def enrich_user_context(
         self,
-        user_context: Dict[str, Any],
+        user_context: dict[str, Any],
         user_id: str,
         query: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Enrich an existing basic user context with additional memory facts.
 
