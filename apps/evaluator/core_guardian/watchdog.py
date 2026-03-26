@@ -296,6 +296,96 @@ def _log_unsent_alert(message: str) -> None:
         pass
 
 
+# --- Auto-Dispatch Surgeon ---
+
+SAFE_RUFF_CODES_FOR_DISPATCH: set[str] = {"ANN001", "ANN204", "DTZ003", "DTZ005"}
+
+
+def _get_safe_ruff_candidates() -> list[str]:
+    """Return up to 2 backend files that have SAFE_RUFF violations."""
+    rules_str = ",".join(sorted(SAFE_RUFF_CODES_FOR_DISPATCH))
+    try:
+        result = subprocess.run(
+            [str(VENV_PYTHON), "-m", "ruff", "check",
+             "backend/services/", "backend/app/",
+             "--select", rules_str,
+             "--output-format", "json"],
+            cwd=str(BACKEND_DIR),
+            capture_output=True, text=True, timeout=60,
+            env={**os.environ, "PYTHONPATH": str(BACKEND_DIR)},
+        )
+        if not result.stdout.strip():
+            return []
+        violations = json.loads(result.stdout)
+        seen: list[str] = []
+        for v in violations:
+            fp = v.get("filename", "")
+            if fp and fp not in seen:
+                seen.append(fp)
+            if len(seen) >= 2:
+                break
+        return seen
+    except Exception as e:
+        logger.warning(f"_get_safe_ruff_candidates failed: {e}")
+        return []
+
+
+def auto_dispatch_surgeon(regressions: list[str]) -> None:
+    """
+    On regression detected, find SAFE_RUFF violations in failing files and
+    launch Surgeon as a background process for each one.
+
+    Only dispatches for codes in SAFE_RUFF_CODES_FOR_DISPATCH (deterministic,
+    low-risk fixes). Max 2 files per regression event to avoid thrashing.
+
+    If regressions is empty, scans the full backend for candidates instead.
+    """
+    targets = regressions[:2] if regressions else _get_safe_ruff_candidates()
+    if not targets:
+        return
+
+    surgeon_script = Path(__file__).parent / "surgeon.py"
+    if not surgeon_script.exists():
+        logger.warning("surgeon.py not found — skipping auto-dispatch")
+        return
+
+    dispatched = 0
+    for target_file in targets:
+        try:
+            result = subprocess.run(
+                [str(VENV_PYTHON), "-m", "ruff", "check", target_file,
+                 "--select", ",".join(sorted(SAFE_RUFF_CODES_FOR_DISPATCH)),
+                 "--output-format", "json"],
+                cwd=str(BACKEND_DIR),
+                capture_output=True, text=True, timeout=30,
+                env={**os.environ, "PYTHONPATH": str(BACKEND_DIR)},
+            )
+            if not result.stdout.strip():
+                continue
+            try:
+                violations = json.loads(result.stdout)
+            except Exception:
+                continue
+            if not violations:
+                continue
+            code = violations[0].get("code", "")
+            if code not in SAFE_RUFF_CODES_FOR_DISPATCH:
+                continue
+
+            logger.info(f"Auto-dispatching Surgeon for {target_file} ({code})")
+            subprocess.Popen(
+                [str(VENV_PYTHON), str(surgeon_script),
+                 f"Fix {code} in {target_file}", target_file, code],
+                cwd=str(PROJECT_ROOT),
+            )
+            dispatched += 1
+        except Exception as e:
+            logger.warning(f"auto_dispatch_surgeon failed for {target_file}: {e}")
+
+    if dispatched > 0:
+        logger.info(f"Auto-dispatched Surgeon for {dispatched} file(s)")
+
+
 # --- Main Logic ---
 
 def watchdog_run() -> None:
@@ -422,6 +512,9 @@ def _watchdog_core() -> None:
                 "current_passed": current_passed,
                 "delta": -delta,
             })
+
+            # Auto-dispatch Surgeon to fix safe ruff violations while humans investigate
+            auto_dispatch_surgeon([])
 
     elif current_passed > baseline_passed:
         # Miglioramento
