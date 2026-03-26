@@ -1426,7 +1426,13 @@
     "kbli-2025-agriculture-agritourism:it",
     "kbli-2025-agriculture-agritourism:ru",
     "kbli-2025-automotive-food-textile-wholesale-bali:fr",
-    "kbli-2025-automotive-food-textile-wholesale-bali:id"
+    "kbli-2025-automotive-food-textile-wholesale-bali:id",
+    "kbli-2025-automotive-food-textile-wholesale-bali:ru",
+    "kbli-2025-bali-investment-regulatory-framework:fr",
+    "kbli-2025-bali-investment-regulatory-framework:id",
+    "kbli-2025-bali-investment-regulatory-framework:it",
+    "kbli-2025-bali-investment-regulatory-framework:ru",
+    "kbli-2025-bali-transformation:fr"
   ],
   "failed": [
     "bali-cements-status-as-world-class-leisure-hub",
@@ -1706,6 +1712,7 @@
     "how-to-set-up-a-company-in-indonesia-2026-complete-guide:id",
     "how-to-set-up-a-company-in-indonesia-2026-complete-guide:it",
     "how-to-set-up-a-company-in-indonesia-2026-complete-guide:ru",
+    "kbli-2025-automotive-food-textile-wholesale-bali:it",
     "kbli-2025-automotive-food-textile-wholesale-bali:it"
   ],
   "last_run": "2026-03-26T17:05:38.580783",
