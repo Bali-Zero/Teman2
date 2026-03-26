@@ -145,7 +145,11 @@ describe("CrmApi", () => {
 
         const result = await crmApi.getClients();
 
-        expect(mockClient.request).toHaveBeenCalledWith("/api/crm/clients");
+        expect(mockClient.request).toHaveBeenCalledWith(
+          "/api/crm/clients",
+          undefined,
+          10000,
+        );
         expect(result).toEqual(mockClients);
       });
 
@@ -160,6 +164,8 @@ describe("CrmApi", () => {
 
         expect(mockClient.request).toHaveBeenCalledWith(
           "/api/crm/clients?search=John&limit=10",
+          undefined,
+          10000,
         );
       });
     });
@@ -484,6 +490,8 @@ describe("CrmApi", () => {
 
         expect(mockClient.request).toHaveBeenCalledWith(
           "/api/crm/interactions/client/1/timeline?limit=20",
+          undefined,
+          10000,
         );
         expect(result).toEqual(mockTimeline);
       });
@@ -666,6 +674,8 @@ describe("CrmApi", () => {
 
         expect(mockClient.request).toHaveBeenCalledWith(
           "/api/crm/clients/1/summary",
+          undefined,
+          10000,
         );
         expect(result.client.id).toBe(1);
       });
@@ -1228,6 +1238,8 @@ describe("CrmApi", () => {
 
         expect((crmApi as any).client.request).toHaveBeenCalledWith(
           "/api/crm/clients/1",
+          undefined,
+          10000,
         );
         expect(result.id).toBe(1);
       });
