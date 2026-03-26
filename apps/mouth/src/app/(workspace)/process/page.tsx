@@ -1563,7 +1563,7 @@ export default function PratichePage() {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-[var(--bz-text-2)]">-</span>
+                          <span className="text-[var(--bz-text-2)] text-xs italic opacity-60" title="No team member assigned">Unassigned</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
