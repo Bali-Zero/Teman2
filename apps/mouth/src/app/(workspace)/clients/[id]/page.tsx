@@ -17,6 +17,7 @@ import {
   Send,
   Loader2,
   AlertTriangle,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -42,6 +43,7 @@ import { FamilyTab } from './components/FamilyTab';
 import { ImmigrationTab } from './components/ImmigrationTab';
 import { CompanyTab } from './components/CompanyTab';
 import { TaxTab } from './components/TaxTab';
+import { TimelineTab } from './components/TimelineTab';
 import { EditClientModal } from './components/modals/EditClientModal';
 import { AddFamilyMemberModal } from './components/modals/AddFamilyMemberModal';
 import { EditFamilyMemberModal } from './components/modals/EditFamilyMemberModal';
@@ -86,7 +88,7 @@ export default function ClientDetailPage() {
     setError(null);
     Promise.all([
       api.crm.getClientProfile(clientId),
-      api.crm.getClientTimeline(clientId, 20),
+      api.crm.getClientTimeline(clientId, 50),
       api.crm.getDocumentCategories().catch(() => []),
     ])
       .then(([profileData, interactionsData, categoriesData]) => {
@@ -333,6 +335,11 @@ export default function ClientDetailPage() {
           { key: 'visas', label: 'Immigration', icon: Globe },
           { key: 'company', label: 'Company', icon: Building2 },
           { key: 'tax', label: 'Tax', icon: DollarSign },
+          {
+            key: 'timeline',
+            label: `Timeline (${interactions.length})`,
+            icon: Activity,
+          },
         ].map(({ key, label, icon: Icon }) => (
           <Button
             key={key}
@@ -429,6 +436,14 @@ export default function ClientDetailPage() {
       )}
 
       {activeTab === 'tax' && <TaxTab clientId={clientId} formatDate={formatDate} />}
+
+      {activeTab === 'timeline' && (
+        <TimelineTab
+          interactions={interactions}
+          formatDate={formatDate}
+          formatTime={formatTime}
+        />
+      )}
 
       {/* Modals */}
       {activeModal === 'edit_client' && profile && (
