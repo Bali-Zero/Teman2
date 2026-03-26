@@ -25,7 +25,7 @@ TRANSIENT_PATTERNS = [
     # Gateway-side timeout: job was too slow, not a code error.
     r"cron: job execution timed out",
     # OpenClaw 1-2 consecutive errors — transient blip, safe to retry.
-    r"consecutiveErrors=[12][,\s]",
+    r"consecutiveErrors=[12](?!\d)[,\s]",
 ]
 
 # These are NEVER retried — retrying would just repeat the same failure.
