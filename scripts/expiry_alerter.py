@@ -452,6 +452,14 @@ def main() -> None:
         print("\n--- TELEGRAM PREVIEW ---")
         print(tg_text)
 
+    # Sentinel heartbeat
+    import pathlib
+    state_dir = pathlib.Path.home() / ".agent" / "decisions" / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "expiry_alerter.last.json").write_text(
+        f'{{"job":"expiry_alerter","ts":{int(__import__("time").time())},"status":"ok","host":"{__import__("socket").gethostname()}"}}'
+    )
+
 
 if __name__ == "__main__":
     main()
