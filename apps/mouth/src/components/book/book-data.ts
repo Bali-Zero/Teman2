@@ -123,7 +123,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     name: "Zainal Abidin",
     role: "Chief Executive Officer",
     department: "leadership",
-    photo: "/static/team/batik_kawung.jpg",
+    photo: "/static/team/batik_butterfly.jpg",
   },
   {
     name: "Ruslana",
@@ -142,7 +142,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     name: "Anton",
     role: "Executive Consultant",
     department: "setup",
-    photo: "/static/team/batik_parang.jpg",
+    photo: "/static/team/batik_kawung_diamond.jpg",
   },
   {
     name: "Krisna",
@@ -166,7 +166,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     name: "Surya",
     role: "Specialist Consultant",
     department: "setup",
-    photo: "/static/team/batik_truntum.jpg",
+    photo: "/static/team/batik_kawung_organic.jpg",
   },
   {
     name: "Anna",
@@ -227,7 +227,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     name: "Faisha",
     role: "Tax Care",
     department: "tax",
-    photo: "/static/team/batik_parang.jpg",
+    photo: "/static/team/batik_kawung_diamond.jpg",
   },
   // Accounting
   {
@@ -274,7 +274,7 @@ export const STATS = {
   legalDocs: "66K+", // indexed legal documents
   kbliCodes: "9.612", // KBLI 2025 navigator
   channels: 4, // WhatsApp, Telegram, Web, Instagram
-  kbliNavigatorUrl: 'https://kita.balizero.com/kbli',
+  kbliNavigatorUrl: "https://kita.balizero.com/kbli",
 };
 
 // Source: verified from codebase / WhatsApp
