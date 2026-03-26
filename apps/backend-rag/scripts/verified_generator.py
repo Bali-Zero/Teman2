@@ -3,7 +3,7 @@
 
 6-step pipeline:
   1. Load claims_db for domain
-  2. Generate T2 document with Claude Sonnet 4.6 (forces [CLAIM-ID] markers)
+  2. Generate T2 document via claude CLI — Max subscription (forces [CLAIM-ID] markers)
   3. Validate markers (every [CLAIM-ID] must exist in claims_db)
   4. Auto-verify with CRAG-light (auto_verifier.py subprocess)
   5. NLM cross-check (skipped if NLM_BRIDGE_URL not set)
@@ -18,7 +18,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
 import logging
 import os
@@ -28,10 +27,6 @@ import sys
 import tempfile
 from pathlib import Path
 from typing import Any
-
-from dotenv import load_dotenv
-
-load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
 
 logger = logging.getLogger(__name__)
 
@@ -98,16 +93,13 @@ def build_claims_summary(claims_db: dict[str, dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-async def generate_document(
+def generate_document(
     domain: str,
     topic: str,
     claims_db: dict[str, dict[str, Any]],
     existing_text: str | None = None,
 ) -> str:
-    """Step 2: Generate (or revise) T2 document with Claude Sonnet 4.6."""
-    import anthropic
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    """Step 2: Generate (or revise) T2 document via claude CLI (Max subscription)."""
     claims_summary = build_claims_summary(claims_db)
 
     if existing_text is not None:
@@ -122,13 +114,15 @@ async def generate_document(
             domain=domain, topic=topic, claims_summary=claims_summary
         )
 
-    client = anthropic.AsyncAnthropic(api_key=api_key)
-    response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
+    # Pipe prompt via stdin to avoid shell escaping issues with long text
+    result = subprocess.run(
+        ["claude", "--print", "--dangerously-skip-permissions"],
+        input=prompt, capture_output=True, text=True, timeout=180,
     )
-    return response.content[0].text
+    if result.returncode != 0:
+        logger.error("claude CLI error: %s", result.stderr[:500])
+        sys.exit(1)
+    return result.stdout.strip()
 
 
 def validate_markers(document_text: str, claims_db: dict[str, dict[str, Any]]) -> tuple[list[str], list[str]]:
@@ -173,11 +167,6 @@ def main() -> None:
     parser.add_argument("--existing", default=None, help="Path to existing document to revise (optional)")
     args = parser.parse_args()
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not set", file=sys.stderr)  # noqa: T201
-        sys.exit(1)
-
     print(f"\nVerified Generation Pipeline — {args.domain} / {args.topic}")  # noqa: T201
     print("=" * 70)  # noqa: T201
 
@@ -190,10 +179,10 @@ def main() -> None:
     existing_text: str | None = None
     if args.existing:
         existing_text = Path(args.existing).read_text(encoding="utf-8")
-        print("\nStep 2: Revising existing document with Claude Sonnet 4.6...")  # noqa: T201
+        print("\nStep 2: Revising existing document via claude CLI...")  # noqa: T201
     else:
-        print("\nStep 2: Generating document with Claude Sonnet 4.6...")  # noqa: T201
-    document_text = asyncio.run(generate_document(args.domain, args.topic, claims_db, existing_text))
+        print("\nStep 2: Generating document via claude CLI...")  # noqa: T201
+    document_text = generate_document(args.domain, args.topic, claims_db, existing_text)
     output_path = Path(args.output)
     output_path.write_text(document_text, encoding="utf-8")
     print(f"  Generated {len(document_text)} chars -> {output_path}")  # noqa: T201
