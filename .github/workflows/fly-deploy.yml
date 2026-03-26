@@ -1,0 +1,153 @@
+name: Deploy Backend to Fly.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/backend-rag/**'
+      - '.github/workflows/fly-deploy.yml'
+
+concurrency:
+  group: fly-deploy
+  cancel-in-progress: false # mai cancellare un deploy in corso
+
+jobs:
+  pre-deploy-gate:
+    name: Pre-deploy validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend-rag
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: nuzantara_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+      REDIS_URL: redis://localhost:6379
+      PYTHONPATH: .
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: apps/backend-rag/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt -q
+          pip install pytest pytest-asyncio pytest-mock ruff -q
+
+      - name: Import chain gate (blocca rogue AI refactor)
+        run: |
+          python -c "from backend.app.dependencies import get_current_user; print('✅ Import chain OK')"
+
+      - name: Ruff lint (fast — E,F errors only)
+        run: |
+          ruff check backend/app/ --select E,F --quiet
+          echo "✅ Lint OK"
+
+      - name: Core tests (confidence + KG — fast gate)
+        run: |
+          PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py \
+            -q --tb=short -x \
+            --junit-xml=test-results-gate.xml
+          echo "✅ Core tests OK"
+
+      - name: Upload gate test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pre-deploy-gate-results
+          path: apps/backend-rag/test-results-gate.xml
+
+  deploy:
+    name: Fly.io rolling deploy
+    needs: pre-deploy-gate # BLOCCATO se gate fallisce
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy (rolling strategy)
+        run: |
+          flyctl deploy \
+            --strategy rolling \
+            --config apps/backend-rag/fly.toml \
+            --app nuzantara-rag \
+            --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  post-deploy-health:
+    name: Post-deploy health check + rollback
+    needs: deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Health check (10 tentativi × 30s = 5min max)
+        id: health_check
+        run: |
+          for i in $(seq 1 10); do
+            STATUS=$(curl -sf https://nuzantara-rag.fly.dev/health 2>/dev/null || echo "FAILED")
+            if echo "$STATUS" | grep -q '"healthy"'; then
+              echo "✅ Health check passed (tentativo $i)"
+              echo "healthy=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "Tentativo $i/10 — risposta: ${STATUS:0:100}"
+            echo "In attesa 30s..."
+            sleep 30
+          done
+          echo "❌ Health check fallito dopo 5 minuti"
+          echo "healthy=false" >> $GITHUB_OUTPUT
+          exit 1
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Rollback automatico se health check fallisce
+        if: failure() && steps.health_check.outputs.healthy == 'false'
+        run: |
+          echo "⚠️ Avvio rollback automatico..."
+          flyctl releases rollback --app nuzantara-rag --yes
+          echo "✅ Rollback completato"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Notifica Telegram — deploy fallito + rollback
+        if: failure()
+        run: |
+          MESSAGE="🔴 *Deploy Nuzantara FALLITO*%0A%0AHealth check non passato dopo 5 min.%0ARollback automatico eseguito.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" || true
+
+      - name: Notifica Telegram — deploy OK
+        if: success()
+        run: |
+          MESSAGE="✅ *Deploy Nuzantara OK*%0A%0ABackend sano. Health check passato.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" || true
