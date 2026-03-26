@@ -55,7 +55,7 @@ class ServiceRegistry:
     # Define which services are critical for system operation
     CRITICAL_SERVICES = {"search", "ai"}
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._services: dict[str, ServiceHealth] = {}
 
     def register(
