@@ -23,7 +23,7 @@ class IdentityService:
     Replicates the exact login flow from Node.js backend (team-login.ts)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Identity Service"""
         self.jwt_secret = settings.jwt_secret_key
         self.jwt_algorithm = settings.jwt_algorithm
