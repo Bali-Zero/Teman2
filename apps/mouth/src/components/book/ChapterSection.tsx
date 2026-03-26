@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { useBookShell } from './BookShell';
+import { useEffect, useRef } from "react";
+import { useBookShell } from "./BookShell";
 
 interface ChapterSectionProps {
   id: string;
@@ -9,7 +9,11 @@ interface ChapterSectionProps {
   className?: string;
 }
 
-export function ChapterSection({ id, children, className = '' }: ChapterSectionProps) {
+export function ChapterSection({
+  id,
+  children,
+  className = "",
+}: ChapterSectionProps) {
   const ref = useRef<HTMLElement>(null);
   const { onVisible } = useBookShell();
 
@@ -20,7 +24,7 @@ export function ChapterSection({ id, children, className = '' }: ChapterSectionP
       ([entry]) => {
         if (entry.isIntersecting) onVisible(id);
       },
-      { threshold: 0.4 }
+      { threshold: 0.4 },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -32,7 +36,12 @@ export function ChapterSection({ id, children, className = '' }: ChapterSectionP
       id={id}
       data-chapter={id}
       className={`min-h-screen relative ${className}`}
-      style={{ contentVisibility: 'auto', containIntrinsicSize: '0 100vh' } as React.CSSProperties}
+      style={
+        {
+          contentVisibility: "auto",
+          containIntrinsicSize: "0 100vh",
+        } as React.CSSProperties
+      }
     >
       {children}
     </section>
