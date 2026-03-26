@@ -148,6 +148,7 @@ export default function PratichePage() {
   });
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>("");
 
   // Context Menu State
   const [selectedPractice, setSelectedPractice] = useState<Practice | null>(
@@ -189,6 +190,12 @@ export default function PratichePage() {
     },
     [searchParams, pathname],
   );
+
+  useEffect(() => {
+    // Load current user for "My Work" filter
+    const profile = api.getUserProfile();
+    if (profile?.email) setCurrentUserEmail(profile.email);
+  }, []);
 
   useEffect(() => {
     // Initialize analytics on component mount
@@ -583,6 +590,24 @@ export default function PratichePage() {
 
         {/* Quick Filter Chips */}
         <div className="flex items-center gap-2 flex-wrap">
+          {currentUserEmail && (
+            <button
+              onClick={() =>
+                setFilters((f) => ({
+                  ...f,
+                  assigned_to: f.assigned_to === currentUserEmail ? "" : currentUserEmail,
+                }))
+              }
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                filters.assigned_to === currentUserEmail
+                  ? "bg-[var(--bz-accent)]/20 text-[var(--bz-accent)] border-[var(--bz-accent)]/40"
+                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-[var(--bz-accent)]/30 hover:text-[var(--bz-accent)]"
+              }`}
+            >
+              <User className="w-3 h-3" />
+              My Work
+            </button>
+          )}
           <button
             onClick={() =>
               setFilters((f) => ({
