@@ -576,7 +576,20 @@ export default function PratichePage() {
                 {completed} completed
               </span>
               {totalRevenue > 0 && (
-                <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400">
+                <button
+                  onClick={() =>
+                    setFilters((f) => ({
+                      ...f,
+                      payment_filter: f.payment_filter === 'paid' ? '' : 'paid',
+                    }))
+                  }
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition-colors ${
+                    filters.payment_filter === 'paid'
+                      ? 'bg-green-500/25 border-green-500/50 text-green-400'
+                      : 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
+                  }`}
+                  title="Click to filter paid practices"
+                >
                   {new Intl.NumberFormat('id-ID', {
                     notation: 'compact',
                     currency: 'IDR',
@@ -584,10 +597,23 @@ export default function PratichePage() {
                     maximumFractionDigits: 0,
                   }).format(totalRevenue)}{' '}
                   paid
-                </span>
+                </button>
               )}
               {unpaidRevenue > 0 && (
-                <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400">
+                <button
+                  onClick={() =>
+                    setFilters((f) => ({
+                      ...f,
+                      payment_filter: f.payment_filter === 'unpaid' ? '' : 'unpaid',
+                    }))
+                  }
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition-colors ${
+                    filters.payment_filter === 'unpaid'
+                      ? 'bg-red-500/25 border-red-500/50 text-red-400'
+                      : 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
+                  }`}
+                  title="Click to filter unpaid practices"
+                >
                   {new Intl.NumberFormat('id-ID', {
                     notation: 'compact',
                     currency: 'IDR',
@@ -595,7 +621,7 @@ export default function PratichePage() {
                     maximumFractionDigits: 0,
                   }).format(unpaidRevenue)}{' '}
                   unpaid
-                </span>
+                </button>
               )}
               {expiringCount > 0 && (
                 <button
