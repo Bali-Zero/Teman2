@@ -340,9 +340,11 @@ export default function ProfilePage() {
                     const chipText =
                       days <= 0
                         ? `Expired ${Math.abs(days)}d ago`
-                        : days <= 30
-                          ? `${days}d left`
-                          : `${Math.floor(days / 30)}mo left`;
+                        : days === 0
+                          ? 'today'
+                          : days <= 365
+                            ? `⏰ ${days}d left`
+                            : `${Math.floor(days / 30)}mo left`;
                     return (
                       <span
                         className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}
