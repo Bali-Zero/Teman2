@@ -15,6 +15,7 @@ import subprocess
 import sys
 import urllib.request
 from datetime import date
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,8 @@ SEARCH_QUERIES: dict[str, str] = {
     "tax": "peraturan pajak DJP coretax BPJS terbaru 2025 2026",
     "property": "peraturan tanah properti HGB hak pakai terbaru 2025 2026",
 }
-PROJECT_ROOT = os.path.expanduser("~/Desktop/nuzantara")
+# Derive root from script location — works on both Pro and Air regardless of home dir layout
+PROJECT_ROOT = str(Path(__file__).resolve().parents[2])
 
 
 def dispatch_gemini_search(query: str) -> str:
