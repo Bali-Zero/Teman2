@@ -1,31 +1,24 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useCallback, memo } from 'react';
-import {
-  User,
-  Building2,
-  Calendar,
-  FileText,
-  Upload,
-  X,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import { fileToBase64 } from '@/lib/utils';
+import React, { useState, useRef, useCallback, memo } from "react";
+import { User, Building2, Calendar, FileText, Upload, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { fileToBase64 } from "@/lib/utils";
 
 // ============================================
 // TAX TYPES AND INTERFACES
 // ============================================
 type TaxYear = number;
-type TaxSection = 'personal' | 'annual' | 'monthly' | 'lkpm';
+type TaxSection = "personal" | "annual" | "monthly" | "lkpm";
 
 interface TaxDocument {
   id?: string;
   file?: File;
   fileName?: string;
   uploadedAt?: string;
-  status: 'pending' | 'uploaded' | 'verified';
+  status: "pending" | "uploaded" | "verified";
 }
 
 interface PersonalTaxData {
@@ -93,11 +86,11 @@ const FileUploadField = memo(function FileUploadField({
   subLabel,
   file,
   error,
-  accept = '.pdf,.jpg,.jpeg,.png',
+  accept = ".pdf,.jpg,.jpeg,.png",
   onChange,
   onClear,
   extraButton,
-  className = '',
+  className = "",
 }: FileUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -107,29 +100,34 @@ const FileUploadField = memo(function FileUploadField({
       if (selectedFile) {
         // Validate file size (10MB max)
         if (selectedFile.size > 10 * 1024 * 1024) {
-          toast.error('File too large', {
-            description: 'Maximum size is 10MB',
+          toast.error("File too large", {
+            description: "Maximum size is 10MB",
           });
           return;
         }
         // Validate file type
-        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+        const allowedTypes = [
+          "application/pdf",
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+        ];
         if (!allowedTypes.includes(selectedFile.type)) {
-          toast.error('Invalid file type', {
-            description: 'Please upload PDF, JPG, or PNG',
+          toast.error("Invalid file type", {
+            description: "Please upload PDF, JPG, or PNG",
           });
           return;
         }
         onChange(selectedFile);
       }
     },
-    [onChange]
+    [onChange],
   );
 
   const handleClear = useCallback(() => {
     onClear();
     if (inputRef.current) {
-      inputRef.current.value = '';
+      inputRef.current.value = "";
     }
   }, [onClear]);
 
@@ -137,7 +135,9 @@ const FileUploadField = memo(function FileUploadField({
     <div className={className}>
       <label className="block text-xs font-medium mb-1.5">
         {label}
-        {subLabel && <span className="text-[var(--bz-text-2)]"> {subLabel}</span>}
+        {subLabel && (
+          <span className="text-[var(--bz-text-2)]"> {subLabel}</span>
+        )}
       </label>
       <div className="flex items-center gap-2">
         <input
@@ -154,8 +154,8 @@ const FileUploadField = memo(function FileUploadField({
             flex-1 px-3 py-2 rounded-lg border border-dashed cursor-pointer transition-colors text-sm truncate
             ${
               error
-                ? 'border-red-500 bg-red-500/10 text-red-500'
-                : 'border-[var(--bz-border)] bg-[var(--bz-surface)] hover:border-[var(--accent)]'
+                ? "border-red-500 bg-red-500/10 text-red-500"
+                : "border-[var(--bz-border)] bg-[var(--bz-surface)] hover:border-[var(--accent)]"
             }
           `}
         >
@@ -184,9 +184,17 @@ const FileUploadField = memo(function FileUploadField({
 // ============================================
 // TAX TAB COMPONENT
 // ============================================
-export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate: (d: string) => string }) {
-  const [selectedYear, setSelectedYear] = useState<TaxYear>(new Date().getFullYear());
-  const [activeSection, setActiveSection] = useState<TaxSection>('personal');
+export function TaxTab({
+  clientId,
+  formatDate,
+}: {
+  clientId: number;
+  formatDate: (d: string) => string;
+}) {
+  const [selectedYear, setSelectedYear] = useState<TaxYear>(
+    new Date().getFullYear(),
+  );
+  const [activeSection, setActiveSection] = useState<TaxSection>("personal");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -196,7 +204,11 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
     annualCompany: new Date(selectedYear, 3, 30), // April 30
   };
 
-  const handleFileUpload = async (section: TaxSection, docType: string, file: File) => {
+  const handleFileUpload = async (
+    section: TaxSection,
+    docType: string,
+    file: File,
+  ) => {
     setIsUploading(true);
     setUploadError(null);
     try {
@@ -211,7 +223,7 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
       toast.success(`${docType} uploaded successfully`);
     } catch (err) {
       setUploadError(`Failed to upload ${docType}: ${(err as Error).message}`);
-      toast.error('Upload failed', { description: (err as Error).message });
+      toast.error("Upload failed", { description: (err as Error).message });
     } finally {
       setIsUploading(false);
     }
@@ -220,10 +232,14 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
   // Year selector buttons
   const YearSelector = () => (
     <div className="flex items-center gap-2">
-      {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
+      {[
+        new Date().getFullYear() - 1,
+        new Date().getFullYear(),
+        new Date().getFullYear() + 1,
+      ].map((year) => (
         <Button
           key={year}
-          variant={selectedYear === year ? 'default' : 'outline'}
+          variant={selectedYear === year ? "default" : "outline"}
           size="sm"
           onClick={() => setSelectedYear(year)}
         >
@@ -259,7 +275,9 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">{doc.label}</span>
-              <span className="text-xs text-[var(--bz-text-2)]">{doc.hint}</span>
+              <span className="text-xs text-[var(--bz-text-2)]">
+                {doc.hint}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -277,7 +295,7 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
                 htmlFor={`${section}-${doc.key}`}
                 className="flex-1 px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
               >
-                {isUploading ? 'Uploading...' : `Select ${doc.label} file`}
+                {isUploading ? "Uploading..." : `Select ${doc.label} file`}
               </label>
             </div>
           </div>
@@ -292,50 +310,106 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
   const SideWorkspace = () => {
     const configs = {
       personal: {
-        title: 'Personal Tax Documents',
+        title: "Personal Tax Documents",
         description: `Deadline: March 31, ${selectedYear}`,
         docTypes: [
-          { key: 'form1770', label: 'Form 1770', hint: 'Annual Tax Return' },
-          { key: 'buktiPotong', label: 'Bukti Potong', hint: 'Withholding Tax Slips' },
-          { key: 'sptTahunan', label: 'SPT Tahunan', hint: 'Annual Tax Report' },
-          { key: 'bupot1721', label: 'Bukti Potong 1721', hint: 'Employment Income' },
-          { key: 'bupot1721A1', label: 'Bukti Potong 1721-A1', hint: 'Annual Tax Slip' },
+          { key: "form1770", label: "Form 1770", hint: "Annual Tax Return" },
+          {
+            key: "buktiPotong",
+            label: "Bukti Potong",
+            hint: "Withholding Tax Slips",
+          },
+          {
+            key: "sptTahunan",
+            label: "SPT Tahunan",
+            hint: "Annual Tax Report",
+          },
+          {
+            key: "bupot1721",
+            label: "Bukti Potong 1721",
+            hint: "Employment Income",
+          },
+          {
+            key: "bupot1721A1",
+            label: "Bukti Potong 1721-A1",
+            hint: "Annual Tax Slip",
+          },
         ],
       },
       annual: {
-        title: 'Annual Company Tax',
+        title: "Annual Company Tax",
         description: `Deadline: April 30, ${selectedYear}`,
         docTypes: [
-          { key: 'sptTahunanBadan', label: 'SPT Tahunan Badan', hint: 'Corporate Annual Tax Return' },
-          { key: 'laporanKeuangan', label: 'Laporan Keuangan', hint: 'Financial Statements' },
-          { key: 'buktiPembayaran', label: 'Bukti Pembayaran', hint: 'Payment Receipts' },
-          { key: 'formTaxAmnesty', label: 'Form Tax Amnesty', hint: 'If applicable' },
-          { key: 'neraca', label: 'Neraca', hint: 'Balance Sheet' },
-          { key: 'labaRugi', label: 'Laba Rugi', hint: 'Profit & Loss' },
+          {
+            key: "sptTahunanBadan",
+            label: "SPT Tahunan Badan",
+            hint: "Corporate Annual Tax Return",
+          },
+          {
+            key: "laporanKeuangan",
+            label: "Laporan Keuangan",
+            hint: "Financial Statements",
+          },
+          {
+            key: "buktiPembayaran",
+            label: "Bukti Pembayaran",
+            hint: "Payment Receipts",
+          },
+          {
+            key: "formTaxAmnesty",
+            label: "Form Tax Amnesty",
+            hint: "If applicable",
+          },
+          { key: "neraca", label: "Neraca", hint: "Balance Sheet" },
+          { key: "labaRugi", label: "Laba Rugi", hint: "Profit & Loss" },
         ],
       },
       monthly: {
-        title: 'Monthly Company Reports',
-        description: 'Due monthly by the 20th',
+        title: "Monthly Company Reports",
+        description: "Due monthly by the 20th",
         docTypes: [
-          { key: 'pph21', label: 'PPH 21', hint: 'Employee Income Tax' },
-          { key: 'pph23', label: 'PPH 23', hint: 'Services Withholding Tax' },
-          { key: 'ppn', label: 'PPN', hint: 'VAT Return' },
-          { key: 'pph25', label: 'PPH 25', hint: 'Installment Tax' },
-          { key: 'pph4ayat2', label: 'PPH 4(2)', hint: 'Final Income Tax' },
-          { key: 'pph26', label: 'PPH 26', hint: 'Foreign Tax' },
+          { key: "pph21", label: "PPH 21", hint: "Employee Income Tax" },
+          { key: "pph23", label: "PPH 23", hint: "Services Withholding Tax" },
+          { key: "ppn", label: "PPN", hint: "VAT Return" },
+          { key: "pph25", label: "PPH 25", hint: "Installment Tax" },
+          { key: "pph4ayat2", label: "PPH 4(2)", hint: "Final Income Tax" },
+          { key: "pph26", label: "PPH 26", hint: "Foreign Tax" },
         ],
       },
       lkpm: {
-        title: 'LKPM Quarterly Reports',
-        description: 'Investment Activity Reports',
+        title: "LKPM Quarterly Reports",
+        description: "Investment Activity Reports",
         docTypes: [
-          { key: 'lkpmReport', label: 'LKPM Report', hint: 'Main Investment Report' },
-          { key: 'realisasiInvestasi', label: 'Realisasi Investasi', hint: 'Investment Realization' },
-          { key: 'laporanTenagaKerja', label: 'Laporan Tenaga Kerja', hint: 'Employment Report' },
-          { key: 'laporanProduksi', label: 'Laporan Produksi', hint: 'Production Report' },
-          { key: 'rawMaterial', label: 'Raw Material Usage', hint: 'Import/Local breakdown' },
-          { key: 'exportValue', label: 'Export Value', hint: 'Export realization' },
+          {
+            key: "lkpmReport",
+            label: "LKPM Report",
+            hint: "Main Investment Report",
+          },
+          {
+            key: "realisasiInvestasi",
+            label: "Realisasi Investasi",
+            hint: "Investment Realization",
+          },
+          {
+            key: "laporanTenagaKerja",
+            label: "Laporan Tenaga Kerja",
+            hint: "Employment Report",
+          },
+          {
+            key: "laporanProduksi",
+            label: "Laporan Produksi",
+            hint: "Production Report",
+          },
+          {
+            key: "rawMaterial",
+            label: "Raw Material Usage",
+            hint: "Import/Local breakdown",
+          },
+          {
+            key: "exportValue",
+            label: "Export Value",
+            hint: "Export realization",
+          },
         ],
       },
     };
@@ -364,19 +438,21 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
   }) => {
     const isOverdue = new Date() > deadline;
     const daysUntil = Math.ceil(
-      (deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+      (deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
     );
 
     return (
       <div
         onClick={onClick}
         className={`rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-5 cursor-pointer transition-all hover:border-[var(--accent)] ${
-          activeSection === section ? 'ring-2 ring-[var(--bz-accent)]' : ''
+          activeSection === section ? "ring-2 ring-[var(--bz-accent)]" : ""
         }`}
       >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}>
+            <div
+              className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}
+            >
               <Icon className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -403,7 +479,7 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
           <div className="flex items-center justify-between">
             <span className="text-sm text-[var(--bz-text-2)]">Deadline</span>
             <span
-              className={`text-sm font-medium ${isOverdue ? 'text-red-400' : daysUntil <= 30 ? 'text-yellow-400' : 'text-emerald-400'}`}
+              className={`text-sm font-medium ${isOverdue ? "text-red-400" : daysUntil <= 30 ? "text-yellow-400" : "text-emerald-400"}`}
             >
               {formatDate(deadline.toISOString())}
             </span>
@@ -418,8 +494,12 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
       {/* Header with year selector */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">Tax Overview</h3>
-          <p className="text-sm text-[var(--bz-text-2)]">Manage tax obligations and filings</p>
+          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
+            Tax Overview
+          </h3>
+          <p className="text-sm text-[var(--bz-text-2)]">
+            Manage tax obligations and filings
+          </p>
         </div>
         <YearSelector />
       </div>
@@ -434,7 +514,7 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
             icon={User}
             color="bg-gradient-to-br from-emerald-500 to-teal-600"
             section="personal"
-            onClick={() => setActiveSection('personal')}
+            onClick={() => setActiveSection("personal")}
           />
 
           <TaxCard
@@ -444,7 +524,7 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
             icon={Building2}
             color="bg-gradient-to-br from-blue-500 to-cyan-600"
             section="annual"
-            onClick={() => setActiveSection('annual')}
+            onClick={() => setActiveSection("annual")}
           />
 
           <TaxCard
@@ -454,7 +534,7 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
             icon={Calendar}
             color="bg-gradient-to-br from-purple-500 to-pink-600"
             section="monthly"
-            onClick={() => setActiveSection('monthly')}
+            onClick={() => setActiveSection("monthly")}
           />
 
           {/* LKPM with 4 quarters */}
@@ -465,16 +545,18 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
                   <FileText className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-[var(--bz-text-1)]">LKPM</h4>
+                  <h4 className="font-semibold text-[var(--bz-text-1)]">
+                    LKPM
+                  </h4>
                   <p className="text-xs text-[var(--bz-text-2)]">
                     Laporan Kegiatan Penanaman Modal
                   </p>
                 </div>
               </div>
               <Button
-                variant={activeSection === 'lkpm' ? 'default' : 'outline'}
+                variant={activeSection === "lkpm" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setActiveSection('lkpm')}
+                onClick={() => setActiveSection("lkpm")}
               >
                 Manage
               </Button>
@@ -485,17 +567,17 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
                 <div
                   key={q}
                   className={`text-center p-3 rounded-lg border ${
-                    activeSection === 'lkpm'
-                      ? 'border-[var(--accent)] bg-[var(--bz-accent)]/10'
-                      : 'border-[var(--bz-border)]'
+                    activeSection === "lkpm"
+                      ? "border-[var(--accent)] bg-[var(--bz-accent)]/10"
+                      : "border-[var(--bz-border)]"
                   }`}
                 >
                   <p className="text-lg font-bold">Q{q}</p>
                   <p className="text-xs text-[var(--bz-text-2)]">
-                    {q === 1 && 'Jan-Mar'}
-                    {q === 2 && 'Apr-Jun'}
-                    {q === 3 && 'Jul-Sep'}
-                    {q === 4 && 'Oct-Dec'}
+                    {q === 1 && "Jan-Mar"}
+                    {q === 2 && "Apr-Jun"}
+                    {q === 3 && "Jul-Sep"}
+                    {q === 4 && "Oct-Dec"}
                   </p>
                 </div>
               ))}

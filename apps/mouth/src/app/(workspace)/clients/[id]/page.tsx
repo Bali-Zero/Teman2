@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   User,
@@ -17,36 +17,36 @@ import {
   Send,
   Loader2,
   AlertTriangle,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import { logger } from '@/lib/logger';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import type {
   ClientProfile,
   FamilyMember,
   ClientDocument,
   Interaction,
   DocumentCategory,
-} from '@/lib/api/crm/crm.types';
-import { getCountryFlag } from '@/lib/utils/nationality-flags';
+} from "@/lib/api/crm/crm.types";
+import { getCountryFlag } from "@/lib/utils/nationality-flags";
 
 // Local component imports
-import type { TabType, ModalType } from './components/types';
-import { getTeamMemberAvatar } from './components/constants';
-import { formatCurrency } from './components/utils';
-import { OverviewTab } from './components/OverviewTab';
-import { DocumentsTab } from './components/DocumentsTab';
-import { ProcessTab } from './components/ProcessTab';
-import { FamilyTab } from './components/FamilyTab';
-import { ImmigrationTab } from './components/ImmigrationTab';
-import { CompanyTab } from './components/CompanyTab';
-import { TaxTab } from './components/TaxTab';
-import { EditClientModal } from './components/modals/EditClientModal';
-import { AddFamilyMemberModal } from './components/modals/AddFamilyMemberModal';
-import { EditFamilyMemberModal } from './components/modals/EditFamilyMemberModal';
-import { AddDocumentModal } from './components/modals/AddDocumentModal';
-import { EditDocumentModal } from './components/modals/EditDocumentModal';
+import type { TabType, ModalType } from "./components/types";
+import { getTeamMemberAvatar } from "./components/constants";
+import { formatCurrency } from "./components/utils";
+import { OverviewTab } from "./components/OverviewTab";
+import { DocumentsTab } from "./components/DocumentsTab";
+import { ProcessTab } from "./components/ProcessTab";
+import { FamilyTab } from "./components/FamilyTab";
+import { ImmigrationTab } from "./components/ImmigrationTab";
+import { CompanyTab } from "./components/CompanyTab";
+import { TaxTab } from "./components/TaxTab";
+import { EditClientModal } from "./components/modals/EditClientModal";
+import { AddFamilyMemberModal } from "./components/modals/AddFamilyMemberModal";
+import { EditFamilyMemberModal } from "./components/modals/EditFamilyMemberModal";
+import { AddDocumentModal } from "./components/modals/AddDocumentModal";
+import { EditDocumentModal } from "./components/modals/EditDocumentModal";
 
 export default function ClientDetailPage() {
   const params = useParams();
@@ -59,28 +59,33 @@ export default function ClientDetailPage() {
   const [docCategories, setDocCategories] = useState<DocumentCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [activeModal, setActiveModal] = useState<ModalType>('none');
-  const [editingDocument, setEditingDocument] = useState<ClientDocument | null>(null);
-  const [editingFamilyMember, setEditingFamilyMember] = useState<FamilyMember | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [activeModal, setActiveModal] = useState<ModalType>("none");
+  const [editingDocument, setEditingDocument] = useState<ClientDocument | null>(
+    null,
+  );
+  const [editingFamilyMember, setEditingFamilyMember] =
+    useState<FamilyMember | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [profileData, interactionsData, categoriesData] = await Promise.all([
-        api.crm.getClientProfile(clientId),
-        api.crm.getClientTimeline(clientId, 20),
-        api.crm.getDocumentCategories().catch(() => []),
-      ]);
+      const [profileData, interactionsData, categoriesData] = await Promise.all(
+        [
+          api.crm.getClientProfile(clientId),
+          api.crm.getClientTimeline(clientId, 20),
+          api.crm.getDocumentCategories().catch(() => []),
+        ],
+      );
       setProfile(profileData);
       setInteractions(interactionsData);
       setDocCategories(categoriesData);
     } catch (err) {
-      logger.error('Failed to load client data:', {}, err as Error);
-      setError('Failed to load client data');
-      toast.error('Failed to load client data');
+      logger.error("Failed to load client data:", {}, err as Error);
+      setError("Failed to load client data");
+      toast.error("Failed to load client data");
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +96,7 @@ export default function ClientDetailPage() {
       const profileData = await api.crm.getClientProfile(clientId);
       setProfile(profileData);
     } catch (err) {
-      logger.error('Failed to refresh client data:', {}, err as Error);
+      logger.error("Failed to refresh client data:", {}, err as Error);
     }
   };
 
@@ -108,33 +113,41 @@ export default function ClientDetailPage() {
 
   // Read tab from URL params and set active tab
   useEffect(() => {
-    const tabParam = searchParams?.get('tab');
+    const tabParam = searchParams?.get("tab");
     if (
       tabParam &&
-      ['overview', 'documents', 'process', 'family', 'visas', 'company', 'tax'].includes(tabParam)
+      [
+        "overview",
+        "documents",
+        "process",
+        "family",
+        "visas",
+        "company",
+        "tax",
+      ].includes(tabParam)
     ) {
       setActiveTab(tabParam as TabType);
     }
   }, [searchParams]);
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
+    if (!dateStr) return "";
     // Return placeholder during SSR to avoid hydration mismatch
-    if (!isMounted) return '...';
-    return new Date(dateStr).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+    if (!isMounted) return "...";
+    return new Date(dateStr).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   };
 
   const formatTime = (dateStr: string) => {
-    if (!dateStr) return '';
+    if (!dateStr) return "";
     // Return placeholder during SSR to avoid hydration mismatch
-    if (!isMounted) return '...';
-    return new Date(dateStr).toLocaleTimeString('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
+    if (!isMounted) return "...";
+    return new Date(dateStr).toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -150,33 +163,42 @@ export default function ClientDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertTriangle className="w-12 h-12 text-red-500" />
-        <p className="text-[var(--bz-text-2)]">{error || 'Client not found'}</p>
-        <Button variant="outline" onClick={() => router.push('/clients')}>
+        <p className="text-[var(--bz-text-2)]">{error || "Client not found"}</p>
+        <Button variant="outline" onClick={() => router.push("/clients")}>
           Back to Clients
         </Button>
       </div>
     );
   }
 
-  const { client, family_members, documents, expiry_alerts, practices, company_links, stats } =
-    profile;
+  const {
+    client,
+    family_members,
+    documents,
+    expiry_alerts,
+    practices,
+    company_links,
+    stats,
+  } = profile;
 
   // Group documents by category
   const documentsByCategory = documents.reduce(
     (acc, doc) => {
-      const cat = doc.document_category || 'other';
+      const cat = doc.document_category || "other";
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(doc);
       return acc;
     },
-    {} as Record<string, ClientDocument[]>
+    {} as Record<string, ClientDocument[]>,
   );
 
   // Calculate stats
   const activePractices = practices.filter(
-    (p) => !['completed', 'cancelled', 'approved'].includes(p.status)
+    (p) => !["completed", "cancelled", "approved"].includes(p.status),
   );
-  const completedPractices = practices.filter((p) => ['completed', 'approved'].includes(p.status));
+  const completedPractices = practices.filter((p) =>
+    ["completed", "approved"].includes(p.status),
+  );
 
   // Get country flag for fallback
   const countryFlag = getCountryFlag(client.nationality);
@@ -185,7 +207,12 @@ export default function ClientDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Go back">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.back()}
+          aria-label="Go back"
+        >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex items-center gap-4 flex-1">
@@ -204,14 +231,16 @@ export default function ClientDetailPage() {
             ) : (
               <div
                 className="w-full h-full rounded-full"
-                style={{ background: 'var(--bz-card)' }}
+                style={{ background: "var(--bz-card)" }}
               />
             )}
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">{client.full_name}</h1>
+            <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
+              {client.full_name}
+            </h1>
             <p className="text-sm text-[var(--bz-text-2)]">
-              Client #{client.id} • {client.client_type || 'Individual'}
+              Client #{client.id} • {client.client_type || "Individual"}
               {client.company_name && ` • ${client.company_name}`}
             </p>
           </div>
@@ -220,18 +249,18 @@ export default function ClientDetailPage() {
           {client.assigned_to && (
             <a
               href={`https://wa.me/${(() => {
-                const phone = client.phone?.replace(/\D/g, '') || '';
-                return phone.startsWith('0') ? '62' + phone.slice(1) : phone;
+                const phone = client.phone?.replace(/\D/g, "") || "";
+                return phone.startsWith("0") ? "62" + phone.slice(1) : phone;
               })()}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 group px-3 py-1.5 rounded-lg bg-[var(--bz-surface)] border border-[var(--bz-border)] hover:border-green-500/50 transition-all"
-              title={`Assigned to: ${client.assigned_to.split('@')[0]}`}
+              title={`Assigned to: ${client.assigned_to.split("@")[0]}`}
             >
               {getTeamMemberAvatar(client.assigned_to) ? (
                 <img
                   src={getTeamMemberAvatar(client.assigned_to)}
-                  alt={client.assigned_to.split('@')[0]}
+                  alt={client.assigned_to.split("@")[0]}
                   className="w-8 h-8 rounded-full object-cover ring-2 ring-green-500/30 group-hover:ring-green-500 transition-all"
                 />
               ) : (
@@ -240,9 +269,11 @@ export default function ClientDetailPage() {
                 </div>
               )}
               <div className="flex flex-col">
-                <span className="text-xs text-[var(--bz-text-2)]">Assigned to</span>
+                <span className="text-xs text-[var(--bz-text-2)]">
+                  Assigned to
+                </span>
                 <span className="text-sm font-medium text-[var(--bz-text-1)] capitalize">
-                  {client.assigned_to.split('@')[0]}
+                  {client.assigned_to.split("@")[0]}
                 </span>
               </div>
               <MessageCircle className="w-4 h-4 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
@@ -251,7 +282,9 @@ export default function ClientDetailPage() {
         </div>
 
         {/* Alert badges */}
-        {(stats.expired_count > 0 || stats.red_alerts > 0 || stats.yellow_alerts > 0) && (
+        {(stats.expired_count > 0 ||
+          stats.red_alerts > 0 ||
+          stats.yellow_alerts > 0) && (
           <div className="flex gap-2">
             {stats.expired_count > 0 && (
               <span className="px-2 py-1 text-xs rounded-full bg-red-600/30 text-red-300 flex items-center gap-1">
@@ -283,11 +316,11 @@ export default function ClientDetailPage() {
                 size="sm"
                 className="gap-2 text-green-500 border-green-500/30 hover:bg-green-500/10"
                 onClick={() => {
-                  const phone = client.phone?.replace(/\D/g, '');
+                  const phone = client.phone?.replace(/\D/g, "");
                   if (phone)
                     window.open(
-                      `https://wa.me/${phone.startsWith('0') ? '62' + phone.slice(1) : phone}`,
-                      '_blank'
+                      `https://wa.me/${phone.startsWith("0") ? "62" + phone.slice(1) : phone}`,
+                      "_blank",
                     );
                 }}
               >
@@ -299,11 +332,11 @@ export default function ClientDetailPage() {
                 size="sm"
                 className="gap-2 text-sky-500 border-sky-500/30 hover:bg-sky-500/10"
                 onClick={() => {
-                  const phone = client.phone?.replace(/\D/g, '');
+                  const phone = client.phone?.replace(/\D/g, "");
                   if (phone)
                     window.open(
-                      `https://t.me/+${phone.startsWith('0') ? '62' + phone.slice(1) : phone}`,
-                      '_blank'
+                      `https://t.me/+${phone.startsWith("0") ? "62" + phone.slice(1) : phone}`,
+                      "_blank",
                     );
                 }}
               >
@@ -318,17 +351,29 @@ export default function ClientDetailPage() {
       {/* Tabs */}
       <div className="flex gap-2 border-b border-[var(--bz-border)] pb-2 overflow-x-auto">
         {[
-          { key: 'overview', label: 'Overview', icon: User },
-          { key: 'documents', label: `Documents (${stats.documents_count})`, icon: FileText },
-          { key: 'process', label: `Process (${stats.practices_count ?? activePractices.length + completedPractices.length})`, icon: FolderOpen },
-          { key: 'family', label: `Family (${stats.family_count})`, icon: Users },
-          { key: 'visas', label: 'Immigration', icon: Globe },
-          { key: 'company', label: 'Company', icon: Building2 },
-          { key: 'tax', label: 'Tax', icon: DollarSign },
+          { key: "overview", label: "Overview", icon: User },
+          {
+            key: "documents",
+            label: `Documents (${stats.documents_count})`,
+            icon: FileText,
+          },
+          {
+            key: "process",
+            label: `Process (${stats.practices_count ?? activePractices.length + completedPractices.length})`,
+            icon: FolderOpen,
+          },
+          {
+            key: "family",
+            label: `Family (${stats.family_count})`,
+            icon: Users,
+          },
+          { key: "visas", label: "Immigration", icon: Globe },
+          { key: "company", label: "Company", icon: Building2 },
+          { key: "tax", label: "Tax", icon: DollarSign },
         ].map(({ key, label, icon: Icon }) => (
           <Button
             key={key}
-            variant={activeTab === key ? 'default' : 'ghost'}
+            variant={activeTab === key ? "default" : "ghost"}
             size="sm"
             className="gap-2 whitespace-nowrap"
             onClick={() => setActiveTab(key as TabType)}
@@ -340,7 +385,7 @@ export default function ClientDetailPage() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'overview' && (
+      {activeTab === "overview" && (
         <OverviewTab
           client={client}
           stats={stats}
@@ -350,28 +395,28 @@ export default function ClientDetailPage() {
           formatDate={formatDate}
           formatCurrency={formatCurrency}
           router={router}
-          onEditClick={() => setActiveModal('edit_client')}
+          onEditClick={() => setActiveModal("edit_client")}
           onRefresh={refreshProfile}
           clientId={clientId}
         />
       )}
 
-      {activeTab === 'documents' && (
+      {activeTab === "documents" && (
         <DocumentsTab
           clientId={clientId}
           documents={documents}
           documentsByCategory={documentsByCategory}
           formatDate={formatDate}
-          onAddClick={() => setActiveModal('add_document')}
+          onAddClick={() => setActiveModal("add_document")}
           onEditClick={(doc) => {
             setEditingDocument(doc);
-            setActiveModal('edit_document');
+            setActiveModal("edit_document");
           }}
           onRefresh={refreshProfile}
         />
       )}
 
-      {activeTab === 'process' && (
+      {activeTab === "process" && (
         <ProcessTab
           clientId={clientId}
           practices={[...activePractices, ...completedPractices]}
@@ -380,36 +425,36 @@ export default function ClientDetailPage() {
         />
       )}
 
-      {activeTab === 'family' && (
+      {activeTab === "family" && (
         <FamilyTab
           clientId={clientId}
           familyMembers={family_members}
           documents={documents}
           formatDate={formatDate}
-          onAddClick={() => setActiveModal('add_family')}
+          onAddClick={() => setActiveModal("add_family")}
           onEditClick={(member) => {
             setEditingFamilyMember(member);
-            setActiveModal('edit_family');
+            setActiveModal("edit_family");
           }}
           onRefresh={refreshProfile}
         />
       )}
 
-      {activeTab === 'visas' && (
+      {activeTab === "visas" && (
         <ImmigrationTab
           clientId={clientId}
           documents={documents}
           formatDate={formatDate}
-          onAddClick={() => setActiveModal('add_document')}
+          onAddClick={() => setActiveModal("add_document")}
           onEditClick={(doc) => {
             setEditingDocument(doc);
-            setActiveModal('edit_document');
+            setActiveModal("edit_document");
           }}
           onRefresh={refreshProfile}
         />
       )}
 
-      {activeTab === 'company' && (
+      {activeTab === "company" && (
         <CompanyTab
           clientId={clientId}
           client={client}
@@ -419,56 +464,58 @@ export default function ClientDetailPage() {
         />
       )}
 
-      {activeTab === 'tax' && <TaxTab clientId={clientId} formatDate={formatDate} />}
+      {activeTab === "tax" && (
+        <TaxTab clientId={clientId} formatDate={formatDate} />
+      )}
 
       {/* Modals */}
-      {activeModal === 'edit_client' && profile && (
+      {activeModal === "edit_client" && profile && (
         <EditClientModal
           client={profile.client}
-          onClose={() => setActiveModal('none')}
+          onClose={() => setActiveModal("none")}
           onSave={refreshProfile}
         />
       )}
 
-      {activeModal === 'add_family' && (
+      {activeModal === "add_family" && (
         <AddFamilyMemberModal
           clientId={clientId}
-          onClose={() => setActiveModal('none')}
+          onClose={() => setActiveModal("none")}
           onSave={refreshProfile}
         />
       )}
 
-      {activeModal === 'edit_family' && editingFamilyMember && (
+      {activeModal === "edit_family" && editingFamilyMember && (
         <EditFamilyMemberModal
           clientId={clientId}
           member={editingFamilyMember}
           onClose={() => {
-            setActiveModal('none');
+            setActiveModal("none");
             setEditingFamilyMember(null);
           }}
           onSave={refreshProfile}
         />
       )}
 
-      {activeModal === 'add_document' && (
+      {activeModal === "add_document" && (
         <AddDocumentModal
           clientId={clientId}
           categories={docCategories}
           familyMembers={family_members}
           clientHasDriveFolder={!!client.google_drive_folder_id}
-          onClose={() => setActiveModal('none')}
+          onClose={() => setActiveModal("none")}
           onSave={refreshProfile}
         />
       )}
 
-      {activeModal === 'edit_document' && editingDocument && (
+      {activeModal === "edit_document" && editingDocument && (
         <EditDocumentModal
           clientId={clientId}
           document={editingDocument}
           categories={docCategories}
           familyMembers={family_members}
           onClose={() => {
-            setActiveModal('none');
+            setActiveModal("none");
             setEditingDocument(null);
           }}
           onSave={refreshProfile}
