@@ -4,13 +4,16 @@
 CREATE TABLE IF NOT EXISTS legal_instruments (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     instrument_id   VARCHAR(100) NOT NULL UNIQUE,
-    instrument_type VARCHAR(50)  NOT NULL,           -- 'UU', 'PP', 'Permenkumham', 'Permen', 'SE', 'Juklak'
+    instrument_type VARCHAR(50)  NOT NULL
+                        CHECK (instrument_type IN ('UU', 'PP', 'Permenkumham', 'Permen', 'SE', 'Juklak')),
     tier            SMALLINT     NOT NULL DEFAULT 0, -- 0=Primary law, 1=Official interpretation
-    domain          VARCHAR(50)  NOT NULL,           -- 'immigration', 'company', 'tax', 'property'
+    domain          VARCHAR(50)  NOT NULL
+                        CHECK (domain IN ('immigration', 'company', 'tax', 'property')),
     title           TEXT         NOT NULL,
     number          VARCHAR(50),
     year            SMALLINT,
-    status          VARCHAR(20)  NOT NULL DEFAULT 'active',  -- 'active', 'superseded', 'partially_superseded', 'revoked'
+    status          VARCHAR(20)  NOT NULL DEFAULT 'active'
+                        CHECK (status IN ('active', 'superseded', 'partially_superseded', 'revoked')),
     vigore_date     DATE,
     revoked_by      VARCHAR(100),
     conflict_note   TEXT,
@@ -34,6 +37,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS legal_instruments_updated_at ON legal_instruments;
 CREATE TRIGGER legal_instruments_updated_at
     BEFORE UPDATE ON legal_instruments
     FOR EACH ROW EXECUTE FUNCTION legal_instruments_set_updated_at();
@@ -70,8 +74,15 @@ VALUES
 ON CONFLICT (instrument_id) DO NOTHING;
 
 -- Mark the conflict: Permenkumham-22-2023 partially superseded by Permen-Imipas-3-2025
-UPDATE legal_instruments
-SET
-    revoked_by    = 'Permen-Imipas-3-2025',
-    conflict_note = 'Le disposizioni sui visti multipli entry di Permenkumham 22/2023 sono state superate da Permen Imipas 3/2025 entrata in vigore il 01-02-2025. Le disposizioni su KITAS e KITAP rimangono in vigore fino a nuova normativa.'
-WHERE instrument_id = 'Permenkumham-22-2023';
+DO $$
+BEGIN
+    UPDATE legal_instruments
+    SET
+        revoked_by    = 'Permen-Imipas-3-2025',
+        conflict_note = 'Le disposizioni sui visti multipli entry di Permenkumham 22/2023 sono state superate da Permen Imipas 3/2025 entrata in vigore il 01-02-2025. Le disposizioni su KITAS e KITAP rimangono in vigore fino a nuova normativa.'
+    WHERE instrument_id = 'Permenkumham-22-2023';
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Permenkumham-22-2023 not found — conflict annotation not applied';
+    END IF;
+END;
+$$;
