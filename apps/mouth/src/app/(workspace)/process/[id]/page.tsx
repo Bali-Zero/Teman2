@@ -1536,26 +1536,60 @@ export default function CaseDetailPage() {
                 <label className="text-sm font-medium" style={{ color: 'var(--bz-text-1)' }}>
                   Priority
                 </label>
-                <select
-                  value={editForm.priority}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      priority: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{
-                    border: '1px solid var(--bz-border)',
-                    background: 'var(--bz-card)',
-                    color: 'var(--bz-text-1)',
-                  }}
-                >
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
+                <div className="flex gap-2">
+                  {(
+                    [
+                      {
+                        value: 'normal',
+                        label: 'Normal',
+                        color: 'text-zinc-400',
+                        activeBg: 'rgba(113,113,122,0.2)',
+                        activeBorder: 'rgba(113,113,122,0.4)',
+                      },
+                      {
+                        value: 'high',
+                        label: '↑ High',
+                        color: 'text-orange-400',
+                        activeBg: 'rgba(249,115,22,0.2)',
+                        activeBorder: 'rgba(249,115,22,0.4)',
+                      },
+                      {
+                        value: 'urgent',
+                        label: '🔥 Urgent',
+                        color: 'text-red-400',
+                        activeBg: 'rgba(239,68,68,0.2)',
+                        activeBorder: 'rgba(239,68,68,0.4)',
+                      },
+                    ] as const
+                  ).map((p) => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setEditForm((prev) => ({ ...prev, priority: p.value }))}
+                      className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
+                      style={
+                        editForm.priority === p.value
+                          ? {
+                              background: p.activeBg,
+                              border: `1px solid ${p.activeBorder}`,
+                              color:
+                                p.value === 'normal'
+                                  ? '#a1a1aa'
+                                  : p.value === 'high'
+                                    ? '#fb923c'
+                                    : '#f87171',
+                            }
+                          : {
+                              background: 'var(--bz-card)',
+                              border: '1px solid var(--bz-border)',
+                              color: 'var(--bz-text-2)',
+                            }
+                      }
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Payment Status */}
