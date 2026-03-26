@@ -269,10 +269,28 @@ export default function ClientDetailPage() {
             )}
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">{client.full_name}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">{client.full_name}</h1>
+              {/* Status badge */}
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${{
+                lead: 'bg-blue-500/20 text-blue-400',
+                active: 'bg-green-500/20 text-green-400',
+                completed: 'bg-purple-500/20 text-purple-400',
+                lost: 'bg-red-500/20 text-red-400',
+                inactive: 'bg-gray-500/20 text-gray-400',
+              }[client.status] || 'bg-gray-500/20 text-gray-400'}`}>
+                {client.status}
+              </span>
+            </div>
             <p className="text-sm text-[var(--bz-text-2)]">
               Client #{client.id} • {client.client_type || 'Individual'}
               {client.company_name && ` • ${client.company_name}`}
+              {isMounted && client.last_interaction_date && (() => {
+                const days = Math.floor((Date.now() - new Date(client.last_interaction_date).getTime()) / 86400000);
+                if (days > 30) return <span className="text-red-400"> • Silent {days}d</span>;
+                if (days > 14) return <span className="text-yellow-400"> • {days}d ago</span>;
+                return null;
+              })()}
             </p>
           </div>
 
