@@ -957,6 +957,26 @@ export default function PratichePage() {
                                   <span className="text-[10px] text-[var(--bz-text-2)]">
                                     #{practice.id}
                                   </span>
+                                  {practice.updated_at && (() => {
+                                    const ageDays = Math.floor(
+                                      (Date.now() - new Date(practice.updated_at).getTime()) / 86400000
+                                    );
+                                    if (ageDays === 0) return null;
+                                    const label = ageDays >= 7
+                                      ? `${Math.floor(ageDays / 7)}w`
+                                      : `${ageDays}d`;
+                                    return (
+                                      <span className={`text-[9px] px-1 py-0.5 rounded tabular-nums ${
+                                        ageDays > 14
+                                          ? 'bg-red-500/15 text-red-400'
+                                          : ageDays > 7
+                                            ? 'bg-yellow-500/15 text-yellow-400'
+                                            : 'text-[var(--bz-text-2)]'
+                                      }`} title={`Last updated ${ageDays} days ago`}>
+                                        {label}
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                               </div>
 
