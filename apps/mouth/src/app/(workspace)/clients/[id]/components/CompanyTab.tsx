@@ -725,7 +725,11 @@ export function CompanyTab({
             api.crm
               .getCompanyDocuments(co.company_id)
               .then((docs) => !cancelled && setCompanyDocs(docs))
-              .catch(() => {});
+              .catch((err) => {
+                toast.error("Failed to load company documents", {
+                  description: (err as Error).message,
+                });
+              });
           }
           return;
         }
@@ -768,14 +772,22 @@ export function CompanyTab({
             api.crm
               .getCompanyDocuments(found.id)
               .then((docs) => !cancelled && setCompanyDocs(docs))
-              .catch(() => {});
+              .catch((err) => {
+                toast.error("Failed to load company documents", {
+                  description: (err as Error).message,
+                });
+              });
             return;
           }
         }
 
         // Step 3: No company data found — companyData stays null
-      } catch {
-        // Silently handle errors
+      } catch (err) {
+        if (!cancelled) {
+          toast.error("Failed to load company data", {
+            description: (err as Error).message,
+          });
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
