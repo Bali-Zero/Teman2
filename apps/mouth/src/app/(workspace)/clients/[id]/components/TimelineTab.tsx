@@ -6,18 +6,18 @@ import type { Interaction } from '@/lib/api/crm/crm.types';
 
 const CHANNEL_STYLES: Record<string, { icon: typeof MessageCircle; bg: string; text: string }> = {
   whatsapp: { icon: MessageCircle, bg: 'bg-green-500/20', text: 'text-green-400' },
-  email:    { icon: Mail,          bg: 'bg-blue-500/20',  text: 'text-blue-400'  },
-  call:     { icon: Phone,         bg: 'bg-purple-500/20',text: 'text-purple-400'},
-  telegram: { icon: Send,          bg: 'bg-sky-500/20',   text: 'text-sky-400'   },
-  meeting:  { icon: Calendar,      bg: 'bg-orange-500/20',text: 'text-orange-400'},
-  note:     { icon: FileText,      bg: 'bg-yellow-500/20',text: 'text-yellow-400'},
+  email: { icon: Mail, bg: 'bg-blue-500/20', text: 'text-blue-400' },
+  call: { icon: Phone, bg: 'bg-purple-500/20', text: 'text-purple-400' },
+  telegram: { icon: Send, bg: 'bg-sky-500/20', text: 'text-sky-400' },
+  meeting: { icon: Calendar, bg: 'bg-orange-500/20', text: 'text-orange-400' },
+  note: { icon: FileText, bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
 };
 
 const SENTIMENT_STYLES: Record<string, string> = {
   positive: 'bg-green-500/20 text-green-400',
-  neutral:  'bg-gray-500/20 text-gray-400',
+  neutral: 'bg-gray-500/20 text-gray-400',
   negative: 'bg-red-500/20 text-red-400',
-  mixed:    'bg-yellow-500/20 text-yellow-400',
+  mixed: 'bg-yellow-500/20 text-yellow-400',
 };
 
 export function TimelineTab({
@@ -42,12 +42,15 @@ export function TimelineTab({
   // Get unique interaction types
   const types = useMemo(
     () => Array.from(new Set(interactions.map((i) => i.interaction_type))),
-    [interactions],
+    [interactions]
   );
 
   const filtered = useMemo(
-    () => (filterType === 'all' ? interactions : interactions.filter((i) => i.interaction_type === filterType)),
-    [interactions, filterType],
+    () =>
+      filterType === 'all'
+        ? interactions
+        : interactions.filter((i) => i.interaction_type === filterType),
+    [interactions, filterType]
   );
 
   // Stats
@@ -105,7 +108,9 @@ export function TimelineTab({
                   : 'bg-[var(--bz-surface)] text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]'
               }`}
             >
-              {t === 'all' ? `All (${interactions.length})` : `${t} (${interactions.filter((i) => i.interaction_type === t).length})`}
+              {t === 'all'
+                ? `All (${interactions.length})`
+                : `${t} (${interactions.filter((i) => i.interaction_type === t).length})`}
             </button>
           ))}
         </div>
@@ -123,7 +128,9 @@ export function TimelineTab({
             <div key={interaction.id} className="flex gap-3">
               {/* Icon + connector */}
               <div className="flex flex-col items-center shrink-0">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${style.bg} ${style.text}`}>
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${style.bg} ${style.text}`}
+                >
                   <Icon className="w-3.5 h-3.5" />
                 </div>
                 {idx < filtered.length - 1 && (
@@ -141,24 +148,65 @@ export function TimelineTab({
                         {interaction.interaction_type}
                       </span>
                       {interaction.direction && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                          interaction.direction === 'inbound'
-                            ? 'bg-blue-500/15 text-blue-400'
-                            : 'bg-green-500/15 text-green-400'
-                        }`}>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                            interaction.direction === 'inbound'
+                              ? 'bg-blue-500/15 text-blue-400'
+                              : 'bg-green-500/15 text-green-400'
+                          }`}
+                        >
                           {interaction.direction === 'inbound' ? '← In' : '→ Out'}
                         </span>
                       )}
                       {interaction.sentiment && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${SENTIMENT_STYLES[interaction.sentiment] || 'bg-gray-500/20 text-gray-400'}`}>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full ${SENTIMENT_STYLES[interaction.sentiment] || 'bg-gray-500/20 text-gray-400'}`}
+                        >
                           {interaction.sentiment}
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-[var(--bz-text-2)] shrink-0">
-                      {formatDate(interaction.interaction_date)}{' '}
-                      <span className="opacity-70">{formatTime(interaction.interaction_date)}</span>
-                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {(() => {
+                        const ageDays = Math.floor(
+                          (Date.now() - new Date(interaction.interaction_date).getTime()) /
+                            86400000
+                        );
+                        const label =
+                          ageDays === 0
+                            ? 'today'
+                            : ageDays === 1
+                              ? '1d ago'
+                              : ageDays >= 30
+                                ? `${Math.floor(ageDays / 30)}mo ago`
+                                : ageDays >= 7
+                                  ? `${Math.floor(ageDays / 7)}w ago`
+                                  : `${ageDays}d ago`;
+                        return (
+                          <span
+                            className="text-[9px] px-1.5 py-0.5 rounded tabular-nums"
+                            style={{
+                              background:
+                                ageDays === 0
+                                  ? 'rgba(34,197,94,0.12)'
+                                  : ageDays <= 7
+                                    ? 'rgba(255,255,255,0.05)'
+                                    : 'rgba(255,255,255,0.04)',
+                              color:
+                                ageDays === 0
+                                  ? '#4ade80'
+                                  : 'var(--bz-text-2)',
+                            }}
+                          >
+                            {label}
+                          </span>
+                        );
+                      })()}
+                      <span className="text-[10px] text-[var(--bz-text-2)]">
+                        {formatDate(interaction.interaction_date)}{' '}
+                        <span className="opacity-70">{formatTime(interaction.interaction_date)}</span>
+                      </span>
+                    </div>
                   </div>
 
                   {/* Subject */}
@@ -171,7 +219,9 @@ export function TimelineTab({
                   {/* Summary */}
                   {interaction.summary && (
                     <div>
-                      <p className={`text-xs text-[var(--bz-text-2)] ${!isExpanded && hasLongSummary ? 'line-clamp-2' : ''}`}>
+                      <p
+                        className={`text-xs text-[var(--bz-text-2)] ${!isExpanded && hasLongSummary ? 'line-clamp-2' : ''}`}
+                      >
                         {interaction.summary}
                       </p>
                       {hasLongSummary && (
@@ -191,9 +241,10 @@ export function TimelineTab({
                       {interaction.team_member && (
                         <span>{interaction.team_member.split('@')[0]}</span>
                       )}
-                      {interaction.channel && interaction.channel !== interaction.interaction_type && (
-                        <span>via {interaction.channel}</span>
-                      )}
+                      {interaction.channel &&
+                        interaction.channel !== interaction.interaction_type && (
+                          <span>via {interaction.channel}</span>
+                        )}
                     </div>
                   )}
                 </div>
