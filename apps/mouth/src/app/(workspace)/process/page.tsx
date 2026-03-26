@@ -125,6 +125,7 @@ interface FilterState {
   assigned_to: string;
   payment_filter: string;
   priority: string;
+  expiring: boolean;
 }
 
 export default function PratichePage() {
@@ -141,6 +142,7 @@ export default function PratichePage() {
     assigned_to: '',
     payment_filter: '',
     priority: '',
+    expiring: false,
   });
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -185,8 +187,12 @@ export default function PratichePage() {
 
   useEffect(() => {
     // Load current user for "My Work" filter
-    const profile = api.getUserProfile();
-    if (profile?.email) setCurrentUserEmail(profile.email);
+    api
+      .getProfile()
+      .then((profile) => {
+        if (profile?.email) setCurrentUserEmail(profile.email);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -239,7 +245,8 @@ export default function PratichePage() {
       ) {
         if (filters[key as keyof typeof filters]) {
           if (key === 'status' || key === 'type' || key === 'assigned_to') {
-            trackFilterApplied(key, filters[key as keyof typeof filters]);
+            const val = filters[key as keyof typeof filters];
+            if (typeof val === 'string') trackFilterApplied(key, val);
           }
         } else {
           trackFilterRemoved(key);
@@ -323,7 +330,14 @@ export default function PratichePage() {
   };
 
   const clearFilters = () => {
-    setFilters({ status: '', type: '', assigned_to: '', payment_filter: '', priority: '' });
+    setFilters({
+      status: '',
+      type: '',
+      assigned_to: '',
+      payment_filter: '',
+      priority: '',
+      expiring: false,
+    });
   };
 
   const toggleSort = useCallback((field: SortField) => {
@@ -392,6 +406,13 @@ export default function PratichePage() {
           // Priority filter
           if (filters.priority && p.priority !== filters.priority) {
             return false;
+          }
+
+          // Expiring soon filter (within 30 days)
+          if (filters.expiring) {
+            if (!p.expiry_date) return false;
+            const daysLeft = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / 86400000);
+            if (daysLeft < 0 || daysLeft > 30) return false;
           }
 
           return true;
@@ -704,6 +725,16 @@ export default function PratichePage() {
           >
             ↑ High
           </button>
+          <button
+            onClick={() => setFilters((f) => ({ ...f, expiring: !f.expiring }))}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+              filters.expiring
+                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40'
+                : 'bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-yellow-500/30 hover:text-yellow-400'
+            }`}
+          >
+            ⏰ Expiring 30d
+          </button>
         </div>
 
         {/* Filters Panel */}
@@ -907,10 +938,14 @@ export default function PratichePage() {
                                     <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
                                   )}
                                   {practice.priority === 'urgent' && (
-                                    <span className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded bg-red-500/20 text-red-400 uppercase tracking-wide">urgent</span>
+                                    <span className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded bg-red-500/20 text-red-400 uppercase tracking-wide">
+                                      urgent
+                                    </span>
                                   )}
                                   {practice.priority === 'high' && (
-                                    <span className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded bg-orange-500/15 text-orange-400 uppercase tracking-wide">high</span>
+                                    <span className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded bg-orange-500/15 text-orange-400 uppercase tracking-wide">
+                                      high
+                                    </span>
                                   )}
                                   {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') ||
                                     'Process'}
@@ -1286,10 +1321,14 @@ export default function PratichePage() {
                               practice.status?.replace(/_/g, ' ').slice(1) || '-'}
                           </span>
                           {practice.priority === 'urgent' && (
-                            <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-red-500/20 text-red-400 uppercase">🔥</span>
+                            <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-red-500/20 text-red-400 uppercase">
+                              🔥
+                            </span>
                           )}
                           {practice.priority === 'high' && (
-                            <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-orange-500/15 text-orange-400 uppercase tracking-wide">↑hi</span>
+                            <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-orange-500/15 text-orange-400 uppercase tracking-wide">
+                              ↑hi
+                            </span>
                           )}
                         </div>
                       </td>
