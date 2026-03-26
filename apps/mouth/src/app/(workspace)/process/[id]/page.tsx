@@ -87,6 +87,9 @@ export default function CaseDetailPage() {
   // Inline payment status update
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
 
+  // Inline priority cycle
+  const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
+
   // Inline price edit
   const [editingPrice, setEditingPrice] = useState<'quoted' | 'actual' | null>(null);
   const [priceValue, setPriceValue] = useState('');
@@ -238,6 +241,25 @@ export default function CaseDetailPage() {
       toast.error('Failed to update payment status', (err as Error).message);
     } finally {
       setIsUpdatingPayment(false);
+    }
+  };
+
+  const cyclePriority = async () => {
+    if (!practice || !caseId || isUpdatingPriority) return;
+    const cycle: string[] = ['normal', 'high', 'urgent'];
+    const current = practice.priority || 'normal';
+    const nextIndex = (cycle.indexOf(current) + 1) % cycle.length;
+    const nextPriority = cycle[nextIndex];
+    setIsUpdatingPriority(true);
+    try {
+      const user = await api.getProfile();
+      await api.crm.updatePractice(caseId, { priority: nextPriority }, user.email);
+      setPractice((prev) => (prev ? { ...prev, priority: nextPriority } : prev));
+      toast.success('Priority updated', `→ ${nextPriority}`);
+    } catch (err) {
+      toast.error('Failed to update priority', (err as Error).message);
+    } finally {
+      setIsUpdatingPriority(false);
     }
   };
 
@@ -933,9 +955,25 @@ export default function CaseDetailPage() {
                 <label className="text-sm mb-1 block" style={{ color: 'var(--bz-text-2)' }}>
                   Priority
                 </label>
-                <p className="font-medium capitalize" style={{ color: 'var(--bz-text-1)' }}>
-                  {practice.priority || 'Normal'}
-                </p>
+                <button
+                  onClick={cyclePriority}
+                  disabled={isUpdatingPriority}
+                  title="Click to cycle: normal → high → urgent"
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${
+                    practice.priority === 'urgent'
+                      ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25'
+                      : practice.priority === 'high'
+                        ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25'
+                        : 'bg-zinc-500/15 text-zinc-400 hover:bg-zinc-500/25'
+                  }`}
+                >
+                  {isUpdatingPriority ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                  )}
+                  <span className="capitalize">{practice.priority || 'normal'}</span>
+                </button>
               </div>
 
               <div>
