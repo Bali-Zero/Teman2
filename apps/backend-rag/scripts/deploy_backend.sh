@@ -41,17 +41,23 @@ echo ""
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo ""
 
-# Health check
-echo -e "${YELLOW}🏥 Running health check...${NC}"
-sleep 5
-
-HEALTH_URL="https://nuzantara-rag.fly.dev/api/health"
-if curl -f -s "$HEALTH_URL" > /dev/null; then
-    echo -e "${GREEN}✅ Health check passed${NC}"
+# Post-deploy checks (includes DB pool stale connection auto-recovery)
+PREFLIGHT="$(cd "$SCRIPT_DIR/../../.." && pwd)/scripts/preflight.sh"
+if [ -f "$PREFLIGHT" ]; then
+    echo -e "${YELLOW}🏥 Running post-deploy checks (preflight post)...${NC}"
+    bash "$PREFLIGHT" post
 else
-    echo -e "${RED}❌ Health check failed${NC}"
-    echo "Check logs: flyctl logs -a nuzantara-rag"
-    exit 1
+    # Fallback: basic health check
+    echo -e "${YELLOW}🏥 Running health check...${NC}"
+    sleep 5
+    HEALTH_URL="https://nuzantara-rag.fly.dev/api/health"
+    if curl -f -s "$HEALTH_URL" > /dev/null; then
+        echo -e "${GREEN}✅ Health check passed${NC}"
+    else
+        echo -e "${RED}❌ Health check failed${NC}"
+        echo "Check logs: flyctl logs -a nuzantara-rag"
+        exit 1
+    fi
 fi
 
 echo ""
