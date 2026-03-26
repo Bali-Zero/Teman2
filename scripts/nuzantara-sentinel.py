@@ -1,0 +1,514 @@
+#!/usr/bin/env python3
+"""
+Nuzantara Sentinel — 4-tier self-healing automation monitor.
+Runs every 5 minutes via launchd. Monitors Pro + Air.
+
+Tier 0: Gateway health (openclaw restart before iterating jobs)
+Tier 1: Retry with backoff (TRANSIENT failures)
+Tier 2: Aider auto-fix (DETERMINISTIC with high-confidence fix pattern)
+Tier 3: DLQ + Claude Code alert (DETERMINISTIC low-confidence or aider failed)
+Tier 4: Zero alert (UNKNOWN failures)
+"""
+import glob
+import json
+import logging
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Optional
+
+# Add sentinel_lib to path
+sys.path.insert(0, str(Path(__file__).parent))
+from sentinel_lib.classifier import classify, classify_with_llm
+from sentinel_lib.circuit_breaker import get_state, record_success, record_failure
+from sentinel_lib.alerter import send_alert, send_daily_report
+from sentinel_lib.repairer import (
+    retry_job, dispatch_aider_fix, verify_fix, add_to_dlq, clear_dlq_entry,
+    trigger_openclaw_job, is_openclaw_running, restart_openclaw,
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[
+        logging.FileHandler(os.path.expanduser("~/logs/sentinel.log")),
+        logging.StreamHandler(),
+    ]
+)
+logger = logging.getLogger(__name__)
+
+STATE_DIR = os.path.expanduser("~/.agent/decisions/state")
+REGISTRY_FILE = os.path.expanduser("~/.agent/decisions/job_registry.json")
+HEARTBEAT_FILE = os.path.expanduser("~/.pro_heartbeat")
+SENTINEL_LOG = os.path.expanduser("~/logs/sentinel.jsonl")
+OPENCLAW_RESTART_RECORD = os.path.expanduser("~/.agent/decisions/openclaw_last_restart.json")
+PRO_HOST = "Nuzantara"
+DEAD_MAN_THRESHOLD_S = 7200  # 2 hours
+
+MAX_RETRIES = 3
+BACKOFF_BASE_S = 60
+BACKOFF_CAP_S = 600
+OPENCLAW_RESTART_COOLDOWN_S = 600  # 10 minutes between restarts
+FORCED_HALFOPEN_AGE_S = 7200      # 2 hours — force HALF_OPEN on stuck-OPEN circuits
+
+
+def _force_halfopen_stale_circuits() -> None:
+    """
+    Force HALF_OPEN on any circuit that has been OPEN for > FORCED_HALFOPEN_AGE_S.
+    Called inside run_sentinel() only — single writer, no race condition with DLQ autopilot.
+    Imports _atomic_save from circuit_breaker to use the safe write path (Task 1).
+    """
+    from sentinel_lib.circuit_breaker import _load, _atomic_save
+    data = _load()
+    forced = []
+    for job, cb in data.items():
+        if cb.get("state") != "OPEN":
+            continue
+        age = time.time() - cb.get("opened_at", 0)
+        if age > FORCED_HALFOPEN_AGE_S:
+            data[job]["state"] = "HALF_OPEN"
+            forced.append(job)
+    if forced:
+        _atomic_save(data)
+        logger.info(f"Forced HALF_OPEN on {len(forced)} stale circuits: {forced}")
+
+
+def load_registry() -> dict:
+    try:
+        return json.loads(open(REGISTRY_FILE).read()).get("jobs", {})
+    except (FileNotFoundError, json.JSONDecodeError):
+        logger.warning("Registry not found or invalid")
+        return {}
+
+
+def collect_state_files() -> dict:
+    """Read local + Pro state files. Returns {job_id: state_dict}."""
+    states = {}
+
+    # Local state files
+    for path in glob.glob(os.path.join(STATE_DIR, "*.last.json")):
+        try:
+            job_id = os.path.basename(path).replace(".last.json", "")
+            states[job_id] = json.loads(open(path).read())
+        except Exception:
+            pass
+
+    # Pro state files via SSH (skip if we are Pro)
+    import socket
+    if socket.gethostname() != PRO_HOST:
+        try:
+            result = subprocess.run(
+                ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes",
+                 PRO_HOST, f"cat {STATE_DIR}/*.last.json 2>/dev/null || echo '{{}}'"],
+                capture_output=True, text=True, timeout=15
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                # Output is concatenated JSONs — parse each
+                for chunk in result.stdout.strip().split("\n"):
+                    chunk = chunk.strip()
+                    if chunk and chunk != "{}":
+                        try:
+                            s = json.loads(chunk)
+                            job_id = s.get("job")
+                            if job_id:
+                                states[job_id] = s
+                        except json.JSONDecodeError:
+                            pass
+        except Exception as e:
+            send_alert(f"Pro unreachable via SSH: {e}", level="CRITICAL")
+
+    return states
+
+
+def check_dead_man_switch() -> None:
+    """Alert if Pro hasn't sent a heartbeat in >2 hours."""
+    import socket
+    if socket.gethostname() == PRO_HOST:
+        return  # We ARE Pro, skip
+
+    try:
+        mtime = os.path.getmtime(HEARTBEAT_FILE)
+        age = time.time() - mtime
+        if age > DEAD_MAN_THRESHOLD_S:
+            send_alert(
+                f"Pro machine heartbeat STALE — last seen {age/3600:.1f}h ago. Manual check required.",
+                level="DEADMAN"
+            )
+    except FileNotFoundError:
+        send_alert("Pro heartbeat file missing — Pro never connected?", level="WARNING")
+
+
+def exponential_backoff(attempt: int) -> float:
+    """Full jitter backoff: random(0, min(cap, base * 2^attempt))."""
+    import random
+    return random.uniform(0, min(BACKOFF_CAP_S, BACKOFF_BASE_S * (2 ** attempt)))
+
+
+# ─── Tier 0: OpenClaw gateway health ─────────────────────────────────────────
+
+def _openclaw_restart_on_cooldown() -> bool:
+    """Return True if a restart was already attempted within cooldown window."""
+    try:
+        data = json.loads(open(OPENCLAW_RESTART_RECORD).read())
+        last_restart = data.get("ts", 0)
+        return (time.time() - last_restart) < OPENCLAW_RESTART_COOLDOWN_S
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return False
+
+
+def _record_openclaw_restart() -> None:
+    """Persist the timestamp of the most recent restart attempt."""
+    os.makedirs(os.path.dirname(OPENCLAW_RESTART_RECORD), exist_ok=True)
+    with open(OPENCLAW_RESTART_RECORD, "w") as f:
+        json.dump({"ts": time.time()}, f)
+
+
+def check_and_repair_openclaw() -> bool:
+    """
+    Tier 0: verify OpenClaw gateway is alive before iterating jobs.
+
+    Returns True if gateway is healthy (or not applicable).
+    Returns False if gateway is down AND restart failed — callers should
+    suppress per-job openclaw escalations to avoid flooding DLQ.
+
+    Uses a cooldown guard to prevent restart flapping every 5 minutes.
+    """
+    if is_openclaw_running():
+        return True  # Gateway is healthy, nothing to do
+
+    logger.warning("Tier 0: OpenClaw gateway is DOWN")
+
+    if _openclaw_restart_on_cooldown():
+        logger.info("Tier 0: restart on cooldown, skipping")
+        send_alert(
+            "OpenClaw gateway DOWN (cooldown active — restart was attempted recently). "
+            "All OpenClaw jobs suppressed until gateway recovers.",
+            level="WARNING"
+        )
+        return False
+
+    logger.info("Tier 0: attempting OpenClaw gateway restart")
+    _record_openclaw_restart()
+    ok, output = restart_openclaw()
+
+    if ok:
+        logger.info(f"Tier 0: OpenClaw gateway restarted OK — {output[:80]}")
+        send_alert(f"OpenClaw gateway auto-restarted ✅\n{output[:120]}", level="INFO")
+        return True
+
+    logger.error(f"Tier 0: OpenClaw gateway restart FAILED — {output[:120]}")
+    send_alert(
+        f"🚨 OpenClaw gateway DOWN and restart FAILED\n{output[:200]}\n\n"
+        f"All OpenClaw jobs are paused. Manual intervention required.",
+        level="CRITICAL"
+    )
+    return False
+
+
+# ─── Dedicated OpenClaw job handler ──────────────────────────────────────────
+
+def _process_openclaw_job(
+    job_id: str,
+    openclaw_id: str,
+    state: dict,
+    reg: dict,
+    classification: dict,
+    last_error: str,
+    retry_attempt: int,
+) -> dict:
+    """
+    Tier 1 handler for type=openclaw jobs.
+    Retries via `openclaw cron run <id>` with ambiguous-timeout detection.
+    """
+    failure_type = classification["type"]
+    fix_pattern = classification.get("fix_pattern")
+
+    if failure_type == "TRANSIENT" and retry_attempt < MAX_RETRIES:
+        backoff = exponential_backoff(retry_attempt)
+        logger.info(f"{job_id}: Tier 1 openclaw retry (attempt {retry_attempt+1}), backoff {backoff:.0f}s")
+        time.sleep(backoff)
+
+        success, output = trigger_openclaw_job(openclaw_id)
+        if success:
+            record_success(job_id)
+            return {"action": "retried_ok", "tier": 1, "success": True}
+
+        # Ambiguous timeout: CLI disconnected but gateway may still be running
+        if "gateway may still be running" in output:
+            live_status = _read_openclaw_job_state(openclaw_id)
+            if live_status in ("running", "ok"):
+                logger.info(
+                    f"{job_id}: trigger timed out but gateway shows status={live_status} — treating as in-progress"
+                )
+                return {"action": "running_ambiguous", "tier": 1, "success": None}
+
+        logger.warning(f"{job_id}: openclaw trigger failed: {output[:120]}")
+        return {"action": "retry_failed", "tier": 1, "success": False}
+
+    if failure_type == "DETERMINISTIC" and fix_pattern and fix_pattern.get("confidence", 0) >= 0.85:
+        # Tier 2: Aider fix
+        files_implicated = _infer_files(job_id, last_error)
+        test_cmd = reg.get("test_cmd")
+        logger.info(f"{job_id}: Tier 2 aider-fix (confidence {fix_pattern['confidence']})")
+        aider_ok, aider_out = dispatch_aider_fix(
+            job=job_id,
+            error_summary=last_error[:500],
+            fix_instruction=fix_pattern["fix_instruction"],
+            files_implicated=files_implicated,
+            test_cmd=test_cmd,
+        )
+        if aider_ok and test_cmd:
+            verified, _ = verify_fix(test_cmd, reg.get("host", "Nuzantara"))
+            if verified:
+                record_success(job_id)
+                clear_dlq_entry(job_id)
+                send_alert(f"✅ Auto-fixed `{job_id}`: {fix_pattern['fix_instruction'][:80]}", level="INFO")
+                return {"action": "aider_fixed", "tier": 2, "success": True}
+
+        # Aider failed — escalate to Tier 3
+        add_to_dlq(job_id, last_error[:500], classification, last_error,
+                   files_implicated, aider_attempts=1, aider_failure_reason=aider_out[:200])
+        send_alert(
+            f"Tier 3 needed — `{job_id}`\nError: {last_error[:100]}\n"
+            f"Aider failed: {aider_out[:80]}\n\nCheck DLQ: `~/.agent/decisions/dlq.json`",
+            level="CRITICAL"
+        )
+        return {"action": "escalated_tier3", "tier": 3, "success": False}
+
+    # Tier 3/4: Unknown or low-confidence fix
+    files_implicated = _infer_files(job_id, last_error)
+    add_to_dlq(job_id, last_error[:500], classification, last_error, files_implicated)
+    level = "CRITICAL" if failure_type == "DETERMINISTIC" else "WARNING"
+    send_alert(
+        f"{'Tier 3' if failure_type != 'UNKNOWN' else 'Tier 4'} needed — `{job_id}`\n"
+        f"Type: {failure_type} / {classification.get('subtype')}\n"
+        f"Error: {last_error[:120]}",
+        level=level
+    )
+    return {"action": "escalated", "tier": 3, "success": False}
+
+
+# ─── Main job processor ───────────────────────────────────────────────────────
+
+def process_job(job_id: str, state: dict, registry: dict,
+                openclaw_is_down: bool = False) -> dict:
+    """
+    Evaluate one job. Returns action taken: {action, tier, success}.
+
+    openclaw_is_down: when True, skip all type=openclaw jobs to avoid flooding
+    the DLQ with duplicate alerts when the gateway itself is the root cause.
+    """
+    now = time.time()
+    circuit = get_state(job_id)
+    reg = registry.get(job_id, {})
+
+    # Circuit OPEN → skip
+    if circuit == "OPEN":
+        logger.info(f"{job_id}: circuit OPEN, skipping")
+        return {"action": "skipped_circuit_open", "tier": 0, "success": None}
+
+    status = state.get("status", "unknown")
+    last_ts = state.get("ts", 0)
+    last_error = state.get("last_error", "") or ""
+    retry_attempt = state.get("retry_attempt", 0)
+
+    # Staleness check
+    threshold = reg.get("staleness_threshold_s", 93600)
+    age = now - last_ts
+    if status == "ok" and age > threshold:
+        status = "stale"
+
+    if status == "ok":
+        record_success(job_id)
+        return {"action": "healthy", "tier": 0, "success": True}
+
+    if status == "running":
+        # Job is currently running — don't interfere
+        return {"action": "running", "tier": 0, "success": None}
+
+    # Optional jobs (e.g. GUI apps) — log but don't escalate
+    if reg.get("optional") and status in ("failed", "stale"):
+        logger.info(f"{job_id}: optional job failed/stale — skipping escalation")
+        return {"action": "skipped_optional", "tier": 0, "success": None}
+
+    # --- FAILURE PATH ---
+    logger.warning(f"{job_id}: status={status}, error={last_error[:80]}")
+
+    # Suppress openclaw jobs when gateway is down — gateway is the root cause
+    job_type = reg.get("type", "shell")
+    if openclaw_is_down and job_type == "openclaw":
+        logger.info(f"{job_id}: openclaw job suppressed (gateway down)")
+        return {"action": "suppressed_gateway_down", "tier": 0, "success": None}
+
+    # Classify failure
+    classification = classify(last_error, retry_attempt)
+    if classification["type"] == "UNKNOWN":
+        classification = classify_with_llm(last_error, job_id)
+
+    failure_type = classification["type"]
+    fix_pattern = classification.get("fix_pattern")
+    record_failure(job_id)
+
+    # Dispatch to dedicated OpenClaw handler
+    if job_type == "openclaw":
+        openclaw_id = reg.get("openclaw_id")
+        if not openclaw_id:
+            logger.error(f"{job_id}: openclaw type but no openclaw_id in registry — escalating")
+            add_to_dlq(job_id, "Missing openclaw_id in job_registry.json", classification,
+                       last_error, ["~/.agent/decisions/job_registry.json"])
+            send_alert(
+                f"Config error — `{job_id}` is type=openclaw but has no openclaw_id\n"
+                f"Fix: add openclaw_id to job_registry.json",
+                level="CRITICAL"
+            )
+            return {"action": "config_error", "tier": 0, "success": False}
+        return _process_openclaw_job(
+            job_id, openclaw_id, state, reg, classification, last_error, retry_attempt
+        )
+
+    # ── Shell / LaunchAgent / Cron path ──────────────────────────────────────
+
+    if failure_type == "TRANSIENT" and retry_attempt < MAX_RETRIES:
+        # Tier 1: retry
+        backoff = exponential_backoff(retry_attempt)
+        logger.info(f"{job_id}: Tier 1 retry (attempt {retry_attempt+1}), backoff {backoff:.0f}s, type={job_type}")
+        time.sleep(backoff)
+
+        restart_cmd = reg.get("restart_cmd")
+        if restart_cmd:
+            host = reg.get("host", "Nuzantara")
+            success, output = retry_job(restart_cmd, host)
+            if success:
+                record_success(job_id)
+                return {"action": "retried_ok", "tier": 1, "success": True}
+
+        return {"action": "retry_failed", "tier": 1, "success": False}
+
+    if failure_type == "DETERMINISTIC" and fix_pattern and fix_pattern.get("confidence", 0) >= 0.85:
+        # Tier 2: Aider fix
+        files_implicated = _infer_files(job_id, last_error)
+        test_cmd = reg.get("test_cmd")
+        logger.info(f"{job_id}: Tier 2 aider-fix (confidence {fix_pattern['confidence']})")
+        success, output = dispatch_aider_fix(
+            job=job_id,
+            error_summary=last_error[:500],
+            fix_instruction=fix_pattern["fix_instruction"],
+            files_implicated=files_implicated,
+            test_cmd=test_cmd,
+        )
+        if success and test_cmd:
+            verified, _ = verify_fix(test_cmd, reg.get("host", "Nuzantara"))
+            if verified:
+                record_success(job_id)
+                clear_dlq_entry(job_id)
+                send_alert(f"✅ Auto-fixed `{job_id}`: {fix_pattern['fix_instruction'][:80]}", level="INFO")
+                return {"action": "aider_fixed", "tier": 2, "success": True}
+
+        # Aider failed — escalate to Tier 3
+        add_to_dlq(job_id, last_error[:500], classification, last_error,
+                   files_implicated, aider_attempts=1, aider_failure_reason=output[:200])
+        send_alert(
+            f"Tier 3 needed — `{job_id}`\nError: {last_error[:100]}\nAider failed: {output[:80]}\n\nCheck DLQ: `~/.agent/decisions/dlq.json`",
+            level="CRITICAL"
+        )
+        return {"action": "escalated_tier3", "tier": 3, "success": False}
+
+    # Tier 3/4: Unknown or low confidence — add to DLQ
+    add_to_dlq(job_id, last_error[:500], classification, last_error,
+               _infer_files(job_id, last_error))
+    level = "CRITICAL" if failure_type == "DETERMINISTIC" else "WARNING"
+    send_alert(
+        f"{'Tier 3' if failure_type != 'UNKNOWN' else 'Tier 4'} needed — `{job_id}`\n"
+        f"Type: {failure_type} / {classification.get('subtype')}\n"
+        f"Error: {last_error[:120]}",
+        level=level
+    )
+    return {"action": "escalated", "tier": 3, "success": False}
+
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _read_openclaw_job_state(openclaw_id: str) -> str:
+    """
+    Re-read jobs.json to get the current live status of an OpenClaw job by id.
+    Returns: "running" | "ok" | "error" | "unknown"
+
+    Used after a trigger_openclaw_job() timeout to distinguish between:
+    - Job still running in gateway (don't escalate, don't retry)
+    - Job genuinely failed (proceed with escalation)
+    """
+    jobs_path = Path.home() / ".openclaw" / "cron" / "jobs.json"
+    try:
+        data = json.loads(jobs_path.read_text())
+        for job in data.get("jobs", []):
+            if job.get("id") == openclaw_id:
+                state = job.get("state", {})
+                if state.get("runningAtMs") is not None:
+                    return "running"
+                return state.get("lastRunStatus", "unknown")
+    except Exception:
+        pass
+    return "unknown"
+
+
+def _infer_files(job_id: str, error_text: str) -> list:
+    """Extract file paths from error text."""
+    import re
+    paths = re.findall(r'(?:File |in )[""]?(/[^\s"\']+\.(?:py|sh))', error_text)
+    # Also try common script locations
+    for pattern in [f"~/scripts/{job_id.replace('_', '-')}.py",
+                    f"~/scripts/{job_id.replace('_', '-')}.sh",
+                    f"~/Desktop/nuzantara/scripts/{job_id.replace('_', '-')}.py"]:
+        expanded = os.path.expanduser(pattern)
+        if os.path.exists(expanded):
+            paths.append(expanded)
+    return list(set(paths)) or ["unknown"]
+
+
+# ─── Main ─────────────────────────────────────────────────────────────────────
+
+def run_sentinel() -> None:
+    logger.info("=== Sentinel run start ===")
+    start = time.time()
+    registry = load_registry()
+    states = collect_state_files()
+    check_dead_man_switch()
+    _force_halfopen_stale_circuits()  # Unblock circuits stuck OPEN > 2h
+
+    # Tier 0: verify OpenClaw gateway health before processing jobs
+    openclaw_is_down = not check_and_repair_openclaw()
+    if openclaw_is_down:
+        logger.warning("OpenClaw gateway down — openclaw jobs will be suppressed this cycle")
+
+    results = {}
+    for job_id, state in states.items():
+        try:
+            results[job_id] = process_job(job_id, state, registry, openclaw_is_down=openclaw_is_down)
+        except Exception as e:
+            logger.error(f"Error processing {job_id}: {e}", exc_info=True)
+
+    # Self-log
+    duration = time.time() - start
+    log_entry = {
+        "ts": time.time(),
+        "duration_s": round(duration, 2),
+        "jobs_checked": len(states),
+        "healthy": sum(1 for r in results.values() if r.get("action") == "healthy"),
+        "retried": sum(1 for r in results.values() if "retried" in r.get("action", "")),
+        "escalated": sum(1 for r in results.values() if "escalated" in r.get("action", "")),
+        "suppressed": sum(1 for r in results.values() if r.get("action") == "suppressed_gateway_down"),
+        "openclaw_down": openclaw_is_down,
+    }
+    os.makedirs(os.path.dirname(SENTINEL_LOG), exist_ok=True)
+    with open(SENTINEL_LOG, "a") as f:
+        f.write(json.dumps(log_entry) + "\n")
+
+    logger.info(f"=== Sentinel done: {log_entry['jobs_checked']} checked, "
+                f"{log_entry['healthy']} healthy, {log_entry['escalated']} escalated, "
+                f"{log_entry['suppressed']} suppressed in {duration:.1f}s ===")
+
+
+if __name__ == "__main__":
+    run_sentinel()
