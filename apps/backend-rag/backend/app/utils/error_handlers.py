@@ -52,5 +52,5 @@ def handle_database_error(e: Exception) -> HTTPException:
         )
 
     # Generic fallback
-    logger.error(f"Unexpected error: {e}", exc_info=True)
+    logger.error(f"Unexpected error [{type(e).__name__}]: {e}", exc_info=True)
     return HTTPException(status_code=500, detail="Internal server error")

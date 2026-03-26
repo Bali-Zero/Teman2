@@ -6,8 +6,8 @@ import json
 import logging
 import re
 
-# Hardcoded admin emails for CRM access
-# TODO: Move to database or environment variables in the future
+# To add/remove admin access: edit this set + deploy.
+# For DB-driven RBAC, see GitHub issue #TODO.
 CRM_ADMIN_EMAILS: set[str] = {
     "zero@balizero.com",
     "admin@balizero.com",
@@ -15,14 +15,15 @@ CRM_ADMIN_EMAILS: set[str] = {
     "damar@balizero.com",
 }
 
-# Super admins (by username prefix/email)
+# To add/remove super admin access: edit this set + deploy.
+# For DB-driven RBAC, see GitHub issue #TODO.
 SUPER_ADMIN_EMAILS: set[str] = {
     "zero@balizero.com",
     "antonellosiano@gmail.com",
 }
 
-# Users who can see ALL practices (admins + accounting)
-# Everyone else sees only practices assigned to them
+# To add/remove full practices view access: edit this set + deploy.
+# For DB-driven RBAC, see GitHub issue #TODO.
 PRACTICES_FULL_VIEW_EMAILS: set[str] = {
     "zero@balizero.com",
     "antonellosiano@gmail.com",

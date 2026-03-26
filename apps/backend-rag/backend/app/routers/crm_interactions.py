@@ -710,6 +710,7 @@ async def create_interaction_from_conversation(
                 client_id=client_id,
             )
 
+            await invalidate_cache("zantara:crm_interactions_stats:*")
             return {
                 "success": True,
                 "interaction_id": interaction_row["id"],
@@ -764,6 +765,7 @@ async def delete_interaction(
 
             logger.info(f"Interaction {interaction_id} deleted by {user_email}")
 
+            await invalidate_cache("zantara:crm_interactions_stats:*")
             return {
                 "success": True,
                 "interaction_id": interaction_id,
