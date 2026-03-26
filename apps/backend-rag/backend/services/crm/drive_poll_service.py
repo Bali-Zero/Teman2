@@ -194,6 +194,13 @@ async def poll_drive_changes() -> dict[str, Any]:
                     file_id,
                 )
 
+            # Touch client updated_at so CRM reflects new document
+            async with db_pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE clients SET updated_at = NOW() WHERE id = $1",
+                    client_id,
+                )
+
             # Dispatch OCR
             try:
                 await _dispatch_ocr_by_folder(
