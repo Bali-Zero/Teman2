@@ -35,6 +35,7 @@ class PulseEngine:
         reasoner: Any = None,
         dna_interpreter: Any = None,
         dna_expected_hash: str = "",
+        alerter: Any = None,
     ) -> None:
         self._dna = dna_loader
         self._safety = safety_gate
@@ -43,6 +44,7 @@ class PulseEngine:
         self._reasoner = reasoner
         self._interpreter = dna_interpreter
         self._dna_hash = dna_expected_hash
+        self._alerter = alerter
         self._recent_pulses: list[dict] = []
 
     async def single_pulse(self, pulse_number: int = 0) -> PulseResult:
@@ -127,6 +129,14 @@ class PulseEngine:
                             f"(confidence={proposal.confidence:.2f}, tier={proposal.tier_used}, "
                             f"reason={proposal.reason[:60]})"
                         )
+                        # Execute alert actions via Telegram
+                        if proposal.action in ("alert_human", "alert_silent") and self._alerter:
+                            msg = (
+                                f"*Health: {status.value.upper()}*\n"
+                                f"Reason: {proposal.reason[:200]}\n"
+                                f"Confidence: {proposal.confidence:.0%} | Tier: {proposal.tier_used}"
+                            )
+                            await self._alerter.send(msg)
                     else:
                         logger.info(
                             f"THINK → BLOCKED: {proposal.action} — {validation.reason} "

@@ -16,6 +16,12 @@
     <dict>
         <key>PYTHONPATH</key>
         <string>/Users/nuzantara/Desktop/nuzantara/apps/cell</string>
+        <key>CELL_TELEGRAM_BOT_TOKEN</key>
+        <string>8295471667:AAHglwz8p8LxFnDgctmXuCs5aZa6lY78QO8</string>
+        <key>CELL_TELEGRAM_CHAT_ID</key>
+        <string>1125336968</string>
+        <key>GOOGLE_API_KEY</key>
+        <string>AIzaSyDYeEjpYWCD2KD08Vky3IHJ8gOBrGLaHQo</string>
     </dict>
     <key>RunAtLoad</key>
     <true/>
