@@ -1255,17 +1255,27 @@ export default function PratichePage() {
                                         (new Date(practice.expiry_date).getTime() - Date.now()) /
                                           86400000
                                       );
+                                      const expiryDateStr = new Date(
+                                        practice.expiry_date
+                                      ).toLocaleDateString('en-GB', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                      });
                                       if (d < 0)
                                         return (
-                                          <span className="text-[9px] px-1 py-0.5 rounded bg-red-500/20 text-red-400 tabular-nums">
-                                            exp
+                                          <span
+                                            className="text-[9px] px-1 py-0.5 rounded bg-red-500/20 text-red-400 tabular-nums"
+                                            title={`Expired on ${expiryDateStr}`}
+                                          >
+                                            exp {Math.abs(d)}d ago
                                           </span>
                                         );
                                       if (d <= 30)
                                         return (
                                           <span
                                             className="text-[9px] px-1 py-0.5 rounded bg-yellow-500/15 text-yellow-400 tabular-nums"
-                                            title={`Expires in ${d} days`}
+                                            title={`Expires ${expiryDateStr}`}
                                           >
                                             ⏰{d}d
                                           </span>
