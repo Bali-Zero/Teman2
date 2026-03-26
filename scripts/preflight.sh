@@ -94,6 +94,44 @@ post_deploy() {
     echo "Public endpoints:"
     check "KBLI notebook reachable (not 5xx)" \
         bash -c "HTTP_CODE=\$(curl -so /dev/null -w '%{http_code}' '$BACKEND_URL/api/v1/kbli-notebook/search?q=test&limit=1'); [ \"\$HTTP_CODE\" -lt 500 ]"
+
+    # 6. DB pool check — stale connections after cold start cause 503 on first write.
+    #    Test a lightweight authenticated write (login attempt) to flush the pool.
+    #    If we get a 503 (stale conn), restart the machine and wait for recovery.
+    echo "DB pool (stale connection check):"
+    DB_STATUS=$(curl -so /dev/null -w '%{http_code}' -X POST \
+        -H "Content-Type: application/json" \
+        -d '{"email":"preflight@check.invalid","password":"preflight"}' \
+        "$BACKEND_URL/api/auth/login" 2>/dev/null)
+    # 401 = DB works (wrong creds is expected), 422 = validation OK, both are fine
+    # 503 = stale pool → restart machine
+    if [ "$DB_STATUS" = "503" ]; then
+        echo -e "  ${YELLOW}⚠️${NC}  DB pool stale (503) — restarting Fly machine..."
+        MACHINE_ID=$(fly machine list -a nuzantara-rag --json 2>/dev/null | python3 -c \
+            "import json,sys; ms=json.load(sys.stdin); print(ms[0]['id'] if ms else '')" 2>/dev/null)
+        if [ -n "$MACHINE_ID" ]; then
+            fly machine restart "$MACHINE_ID" -a nuzantara-rag --wait-timeout 60 > /dev/null 2>&1
+            sleep 20
+            # Re-test after restart
+            DB_STATUS2=$(curl -so /dev/null -w '%{http_code}' -X POST \
+                -H "Content-Type: application/json" \
+                -d '{"email":"preflight@check.invalid","password":"preflight"}' \
+                "$BACKEND_URL/api/auth/login" 2>/dev/null)
+            if [ "$DB_STATUS2" != "503" ]; then
+                echo -e "  ${GREEN}✅${NC} DB pool (recovered after restart, HTTP $DB_STATUS2)"
+                ((PASS++))
+            else
+                echo -e "  ${RED}❌${NC} DB pool (still 503 after restart)"
+                ((FAIL++))
+            fi
+        else
+            echo -e "  ${RED}❌${NC} DB pool (503, machine ID not found)"
+            ((FAIL++))
+        fi
+    else
+        echo -e "  ${GREEN}✅${NC} DB pool (HTTP $DB_STATUS — no stale connections)"
+        ((PASS++))
+    fi
 }
 
 # --- MAIN ---
