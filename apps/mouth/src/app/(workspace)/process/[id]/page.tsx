@@ -1204,7 +1204,36 @@ export default function CaseDetailPage() {
                 <label className="text-sm mb-1 block" style={{ color: 'var(--bz-text-2)' }}>
                   Created
                 </label>
-                <p style={{ color: 'var(--bz-text-1)' }}>{formatDate(practice.created_at)}</p>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <p style={{ color: 'var(--bz-text-1)' }}>{formatDate(practice.created_at)}</p>
+                  {(() => {
+                    const ageDays = Math.floor(
+                      (Date.now() - new Date(practice.created_at).getTime()) / 86400000
+                    );
+                    if (ageDays < 1) return null;
+                    const label =
+                      ageDays >= 365
+                        ? `${Math.floor(ageDays / 365)}y ago`
+                        : ageDays >= 30
+                          ? `${Math.floor(ageDays / 30)}mo ago`
+                          : ageDays >= 7
+                            ? `${Math.floor(ageDays / 7)}w ago`
+                            : `${ageDays}d ago`;
+                    return (
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded tabular-nums"
+                        style={{
+                          background:
+                            ageDays > 180 ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.04)',
+                          color: ageDays > 180 ? '#f87171' : 'var(--bz-text-2)',
+                        }}
+                        title={`${ageDays} days since created`}
+                      >
+                        {label}
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
 
               {practice.start_date && (
@@ -1212,7 +1241,34 @@ export default function CaseDetailPage() {
                   <label className="text-sm mb-1 block" style={{ color: 'var(--bz-text-2)' }}>
                     Start Date
                   </label>
-                  <p style={{ color: 'var(--bz-text-1)' }}>{formatDate(practice.start_date)}</p>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p style={{ color: 'var(--bz-text-1)' }}>{formatDate(practice.start_date)}</p>
+                    {(() => {
+                      const ageDays = Math.floor(
+                        (Date.now() - new Date(practice.start_date!).getTime()) / 86400000
+                      );
+                      if (ageDays < 1) return null;
+                      const label =
+                        ageDays >= 365
+                          ? `${Math.floor(ageDays / 365)}y ago`
+                          : ageDays >= 30
+                            ? `${Math.floor(ageDays / 30)}mo ago`
+                            : ageDays >= 7
+                              ? `${Math.floor(ageDays / 7)}w ago`
+                              : `${ageDays}d ago`;
+                      return (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded tabular-nums"
+                          style={{
+                            background: 'rgba(255,255,255,0.04)',
+                            color: 'var(--bz-text-2)',
+                          }}
+                        >
+                          {label}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
 
@@ -1221,9 +1277,37 @@ export default function CaseDetailPage() {
                   <label className="text-sm mb-1 block" style={{ color: 'var(--bz-text-2)' }}>
                     Completion Date
                   </label>
-                  <p style={{ color: 'var(--bz-text-1)' }}>
-                    {formatDate(practice.completion_date)}
-                  </p>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p style={{ color: 'var(--bz-text-1)' }}>
+                      {formatDate(practice.completion_date)}
+                    </p>
+                    {(() => {
+                      const ageDays = Math.floor(
+                        (Date.now() - new Date(practice.completion_date!).getTime()) / 86400000
+                      );
+                      if (ageDays < 1) return null;
+                      const label =
+                        ageDays >= 365
+                          ? `${Math.floor(ageDays / 365)}y ago`
+                          : ageDays >= 30
+                            ? `${Math.floor(ageDays / 30)}mo ago`
+                            : ageDays >= 7
+                              ? `${Math.floor(ageDays / 7)}w ago`
+                              : `${ageDays}d ago`;
+                      return (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded tabular-nums"
+                          style={{
+                            background: 'rgba(16,185,129,0.08)',
+                            color: '#34d399',
+                          }}
+                          title="Time since completion"
+                        >
+                          {label}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
               )}
 
