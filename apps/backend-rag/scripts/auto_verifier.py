@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import logging
 import os
@@ -35,23 +36,18 @@ MIN_VERIFIED_RATIO = 0.95
 @dataclass
 class ClaimVerificationResult:
     claim_id: str
-    found_in_db: bool
-    haiku_verdict: str | None = None   # "FAITHFUL", "UNFAITHFUL", "UNCERTAIN"
-    haiku_reason: str | None = None
-    passed: bool = False
+    verdict: str        # "FAITHFUL" | "UNFAITHFUL" | "UNCERTAIN"
+    reason: str
 
 
 @dataclass
 class VerificationReport:
-    document_path: str
-    claims_db_path: str
-    total_markers: int = 0
-    unique_claim_ids: int = 0
-    found_in_db: int = 0
-    verified: int = 0
-    failed: list[ClaimVerificationResult] = field(default_factory=list)
-    verified_ratio: float = 0.0
-    passed: bool = False
+    total_claims: int
+    verified_count: int                                                     # count of FAITHFUL verdicts
+    verified_ratio: float
+    passed: bool                                                            # ratio >= MIN_VERIFIED_RATIO
+    results: list[ClaimVerificationResult] = field(default_factory=list)   # ALL results
+    blocked_claims: list[str] = field(default_factory=list)                # IDs with UNFAITHFUL/UNCERTAIN
 
 
 def extract_claim_ids(document_text: str) -> list[str]:
@@ -65,19 +61,18 @@ def extract_claim_ids(document_text: str) -> list[str]:
     return unique
 
 
-def load_claims_db(claims_db_path: Path) -> dict[str, dict[str, Any]]:
+def load_claims_db(path: str) -> dict[str, dict[str, Any]]:
     """Load claims_db.json into a dict keyed by claim_id."""
-    with claims_db_path.open() as f:
+    with open(path) as f:
         raw: list[dict[str, Any]] = json.load(f)
     return {c["claim_id"]: c for c in raw if "claim_id" in c}
 
 
-def build_haiku_verification_prompt(claim: str, verbatim: str, pasal_ref: str) -> str:
-    return f"""You are a legal accuracy evaluator. Determine if the following claim faithfully and accurately represents the verbatim source text.
+def build_haiku_verification_prompt(claim: str, document_excerpt: str) -> str:
+    return f"""You are a legal accuracy evaluator. Determine if the following claim faithfully and accurately represents the source document excerpt.
 
 CLAIM (Italian): {claim}
-VERBATIM SOURCE (Bahasa Indonesia): {verbatim}
-PASAL REFERENCE: {pasal_ref}
+DOCUMENT EXCERPT (source text): {document_excerpt}
 
 Answer with exactly one of: FAITHFUL, UNFAITHFUL, or UNCERTAIN.
 Then on a new line explain in one sentence why.
@@ -87,17 +82,18 @@ VERDICT: <FAITHFUL|UNFAITHFUL|UNCERTAIN>
 REASON: <one sentence>"""
 
 
-def call_haiku_verifier(
-    claim_text: str, verbatim: str, pasal_ref: str, api_key: str
-) -> tuple[str, str]:
-    """Call Claude Haiku 4.5 to verify a single claim. Returns (verdict, reason)."""
+async def call_haiku_verifier(
+    claim_id: str, claim_text: str, document_excerpt: str
+) -> ClaimVerificationResult:
+    """Call Claude Haiku 4.5 to verify a single claim. Returns ClaimVerificationResult."""
     import anthropic
 
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     client = anthropic.Anthropic(api_key=api_key)
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=256,
-        messages=[{"role": "user", "content": build_haiku_verification_prompt(claim_text, verbatim, pasal_ref)}],
+        messages=[{"role": "user", "content": build_haiku_verification_prompt(claim_text, document_excerpt)}],
     )
     text = response.content[0].text.strip()
     verdict, reason = "UNCERTAIN", text
@@ -106,46 +102,49 @@ def call_haiku_verifier(
             verdict = line.split(":", 1)[1].strip()
         elif line.startswith("REASON:"):
             reason = line.split(":", 1)[1].strip()
-    return verdict, reason
+    return ClaimVerificationResult(claim_id=claim_id, verdict=verdict, reason=reason)
 
 
-def verify_document(
-    document_text: str,
-    claims_db: dict[str, dict[str, Any]],
-    document_path: str,
-    claims_db_path: str,
-    api_key: str,
-) -> VerificationReport:
+async def verify_document(document_text: str, claims_db_path: str) -> VerificationReport:
     """Run full CRAG-light verification on a document."""
-    report = VerificationReport(document_path=document_path, claims_db_path=claims_db_path)
+    claims_db = load_claims_db(claims_db_path)
     claim_ids = extract_claim_ids(document_text)
-    report.total_markers = len(CLAIM_ID_PATTERN.findall(document_text))
-    report.unique_claim_ids = len(claim_ids)
+    total_claims = len(claim_ids)
+
+    all_results: list[ClaimVerificationResult] = []
+    verified_count = 0
 
     for cid in claim_ids:
-        result = ClaimVerificationResult(claim_id=cid, found_in_db=cid in claims_db)
-        if not result.found_in_db:
-            report.failed.append(result)
+        if cid not in claims_db:
             logger.warning("Claim %s not found in claims_db", cid)
-            continue
-
-        report.found_in_db += 1
-        cd = claims_db[cid]
-        verdict, reason = call_haiku_verifier(cd["claim"], cd["verbatim"], cd["pasal_ref"], api_key)
-        result.haiku_verdict = verdict
-        result.haiku_reason = reason
-        result.passed = verdict == "FAITHFUL"
-
-        if result.passed:
-            report.verified += 1
+            result = ClaimVerificationResult(
+                claim_id=cid,
+                verdict="UNFAITHFUL",
+                reason="Claim ID not found in claims_db",
+            )
         else:
-            report.failed.append(result)
-            logger.warning("Claim %s: %s — %s", cid, verdict, reason)
+            cd = claims_db[cid]
+            document_excerpt = f"{cd.get('verbatim', '')} ({cd.get('pasal_ref', '')})"
+            result = await call_haiku_verifier(cid, cd["claim"], document_excerpt)
+            if result.verdict == "FAITHFUL":
+                verified_count += 1
+            else:
+                logger.warning("Claim %s: %s — %s", cid, result.verdict, result.reason)
 
-    total = report.unique_claim_ids
-    report.verified_ratio = report.verified / total if total > 0 else 0.0
-    report.passed = report.verified_ratio >= MIN_VERIFIED_RATIO
-    return report
+        all_results.append(result)
+
+    verified_ratio = verified_count / total_claims if total_claims > 0 else 0.0
+    passed = verified_ratio >= MIN_VERIFIED_RATIO
+    blocked_claims = [r.claim_id for r in all_results if r.verdict != "FAITHFUL"]
+
+    return VerificationReport(
+        total_claims=total_claims,
+        verified_count=verified_count,
+        verified_ratio=verified_ratio,
+        passed=passed,
+        results=all_results,
+        blocked_claims=blocked_claims,
+    )
 
 
 def main() -> None:
@@ -162,16 +161,15 @@ def main() -> None:
         sys.exit(1)
 
     document_text = Path(args.document).read_text(encoding="utf-8")
-    claims_db = load_claims_db(Path(args.claims_db))
-    report = verify_document(document_text, claims_db, args.document, args.claims_db, api_key)
+    report = asyncio.run(verify_document(document_text, args.claims_db))
 
     with open(args.output, "w") as f:
         json.dump(asdict(report), f, ensure_ascii=False, indent=2)
 
     status = "PASSED" if report.passed else "BLOCKED"
-    print(f"\n{'OK' if report.passed else 'FAIL'} {status} — Verified {report.verified}/{report.unique_claim_ids} ({report.verified_ratio:.1%})")  # noqa: T201
+    print(f"\n{'OK' if report.passed else 'FAIL'} {status} — Verified {report.verified_count}/{report.total_claims} ({report.verified_ratio:.1%})")  # noqa: T201
     if not report.passed:
-        print(f"Failed: {[r.claim_id for r in report.failed]}")  # noqa: T201
+        print(f"Blocked: {report.blocked_claims}")  # noqa: T201
     sys.exit(0 if report.passed else 1)
 
 
