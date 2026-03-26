@@ -287,8 +287,8 @@ function StatusCard({
     }
   };
 
-  const formatExpiry = () => {
-    if (!expiry) return subLabel;
+  const getExpiryInfo = () => {
+    if (!expiry) return { text: subLabel || '', color: '' };
     const date = new Date(expiry);
     const formatted = date.toLocaleDateString('en-US', {
       month: 'short',
@@ -296,12 +296,17 @@ function StatusCard({
       year: 'numeric',
     });
     if (daysRemaining !== null && daysRemaining !== undefined) {
-      if (daysRemaining < 0) return `Expired ${Math.abs(daysRemaining)} days ago`;
-      if (daysRemaining === 0) return 'Expires today';
-      if (daysRemaining <= 30) return `${daysRemaining} days remaining`;
+      if (daysRemaining < 0)
+        return { text: `Expired ${Math.abs(daysRemaining)}d ago`, color: 'text-red-400' };
+      if (daysRemaining === 0) return { text: 'Expires today', color: 'text-red-400' };
+      if (daysRemaining <= 30)
+        return { text: `${daysRemaining}d remaining`, color: 'text-amber-400' };
+      if (daysRemaining <= 90)
+        return { text: `${daysRemaining}d remaining`, color: 'text-yellow-300' };
     }
-    return `Expires: ${formatted}`;
+    return { text: `Expires: ${formatted}`, color: 'text-emerald-400' };
   };
+  const expiryInfo = getExpiryInfo();
 
   return (
     <div
@@ -320,7 +325,20 @@ function StatusCard({
       <div className="font-bold text-2xl font-mono text-[var(--tx-pure)] leading-tight truncate">
         {label}
       </div>
-      <div className="text-[10px] uppercase font-bold tracking-widest mt-2">{formatExpiry()}</div>
+      <div
+        className={cn('text-[10px] uppercase font-bold tracking-widest mt-2', expiryInfo.color)}
+        title={
+          expiry
+            ? new Date(expiry).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              })
+            : undefined
+        }
+      >
+        {expiryInfo.text}
+      </div>
     </div>
   );
 }
