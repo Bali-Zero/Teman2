@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { useTeamStatus } from "@/hooks/useTeamStatus";
 import { logger } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/optimization";
+import { CellWidget } from "@/components/cell/CellWidget";
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -255,6 +256,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           </main>
         </div>
       </div>
+      <CellWidget />
     </ToastProvider>
   );
 }
