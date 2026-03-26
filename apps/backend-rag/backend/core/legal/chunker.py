@@ -36,7 +36,11 @@ class SemanticSplitter:
             return sentences
 
         # 2. Generate embeddings for all sentences
-        embeddings = await self.embedder.generate_embeddings(sentences)
+        # Truncate to 6000 chars before embedding to stay within text-embedding-3-small's
+        # 8192-token limit. Full sentence text is preserved in the output chunks.
+        MAX_EMBED_CHARS = 6000
+        truncated = [s[:MAX_EMBED_CHARS] for s in sentences]
+        embeddings = await self.embedder.generate_embeddings(truncated)
 
         # 3. Group sentences
         chunks = []
