@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Loader2,
   Building2,
@@ -19,17 +19,15 @@ import {
   Hash,
   Briefcase,
   FileText,
-} from "lucide-react";
-import { api } from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
-import { logger } from "@/lib/logger";
-import type {
-  PortalCompany,
-  CompanyLicense,
-  ComplianceItem,
-} from "@/lib/api/portal/portal.types";
-import { Button } from "@/components/ui/button";
+  Copy,
+  Check,
+} from 'lucide-react';
+import { api } from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
+import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
+import type { PortalCompany, CompanyLicense, ComplianceItem } from '@/lib/api/portal/portal.types';
+import { Button } from '@/components/ui/button';
 
 export default function CompanyDetailPage() {
   const params = useParams();
@@ -54,8 +52,8 @@ export default function CompanyDetailPage() {
       const data = await api.portal.getCompanyDetail(companyId);
       setCompany(data);
     } catch (err) {
-      error("Failed to load company details", "Please try again later");
-      logger.error("Failed to load portal company detail", {}, err as Error);
+      error('Failed to load company details', 'Please try again later');
+      logger.error('Failed to load portal company detail', {}, err as Error);
     } finally {
       setIsLoading(false);
     }
@@ -64,10 +62,7 @@ export default function CompanyDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2
-          className="w-8 h-8 animate-spin"
-          style={{ color: "var(--bz-accent-warm)" }}
-        />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--bz-accent-warm)' }} />
       </div>
     );
   }
@@ -77,19 +72,12 @@ export default function CompanyDetailPage() {
       <div className="text-center py-12">
         <Building2
           className="w-16 h-16 mx-auto mb-4 opacity-30"
-          style={{ color: "var(--bz-text-2)" }}
+          style={{ color: 'var(--bz-text-2)' }}
         />
-        <h2
-          className="text-lg font-semibold"
-          style={{ color: "var(--bz-text-2)" }}
-        >
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--bz-text-2)' }}>
           Company not found
         </h2>
-        <Button
-          variant="ghost"
-          className="mt-4"
-          onClick={() => router.push("/portal/vault")}
-        >
+        <Button variant="ghost" className="mt-4" onClick={() => router.push('/portal/vault')}>
           <ChevronLeft className="w-4 h-4 mr-1" />
           Back to Vault
         </Button>
@@ -100,12 +88,7 @@ export default function CompanyDetailPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Back Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => router.back()}
-        className="-ml-2"
-      >
+      <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
         <ChevronLeft className="w-4 h-4 mr-1" />
         Back
       </Button>
@@ -114,27 +97,19 @@ export default function CompanyDetailPage() {
       <section
         className="rounded-xl border p-6"
         style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
+          background: 'rgba(30,30,35,0.7)',
+          borderColor: 'rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(24px)',
         }}
       >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div
-              className="p-3 rounded-xl"
-              style={{ background: "rgba(201,169,110,0.1)" }}
-            >
-              <Building2
-                className="w-6 h-6"
-                style={{ color: "var(--bz-accent-warm)" }}
-              />
+            <div className="p-3 rounded-xl" style={{ background: 'rgba(201,169,110,0.1)' }}>
+              <Building2 className="w-6 h-6" style={{ color: 'var(--bz-accent-warm)' }} />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">
-                {company.name}
-              </h1>
-              <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+              <h1 className="text-xl font-bold tracking-tight">{company.name}</h1>
+              <p className="text-sm" style={{ color: 'var(--bz-text-2)' }}>
                 {company.type}
               </p>
             </div>
@@ -143,7 +118,7 @@ export default function CompanyDetailPage() {
         </div>
 
         {company.address && (
-          <p className="mt-4 text-sm" style={{ color: "var(--bz-text-2)" }}>
+          <p className="mt-4 text-sm" style={{ color: 'var(--bz-text-2)' }}>
             {company.address}
           </p>
         )}
@@ -152,8 +127,8 @@ export default function CompanyDetailPage() {
           <div
             className="mt-4 px-3 py-1.5 text-xs font-medium rounded-full inline-flex items-center gap-1.5"
             style={{
-              background: "rgba(201,169,110,0.1)",
-              color: "var(--bz-accent-warm)",
+              background: 'rgba(201,169,110,0.1)',
+              color: 'var(--bz-accent-warm)',
             }}
           >
             <Shield className="w-3.5 h-3.5" />
@@ -169,16 +144,13 @@ export default function CompanyDetailPage() {
       <section
         className="rounded-xl border p-6 space-y-4"
         style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
+          background: 'rgba(30,30,35,0.7)',
+          borderColor: 'rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(24px)',
         }}
       >
         <div className="flex items-center gap-2">
-          <FileCheck
-            className="w-5 h-5"
-            style={{ color: "var(--bz-accent-warm)" }}
-          />
+          <FileCheck className="w-5 h-5" style={{ color: 'var(--bz-accent-warm)' }} />
           <h2 className="text-lg font-semibold">Licenses</h2>
         </div>
 
@@ -189,10 +161,7 @@ export default function CompanyDetailPage() {
             ))}
           </div>
         ) : (
-          <div
-            className="text-center py-8"
-            style={{ color: "var(--bz-text-2)" }}
-          >
+          <div className="text-center py-8" style={{ color: 'var(--bz-text-2)' }}>
             <FileCheck className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No licenses on record</p>
           </div>
@@ -203,35 +172,26 @@ export default function CompanyDetailPage() {
       <section
         className="rounded-xl border p-6 space-y-4"
         style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
+          background: 'rgba(30,30,35,0.7)',
+          borderColor: 'rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(24px)',
         }}
       >
         <div className="flex items-center gap-2">
-          <Calendar
-            className="w-5 h-5"
-            style={{ color: "var(--bz-accent-warm)" }}
-          />
+          <Calendar className="w-5 h-5" style={{ color: 'var(--bz-accent-warm)' }} />
           <h2 className="text-lg font-semibold">Compliance Calendar</h2>
         </div>
 
         {company.compliance && company.compliance.length > 0 ? (
           <div className="space-y-3">
             {company.compliance
-              .sort(
-                (a, b) =>
-                  new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
-              )
+              .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
               .map((item) => (
                 <ComplianceCard key={item.id} item={item} />
               ))}
           </div>
         ) : (
-          <div
-            className="text-center py-8"
-            style={{ color: "var(--bz-text-2)" }}
-          >
+          <div className="text-center py-8" style={{ color: 'var(--bz-text-2)' }}>
             <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No compliance deadlines</p>
           </div>
@@ -242,16 +202,13 @@ export default function CompanyDetailPage() {
       <section
         className="rounded-xl border p-6 space-y-4"
         style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
+          background: 'rgba(30,30,35,0.7)',
+          borderColor: 'rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(24px)',
         }}
       >
         <div className="flex items-center gap-2">
-          <Users
-            className="w-5 h-5"
-            style={{ color: "var(--bz-accent-warm)" }}
-          />
+          <Users className="w-5 h-5" style={{ color: 'var(--bz-accent-warm)' }} />
           <h2 className="text-lg font-semibold">Directors</h2>
         </div>
 
@@ -261,15 +218,15 @@ export default function CompanyDetailPage() {
               <div
                 key={index}
                 className="flex items-center gap-3 p-3 rounded-lg"
-                style={{ background: "rgba(255,255,255,0.03)" }}
+                style={{ background: 'rgba(255,255,255,0.03)' }}
               >
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center"
-                  style={{ background: "rgba(201,169,110,0.1)" }}
+                  style={{ background: 'rgba(201,169,110,0.1)' }}
                 >
                   <span
                     className="text-sm font-semibold"
-                    style={{ color: "var(--bz-accent-warm)" }}
+                    style={{ color: 'var(--bz-accent-warm)' }}
                   >
                     {director.charAt(0).toUpperCase()}
                   </span>
@@ -279,10 +236,7 @@ export default function CompanyDetailPage() {
             ))}
           </div>
         ) : (
-          <div
-            className="text-center py-8"
-            style={{ color: "var(--bz-text-2)" }}
-          >
+          <div className="text-center py-8" style={{ color: 'var(--bz-text-2)' }}>
             <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No directors on record</p>
           </div>
@@ -294,29 +248,51 @@ export default function CompanyDetailPage() {
 
 // Sub-components
 
+const COPYABLE_FIELDS = new Set(['NIB', 'NPWP', 'KBLI']);
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="ml-1 p-0.5 rounded opacity-40 hover:opacity-100 transition-opacity flex-shrink-0"
+      style={{ color: 'var(--bz-text-2)' }}
+      aria-label="Copy to clipboard"
+    >
+      {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+    </button>
+  );
+}
+
 function BusinessDetailsSection({ company }: { company: PortalCompany }) {
   const fields = [
-    { icon: Hash, label: "NIB", value: company.nib },
-    { icon: Hash, label: "NPWP", value: company.npwp },
-    { icon: Briefcase, label: "KBLI", value: company.kbli },
-    { icon: MapPin, label: "Registered Address", value: company.address },
-    { icon: Mail, label: "Email", value: company.email },
-    { icon: Phone, label: "Phone", value: company.phone },
+    { icon: Hash, label: 'NIB', value: company.nib },
+    { icon: Hash, label: 'NPWP', value: company.npwp },
+    { icon: Briefcase, label: 'KBLI', value: company.kbli },
+    { icon: MapPin, label: 'Registered Address', value: company.address },
+    { icon: Mail, label: 'Email', value: company.email },
+    { icon: Phone, label: 'Phone', value: company.phone },
     {
       icon: FileText,
-      label: "Akta No.",
+      label: 'Akta No.',
       value: company.aktaNo
-        ? `${company.aktaNo}${company.aktaDate ? ` (${new Date(company.aktaDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })})` : ""}`
+        ? `${company.aktaNo}${company.aktaDate ? ` (${new Date(company.aktaDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})` : ''}`
         : undefined,
     },
-    { icon: FileText, label: "SK Kemenkumham", value: company.skNumber },
-    { icon: MapPin, label: "Tax Office (KPP)", value: company.taxOffice },
+    { icon: FileText, label: 'SK Kemenkumham', value: company.skNumber },
+    { icon: MapPin, label: 'Tax Office (KPP)', value: company.taxOffice },
     {
       icon: Briefcase,
-      label: "Investment Type",
+      label: 'Investment Type',
       value: company.investmentType,
     },
-    { icon: Briefcase, label: "Company Status", value: company.companyStatus },
+    { icon: Briefcase, label: 'Company Status', value: company.companyStatus },
   ].filter((f) => f.value);
 
   if (fields.length === 0) return null;
@@ -325,16 +301,13 @@ function BusinessDetailsSection({ company }: { company: PortalCompany }) {
     <section
       className="rounded-xl border p-6 space-y-4"
       style={{
-        background: "rgba(30,30,35,0.7)",
-        borderColor: "rgba(255,255,255,0.05)",
-        backdropFilter: "blur(24px)",
+        background: 'rgba(30,30,35,0.7)',
+        borderColor: 'rgba(255,255,255,0.05)',
+        backdropFilter: 'blur(24px)',
       }}
     >
       <div className="flex items-center gap-2">
-        <Building2
-          className="w-5 h-5"
-          style={{ color: "var(--bz-accent-warm)" }}
-        />
+        <Building2 className="w-5 h-5" style={{ color: 'var(--bz-accent-warm)' }} />
         <h2 className="text-lg font-semibold">Business Details</h2>
       </div>
 
@@ -343,20 +316,22 @@ function BusinessDetailsSection({ company }: { company: PortalCompany }) {
           <div
             key={field.label}
             className="flex items-start gap-3 p-3 rounded-lg"
-            style={{ background: "rgba(255,255,255,0.03)" }}
+            style={{ background: 'rgba(255,255,255,0.03)' }}
           >
             <field.icon
               className="w-4 h-4 mt-0.5 flex-shrink-0"
-              style={{ color: "var(--bz-accent-warm)" }}
+              style={{ color: 'var(--bz-accent-warm)' }}
             />
             <div className="min-w-0 flex-1">
-              <p
-                className="text-xs font-medium"
-                style={{ color: "var(--bz-text-3)" }}
-              >
+              <p className="text-xs font-medium" style={{ color: 'var(--bz-text-3)' }}>
                 {field.label}
               </p>
-              <p className="text-sm mt-0.5 break-words">{field.value}</p>
+              <div className="flex items-center gap-0.5 mt-0.5">
+                <p className="text-sm break-words">{field.value}</p>
+                {COPYABLE_FIELDS.has(field.label) && field.value && (
+                  <CopyButton value={field.value} />
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -365,20 +340,20 @@ function BusinessDetailsSection({ company }: { company: PortalCompany }) {
   );
 }
 
-function StatusBadge({ status }: { status: "active" | "pending" }) {
+function StatusBadge({ status }: { status: 'active' | 'pending' }) {
   const config: Record<
     string,
     { icon: React.ElementType; label: string; style: React.CSSProperties }
   > = {
     active: {
       icon: CheckCircle,
-      label: "Active",
-      style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+      label: 'Active',
+      style: { background: 'rgba(16,185,129,0.12)', color: '#34d399' },
     },
     pending: {
       icon: Clock,
-      label: "Pending",
-      style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+      label: 'Pending',
+      style: { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
     },
   };
 
@@ -397,39 +372,39 @@ function StatusBadge({ status }: { status: "active" | "pending" }) {
 
 function LicenseCard({ license }: { license: CompanyLicense }) {
   const getStatusConfig = (
-    status: string,
+    status: string
   ): {
     icon: React.ElementType;
     badgeStyle: React.CSSProperties;
     borderColor: string;
   } => {
     switch (status) {
-      case "active":
+      case 'active':
         return {
           icon: CheckCircle,
-          badgeStyle: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
-          borderColor: "rgba(16,185,129,0.25)",
+          badgeStyle: { background: 'rgba(16,185,129,0.12)', color: '#34d399' },
+          borderColor: 'rgba(16,185,129,0.25)',
         };
-      case "expiring":
+      case 'expiring':
         return {
           icon: AlertTriangle,
-          badgeStyle: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
-          borderColor: "rgba(245,158,11,0.3)",
+          badgeStyle: { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
+          borderColor: 'rgba(245,158,11,0.3)',
         };
-      case "expired":
+      case 'expired':
         return {
           icon: AlertTriangle,
-          badgeStyle: { background: "rgba(239,68,68,0.12)", color: "#f87171" },
-          borderColor: "rgba(239,68,68,0.3)",
+          badgeStyle: { background: 'rgba(239,68,68,0.12)', color: '#f87171' },
+          borderColor: 'rgba(239,68,68,0.3)',
         };
       default:
         return {
           icon: Clock,
           badgeStyle: {
-            background: "rgba(255,255,255,0.03)",
-            color: "var(--bz-text-2)",
+            background: 'rgba(255,255,255,0.03)',
+            color: 'var(--bz-text-2)',
           },
-          borderColor: "var(--bz-border)",
+          borderColor: 'var(--bz-border)',
         };
     }
   };
@@ -442,18 +417,18 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
       className="rounded-lg border p-4"
       style={{
         borderColor: config.borderColor,
-        background: "rgba(255,255,255,0.03)",
+        background: 'rgba(255,255,255,0.03)',
       }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm">{license.name}</h3>
-          <p className="text-xs mt-1" style={{ color: "var(--bz-text-2)" }}>
-            Expires:{" "}
-            {new Date(license.expiryDate).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
+          <p className="text-xs mt-1" style={{ color: 'var(--bz-text-2)' }}>
+            Expires:{' '}
+            {new Date(license.expiryDate).toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
             })}
           </p>
           {license.daysRemaining !== undefined && (
@@ -462,10 +437,10 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
               style={{
                 color:
                   license.daysRemaining <= 30
-                    ? "#f87171"
+                    ? '#f87171'
                     : license.daysRemaining <= 60
-                      ? "#fbbf24"
-                      : "#34d399",
+                      ? '#fbbf24'
+                      : '#34d399',
               }}
             >
               {license.daysRemaining} days remaining
@@ -486,39 +461,39 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
 
 function ComplianceCard({ item }: { item: ComplianceItem }) {
   const getStatusConfig = (
-    status: string,
+    status: string
   ): {
     icon: React.ElementType;
     badgeStyle: React.CSSProperties;
     bgStyle: React.CSSProperties;
   } => {
     switch (status) {
-      case "completed":
+      case 'completed':
         return {
           icon: CheckCircle,
-          badgeStyle: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+          badgeStyle: { background: 'rgba(16,185,129,0.12)', color: '#34d399' },
           bgStyle: {
-            background: "rgba(255,255,255,0.03)",
-            borderColor: "rgba(255,255,255,0.05)",
+            background: 'rgba(255,255,255,0.03)',
+            borderColor: 'rgba(255,255,255,0.05)',
           },
         };
-      case "overdue":
+      case 'overdue':
         return {
           icon: AlertTriangle,
-          badgeStyle: { background: "rgba(239,68,68,0.12)", color: "#f87171" },
+          badgeStyle: { background: 'rgba(239,68,68,0.12)', color: '#f87171' },
           bgStyle: {
-            background: "rgba(239,68,68,0.06)",
-            borderColor: "rgba(239,68,68,0.25)",
+            background: 'rgba(239,68,68,0.06)',
+            borderColor: 'rgba(239,68,68,0.25)',
           },
         };
-      case "upcoming":
+      case 'upcoming':
       default:
         return {
           icon: Clock,
-          badgeStyle: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+          badgeStyle: { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
           bgStyle: {
-            background: "rgba(245,158,11,0.06)",
-            borderColor: "rgba(245,158,11,0.25)",
+            background: 'rgba(245,158,11,0.06)',
+            borderColor: 'rgba(245,158,11,0.25)',
           },
         };
     }
@@ -527,7 +502,7 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
   const config = getStatusConfig(item.status);
   const Icon = config.icon;
   const dueDate = new Date(item.dueDate);
-  const isPast = dueDate < new Date() && item.status !== "completed";
+  const isPast = dueDate < new Date() && item.status !== 'completed';
 
   return (
     <div className="rounded-lg p-4 border" style={config.bgStyle}>
@@ -537,16 +512,16 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
           <p
             className="text-xs mt-1"
             style={{
-              color: isPast ? "#f87171" : "var(--bz-text-2)",
+              color: isPast ? '#f87171' : 'var(--bz-text-2)',
               fontWeight: isPast ? 500 : 400,
             }}
           >
-            {isPast ? "Was due: " : "Due: "}
-            {dueDate.toLocaleDateString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-              year: "numeric",
+            {isPast ? 'Was due: ' : 'Due: '}
+            {dueDate.toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
             })}
           </p>
         </div>
