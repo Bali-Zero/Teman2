@@ -358,15 +358,34 @@ export function VisaCard({
                     >
                       Exp Visa:
                     </span>
-                    <span
-                      className={`text-xs font-semibold ${
-                        visaAlert.alertLevel === 'critical' || visaAlert.alertLevel === 'warning'
-                          ? ''
-                          : 'text-[var(--bz-text-1)]'
-                      }`}
-                    >
-                      {formatDate(visaExpiryDate)}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-xs font-semibold ${
+                          visaAlert.alertLevel === 'critical' || visaAlert.alertLevel === 'warning'
+                            ? ''
+                            : 'text-[var(--bz-text-1)]'
+                        }`}
+                      >
+                        {formatDate(visaExpiryDate)}
+                      </span>
+                      {(() => {
+                        const days = Math.ceil(
+                          (new Date(visaExpiryDate).getTime() - Date.now()) / 86400000
+                        );
+                        if (days < 0) return null;
+                        return (
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                            visaAlert.alertLevel === 'critical' || visaAlert.alertLevel === 'warning'
+                              ? 'bg-black/20 text-current'
+                              : days < 30 ? 'bg-red-500/20 text-red-400' :
+                              days < 60 ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-green-500/10 text-green-400'
+                          }`}>
+                            {days}d
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   {/* Alert Messages */}
