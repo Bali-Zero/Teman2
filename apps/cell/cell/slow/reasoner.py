@@ -1,6 +1,7 @@
 """SLOW Reasoner — CELL's brain.
 
 Tiered LLM escalation:
+  Tier -1: PatternIndex FAISS match (free, <1ms) — reuses past decisions
   Tier 0: Qwen 3.5 27B local (free, 1-2s)
   Tier 1: Gemini Flash API (~$0.075/MTok, 2-5s)
   Tier 2: Claude Opus API (~$15/MTok, 5-30s) — only for confirmed critical
@@ -15,6 +16,7 @@ from typing import Any
 import httpx
 
 from cell.effectors.allowlist import ActionRegistry, AllowedAction, ActionNotAllowed
+from cell.memory.pattern_index import PatternIndex
 
 logger = logging.getLogger("cell.slow")
 
@@ -64,6 +66,7 @@ class SlowReasoner:
         self._gemini_key = gemini_api_key
         self._gemini_model = gemini_model
         self._registry = ActionRegistry()
+        self._patterns = PatternIndex()
 
     def _build_system_prompt(self) -> str:
         actions = self._registry.all()
@@ -196,6 +199,26 @@ What action should I take?"""
             # Rough cost estimate: ~500 input tokens * $0.075/MTok
             return text, 0.00004
 
+    def record_pattern(
+        self,
+        health_status: str,
+        response_time_ms: int,
+        budget_pct: float,
+        proposal: "ReasonerProposal",
+    ) -> None:
+        """Record a resolved proposal into the pattern index for future reuse."""
+        if proposal.action == "none":
+            return  # Don't learn "do nothing" — not useful for pattern matching
+        self._patterns.add(
+            health_status=health_status,
+            response_time_ms=response_time_ms,
+            budget_pct=budget_pct,
+            action=proposal.action,
+            reason=proposal.reason,
+            confidence=proposal.confidence,
+            tier_used=proposal.tier_used,
+        )
+
     async def think(
         self,
         health_status: str,
@@ -208,12 +231,29 @@ What action should I take?"""
     ) -> ReasonerProposal:
         """Reason about the current situation and propose an action.
 
-        Starts at Tier 0 (Qwen local). Escalates to Tier 1 (Gemini) if
-        Qwen fails or situation is critical.
+        Tier -1: PatternIndex FAISS match (free, <1ms)
+        Tier 0:  Qwen local. Escalates to Tier 1 (Gemini) if low confidence.
 
         Args:
             max_tier: Maximum tier to use (0=qwen only, 1=up to gemini, 2=up to opus)
         """
+        budget_pct = (budget_spent / budget_limit) if budget_limit > 0 else 1.0
+
+        # Tier -1: Pattern match — free, instant
+        match = self._patterns.find_similar(health_status, response_time_ms, budget_pct)
+        if match is not None:
+            logger.info(
+                f"Tier -1 (PatternIndex): reusing action={match.action} "
+                f"confidence={match.confidence:.2f} patterns={self._patterns.size}"
+            )
+            return ReasonerProposal(
+                action=match.action,
+                reason=f"[Pattern match] {match.reason}",
+                confidence=match.confidence,
+                tier_used=-1,
+                cost_usd=0.0,
+            )
+
         system = self._build_system_prompt()
         user = self._build_user_prompt(
             health_status, response_time_ms, error_message,
@@ -228,11 +268,13 @@ What action should I take?"""
 
             # If Qwen is confident enough, use its answer
             if proposal.confidence >= 0.6 or proposal.action == "none":
+                self.record_pattern(health_status, response_time_ms, budget_pct, proposal)
                 return proposal
 
             # Low confidence — escalate if allowed
             if max_tier < 1:
                 logger.info("Qwen low confidence but max_tier=0, using anyway")
+                self.record_pattern(health_status, response_time_ms, budget_pct, proposal)
                 return proposal
 
             logger.info(f"Qwen confidence {proposal.confidence:.2f} < 0.6, escalating to Tier 1")
@@ -251,6 +293,7 @@ What action should I take?"""
             text, cost = await self._call_gemini(system, user)
             proposal = self._parse_response(text, tier=1, cost=cost)
             logger.info(f"Tier 1 (Gemini): action={proposal.action}, confidence={proposal.confidence:.2f}, reason={proposal.reason[:80]}")
+            self.record_pattern(health_status, response_time_ms, budget_pct, proposal)
             return proposal
 
         except Exception as e:
