@@ -376,8 +376,7 @@ export default function ClientDetailPage() {
           clientId={clientId}
           practices={[...activePractices, ...completedPractices]}
           formatDate={formatDate}
-          formatCurrency={formatCurrency}
-          router={router}
+          onRefresh={refreshProfile}
         />
       )}
 

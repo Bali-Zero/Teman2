@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, FolderOpen, Calendar, Edit2, Trash2 } from 'lucide-react';
+import { Plus, FolderOpen, Calendar, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -13,15 +13,15 @@ export function ProcessTab({
   clientId,
   practices,
   formatDate,
-  formatCurrency,
-  router,
+  onRefresh,
 }: {
   clientId: number;
   practices: ClientProfile['practices'];
   formatDate: (d: string) => string;
-  formatCurrency: (n: number) => string;
-  router: ReturnType<typeof useRouter>;
+  onRefresh: () => void;
 }) {
+  const router = useRouter();
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -46,7 +46,7 @@ export function ProcessTab({
           {practices.map((practice) => (
             <div
               key={practice.id}
-              className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 hover:border-[var(--accent)]/50 transition-colors group"
+              className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 hover:border-[var(--bz-accent)]/50 transition-colors group"
             >
               <div className="flex items-center justify-between mb-2">
                 <div
@@ -66,36 +66,35 @@ export function ProcessTab({
                   >
                     {practice.status.replace(/_/g, ' ')}
                   </span>
-                  {/* Edit/Delete buttons - show on hover */}
+                  {/* View/Delete buttons - show on hover */}
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(`/process/${practice.id}/edit`);
+                        router.push(`/process/${practice.id}`);
                       }}
                       className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
-                      title="Edit process"
+                      title="View process"
                     >
-                      <Edit2 className="w-4 h-4" />
+                      <Eye className="w-4 h-4" />
                     </button>
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
                         if (
-                          confirm(
+                          !window.confirm(
                             `Delete process "${practice.practice_type_name}"?\n\nThis will mark the process as cancelled.`
                           )
-                        ) {
-                          try {
-                            const user = await api.getProfile();
-                            await api.crm.deletePractice(practice.id, user.email);
-                            toast.success('Process deleted');
-                            window.location.reload();
-                          } catch (err) {
-                            toast.error('Error', {
-                              description: (err as Error).message,
-                            });
-                          }
+                        ) return;
+                        try {
+                          const user = await api.getProfile();
+                          await api.crm.deletePractice(practice.id, user.email);
+                          toast.success('Process deleted');
+                          onRefresh();
+                        } catch (err) {
+                          toast.error('Error', {
+                            description: (err as Error).message,
+                          });
                         }
                       }}
                       className="p-1 rounded hover:bg-red-500/20 text-[var(--bz-text-2)] hover:text-red-500"
