@@ -31,6 +31,7 @@ logger = logging.getLogger("zantara.workflow.chains.intel")
 # LangGraph State
 # ─────────────────────────────────────────────────────────────
 
+
 class IntelReviewState(TypedDict):
     """Pointer State — no large payloads. URIs + metadata only."""
 
@@ -58,6 +59,7 @@ class IntelReviewState(TypedDict):
 # ─────────────────────────────────────────────────────────────
 # Step implementations
 # ─────────────────────────────────────────────────────────────
+
 
 async def _fetch_pending(state: IntelReviewState, app_state: Any) -> IntelReviewState:
     """Fetch pending staging items — returns IDs + titles only (Pointer State)."""
@@ -114,10 +116,15 @@ async def _assess_items(state: IntelReviewState, app_state: Any) -> IntelReviewS
 
         if not gemini_key:
             # No LLM key — mark everything as pending human review
-            assessments.append({
-                "id": item_id, "type": item_type,
-                "confidence": 0.0, "significant": False, "reason": "no_llm_key",
-            })
+            assessments.append(
+                {
+                    "id": item_id,
+                    "type": item_type,
+                    "confidence": 0.0,
+                    "significant": False,
+                    "reason": "no_llm_key",
+                }
+            )
             continue
 
         try:
@@ -159,10 +166,15 @@ async def _assess_items(state: IntelReviewState, app_state: Any) -> IntelReviewS
             )
         except Exception as e:
             logger.warning(f"intel.review: assessment failed for {item_id}: {e}")
-            assessments.append({
-                "id": item_id, "type": item_type,
-                "confidence": 0.0, "significant": False, "reason": f"error: {e}",
-            })
+            assessments.append(
+                {
+                    "id": item_id,
+                    "type": item_type,
+                    "confidence": 0.0,
+                    "significant": False,
+                    "reason": f"error: {e}",
+                }
+            )
 
     state["assessments"] = assessments
     min_c = state["min_confidence"]
@@ -175,7 +187,8 @@ async def _notify_team(state: IntelReviewState, app_state: Any) -> IntelReviewSt
     """Send Telegram approval notifications for high-confidence items."""
     min_conf = state["min_confidence"]
     to_notify = [
-        a for a in state["assessments"]
+        a
+        for a in state["assessments"]
         if a.get("significant") and a.get("confidence", 0) >= min_conf
     ]
 
@@ -229,8 +242,12 @@ async def _summarize(state: IntelReviewState, app_state: Any) -> IntelReviewStat
         "skipped": total - significant,
         "errors": errors,
         "items": [
-            {"id": a["id"], "type": a["type"], "confidence": a["confidence"],
-             "significant": a["significant"]}
+            {
+                "id": a["id"],
+                "type": a["type"],
+                "confidence": a["confidence"],
+                "significant": a["significant"],
+            }
             for a in assessments
         ],
     }
@@ -246,6 +263,7 @@ async def _summarize(state: IntelReviewState, app_state: Any) -> IntelReviewStat
 # ─────────────────────────────────────────────────────────────
 # Executor registered with the chain registry
 # ─────────────────────────────────────────────────────────────
+
 
 def _register() -> None:
     from backend.services.workflow.executor import register_chain

@@ -293,7 +293,9 @@ async def send_direct_email(
     cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
 
     try:
-        msg_obj = __import__("email.mime.multipart", fromlist=["MIMEMultipart"]).MIMEMultipart("alternative")
+        msg_obj = __import__("email.mime.multipart", fromlist=["MIMEMultipart"]).MIMEMultipart(
+            "alternative"
+        )
         msg_obj["Subject"] = request.subject
         msg_obj["From"] = f"Bali Zero Team <{smtp.from_email or smtp.user}>"
         msg_obj["To"] = request.to
@@ -301,9 +303,11 @@ async def send_direct_email(
             msg_obj["Cc"] = ", ".join(cc_list)
 
         from email.mime.text import MIMEText
+
         msg_obj.attach(MIMEText(request.body, "html", "utf-8"))
 
         import aiosmtplib
+
         use_tls = smtp.port == 465
         start_tls = smtp.port == 587
         recipients = [request.to] + (cc_list or [])

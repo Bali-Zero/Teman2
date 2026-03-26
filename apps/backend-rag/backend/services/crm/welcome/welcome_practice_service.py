@@ -21,7 +21,6 @@ from __future__ import annotations
 import base64
 import logging
 import os
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -44,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 # ─── ACTIVATION GATES ────────────────────────────────────
 _WHATSAPP_PRACTICE_ACTIVE: bool = False  # pending Meta template approval
-_EMAIL_PRACTICE_ACTIVE: bool = True      # goes live on deploy
+_EMAIL_PRACTICE_ACTIVE: bool = True  # goes live on deploy
 
 ACTIVITY_ACTION_WA = "practice_kickoff_whatsapp_sent"
 ACTIVITY_ACTION_EMAIL = "practice_kickoff_email_sent"
@@ -57,18 +56,24 @@ _EMAIL_API_URL = os.getenv(
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
 
 # ─── BROCHURE PATH ───────────────────────────────────────
-_BROCHURE_PATH = Path(__file__).parent.parent.parent.parent.parent / "data" / "assets" / "brochure_balizero_en.pdf"
+_BROCHURE_PATH = (
+    Path(__file__).parent.parent.parent.parent.parent
+    / "data"
+    / "assets"
+    / "brochure_balizero_en.pdf"
+)
 
 
 # ─────────────────────────────────────────────────────────
 # PUBLIC ENTRY POINT
 # ─────────────────────────────────────────────────────────
 
+
 async def send_practice_kickoff(
     practice_id: int,
     client_id: int,
     practice_type_code: str,
-    db_pool: "asyncpg.Pool",
+    db_pool: asyncpg.Pool,
 ) -> None:
     """
     Send WhatsApp + email kickoff for a newly created practice.
@@ -79,7 +84,8 @@ async def send_practice_kickoff(
     except Exception:
         logger.error(
             "PracticeKickoff: unhandled error for practice %d (client %d)",
-            practice_id, client_id,
+            practice_id,
+            client_id,
             exc_info=True,
         )
 
@@ -88,11 +94,12 @@ async def send_practice_kickoff(
 # IMPLEMENTATION
 # ─────────────────────────────────────────────────────────
 
+
 async def _send_practice_kickoff_impl(
     practice_id: int,
     client_id: int,
     practice_type_code: str,
-    db_pool: "asyncpg.Pool",
+    db_pool: asyncpg.Pool,
 ) -> None:
     async with db_pool.acquire() as conn:
         client = await conn.fetchrow(
@@ -108,7 +115,11 @@ async def _send_practice_kickoff_impl(
     lang = NATIONALITY_LANGUAGE_MAP.get(nationality, "en")
     first_name = (client["full_name"] or "").split()[0] if client["full_name"] else ""
     assigned_to = client["assigned_to"] or ""
-    advisor_name = assigned_to.split("@")[0].capitalize() if assigned_to else ADVISOR_FALLBACK.get(lang, "our team")
+    advisor_name = (
+        assigned_to.split("@")[0].capitalize()
+        if assigned_to
+        else ADVISOR_FALLBACK.get(lang, "our team")
+    )
     service_name = get_service_name(practice_type_code, lang)
 
     # Run both channels (each checks its own gate + idempotency)
@@ -140,15 +151,16 @@ async def _send_practice_kickoff_impl(
 # WHATSAPP
 # ─────────────────────────────────────────────────────────
 
+
 async def _send_whatsapp(
     practice_id: int,
     client_id: int,
-    client: "asyncpg.Record",
+    client: asyncpg.Record,
     lang: str,
     first_name: str,
     advisor_name: str,
     service_name: str,
-    db_pool: "asyncpg.Pool",
+    db_pool: asyncpg.Pool,
 ) -> None:
     if not _WHATSAPP_PRACTICE_ACTIVE:
         logger.debug("PracticeKickoff WA: inactive, skipping practice %d", practice_id)
@@ -168,7 +180,9 @@ async def _send_whatsapp(
     async with db_pool.acquire() as conn:
         already_sent = await conn.fetchval(
             "SELECT id FROM activity_log WHERE client_id = $1 AND action = $2 AND details LIKE $3 LIMIT 1",
-            client_id, ACTIVITY_ACTION_WA, f"%practice_id={practice_id}%",
+            client_id,
+            ACTIVITY_ACTION_WA,
+            f"%practice_id={practice_id}%",
         )
     if already_sent:
         logger.info("PracticeKickoff WA: already sent for practice %d, skipping", practice_id)
@@ -205,17 +219,22 @@ async def _send_whatsapp(
                 VALUES ($1, $2, $3, NOW())
                 ON CONFLICT DO NOTHING
                 """,
-                client_id, ACTIVITY_ACTION_WA,
+                client_id,
+                ACTIVITY_ACTION_WA,
                 f"lang={lang} phone={clean_phone} practice_id={practice_id}",
             )
         logger.info(
             "PracticeKickoff WA: sent to client %d practice %d (lang=%s)",
-            client_id, practice_id, lang,
+            client_id,
+            practice_id,
+            lang,
         )
     else:
         logger.error(
             "PracticeKickoff WA: Meta API error for practice %d: %d %s",
-            practice_id, resp.status_code, resp.text[:200],
+            practice_id,
+            resp.status_code,
+            resp.text[:200],
         )
 
 
@@ -223,17 +242,18 @@ async def _send_whatsapp(
 # EMAIL
 # ─────────────────────────────────────────────────────────
 
+
 async def _send_email(
     practice_id: int,
     client_id: int,
-    client: "asyncpg.Record",
+    client: asyncpg.Record,
     lang: str,
     first_name: str,
     advisor_name: str,
     advisor_email: str,
     practice_type_code: str,
     service_name: str,
-    db_pool: "asyncpg.Pool",
+    db_pool: asyncpg.Pool,
 ) -> None:
     if not _EMAIL_PRACTICE_ACTIVE:
         logger.debug("PracticeKickoff Email: inactive, skipping practice %d", practice_id)
@@ -247,7 +267,9 @@ async def _send_email(
     async with db_pool.acquire() as conn:
         already_sent = await conn.fetchval(
             "SELECT id FROM activity_log WHERE client_id = $1 AND action = $2 AND details LIKE $3 LIMIT 1",
-            client_id, ACTIVITY_ACTION_EMAIL, f"%practice_id={practice_id}%",
+            client_id,
+            ACTIVITY_ACTION_EMAIL,
+            f"%practice_id={practice_id}%",
         )
     if already_sent:
         logger.info("PracticeKickoff Email: already sent for practice %d, skipping", practice_id)
@@ -286,7 +308,8 @@ async def _send_email(
         except Exception:
             logger.warning(
                 "PracticeKickoff Email: could not read brochure for practice %d",
-                practice_id, exc_info=True,
+                practice_id,
+                exc_info=True,
             )
 
     async with httpx.AsyncClient(timeout=30.0) as http:
@@ -304,23 +327,29 @@ async def _send_email(
                 VALUES ($1, $2, $3, NOW())
                 ON CONFLICT DO NOTHING
                 """,
-                client_id, ACTIVITY_ACTION_EMAIL,
+                client_id,
+                ACTIVITY_ACTION_EMAIL,
                 f"lang={lang} email={email} practice_id={practice_id}",
             )
         logger.info(
             "PracticeKickoff Email: sent to client %d practice %d (lang=%s)",
-            client_id, practice_id, lang,
+            client_id,
+            practice_id,
+            lang,
         )
     else:
         logger.error(
             "PracticeKickoff Email: send failed for practice %d: %d %s",
-            practice_id, resp.status_code, resp.text[:200],
+            practice_id,
+            resp.status_code,
+            resp.text[:200],
         )
 
 
 # ─────────────────────────────────────────────────────────
 # HTML BUILDER
 # ─────────────────────────────────────────────────────────
+
 
 def _build_html(
     lang: str,
@@ -336,8 +365,7 @@ def _build_html(
     timeline = PRACTICE_TIMELINES.get(practice_type_code.upper(), "")
 
     checklist_html = "\n".join(
-        f'<li style="padding:6px 0;color:#edeae4;font-size:13px;">{item}</li>'
-        for item in checklist
+        f'<li style="padding:6px 0;color:#edeae4;font-size:13px;">{item}</li>' for item in checklist
     )
 
     timeline_block = ""
@@ -449,7 +477,7 @@ def _build_html(
     <div style="font-size:11px;font-weight:700;color:#d4845a;letter-spacing:2px;margin-bottom:12px;">NEXT STEP</div>
     <div style="font-size:13.5px;color:#edeae4;line-height:1.7;">
       Send us your documents and we'll begin immediately.
-      {f'<br><br><span style="color:#c9a96e;">Your advisor: <strong>{advisor_name}</strong></span>' if advisor_email else ''}
+      {f'<br><br><span style="color:#c9a96e;">Your advisor: <strong>{advisor_name}</strong></span>' if advisor_email else ""}
     </div>
   </div>
 

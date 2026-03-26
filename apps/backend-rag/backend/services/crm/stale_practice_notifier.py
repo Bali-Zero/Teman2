@@ -203,7 +203,7 @@ class StalePracticeNotifier:
                     f'<td style="{_TD}">{_esc(p["status"])}</td>'
                     f'<td style="{_TD}">{updated_str}</td>'
                     f'<td style="{_TD};color:#f87171;font-weight:600;">'
-                    f'{p["days_stale"]} giorni</td>'
+                    f"{p['days_stale']} giorni</td>"
                     f"</tr>\n"
                 )
 
@@ -281,7 +281,7 @@ class StalePracticeNotifier:
                 f'<td style="{_TD}">{_esc(p["practice_type_name"])}</td>'
                 f'<td style="{_TD}">{_esc(p["status"])}</td>'
                 f'<td style="{_TD};color:#f87171;font-weight:600;">'
-                f'{p["days_stale"]} giorni</td>'
+                f"{p['days_stale']} giorni</td>"
                 f"</tr>\n"
             )
 

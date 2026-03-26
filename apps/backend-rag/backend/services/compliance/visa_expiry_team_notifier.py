@@ -34,7 +34,7 @@ ALERT_THRESHOLDS: tuple[int, ...] = (7, 30, 60)
 
 # ── Colour coding per soglia (HTML) ────────────────────────────────────────────
 _ROW_COLOURS: dict[int, str] = {
-    7: "#FFCCCC",   # red
+    7: "#FFCCCC",  # red
     30: "#FFE0B2",  # orange
     60: "#FFFDE7",  # yellow
 }
@@ -113,9 +113,7 @@ class VisaExpiryTeamNotifier:
                 try:
                     await self._send_team_leader_alert(team_email, clients)
                 except Exception:
-                    logger.exception(
-                        "Failed to send alert to team leader %s", team_email
-                    )
+                    logger.exception("Failed to send alert to team leader %s", team_email)
 
             # Send summary to admin
             try:
@@ -160,9 +158,7 @@ class VisaExpiryTeamNotifier:
                         doc_type,
                     )
                 except Exception:
-                    logger.exception(
-                        "Unexpected error querying '%s' expiry dates", doc_type
-                    )
+                    logger.exception("Unexpected error querying '%s' expiry dates", doc_type)
 
         # Sort combined results by days_until_expiry ASC
         rows.sort(key=lambda r: r.get("days_until_expiry", 9999))
@@ -238,9 +234,7 @@ Ti preghiamo di contattarli al più presto per avviare il processo di rinnovo co
 """.strip()
 
         await self._post_email(to=team_email, subject=subject, html_body=body)
-        logger.info(
-            "Team leader alert sent to %s (%d client(s))", team_email, n
-        )
+        logger.info("Team leader alert sent to %s (%d client(s))", team_email, n)
 
     async def _send_zero_summary(self, all_clients: list[dict[str, Any]]) -> None:
         """
@@ -260,7 +254,7 @@ Ti preghiamo di contattarli al più presto per avviare il processo di rinnovo co
             rows_html = "\n".join(_build_client_row(c) for c in clients)
             section = f"""
 <h3 style="color:#1a237e; margin-top:24px;">
-  👤 {leader_email} — {len(clients)} client{'i' if len(clients) != 1 else 'e'}
+  👤 {leader_email} — {len(clients)} client{"i" if len(clients) != 1 else "e"}
 </h3>
 <table border="1" cellpadding="7" cellspacing="0"
        style="border-collapse:collapse; width:100%; font-size:13px;">
@@ -289,7 +283,7 @@ Ti preghiamo di contattarli al più presto per avviare il processo di rinnovo co
 <p>Questo riepilogo viene inviato automaticamente da Zantara.<br>
 Ogni team leader ha già ricevuto la propria notifica individuale.</p>
 
-{''.join(sections)}
+{"".join(sections)}
 
 <br>
 <p style="font-size:12px; color:#888;">
@@ -321,9 +315,7 @@ Ogni team leader ha già ricevuto la propria notifica individuale.</p>
         Raises httpx.HTTPStatusError on non-2xx responses.
         """
         if self._client is None:
-            raise RuntimeError(
-                "_post_email called outside of an active HTTP client context"
-            )
+            raise RuntimeError("_post_email called outside of an active HTTP client context")
 
         payload: dict[str, Any] = {
             "to": to,
@@ -354,6 +346,7 @@ Ogni team leader ha già ricevuto la propria notifica individuale.</p>
 
 
 # ── Private rendering helpers ──────────────────────────────────────────────────
+
 
 def _build_client_row(client: dict[str, Any]) -> str:
     """

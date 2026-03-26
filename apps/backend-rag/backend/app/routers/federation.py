@@ -28,6 +28,7 @@ VALID_NODES = {"pro", "air", "krisna", "damar", "all"}
 # Models
 # =============================================================================
 
+
 class SendMessageRequest(BaseModel):
     to_node: str
     body: str
@@ -52,6 +53,7 @@ class FederationMessage(BaseModel):
 # Helpers
 # =============================================================================
 
+
 def _email_to_node(email: str) -> str:
     """Map user email to federation node ID."""
     mapping = {
@@ -68,6 +70,7 @@ def _email_to_node(email: str) -> str:
 # Endpoints
 # =============================================================================
 
+
 @router.post("/send", response_model=FederationMessage)
 async def send_message(
     req: SendMessageRequest,
@@ -76,7 +79,9 @@ async def send_message(
 ) -> FederationMessage:
     """Send a message from this node to another node (or broadcast to 'all')."""
     if req.to_node not in VALID_NODES:
-        raise HTTPException(status_code=400, detail=f"Unknown node: {req.to_node}. Valid: {VALID_NODES}")
+        raise HTTPException(
+            status_code=400, detail=f"Unknown node: {req.to_node}. Valid: {VALID_NODES}"
+        )
 
     from_node = _email_to_node(email)
 
@@ -86,9 +91,16 @@ async def send_message(
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id, from_node, to_node, subject, body, message_type, priority, read_at, created_at
         """,
-        from_node, req.to_node, req.subject, req.body, req.message_type, req.priority,
+        from_node,
+        req.to_node,
+        req.subject,
+        req.body,
+        req.message_type,
+        req.priority,
     )
-    logger.info(f"[federation] {from_node} → {req.to_node} ({req.message_type}): {req.subject or req.body[:60]}")
+    logger.info(
+        f"[federation] {from_node} → {req.to_node} ({req.message_type}): {req.subject or req.body[:60]}"
+    )
     return FederationMessage(**dict(row))
 
 
@@ -129,7 +141,8 @@ async def mark_read(
         SET read_at = NOW()
         WHERE id = $1 AND (to_node = $2 OR to_node = 'all') AND read_at IS NULL
         """,
-        message_id, node,
+        message_id,
+        node,
     )
     return {"ok": result == "UPDATE 1"}
 
@@ -150,7 +163,8 @@ async def get_outbox(
         ORDER BY created_at DESC
         LIMIT $2
         """,
-        node, limit,
+        node,
+        limit,
     )
     return [FederationMessage(**dict(r)) for r in rows]
 
