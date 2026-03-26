@@ -129,8 +129,8 @@ async def extract_claims_from_file(
     source_text = source_path.read_text(encoding="utf-8")
     prompt = build_extraction_prompt(source_text, instrument_id, domain)
 
-    client = anthropic.Anthropic(api_key=anthropic_api_key)
-    response = client.messages.create(
+    client = anthropic.AsyncAnthropic(api_key=anthropic_api_key)
+    response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}],
