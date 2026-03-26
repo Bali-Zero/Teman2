@@ -1,4 +1,5 @@
 """Tests for LegalInstrumentsService."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -25,8 +26,20 @@ async def test_get_active_instruments_for_domain(
     service: LegalInstrumentsService, mock_pool: MagicMock
 ) -> None:
     mock_rows = [
-        {"instrument_id": "UU-6-2011", "status": "active", "tier": 0, "domain": "immigration", "title": "UU Keimigrasian"},
-        {"instrument_id": "Permenkumham-22-2023", "status": "partially_superseded", "tier": 1, "domain": "immigration", "title": "Permenkumham Visa"},
+        {
+            "instrument_id": "UU-6-2011",
+            "status": "active",
+            "tier": 0,
+            "domain": "immigration",
+            "title": "UU Keimigrasian",
+        },
+        {
+            "instrument_id": "Permenkumham-22-2023",
+            "status": "partially_superseded",
+            "tier": 1,
+            "domain": "immigration",
+            "title": "Permenkumham Visa",
+        },
     ]
     mock_conn = AsyncMock()
     mock_conn.fetch = AsyncMock(return_value=mock_rows)
@@ -43,9 +56,7 @@ async def test_get_active_instruments_for_domain(
 
 
 @pytest.mark.asyncio
-async def test_mark_uploaded_to_nb(
-    service: LegalInstrumentsService, mock_pool: MagicMock
-) -> None:
+async def test_mark_uploaded_to_nb(service: LegalInstrumentsService, mock_pool: MagicMock) -> None:
     mock_conn = AsyncMock()
     mock_conn.execute = AsyncMock()
     mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -83,11 +94,15 @@ async def test_get_conflict_notes_for_domain(
 
 
 @pytest.mark.asyncio
-async def test_get_not_yet_uploaded(
-    service: LegalInstrumentsService, mock_pool: MagicMock
-) -> None:
+async def test_get_not_yet_uploaded(service: LegalInstrumentsService, mock_pool: MagicMock) -> None:
     mock_rows = [
-        {"instrument_id": "UU-6-2011", "instrument_type": "UU", "title": "UU Keimigrasian", "source_file": None, "source_url": "https://..."}
+        {
+            "instrument_id": "UU-6-2011",
+            "instrument_type": "UU",
+            "title": "UU Keimigrasian",
+            "source_file": None,
+            "source_url": "https://...",
+        }
     ]
     mock_conn = AsyncMock()
     mock_conn.fetch = AsyncMock(return_value=mock_rows)

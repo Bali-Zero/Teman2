@@ -40,13 +40,15 @@ _WHATSAPP_WELCOME_ACTIVE: bool = False
 ACTIVITY_ACTION = "welcome_whatsapp_sent"
 
 
-async def send_client_welcome(client_id: int, db_pool: "asyncpg.Pool") -> None:
+async def send_client_welcome(client_id: int, db_pool: asyncpg.Pool) -> None:
     """
     Send welcome WhatsApp to a newly created client.
     Non-blocking — called via BackgroundTasks. Never raises.
     """
     if not _WHATSAPP_WELCOME_ACTIVE:
-        logger.debug("WelcomeWhatsApp: inactive (template approval pending), skipping client %d", client_id)
+        logger.debug(
+            "WelcomeWhatsApp: inactive (template approval pending), skipping client %d", client_id
+        )
         return
 
     try:
@@ -55,12 +57,14 @@ async def send_client_welcome(client_id: int, db_pool: "asyncpg.Pool") -> None:
         logger.error("WelcomeWhatsApp: unhandled error for client %d", client_id, exc_info=True)
 
 
-async def _send_client_welcome_impl(client_id: int, db_pool: "asyncpg.Pool") -> None:
+async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> None:
     phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
     access_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
 
     if not phone_number_id or not access_token:
-        logger.warning("WelcomeWhatsApp: WHATSAPP_PHONE_NUMBER_ID or ACCESS_TOKEN not set, skipping")
+        logger.warning(
+            "WelcomeWhatsApp: WHATSAPP_PHONE_NUMBER_ID or ACCESS_TOKEN not set, skipping"
+        )
         return
 
     async with db_pool.acquire() as conn:
@@ -81,7 +85,8 @@ async def _send_client_welcome_impl(client_id: int, db_pool: "asyncpg.Pool") -> 
         # Idempotency check
         already_sent = await conn.fetchval(
             "SELECT id FROM activity_log WHERE client_id = $1 AND action = $2 LIMIT 1",
-            client_id, ACTIVITY_ACTION,
+            client_id,
+            ACTIVITY_ACTION,
         )
         if already_sent:
             logger.info("WelcomeWhatsApp: already sent for client %d, skipping", client_id)
@@ -131,11 +136,15 @@ async def _send_client_welcome_impl(client_id: int, db_pool: "asyncpg.Pool") -> 
                 VALUES ($1, $2, $3, NOW())
                 ON CONFLICT DO NOTHING
                 """,
-                client_id, ACTIVITY_ACTION, f"lang={lang} phone={clean_phone}",
+                client_id,
+                ACTIVITY_ACTION,
+                f"lang={lang} phone={clean_phone}",
             )
         logger.info("WelcomeWhatsApp: sent to client %d (lang=%s)", client_id, lang)
     else:
         logger.error(
             "WelcomeWhatsApp: Meta API error for client %d: %d %s",
-            client_id, resp.status_code, resp.text[:200],
+            client_id,
+            resp.status_code,
+            resp.text[:200],
         )

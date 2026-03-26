@@ -41,8 +41,8 @@ async def get_checkpointer(database_url: str) -> "AsyncPostgresSaver":
     _psycopg_pool = AsyncConnectionPool(
         conninfo=database_url,
         kwargs={
-            "autocommit": True,      # MANDATORY for .setup() DDL
-            "row_factory": dict_row, # MANDATORY — prevents TypeError on checkpoint read
+            "autocommit": True,  # MANDATORY for .setup() DDL
+            "row_factory": dict_row,  # MANDATORY — prevents TypeError on checkpoint read
         },
         min_size=1,
         max_size=2,  # 1-2 connections: 1 active workflow + 1 spare

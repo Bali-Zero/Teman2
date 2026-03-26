@@ -426,9 +426,7 @@ class TestExtractPassportEnhancedRBAC:
         # Mock verify_client_access to raise 403 (simulating non-assigned user)
         with patch(
             "backend.app.routers.crm_clients.verify_client_access",
-            new=AsyncMock(
-                side_effect=HTTPException(status_code=403, detail="Access denied")
-            ),
+            new=AsyncMock(side_effect=HTTPException(status_code=403, detail="Access denied")),
         ):
             response = test_client.post(
                 "/api/crm/clients/extract-passport-enhanced",
@@ -473,12 +471,11 @@ class TestExtractNpwpRBAC:
         # Mock verify_client_access to raise 403 (simulating non-assigned user)
         with patch(
             "backend.app.routers.crm_clients.verify_client_access",
-            new=AsyncMock(
-                side_effect=HTTPException(status_code=403, detail="Access denied")
-            ),
+            new=AsyncMock(side_effect=HTTPException(status_code=403, detail="Access denied")),
         ):
             # Use a valid base64 string to avoid triggering base64 validation error
             import base64
+
             dummy_b64 = base64.b64encode(b"fake-image-data").decode()
             response = test_client.post(
                 "/api/crm/clients/extract-npwp",
@@ -602,11 +599,10 @@ class TestExtractNibRBAC:
         # Mock verify_client_access to raise 403 (simulating non-assigned user)
         with patch(
             "backend.app.routers.crm_clients.verify_client_access",
-            new=AsyncMock(
-                side_effect=HTTPException(status_code=403, detail="Access denied")
-            ),
+            new=AsyncMock(side_effect=HTTPException(status_code=403, detail="Access denied")),
         ):
             import base64
+
             dummy_b64 = base64.b64encode(b"fake-image-data").decode()
             response = test_client.post(
                 "/api/crm/clients/extract-nib",

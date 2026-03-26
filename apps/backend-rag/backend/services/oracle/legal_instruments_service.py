@@ -4,6 +4,7 @@ Provides read/write access to T0/T1 normative instrument metadata,
 used by the Verified Generation Pipeline to track NLM upload status
 and retrieve conflict resolution notes.
 """
+
 from __future__ import annotations
 
 import logging
