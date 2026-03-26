@@ -15,31 +15,31 @@ const STATS_BY_LOCALE: Record<Locale, Stat[]> = {
   en: [
     { value: 5000, suffix: "+", label: "Clients served", separator: "," },
     { value: 20, suffix: "+", label: "Years of history", separator: "," },
-    { value: 9612, suffix: "", label: "KBLI 2025 codes", separator: "," },
+    { value: 1563, suffix: "", label: "KBLI Navigator codes", separator: "," },
     { value: 4, suffix: "", label: "AI channels active", separator: "," },
   ],
   it: [
     { value: 5000, suffix: "+", label: "Clienti serviti", separator: "." },
     { value: 20, suffix: "+", label: "Anni di storia", separator: "." },
-    { value: 9612, suffix: "", label: "Codici KBLI 2025", separator: "." },
+    { value: 1563, suffix: "", label: "Codici KBLI Navigator", separator: "." },
     { value: 4, suffix: "", label: "Canali AI attivi", separator: "." },
   ],
   id: [
     { value: 5000, suffix: "+", label: "Klien dilayani", separator: "." },
     { value: 20, suffix: "+", label: "Tahun pengalaman", separator: "." },
-    { value: 9612, suffix: "", label: "Kode KBLI 2025", separator: "." },
+    { value: 1563, suffix: "", label: "Kode KBLI Navigator", separator: "." },
     { value: 4, suffix: "", label: "Channel AI aktif", separator: "." },
   ],
   ru: [
     { value: 5000, suffix: "+", label: "Клиентов обслужено", separator: " " },
     { value: 20, suffix: "+", label: "Лет опыта", separator: " " },
-    { value: 9612, suffix: "", label: "Кодов KBLI 2025", separator: " " },
+    { value: 1563, suffix: "", label: "Кодов KBLI Navigator", separator: " " },
     { value: 4, suffix: "", label: "Активных AI-каналов", separator: " " },
   ],
   zh: [
     { value: 5000, suffix: "+", label: "服务客户数", separator: "," },
     { value: 20, suffix: "+", label: "年历史", separator: "," },
-    { value: 9612, suffix: "", label: "KBLI 2025代码", separator: "," },
+    { value: 1563, suffix: "", label: "KBLI Navigator代码", separator: "," },
     { value: 4, suffix: "", label: "AI渠道", separator: "," },
   ],
 };

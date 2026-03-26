@@ -8,13 +8,13 @@ import { ChapterSection } from "@/components/book/ChapterSection";
 import { ChapterHero } from "@/components/book/ChapterHero";
 import { StatsCounter } from "@/components/book/StatsCounter";
 import { TeamGrid } from "@/components/book/TeamGrid";
-import { TimelineComponent } from "@/components/book/TimelineComponent";
 import { ZantaraCTA } from "@/components/book/ZantaraCTA";
 import { ServicePricingCard } from "@/components/book/ServicePricingCard";
 import {
   CHAPTERS,
   CONTACTS,
   SERVICES,
+  STATS,
   TRANSLATIONS,
   LOCALE_LABELS,
   type Locale,
@@ -122,6 +122,21 @@ function ServicesSection({ locale }: { locale: Locale }) {
           </m.div>
         </AnimatePresence>
       </LazyMotion>
+
+      {/* View all services link */}
+      <div className="mt-8 flex items-center gap-3">
+        <a
+          href="https://balizero.com/services"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-[#d4845a] font-[family-name:var(--font-montserrat)] text-sm hover:text-[#e09870] transition-colors group"
+        >
+          <span>View all services on balizero.com/services</span>
+          <span className="group-hover:translate-x-1 transition-transform">
+            →
+          </span>
+        </a>
+      </div>
     </div>
   );
 }
@@ -164,16 +179,18 @@ export function BookPage({ initialChapter }: BookPageProps) {
           />
         </div>
         <div className="relative z-10 flex flex-col items-center text-center px-8">
-          {/* Logo instead of text */}
-          <div className="mb-8 w-48 md:w-64 h-auto relative">
-            <Image
-              src="/static/balizero-logo-clean.png"
-              alt="Bali Zero"
-              width={320}
-              height={120}
-              className="object-contain drop-shadow-[0_0_32px_rgba(212,132,90,0.5)]"
-              priority
-            />
+          {/* Logo circolare */}
+          <div className="mb-8 relative">
+            <div className="w-40 h-40 md:w-52 md:h-52 rounded-full overflow-hidden border-2 border-[#d4845a]/40 shadow-[0_0_48px_rgba(212,132,90,0.35)] bg-black flex items-center justify-center">
+              <Image
+                src="/static/balizero-logo-clean.png"
+                alt="Bali Zero"
+                width={260}
+                height={260}
+                className="object-contain scale-90"
+                priority
+              />
+            </div>
           </div>
           <p className="font-[family-name:var(--font-montserrat)] text-[#d4845a] tracking-[0.3em] text-xs uppercase mb-4">
             {t.coverTagline}
@@ -225,7 +242,6 @@ export function BookPage({ initialChapter }: BookPageProps) {
             {t.originP2}
           </p>
         </div>
-        <TimelineComponent locale={locale} />
       </ChapterSection>
 
       {/* ── Chapter 4: Team ───────────────────────────────────────────────────── */}
@@ -259,37 +275,10 @@ export function BookPage({ initialChapter }: BookPageProps) {
           title={CHAPTERS[5].title}
           subtitle={CHAPTERS[5].subtitle}
         />
-        <div className="px-8 md:px-16 py-12 max-w-4xl">
-          <p className="font-[family-name:var(--font-montserrat)] text-white/70 text-lg leading-relaxed mb-10">
+        <div className="px-8 md:px-16 py-12 max-w-3xl">
+          <p className="font-[family-name:var(--font-montserrat)] text-white/70 text-lg leading-relaxed">
             {t.impactBody}
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { name: "Emerhub", founded: 2011, trend: "-8.5%" },
-              { name: "InCorp", founded: 2012, trend: "-19%" },
-              { name: "LetsMoveIndonesia", founded: 2015, trend: "-23.5%" },
-              { name: "Seven Stones", founded: 2016, trend: "+1.8%" },
-            ].map((c) => (
-              <div
-                key={c.name}
-                className="border border-white/8 rounded-2xl p-5 text-center bg-white/[0.015]"
-              >
-                <p className="font-[family-name:var(--font-spartan)] text-white/55 text-sm font-semibold mb-2">
-                  {c.name}
-                </p>
-                <p
-                  className={`font-[family-name:var(--font-spartan)] font-black text-2xl ${
-                    c.trend.startsWith("+")
-                      ? "text-emerald-400"
-                      : "text-red-400"
-                  }`}
-                >
-                  {c.trend}
-                </p>
-                <p className="text-white/30 text-xs mt-1">{t.headcountYoY}</p>
-              </div>
-            ))}
-          </div>
         </div>
         <ZantaraCTA onClick={handleZantara} />
       </ChapterSection>
@@ -307,19 +296,34 @@ export function BookPage({ initialChapter }: BookPageProps) {
             {t.techBody}
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {t.techStats.map((s) => (
-              <div
-                key={s.l}
-                className="border border-white/8 rounded-2xl p-5 bg-white/[0.015]"
-              >
-                <p className="font-[family-name:var(--font-spartan)] text-[#d4845a] font-black text-3xl mb-1">
-                  {s.n}
-                </p>
-                <p className="font-[family-name:var(--font-montserrat)] text-white/50 text-xs leading-snug">
-                  {s.l}
-                </p>
-              </div>
-            ))}
+            {t.techStats.map((s) => {
+              const isKbli =
+                s.n.includes("1,563") ||
+                s.n.includes("1.563") ||
+                s.n.includes("1 563");
+              return (
+                <div
+                  key={s.l}
+                  className="border border-white/8 rounded-2xl p-5 bg-white/[0.015]"
+                >
+                  <p className="font-[family-name:var(--font-spartan)] text-[#d4845a] font-black text-3xl mb-1">
+                    {s.n}
+                  </p>
+                  {isKbli ? (
+                    <a
+                      href={STATS.kbliNavigatorUrl}
+                      className="font-[family-name:var(--font-montserrat)] text-white/50 text-xs leading-snug hover:text-[#d4845a] transition-colors underline underline-offset-2"
+                    >
+                      {s.l} ↗
+                    </a>
+                  ) : (
+                    <p className="font-[family-name:var(--font-montserrat)] text-white/50 text-xs leading-snug">
+                      {s.l}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
         <ZantaraCTA onClick={handleZantara} />
