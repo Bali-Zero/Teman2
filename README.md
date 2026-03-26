@@ -37,18 +37,16 @@ nuzantara/
 ## Tech Stack
 
 <!-- DOCSYNC:TECH_STATS_START -->
-
-| Layer               | Technology                                                          |
-| ------------------- | ------------------------------------------------------------------- |
-| **Backend**         | Python 3.11, FastAPI, 89 routers, 253 services                      |
-| **Frontend**        | Next.js, TypeScript, Tailwind CSS                                   |
-| **Databases**       | PostgreSQL (relational), Qdrant v1.17.0 (vector), Redis (cache)     |
-| **Infrastructure**  | Fly.io (backend, Singapore), Vercel (frontend)                      |
-| **LLM**             | Gemini 2.5 Flash (primary), Gemini 2.0 Flash (fallback), OpenRouter |
-| **Embedding**       | `text-embedding-3-small` (1536 dims) — FROZEN                       |
-| **Knowledge Graph** | 56,113 nodes, 161,173 edges, LangGraph orchestrator                 |
-| **Vector Store**    | 10 collections, 93,283 documents                                    |
-
+| Layer | Technology |
+|-------|-----------|
+| **Backend** | Python 3.11, FastAPI, 89 routers, 253 services |
+| **Frontend** | Next.js, TypeScript, Tailwind CSS |
+| **Databases** | PostgreSQL (relational), Qdrant v1.17.0 (vector), Redis (cache) |
+| **Infrastructure** | Fly.io (backend, Singapore), Vercel (frontend) |
+| **LLM** | Gemini 2.5 Flash (primary), Gemini 2.0 Flash (fallback), OpenRouter |
+| **Embedding** | `text-embedding-3-small` (1536 dims) — FROZEN |
+| **Knowledge Graph** | 56,113 nodes, 161,173 edges, LangGraph orchestrator |
+| **Vector Store** | 10 collections, 93,283 documents |
 <!-- DOCSYNC:TECH_STATS_END -->
 
 | **Vector Store** | 10 collections, 93,283 documents |
@@ -114,15 +112,13 @@ curl https://nuzantara-rag.fly.dev/health
 ## Feature Flags (Fly.io secrets)
 
 <!-- DOCSYNC:FEATURE_FLAGS_START -->
-
-| Flag                     | Value  | Effect                                 |
-| ------------------------ | ------ | -------------------------------------- |
-| `ENABLE_HYBRID_SEARCH`   | `true` | BM25+Dense+RRF in VectorSearchTool     |
-| `ENABLE_RERANKER`        | `true` | CrossEncoder local reranking           |
-| `ENABLE_BM25`            | `true` | Sparse vectors for hybrid search       |
-| `ENABLE_QUERY_EXPANSION` | `true` | LLM multi-query expansion + RRF        |
-| `ENABLE_KG_LANGGRAPH`    | `true` | Knowledge Graph LangGraph orchestrator |
-
+| Flag | Value | Effect |
+|------|-------|--------|
+| `ENABLE_HYBRID_SEARCH` | `true` | BM25+Dense+RRF in VectorSearchTool |
+| `ENABLE_RERANKER` | `true` | CrossEncoder local reranking |
+| `ENABLE_BM25` | `true` | Sparse vectors for hybrid search |
+| `ENABLE_QUERY_EXPANSION` | `true` | LLM multi-query expansion + RRF |
+| `ENABLE_KG_LANGGRAPH` | `true` | Knowledge Graph LangGraph orchestrator |
 <!-- DOCSYNC:FEATURE_FLAGS_END -->
 
 ## Communication Channels

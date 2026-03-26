@@ -648,12 +648,40 @@ function ClientsListContent() {
                 </select>
               </div>
               <div>
-                <label
-                  className="block text-sm font-medium mb-1.5"
-                  style={{ color: "var(--bz-text-2)" }}
-                >
-                  Assigned To
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label
+                    className="block text-sm font-medium"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
+                    Assigned To
+                  </label>
+                  {currentUserEmail && (
+                    <button
+                      onClick={() =>
+                        setFilters({
+                          ...filters,
+                          assigned_to:
+                            filters.assigned_to === currentUserEmail
+                              ? ""
+                              : currentUserEmail,
+                        })
+                      }
+                      className="text-xs px-2 py-0.5 rounded-full transition-colors"
+                      style={{
+                        background:
+                          filters.assigned_to === currentUserEmail
+                            ? "var(--bz-accent)"
+                            : "rgba(255,255,255,0.08)",
+                        color:
+                          filters.assigned_to === currentUserEmail
+                            ? "#fff"
+                            : "var(--bz-text-2)",
+                      }}
+                    >
+                      My Clients
+                    </button>
+                  )}
+                </div>
                 <select
                   value={filters.assigned_to}
                   onChange={(e) =>
@@ -667,9 +695,16 @@ function ClientsListContent() {
                   }}
                 >
                   <option value="">All team members</option>
+                  {currentUserEmail &&
+                    !uniqueAssignees.includes(currentUserEmail) && (
+                      <option value={currentUserEmail}>
+                        {currentUserEmail.split("@")[0]} (me)
+                      </option>
+                    )}
                   {uniqueAssignees.map((assignee) => (
                     <option key={assignee} value={assignee}>
                       {assignee?.split("@")[0]}
+                      {assignee === currentUserEmail ? " (me)" : ""}
                     </option>
                   ))}
                 </select>
