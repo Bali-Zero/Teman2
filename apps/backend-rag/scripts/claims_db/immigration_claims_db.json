@@ -2934,5 +2934,194 @@
     "instrument_id": "UU-63-2024",
     "category": "rule",
     "claim_id": "IMM-367"
+  },
+  {
+    "claim_id": "IMM-368",
+    "claim": "Il Visa on Arrival (VOA / e-VOA) è un visto di visita emesso al punto di ingresso con validità 30 giorni, rinnovabile una volta per ulteriori 30 giorni. Usa gli indici B1 (turismo/famiglia/transit), B2 (bisnis), B3 (cure mediche), B4 (missione governativa), introdotti da Permenkumham 22/2023.",
+    "verbatim": "Visa on Arrival diberikan di tempat pemeriksaan imigrasi, berlaku 30 hari, dapat diperpanjang satu kali 30 hari, indeks B1/B2/B3/B4 sesuai Permenkumham 22/2023",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "VOA",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-369",
+    "claim": "Il VOA B1 è per turismo/famiglia/transit; B2 per attività bisnis (riunioni, trattative); B3 per cure mediche; B4 per missioni governative. Nessun VOA può essere convertito in KITAS: occorre uscire e rientrare con visto idoneo.",
+    "verbatim": "B1: wisata/keluarga/transit; B2: bisnis/rapat/negosiasi; B3: pengobatan; B4: tugas pemerintahan. VoA tidak dapat dialihstatuskan menjadi KITAS.",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "VOA",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-370",
+    "claim": "Il visto C1 è il visto kunjungan single entry per turismo. Sostituisce il vecchio B211A dal Permenkumham 22/2023. Ha validità 60 giorni per ingresso, prorogabile fino a un massimo di 180 giorni totali di permanenza.",
+    "verbatim": "C1 menggantikan B211A sejak Permenkumham 22/2023, visa kunjungan sekali perjalanan tujuan wisata, berlaku 60 hari, dapat diperpanjang hingga 180 hari total",
+    "pasal_ref": "Permenkumham 22/2023; IMM-333",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C1",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-371",
+    "claim": "Il visto C2 è il visto kunjungan single entry per attività bisnis: riunioni, audit, ispezioni, servizi post-vendita. Ha validità 60 giorni per ingresso, prorogabile fino a 180 giorni totali di permanenza in Indonesia.",
+    "verbatim": "C2 visa kunjungan sekali perjalanan untuk bisnis, audit, inspeksi, purna jual, berlaku 60 hari, dapat diperpanjang hingga 180 hari total",
+    "pasal_ref": "Permenkumham 22/2023; IMM-333",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C2",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-372",
+    "claim": "Il visto C7 è il visto kunjungan single entry per spettacoli artistici e culturali non commerciali (musica, teatro, danza, arti visive). Richiede sponsorizzazione da ente culturale indonesiano riconosciuto dal Kemenimipas.",
+    "verbatim": "C7 visa kunjungan untuk pertunjukan seni budaya non-komersial, memerlukan sponsor lembaga kebudayaan yang diakui Kemenimipas",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C7",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-373",
+    "claim": "Il visto C8 è il visto kunjungan single entry per attività sportive non commerciali (competizioni, allenamenti, tornei internazionali). Non consente attività lavorative remunerate in Indonesia.",
+    "verbatim": "C8 visa kunjungan untuk kegiatan olahraga non-komersial, tidak boleh melakukan kegiatan kerja berbayar",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C8",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-374",
+    "claim": "Il visto C12 è il visto kunjungan single entry per pra-investimento. Ha validità 180 giorni per ingresso (non 60 giorni come C1/C2) e consente al titolare di valutare opportunità di investimento senza ancora costituire una società. Il rinnovo è concesso per 180 giorni con permanenza massima 360 giorni.",
+    "verbatim": "C12 visa pra-investasi berlaku 180 hari per kedatangan, perpanjangan 180 hari, total maksimum 360 hari — Permenkumham 22/2023; IMM-334",
+    "pasal_ref": "Permenkumham 22/2023; IMM-334",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C12",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-375",
+    "claim": "Il visto C18 è il visto kunjungan single entry per prova di competenza lavorativa (work trial / uji coba keahlian). Consente a lavoratori stranieri di dimostrare le proprie competenze a un potenziale datore di lavoro indonesiano prima di ottenere il KITAS E23.",
+    "verbatim": "C18 visa uji coba keahlian tenaga kerja asing, digunakan sebagai tahap awal sebelum mendapatkan KITAS E23 — Permenkumham 22/2023",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C18",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-376",
+    "claim": "Il visto C22 è il visto kunjungan single entry per tirocinio / stage (magang). Consente a studenti e giovani professionisti stranieri di svolgere programmi di internship presso aziende o istituzioni indonesiane. Il rinnovo è concesso per 180 giorni con permanenza totale massima di 12 mesi.",
+    "verbatim": "C22 visa magang/internship, perpanjangan 180 hari per perpanjangan, total maksimum 12 bulan — Permenkumham 22/2023; IMM-336",
+    "pasal_ref": "Permenkumham 22/2023; IMM-336",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C22",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-377",
+    "claim": "Il visto D2 è il visto kunjungan multiple entry per attività bisnis. Disponibile in durate 1, 2 o 5 anni. Consente soggiorni massimi di 60 giorni per ingresso con rinnovo per 60 giorni aggiuntivi. Sostituisce il vecchio B212 per uso bisnis.",
+    "verbatim": "D2 visa kunjungan beberapa kali perjalanan untuk bisnis, tersedia 1/2/5 tahun, maksimal 60 hari per kedatangan, dapat diperpanjang 60 hari — Permenkumham 22/2023; IMM-278",
+    "pasal_ref": "Permenkumham 22/2023; IMM-278; IMM-333",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "D2",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-378",
+    "claim": "Il visto D12 è il visto kunjungan multiple entry per pra-investimento a lungo termine. Consente soggiorni di 180 giorni per ingresso (non 60 giorni come D2). Disponibile in durate 1, 2 o 5 anni. Rinnovo concesso per 180 giorni per rinnovo.",
+    "verbatim": "D12 visa pra-investasi multiple entry, izin tinggal 180 hari per kedatangan, tersedia 1/2/5 tahun, perpanjangan 180 hari — Permenkumham 22/2023; IMM-334",
+    "pasal_ref": "Permenkumham 22/2023; IMM-334",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "D12",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-379",
+    "claim": "Il KITAS E28B è il Golden Visa per investitori stranieri che costituiscono o partecipano in una società in Indonesia con impegno di capitale elevato. Ha durata 5 o 10 anni. L'investitore che costituisce una società deve impegnarsi a investire almeno 2,5 milioni di USD entro 90 giorni dall'ingresso.",
+    "verbatim": "E28B Golden Visa untuk investor yang mendirikan perusahaan di Indonesia, berlaku 5 atau 10 tahun, komitmen investasi minimal USD 2,5 juta dalam 90 hari — PP 31/2013 Pasal 40; IMM-311",
+    "pasal_ref": "Permenkumham 22/2023; PP 31/2013 Pasal 40; IMM-311; IMM-312",
+    "source_law": "Permenkumham 22/2023; PP 31/2013",
+    "permit_type": "E28B",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-380",
+    "claim": "Per il Golden Visa E28B di 5 anni è richiesta prova di garanzia immigratoria. Per il Golden Visa di 10 anni lo straniero deve aver precedentemente soggiornato in Indonesia con visto di durata inferiore.",
+    "verbatim": "KITAS 5 tahun memerlukan jaminan keimigrasian; KITAS 10 tahun memerlukan riwayat tinggal sebelumnya — PP 31/2013; IMM-310; IMM-283",
+    "pasal_ref": "PP 31/2013; IMM-310; IMM-283",
+    "source_law": "PP 31/2013",
+    "permit_type": "E28B",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-381",
+    "claim": "Il KITAS E28C è il Golden Visa per investitori individuali che NON costituiscono una società in Indonesia ma investono in strumenti finanziari statali: titoli di stato (SBN), obbligazioni governative o depositi bancari presso banche statali indonesiane (BUMN). Durata 5 o 10 anni.",
+    "verbatim": "E28C Golden Visa untuk investor individu yang tidak mendirikan perusahaan, berinvestasi di SBN/obligasi pemerintah/deposito bank BUMN, berlaku 5 atau 10 tahun — PP 31/2013 Pasal 40(3); IMM-313",
+    "pasal_ref": "Permenkumham 22/2023; PP 31/2013 Pasal 40(3); IMM-313; IMM-314; IMM-315; IMM-316",
+    "source_law": "Permenkumham 22/2023; PP 31/2013",
+    "permit_type": "E28C",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-382",
+    "claim": "Lo straniero investitore E28C deve impegnarsi entro 90 giorni dall'ingresso a depositare fondi in banca statale, acquistare SBN o obbligazioni governative. Gli impegni devono essere adempiuti entro il termine previsto pena revoca del permesso.",
+    "verbatim": "Investor E28C wajib berkomitmen dalam 90 hari: deposito bank BUMN, SBN, atau obligasi pemerintah — PP 31/2013 Pasal 40(3); IMM-317",
+    "pasal_ref": "PP 31/2013 Pasal 40(3); IMM-317",
+    "source_law": "PP 31/2013",
+    "permit_type": "E28C",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-383",
+    "claim": "Il KITAS E31 è il permesso di soggiorno per ricongiungimento familiare. Consente al coniuge straniero e ai figli minori di 18 anni non sposati di un titolare di KITAS (o di un cittadino indonesiano WNI) di risiedere in Indonesia. Il titolare principale funge da garante.",
+    "verbatim": "E31 izin tinggal penyatuan keluarga untuk pasangan asing dan anak di bawah 18 tahun belum menikah dari pemegang KITAS atau WNI — Permenkumham 22/2023; PP 31/2013; IMM-293",
+    "pasal_ref": "Permenkumham 22/2023; PP 31/2013; IMM-293; IMM-294",
+    "source_law": "Permenkumham 22/2023; PP 31/2013",
+    "permit_type": "E31",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-384",
+    "claim": "I genitori stranieri possono ottenere il KITAS E31 per ricongiungimento con figli cittadini indonesiani (WNI) di almeno 21 anni. Determinati visti per riunificazione familiare non sono concedibili per la riunificazione con titolari di specifici permessi temporanei.",
+    "verbatim": "Orang tua asing dapat bersatu dengan anak WNI berusia 21 tahun ke atas; beberapa jenis visa penyatuan keluarga tidak dapat diberikan untuk bergabung dengan pemegang izin tinggal tertentu — PP 31/2013; IMM-294; IMM-299",
+    "pasal_ref": "PP 31/2013; IMM-294; IMM-299",
+    "source_law": "PP 31/2013",
+    "permit_type": "E31",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-385",
+    "claim": "Il KITAS E33F è il permesso di soggiorno per pensionati stranieri (lansia). È riservato a stranieri di almeno 55 anni che vogliono risiedere in Indonesia senza svolgere attività lavorativa. Richiede sponsorizzazione tramite un'agenzia autorizzata dal Kemenimipas.",
+    "verbatim": "E33F izin tinggal untuk pensiunan asing (lansia), usia minimal 55 tahun, tidak boleh bekerja, memerlukan sponsor agen resmi yang ditunjuk Kemenimipas — Permenkumham 22/2023; IMM-296",
+    "pasal_ref": "Permenkumham 22/2023; IMM-296",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "E33F",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-386",
+    "claim": "Il titolare di KITAS E33F deve dimostrare disponibilità di fondi di sussistenza mensili sufficienti per sé e la propria famiglia, possedere assicurazione sanitaria valida per l'Indonesia e non può svolgere alcuna attività lavorativa o commerciale.",
+    "verbatim": "Pemegang E33F wajib membuktikan dana hidup bulanan, asuransi kesehatan, tidak boleh bekerja atau berbisnis — PP 31/2013; IMM-301; IMM-306",
+    "pasal_ref": "PP 31/2013; IMM-301; IMM-306",
+    "source_law": "PP 31/2013",
+    "permit_type": "E33F",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-387",
+    "claim": "Il KITAS E33E (Silver Hair Visa) è una variante Golden Visa per stranieri anziani di almeno 60 anni. Ha durata 5 anni. Richiede un deposito bancario vincolato presso banca statale indonesiana di circa 50.000 USD come prova di disponibilità economica. Non richiede necessariamente lo sponsor di un'agenzia.",
+    "verbatim": "E33E Silver Hair Visa untuk lansia 60+ tahun, berlaku 5 tahun, deposito bank BUMN sekitar USD 50.000, tidak wajib agen sponsor — Permenkumham 22/2023",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "E33E",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-388",
+    "claim": "Il Silver Hair Visa E33E, come il pensionato E33F, non consente lavoro subordinato o attività commerciale in Indonesia. La differenza principale è che E33E si basa su deposito vincolato (prova economica autonoma) mentre E33F richiede lo sponsor agenzia.",
+    "verbatim": "E33E e E33F entrambi melarang kerja/kegiatan komersial; E33E berbeda dari E33F: cukup bukti deposito tanpa agen sponsor wajib — Permenkumham 22/2023",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "E33E",
+    "verified": true
   }
 ]
