@@ -497,6 +497,58 @@ function ClientsListContent() {
         </div>
       </div>
 
+      {/* Health Awareness Bar — computed from loaded clients */}
+      {isMounted && visibleClients.length > 0 && (() => {
+        const now = Date.now();
+        const passportExpiring = visibleClients.filter((c) =>
+          c.passport_expiry &&
+          new Date(c.passport_expiry).getTime() > now &&
+          new Date(c.passport_expiry).getTime() < now + 90 * 86400000
+        ).length;
+        const passportExpired = visibleClients.filter((c) =>
+          c.passport_expiry && new Date(c.passport_expiry).getTime() < now
+        ).length;
+        const silent30 = visibleClients.filter((c) =>
+          !c.last_interaction_date ||
+          (now - new Date(c.last_interaction_date).getTime()) / 86400000 > 30
+        ).length;
+        if (passportExpiring === 0 && passportExpired === 0 && silent30 === 0) return null;
+        return (
+          <div className="flex flex-wrap gap-2 text-xs">
+            {passportExpired > 0 && (
+              <button
+                onClick={() => setFilters((f) => ({ ...f, passport_expiring_days: 0 }))}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
+                style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}
+              >
+                <AlertCircle className="w-3 h-3" />
+                {passportExpired} passport{passportExpired > 1 ? 's' : ''} expired
+              </button>
+            )}
+            {passportExpiring > 0 && (
+              <button
+                onClick={() => setFilters((f) => ({ ...f, passport_expiring_days: 90 }))}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
+                style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.25)' }}
+              >
+                <AlertCircle className="w-3 h-3" />
+                {passportExpiring} expiring in 90d
+              </button>
+            )}
+            {silent30 > 0 && (
+              <button
+                onClick={() => setSilentFilter(silentFilter === 30 ? null : 30)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
+                style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.25)' }}
+              >
+                <AlertCircle className="w-3 h-3" />
+                {silent30} silent 30d+
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Controls Row */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row gap-3">
