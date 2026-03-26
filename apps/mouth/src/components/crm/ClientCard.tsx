@@ -177,12 +177,26 @@ export const ClientCard = React.memo(
 
               {/* Action Buttons (Visible on Hover) */}
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="p-1.5 rounded-md hover:bg-[rgba(255,255,255,0.1)] hover:text-white transition-colors">
-                  <Mail className="w-3 h-3" />
-                </button>
-                <button className="p-1.5 rounded-md hover:bg-[rgba(16,185,129,0.15)] hover:text-[var(--neon-emerald)] transition-colors">
-                  <Phone className="w-3 h-3" />
-                </button>
+                {client.email && (
+                  <a
+                    href={`mailto:${client.email}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1.5 rounded-md hover:bg-[rgba(255,255,255,0.1)] hover:text-white transition-colors"
+                    title={client.email}
+                  >
+                    <Mail className="w-3 h-3" />
+                  </a>
+                )}
+                {client.phone && (
+                  <a
+                    href={`tel:${client.phone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1.5 rounded-md hover:bg-[rgba(16,185,129,0.15)] hover:text-[var(--neon-emerald)] transition-colors"
+                    title={client.phone}
+                  >
+                    <Phone className="w-3 h-3" />
+                  </a>
+                )}
               </div>
             </div>
           </div>
@@ -205,9 +219,10 @@ export const ClientCard = React.memo(
   },
   (prevProps, nextProps) => {
     // Custom comparison function for React.memo
-    // Only re-render if client data or dragging state changes
     return (
       prevProps.client.id === nextProps.client.id &&
+      prevProps.client.full_name === nextProps.client.full_name &&
+      prevProps.client.status === nextProps.client.status &&
       prevProps.client.last_sentiment === nextProps.client.last_sentiment &&
       prevProps.client.last_interaction_date ===
         nextProps.client.last_interaction_date &&

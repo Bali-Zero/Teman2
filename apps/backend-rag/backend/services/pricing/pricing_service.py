@@ -45,6 +45,7 @@ class PricingService:
             for category in [
                 "single_entry_visas",
                 "multiple_entry_visas",
+                "visa_extensions",
                 "kitas_permits",
                 "kitap_permits",
                 "company_services",
@@ -54,7 +55,7 @@ class PricingService:
                 if category in self.prices.get("services", {}):
                     service_count += len(self.prices["services"][category])
 
-            logger.info(f"{service_count} services loaded across 7 categories")
+            logger.info(f"{service_count} services loaded across 8 categories")
 
         except Exception as e:
             logger.error(f"Error loading official prices: {e}")
@@ -266,6 +267,7 @@ class PricingService:
             "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - VISA",
             "single_entry_visas": services.get("single_entry_visas", {}),
             "multiple_entry_visas": services.get("multiple_entry_visas", {}),
+            "visa_extensions": services.get("visa_extensions", {}),
             "contact_info": self.prices.get("contact_info", {}),
             "disclaimer": self.prices.get("disclaimer", {}),
         }
@@ -384,6 +386,7 @@ class PricingService:
             context_parts.extend(
                 self._format_service_list(services.get("multiple_entry_visas", []))
             )
+            context_parts.extend(self._format_service_list(services.get("visa_extensions", [])))
             context_parts.append("")
 
         if service_type == "kitas" or service_type is None:

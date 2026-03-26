@@ -28,34 +28,34 @@ import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 import { RequiredDocumentsCard } from "./RequiredDocumentsCard";
 
-// Status mapping for display
+// Status mapping for display — use static classes for Tailwind JIT compatibility
 const STATUS_INFO: Record<
   string,
-  { label: string; color: string; icon: React.ReactNode }
+  { label: string; badgeClass: string; icon: React.ReactNode }
 > = {
   inquiry: {
     label: "Inquiry",
-    color: "blue",
+    badgeClass: "bg-blue-500/10 text-blue-500",
     icon: <AlertCircle className="w-4 h-4" />,
   },
   waiting_documents: {
     label: "Waiting Documents",
-    color: "amber",
+    badgeClass: "bg-amber-500/10 text-amber-500",
     icon: <FileText className="w-4 h-4" />,
   },
   sending_invoice: {
     label: "Sending Invoice",
-    color: "orange",
+    badgeClass: "bg-orange-500/10 text-orange-500",
     icon: <DollarSign className="w-4 h-4" />,
   },
   on_process: {
     label: "On Process",
-    color: "purple",
+    badgeClass: "bg-purple-500/10 text-purple-500",
     icon: <Clock className="w-4 h-4" />,
   },
   completed: {
     label: "Completed",
-    color: "green",
+    badgeClass: "bg-green-500/10 text-green-500",
     icon: <CheckCircle2 className="w-4 h-4" />,
   },
 };
@@ -190,9 +190,11 @@ export default function CaseDetailPage() {
 
   const formatCurrency = (amount?: number) => {
     if (amount === undefined || amount === null) return "Not set";
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("id-ID", {
       style: "currency",
-      currency: "USD",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -455,7 +457,7 @@ export default function CaseDetailPage() {
 
   const statusInfo = STATUS_INFO[practice.status] || {
     label: practice.status,
-    color: "gray",
+    badgeClass: "bg-gray-500/10 text-gray-400",
     icon: <FileText className="w-4 h-4" />,
   };
 
@@ -494,7 +496,7 @@ export default function CaseDetailPage() {
                 #{practice.id}
               </h1>
               <div
-                className={`flex items-center gap-2 px-3 py-1 rounded-full bg-${statusInfo.color}-500/10 text-${statusInfo.color}-500`}
+                className={`flex items-center gap-2 px-3 py-1 rounded-full ${statusInfo.badgeClass}`}
               >
                 {statusInfo.icon}
                 <span className="text-sm font-medium">{statusInfo.label}</span>
@@ -704,7 +706,7 @@ export default function CaseDetailPage() {
                   Status
                 </label>
                 <div
-                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-${statusInfo.color}-500/10 text-${statusInfo.color}-500`}
+                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${statusInfo.badgeClass}`}
                 >
                   {statusInfo.icon}
                   <span className="font-medium">{statusInfo.label}</span>
@@ -1073,7 +1075,7 @@ export default function CaseDetailPage() {
                   className="text-sm font-medium"
                   style={{ color: "var(--bz-text-1)" }}
                 >
-                  Quoted Price (USD)
+                  Quoted Price (IDR)
                 </label>
                 <input
                   type="number"
@@ -1101,7 +1103,7 @@ export default function CaseDetailPage() {
                   className="text-sm font-medium"
                   style={{ color: "var(--bz-text-1)" }}
                 >
-                  Actual Price (USD)
+                  Actual Price (IDR)
                 </label>
                 <input
                   type="number"

@@ -339,7 +339,7 @@ ENTITY_SCHEMAS: dict[EntityType, EntitySchema] = {
             r"\b[Vv]isa\b",
             r"[Vv]isa\s+(?:[A-Z0-9]+)",
         ],
-        examples=["Visa B211A", "Visa On Arrival", "Visa 211"],
+        examples=["Visa C1 Tourism", "Visa On Arrival", "Visa C2 Business"],
         attributes=["type", "number"],
         description="General Visa Type",
     ),

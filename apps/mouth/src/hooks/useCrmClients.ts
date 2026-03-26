@@ -62,6 +62,7 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
     queryFn: async (): Promise<Client[]> => {
       return api.crm.getClients({
         search: search || undefined,
+        status: status || undefined,
         assigned_to: assigned_to || undefined,
         limit,
         offset,
@@ -89,6 +90,14 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
       loadingRef.current = false;
     }
   }, [data, offset, limit]);
+
+  // Reset loadingRef on error so loadMore can be retried
+  useEffect(() => {
+    if (isError) {
+      loadingRef.current = false;
+      setIsLoadingMore(false);
+    }
+  }, [isError]);
 
   // Reset when filters change
   useEffect(() => {
@@ -133,7 +142,7 @@ export function useCrmClient(clientId: number | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["crm", "clients", clientId],
+    queryKey: ["crm", "client", clientId],
     queryFn: async (): Promise<Client> => {
       if (!clientId) throw new Error("Client ID required");
       return api.crm.getClient(clientId);
@@ -143,7 +152,7 @@ export function useCrmClient(clientId: number | null) {
   });
 
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["crm", "clients", clientId] });
+    queryClient.invalidateQueries({ queryKey: ["crm", "client", clientId] });
   }, [queryClient, clientId]);
 
   return {

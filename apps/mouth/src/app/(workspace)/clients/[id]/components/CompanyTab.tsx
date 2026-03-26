@@ -44,27 +44,40 @@ function CompanyDocUpload({
   const [ocrPolling, setOcrPolling] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const ocrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ocrAbortedRef = useRef(false);
+
+  useEffect(() => {
+    ocrAbortedRef.current = false;
+    return () => {
+      ocrAbortedRef.current = true;
+      if (ocrTimerRef.current) clearTimeout(ocrTimerRef.current);
+    };
+  }, []);
 
   const pollOcrStatus = useCallback(async () => {
     setOcrPolling(true);
     let attempts = 0;
     const poll = async () => {
+      if (ocrAbortedRef.current) return;
       try {
         const status = (await api.request(`/api/crm/clients/${clientId}/ocr-status`)) as {
           pending_ocr: number;
         };
         if (status.pending_ocr === 0 || attempts >= 10) {
-          setOcrPolling(false);
-          onUploaded?.();
+          if (!ocrAbortedRef.current) {
+            setOcrPolling(false);
+            onUploaded?.();
+          }
           return;
         }
         attempts++;
-        setTimeout(poll, 3000);
+        ocrTimerRef.current = setTimeout(poll, 3000);
       } catch {
-        setOcrPolling(false);
+        if (!ocrAbortedRef.current) setOcrPolling(false);
       }
     };
-    setTimeout(poll, 2000);
+    ocrTimerRef.current = setTimeout(poll, 2000);
   }, [clientId, onUploaded]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
