@@ -330,7 +330,9 @@ async def health_check_crm_tables(db_pool: asyncpg.Pool) -> dict[str, Any]:
         # Conta record per tabella (query separate — nessuna interpolazione di nomi tabella)
         checks["clients"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM clients")}
         checks["practices"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM practices")}
-        checks["practice_types"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM practice_types")}
+        checks["practice_types"] = {
+            "count": await conn.fetchval("SELECT COUNT(*) FROM practice_types")
+        }
         checks["interactions"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM interactions")}
 
         # Verifica clienti senza pratiche

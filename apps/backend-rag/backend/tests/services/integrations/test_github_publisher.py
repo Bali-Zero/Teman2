@@ -12,20 +12,23 @@ Covers:
 """
 
 import base64
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from backend.services.integrations.github_publisher import (
     GitHubPublisher,
     GitHubPublisherError,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_publisher(token: str = "ghp_fake", owner: str = "org", repo: str = "repo") -> GitHubPublisher:
+
+def _make_publisher(
+    token: str = "ghp_fake", owner: str = "org", repo: str = "repo"
+) -> GitHubPublisher:
     with patch("backend.services.integrations.github_publisher.settings") as mock_settings:
         mock_settings.github_token = token
         mock_settings.github_owner = owner
@@ -38,9 +41,12 @@ def _make_publisher(token: str = "ghp_fake", owner: str = "org", repo: str = "re
 # _validate_path
 # ---------------------------------------------------------------------------
 
+
 class TestValidatePath:
     def test_normal_path_unchanged(self):
-        assert GitHubPublisher._validate_path("content/articles/foo.mdx") == "content/articles/foo.mdx"
+        assert (
+            GitHubPublisher._validate_path("content/articles/foo.mdx") == "content/articles/foo.mdx"
+        )
 
     def test_leading_slash_stripped(self):
         assert GitHubPublisher._validate_path("/content/foo.mdx") == "content/foo.mdx"
@@ -79,6 +85,7 @@ class TestValidatePath:
 # is_configured
 # ---------------------------------------------------------------------------
 
+
 class TestIsConfigured:
     def test_configured_when_all_set(self):
         pub = _make_publisher()
@@ -101,6 +108,7 @@ class TestIsConfigured:
 # _get_headers
 # ---------------------------------------------------------------------------
 
+
 class TestGetHeaders:
     def test_contains_bearer_token(self):
         pub = _make_publisher(token="ghp_secret123")
@@ -111,7 +119,7 @@ class TestGetHeaders:
     def test_token_not_logged(self):
         """Ensures the token value is encapsulated and not exposed via repr."""
         pub = _make_publisher(token="ghp_supersecret")
-        headers = pub._get_headers()
+        pub._get_headers()  # side-effect call; we only check str(pub) below
         # The header dict is fine to use internally but we verify no accidental exposure.
         assert "ghp_supersecret" not in str(pub)
 
@@ -119,6 +127,7 @@ class TestGetHeaders:
 # ---------------------------------------------------------------------------
 # close()
 # ---------------------------------------------------------------------------
+
 
 class TestClose:
     @pytest.mark.asyncio
@@ -149,6 +158,7 @@ class TestClose:
 # ---------------------------------------------------------------------------
 # check_file_exists
 # ---------------------------------------------------------------------------
+
 
 class TestCheckFileExists:
     @pytest.mark.asyncio
@@ -195,6 +205,7 @@ class TestCheckFileExists:
 # ---------------------------------------------------------------------------
 # upload_file
 # ---------------------------------------------------------------------------
+
 
 class TestUploadFile:
     def _make_upload_response(self, status_code: int = 201) -> MagicMock:
@@ -296,6 +307,7 @@ class TestUploadFile:
 # ---------------------------------------------------------------------------
 # create_commit_with_files — path validation
 # ---------------------------------------------------------------------------
+
 
 class TestCreateCommitWithFiles:
     @pytest.mark.asyncio

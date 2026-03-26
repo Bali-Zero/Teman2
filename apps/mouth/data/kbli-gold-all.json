@@ -10,10 +10,7 @@
       "categoryId": 4,
       "categoryName": "Industri Makanan",
       "totalInCategory": 44,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 28,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -173,10 +170,7 @@
       "categoryId": 4,
       "categoryName": "Industri Makanan",
       "totalInCategory": 44,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 28,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -336,10 +330,7 @@
       "categoryId": 4,
       "categoryName": "Industri Makanan",
       "totalInCategory": 44,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 28,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -499,9 +490,7 @@
       "categoryId": 4,
       "categoryName": "Industri Makanan",
       "totalInCategory": 44,
-      "iscoGroupsSelected": [
-        "21"
-      ],
+      "iscoGroupsSelected": ["21"],
       "selectedForThisCode": 16,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -601,10 +590,7 @@
       "categoryId": 4,
       "categoryName": "Industri Makanan",
       "totalInCategory": 44,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 28,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -764,10 +750,7 @@
       "categoryId": 4,
       "categoryName": "Industri Makanan",
       "totalInCategory": 44,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 28,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -927,10 +910,7 @@
       "categoryId": 4,
       "categoryName": "Industri Makanan",
       "totalInCategory": 44,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 28,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -1090,10 +1070,7 @@
       "categoryId": 4,
       "categoryName": "Industri Makanan",
       "totalInCategory": 44,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 28,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -1269,10 +1246,7 @@
       "categoryId": 4,
       "categoryName": "Industri Minuman",
       "totalInCategory": 46,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 34,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -1462,10 +1436,7 @@
       "categoryId": 4,
       "categoryName": "Industri Minuman",
       "totalInCategory": 46,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 34,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -1655,10 +1626,7 @@
       "categoryId": 4,
       "categoryName": "Industri Minuman",
       "totalInCategory": 46,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 34,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -1848,10 +1816,7 @@
       "categoryId": 4,
       "categoryName": "Industri Minuman",
       "totalInCategory": 46,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 34,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -2041,10 +2006,7 @@
       "categoryId": 4,
       "categoryName": "Industri Furnitur",
       "totalInCategory": 13,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 9,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -2109,9 +2071,7 @@
       "categoryId": 4,
       "categoryName": "Industri Furnitur",
       "totalInCategory": 13,
-      "iscoGroupsSelected": [
-        "21"
-      ],
+      "iscoGroupsSelected": ["21"],
       "selectedForThisCode": 4,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -2151,10 +2111,7 @@
       "categoryId": 4,
       "categoryName": "Industri Bahan Kimia",
       "totalInCategory": 694,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 13,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -2239,10 +2196,7 @@
       "categoryId": 4,
       "categoryName": "Industri Bahan Kimia",
       "totalInCategory": 694,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 13,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -2327,10 +2281,7 @@
       "categoryId": 4,
       "categoryName": "Industri Minuman",
       "totalInCategory": 46,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -2355,10 +2306,7 @@
       "categoryId": 4,
       "categoryName": "Industri Minuman",
       "totalInCategory": 46,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -2383,10 +2331,7 @@
       "categoryId": 4,
       "categoryName": "Industri Minuman",
       "totalInCategory": 46,
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
+      "iscoGroupsSelected": ["13", "21"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -2411,10 +2356,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["21", "31"],
       "selectedForThisCode": 138,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -3124,10 +3066,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["21", "31"],
       "selectedForThisCode": 138,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -3837,10 +3776,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["21", "31"],
       "selectedForThisCode": 138,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -4550,10 +4486,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["21", "31"],
       "selectedForThisCode": 138,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -5263,10 +5196,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["21", "31"],
       "selectedForThisCode": 138,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -5976,10 +5906,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["21", "31"],
       "selectedForThisCode": 138,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -6689,11 +6616,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 169,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -7558,11 +7481,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 169,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -8427,11 +8346,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 169,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -9296,11 +9211,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 169,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -10165,11 +10076,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 169,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -11034,11 +10941,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 169,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -11903,11 +11806,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 169,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -12772,10 +12671,7 @@
       "categoryId": 1,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["21", "31"],
       "selectedForThisCode": 138,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -13485,11 +13381,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -13559,11 +13451,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "43"
-      ],
+      "iscoGroupsSelected": ["13", "24", "43"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -13618,11 +13506,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "43"
-      ],
+      "iscoGroupsSelected": ["13", "24", "43"],
       "selectedForThisCode": 6,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -13672,11 +13556,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "43"
-      ],
+      "iscoGroupsSelected": ["13", "24", "43"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -13731,11 +13611,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "43"
-      ],
+      "iscoGroupsSelected": ["13", "24", "43"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -13790,11 +13666,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "43"
-      ],
+      "iscoGroupsSelected": ["13", "24", "43"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -13849,11 +13721,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -13913,11 +13781,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -13977,11 +13841,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14041,11 +13901,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 9,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14110,11 +13966,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14174,11 +14026,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14286,11 +14134,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14345,11 +14189,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14404,11 +14244,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14468,11 +14304,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14527,11 +14359,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14601,11 +14429,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14665,11 +14489,7 @@
       "categoryId": 7,
       "categoryName": "Perdagangan Besar",
       "totalInCategory": 198,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "24", "31"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14724,11 +14544,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14798,11 +14614,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14872,11 +14684,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -14946,11 +14754,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15020,10 +14824,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["21", "31"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15068,11 +14869,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15142,11 +14939,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15216,11 +15009,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15290,11 +15079,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15364,11 +15149,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15438,11 +15219,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15512,11 +15289,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15586,11 +15359,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15660,11 +15429,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15734,11 +15499,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15808,10 +15569,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["21", "31"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15856,11 +15614,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -15930,11 +15684,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16004,11 +15754,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16078,11 +15824,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16152,11 +15894,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16226,11 +15964,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16300,11 +16034,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16374,11 +16104,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16448,11 +16174,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16522,11 +16244,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16596,11 +16314,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16670,11 +16384,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16744,11 +16454,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16818,11 +16524,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16892,11 +16594,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -16966,11 +16664,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17040,11 +16734,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17114,11 +16804,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17188,11 +16874,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17262,11 +16944,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17336,11 +17014,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17410,11 +17084,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17484,11 +17154,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17558,11 +17224,7 @@
       "categoryId": 16,
       "categoryName": "Perdagangan Besar & Eceran",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17632,11 +17294,7 @@
       "categoryId": 17,
       "categoryName": "Transportasi & Pergudangan",
       "totalInCategory": 152,
-      "iscoGroupsSelected": [
-        "13",
-        "31",
-        "83"
-      ],
+      "iscoGroupsSelected": ["13", "31", "83"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17696,11 +17354,7 @@
       "categoryId": 17,
       "categoryName": "Transportasi & Pergudangan",
       "totalInCategory": 152,
-      "iscoGroupsSelected": [
-        "13",
-        "31",
-        "83"
-      ],
+      "iscoGroupsSelected": ["13", "31", "83"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17760,11 +17414,7 @@
       "categoryId": 17,
       "categoryName": "Transportasi & Pergudangan",
       "totalInCategory": 152,
-      "iscoGroupsSelected": [
-        "13",
-        "31",
-        "43"
-      ],
+      "iscoGroupsSelected": ["13", "31", "43"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17824,9 +17474,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "14"
-      ],
+      "iscoGroupsSelected": ["14"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17871,9 +17519,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "14"
-      ],
+      "iscoGroupsSelected": ["14"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17918,9 +17564,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "14"
-      ],
+      "iscoGroupsSelected": ["14"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -17965,9 +17609,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "14"
-      ],
+      "iscoGroupsSelected": ["14"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18012,9 +17654,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "14"
-      ],
+      "iscoGroupsSelected": ["14"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18059,9 +17699,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "14"
-      ],
+      "iscoGroupsSelected": ["14"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18106,10 +17744,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18164,10 +17799,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18222,10 +17854,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18280,9 +17909,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "14"
-      ],
+      "iscoGroupsSelected": ["14"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18327,10 +17954,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18385,10 +18009,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18443,10 +18064,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18501,10 +18119,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18559,10 +18174,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18617,10 +18229,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18675,10 +18284,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18733,10 +18339,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18791,10 +18394,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18849,10 +18449,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18907,10 +18504,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -18965,10 +18559,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -19023,10 +18614,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -19081,10 +18669,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -19139,10 +18724,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -19197,10 +18779,7 @@
       "categoryId": 8,
       "categoryName": "Akomodasi & Makan/Minum",
       "totalInCategory": 12,
-      "iscoGroupsSelected": [
-        "12",
-        "14"
-      ],
+      "iscoGroupsSelected": ["12", "14"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -19255,11 +18834,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 205,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -20304,11 +19879,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 205,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -21353,11 +20924,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 205,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -22402,11 +21969,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 205,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -23451,11 +23014,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 205,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -24500,11 +24059,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 205,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -25549,11 +25104,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 205,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26598,11 +26149,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26627,11 +26174,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26656,11 +26199,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26685,11 +26224,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26714,11 +26249,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26743,11 +26274,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26772,10 +26299,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 3,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26810,11 +26334,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26839,11 +26359,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26868,11 +26384,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26897,10 +26409,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 3,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26935,11 +26444,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26964,11 +26469,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -26993,11 +26494,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27022,11 +26519,7 @@
       "categoryId": 13,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27051,10 +26544,7 @@
       "categoryId": 9,
       "categoryName": "Jasa Keuangan dan Asuransi",
       "totalInCategory": 45,
-      "iscoGroupsSelected": [
-        "12",
-        "24"
-      ],
+      "iscoGroupsSelected": ["12", "24"],
       "selectedForThisCode": 6,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27104,10 +26594,7 @@
       "categoryId": 9,
       "categoryName": "Jasa Keuangan dan Asuransi",
       "totalInCategory": 45,
-      "iscoGroupsSelected": [
-        "12",
-        "24"
-      ],
+      "iscoGroupsSelected": ["12", "24"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27152,10 +26639,7 @@
       "categoryId": 9,
       "categoryName": "Jasa Keuangan dan Asuransi",
       "totalInCategory": 45,
-      "iscoGroupsSelected": [
-        "12",
-        "24"
-      ],
+      "iscoGroupsSelected": ["12", "24"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27234,10 +26718,7 @@
       "categoryId": 9,
       "categoryName": "Jasa Keuangan dan Asuransi",
       "totalInCategory": 45,
-      "iscoGroupsSelected": [
-        "12",
-        "24"
-      ],
+      "iscoGroupsSelected": ["12", "24"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27292,10 +26773,7 @@
       "categoryId": 9,
       "categoryName": "Jasa Keuangan dan Asuransi",
       "totalInCategory": 45,
-      "iscoGroupsSelected": [
-        "12",
-        "24"
-      ],
+      "iscoGroupsSelected": ["12", "24"],
       "selectedForThisCode": 6,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27345,10 +26823,7 @@
       "categoryId": 9,
       "categoryName": "Jasa Keuangan dan Asuransi",
       "totalInCategory": 45,
-      "iscoGroupsSelected": [
-        "12",
-        "24"
-      ],
+      "iscoGroupsSelected": ["12", "24"],
       "selectedForThisCode": 7,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27403,10 +26878,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27451,10 +26923,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27499,10 +26968,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27547,10 +27013,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27595,10 +27058,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27643,10 +27103,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27691,10 +27148,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27739,10 +27193,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27787,10 +27238,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27835,10 +27283,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27883,10 +27328,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27931,10 +27373,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -27979,10 +27418,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28027,10 +27463,7 @@
       "categoryId": 2,
       "categoryName": "Real Estate",
       "totalInCategory": 6,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28075,11 +27508,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28098,11 +27527,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28121,11 +27546,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28144,11 +27565,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28167,11 +27584,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28190,10 +27603,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28238,10 +27648,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28286,10 +27693,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28334,10 +27738,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "12",
-        "13"
-      ],
+      "iscoGroupsSelected": ["12", "13"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28382,10 +27783,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28410,11 +27808,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28433,11 +27827,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28480,11 +27870,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28503,11 +27889,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28526,11 +27908,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28549,11 +27927,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28572,10 +27946,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28600,10 +27971,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28628,10 +27996,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28656,10 +28021,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28684,10 +28046,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28712,10 +28071,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28740,10 +28096,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28768,10 +28121,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28796,10 +28146,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28824,10 +28171,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "21",
-        "26"
-      ],
+      "iscoGroupsSelected": ["21", "26"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28852,11 +28196,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28875,11 +28215,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28906,9 +28242,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "12"
-      ],
+      "iscoGroupsSelected": ["12"],
       "selectedForThisCode": 5,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -28953,11 +28287,7 @@
       "categoryId": 18,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -28992,11 +28322,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29015,11 +28341,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29038,11 +28360,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29061,11 +28379,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29084,11 +28398,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29107,11 +28417,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29130,11 +28436,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29153,11 +28455,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29176,11 +28474,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29199,11 +28493,7 @@
       "categoryId": 19,
       "categoryName": "Akomodasi & Makan Minum",
       "totalInCategory": 164,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "42"
-      ],
+      "iscoGroupsSelected": ["13", "24", "42"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -29263,11 +28553,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29286,11 +28572,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29309,11 +28591,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29332,11 +28610,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29355,11 +28629,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29378,11 +28648,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29401,11 +28667,7 @@
       "categoryId": 10,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -29424,11 +28686,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -29458,11 +28716,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -29492,11 +28746,7 @@
       "categoryId": 19,
       "categoryName": "Akomodasi & Makan Minum",
       "totalInCategory": 164,
-      "iscoGroupsSelected": [
-        "13",
-        "24",
-        "33"
-      ],
+      "iscoGroupsSelected": ["13", "24", "33"],
       "selectedForThisCode": 9,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -29561,11 +28811,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -29595,11 +28841,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -29629,9 +28871,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -30286,9 +29526,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -30943,9 +30181,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -30964,9 +30200,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -31621,9 +30855,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -32278,9 +31510,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -32935,9 +32165,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -32956,9 +32184,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -32977,9 +32203,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "34"
-      ],
+      "iscoGroupsSelected": ["34"],
       "selectedForThisCode": 1,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -33004,9 +32228,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -33661,9 +32883,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -34318,9 +33538,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -34975,9 +34193,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -35632,9 +34848,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "13"
-      ],
+      "iscoGroupsSelected": ["13"],
       "selectedForThisCode": 11,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -35709,9 +34923,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -36366,9 +35578,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -37023,9 +36233,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -37680,9 +36888,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -38337,9 +37543,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -38358,9 +37562,7 @@
       "categoryId": 3,
       "categoryName": "Pendidikan",
       "totalInCategory": 143,
-      "iscoGroupsSelected": [
-        "23"
-      ],
+      "iscoGroupsSelected": ["23"],
       "selectedForThisCode": 127,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -39015,11 +38217,7 @@
       "categoryId": 12,
       "categoryName": "Jasa Kesehatan & Kegiatan Sosial",
       "totalInCategory": 64,
-      "iscoGroupsSelected": [
-        "12",
-        "22",
-        "32"
-      ],
+      "iscoGroupsSelected": ["12", "22", "32"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -39089,11 +38287,7 @@
       "categoryId": 12,
       "categoryName": "Jasa Kesehatan & Kegiatan Sosial",
       "totalInCategory": 64,
-      "iscoGroupsSelected": [
-        "12",
-        "22",
-        "32"
-      ],
+      "iscoGroupsSelected": ["12", "22", "32"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -39163,11 +38357,7 @@
       "categoryId": 12,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -39186,11 +38376,7 @@
       "categoryId": 12,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -39209,11 +38395,7 @@
       "categoryId": 12,
       "categoryName": "Jasa Kesehatan & Kegiatan Sosial",
       "totalInCategory": 64,
-      "iscoGroupsSelected": [
-        "12",
-        "22",
-        "32"
-      ],
+      "iscoGroupsSelected": ["12", "22", "32"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -39273,11 +38455,7 @@
       "categoryId": 12,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -39296,11 +38474,7 @@
       "categoryId": 12,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -39319,11 +38493,7 @@
       "categoryId": 12,
       "categoryName": "Jasa Kesehatan & Kegiatan Sosial",
       "totalInCategory": 64,
-      "iscoGroupsSelected": [
-        "12",
-        "22",
-        "32"
-      ],
+      "iscoGroupsSelected": ["12", "22", "32"],
       "selectedForThisCode": 8,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -39383,11 +38553,7 @@
       "categoryId": 12,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -39406,11 +38572,7 @@
       "categoryId": 12,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -39429,11 +38591,7 @@
       "categoryId": 12,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -39452,11 +38610,7 @@
       "categoryId": 12,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -39475,11 +38629,7 @@
       "categoryId": 12,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 0,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [],
@@ -39498,9 +38648,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "26"
-      ],
+      "iscoGroupsSelected": ["26"],
       "selectedForThisCode": 13,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -39585,9 +38733,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "26"
-      ],
+      "iscoGroupsSelected": ["26"],
       "selectedForThisCode": 13,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -39672,9 +38818,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "26"
-      ],
+      "iscoGroupsSelected": ["26"],
       "selectedForThisCode": 13,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -39759,9 +38903,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "26"
-      ],
+      "iscoGroupsSelected": ["26"],
       "selectedForThisCode": 13,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -39846,9 +38988,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "34"
-      ],
+      "iscoGroupsSelected": ["34"],
       "selectedForThisCode": 29,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -40013,9 +39153,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "34"
-      ],
+      "iscoGroupsSelected": ["34"],
       "selectedForThisCode": 29,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -40180,9 +39318,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "34"
-      ],
+      "iscoGroupsSelected": ["34"],
       "selectedForThisCode": 29,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -40347,11 +39483,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -40626,11 +39758,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -40905,11 +40033,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -41184,9 +40308,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "34"
-      ],
+      "iscoGroupsSelected": ["34"],
       "selectedForThisCode": 29,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -41351,9 +40473,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "34"
-      ],
+      "iscoGroupsSelected": ["34"],
       "selectedForThisCode": 29,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -41518,9 +40638,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "34"
-      ],
+      "iscoGroupsSelected": ["34"],
       "selectedForThisCode": 29,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -41685,11 +40803,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -41964,9 +41078,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "34"
-      ],
+      "iscoGroupsSelected": ["34"],
       "selectedForThisCode": 29,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -42131,11 +41243,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -42410,11 +41518,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -42689,11 +41793,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -42968,9 +42068,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "34"
-      ],
+      "iscoGroupsSelected": ["34"],
       "selectedForThisCode": 29,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -43135,11 +42233,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -43414,11 +42508,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -43693,11 +42783,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -43972,11 +43058,7 @@
       "categoryId": 7,
       "categoryName": "Kesenian, Hiburan & Rekreasi",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "14",
-        "26",
-        "34"
-      ],
+      "iscoGroupsSelected": ["14", "26", "34"],
       "selectedForThisCode": 51,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44251,11 +43333,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44325,11 +43403,7 @@
       "categoryId": 16,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 10,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44399,11 +43473,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44433,10 +43503,7 @@
       "categoryId": 18,
       "categoryName": "Jasa Lainnya",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "51",
-        "53"
-      ],
+      "iscoGroupsSelected": ["51", "53"],
       "selectedForThisCode": 6,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44486,10 +43553,7 @@
       "categoryId": 18,
       "categoryName": "Jasa Lainnya",
       "totalInCategory": 57,
-      "iscoGroupsSelected": [
-        "51",
-        "53"
-      ],
+      "iscoGroupsSelected": ["51", "53"],
       "selectedForThisCode": 6,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44539,11 +43603,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44573,11 +43633,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44607,11 +43663,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44641,11 +43693,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44675,11 +43723,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [
@@ -44709,11 +43753,7 @@
       "categoryId": 17,
       "categoryName": "Konstruksi",
       "totalInCategory": 181,
-      "iscoGroupsSelected": [
-        "13",
-        "21",
-        "31"
-      ],
+      "iscoGroupsSelected": ["13", "21", "31"],
       "selectedForThisCode": 2,
       "selectionMethod": "ISCO-based",
       "relevantPositions": [

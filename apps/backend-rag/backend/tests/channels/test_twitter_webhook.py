@@ -8,7 +8,6 @@ import pytest
 
 from backend.app.routers.twitter import _compute_crc_response, _verify_webhook_signature
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -81,10 +80,7 @@ class TestVerifyWebhookSignature:
 
     def test_invalid_signature_returns_false(self) -> None:
         body = '{"events": []}'
-        assert (
-            _verify_webhook_signature(body.encode(), "sha256=AAAA", CONSUMER_SECRET)
-            is False
-        )
+        assert _verify_webhook_signature(body.encode(), "sha256=AAAA", CONSUMER_SECRET) is False
 
     def test_missing_signature_returns_false(self) -> None:
         assert _verify_webhook_signature(b"body", None, CONSUMER_SECRET) is False
@@ -96,10 +92,7 @@ class TestVerifyWebhookSignature:
         body_original = '{"events": []}'
         sig = self._make_signature(body_original, CONSUMER_SECRET)
         body_tampered = '{"events": ["malicious"]}'
-        assert (
-            _verify_webhook_signature(body_tampered.encode(), sig, CONSUMER_SECRET)
-            is False
-        )
+        assert _verify_webhook_signature(body_tampered.encode(), sig, CONSUMER_SECRET) is False
 
 
 # ---------------------------------------------------------------------------

@@ -3,8 +3,8 @@ WhatsApp Notification Service
 
 Responsibility: Send WhatsApp messages via Twilio.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import asyncio
 import logging

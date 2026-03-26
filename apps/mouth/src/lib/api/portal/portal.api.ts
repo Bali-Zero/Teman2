@@ -258,9 +258,19 @@ export class PortalApi {
     revenue_annual?: number;
     obstacles?: string;
     plans?: string;
-  }): Promise<{ draft_id: number; quarter: string; year: number; realized_total: number }> {
+  }): Promise<{
+    draft_id: number;
+    quarter: string;
+    year: number;
+    realized_total: number;
+  }> {
     const response = await this.client.request<
-      PortalApiResponse<{ draft_id: number; quarter: string; year: number; realized_total: number }>
+      PortalApiResponse<{
+        draft_id: number;
+        quarter: string;
+        year: number;
+        realized_total: number;
+      }>
     >("/api/v1/lkpm/submit-data", {
       method: "POST",
       body: JSON.stringify(data),

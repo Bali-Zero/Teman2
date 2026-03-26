@@ -565,7 +565,9 @@ async def get_upcoming_renewals(
     """
     try:
         # RBAC: non-admin users can only see their own renewals
-        user_email = current_user.get("email", "") if not can_view_all_practices(current_user) else None
+        user_email = (
+            current_user.get("email", "") if not can_view_all_practices(current_user) else None
+        )
 
         async with db_pool.acquire() as conn:
             if user_email:

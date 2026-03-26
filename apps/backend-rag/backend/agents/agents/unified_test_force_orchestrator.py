@@ -10,8 +10,8 @@ Sistema completo per testare TUTTO il sistema:
 Calcola coverage complessivo e differenziale.
 Genera test con Qwen per tutti i componenti.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import asyncio
 import logging

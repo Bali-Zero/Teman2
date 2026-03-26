@@ -7,8 +7,8 @@ Può essere integrato per:
 - Data analysis
 - ML/AI experiments
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import logging
 import subprocess

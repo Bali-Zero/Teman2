@@ -349,7 +349,9 @@ class TestStreamQueryRouting:
         assert any(e.get("type") == "done" for e in events)
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — out-of-domain now via QueryGates.run_all_gates()")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — out-of-domain now via QueryGates.run_all_gates()"
+    )
     async def test_stream_query_out_of_domain(self, orchestrator):
         """Test out-of-domain detection in stream"""
         with patch(
@@ -369,7 +371,9 @@ class TestStreamQueryRouting:
             )
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — clarification now via QueryGates.run_all_gates()")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — clarification now via QueryGates.run_all_gates()"
+    )
     async def test_stream_query_clarification_needed(self, orchestrator):
         """Test clarification gate in stream"""
         mock_clarification = MagicMock()
@@ -395,7 +399,9 @@ class TestStreamQueryRouting:
         )
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — recall gate removed, queries go through ReAct loop")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — recall gate removed, queries go through ReAct loop"
+    )
     async def test_stream_query_conversation_recall(self, orchestrator):
         """Test conversation recall gate in stream"""
         history = [
@@ -434,7 +440,9 @@ class TestStreamQueryRouting:
             )
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — user_id validation no longer raises ValueError")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — user_id validation no longer raises ValueError"
+    )
     async def test_stream_query_invalid_user_id(self, orchestrator):
         """Test validation of user_id format"""
         with pytest.raises(ValueError, match="Invalid user_id format"):
@@ -566,7 +574,9 @@ class TestStreamQueryRouting:
             )
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — followup generation now inside streaming_core post-stream")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — followup generation now inside streaming_core post-stream"
+    )
     async def test_stream_query_followup_generation(self, orchestrator):
         """Test follow-up question generation"""
 
@@ -605,7 +615,9 @@ class TestStreamQueryRouting:
             )
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — create_save_task no longer called from stream_query path")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — create_save_task no longer called from stream_query path"
+    )
     async def test_stream_query_memory_save_background(self, orchestrator):
         """Test that memory is saved in background after stream"""
 

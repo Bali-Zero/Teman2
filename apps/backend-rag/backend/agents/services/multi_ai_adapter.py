@@ -12,8 +12,8 @@ Integra:
 
 Routes tasks to the best AI based on task type and requirements.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import logging
 import os

@@ -8,8 +8,8 @@ Refactored to use modular services:
 - RelationshipExtractor: Extract relationships between entities using AI
 - KnowledgeGraphRepository: Database operations for entities and relationships
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import json
 import logging

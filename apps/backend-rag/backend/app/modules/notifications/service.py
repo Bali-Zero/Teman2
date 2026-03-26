@@ -27,6 +27,7 @@ import aiohttp
 
 try:
     import aiosmtplib
+
     _AIOSMTPLIB_AVAILABLE = True
 except ImportError:
     aiosmtplib = None  # type: ignore[assignment]

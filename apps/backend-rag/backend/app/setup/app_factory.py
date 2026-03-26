@@ -266,6 +266,7 @@ async def lifespan(app: FastAPI):
     # Module-level client cleanups (Addressing global clients in specific services)
     try:
         from backend.services.rag.kg_subgraph_property import close_property_subgraph_client
+
         await close_property_subgraph_client()
         logger.info("✅ Property Subgraph module client closed")
     except ImportError:
@@ -275,6 +276,7 @@ async def lifespan(app: FastAPI):
 
     try:
         from backend.services.misc.autonomous_scheduler import close_scheduler_client
+
         await close_scheduler_client()
         logger.info("✅ Autonomous Scheduler module client closed")
     except ImportError:
@@ -284,6 +286,7 @@ async def lifespan(app: FastAPI):
 
     try:
         from backend.services.rag.agentic.tools import close_agentic_tools_client
+
         await close_agentic_tools_client()
         logger.info("✅ Agentic Tools module client closed")
     except ImportError:

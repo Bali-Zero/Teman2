@@ -496,9 +496,7 @@ class AnalyticsAggregator:
                         )
                     except Exception as e:
                         logger.warning(f"Failed to get info for collection {coll_name}: {e}")
-                        collections.append(
-                            {"name": coll_name, "documents": 0, "status": "unknown"}
-                        )
+                        collections.append({"name": coll_name, "documents": 0, "status": "unknown"})
 
             stats.total_documents = total_docs
             stats.collections = sorted(collections, key=lambda x: x["documents"], reverse=True)

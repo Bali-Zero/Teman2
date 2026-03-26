@@ -65,9 +65,7 @@ async def close_property_subgraph_client() -> None:
 _BADUNG_TERRITORIAL_URL = (
     "https://secure.pelayanan-dpupr.badungkab.go.id/storage/id/geojson/territorials/{code}.json"
 )
-_GISTARU_REST_URL = (
-    "https://gistaru.atrbpn.go.id/arcgis/rest/services/RTRW/Bali_RTRWP_5100_2023_2043/MapServer/0/query"
-)
+_GISTARU_REST_URL = "https://gistaru.atrbpn.go.id/arcgis/rest/services/RTRW/Bali_RTRWP_5100_2023_2043/MapServer/0/query"
 
 # Google Maps Geocoding — used to resolve lat/lng → desa BPS code
 _GMAPS_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
@@ -148,10 +146,17 @@ async def _fetch_badung_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
         district = attr.get("kabupaten") or "Badung"
         subdistrict = attr.get("kecamatan") or desa_code
 
-        rows.append((
-            district, subdistrict, f"{zoning_code}: {zoning_name}",
-            json.dumps([zoning_code]), json.dumps(geom), 0.0, 0.5
-        ))
+        rows.append(
+            (
+                district,
+                subdistrict,
+                f"{zoning_code}: {zoning_name}",
+                json.dumps([zoning_code]),
+                json.dumps(geom),
+                0.0,
+                0.5,
+            )
+        )
 
     return await _execute_batch_insert(rows, db_pool)
 
@@ -196,10 +201,17 @@ async def _fetch_gistaru_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
         district = props.get("WADMKK") or "Bali"  # Kabupaten
         subdistrict = props.get("WADMKC") or props.get("NAMOBJ") or desa_code  # Kecamatan/Desa
 
-        rows.append((
-            district, subdistrict, f"{zoning_code}: {zoning_name}",
-            json.dumps([zoning_code]), json.dumps(geom), 0.0, 0.5
-        ))
+        rows.append(
+            (
+                district,
+                subdistrict,
+                f"{zoning_code}: {zoning_name}",
+                json.dumps([zoning_code]),
+                json.dumps(geom),
+                0.0,
+                0.5,
+            )
+        )
 
     return await _execute_batch_insert(rows, db_pool)
 
@@ -236,7 +248,9 @@ async def _execute_batch_insert(rows: list[tuple[Any, ...]], db_pool: asyncpg.Po
         return 0
 
 
-async def _check_existing_zoning(lat: float, lng: float, db_pool: asyncpg.Pool) -> dict[str, Any] | None:
+async def _check_existing_zoning(
+    lat: float, lng: float, db_pool: asyncpg.Pool
+) -> dict[str, Any] | None:
     """
     Step 0: check if we already have zoning polygons for these coordinates
     in our local bali_zoning_layers table (PostGIS).
@@ -262,8 +276,10 @@ async def _check_existing_zoning(lat: float, lng: float, db_pool: asyncpg.Pool) 
 # LANGGRAPH NODE FUNCTIONS
 # ═══════════════════════════════════════════════════════
 
+
 class PropertyState(TypedDict):
     """LangGraph state for property subgraph."""
+
     query: str
     lat: float | None
     lng: float | None
@@ -353,6 +369,7 @@ async def synthesize_property_workflow(state: PropertyState, config: dict) -> di
 
     # Dynamic confidence based on data quality instead of hardcoded values
     from backend.services.rag.confidence import calculate_subgraph_confidence
+
     breakdown = calculate_subgraph_confidence(
         chains=state.get("kg_chains", []),
         entities=state.get("resolved_entities", []),
@@ -366,6 +383,7 @@ async def synthesize_property_workflow(state: PropertyState, config: dict) -> di
 # ═══════════════════════════════════════════════════════
 # SUBGRAPH BUILDER
 # ═══════════════════════════════════════════════════════
+
 
 def build_property_subgraph(db_pool: Any = None, llm: Any = None) -> StateGraph:
     """
@@ -495,8 +513,16 @@ async def synthesize_property_workflow_node(state: Any) -> dict:
     prop_type: str = state.get("property_type", "unknown")
 
     steps = [
-        {"step": 1, "action": f"Identify property with {prop_type.upper()} title", "entity_id": prop_type},
-        {"step": 2, "action": "Conduct due diligence (BPN certificate check)", "entity_id": "bpn_check"},
+        {
+            "step": 1,
+            "action": f"Identify property with {prop_type.upper()} title",
+            "entity_id": prop_type,
+        },
+        {
+            "step": 2,
+            "action": "Conduct due diligence (BPN certificate check)",
+            "entity_id": "bpn_check",
+        },
         {"step": 3, "action": "Negotiate price and terms", "entity_id": "negotiation"},
         {"step": 4, "action": "Sign Jual Beli (Sale & Purchase Agreement)", "entity_id": "ppjb"},
         {"step": 5, "action": "Notary deed execution", "entity_id": "notary"},

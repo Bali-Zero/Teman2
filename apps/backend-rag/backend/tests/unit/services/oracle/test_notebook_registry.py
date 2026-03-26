@@ -90,9 +90,7 @@ def test_all_notebooks_have_required_fields() -> None:
 def test_all_notebook_ids_are_uuid_format() -> None:
     import re
 
-    uuid_pattern = re.compile(
-        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-    )
+    uuid_pattern = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     for domain, data in NLM_NOTEBOOKS.items():
         assert uuid_pattern.match(data["notebook_id"]), (
             f"{domain} notebook_id is not a valid UUID: {data['notebook_id']}"

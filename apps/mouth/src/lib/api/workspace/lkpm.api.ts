@@ -19,16 +19,19 @@ export const lkpmApi = {
     quarter: string,
     year: number,
   ): Promise<{ count: number; items: LKPMBatchItem[] }> {
-    const r = await api.get<{ success: boolean; count: number; items: LKPMBatchItem[] }>(
-      `/api/v1/lkpm/batch/${quarter}?year=${year}`,
-    );
+    const r = await api.get<{
+      success: boolean;
+      count: number;
+      items: LKPMBatchItem[];
+    }>(`/api/v1/lkpm/batch/${quarter}?year=${year}`);
     return { count: r.count ?? 0, items: r.items ?? [] };
   },
 
   async getAlerts(): Promise<LKPMValidationAlert[]> {
-    const r = await api.get<{ success: boolean; alerts: LKPMValidationAlert[] }>(
-      "/api/v1/lkpm/alerts",
-    );
+    const r = await api.get<{
+      success: boolean;
+      alerts: LKPMValidationAlert[];
+    }>("/api/v1/lkpm/alerts");
     return r.alerts ?? [];
   },
 
@@ -84,9 +87,10 @@ export const lkpmApi = {
     quarter: string,
     year: number,
   ): Promise<{ draft_id: number; realized_total: number }> {
-    return api.post<{ success: boolean; draft_id: number; realized_total: number }>(
-      `/api/v1/lkpm/sync-jurnal/${clientId}`,
-      { quarter, year },
-    );
+    return api.post<{
+      success: boolean;
+      draft_id: number;
+      realized_total: number;
+    }>(`/api/v1/lkpm/sync-jurnal/${clientId}`, { quarter, year });
   },
 };
