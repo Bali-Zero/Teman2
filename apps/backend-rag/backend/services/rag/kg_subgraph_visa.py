@@ -147,19 +147,50 @@ async def check_rptka_requirements_node(state: VisaState, db_pool: asyncpg.Pool)
         logger.info("⏭️ [Visa Subgraph] RPTKA not required, skipping")
         return state
 
-    # RPTKA requirements (hardcoded knowledge - can be queried from KG)
-    rptka_req = {
-        "requirement_type": "rptka",
-        "description": "Work Permit for Foreign Workers",
-        "steps": [
+    # Query KG for RPTKA requirements
+    rptka_steps: list[str] = []
+    rptka_duration: str = "Typically 2-4 weeks"
+    rptka_validity: str = "Matches employment contract (max 5 years)"
+    try:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT e.properties->>'description' AS req,
+                       e.properties->>'duration' AS dur,
+                       e.properties->>'validity' AS val
+                FROM kg_edges e
+                JOIN kg_nodes n ON e.target_entity_id = n.entity_id
+                WHERE n.entity_type ILIKE 'rptka'
+                  AND e.relationship_type = 'REQUIRES'
+                LIMIT 20
+                """,
+            )
+            for row in rows:
+                if row["req"]:
+                    rptka_steps.append(row["req"])
+                if row["dur"]:
+                    rptka_duration = row["dur"]
+                if row["val"]:
+                    rptka_validity = row["val"]
+    except Exception as e:
+        logger.warning(f"KG RPTKA query failed, using fallback: {e}")
+
+    # Fallback if KG has no RPTKA data
+    if not rptka_steps:
+        rptka_steps = [
             "Submit TKA allocation quota application to Kementerian Ketenagakerjaan",
             "Apply for IMTA (Izin Mempekerjakan Tenaga Kerja Asing) online via SPKP system",
             "Provide job description and justification",
             "Provide local training plan (mentorship program)",
             "Pay IMTA fee per worker",
-        ],
-        "duration": "Typically 2-4 weeks",
-        "validity": "Matches employment contract (max 5 years)",
+        ]
+
+    rptka_req = {
+        "requirement_type": "rptka",
+        "description": "Work Permit for Foreign Workers",
+        "steps": rptka_steps,
+        "duration": rptka_duration,
+        "validity": rptka_validity,
         "renewal": "Can be extended before expiry",
     }
 

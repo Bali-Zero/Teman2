@@ -460,6 +460,41 @@ def _watchdog_core() -> None:
             atomic_write_json(BASELINE_FILE, baseline)
             logger.info(f"Ruff improved: {ruff_count} (was {baseline_ruff})")
 
+    # 7. Cache invalidation audit (AST — informativo, non bloccante)
+    try:
+        import sys as _sys
+        _checks_dir = Path(__file__).parent / "checks"
+        if str(_checks_dir) not in _sys.path:
+            _sys.path.insert(0, str(_checks_dir.parent.parent.parent))
+        from apps.evaluator.core_guardian.checks.cache_invalidation_audit import (
+            run_audit as _cache_audit,
+            format_report as _cache_format,
+        )
+        _cache_findings = _cache_audit(PROJECT_ROOT)
+        _baseline_cache = baseline.get("cache_audit_count", None)
+        logger.info(f"Cache audit: {len(_cache_findings)} endpoint senza invalidate_cache")
+        if _baseline_cache is None:
+            # Prima run — salva baseline silenziosamente
+            baseline["cache_audit_count"] = len(_cache_findings)
+            baseline["updated_at"] = now
+            atomic_write_json(BASELINE_FILE, baseline)
+        elif len(_cache_findings) > _baseline_cache + 5:
+            # Aumento significativo (>5 nuovi) — alert
+            delta_cache = len(_cache_findings) - _baseline_cache
+            send_telegram_alert(
+                f"Cache Invalidation Gap Aumentato\n"
+                f"Endpoint senza invalidate_cache: {len(_cache_findings)} (era {_baseline_cache}, +{delta_cache})\n"
+                f"Possibile nuova mutation senza cache invalidation."
+            )
+        elif len(_cache_findings) < _baseline_cache:
+            # Miglioramento
+            baseline["cache_audit_count"] = len(_cache_findings)
+            baseline["updated_at"] = now
+            atomic_write_json(BASELINE_FILE, baseline)
+            logger.info(f"Cache audit migliorato: {len(_cache_findings)} (era {_baseline_cache})")
+    except Exception as _e:
+        logger.debug(f"Cache audit skip: {_e}")
+
 
 def _log_circuit_breaker_event(event_type: str, data: dict) -> None:
     """Appende un evento al circuit breaker log."""
