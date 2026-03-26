@@ -638,6 +638,37 @@ export function OverviewTab({
                 </p>
               )}
             </div>
+            {/* Revenue summary footer */}
+            {(() => {
+              const totalRevenue = completedPractices.reduce(
+                (sum, p) => sum + (p.actual_price || 0),
+                0,
+              );
+              const paidRevenue = completedPractices
+                .filter((p) => p.payment_status === 'paid')
+                .reduce((sum, p) => sum + (p.actual_price || 0), 0);
+              if (totalRevenue === 0) return null;
+              return (
+                <div
+                  className="px-3 py-2 border-t flex items-center justify-between"
+                  style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+                >
+                  <span className="text-[10px] text-[var(--bz-text-2)] uppercase tracking-wider">
+                    Revenue
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {paidRevenue < totalRevenue && (
+                      <span className="text-[10px] text-yellow-400">
+                        {formatCurrency(paidRevenue)} paid
+                      </span>
+                    )}
+                    <span className="text-xs font-bold text-green-400">
+                      {formatCurrency(totalRevenue)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
