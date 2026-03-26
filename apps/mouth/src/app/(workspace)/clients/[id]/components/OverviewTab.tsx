@@ -255,11 +255,30 @@ export function OverviewTab({
                         <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           Passport Expiry
                         </p>
-                        <p
-                          className={`text-sm font-medium ${new Date(client.passport_expiry) < new Date() ? 'text-red-500' : new Date(client.passport_expiry) < new Date(Date.now() + 365 * 86400000) ? 'text-yellow-500' : 'text-green-500'}`}
-                        >
-                          {formatDate(client.passport_expiry)}
-                        </p>
+                        {(() => {
+                          const daysLeft = Math.ceil(
+                            (new Date(client.passport_expiry).getTime() - Date.now()) / 86400000
+                          );
+                          const color =
+                            daysLeft < 0
+                              ? 'text-red-500'
+                              : daysLeft <= 180
+                                ? 'text-yellow-500'
+                                : 'text-green-500';
+                          const label =
+                            daysLeft < 0
+                              ? `Expired ${Math.abs(daysLeft)}d ago`
+                              : daysLeft === 0
+                                ? 'Expires today'
+                                : daysLeft <= 365
+                                  ? `⏰ ${daysLeft}d left`
+                                  : `${Math.floor(daysLeft / 30)}mo left`;
+                          return (
+                            <p className={`text-sm font-medium ${color}`} title={formatDate(client.passport_expiry)}>
+                              {label}
+                            </p>
+                          );
+                        })()}
                       </div>
                     )}
                     {client.date_of_birth && (
