@@ -212,7 +212,7 @@ export default function CaseDetailPage() {
     try {
       const user = await api.getProfile();
       await api.crm.updatePractice(caseId, { notes: notesValue }, user.email);
-      setPractice((prev) => prev ? { ...prev, notes: notesValue } : prev);
+      setPractice((prev) => (prev ? { ...prev, notes: notesValue } : prev));
       toast.success('Notes saved');
       setIsEditingNotes(false);
     } catch (err) {
@@ -232,7 +232,7 @@ export default function CaseDetailPage() {
     try {
       const user = await api.getProfile();
       await api.crm.updatePractice(caseId, { payment_status: nextStatus }, user.email);
-      setPractice((prev) => prev ? { ...prev, payment_status: nextStatus } : prev);
+      setPractice((prev) => (prev ? { ...prev, payment_status: nextStatus } : prev));
       toast.success('Payment status updated', `→ ${nextStatus}`);
     } catch (err) {
       toast.error('Failed to update payment status', (err as Error).message);
@@ -244,18 +244,38 @@ export default function CaseDetailPage() {
   const savePrice = async (field: 'quoted_price' | 'actual_price') => {
     if (!practice || !caseId) return;
     const num = Number(priceValue);
-    if (isNaN(num) || num < 0) { setEditingPrice(null); return; }
+    if (isNaN(num) || num < 0) {
+      setEditingPrice(null);
+      return;
+    }
     setIsSavingPrice(true);
     try {
       const user = await api.getProfile();
       await api.crm.updatePractice(caseId, { [field]: num }, user.email);
-      setPractice((prev) => prev ? { ...prev, [field]: num } : prev);
+      setPractice((prev) => (prev ? { ...prev, [field]: num } : prev));
       toast.success('Price updated');
     } catch (err) {
       toast.error('Failed to update price', (err as Error).message);
     } finally {
       setIsSavingPrice(false);
       setEditingPrice(null);
+    }
+  };
+
+  const [isJumpingStatus, setIsJumpingStatus] = useState<string | null>(null);
+
+  const jumpToStatus = async (newStatus: string) => {
+    if (!practice || !caseId || practice.status === newStatus || isJumpingStatus) return;
+    setIsJumpingStatus(newStatus);
+    try {
+      const user = await api.getProfile();
+      await api.crm.updatePractice(caseId, { status: newStatus }, user.email);
+      setPractice((prev) => (prev ? { ...prev, status: newStatus } : prev));
+      toast.success('Status updated', `→ ${newStatus.replace(/_/g, ' ')}`);
+    } catch (err) {
+      toast.error('Failed to update status', (err as Error).message);
+    } finally {
+      setIsJumpingStatus(null);
     }
   };
 
@@ -291,7 +311,10 @@ export default function CaseDetailPage() {
     try {
       const user = await api.getProfile();
       const updates: Partial<
-        Pick<Practice, 'status' | 'priority' | 'payment_status' | 'quoted_price' | 'actual_price' | 'assigned_to'>
+        Pick<
+          Practice,
+          'status' | 'priority' | 'payment_status' | 'quoted_price' | 'actual_price' | 'assigned_to'
+        >
       > = {};
 
       if (editForm.status && editForm.status !== practice.status) updates.status = editForm.status;
@@ -551,8 +574,18 @@ export default function CaseDetailPage() {
         const currentIdx = STEPS.findIndex((s) => {
           if (practice.status === s.key) return true;
           // map legacy statuses
-          if (s.key === 'sending_invoice' && (practice.status === 'waiting_payment' || practice.status === 'quotation_sent')) return true;
-          if (s.key === 'on_process' && (practice.status === 'in_progress' || practice.status === 'submitted_to_gov' || practice.status === 'approved')) return true;
+          if (
+            s.key === 'sending_invoice' &&
+            (practice.status === 'waiting_payment' || practice.status === 'quotation_sent')
+          )
+            return true;
+          if (
+            s.key === 'on_process' &&
+            (practice.status === 'in_progress' ||
+              practice.status === 'submitted_to_gov' ||
+              practice.status === 'approved')
+          )
+            return true;
           return false;
         });
         return (
@@ -560,31 +593,56 @@ export default function CaseDetailPage() {
             {STEPS.map((step, idx) => {
               const isDone = idx < currentIdx;
               const isCurrent = idx === currentIdx;
+              const isJumping = isJumpingStatus === step.key;
               return (
                 <React.Fragment key={step.key}>
-                  <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                  <button
+                    className="flex flex-col items-center gap-1 flex-shrink-0 group/step"
+                    onClick={() => jumpToStatus(step.key)}
+                    disabled={isCurrent || !!isJumpingStatus}
+                    title={isCurrent ? `Current: ${step.label}` : `Jump to: ${step.label}`}
+                  >
                     <div
                       className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                        isDone ? 'text-white' : isCurrent ? 'text-white ring-2 ring-offset-2 ring-offset-[var(--bz-base)]' : 'text-[var(--bz-text-2)]'
+                        isDone
+                          ? 'text-white group-hover/step:opacity-80'
+                          : isCurrent
+                            ? 'text-white ring-2 ring-offset-2 ring-offset-[var(--bz-base)]'
+                            : 'text-[var(--bz-text-2)] group-hover/step:text-white group-hover/step:opacity-70'
                       }`}
                       style={{
                         background: isDone || isCurrent ? step.color : 'rgba(255,255,255,0.06)',
-                        ...(isCurrent ? { outline: `2px solid ${step.color}`, outlineOffset: '2px' } : {}),
+                        ...(isCurrent
+                          ? { outline: `2px solid ${step.color}`, outlineOffset: '2px' }
+                          : {}),
                       }}
                     >
-                      {isDone ? '✓' : idx + 1}
+                      {isJumping ? (
+                        <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                        </svg>
+                      ) : isDone ? '✓' : idx + 1}
                     </div>
                     <span
-                      className="text-[9px] font-medium whitespace-nowrap hidden sm:block"
-                      style={{ color: isCurrent ? step.color : isDone ? 'var(--bz-text-2)' : 'var(--bz-text-2)', opacity: isDone ? 0.6 : 1 }}
+                      className="text-[9px] font-medium whitespace-nowrap hidden sm:block transition-colors"
+                      style={{
+                        color: isCurrent
+                          ? step.color
+                          : isDone
+                            ? 'var(--bz-text-2)'
+                            : 'var(--bz-text-2)',
+                        opacity: isDone ? 0.6 : 1,
+                      }}
                     >
                       {step.label}
                     </span>
-                  </div>
+                  </button>
                   {idx < STEPS.length - 1 && (
                     <div
                       className="flex-1 h-[2px] mx-1 mb-3"
-                      style={{ background: idx < currentIdx ? step.color : 'rgba(255,255,255,0.08)' }}
+                      style={{
+                        background: idx < currentIdx ? step.color : 'rgba(255,255,255,0.08)',
+                      }}
                     />
                   )}
                 </React.Fragment>
@@ -813,15 +871,29 @@ export default function CaseDetailPage() {
                         if (e.key === 'Escape') setEditingPrice(null);
                       }}
                       className="w-32 px-2 py-1 rounded text-sm focus:outline-none"
-                      style={{ background: 'var(--bz-base)', border: '1px solid var(--bz-accent)', color: 'var(--bz-text-1)' }}
+                      style={{
+                        background: 'var(--bz-base)',
+                        border: '1px solid var(--bz-accent)',
+                        color: 'var(--bz-text-1)',
+                      }}
                     />
-                    {isSavingPrice ? <Loader2 className="w-3 h-3 animate-spin" /> : (
-                      <button onClick={() => savePrice('quoted_price')} className="text-xs text-green-400">✓</button>
+                    {isSavingPrice ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <button
+                        onClick={() => savePrice('quoted_price')}
+                        className="text-xs text-green-400"
+                      >
+                        ✓
+                      </button>
                     )}
                   </div>
                 ) : (
                   <button
-                    onClick={() => { setEditingPrice('quoted'); setPriceValue(practice.quoted_price?.toString() || ''); }}
+                    onClick={() => {
+                      setEditingPrice('quoted');
+                      setPriceValue(practice.quoted_price?.toString() || '');
+                    }}
                     className="font-medium hover:underline text-left transition-colors"
                     style={{ color: 'var(--bz-text-1)' }}
                     title="Click to edit"
@@ -849,15 +921,29 @@ export default function CaseDetailPage() {
                         if (e.key === 'Escape') setEditingPrice(null);
                       }}
                       className="w-32 px-2 py-1 rounded text-sm focus:outline-none"
-                      style={{ background: 'var(--bz-base)', border: '1px solid var(--bz-accent)', color: 'var(--bz-text-1)' }}
+                      style={{
+                        background: 'var(--bz-base)',
+                        border: '1px solid var(--bz-accent)',
+                        color: 'var(--bz-text-1)',
+                      }}
                     />
-                    {isSavingPrice ? <Loader2 className="w-3 h-3 animate-spin" /> : (
-                      <button onClick={() => savePrice('actual_price')} className="text-xs text-green-400">✓</button>
+                    {isSavingPrice ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <button
+                        onClick={() => savePrice('actual_price')}
+                        className="text-xs text-green-400"
+                      >
+                        ✓
+                      </button>
                     )}
                   </div>
                 ) : (
                   <button
-                    onClick={() => { setEditingPrice('actual'); setPriceValue(practice.actual_price?.toString() || ''); }}
+                    onClick={() => {
+                      setEditingPrice('actual');
+                      setPriceValue(practice.actual_price?.toString() || '');
+                    }}
                     className="font-medium hover:underline text-left transition-colors"
                     style={{ color: 'var(--bz-text-1)' }}
                     title="Click to edit"
@@ -940,7 +1026,10 @@ export default function CaseDetailPage() {
                   onChange={(e) => setNotesValue(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveNotes();
-                    if (e.key === 'Escape') { setIsEditingNotes(false); setNotesValue(practice?.notes || ''); }
+                    if (e.key === 'Escape') {
+                      setIsEditingNotes(false);
+                      setNotesValue(practice?.notes || '');
+                    }
                   }}
                   rows={5}
                   className="w-full rounded-lg px-3 py-2 text-sm resize-none focus:outline-none transition-colors"
@@ -953,7 +1042,10 @@ export default function CaseDetailPage() {
                 />
                 <div className="flex items-center justify-end gap-2">
                   <button
-                    onClick={() => { setIsEditingNotes(false); setNotesValue(practice?.notes || ''); }}
+                    onClick={() => {
+                      setIsEditingNotes(false);
+                      setNotesValue(practice?.notes || '');
+                    }}
                     className="text-sm px-3 py-1.5 rounded-lg transition-colors"
                     style={{ color: 'var(--bz-text-2)' }}
                   >
@@ -1083,10 +1175,7 @@ export default function CaseDetailPage() {
               <div className="space-y-2">
                 {[...practice.status_transitions].reverse().map((t, idx) => (
                   <div key={idx} className="flex items-center justify-between text-sm">
-                    <span
-                      className="capitalize font-medium"
-                      style={{ color: 'var(--bz-text-1)' }}
-                    >
+                    <span className="capitalize font-medium" style={{ color: 'var(--bz-text-1)' }}>
                       {t.status.replace(/_/g, ' ')}
                     </span>
                     <span className="text-xs" style={{ color: 'var(--bz-text-2)' }}>
@@ -1270,9 +1359,15 @@ export default function CaseDetailPage() {
                 </label>
                 <select
                   value={editForm.assigned_to}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, assigned_to: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, assigned_to: e.target.value }))
+                  }
                   className="w-full px-3 py-2 rounded-lg focus:outline-none"
-                  style={{ border: '1px solid var(--bz-border)', background: 'var(--bz-card)', color: 'var(--bz-text-1)' }}
+                  style={{
+                    border: '1px solid var(--bz-border)',
+                    background: 'var(--bz-card)',
+                    color: 'var(--bz-text-1)',
+                  }}
                 >
                   <option value="">— unassigned —</option>
                   <option value="zero@balizero.com">Zero</option>
