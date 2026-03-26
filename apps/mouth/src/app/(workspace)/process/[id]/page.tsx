@@ -78,6 +78,9 @@ export default function CaseDetailPage() {
     actual_price: '',
   });
 
+  // Inline payment status update
+  const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+
   // Performance tracking
   const startTime = useRef(performance.now());
   const userEmail = useRef<string | null>(null);
@@ -189,6 +192,25 @@ export default function CaseDetailPage() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const cyclePaymentStatus = async () => {
+    if (!practice || !caseId || isUpdatingPayment) return;
+    const cycle: string[] = ['unpaid', 'partial', 'paid'];
+    const current = practice.payment_status || 'unpaid';
+    const nextIndex = (cycle.indexOf(current) + 1) % cycle.length;
+    const nextStatus = cycle[nextIndex];
+    setIsUpdatingPayment(true);
+    try {
+      const user = await api.getProfile();
+      await api.crm.updatePractice(caseId, { payment_status: nextStatus }, user.email);
+      setPractice((prev) => prev ? { ...prev, payment_status: nextStatus } : prev);
+      toast.success('Payment status updated', `→ ${nextStatus}`);
+    } catch (err) {
+      toast.error('Failed to update payment status', (err as Error).message);
+    } finally {
+      setIsUpdatingPayment(false);
+    }
   };
 
   const handleEditClick = () => {
@@ -648,9 +670,25 @@ export default function CaseDetailPage() {
                 <label className="text-sm mb-1 block" style={{ color: 'var(--bz-text-2)' }}>
                   Payment Status
                 </label>
-                <p className="font-medium capitalize" style={{ color: 'var(--bz-text-1)' }}>
-                  {practice.payment_status || 'Not set'}
-                </p>
+                <button
+                  onClick={cyclePaymentStatus}
+                  disabled={isUpdatingPayment}
+                  title="Click to cycle: unpaid → partial → paid"
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${
+                    practice.payment_status === 'paid'
+                      ? 'bg-green-500/15 text-green-400 hover:bg-green-500/25'
+                      : practice.payment_status === 'partial'
+                        ? 'bg-yellow-500/15 text-yellow-400 hover:bg-yellow-500/25'
+                        : 'bg-red-500/15 text-red-400 hover:bg-red-500/25'
+                  }`}
+                >
+                  {isUpdatingPayment ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                  )}
+                  <span className="capitalize">{practice.payment_status || 'unpaid'}</span>
+                </button>
               </div>
 
               <div>
