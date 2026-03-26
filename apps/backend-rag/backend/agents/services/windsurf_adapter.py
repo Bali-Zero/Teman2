@@ -23,7 +23,7 @@ class WindsurfAdapter:
     CLI disponibile nel bundle dell'app macOS.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Paths possibili per Windsurf CLI
         self.windsurf_paths = [
             "/Applications/Windsurf.app/Contents/Resources/app/bin/windsurf",
