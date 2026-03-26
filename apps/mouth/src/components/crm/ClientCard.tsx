@@ -246,15 +246,36 @@ export const ClientCard = React.memo(
           </div>
         </motion.div>
 
-        {/* "Strategic Peek" Hover Effect - Shows sentiment on hover */}
-        <div className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-          <div className="bg-black/90 backdrop-blur-md text-white p-3 rounded-lg shadow-xl text-xs">
-            <div className="flex items-center justify-between mb-1">
+        {/* "Strategic Peek" Hover Effect */}
+        <div className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-52 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+          <div className="bg-black/90 backdrop-blur-md text-white p-3 rounded-lg shadow-xl text-xs space-y-1.5">
+            <div className="flex items-center justify-between">
               <span className="text-[var(--tx-secondary)]">Sentiment:</span>
               <span className="capitalize text-white font-medium">
                 {sentiment}
               </span>
             </div>
+            {client.last_interaction_date && isMounted && (() => {
+              const days = Math.floor(
+                (Date.now() - new Date(client.last_interaction_date).getTime()) / 86400000,
+              );
+              return (
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--tx-secondary)]">Silent:</span>
+                  <span className={`font-medium ${days > 30 ? 'text-red-400' : days > 14 ? 'text-yellow-400' : 'text-green-400'}`}>
+                    {days === 0 ? 'Today' : `${days}d ago`}
+                  </span>
+                </div>
+              );
+            })()}
+            {passportAlert && (
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--tx-secondary)]">Passport:</span>
+                <span className={passportAlert === 'expired' ? 'text-red-400' : 'text-yellow-400'}>
+                  {passportAlert === 'expired' ? '⚠ Expired' : '⚠ Expiring'}
+                </span>
+              </div>
+            )}
             <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-black/90 rotate-45"></div>
           </div>
         </div>
