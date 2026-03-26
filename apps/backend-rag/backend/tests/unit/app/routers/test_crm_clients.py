@@ -561,3 +561,131 @@ class TestExtractNpwpRBAC:
         assert "UPDATE clients SET npwp" in call_args[0][0]
         assert call_args[0][1] == "123456789012345"
         assert call_args[0][2] == 42
+
+
+class TestExtractNibRBAC:
+    """Tests for RBAC + DB storage on POST /extract-nib"""
+
+    def test_extract_nib_requires_client_access(self, mock_db_pool):
+        """Non-assigned user cannot extract NIB for another user's client."""
+        from unittest.mock import patch
+
+        from fastapi import FastAPI, HTTPException
+        from fastapi.testclient import TestClient
+
+        from backend.app.dependencies import get_current_user, get_database_pool
+        from backend.app.routers import crm_clients
+
+        app = FastAPI()
+        app.include_router(crm_clients.router)
+
+        pool, conn = mock_db_pool
+
+        def override_get_database_pool():
+            return pool
+
+        # Non-admin team member (not assigned to this client)
+        def override_get_current_user():
+            return {"email": "other_team@balizero.com", "role": "team"}
+
+        app.dependency_overrides[get_database_pool] = override_get_database_pool
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        test_client = TestClient(app, raise_server_exceptions=False)
+
+        # Mock verify_client_access to raise 403 (simulating non-assigned user)
+        with patch(
+            "backend.app.routers.crm_clients.verify_client_access",
+            new=AsyncMock(
+                side_effect=HTTPException(status_code=403, detail="Access denied")
+            ),
+        ):
+            import base64
+            dummy_b64 = base64.b64encode(b"fake-image-data").decode()
+            response = test_client.post(
+                "/api/crm/clients/extract-nib",
+                json={
+                    "client_id": 99,
+                    "file": dummy_b64,
+                    "file_name": "nib.jpg",
+                },
+            )
+
+        assert response.status_code == 403, (
+            f"Expected 403 but got {response.status_code}: {response.json()}"
+        )
+
+    def test_extract_nib_saves_to_db(self, mock_db_pool):
+        """Extracted NIB should be saved to clients.nib after successful OCR."""
+        import base64
+        from unittest.mock import patch
+
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.dependencies import get_current_user, get_database_pool
+        from backend.app.routers import crm_clients
+
+        app = FastAPI()
+        app.include_router(crm_clients.router)
+
+        pool, conn = mock_db_pool
+
+        def override_get_database_pool():
+            return pool
+
+        def override_get_current_user():
+            return {"email": "admin@balizero.com", "role": "admin"}
+
+        app.dependency_overrides[get_database_pool] = override_get_database_pool
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        test_client = TestClient(app, raise_server_exceptions=False)
+
+        dummy_b64 = base64.b64encode(b"fake-image-data").decode()
+
+        # Mock genai client to return a valid NIB OCR response
+        mock_genai_instance = MagicMock()
+        mock_genai_instance.is_available = True
+        mock_genai_instance.generate_content = AsyncMock(
+            return_value={
+                "text": '{"nib": "1234567890123", "company_name": "PT Test Indo", "kbli_code": "56101", "confidence": 0.95}'
+            }
+        )
+
+        with (
+            patch(
+                "backend.app.routers.crm_clients.verify_client_access",
+                new=AsyncMock(return_value=None),
+            ),
+            patch(
+                "backend.llm.genai_client.GENAI_AVAILABLE",
+                True,
+            ),
+            patch(
+                "backend.llm.genai_client.GenAIClient",
+                return_value=mock_genai_instance,
+            ),
+        ):
+            response = test_client.post(
+                "/api/crm/clients/extract-nib",
+                json={
+                    "client_id": 42,
+                    "file": dummy_b64,
+                    "file_name": "nib.jpg",
+                },
+            )
+
+        assert response.status_code == 200, (
+            f"Expected 200 but got {response.status_code}: {response.text}"
+        )
+        data = response.json()
+        assert data["success"] is True
+        assert data["nib"] == "1234567890123"
+
+        # Verify DB update was called with the extracted NIB
+        conn.execute.assert_called_once()
+        call_args = conn.execute.call_args
+        assert "UPDATE clients SET nib" in call_args[0][0]
+        assert call_args[0][1] == "1234567890123"
+        assert call_args[0][2] == 42
