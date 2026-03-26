@@ -4,7 +4,6 @@ import hashlib
 import hmac
 import os
 
-
 _BRIDGE_SECRET = os.getenv("NLM_BRIDGE_SECRET", "")
 
 

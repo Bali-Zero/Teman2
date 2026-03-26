@@ -8,16 +8,17 @@ Covers:
 - close() lifecycle
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from backend.services.integrations.google_drive_service import GoogleDriveService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_service() -> GoogleDriveService:
     """Return a GoogleDriveService with a mock DB pool."""
@@ -34,6 +35,7 @@ def _make_service() -> GoogleDriveService:
 # ---------------------------------------------------------------------------
 # _sanitize_drive_query_string
 # ---------------------------------------------------------------------------
+
 
 class TestSanitizeDriveQueryString:
     def test_plain_string_unchanged(self):
@@ -70,6 +72,7 @@ class TestSanitizeDriveQueryString:
 # is_configured
 # ---------------------------------------------------------------------------
 
+
 class TestIsConfigured:
     def test_configured_when_both_set(self):
         svc = _make_service()
@@ -94,6 +97,7 @@ class TestIsConfigured:
 # get_authorization_url
 # ---------------------------------------------------------------------------
 
+
 class TestGetAuthorizationUrl:
     def test_returns_url_with_state(self):
         svc = _make_service()
@@ -113,11 +117,13 @@ class TestGetAuthorizationUrl:
 # _get_client / close
 # ---------------------------------------------------------------------------
 
+
 class TestClientLifecycle:
     def test_get_client_creates_instance(self):
         svc = _make_service()
         client = svc._get_client()
         import httpx
+
         assert isinstance(client, httpx.AsyncClient)
 
     def test_get_client_reuses_open_instance(self):
@@ -155,6 +161,7 @@ class TestClientLifecycle:
 # ---------------------------------------------------------------------------
 # get_valid_token — token still valid
 # ---------------------------------------------------------------------------
+
 
 class TestGetValidToken:
     @pytest.mark.asyncio
@@ -195,6 +202,7 @@ class TestGetValidToken:
 # search_files — query injection guard
 # ---------------------------------------------------------------------------
 
+
 class TestSearchFiles:
     @pytest.mark.asyncio
     async def test_sanitizes_query_in_request(self):
@@ -225,14 +233,13 @@ class TestSearchFiles:
         # The raw single-quotes from the injection must be escaped as \'
         assert "\\'" in q, f"Expected escaped quotes in Drive query: {q!r}"
         # Crucially: the malicious payload must not appear verbatim in the query.
-        assert "x' or '1'='1" not in q, (
-            f"Unescaped injection payload found in Drive query: {q!r}"
-        )
+        assert "x' or '1'='1" not in q, f"Unescaped injection payload found in Drive query: {q!r}"
 
 
 # ---------------------------------------------------------------------------
 # list_folder_files — search sanitization
 # ---------------------------------------------------------------------------
+
 
 class TestListFolderFiles:
     @pytest.mark.asyncio

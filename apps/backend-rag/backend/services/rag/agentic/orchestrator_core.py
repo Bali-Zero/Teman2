@@ -730,9 +730,7 @@ class OrchestratorCore:
                 # Launch async NLM query only on cache miss
                 if not nlm_cached_result:
                     nlm_task = asyncio.create_task(
-                        self.nlm_enrichment_service.query(
-                            nlm_match["notebook_id"], query
-                        )
+                        self.nlm_enrichment_service.query(nlm_match["notebook_id"], query)
                     )
 
         # 4. Route query (intent classification + tier selection)
@@ -860,11 +858,7 @@ class OrchestratorCore:
         # 13. NLM Enrichment merge — only in CAUTIOUS zone
         evidence_score = getattr(state, "evidence_score", None)
         trusted = getattr(state, "trusted_tools_used", True)
-        cautious = (
-            evidence_score is not None
-            and 0.15 <= evidence_score <= 0.60
-            and not trusted
-        )
+        cautious = evidence_score is not None and 0.15 <= evidence_score <= 0.60 and not trusted
 
         nlm_result: dict | None = None
         if cautious and (nlm_cached_result or nlm_task):

@@ -3,8 +3,8 @@
 
 Google Cloud Shell Editor è un editor cloud-based disponibile via Google Cloud Console.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import logging
 import subprocess

@@ -714,6 +714,7 @@ async def create_and_start_scheduler(
     # 5. Compile and email daily report
     # ═══════════════════════════════════════════════════════════════════════════
     try:
+
         async def run_daily_ops_autopilot() -> None:
             """Execute chain_daily_ops_autopilot via MCP server"""
             try:

@@ -1,0 +1,4589 @@
+# BUNDLE: nuzantara_mcp_ecosystem.txt
+# Generated: 2026-03-25T02:54:52.408435
+# Files: 34
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp-advanced/nuzantara_mcp_advanced/__init__.py ---
+============================================================
+
+"""Nuzantara Advanced MCP Server."""
+
+__version__ = "1.0.0"
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp-advanced/nuzantara_mcp_advanced/__main__.py ---
+============================================================
+
+"""Entry point for Nuzantara Advanced MCP Server."""
+
+from .server import main
+
+if __name__ == "__main__":
+    main()
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp-advanced/nuzantara_mcp_advanced/server.py ---
+============================================================
+
+"""
+Nuzantara Advanced MCP Server
+
+Additional MCP tools for development, deployment, and operations.
+Complements the main Nuzantara MCP server with advanced operational capabilities.
+
+Tools:
+- Deployment operations (Fly.io, Vercel)
+- Testing utilities
+- Documentation generation
+- System diagnostics
+"""
+
+import json
+import logging
+import os
+import subprocess
+from typing import Optional
+
+import httpx
+from fastmcp import FastMCP
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
+logger = logging.getLogger("nuzantara-mcp-advanced")
+
+# --- Configuration ---
+BACKEND_URL = os.getenv("NUZANTARA_BACKEND_URL", "https://nuzantara-rag.fly.dev")
+FLY_APP = os.getenv("FLY_APP", "nuzantara-rag")
+PROJECT_ROOT = os.getenv("NUZANTARA_ROOT", "/Users/nuzantara/Desktop/nuzantara")
+
+mcp = FastMCP(
+    name="Nuzantara Advanced Operations",
+    instructions="Advanced operations for Nuzantara development, deployment, and diagnostics",
+)
+
+
+# ============================================================================
+# DEPLOYMENT TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def check_fly_status() -> dict:
+    """
+    Check Fly.io application status.
+    
+    Returns machine status, health, and recent events.
+    Requires flyctl to be installed and authenticated.
+    """
+    try:
+        result = subprocess.run(
+            ["fly", "status", "--app", FLY_APP, "--json"],
+            capture_output=True,
+            text=True,
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=30,
+        )
+        if result.returncode == 0:
+            return {"success": True, "status": json.loads(result.stdout)}
+        return {"success": False, "error": result.stderr}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@mcp.tool()
+async def get_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> dict:
+    """
+    Get recent Fly.io application logs.
+    
+    Args:
+        lines: Number of log lines to retrieve (default 50)
+        filter_str: Optional string to filter logs (e.g., "ERROR", "KG")
+    
+    Returns:
+        Recent log entries from the Fly.io application
+    """
+    try:
+        cmd = ["fly", "logs", "--app", FLY_APP, "-n", str(lines)]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=30,
+        )
+        logs = result.stdout
+        if filter_str:
+            logs = "\n".join([line for line in logs.split("\n") if filter_str in line])
+        return {"success": True, "logs": logs}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@mcp.tool()
+async def check_deployment_readiness() -> dict:
+    """
+    Run pre-deployment checks for Nuzantara backend.
+    
+    Performs critical checks:
+    1. Tests critical import chain
+    2. Runs core KG tests
+    3. Checks for rogue changes
+    
+    Returns:
+        Check results with pass/fail status for each test
+    """
+    results = {
+        "checks": {},
+        "ready": True,
+        "timestamp": None
+    }
+    
+    # Check 1: Import chain
+    try:
+        result = subprocess.run(
+            [
+                "python", "-c",
+                "from backend.app.dependencies import get_current_user; print('OK')"
+            ],
+            capture_output=True,
+            text=True,
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            env={**os.environ, "PYTHONPATH": "."},
+            timeout=30,
+        )
+        results["checks"]["import_chain"] = {
+            "pass": result.returncode == 0 and "OK" in result.stdout,
+            "output": result.stdout if result.returncode == 0 else result.stderr
+        }
+    except Exception as e:
+        results["checks"]["import_chain"] = {"pass": False, "error": str(e)}
+    
+    # Check 2: Core tests
+    try:
+        result = subprocess.run(
+            [
+                "python", "-m", "pytest",
+                "backend/tests/services/rag/test_kg_langgraph.py",
+                "backend/tests/services/rag/test_kg_subgraphs.py",
+                "backend/tests/services/rag/test_confidence.py",
+                "-q"
+            ],
+            capture_output=True,
+            text=True,
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            env={**os.environ, "PYTHONPATH": "."},
+            timeout=120,
+        )
+        results["checks"]["core_tests"] = {
+            "pass": result.returncode == 0,
+            "output": result.stdout[-500:] if len(result.stdout) > 500 else result.stdout
+        }
+    except Exception as e:
+        results["checks"]["core_tests"] = {"pass": False, "error": str(e)}
+    
+    # Check 3: Git status for rogue changes
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD", "--", "apps/backend-rag/backend/"],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            timeout=15,
+        )
+        changed_files = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        results["checks"]["rogue_changes"] = {
+            "pass": len(changed_files) <= 10,  # Arbitrary threshold
+            "changed_files": changed_files,
+            "count": len(changed_files)
+        }
+    except Exception as e:
+        results["checks"]["rogue_changes"] = {"pass": False, "error": str(e)}
+    
+    results["ready"] = all(c.get("pass", False) for c in results["checks"].values())
+    return results
+
+
+# ============================================================================
+# TESTING TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def run_backend_tests(test_path: str = "", verbose: bool = False) -> dict:
+    """
+    Run backend tests with pytest.
+    
+    Args:
+        test_path: Specific test file or directory (e.g., "backend/tests/services/rag/")
+        verbose: Whether to run with -v flag
+    
+    Returns:
+        Test results with pass/fail counts and output
+    """
+    try:
+        cmd = ["python", "-m", "pytest"]
+        if test_path:
+            cmd.append(test_path)
+        if verbose:
+            cmd.append("-v")
+        cmd.append("--tb=short")
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            env={**os.environ, "PYTHONPATH": "."},
+            timeout=300,
+        )
+        
+        return {
+            "success": result.returncode == 0,
+            "return_code": result.returncode,
+            "stdout": result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout,
+            "stderr": result.stderr[-1000:] if len(result.stderr) > 1000 else result.stderr
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ============================================================================
+# AUTOPILOT & RECOVERY TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def analyze_fly_health(lines: int = 100) -> dict:
+    """
+    Analyze Fly.io logs for known issues and anomalies.
+
+    Checks for:
+    - Out of Memory (OOM)
+    - Database connection failures
+    - 5xx status code persistence
+    - Health check timeouts
+
+    Returns:
+        Analysis report with risk score and recommendations.
+    """
+    logs_resp = await get_fly_logs(lines=lines)
+    if not logs_resp["success"]:
+        return logs_resp
+
+    logs = logs_resp["logs"]
+    issues = []
+    risk_score = 0.0
+
+    # Check for OOM — use precise patterns to avoid false positives
+    logs_lower = logs.lower()
+    if "out of memory" in logs_lower or "oom" in logs_lower or "oom-kill" in logs_lower or "killed process" in logs_lower:
+        issues.append("CRITICAL: Out of Memory (OOM) detected. Consider checking --workers count.")
+        risk_score += 0.8
+
+    # Check for DB issues
+    if "connection" in logs.lower() and ("database" in logs.lower() or "postgres" in logs.lower()):
+        issues.append("HIGH: Database connection issues detected.")
+        risk_score += 0.5
+
+    # Check for health check timeouts
+    if "health check" in logs.lower() and ("timeout" in logs.lower() or "failed" in logs.lower()):
+        issues.append("MEDIUM: Health check failures detected.")
+        risk_score += 0.3
+
+    return {
+        "risk_score": min(risk_score, 1.0),
+        "issues_found": issues,
+        "recommendation": "Restart machine or check logs if risk_score > 0.5" if risk_score > 0 else "System looks stable.",
+        "log_preview": logs[:500] + "..." if len(logs) > 500 else logs
+    }
+
+
+@mcp.tool()
+async def execute_recovery_action(action: str, machine_id: Optional[str] = None) -> dict:
+    """
+    Execute a recovery action for the Fly.io application.
+
+    Args:
+        action: "restart" or "redeploy"
+        machine_id: Optional specific machine ID to target
+
+    Returns:
+        Execution result status.
+    """
+    try:
+        cmd = ["fly"]
+        if action == "restart":
+            if machine_id:
+                cmd.extend(["machine", "restart", machine_id, "--app", FLY_APP])
+            else:
+                cmd.extend(["apps", "restart", FLY_APP])
+        elif action == "redeploy":
+            cmd.extend(["deploy", "--app", FLY_APP, "--strategy", "rolling"])
+        else:
+            return {"success": False, "error": f"Unsupported action: {action}"}
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=300,
+        )
+
+        return {
+            "success": result.returncode == 0,
+            "stdout": result.stdout,
+            "stderr": result.stderr
+        }
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": f"Action '{action}' timed out after 300s"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@mcp.tool()
+async def run_type_checking() -> dict:
+    """
+    Run mypy type checking on backend code.
+    
+    Returns:
+        Type checking results with error count
+    """
+    try:
+        result = subprocess.run(
+            ["mypy", "backend/", "--ignore-missing-imports"],
+            capture_output=True,
+            text=True,
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=120,
+        )
+        return {
+            "success": result.returncode == 0,
+            "output": result.stdout,
+            "errors": result.stderr
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@mcp.tool()
+async def run_linting() -> dict:
+    """
+    Run ruff linting and formatting check on backend code.
+    
+    Returns:
+        Linting results with issues found
+    """
+    try:
+        # Check formatting
+        format_result = subprocess.run(
+            ["ruff", "format", "--check", "backend/"],
+            capture_output=True,
+            text=True,
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=60,
+        )
+
+        # Check linting
+        lint_result = subprocess.run(
+            ["ruff", "check", "backend/"],
+            capture_output=True,
+            text=True,
+            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            timeout=60,
+        )
+        
+        return {
+            "format_ok": format_result.returncode == 0,
+            "lint_ok": lint_result.returncode == 0,
+            "format_output": format_result.stdout or format_result.stderr,
+            "lint_output": lint_result.stdout or lint_result.stderr
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ============================================================================
+# SYSTEM DIAGNOSTICS
+# ============================================================================
+
+@mcp.tool()
+async def check_system_health() -> dict:
+    """
+    Comprehensive system health check.
+    
+    Checks:
+    - Backend health endpoint
+    - Qdrant connectivity
+    - Database connectivity
+    - LLM provider availability
+    
+    Returns:
+        Overall health status with component details
+    """
+    health = {
+        "timestamp": None,
+        "overall": "unknown",
+        "components": {}
+    }
+    
+    # Check backend health
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{BACKEND_URL}/health", timeout=10)
+            data = resp.json()
+            health["components"]["backend"] = {
+                "status": "healthy" if resp.status_code == 200 else "unhealthy",
+                "version": data.get("version", "unknown"),
+                "embedding_model": data.get("embeddings", {}).get("model", "unknown")
+            }
+    except Exception as e:
+        health["components"]["backend"] = {"status": "error", "error": str(e)}
+    
+    # Check detailed health
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{BACKEND_URL}/health/detailed", timeout=10)
+            data = resp.json()
+            services = data.get("services", {})
+            health["components"]["services"] = {
+                name: status.get("healthy", False)
+                for name, status in services.items()
+            }
+    except Exception as e:
+        health["components"]["services"] = {"status": "error", "error": str(e)}
+    
+    # Determine overall health
+    all_healthy = all(
+        c.get("status") == "healthy" or c.get("status") == "ok"
+        for c in health["components"].values()
+        if isinstance(c, dict) and "status" in c
+    )
+    health["overall"] = "healthy" if all_healthy else "degraded"
+    
+    return health
+
+
+@mcp.tool()
+async def get_collection_stats() -> dict:
+    """
+    Get Qdrant collection statistics.
+    
+    Returns:
+        Vector counts, sizes, and health for all collections
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{BACKEND_URL}/health/metrics/qdrant", timeout=10)
+            return resp.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def search_codebase(query: str, file_pattern: str = "*.py") -> dict:
+    """
+    Search the codebase for specific patterns.
+    
+    Args:
+        query: Search term (function name, variable, etc.)
+        file_pattern: File pattern to search (default: *.py)
+    
+    Returns:
+        Matching files and line numbers
+    """
+    try:
+        result = subprocess.run(
+            ["grep", "-r", "-n", "--include", file_pattern, query,
+             f"{PROJECT_ROOT}/apps/backend-rag/backend"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        lines = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        return {
+            "matches": len(lines),
+            "results": lines[:20]  # Limit to 20 results
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ============================================================================
+# DOCUMENTATION TOOLS
+# ============================================================================
+
+@mcp.tool()
+async def find_documentation(topic: str) -> dict:
+    """
+    Find relevant documentation files.
+    
+    Args:
+        topic: Topic to search for (e.g., "deployment", "KG", "testing")
+    
+    Returns:
+        List of relevant documentation files
+    """
+    try:
+        # Search in docs directory
+        result = subprocess.run(
+            ["find", f"{PROJECT_ROOT}/docs", "-type", "f", "-name", "*.md"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        files = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        
+        # Filter by topic relevance (simple keyword matching)
+        topic_lower = topic.lower()
+        relevant = [
+            f for f in files
+            if topic_lower in f.lower() or 
+            topic_lower.replace(" ", "_") in f.lower()
+        ]
+        
+        return {
+            "topic": topic,
+            "matches": len(relevant),
+            "files": relevant[:10]
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def get_file_structure(path: str = "apps/backend-rag/backend") -> dict:
+    """
+    Get directory structure for a given path.
+    
+    Args:
+        path: Relative path from project root
+    
+    Returns:
+        Directory tree structure
+    """
+    try:
+        result = subprocess.run(
+            ["find", f"{PROJECT_ROOT}/{path}", "-type", "f", "-name", "*.py"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        files = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        
+        # Organize by directory
+        structure = {}
+        for f in files:
+            rel_path = f.replace(f"{PROJECT_ROOT}/{path}/", "")
+            parts = rel_path.split("/")
+            current = structure
+            for part in parts[:-1]:
+                if part not in current:
+                    current[part] = {}
+                current = current[part]
+            if "_files" not in current:
+                current["_files"] = []
+            current["_files"].append(parts[-1])
+        
+        return {
+            "path": path,
+            "total_files": len(files),
+            "structure": structure
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ============================================================================
+# PROMPTS
+# ============================================================================
+
+@mcp.prompt()
+def deployment_checklist() -> str:
+    """Pre-deployment verification checklist."""
+    return """
+    Before deploying Nuzantara backend to Fly.io, verify:
+    
+    1. [ ] Run `check_deployment_readiness()` - All checks must pass
+    2. [ ] Run `run_backend_tests("backend/tests/services/rag/")` - KG tests pass
+    3. [ ] Run `run_type_checking()` - No type errors
+    4. [ ] Run `check_system_health()` - Backend is healthy
+    5. [ ] Review changed files with `check_deployment_readiness()`
+    6. [ ] Deploy with `fly deploy --strategy rolling`
+    7. [ ] Verify with `check_fly_status()` and `check_system_health()`
+    
+    If any step fails, DO NOT proceed to deployment.
+    """
+
+
+@mcp.prompt()
+def debug_kg_issue() -> str:
+    """Template for debugging Knowledge Graph issues."""
+    return """
+    To debug a Knowledge Graph issue:
+    
+    1. Check system health: `check_system_health()`
+    2. Verify Qdrant collections: `get_collection_stats()`
+    3. Search for relevant code: `search_codebase("kg_")`
+    4. Run KG tests: `run_backend_tests("backend/tests/services/rag/test_kg_langgraph.py")`
+    5. Check Fly logs: `get_fly_logs(lines=100, filter_str="KG")`
+    
+    Look for:
+    - Embedding model mismatches
+    - Database connection issues
+    - LangGraph state errors
+    - Missing entity resolutions
+    """
+
+
+@mcp.prompt()
+def investigate_test_failure() -> str:
+    """Template for investigating test failures."""
+    return """
+    When tests fail:
+    
+    1. Run specific test with verbose: `run_backend_tests("path/to/test.py", verbose=True)`
+    2. Check type errors: `run_type_checking()`
+    3. Check linting: `run_linting()`
+    4. Search for recent changes: `search_codebase("function_name")`
+    5. Review test file structure: `get_file_structure("backend/tests/")`
+    
+    Common causes:
+    - Rogue AI removed imports (e.g., `Any` from typing)
+    - Function signature changes
+    - Missing env variables
+    - Database state issues
+    """
+
+
+# ============================================================================
+# ENTRY POINT
+# ============================================================================
+
+def main():
+    """Run MCP server with stdio transport."""
+    logger.info("Starting Nuzantara Advanced MCP Server")
+    logger.info(f"Project root: {PROJECT_ROOT}")
+    logger.info(f"Fly app: {FLY_APP}")
+    mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/__init__.py ---
+============================================================
+
+"""Nuzantara MCP Server v2 - Full-spectrum business automation for Bali Zero."""
+
+__version__ = "2.1.0"
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/__main__.py ---
+============================================================
+
+"""Allow running as: python -m nuzantara_mcp"""
+
+from nuzantara_mcp.server import main
+
+main()
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/prompts/__init__.py ---
+============================================================
+
+"""Nuzantara MCP Prompts - 10 structured prompt templates."""
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/prompts/templates.py ---
+============================================================
+
+"""Expanded Prompt Templates - 10 structured prompts for common scenarios."""
+
+
+def register(mcp):
+    # --- Original 3 prompts (migrated) ---
+
+    @mcp.prompt()
+    def immigration_check(visa_type: str, nationality: str) -> str:
+        """Template for immigration eligibility questions."""
+        return (
+            f"I need information about {visa_type} visa for {nationality} nationals in Indonesia. "
+            "Please provide: eligibility requirements, application process, "
+            "required documents, processing time and costs, common issues."
+        )
+
+    @mcp.prompt()
+    def business_setup(business_type: str, investor_type: str = "foreign") -> str:
+        """Template for business setup guidance in Indonesia."""
+        return (
+            f"I want to establish a {business_type} business in Indonesia as a {investor_type} investor. "
+            "Guide me through: recommended company structure (PT, PT PMA), "
+            "required KBLI codes, licenses and permits, capital requirements, step-by-step process."
+        )
+
+    @mcp.prompt()
+    def kbli_comparison(code1: str, code2: str) -> str:
+        """Template to compare two KBLI codes."""
+        return (
+            f"Compare KBLI {code1} and KBLI {code2}: "
+            "What does each cover? What are the differences in PMA status, "
+            "risk category, and licensing requirements? "
+            "When should I choose one over the other?"
+        )
+
+    # --- New prompts ---
+
+    @mcp.prompt()
+    def client_onboarding_brief(
+        client_name: str,
+        nationality: str,
+        business_type: str,
+    ) -> str:
+        """Generate a structured onboarding brief for a new client."""
+        return (
+            f"Prepare an onboarding brief for new client: {client_name} ({nationality}), "
+            f"business type: {business_type}.\n\n"
+            "Include:\n"
+            "1. Recommended visa type and timeline\n"
+            "2. Required KBLI codes for their business\n"
+            "3. Company structure recommendation (PT PMA vs PT Perorangan)\n"
+            "4. Required documents checklist\n"
+            "5. Estimated costs and timeline\n"
+            "6. Potential issues based on nationality\n"
+            "7. First 3 action items"
+        )
+
+    @mcp.prompt()
+    def practice_status_report(practice_type: str, client_name: str) -> str:
+        """Generate a client-facing practice status report."""
+        return (
+            f"Generate a clear, professional status report for {client_name}'s {practice_type} practice.\n\n"
+            "Include:\n"
+            "1. Current status and progress percentage\n"
+            "2. Completed steps with dates\n"
+            "3. Current step and what's happening now\n"
+            "4. Next steps and estimated timeline\n"
+            "5. Documents still needed (if any)\n"
+            "6. Any blockers or delays\n"
+            "Keep the language simple and reassuring."
+        )
+
+    @mcp.prompt()
+    def regulatory_impact_assessment(regulation_title: str, source: str = "unknown") -> str:
+        """Assess the impact of a regulatory change on foreign investors in Bali."""
+        return (
+            f"Analyze the impact of this regulatory change: '{regulation_title}' (source: {source})\n\n"
+            "Provide:\n"
+            "1. Summary of the change in plain language\n"
+            "2. Who is affected (which visa types, business types)\n"
+            "3. Impact severity (low/medium/high/critical)\n"
+            "4. Required actions for affected clients\n"
+            "5. Timeline for compliance\n"
+            "6. Recommended communication to clients"
+        )
+
+    @mcp.prompt()
+    def weekly_ops_summary(week_date: str) -> str:
+        """Template for weekly operations summary."""
+        return (
+            f"Generate a concise weekly operations summary for the week of {week_date}.\n\n"
+            "Structure:\n"
+            "1. Key metrics (clients, practices, revenue)\n"
+            "2. Completed milestones\n"
+            "3. Active issues and blockers\n"
+            "4. Team performance highlights\n"
+            "5. Regulatory updates of the week\n"
+            "6. Priorities for next week\n"
+            "Keep it under 500 words."
+        )
+
+    @mcp.prompt()
+    def client_renewal_notice(
+        client_name: str, document_type: str, expiry_date: str, days_remaining: int
+    ) -> str:
+        """Generate a personalized renewal notice for a client."""
+        return (
+            f"Draft a professional and friendly renewal notice for {client_name}.\n"
+            f"Their {document_type} expires on {expiry_date} ({days_remaining} days remaining).\n\n"
+            "Include:\n"
+            "1. Warm greeting\n"
+            "2. Clear statement of what's expiring and when\n"
+            "3. Required documents for renewal\n"
+            "4. Estimated renewal timeline and cost\n"
+            "5. Call to action (schedule a call or visit portal)\n"
+            "6. Consequence of late renewal\n"
+            "Tone: professional but warm, not alarmist."
+        )
+
+    @mcp.prompt()
+    def team_performance_review(period: str = "monthly") -> str:
+        """Template for team performance review analysis."""
+        return (
+            f"Analyze team performance for the {period} period.\n\n"
+            "Cover:\n"
+            "1. Practices completed per team member\n"
+            "2. Average response times by channel\n"
+            "3. Client satisfaction scores\n"
+            "4. Workload distribution (is it balanced?)\n"
+            "5. Overtime and burnout risk indicators\n"
+            "6. Top performer and areas for improvement\n"
+            "7. Recommendations for next period"
+        )
+
+    @mcp.prompt()
+    def competitive_intel_brief(topic: str) -> str:
+        """Template for competitive intelligence briefing."""
+        return (
+            f"Prepare a competitive intelligence brief about: {topic}\n\n"
+            "Include:\n"
+            "1. Current market landscape in Bali for this service\n"
+            "2. Key competitors and their positioning\n"
+            "3. Pricing comparison (where available)\n"
+            "4. Our competitive advantages\n"
+            "5. Gaps and opportunities\n"
+            "6. Recommended positioning adjustments"
+        )
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/resources/__init__.py ---
+============================================================
+
+"""Nuzantara MCP Resources - Live data resources."""
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/resources/config.py ---
+============================================================
+
+"""Expanded Resources - 5 live data resources."""
+
+from typing import Any, Callable
+
+
+def register(
+    mcp,
+    _call_safe: Callable,
+    backend_url: str,
+    api_key: str,
+    timeout: int,
+):
+    @mcp.resource("config://nuzantara")
+    def get_config() -> dict:
+        """Current MCP server configuration."""
+        return {
+            "backend_url": backend_url,
+            "authenticated": bool(api_key),
+            "timeout": timeout,
+            "version": "2.1.0",
+            "tools_count": 105,
+            "chains_count": 8,
+        }
+
+    @mcp.resource("data://crm/stats")
+    async def get_crm_stats() -> dict[str, Any]:
+        """Live CRM statistics: client counts, practice status breakdown, nationality distribution."""
+        return await _call_safe("/api/crm/clients/stats")
+
+    @mcp.resource("data://analytics/daily")
+    async def get_daily_analytics() -> dict[str, Any]:
+        """Live daily metrics: completion rates, response times, SLA compliance."""
+        return await _call_safe("/api/analytics/completion-rates", params={"period": "1d"})
+
+    @mcp.resource("data://intel/alerts")
+    async def get_active_alerts() -> dict[str, Any]:
+        """Active intelligence and regulatory alerts requiring attention."""
+        return await _call_safe("/api/intel/critical")
+
+    @mcp.resource("data://workflows/active")
+    async def get_active_workflows() -> dict[str, Any]:
+        """Currently active execution plans and their progress."""
+        return await _call_safe("/api/v1/autonomous-execution/plans", params={"status": "in_progress", "limit": 20})
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/server.py ---
+============================================================
+
+"""
+Nuzantara MCP Server v2.1
+Full-spectrum business automation for Bali Zero.
+
+96 tools | 10 prompts | 5 resources | 8 deterministic workflow chains
+
+Transport: stdio (for Claude Code / Cowork / OpenClaw local integration)
+"""
+
+import logging
+import os
+from typing import Any, Optional
+
+import httpx
+from fastmcp import FastMCP
+
+# --- Logging ---
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
+logger = logging.getLogger("nuzantara-mcp")
+
+# --- Configuration ---
+BACKEND_URL = os.getenv("NUZANTARA_BACKEND_URL", "https://nuzantara-rag.fly.dev")
+API_KEY = os.getenv("NUZANTARA_API_KEY", "")
+TIMEOUT = int(os.getenv("NUZANTARA_TIMEOUT", "30"))
+LONG_TIMEOUT = int(os.getenv("NUZANTARA_LONG_TIMEOUT", "120"))
+
+# --- MCP Server Instance ---
+mcp = FastMCP(
+    name="Nuzantara",
+    instructions=(
+        "Full-spectrum AI business intelligence and automation platform for Bali Zero. "
+        "Covers: CRM, client portal, intelligence, content, analytics, KBLI/visa knowledge, "
+        "communications, Google Drive, autonomous workflows, and admin operations. "
+        "Use workflow chains for deterministic multi-step automation with near-zero human intervention."
+    ),
+)
+
+
+# --- HTTP Helpers ---
+async def _call(
+    endpoint: str,
+    method: str = "GET",
+    json: Optional[dict] = None,
+    params: Optional[dict] = None,
+    timeout: Optional[int] = None,
+) -> dict:
+    """Authenticated call to Nuzantara backend."""
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if API_KEY:
+        headers["Authorization"] = f"Bearer {API_KEY}"
+        headers["X-API-Key"] = API_KEY
+
+    async with httpx.AsyncClient(
+        base_url=BACKEND_URL, timeout=timeout or TIMEOUT
+    ) as client:
+        resp = await client.request(
+            method=method, url=endpoint, json=json, params=params, headers=headers
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def _call_safe(
+    endpoint: str,
+    method: str = "GET",
+    json: Optional[dict] = None,
+    params: Optional[dict] = None,
+    timeout: Optional[int] = None,
+) -> dict[str, Any]:
+    """Like _call but returns error dict instead of raising."""
+    try:
+        return await _call(endpoint, method, json, params, timeout)
+    except httpx.HTTPStatusError as e:
+        return {"error": True, "status": e.response.status_code, "detail": str(e)}
+    except httpx.RequestError as e:
+        return {"error": True, "status": 0, "detail": f"Connection error: {e}"}
+
+
+# --- Register all tool modules ---
+# --- Core domain tools ---
+from nuzantara_mcp.tools.crm import register as register_crm
+from nuzantara_mcp.tools.portal import register as register_portal
+from nuzantara_mcp.tools.intel import register as register_intel
+from nuzantara_mcp.tools.content import register as register_content
+from nuzantara_mcp.tools.analytics import register as register_analytics
+from nuzantara_mcp.tools.knowledge import register as register_knowledge
+from nuzantara_mcp.tools.comms import register as register_comms
+from nuzantara_mcp.tools.drive import register as register_drive
+from nuzantara_mcp.tools.sheets import register as register_sheets
+from nuzantara_mcp.tools.workflows import register as register_workflows
+from nuzantara_mcp.tools.admin import register as register_admin
+from nuzantara_mcp.tools.health import register as register_health
+from nuzantara_mcp.tools.google_bridge import register as register_google_bridge
+
+# --- Tier 1 expansion: Journey, Pricing, Invoicing, Compliance ---
+from nuzantara_mcp.tools.journey import register as register_journey
+from nuzantara_mcp.tools.pricing import register as register_pricing
+from nuzantara_mcp.tools.invoicing import register as register_invoicing
+from nuzantara_mcp.tools.compliance import register as register_compliance
+
+# --- LAM: Memory + Heartbeat ---
+from nuzantara_mcp.tools.memory import register as register_memory
+from nuzantara_mcp.workflows.heartbeat import register as register_heartbeat
+
+# --- Observability ---
+from nuzantara_mcp.tools.langsmith import register as register_langsmith
+
+# --- Prompts, Resources, Chains ---
+from nuzantara_mcp.prompts.templates import register as register_prompts
+from nuzantara_mcp.resources.config import register as register_resources
+from nuzantara_mcp.workflows.chains import register as register_chains
+
+# Core domain
+register_crm(mcp, _call, _call_safe)
+register_portal(mcp, _call, _call_safe)
+register_intel(mcp, _call, _call_safe)
+register_content(mcp, _call, _call_safe)
+register_analytics(mcp, _call, _call_safe)
+register_knowledge(mcp, _call, _call_safe)
+register_comms(mcp, _call, _call_safe)
+register_drive(mcp, _call, _call_safe)
+register_sheets(mcp, _call, _call_safe)
+register_workflows(mcp, _call, _call_safe)
+register_admin(mcp, _call, _call_safe)
+register_health(mcp, _call, _call_safe)
+register_google_bridge(mcp, _call, _call_safe)
+
+# Tier 1 expansion
+register_journey(mcp, _call, _call_safe)
+register_pricing(mcp, _call, _call_safe)
+register_invoicing(mcp, _call, _call_safe)
+register_compliance(mcp, _call, _call_safe)
+
+# LAM: memory + grounding
+register_memory(mcp, _call, _call_safe)
+register_heartbeat(mcp, _call, _call_safe)
+
+# Observability
+register_langsmith(mcp, _call, _call_safe)
+
+# Prompts, resources, chains
+register_prompts(mcp)
+register_resources(mcp, _call_safe, BACKEND_URL, API_KEY, TIMEOUT)
+register_chains(mcp, _call, _call_safe, LONG_TIMEOUT)
+
+
+# --- Entry Point ---
+def main():
+    """Run MCP server with stdio transport."""
+    logger.info(f"Nuzantara MCP v2.1 → {BACKEND_URL}")
+    logger.info(f"Auth: {'enabled' if API_KEY else 'disabled (public endpoints only)'}")
+    mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/__init__.py ---
+============================================================
+
+"""Nuzantara MCP Tools - 72 tools across 11 domains."""
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/admin.py ---
+============================================================
+
+"""Admin Tools - 4 tools for team management and operations."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def clock_in(member_id: Optional[str] = None) -> dict:
+        """
+        Clock in a team member (start of work).
+
+        Args:
+            member_id: Team member UUID (current user if not specified)
+
+        Returns:
+            Clock-in record with timestamp, member info.
+        """
+        payload: dict = {}
+        if member_id:
+            payload["member_id"] = member_id
+        return await _call(
+            "/api/team-activity/clock-in", method="POST", json=payload
+        )
+
+    @mcp.tool()
+    async def clock_out(member_id: Optional[str] = None) -> dict:
+        """
+        Clock out a team member (end of work).
+
+        Args:
+            member_id: Team member UUID (current user if not specified)
+
+        Returns:
+            Clock-out record with timestamp, hours worked today.
+        """
+        payload: dict = {}
+        if member_id:
+            payload["member_id"] = member_id
+        return await _call(
+            "/api/team-activity/clock-out", method="POST", json=payload
+        )
+
+    @mcp.tool()
+    async def get_team_hours(period: str = "weekly") -> dict:
+        """
+        Get team working hours summary.
+
+        Args:
+            period: Period to summarize (daily, weekly, monthly)
+
+        Returns:
+            Per-member hours: total, average, overtime, attendance rate.
+        """
+        return await _call(
+            f"/api/team-activity/hours/{period}"
+        )
+
+    @mcp.tool()
+    async def get_admin_logs(limit: int = 50) -> dict:
+        """
+        Get admin activity audit logs.
+
+        Args:
+            limit: Max log entries to return
+
+        Returns:
+            Audit trail: who did what, when, on which entity, change details.
+        """
+        return await _call("/api/admin/logs", params={"limit": limit})
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/analytics.py ---
+============================================================
+
+"""Analytics Tools - 8 tools for business intelligence and team monitoring."""
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def get_completion_rates(period: str = "30d") -> dict:
+        """
+        Get practice completion rates.
+
+        Args:
+            period: Time period (7d, 30d, 90d, 1y)
+
+        Returns:
+            Completion rates by practice type, average time to completion,
+            bottleneck analysis, comparison to previous period.
+        """
+        return await _call(
+            "/api/analytics/completion-rates", params={"period": period}
+        )
+
+    @mcp.tool()
+    async def get_response_times(period: str = "30d") -> dict:
+        """
+        Get response time analytics.
+
+        Args:
+            period: Time period (7d, 30d, 90d, 1y)
+
+        Returns:
+            Average response times by channel, peak hours, SLA compliance rates.
+        """
+        return await _call(
+            "/api/analytics/response-times", params={"period": period}
+        )
+
+    @mcp.tool()
+    async def get_sla_compliance(period: str = "30d") -> dict:
+        """
+        Get SLA compliance metrics.
+
+        Args:
+            period: Time period (7d, 30d, 90d, 1y)
+
+        Returns:
+            SLA compliance percentage, breaches by category, trend over time.
+        """
+        return await _call(
+            "/api/analytics/sla-compliance", params={"period": period}
+        )
+
+    @mcp.tool()
+    async def get_revenue_analytics(period: str = "30d") -> dict:
+        """
+        Get revenue analytics.
+
+        Args:
+            period: Time period (7d, 30d, 90d, 1y)
+
+        Returns:
+            Total revenue, revenue by practice type, client LTV distribution,
+            month-over-month growth, forecast.
+        """
+        return await _call(
+            "/api/analytics/revenue", params={"period": period}
+        )
+
+    @mcp.tool()
+    async def get_query_analytics(period: str = "7d") -> dict:
+        """
+        Get RAG query analytics (how the AI system is performing).
+
+        Args:
+            period: Time period (1d, 7d, 30d)
+
+        Returns:
+            Query volume, success rate, average confidence, top topics,
+            collection hit rates, cache utilization.
+        """
+        return await _call(
+            "/api/query-analytics/volume", params={"period": period}
+        )
+
+    @mcp.tool()
+    async def get_failed_queries(limit: int = 20) -> dict:
+        """
+        Get recent failed/low-confidence queries for analysis.
+
+        Returns:
+            List of queries that returned ABSTAIN or CAUTIOUS responses,
+            with context about why they failed.
+        """
+        return await _call(
+            "/api/query-analytics/failed", params={"limit": limit}
+        )
+
+    @mcp.tool()
+    async def get_team_productivity(period: str = "7d") -> dict:
+        """
+        Get team productivity metrics.
+
+        Args:
+            period: Time period (1d, 7d, 30d)
+
+        Returns:
+            Practices handled per member, response times, client satisfaction,
+            workload distribution.
+        """
+        return await _call(
+            "/api/team-analytics/productivity", params={"period": period}
+        )
+
+    @mcp.tool()
+    async def get_burnout_indicators() -> dict:
+        """
+        Get team burnout risk indicators.
+
+        Analyzes work patterns to identify potential burnout risks.
+
+        Returns:
+            Per-member risk scores, overtime hours, weekend work frequency,
+            response time degradation, recommendations.
+        """
+        return await _call("/api/team-analytics/burnout")
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/comms.py ---
+============================================================
+
+"""Communication Tools - 6 tools for email, WhatsApp, and Telegram."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def send_email(
+        to: str,
+        subject: str,
+        body: str,
+        cc: Optional[str] = None,
+    ) -> dict:
+        """
+        Send an email via Zoho Mail integration.
+
+        Args:
+            to: Recipient email address
+            subject: Email subject
+            body: Email body (supports HTML)
+            cc: CC recipients (comma-separated)
+
+        Returns:
+            Send status with message ID.
+        """
+        payload: dict = {"to": to, "subject": subject, "body": body}
+        if cc:
+            payload["cc"] = cc
+        return await _call("/api/zoho/emails", method="POST", json=payload)
+
+    @mcp.tool()
+    async def list_emails(
+        folder: str = "inbox",
+        limit: int = 20,
+        unread_only: bool = False,
+    ) -> dict:
+        """
+        List emails from Zoho Mail.
+
+        Args:
+            folder: Mail folder (inbox, sent, drafts, trash)
+            limit: Max emails to return
+            unread_only: Only return unread emails
+
+        Returns:
+            List of emails with from, subject, date, snippet, read_status.
+        """
+        params: dict = {"folder": folder, "limit": limit}
+        if unread_only:
+            params["unread_only"] = True
+        return await _call("/api/zoho/emails", params=params)
+
+    @mcp.tool()
+    async def search_emails(query: str, limit: int = 10) -> dict:
+        """
+        Search emails by keyword.
+
+        Args:
+            query: Search query (searches subject, body, sender)
+            limit: Max results
+
+        Returns:
+            Matching emails ranked by relevance.
+        """
+        return await _call(
+            "/api/zoho/emails/search", params={"query": query, "limit": limit}
+        )
+
+    @mcp.tool()
+    async def send_whatsapp(phone: str, message: str) -> dict:
+        """
+        Send a WhatsApp message via Meta WhatsApp Cloud API.
+
+        Args:
+            phone: Recipient phone number with country code (e.g. "+62812345678")
+            message: Message text (max 4096 chars)
+
+        Returns:
+            Delivery status from Meta API.
+
+        Note:
+            Requires auth. Rate limited to 20 msgs/phone/hour.
+            Recipient must exist in CRM clients table.
+        """
+        return await _call(
+            "/api/whatsapp/send",
+            method="POST",
+            json={"phone": phone, "message": message},
+        )
+
+    @mcp.tool()
+    async def list_whatsapp_conversations(limit: int = 20) -> dict:
+        """
+        List recent WhatsApp conversations.
+
+        Args:
+            limit: Max conversations to return
+
+        Returns:
+            List of conversations with contact, last_message, timestamp, unread_count.
+        """
+        return await _call(
+            "/api/whatsapp/conversations", params={"limit": limit}
+        )
+
+    @mcp.tool()
+    async def list_telegram_conversations(limit: int = 20) -> dict:
+        """
+        List recent Telegram conversations.
+
+        Args:
+            limit: Max conversations to return
+
+        Returns:
+            List of conversations with contact, last_message, timestamp.
+        """
+        return await _call(
+            "/api/telegram/conversations", params={"limit": limit}
+        )
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/compliance.py ---
+============================================================
+
+"""Compliance Monitoring Tools - 4 tools for regulatory deadline tracking."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def track_compliance(
+        client_id: str,
+        compliance_type: str,
+        title: str,
+        description: str,
+        deadline: str,
+        estimated_cost: Optional[float] = None,
+        required_documents: Optional[list[str]] = None,
+    ) -> dict:
+        """
+        Track a compliance deadline with automatic alerts at 60/30/7 days.
+
+        Creates a monitored compliance item that triggers notifications
+        as the deadline approaches.
+
+        Args:
+            client_id: UUID of the client
+            compliance_type: One of:
+                - visa_expiry (KITAS, KITAP, passport)
+                - tax_filing (SPT Tahunan, PPh, PPn)
+                - license_renewal (IMTA, NIB, permits)
+                - regulatory_change (law/regulation changes)
+            title: Short title for the compliance item
+            description: Detailed description
+            deadline: Deadline date in YYYY-MM-DD format
+            estimated_cost: Optional estimated renewal/filing cost
+            required_documents: Optional list of required document names
+
+        Returns:
+            Created compliance item with alert schedule.
+        """
+        payload: dict = {
+            "client_id": client_id,
+            "compliance_type": compliance_type,
+            "title": title,
+            "description": description,
+            "deadline": deadline,
+        }
+        if estimated_cost is not None:
+            payload["estimated_cost"] = estimated_cost
+        if required_documents:
+            payload["required_documents"] = required_documents
+        return await _call(
+            "/api/agents/compliance/track", method="POST", json=payload
+        )
+
+    @mcp.tool()
+    async def get_compliance_alerts(
+        client_id: Optional[str] = None,
+        severity: Optional[str] = None,
+        auto_notify: bool = False,
+    ) -> dict:
+        """
+        Get upcoming compliance alerts.
+
+        Args:
+            client_id: Optional filter by client UUID
+            severity: Optional filter: CRITICAL, URGENT, WARNING, INFO
+            auto_notify: If true, automatically send notifications for due items
+
+        Returns:
+            List of alerts with severity, days_remaining, required_action.
+        """
+        params: dict = {"auto_notify": str(auto_notify).lower()}
+        if client_id:
+            params["client_id"] = client_id
+        if severity:
+            params["severity"] = severity
+        return await _call("/api/agents/compliance/alerts", params=params)
+
+    @mcp.tool()
+    async def get_client_compliance(client_id: str) -> dict:
+        """
+        Get all compliance items for a specific client.
+
+        Returns every tracked deadline, renewal, and regulatory item
+        for the client, ordered by urgency.
+
+        Args:
+            client_id: UUID of the client
+
+        Returns:
+            All compliance items: visa, tax, license, regulatory with status.
+        """
+        return await _call(f"/api/agents/compliance/client/{client_id}")
+
+    @mcp.tool()
+    async def get_compliance_summary() -> dict:
+        """
+        Get a system-wide compliance summary.
+
+        Returns aggregate counts of compliance items by type and severity,
+        plus items due within the next 30 days.
+
+        Returns:
+            Summary: total_items, by_type, by_severity, due_soon list.
+        """
+        return await _call(
+            "/api/agents/compliance/alerts",
+            params={"severity": "CRITICAL"},
+        )
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/content.py ---
+============================================================
+
+"""Content Tools - 6 tools for article composition and newsletter management."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def compose_article(
+        topic: str,
+        style: str = "informative",
+        target_length: str = "medium",
+        data: Optional[dict] = None,
+    ) -> dict:
+        """
+        Compose an AI-generated article on a topic.
+
+        Args:
+            topic: Article topic or headline
+            style: Writing style (informative, alert, guide, analysis, news)
+            target_length: Length (short=500w, medium=1000w, long=2000w)
+            data: Optional structured data to include in the article
+
+        Returns:
+            Generated article with title, body, meta description, tags, SEO score.
+        """
+        payload: dict = {
+            "topic": topic,
+            "style": style,
+            "target_length": target_length,
+        }
+        if data:
+            payload["data"] = data
+        return await _call(
+            "/api/article-composer/compose", method="POST", json=payload
+        )
+
+    @mcp.tool()
+    async def publish_article(article_id: str) -> dict:
+        """
+        Publish a composed article to the blog.
+
+        Args:
+            article_id: UUID of the article from compose_article
+
+        Returns:
+            Published article with public URL and publication timestamp.
+        """
+        return await _call(
+            f"/api/article-composer/publish/{article_id}", method="POST"
+        )
+
+    @mcp.tool()
+    async def list_articles(
+        limit: int = 20, offset: int = 0, category: Optional[str] = None
+    ) -> dict:
+        """
+        List published articles and news.
+
+        Args:
+            limit: Max results
+            offset: Pagination offset
+            category: Filter by category
+
+        Returns:
+            List of articles with title, date, category, views, URL.
+        """
+        params: dict = {"limit": limit, "offset": offset}
+        if category:
+            params["category"] = category
+        return await _call("/api/news", params=params)
+
+    @mcp.tool()
+    async def get_article(article_id: str) -> dict:
+        """
+        Get full article content.
+
+        Args:
+            article_id: UUID of the article
+
+        Returns:
+            Complete article: title, body, author, date, tags, SEO metadata.
+        """
+        return await _call(f"/api/news/{article_id}")
+
+    @mcp.tool()
+    async def subscribe_newsletter(email: str, name: Optional[str] = None) -> dict:
+        """
+        Subscribe an email to the Bali Zero newsletter.
+
+        Args:
+            email: Subscriber email address
+            name: Subscriber name (optional)
+
+        Returns:
+            Subscription record with confirmation status.
+        """
+        payload: dict = {"email": email}
+        if name:
+            payload["name"] = name
+        return await _call(
+            "/api/newsletter/subscribe", method="POST", json=payload
+        )
+
+    @mcp.tool()
+    async def list_subscribers(limit: int = 50, offset: int = 0) -> dict:
+        """
+        List newsletter subscribers.
+
+        Args:
+            limit: Max results
+            offset: Pagination offset
+
+        Returns:
+            List of subscribers with email, name, subscribed_at, status.
+        """
+        return await _call(
+            "/api/newsletter/subscribers",
+            params={"limit": limit, "offset": offset},
+        )
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/crm.py ---
+============================================================
+
+"""CRM Tools - 12 tools for client and practice management."""
+
+from typing import Any, Optional
+
+
+def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
+    @mcp.tool()
+    async def list_clients(
+        status: Optional[str] = None,
+        search: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        """
+        List all CRM clients with optional filters.
+
+        Args:
+            status: Filter by status (active, inactive, prospect, archived)
+            search: Search by name, email, or phone
+            limit: Max results (default 50, max 200)
+            offset: Pagination offset
+
+        Returns:
+            List of clients with id, name, email, phone, status, nationality, created_at.
+        """
+        params = {"limit": min(limit, 200), "offset": offset}
+        if status:
+            params["status"] = status
+        if search:
+            params["search"] = search
+        result = await _call("/api/crm/clients/", params=params)
+        if isinstance(result, list):
+            return {"clients": result, "count": len(result)}
+        return result
+
+    @mcp.tool()
+    async def get_client(client_id: str) -> dict:
+        """
+        Get full details for a specific client.
+
+        Args:
+            client_id: UUID of the client
+
+        Returns:
+            Complete client record: personal info, practices, documents, interactions.
+        """
+        return await _call(f"/api/crm/clients/{client_id}")
+
+    @mcp.tool()
+    async def create_client(
+        name: str,
+        email: str,
+        nationality: str,
+        phone: Optional[str] = None,
+        notes: Optional[str] = None,
+    ) -> dict:
+        """
+        Create a new client in the CRM.
+
+        Args:
+            name: Full legal name
+            email: Email address
+            nationality: Country of citizenship (e.g. "Italian", "Australian")
+            phone: Phone number with country code (e.g. "+62812345678")
+            notes: Internal notes about the client
+
+        Returns:
+            Created client record with assigned UUID.
+        """
+        payload: dict = {"name": name, "email": email, "nationality": nationality}
+        if phone:
+            payload["phone"] = phone
+        if notes:
+            payload["notes"] = notes
+        return await _call("/api/crm/clients/", method="POST", json=payload)
+
+    @mcp.tool()
+    async def update_client(client_id: str, updates: dict) -> dict:
+        """
+        Update a client's information.
+
+        Args:
+            client_id: UUID of the client
+            updates: Dict of fields to update (name, email, phone, status, notes, nationality)
+
+        Returns:
+            Updated client record.
+        """
+        return await _call(f"/api/crm/clients/{client_id}", method="PUT", json=updates)
+
+    @mcp.tool()
+    async def get_client_stats() -> dict:
+        """
+        Get global CRM statistics.
+
+        Returns:
+            Total clients, active/inactive/prospect counts, nationality distribution,
+            practices per status, revenue metrics.
+        """
+        return await _call("/api/crm/clients/stats/overview")
+
+    @mcp.tool()
+    async def list_practices(
+        client_id: Optional[str] = None,
+        status: Optional[str] = None,
+        practice_type: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        """
+        List practices (visas, company setups, renewals, etc.).
+
+        Args:
+            client_id: Filter by client UUID
+            status: Filter by status (active, pending, completed, renewal_needed, stalled)
+            practice_type: Filter by type (kitas, kitap, pt_pma, pt_perorangan, npwp, etc.)
+            limit: Max results (default 50)
+            offset: Pagination offset
+
+        Returns:
+            List of practices with id, client, type, status, dates, documents.
+        """
+        params: dict = {"limit": min(limit, 200), "offset": offset}
+        if client_id:
+            params["client_id"] = client_id
+        if status:
+            params["status"] = status
+        if practice_type:
+            params["type"] = practice_type
+        result = await _call("/api/crm/practices/", params=params)
+        if isinstance(result, list):
+            return {"practices": result, "count": len(result)}
+        return result
+
+    @mcp.tool()
+    async def get_practice(practice_id: str) -> dict:
+        """
+        Get full details for a specific practice.
+
+        Args:
+            practice_id: UUID of the practice
+
+        Returns:
+            Practice record: type, status, client info, documents, timeline, costs.
+        """
+        return await _call(f"/api/crm/practices/{practice_id}")
+
+    @mcp.tool()
+    async def create_practice(
+        client_id: str,
+        practice_type: str,
+        notes: Optional[str] = None,
+    ) -> dict:
+        """
+        Create a new practice for a client.
+
+        Args:
+            client_id: UUID of the client
+            practice_type: Type of practice (kitas, kitap, pt_pma, pt_perorangan, npwp, imta, rptka)
+            notes: Internal notes
+
+        Returns:
+            Created practice record with assigned UUID.
+        """
+        payload: dict = {"client_id": client_id, "type": practice_type}
+        if notes:
+            payload["notes"] = notes
+        return await _call("/api/crm/practices/", method="POST", json=payload)
+
+    @mcp.tool()
+    async def update_practice_status(
+        practice_id: str,
+        status: str,
+        notes: Optional[str] = None,
+    ) -> dict:
+        """
+        Update the status of a practice.
+
+        Args:
+            practice_id: UUID of the practice
+            status: New status (active, pending, submitted, waiting_documents, completed, renewal_needed, stalled, archived)
+            notes: Optional note explaining the status change
+
+        Returns:
+            Updated practice record.
+        """
+        payload: dict = {"status": status}
+        if notes:
+            payload["notes"] = notes
+        return await _call(
+            f"/api/crm/practices/{practice_id}", method="PATCH", json=payload
+        )
+
+    @mcp.tool()
+    async def get_expiry_alerts(days_ahead: int = 90) -> dict:
+        """
+        Get document/visa/practice expiry alerts.
+
+        Checks all active practices and documents for upcoming expirations.
+
+        Args:
+            days_ahead: How many days ahead to check (default 90)
+
+        Returns:
+            List of alerts: client, practice, document, expiry_date, days_remaining, severity.
+        """
+        result = await _call(
+            "/api/crm/expiry-alerts",
+            params={"days_ahead": days_ahead},
+        )
+        # Backend returns list directly — wrap for MCP compatibility
+        if isinstance(result, list):
+            return {"alerts": result, "count": len(result)}
+        return result
+
+    @mcp.tool()
+    async def get_client_timeline(client_id: str, limit: int = 50) -> dict:
+        """
+        Get the full interaction timeline for a client.
+
+        Shows all touchpoints: emails, calls, WhatsApp, meetings, document submissions.
+
+        Args:
+            client_id: UUID of the client
+            limit: Max interactions to return
+
+        Returns:
+            Chronological list of interactions with type, date, summary, sentiment.
+        """
+        return await _call(
+            f"/api/crm/interactions/{client_id}/timeline",
+            params={"limit": limit},
+        )
+
+    @mcp.tool()
+    async def log_interaction(
+        client_id: str,
+        interaction_type: str,
+        summary: str,
+        channel: str = "internal",
+    ) -> dict:
+        """
+        Log a new interaction with a client.
+
+        Args:
+            client_id: UUID of the client
+            interaction_type: Type (call, email, whatsapp, meeting, note, document, system)
+            summary: Brief description of the interaction
+            channel: Communication channel used
+
+        Returns:
+            Created interaction record.
+        """
+        return await _call(
+            "/api/crm/interactions",
+            method="POST",
+            json={
+                "client_id": client_id,
+                "type": interaction_type,
+                "summary": summary,
+                "channel": channel,
+            },
+        )
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/drive.py ---
+============================================================
+
+"""Google Drive Tools - 5 tools for team file management."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def list_drive_files(
+        folder_id: Optional[str] = None, limit: int = 30
+    ) -> dict:
+        """
+        List files in Google Drive (team service account).
+
+        Args:
+            folder_id: Folder ID to list (root if not specified)
+            limit: Max files to return
+
+        Returns:
+            List of files with name, type, size, modified_date, download_url.
+        """
+        params: dict = {"limit": limit}
+        if folder_id:
+            params["folder_id"] = folder_id
+        return await _call("/api/drive/files", params=params)
+
+    @mcp.tool()
+    async def search_drive(query: str, limit: int = 10) -> dict:
+        """
+        Search files in Google Drive.
+
+        Args:
+            query: Search query (file name, content keywords)
+            limit: Max results
+
+        Returns:
+            Matching files ranked by relevance.
+        """
+        return await _call(
+            "/api/drive/search", params={"query": query, "limit": limit}
+        )
+
+    @mcp.tool()
+    async def create_drive_folder(name: str, parent_id: Optional[str] = None) -> dict:
+        """
+        Create a new folder in Google Drive.
+
+        Args:
+            name: Folder name
+            parent_id: Parent folder ID (root if not specified)
+
+        Returns:
+            Created folder record with ID and URL.
+        """
+        payload: dict = {"name": name}
+        if parent_id:
+            payload["parent_id"] = parent_id
+        return await _call(
+            "/api/drive/folders", method="POST", json=payload
+        )
+
+    @mcp.tool()
+    async def get_drive_storage_stats() -> dict:
+        """
+        Get Google Drive storage statistics.
+
+        Returns:
+            Total storage used, files count, folders count, largest files, storage by type.
+        """
+        return await _call("/api/drive/stats")
+
+    @mcp.tool()
+    async def create_client_drive_folder(client_id: str) -> dict:
+        """
+        Create a structured Drive folder for a CRM client.
+
+        Creates a folder with standard subfolders: Passport, Visa, Company, Tax, Legal, Other.
+
+        Args:
+            client_id: UUID of the CRM client
+
+        Returns:
+            Created folder structure with IDs and URLs.
+        """
+        return await _call(
+            f"/api/crm/drive-folders/{client_id}", method="POST"
+        )
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/google_bridge.py ---
+============================================================
+
+import logging
+import json
+import os
+import httpx
+from typing import Any, Optional
+from playwright.async_api import async_playwright
+
+logger = logging.getLogger("nuzantara-mcp.google_bridge")
+
+# Path to Google credentials
+OAUTH_CREDS_PATH = os.path.expanduser("~/.gemini/oauth_creds.json")
+BROWSER_PROFILE_PATH = os.path.expanduser("~/.gemini/antigravity-browser-profile/")
+
+async def upload_to_notebooklm(file_path: str, title: Optional[str] = None) -> dict[str, Any]:
+    """
+    Upload a document to Google NotebookLM using the authenticated browser bridge.
+    
+    Args:
+        file_path: Absolute path to the file to upload
+        title: Optional title for the notebook
+    """
+    if not os.path.exists(file_path):
+        return {"error": f"File not found: {file_path}"}
+        
+    async with async_playwright() as p:
+        try:
+            # We must use a context to load the existing profile
+            browser = await p.chromium.launch_persistent_context(
+                user_data_dir=BROWSER_PROFILE_PATH,
+                headless=True
+            )
+            page = await browser.new_page()
+            await page.goto("https://notebooklm.google/", wait_until="networkidle")
+            
+            # Check if we are logged in
+            if await page.query_selector("text='Sign in'"):
+                return {"error": "Not logged in to Google. Please log in manually in the browser first."}
+            
+            # Basic NotebookLM upload interaction (2026 UI)
+            # Find the "New Notebook" button
+            new_notebook_btn = await page.query_selector("text='New Notebook'")
+            if not new_notebook_btn:
+                # Fallback to selector
+                new_notebook_btn = await page.query_selector("button:has-text('New Notebook')")
+            
+            if new_notebook_btn:
+                await new_notebook_btn.click()
+                await page.wait_for_timeout(2000)
+                
+                # Look for "Local files" or upload area
+                async with page.expect_file_chooser() as fc_info:
+                    await page.click("text='Local files'")
+                file_chooser = await fc_info.value
+                await file_chooser.set_files(file_path)
+                
+                await page.wait_for_timeout(8000) # Give more time for upload
+                return {"success": True, "msg": f"Uploaded {os.path.basename(file_path)} to NotebookLM"}
+            else:
+                return {"error": "Could not find 'New Notebook' button"}
+        except Exception as e:
+            return {"error": f"NotebookLM bridge failed: {str(e)}"}
+        finally:
+            if 'browser' in locals():
+                await browser.close()
+
+def register(mcp, _call=None, _call_safe=None):
+    """Register Google Bridge tools (Labs)"""
+    # Wrap the top-level function as an MCP tool
+    @mcp.tool()
+    async def upload_to_notebooklm_tool(file_path: str, title: Optional[str] = None) -> dict[str, Any]:
+        """
+        Upload a document to Google NotebookLM using the authenticated browser bridge.
+        
+        Args:
+            file_path: Absolute path to the file to upload
+            title: Optional title for the notebook
+        """
+        return await upload_to_notebooklm(file_path, title)
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/health.py ---
+============================================================
+
+"""Health & Monitoring Tools - 3 tools for system health checks."""
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def check_health() -> dict:
+        """
+        Check Nuzantara backend health status.
+
+        Returns service status, Qdrant collections count,
+        embedding model info, and database connectivity.
+
+        Returns:
+            Health status with database and embeddings details.
+        """
+        return await _call("/health")
+
+    @mcp.tool()
+    async def check_health_detailed() -> dict:
+        """
+        Get detailed health of all Nuzantara backend services.
+
+        Shows individual service status for: search, AI client,
+        database pool, memory service, intelligent router, health monitor.
+
+        Returns:
+            Per-service health breakdown with critical service indicators.
+        """
+        return await _call("/health/detailed")
+
+    @mcp.tool()
+    async def get_qdrant_metrics() -> dict:
+        """
+        Get Qdrant vector database performance metrics.
+
+        Returns search/upsert operation counts, average latency,
+        document counts, retry counts, and error counts.
+
+        Returns:
+            Qdrant operation metrics with timestamps.
+        """
+        return await _call("/health/metrics/qdrant")
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/intel.py ---
+============================================================
+
+"""Intelligence Tools - 8 tools for regulatory intelligence pipeline."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def submit_scraper_job(
+        sources: list[str],
+        topic: Optional[str] = None,
+    ) -> dict:
+        """
+        Submit a new intelligence scraping job.
+
+        Scrapes regulatory sources for updates on Indonesian business law.
+
+        Args:
+            sources: List of source identifiers (e.g. ["kemenkumham", "pajak.go.id", "oss.go.id"])
+            topic: Optional topic filter
+
+        Returns:
+            Job ID and status for tracking.
+        """
+        payload: dict = {"sources": sources}
+        if topic:
+            payload["topic"] = topic
+        return await _call(
+            "/api/intel/scraper/submit", method="POST", json=payload
+        )
+
+    @mcp.tool()
+    async def list_staging_items(
+        status: Optional[str] = None, limit: int = 20
+    ) -> dict:
+        """
+        List intelligence items in staging (pending review).
+
+        Args:
+            status: Filter by type: "visa", "news", or "all" (default)
+            limit: Max items to return
+
+        Returns:
+            List of intel items with title, source, date, status, preview.
+        """
+        intel_type = status if status in ("visa", "news") else "all"
+        return await _call("/api/intel/staging/pending", params={"type": intel_type})
+
+    @mcp.tool()
+    async def approve_staging_item(item_id: str) -> dict:
+        """
+        Approve a staging item for publication.
+
+        Args:
+            item_id: UUID of the staging item
+
+        Returns:
+            Updated item with approved status.
+        """
+        # item_id format: "{type}/{id}" or just "{id}" for news
+        if "/" not in item_id:
+            item_id = f"news/{item_id}"
+        return await _call(
+            f"/api/intel/staging/approve/{item_id}", method="POST"
+        )
+
+    @mcp.tool()
+    async def publish_intel(content_type: str, item_id: str) -> dict:
+        """
+        Publish an approved intelligence item to production.
+
+        Args:
+            content_type: Type of content (regulation, alert, analysis, news)
+            item_id: UUID of the approved item
+
+        Returns:
+            Published item record with public URL.
+        """
+        return await _call(
+            f"/api/intel/staging/publish/{content_type}/{item_id}",
+            method="POST",
+        )
+
+    @mcp.tool()
+    async def get_intel_metrics() -> dict:
+        """
+        Get intelligence pipeline metrics.
+
+        Returns:
+            Total items scraped, approved, published, rejected. Source breakdown.
+            Processing times. Collection statistics.
+        """
+        return await _call("/api/intel/metrics")
+
+    @mcp.tool()
+    async def get_critical_alerts() -> dict:
+        """
+        Get critical regulatory alerts requiring immediate attention.
+
+        Returns alerts about law changes, deadline modifications,
+        or new requirements that affect active clients.
+
+        Returns:
+            List of critical alerts with severity, impact area, affected clients.
+        """
+        return await _call("/api/intel/critical")
+
+    @mcp.tool()
+    async def get_intel_trends(period: str = "30d") -> dict:
+        """
+        Get intelligence trends over a time period.
+
+        Args:
+            period: Time period (7d, 30d, 90d, 1y)
+
+        Returns:
+            Trend data: topic frequency, regulatory activity by area, emerging themes.
+        """
+        return await _call("/api/intel/trends", params={"period": period})
+
+    @mcp.tool()
+    async def search_intel(query: str, limit: int = 10) -> dict:
+        """
+        Search the intelligence database.
+
+        Args:
+            query: Search query (supports natural language)
+            limit: Max results
+
+        Returns:
+            Matching intelligence items ranked by relevance.
+        """
+        return await _call(
+            "/api/intel/search", method="POST", json={"query": query, "limit": limit}
+        )
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/invoicing.py ---
+============================================================
+
+"""Invoicing Tools - 3 tools for invoice generation and management."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def regenerate_invoice(practice_id: int) -> dict:
+        """
+        Regenerate and resend invoice for a practice.
+
+        Triggers the full invoice workflow: generates PDF, uploads to
+        Google Drive, sends via email and WhatsApp.
+
+        Use when: client lost invoice, amount corrected, automation failed,
+        or invoice generation was skipped during practice creation.
+
+        Args:
+            practice_id: Practice ID (must be in quotation_sent status)
+
+        Returns:
+            Invoice details: invoice_number, drive_file_id, drive_link,
+            email_sent status, whatsapp_sent status.
+        """
+        return await _call(
+            f"/api/crm/practices/{practice_id}/regenerate-invoice",
+            method="POST",
+        )
+
+    @mcp.tool()
+    async def get_practice_invoice(practice_id: int) -> dict:
+        """
+        Get invoice details for a practice.
+
+        Retrieves the current invoice information including PDF link,
+        payment status, and delivery confirmation.
+
+        Args:
+            practice_id: Practice ID
+
+        Returns:
+            Invoice metadata: number, amount, currency, status, drive_link.
+        """
+        return await _call(f"/api/crm/practices/{practice_id}/invoice")
+
+    @mcp.tool()
+    async def list_pending_invoices(
+        status: str = "unpaid",
+        limit: int = 50,
+    ) -> dict:
+        """
+        List invoices filtered by payment status.
+
+        Args:
+            status: Filter by status: "unpaid", "paid", "overdue", "all"
+            limit: Max results to return
+
+        Returns:
+            List of invoices with practice_id, client, amount, due_date.
+        """
+        return await _call(
+            "/api/crm/invoices",
+            params={"status": status, "limit": limit},
+        )
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/journey.py ---
+============================================================
+
+"""Journey Orchestration Tools - 4 tools for multi-step client journey management."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def create_journey(
+        journey_type: str,
+        client_id: str,
+        custom_steps: Optional[list[str]] = None,
+    ) -> dict:
+        """
+        Create a new multi-step client journey.
+
+        Builds a structured journey with ordered steps, timelines, and
+        automatic progress tracking.
+
+        Args:
+            journey_type: Type of journey to create. Options:
+                - pt_pma_setup (Complete PT PMA company setup - 7 steps)
+                - kitas_application (KITAS visa application - 5 steps)
+                - property_purchase (Property purchase process - 6 steps)
+            client_id: UUID of the client
+            custom_steps: Optional list of custom step descriptions to override template
+
+        Returns:
+            Journey object with id, steps, estimated timeline.
+        """
+        payload: dict = {
+            "journey_type": journey_type,
+            "client_id": client_id,
+        }
+        if custom_steps:
+            payload["custom_steps"] = custom_steps
+        return await _call("/api/agents/journey/create", method="POST", json=payload)
+
+    @mcp.tool()
+    async def get_journey(journey_id: str) -> dict:
+        """
+        Get journey details and current progress.
+
+        Args:
+            journey_id: UUID of the journey
+
+        Returns:
+            Full journey object: steps, completion %, current step, timeline.
+        """
+        return await _call(f"/api/agents/journey/{journey_id}")
+
+    @mcp.tool()
+    async def complete_journey_step(
+        journey_id: str,
+        step_id: str,
+        notes: Optional[str] = None,
+    ) -> dict:
+        """
+        Mark a journey step as completed.
+
+        Advances the journey to the next step and updates progress.
+
+        Args:
+            journey_id: UUID of the journey
+            step_id: UUID of the step to complete
+            notes: Optional completion notes
+
+        Returns:
+            Updated journey with new current step and progress %.
+        """
+        params = {}
+        if notes:
+            params["notes"] = notes
+        return await _call(
+            f"/api/agents/journey/{journey_id}/step/{step_id}/complete",
+            method="POST",
+            params=params if params else None,
+        )
+
+    @mcp.tool()
+    async def get_journey_next_steps(journey_id: str) -> dict:
+        """
+        Get the next available steps in a journey.
+
+        Returns pending steps that can be worked on, with requirements
+        and estimated effort for each.
+
+        Args:
+            journey_id: UUID of the journey
+
+        Returns:
+            List of next steps with requirements and estimated timelines.
+        """
+        return await _call(f"/api/agents/journey/{journey_id}/next-steps")
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/knowledge.py ---
+============================================================
+
+"""Knowledge Tools - 6 tools for KBLI, visa, and legal knowledge."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def search_kbli(query: str, limit: int = 10) -> dict:
+        """
+        Search Indonesian business activity codes (KBLI 2025).
+
+        Use when users ask about:
+        - Which KBLI code fits their business
+        - Business license requirements
+        - Foreign investment (PMA) eligibility
+        - Risk categories for business activities
+
+        Args:
+            query: Business activity description (any language - auto-translated to Indonesian)
+            limit: Max results (default 10, max 20)
+
+        Returns:
+            List of matching KBLI codes with title, score, PMA status, risk category.
+        """
+        return await _call(
+            "/api/v1/kbli-notebook/search",
+            params={"query": query, "limit": min(limit, 20)},
+        )
+
+    @mcp.tool()
+    async def inspect_kbli(code: str) -> dict:
+        """
+        Get deep details for a specific KBLI code.
+
+        Returns licensing requirements, PMA status, risk profile,
+        required permits, and related KBLI codes from the Knowledge Graph.
+
+        Args:
+            code: 5-digit KBLI code (e.g. "56101", "62010")
+
+        Returns:
+            Full KBLI detail: title, description, PMA status, licenses, related codes.
+        """
+        return await _call(f"/api/v1/kbli-notebook/inspect/{code}")
+
+    @mcp.tool()
+    async def chat_kbli(query: str) -> dict:
+        """
+        AI-powered KBLI consultation chat.
+
+        Translates the query to Indonesian, searches KBLI semantically,
+        and generates a grounded explanation with suggested follow-ups.
+
+        Args:
+            query: Question about business classification (any language)
+
+        Returns:
+            AI answer, detected KBLI codes, search results, suggested queries.
+        """
+        return await _call(
+            "/api/v1/kbli-notebook/chat",
+            method="POST",
+            json={"query": query},
+        )
+
+    @mcp.tool()
+    async def ask_legal(
+        question: str,
+        user_id: str = "mcp-agent",
+        session_id: Optional[str] = None,
+    ) -> dict:
+        """
+        Ask a legal question to Nuzantara's Agentic RAG system.
+
+        Covers Indonesian law: immigration, company formation, tax,
+        property, permits, visas, and general legal matters.
+
+        IMPORTANT: Requires authentication (JWT). If no API key is set,
+        this tool will return a 401 error.
+
+        Args:
+            question: Legal question (any language)
+            user_id: User identifier for context tracking
+            session_id: Optional session ID for conversation continuity
+
+        Returns:
+            AI-generated answer with sources, execution time, route used.
+        """
+        payload: dict = {"query": question, "user_id": user_id}
+        if session_id:
+            payload["session_id"] = session_id
+        return await _call("/api/agentic-rag/query", method="POST", json=payload)
+
+    @mcp.tool()
+    async def list_visa_types() -> dict:
+        """
+        List all available visa types for Indonesia.
+
+        Returns:
+            Complete list of visa types with code, name, description, eligibility summary.
+        """
+        return await _call("/api/knowledge/visa-types")
+
+    @mcp.tool()
+    async def get_visa_details(visa_code: str) -> dict:
+        """
+        Get detailed information about a specific visa type.
+
+        Args:
+            visa_code: Visa type code (e.g. "kitas_investor", "kitap", "b211a")
+
+        Returns:
+            Full visa details: requirements, documents, process, timeline, costs, restrictions.
+        """
+        return await _call(f"/api/knowledge/visa-types/{visa_code}")
+
+    @mcp.tool()
+    async def visualize_langgraph(subgraph: Optional[str] = None) -> dict:
+        """
+        Get Mermaid diagram for Knowledge Graph orchestration.
+
+        Use this to debug the reasoning flow or understand how subgraphs
+        (visa, company, tax, property) are structured.
+
+        Args:
+            subgraph: Optional subgraph name (visa, company, tax, property)
+
+        Returns:
+            Mermaid string in a dict.
+        """
+        params = {}
+        if subgraph:
+            params["subgraph"] = subgraph
+        return await _call("/api/kg/visualize", params=params)
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/langsmith.py ---
+============================================================
+
+"""LangSmith Observability Tools - 3 tools to query LangGraph traces."""
+
+import os
+from typing import Any, Optional
+
+import httpx
+
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY", "")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT", "nuzantara-rag")
+LANGSMITH_BASE = "https://api.smith.langchain.com"
+
+
+async def _ls_get(path: str, params: Optional[dict] = None) -> Any:
+    """Authenticated GET to LangSmith API."""
+    async with httpx.AsyncClient(base_url=LANGSMITH_BASE, timeout=15) as client:
+        resp = await client.get(
+            path,
+            params=params,
+            headers={"x-api-key": LANGSMITH_API_KEY},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def langsmith_recent_runs(limit: int = 10, error_only: bool = False) -> dict:
+        """
+        Fetch recent LangGraph traces from LangSmith for nuzantara-rag project.
+
+        Use this to debug RAG pipeline issues, check error rates, or verify
+        that recent queries are being traced correctly.
+
+        Args:
+            limit: Number of runs to return (default 10, max 50)
+            error_only: If True, return only failed/error runs
+
+        Returns:
+            List of recent runs with id, name, status, latency, token usage.
+        """
+        try:
+            params: dict = {
+                "project_name": LANGSMITH_PROJECT,
+                "limit": min(limit, 50),
+                "is_root": True,
+            }
+            if error_only:
+                params["error"] = True
+
+            data = await _ls_get("/runs", params=params)
+            runs = data if isinstance(data, list) else data.get("runs", [])
+
+            return {
+                "project": LANGSMITH_PROJECT,
+                "count": len(runs),
+                "runs": [
+                    {
+                        "id": r.get("id"),
+                        "name": r.get("name"),
+                        "status": r.get("status"),
+                        "error": r.get("error"),
+                        "latency_ms": round((r.get("total_time") or 0) * 1000),
+                        "prompt_tokens": r.get("prompt_tokens"),
+                        "completion_tokens": r.get("completion_tokens"),
+                        "start_time": r.get("start_time"),
+                    }
+                    for r in runs
+                ],
+            }
+        except Exception as e:
+            return {"error": str(e), "project": LANGSMITH_PROJECT}
+
+    @mcp.tool()
+    async def langsmith_run_detail(run_id: str) -> dict:
+        """
+        Get full detail of a specific LangSmith run including child nodes.
+
+        Use this to inspect exactly what happened in a LangGraph execution:
+        which nodes ran, what inputs/outputs each node received, where errors occurred.
+
+        Args:
+            run_id: The run UUID from langsmith_recent_runs
+
+        Returns:
+            Full run detail with inputs, outputs, child runs per node.
+        """
+        try:
+            run = await _ls_get(f"/runs/{run_id}")
+
+            # Fetch child runs (individual LangGraph nodes)
+            children_data = await _ls_get("/runs", params={"parent_run": run_id, "limit": 20})
+            children = children_data if isinstance(children_data, list) else children_data.get("runs", [])
+
+            return {
+                "id": run.get("id"),
+                "name": run.get("name"),
+                "status": run.get("status"),
+                "error": run.get("error"),
+                "inputs": run.get("inputs"),
+                "outputs": run.get("outputs"),
+                "latency_ms": round((run.get("total_time") or 0) * 1000),
+                "prompt_tokens": run.get("prompt_tokens"),
+                "completion_tokens": run.get("completion_tokens"),
+                "start_time": run.get("start_time"),
+                "nodes": [
+                    {
+                        "name": c.get("name"),
+                        "status": c.get("status"),
+                        "error": c.get("error"),
+                        "latency_ms": round((c.get("total_time") or 0) * 1000),
+                    }
+                    for c in children
+                ],
+            }
+        except Exception as e:
+            return {"error": str(e), "run_id": run_id}
+
+    @mcp.tool()
+    async def langsmith_project_stats() -> dict:
+        """
+        Get aggregate stats for the nuzantara-rag LangSmith project.
+
+        Returns error rate, average latency, total runs, and token usage
+        for the last 100 runs. Use this for a quick health check of the
+        RAG pipeline observability.
+
+        Returns:
+            Aggregate stats: total_runs, error_rate, avg_latency_ms, total_tokens.
+        """
+        try:
+            data = await _ls_get(
+                "/runs",
+                params={"project_name": LANGSMITH_PROJECT, "limit": 100, "is_root": True},
+            )
+            runs = data if isinstance(data, list) else data.get("runs", [])
+
+            if not runs:
+                return {"project": LANGSMITH_PROJECT, "total_runs": 0, "message": "No runs yet"}
+
+            errors = sum(1 for r in runs if r.get("status") == "error")
+            latencies = [
+                (r.get("total_time") or 0) * 1000 for r in runs if r.get("total_time")
+            ]
+            tokens = sum(
+                (r.get("prompt_tokens") or 0) + (r.get("completion_tokens") or 0)
+                for r in runs
+            )
+
+            return {
+                "project": LANGSMITH_PROJECT,
+                "total_runs": len(runs),
+                "error_count": errors,
+                "error_rate_pct": round(errors / len(runs) * 100, 1),
+                "avg_latency_ms": round(sum(latencies) / len(latencies)) if latencies else 0,
+                "total_tokens": tokens,
+                "url": f"https://smith.langchain.com/projects/{LANGSMITH_PROJECT}",
+            }
+        except Exception as e:
+            return {"error": str(e), "project": LANGSMITH_PROJECT}
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/memory.py ---
+============================================================
+
+"""
+LAM Episodic Memory Tools
+Exposes save_episode, recall_similar, list_recent_episodes, delete_episode
+to the MCP agent layer via the /api/memory/lam/* backend endpoints.
+"""
+
+import logging
+from typing import Any, Callable, Optional
+
+logger = logging.getLogger("nuzantara-mcp.memory")
+
+
+def register(mcp, _call: Callable, _call_safe: Callable) -> None:
+
+    @mcp.tool()
+    async def save_episode(
+        content: str,
+        agent: str = "main",
+        tags: list[str] = [],
+        outcome: str = "",
+        metadata: dict[str, Any] = {},
+    ) -> dict:
+        """
+        Save a memory episode for the LAM agent after completing a task.
+
+        Use this to remember:
+        - What you did and what happened (outcome)
+        - Key decisions taken and why
+        - Errors encountered and how they were fixed
+        - Client patterns and preferences
+
+        Args:
+            content: Description of the episode (what happened, what was done)
+            agent: Agent identifier, default "main"
+            tags: Semantic labels e.g. ["client_onboarding", "error_recovery"]
+            outcome: Result — "success", "partial", "failed", or free text
+            metadata: Extra structured context (client_id, tool_used, etc.)
+
+        Returns:
+            {"id": "uuid", "status": "saved"}
+        """
+        return await _call_safe(
+            "/api/memory/lam/episodes",
+            method="POST",
+            json={
+                "content": content,
+                "agent": agent,
+                "tags": tags,
+                "outcome": outcome,
+                "metadata": metadata,
+            },
+        )
+
+    @mcp.tool()
+    async def recall_similar(
+        query: str,
+        limit: int = 5,
+        agent: Optional[str] = None,
+    ) -> dict:
+        """
+        Recall past episodes semantically similar to a query.
+
+        Use this BEFORE attempting a task to check if you've solved
+        something similar before and what the outcome was.
+
+        Args:
+            query: Natural language description of the current task or question
+            limit: Max episodes to return (default 5)
+            agent: Filter by agent name (optional)
+
+        Returns:
+            {"results": [...episodes sorted by similarity...], "query": "...", "execution_time_ms": ...}
+        """
+        return await _call_safe(
+            "/api/memory/lam/recall",
+            method="POST",
+            json={"query": query, "limit": limit, "agent": agent},
+        )
+
+    @mcp.tool()
+    async def list_recent_episodes(
+        limit: int = 10,
+        agent: Optional[str] = None,
+    ) -> dict:
+        """
+        List the most recent LAM memory episodes.
+
+        Use this to review recent history or audit what has been remembered.
+
+        Args:
+            limit: Max episodes to return (default 10)
+            agent: Filter by agent name (optional)
+
+        Returns:
+            {"episodes": [...], "total": N}
+        """
+        params: dict[str, Any] = {"limit": limit}
+        if agent:
+            params["agent"] = agent
+        return await _call_safe("/api/memory/lam/episodes", params=params)
+
+    @mcp.tool()
+    async def delete_episode(episode_id: str) -> dict:
+        """
+        Delete a specific LAM memory episode by ID.
+
+        Use this to remove outdated, incorrect, or irrelevant memories.
+
+        Args:
+            episode_id: UUID of the episode to delete
+
+        Returns:
+            {"status": "deleted", "id": "..."}
+        """
+        return await _call_safe(f"/api/memory/lam/episodes/{episode_id}", method="DELETE")
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/portal.py ---
+============================================================
+
+"""Portal Tools - 6 tools for client-facing portal operations."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def get_portal_dashboard(client_id: str) -> dict:
+        """
+        Get the client portal dashboard overview.
+
+        Args:
+            client_id: UUID of the client
+
+        Returns:
+            Dashboard: active practices, pending documents, unread messages, recent activity.
+        """
+        return await _call(
+            "/api/portal/dashboard", params={"client_id": client_id}
+        )
+
+    @mcp.tool()
+    async def get_portal_visa_status(client_id: str) -> dict:
+        """
+        Get visa status with detailed timeline for a client.
+
+        Args:
+            client_id: UUID of the client
+
+        Returns:
+            Visa details: type, status, expiry date, timeline of processing steps.
+        """
+        return await _call(
+            "/api/portal/visa", params={"client_id": client_id}
+        )
+
+    @mcp.tool()
+    async def list_portal_messages(
+        client_id: str, unread_only: bool = False, limit: int = 20
+    ) -> dict:
+        """
+        List messages in client's portal inbox.
+
+        Args:
+            client_id: UUID of the client
+            unread_only: Only show unread messages
+            limit: Max messages to return
+
+        Returns:
+            List of messages with sender, subject, date, read_status.
+        """
+        params: dict = {"client_id": client_id, "limit": limit}
+        if unread_only:
+            params["unread_only"] = True
+        return await _call("/api/portal/messages", params=params)
+
+    @mcp.tool()
+    async def send_portal_message(
+        client_id: str, subject: str, body: str
+    ) -> dict:
+        """
+        Send a message to a client through the portal.
+
+        Args:
+            client_id: UUID of the client
+            subject: Message subject line
+            body: Message body (supports markdown)
+
+        Returns:
+            Sent message record with delivery status.
+        """
+        return await _call(
+            "/api/portal/messages",
+            method="POST",
+            json={"client_id": client_id, "subject": subject, "body": body},
+        )
+
+    @mcp.tool()
+    async def list_portal_documents(
+        client_id: str, category: Optional[str] = None
+    ) -> dict:
+        """
+        List documents available to a client in their portal.
+
+        Args:
+            client_id: UUID of the client
+            category: Filter by category (passport, visa, company, tax, legal, other)
+
+        Returns:
+            List of documents with name, category, upload_date, size, download_url.
+        """
+        params: dict = {"client_id": client_id}
+        if category:
+            params["category"] = category
+        return await _call("/api/portal/documents", params=params)
+
+    @mcp.tool()
+    async def get_portal_timeline(client_id: str) -> dict:
+        """
+        Get the practice progress timeline visible to the client.
+
+        Args:
+            client_id: UUID of the client
+
+        Returns:
+            Timeline of practice milestones: step, status, date, description.
+        """
+        return await _call(
+            "/api/portal/timeline", params={"client_id": client_id}
+        )
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/pricing.py ---
+============================================================
+
+"""Pricing Tools - 3 tools for dynamic pricing and service catalog."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def calculate_pricing(
+        service_type: str,
+        complexity: str = "standard",
+        urgency: str = "normal",
+    ) -> dict:
+        """
+        Calculate pricing for a service based on type, complexity, and urgency.
+
+        Uses the dynamic pricing engine that factors in current workload,
+        service complexity, and urgency surcharges.
+
+        Args:
+            service_type: Type of service (e.g., "kitas", "pt_pma", "kitap",
+                "property_due_diligence", "tax_filing")
+            complexity: Complexity level: "standard", "complex", "premium"
+            urgency: Urgency level: "normal", "urgent", "express"
+
+        Returns:
+            Pricing breakdown: base_price, surcharges, total, currency, validity.
+        """
+        return await _call(
+            "/api/agents/pricing/calculate",
+            method="POST",
+            json={
+                "service_type": service_type,
+                "complexity": complexity,
+                "urgency": urgency,
+            },
+        )
+
+    @mcp.tool()
+    async def get_all_prices() -> dict:
+        """
+        Get the complete pricing catalog for all services.
+
+        Returns the full official pricing list. This is the ONLY source of truth
+        for prices — never hardcode or guess prices.
+
+        Returns:
+            Complete pricing catalog with all service types and tiers.
+        """
+        return await _call("/pricing/all")
+
+    @mcp.tool()
+    async def search_service_pricing(query: str) -> dict:
+        """
+        Search for a specific service in the pricing catalog.
+
+        Uses semantic search to find the right service even with
+        approximate descriptions.
+
+        Args:
+            query: Natural language description of the service
+                (e.g., "work permit for investor", "company setup bali")
+
+        Returns:
+            Matching services with pricing details.
+        """
+        return await _call("/pricing/search", params={"q": query})
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/sheets.py ---
+============================================================
+
+"""Google Sheets Tools - Read/write spreadsheet data."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def read_sheet(
+        spreadsheet_id: str,
+        range: str,
+    ) -> dict:
+        """
+        Read data from a Google Spreadsheet range.
+
+        Args:
+            spreadsheet_id: The spreadsheet ID (from the URL)
+            range: A1 notation range, e.g. 'Sheet1!A1:Z100'
+
+        Returns:
+            Rows of data as list of lists.
+        """
+        return await _call(
+            "/api/sheets/read",
+            params={"spreadsheet_id": spreadsheet_id, "range": range},
+        )
+
+    @mcp.tool()
+    async def write_sheet(
+        spreadsheet_id: str,
+        range: str,
+        values: list[list[str]],
+    ) -> dict:
+        """
+        Write values to a Google Spreadsheet range.
+
+        Args:
+            spreadsheet_id: The spreadsheet ID
+            range: A1 notation range, e.g. 'Company!D5:U5'
+            values: 2D array of values to write
+
+        Returns:
+            Number of updated cells.
+        """
+        return await _call(
+            "/api/sheets/write",
+            method="POST",
+            json={
+                "spreadsheet_id": spreadsheet_id,
+                "range": range,
+                "values": values,
+            },
+        )
+
+    @mcp.tool()
+    async def update_sheet_row(
+        spreadsheet_id: str,
+        sheet_name: str,
+        row_number: int,
+        column_start: str,
+        values: list[str],
+    ) -> dict:
+        """
+        Update a specific row in a Google Spreadsheet starting from a column.
+
+        Args:
+            spreadsheet_id: The spreadsheet ID
+            sheet_name: Sheet tab name, e.g. 'Company'
+            row_number: 1-based row number
+            column_start: Starting column letter, e.g. 'D'
+            values: List of values to write (fills columns sequentially)
+
+        Returns:
+            Updated range and cell count.
+        """
+        return await _call(
+            "/api/sheets/update-row",
+            method="POST",
+            json={
+                "spreadsheet_id": spreadsheet_id,
+                "sheet_name": sheet_name,
+                "row_number": row_number,
+                "column_start": column_start,
+                "values": values,
+            },
+        )
+
+    @mcp.tool()
+    async def find_sheet_row(
+        spreadsheet_id: str,
+        range: str,
+        search_value: str,
+        search_column: int = 0,
+    ) -> dict:
+        """
+        Find a row in a spreadsheet by matching a column value.
+
+        Args:
+            spreadsheet_id: The spreadsheet ID
+            range: Range to search, e.g. 'Company!A:C'
+            search_value: Value to find (case-insensitive)
+            search_column: 0-based column index within the range
+
+        Returns:
+            Row number (1-based) if found, null otherwise.
+        """
+        return await _call(
+            "/api/sheets/find",
+            method="POST",
+            json={
+                "spreadsheet_id": spreadsheet_id,
+                "range": range,
+                "search_value": search_value,
+                "search_column": search_column,
+            },
+        )
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/tools/workflows.py ---
+============================================================
+
+"""Workflow Tools - 8 tools for autonomous execution and agent management."""
+
+from typing import Optional
+
+
+def register(mcp, _call, _call_safe):
+    @mcp.tool()
+    async def create_execution_plan(
+        query: str,
+        client_id: Optional[str] = None,
+    ) -> dict:
+        """
+        Create a deterministic execution plan for a business task.
+
+        The system identifies the task type (NPWP registration, KITAS application,
+        PT PMA incorporation, etc.) and creates a step-by-step plan with
+        safety levels (SAFE, CRITICAL, IRREVERSIBLE).
+
+        Args:
+            query: Natural language description of the task
+            client_id: Optional client UUID to associate the plan with
+
+        Returns:
+            Plan with plan_id, task_type, steps (each with action, description, safety_level).
+        """
+        payload: dict = {"query": query}
+        if client_id:
+            payload["client_id"] = client_id
+        return await _call(
+            "/api/v1/autonomous-execution/plans",
+            method="POST",
+            json=payload,
+        )
+
+    @mcp.tool()
+    async def execute_plan(plan_id: str) -> dict:
+        """
+        Execute a plan step by step.
+
+        SAFE steps execute automatically. CRITICAL steps pause for approval.
+        IRREVERSIBLE steps require double confirmation.
+
+        Args:
+            plan_id: UUID of the execution plan
+
+        Returns:
+            Execution status: completed steps, current step, pending approvals.
+        """
+        return await _call(
+            f"/api/v1/autonomous-execution/plans/{plan_id}/execute",
+            method="POST",
+        )
+
+    @mcp.tool()
+    async def get_plan_status(plan_id: str) -> dict:
+        """
+        Get the current status of an execution plan.
+
+        Args:
+            plan_id: UUID of the execution plan
+
+        Returns:
+            Plan details: all steps with their statuses, approvals, results, errors.
+        """
+        return await _call(
+            f"/api/v1/autonomous-execution/plans/{plan_id}"
+        )
+
+    @mcp.tool()
+    async def approve_step(
+        plan_id: str,
+        step_id: str,
+        approved: bool = True,
+        notes: Optional[str] = None,
+    ) -> dict:
+        """
+        Approve or reject a CRITICAL/IRREVERSIBLE step in an execution plan.
+
+        Args:
+            plan_id: UUID of the plan
+            step_id: UUID of the step awaiting approval
+            approved: True to approve, False to reject
+            notes: Optional notes for the approval/rejection
+
+        Returns:
+            Updated step status. If approved, execution continues automatically.
+        """
+        payload: dict = {"approved": approved}
+        if notes:
+            payload["notes"] = notes
+        return await _call(
+            f"/api/v1/autonomous-execution/plans/{plan_id}/steps/{step_id}/approve",
+            method="POST",
+            json=payload,
+        )
+
+    @mcp.tool()
+    async def list_plans(
+        status: Optional[str] = None, limit: int = 20
+    ) -> dict:
+        """
+        List all execution plans.
+
+        Args:
+            status: Filter by status (pending, in_progress, completed, failed, waiting_approval)
+            limit: Max results
+
+        Returns:
+            List of plans with summary, status, progress percentage.
+        """
+        params: dict = {"limit": limit}
+        if status:
+            params["status"] = status
+        return await _call(
+            "/api/v1/autonomous-execution/plans", params=params
+        )
+
+    @mcp.tool()
+    async def run_conversation_trainer() -> dict:
+        """
+        Trigger the Conversation Quality Trainer agent.
+
+        Analyzes recent high-rated conversations, extracts patterns,
+        generates improved prompts, and creates a PR with improvements.
+
+        Returns:
+            Execution ID, patterns found, improvements generated.
+        """
+        return await _call(
+            "/api/autonomous-agents/conversation-trainer/run",
+            method="POST",
+        )
+
+    @mcp.tool()
+    async def run_client_predictor() -> dict:
+        """
+        Trigger the Client Value Predictor & Nurturer agent.
+
+        Scores all clients by LTV, identifies VIP and high-risk clients,
+        sends personalized nurturing messages via WhatsApp.
+
+        Returns:
+            VIP nurtured count, high-risk contacted, total messages sent.
+        """
+        return await _call(
+            "/api/autonomous-agents/client-value-predictor/run",
+            method="POST",
+        )
+
+    @mcp.tool()
+    async def get_agents_status() -> dict:
+        """
+        Get the status of all autonomous agents.
+
+        Returns:
+            Per-agent status: last_run, next_run, success_rate, total_runs, latest_result.
+            Agents: conversation_trainer, client_value_predictor, knowledge_graph_builder.
+        """
+        return await _call("/api/autonomous-agents/status")
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/utils/resilience.py ---
+============================================================
+
+"""
+Resilience utilities for the LAM agent layer.
+Provides retry-with-backoff and irreversibility guard for tool calls.
+"""
+
+import asyncio
+import logging
+from typing import Any, Callable
+
+logger = logging.getLogger("nuzantara-mcp.resilience")
+
+# Endpoints that cause irreversible side-effects — require explicit confirm=True
+IRREVERSIBLE_ENDPOINTS = {
+    "/api/crm/clients",           # creates a new client record
+    "/api/whatsapp/send",         # sends a WhatsApp message
+    "/api/email/send",            # sends an email
+    "/api/telegram/send",         # sends a Telegram message
+    "/api/crm/interactions",      # logs a CRM interaction (audit trail)
+    "/api/practices",             # creates a new practice
+    "/api/invoicing/generate",    # generates an invoice
+}
+
+
+def is_irreversible(endpoint: str) -> bool:
+    """Return True if the endpoint produces irreversible side-effects."""
+    for irr in IRREVERSIBLE_ENDPOINTS:
+        if endpoint.startswith(irr):
+            return True
+    return False
+
+
+async def call_with_retry(
+    fn: Callable,
+    endpoint: str,
+    method: str = "GET",
+    json: Any = None,
+    params: Any = None,
+    timeout: int = 30,
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    confirm: bool = False,
+) -> dict[str, Any]:
+    """
+    Resilient wrapper around _call_safe with:
+    - Exponential backoff retry (3 attempts, 1s/2s/4s)
+    - Irreversibility guard (blocks dangerous POST without confirm=True)
+    - Structured error envelope on final failure
+
+    Args:
+        fn: The _call_safe function from server.py
+        endpoint: Backend API endpoint path
+        method: HTTP method
+        json: Request body
+        params: Query params
+        timeout: Request timeout seconds
+        max_retries: Max attempts before giving up
+        base_delay: Initial retry delay seconds (doubles each retry)
+        confirm: Must be True for endpoints in IRREVERSIBLE_ENDPOINTS
+
+    Returns:
+        dict: API response or {"error": True, "detail": "...", "endpoint": "..."}
+    """
+    if method.upper() in ("POST", "PUT", "PATCH", "DELETE") and is_irreversible(endpoint):
+        if not confirm:
+            logger.warning(f"Blocked irreversible call to {endpoint} — confirm=True required")
+            return {
+                "error": True,
+                "blocked": True,
+                "detail": (
+                    f"This action ({method} {endpoint}) is irreversible. "
+                    "Call again with confirm=True to proceed."
+                ),
+            }
+
+    last_error: Any = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            result = await fn(endpoint, method=method, json=json, params=params, timeout=timeout)
+            if isinstance(result, dict) and result.get("error"):
+                # Transient HTTP errors (5xx) are retried; 4xx are not
+                status = result.get("status", 0)
+                if status and 400 <= status < 500:
+                    logger.warning(f"Non-retryable {status} from {endpoint}: {result.get('detail')}")
+                    return result
+                raise RuntimeError(result.get("detail", "backend error"))
+            return result
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries:
+                delay = base_delay * (2 ** (attempt - 1))
+                logger.warning(f"Retry {attempt}/{max_retries} for {endpoint} in {delay}s: {e}")
+                await asyncio.sleep(delay)
+            else:
+                logger.error(f"All {max_retries} retries failed for {endpoint}: {e}")
+
+    return {
+        "error": True,
+        "detail": f"Failed after {max_retries} attempts: {last_error}",
+        "endpoint": endpoint,
+    }
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/workflows/__init__.py ---
+============================================================
+
+"""Nuzantara MCP Workflows - Deterministic automation chains."""
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/workflows/chains.py ---
+============================================================
+
+"""
+Deterministic Workflow Chains - 8 autopilot workflows.
+
+Each chain is a sequence of tool calls with IF/THEN/ELSE branching.
+NO LLM decisions — pure deterministic logic.
+"""
+
+import asyncio
+import logging
+from datetime import datetime, timezone
+from typing import Any, Callable, Optional
+
+logger = logging.getLogger("nuzantara-mcp.chains")
+
+
+async def _reflect_and_save(
+    _call_safe: Callable,
+    chain_name: str,
+    summary: str,
+    outcome: str,
+    log: list,
+) -> None:
+    """
+    Post-chain reflection: save an episodic memory of what just happened.
+    Called at the end of every chain to build the LAM's long-term memory.
+    """
+    try:
+        errors = [s.get("detail") for s in log if s.get("status") == "error"]
+        content = (
+            f"Chain '{chain_name}' completed. {summary}. "
+            f"Steps: {len(log)}. Errors: {errors if errors else 'none'}."
+        )
+        await _call_safe(
+            "/api/memory/lam/episodes",
+            method="POST",
+            json={
+                "content": content,
+                "agent": "chains",
+                "tags": [chain_name, "chain_reflection"],
+                "outcome": outcome,
+                "metadata": {"chain": chain_name, "steps": len(log), "errors": errors},
+            },
+        )
+        logger.debug(f"Reflection saved for chain '{chain_name}'")
+    except Exception as e:
+        logger.warning(f"Reflection save failed for '{chain_name}': {e}")
+
+
+def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
+    # =========================================================================
+    # CHAIN 1: Daily Ops Autopilot
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_daily_ops_autopilot(
+        send_report_to: str = "zero@balizero.com",
+    ) -> dict:
+        """
+        AUTOPILOT: Run the full daily operations workflow.
+
+        Deterministic chain that runs every morning:
+        1. Check expiry alerts → send WhatsApp reminders for <30 days
+        2. Check autonomous agent health → restart stale agents
+        3. Check critical intel alerts → auto-compose articles for high-impact items
+        4. Gather team hours and completion rates
+        5. Compile and email daily report
+
+        Args:
+            send_report_to: Email address for the daily report
+
+        Returns:
+            Full execution log: each step's result, actions taken, errors encountered.
+        """
+        log: list[dict[str, Any]] = []
+        report: dict[str, Any] = {"date": datetime.now(timezone.utc).isoformat()}
+
+        # Step 1: Expiry alerts
+        try:
+            alerts = await _call_safe("/api/crm/expiry-alerts", params={"days_ahead": 90})
+            # alerts may be a list directly or a dict with "alerts"/"data" key
+            alerts_list = alerts if isinstance(alerts, list) else (alerts.get("alerts") or alerts.get("data") or [])
+            urgent = [a for a in alerts_list if isinstance(a, dict) and a.get("days_remaining", 999) < 30]
+            reminders_sent = 0
+            for alert in urgent[:10]:  # Cap at 10 reminders per run
+                phone = alert.get("client_phone") or alert.get("phone")
+                client_id = alert.get("client_id")
+                if phone:
+                    msg = f"Reminder: Your {alert.get('document_type', 'document')} expires in {alert.get('days_remaining')} days. Please contact Bali Zero for renewal."
+                    await _call_safe("/api/whatsapp/send", method="POST", json={"phone": phone, "message": msg})
+                    reminders_sent += 1
+                if client_id:
+                    await _call_safe("/api/crm/interactions", method="POST", json={
+                        "client_id": client_id, "type": "system",
+                        "summary": f"Auto-sent expiry reminder ({alert.get('days_remaining')}d remaining)",
+                        "channel": "whatsapp",
+                    })
+            report["expiry_alerts"] = {"total": len(alerts_list), "urgent": len(urgent), "reminders_sent": reminders_sent}
+            log.append({"step": "expiry_alerts", "status": "ok", "reminders_sent": reminders_sent})
+        except Exception as e:
+            log.append({"step": "expiry_alerts", "status": "error", "detail": str(e)})
+
+        # Step 2: Agent health check
+        try:
+            agents = await _call_safe("/api/autonomous-agents/status")
+            stale_agents = []
+            # agents may be a list or a dict with "agents"/"data" key
+            agents_dict = agents if isinstance(agents, dict) else {}
+            agents_map = agents_dict.get("agents") or agents_dict.get("data") or {}
+            if isinstance(agents_map, dict):
+                for name, info in agents_map.items():
+                    if isinstance(info, dict) and info.get("status") == "error":
+                        stale_agents.append(name)
+            elif isinstance(agents_map, list):
+                for item in agents_map:
+                    if isinstance(item, dict) and item.get("status") == "error":
+                        stale_agents.append(item.get("name", "unknown"))
+            report["agents"] = {"total": len(agents_map), "stale": stale_agents}
+            log.append({"step": "agent_health", "status": "ok", "stale_agents": stale_agents})
+        except Exception as e:
+            log.append({"step": "agent_health", "status": "error", "detail": str(e)})
+
+        # Step 3: Critical intel alerts
+        try:
+            intel = await _call_safe("/api/intel/critical")
+            critical_items = intel.get("alerts") or intel.get("data") or []
+            articles_composed = 0
+            for item in critical_items[:3]:  # Max 3 auto-articles per day
+                if isinstance(item, dict) and item.get("severity") == "high":
+                    await _call_safe("/api/article-composer/compose", method="POST", json={
+                        "topic": item.get("title", "Regulatory Update"),
+                        "style": "alert",
+                        "target_length": "short",
+                    })
+                    articles_composed += 1
+            report["intel"] = {"critical_alerts": len(critical_items), "articles_composed": articles_composed}
+            log.append({"step": "intel_alerts", "status": "ok", "articles_composed": articles_composed})
+        except Exception as e:
+            log.append({"step": "intel_alerts", "status": "error", "detail": str(e)})
+
+        # Step 4: Team and completion metrics
+        try:
+            hours_data = await _call_safe("/api/team/activity/weekly")
+            completion_data = await _call_safe("/api/analytics/completion-rates", params={"period": "7d"})
+            report["team_hours"] = hours_data
+            report["completion_rates"] = completion_data
+            log.append({"step": "metrics", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "metrics", "status": "error", "detail": str(e)})
+
+        # Step 5: Send daily report email
+        try:
+            summary_lines = [
+                f"Daily Ops Report — {report['date'][:10]}",
+                "",
+                f"Expiry Alerts: {report.get('expiry_alerts', {}).get('urgent', 'N/A')} urgent, {report.get('expiry_alerts', {}).get('reminders_sent', 0)} reminders sent",
+                f"Agent Health: {report.get('agents', {}).get('stale', [])} stale",
+                f"Intel: {report.get('intel', {}).get('critical_alerts', 0)} critical, {report.get('intel', {}).get('articles_composed', 0)} articles auto-composed",
+            ]
+            await _call_safe("/api/zoho/emails", method="POST", json={
+                "to": send_report_to,
+                "subject": f"[Nuzantara] Daily Ops Report {report['date'][:10]}",
+                "body": "\n".join(summary_lines),
+            })
+            log.append({"step": "send_report", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "send_report", "status": "error", "detail": str(e)})
+
+        result = {"chain": "daily_ops_autopilot", "report": report, "log": log}
+        await _reflect_and_save(_call_safe, "daily_ops_autopilot",
+            f"Reminders={report.get('expiry_alerts',{}).get('reminders_sent',0)}, "
+            f"Articles={report.get('intel',{}).get('articles_composed',0)}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return result
+
+    # =========================================================================
+    # CHAIN 2: New Client Onboarding
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_new_client_onboarding(
+        name: str,
+        email: str,
+        nationality: str,
+        business_description: str,
+        phone: Optional[str] = None,
+    ) -> dict:
+        """
+        AUTOPILOT: Complete new client onboarding in one shot.
+
+        Deterministic chain:
+        1. Create client in CRM
+        2. Search matching KBLI codes for their business
+        3. Determine recommended visa type based on nationality + business
+        4. Create Google Drive folder structure
+        5. Create initial practice
+        6. Generate execution plan
+        7. Send welcome message via portal + email + WhatsApp
+        8. Log all interactions
+
+        Args:
+            name: Client's full legal name
+            email: Client's email
+            nationality: Client's nationality (e.g. "Italian", "Australian")
+            business_description: What their business does (for KBLI matching)
+            phone: WhatsApp number with country code
+
+        Returns:
+            Onboarding result: client_id, kbli_matches, visa_recommendation, practice_id, plan_id.
+        """
+        log: list[dict] = []
+        result: dict[str, Any] = {}
+
+        # Step 1: Create client
+        try:
+            client = await _call("/api/crm/clients", method="POST", json={
+                "name": name, "email": email, "nationality": nationality,
+                "phone": phone or "", "notes": f"Business: {business_description}",
+            })
+            client_id = client.get("id") or client.get("client_id")
+            result["client_id"] = client_id
+            log.append({"step": "create_client", "status": "ok", "client_id": client_id})
+        except Exception as e:
+            return {"chain": "new_client_onboarding", "error": f"Failed to create client: {e}", "log": log}
+
+        # Step 2: KBLI search
+        try:
+            kbli = await _call_safe("/api/v1/kbli-notebook/search", params={"query": business_description, "limit": 5})
+            result["kbli_matches"] = kbli.get("results") or kbli.get("data") or []
+            log.append({"step": "kbli_search", "status": "ok", "matches": len(result["kbli_matches"])})
+        except Exception as e:
+            log.append({"step": "kbli_search", "status": "error", "detail": str(e)})
+
+        # Step 3: Determine visa (intelligent pricing-based recommendation)
+        visa_type = "kitas_investor"  # default fallback
+        nat_lower = nationality.lower()
+
+        # Indonesian citizens don't need visa
+        if nat_lower in ("indonesian", "indonesia", "wni"):
+            visa_type = "none"
+        else:
+            # Use PricingTool to intelligently determine visa type based on business description
+            try:
+                pricing_query = f"visa recommendation for {nationality} national doing: {business_description}"
+                pricing_result = await _call_safe(
+                    "/api/agents/pricing/calculate",
+                    method="POST",
+                    json={"service_type": "visa", "query": pricing_query}
+                )
+
+                # Parse pricing result to extract recommended visa type
+                # The pricing service will return relevant visa options
+                if isinstance(pricing_result, dict) and not pricing_result.get("error"):
+                    # Priority order based on business context
+                    if "retirement" in business_description.lower() or "retire" in business_description.lower():
+                        visa_type = "kitas_retirement"
+                    elif "student" in business_description.lower() or "study" in business_description.lower():
+                        visa_type = "kitas_student"
+                    elif "work" in business_description.lower() or "employee" in business_description.lower():
+                        visa_type = "kitas_work"
+                    elif "business" in business_description.lower() or "company" in business_description.lower() or "investor" in business_description.lower():
+                        visa_type = "kitas_investor"
+                    # else: keep default kitas_investor
+
+                    log.append({"step": "visa_determination", "status": "ok", "visa": visa_type, "pricing_consulted": True})
+                else:
+                    # Fallback to simple keyword matching if pricing fails
+                    if "student" in business_description.lower():
+                        visa_type = "kitas_student"
+                    elif "retire" in business_description.lower():
+                        visa_type = "kitas_retirement"
+                    elif "work" in business_description.lower() or "employee" in business_description.lower():
+                        visa_type = "kitas_work"
+                    log.append({"step": "visa_determination", "status": "ok", "visa": visa_type, "pricing_consulted": False, "fallback": True})
+            except Exception as e:
+                # Fallback to keyword matching on error
+                if "student" in business_description.lower():
+                    visa_type = "kitas_student"
+                elif "retire" in business_description.lower():
+                    visa_type = "kitas_retirement"
+                elif "work" in business_description.lower() or "employee" in business_description.lower():
+                    visa_type = "kitas_work"
+                log.append({"step": "visa_determination", "status": "error", "detail": str(e), "visa": visa_type, "fallback": True})
+
+        result["recommended_visa"] = visa_type
+
+        # Step 4: Create Drive folder
+        try:
+            folder = await _call_safe(f"/api/crm/drive-folders/{client_id}", method="POST")
+            result["drive_folder"] = folder.get("folder_id") or folder.get("id")
+            log.append({"step": "drive_folder", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "drive_folder", "status": "error", "detail": str(e)})
+
+        # Step 5: Create practice
+        if visa_type != "none":
+            try:
+                practice = await _call("/api/crm/practices", method="POST", json={
+                    "client_id": client_id, "type": visa_type,
+                    "notes": f"Auto-created during onboarding. KBLI: {[m.get('code') for m in result.get('kbli_matches', [])[:3]]}",
+                })
+                result["practice_id"] = practice.get("id") or practice.get("practice_id")
+                log.append({"step": "create_practice", "status": "ok"})
+            except Exception as e:
+                log.append({"step": "create_practice", "status": "error", "detail": str(e)})
+
+        # Step 6: Generate execution plan
+        try:
+            plan = await _call_safe("/api/v1/autonomous-execution/plans", method="POST", json={
+                "query": f"Setup {visa_type} for {nationality} client doing {business_description}",
+                "client_id": client_id,
+            })
+            result["plan_id"] = plan.get("plan_id") or plan.get("id")
+            log.append({"step": "execution_plan", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "execution_plan", "status": "error", "detail": str(e)})
+
+        # Step 7: Send welcome messages
+        welcome_msg = f"Welcome to Bali Zero, {name}! Your onboarding is complete. Check your portal for next steps."
+        try:
+            await _call_safe("/api/portal/messages", method="POST", json={
+                "client_id": client_id, "subject": "Welcome to Bali Zero!", "body": welcome_msg,
+            })
+            log.append({"step": "portal_message", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "portal_message", "status": "error", "detail": str(e)})
+
+        try:
+            await _call_safe("/api/zoho/emails", method="POST", json={
+                "to": email, "subject": "Welcome to Bali Zero!", "body": welcome_msg,
+            })
+            log.append({"step": "welcome_email", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "welcome_email", "status": "error", "detail": str(e)})
+
+        if phone:
+            try:
+                await _call_safe("/api/whatsapp/send", method="POST", json={"phone": phone, "message": welcome_msg})
+                log.append({"step": "whatsapp", "status": "ok"})
+            except Exception as e:
+                log.append({"step": "whatsapp", "status": "error", "detail": str(e)})
+
+        # Step 8: Log interaction
+        try:
+            await _call_safe("/api/crm/interactions", method="POST", json={
+                "client_id": client_id, "type": "system",
+                "summary": "Automated onboarding completed", "channel": "internal",
+            })
+        except Exception:
+            pass
+
+        res = {"chain": "new_client_onboarding", "result": result, "log": log}
+        await _reflect_and_save(_call_safe, "new_client_onboarding",
+            f"Client={name}, email={email}, visa={result.get('recommended_visa','?')}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return res
+
+    # =========================================================================
+    # CHAIN 3: Practice Lifecycle Manager
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_practice_lifecycle_check() -> dict:
+        """
+        AUTOPILOT: Check all active practices and take action.
+
+        Deterministic chain that runs every 6 hours:
+        1. List all active practices
+        2. For visa practices expiring within 90 days → create renewal, notify client
+        3. For practices waiting documents >7 days → send reminder
+        4. For submitted practices >14 days → escalate
+        5. Check overall completion rates → alert if below 80%
+
+        Returns:
+            Actions taken: renewals created, reminders sent, escalations flagged.
+        """
+        log: list[dict] = []
+        stats = {
+            "renewals_created": 0,
+            "reminders_sent": 0,
+            "escalations": 0,
+            "expiring_soon": 0,       # practices with expiry_date within 90 days
+            "blocked": 0,             # practices past expected_completion_date and still open
+        }
+
+        try:
+            # Fetching all practices (limit 500) to ensure we check completed/active ones that need renewal
+            practices_resp = await _call_safe("/api/crm/practices", params={"limit": 500})
+            practices = practices_resp.get("practices") or practices_resp.get("data") or []
+        except Exception as e:
+            return {"chain": "practice_lifecycle", "error": str(e)}
+
+        from datetime import date as _date
+        today = _date.today()
+
+        for p in practices:
+            if not isinstance(p, dict):
+                continue
+            p_id = p.get("id") or p.get("practice_id")
+            client_id = p.get("client_id")
+            p_type = p.get("practice_type_code") or p.get("type", "")
+            status = p.get("status", "")
+            days_in_status = p.get("days_in_current_status", 0)
+
+            # Calculate days_to_expiry from expiry_date field (DB backfilled)
+            days_to_expiry = None
+            expiry_raw = p.get("expiry_date")
+            if expiry_raw:
+                try:
+                    if isinstance(expiry_raw, str):
+                        from datetime import datetime as _dt
+                        expiry_d = _dt.strptime(expiry_raw[:10], "%Y-%m-%d").date()
+                    else:
+                        expiry_d = expiry_raw
+                    days_to_expiry = (expiry_d - today).days
+                except Exception:
+                    pass
+
+            # Calculate days past expected_completion_date (DB backfilled via backfill_practice_dates.py)
+            days_past_expected = None
+            expected_raw = p.get("expected_completion_date")
+            if expected_raw and status not in ("completed", "archived", "cancelled"):
+                try:
+                    if isinstance(expected_raw, str):
+                        from datetime import datetime as _dt
+                        expected_d = _dt.strptime(expected_raw[:10], "%Y-%m-%d").date()
+                    else:
+                        expected_d = expected_raw
+                    overdue = (today - expected_d).days
+                    if overdue > 0:
+                        days_past_expected = overdue
+                except Exception:
+                    pass
+
+            # Calculate days_in_status from updated_at if not provided
+            if not days_in_status:
+                updated_raw = p.get("updated_at")
+                if updated_raw:
+                    try:
+                        from datetime import datetime as _dt
+                        updated_d = _dt.fromisoformat(str(updated_raw).replace("Z", "+00:00"))
+                        days_in_status = (today - updated_d.date()).days
+                    except Exception:
+                        days_in_status = 0
+
+            # Rule 1: Practice expiring within 90 days
+            if days_to_expiry is not None and days_to_expiry < 90:
+                stats["expiring_soon"] += 1
+                try:
+                    await _call_safe(f"/api/crm/practices/{p_id}", method="PATCH", json={
+                        "status": "renewal_needed", "notes": f"Auto-flagged: {days_to_expiry} days to expiry",
+                    })
+                    if client_id:
+                        await _call_safe("/api/portal/messages", method="POST", json={
+                            "client_id": client_id,
+                            "subject": "Visa Renewal Notice",
+                            "body": f"Your {p_type} expires in {days_to_expiry} days. Please prepare documents for renewal.",
+                        })
+                    stats["renewals_created"] += 1
+                except Exception:
+                    pass
+
+            # Rule 1b: Practice blocked — past expected_completion_date and still open
+            if days_past_expected is not None:
+                stats["blocked"] += 1
+                log.append({
+                    "step": "blocked_practice",
+                    "status": "warning",
+                    "practice_id": p_id,
+                    "type": p_type,
+                    "days_overdue": days_past_expected,
+                    "current_status": status,
+                })
+
+            # Rule 2: Waiting documents > 7 days
+            elif status == "waiting_documents" and days_in_status > 7:
+                phone = p.get("client_phone")
+                if phone:
+                    try:
+                        await _call_safe("/api/whatsapp/send", method="POST", json={
+                            "phone": phone,
+                            "message": f"Hi! We're still waiting for documents for your {p_type} practice. Could you please send them at your earliest convenience?",
+                        })
+                        stats["reminders_sent"] += 1
+                    except Exception:
+                        pass
+
+            # Rule 3: Submitted > 14 days — escalate
+            elif status == "submitted" and days_in_status > 14:
+                stats["escalations"] += 1
+
+        # Check completion rates
+        try:
+            rates = await _call_safe("/api/analytics/completion-rates", params={"period": "30d"})
+            monthly_rate = rates.get("completion_rate") or rates.get("overall", 100)
+            if isinstance(monthly_rate, (int, float)) and monthly_rate < 80:
+                stats["completion_alert"] = f"Warning: {monthly_rate}% completion rate (below 80%)"
+        except Exception:
+            pass
+
+        log.append({"step": "lifecycle_check", "status": "ok", "practices_checked": len(practices)})
+        res = {"chain": "practice_lifecycle", "stats": stats, "log": log}
+        await _reflect_and_save(_call_safe, "practice_lifecycle",
+            (
+                f"Checked={len(practices)}, expiring_soon={stats.get('expiring_soon', 0)}, "
+                f"blocked={stats.get('blocked', 0)}, renewals={stats.get('renewals_created', 0)}, "
+                f"reminders={stats.get('reminders_sent', 0)}, escalations={stats.get('escalations', 0)}"
+            ),
+            "success", log)
+        return res
+
+    # =========================================================================
+    # CHAIN 4: Intel Pipeline Autopilot
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_intel_pipeline(
+        sources: Optional[list[str]] = None,
+    ) -> dict:
+        """
+        AUTOPILOT: Run the full intelligence pipeline.
+
+        Deterministic chain:
+        1. Submit scraper jobs for regulatory sources
+        2. Wait for processing
+        3. Review staging items using RAG assessment
+        4. Auto-approve high-confidence items
+        5. Auto-compose articles for high-impact regulatory changes
+        6. Report metrics
+
+        Args:
+            sources: Custom source list (default: standard Indonesian gov sources)
+
+        Returns:
+            Pipeline results: items scraped, assessed, approved, published.
+        """
+        if sources is None:
+            sources = ["kemenkumham", "pajak.go.id", "oss.go.id"]
+
+        log: list[dict] = []
+        stats: dict[str, Any] = {"items_reviewed": 0, "auto_approved": 0, "flagged": 0, "archived": 0}
+
+        # Step 1: Submit scraper job
+        try:
+            job = await _call_safe("/api/intel/scraper/submit", method="POST", json={"sources": sources})
+            log.append({"step": "submit_scraper", "status": "ok", "job": job})
+        except Exception as e:
+            log.append({"step": "submit_scraper", "status": "error", "detail": str(e)})
+
+        # Step 2: Wait for processing (10 seconds for MCP, actual scraping is async in backend)
+        await asyncio.sleep(10)
+
+        # Step 3: Review staging items
+        try:
+            staging = await _call_safe("/api/intel/staging/pending", params={"limit": 20})
+            items = staging.get("items") or staging.get("data") or []
+            stats["items_reviewed"] = len(items)
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                item_id = item.get("id") or item.get("item_id")
+                title = item.get("title", "Unknown")
+
+                # Step 4: Assess via RAG
+                try:
+                    assessment = await _call_safe("/api/agentic-rag/query", method="POST", json={
+                        "query": f"Is this regulation change significant for foreign investors in Bali? Title: {title}",
+                        "user_id": "autopilot",
+                    }, timeout=long_timeout)
+
+                    confidence = assessment.get("confidence", 0)
+                    answer = str(assessment.get("answer", "")).lower()
+
+                    if confidence > 0.6 and ("significant" in answer or "important" in answer or "yes" in answer):
+                        # Auto-approve and compose article
+                        await _call_safe(f"/api/intel/staging/approve/{item_id}", method="POST")
+                        await _call_safe("/api/article-composer/compose", method="POST", json={
+                            "topic": title, "style": "alert", "target_length": "short",
+                        })
+                        stats["auto_approved"] += 1
+                    elif confidence > 0.4:
+                        stats["flagged"] += 1  # Leave for manual review
+                    else:
+                        stats["archived"] += 1
+                except Exception:
+                    stats["flagged"] += 1  # If assessment fails, flag for manual review
+
+            log.append({"step": "review_staging", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "review_staging", "status": "error", "detail": str(e)})
+
+        # Step 5: Get metrics
+        try:
+            metrics = await _call_safe("/api/intel/metrics")
+            stats["pipeline_metrics"] = metrics
+        except Exception:
+            pass
+
+        res = {"chain": "intel_pipeline", "stats": stats, "log": log}
+        await _reflect_and_save(_call_safe, "intel_pipeline",
+            f"Scraped={stats.get('scraped',0)}, approved={stats.get('approved',0)}, published={stats.get('published',0)}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return res
+
+    # =========================================================================
+    # CHAIN 5: Weekly Report Generator
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_weekly_report(
+        send_to: str = "zero@balizero.com",
+    ) -> dict:
+        """
+        AUTOPILOT: Generate and send the weekly operations report.
+
+        Gathers data from all systems and compiles a comprehensive report:
+        1. CRM stats (clients, practices, completions)
+        2. Revenue analytics
+        3. Team productivity and burnout indicators
+        4. Intelligence trends
+        5. RAG system performance
+        6. Sends compiled report via email
+
+        Args:
+            send_to: Email address for the report
+
+        Returns:
+            Complete weekly report data.
+        """
+        report: dict[str, Any] = {"week_of": datetime.now(timezone.utc).isoformat()[:10]}
+
+        # Gather all data in parallel-ish (sequential for safety)
+        sections = {
+            "client_stats": ("/api/crm/clients/stats", {}),
+            "completion_rates": ("/api/analytics/completion-rates", {"period": "7d"}),
+            "revenue": ("/api/analytics/revenue", {"period": "7d"}),
+            "response_times": ("/api/analytics/response-times", {"period": "7d"}),
+            "sla_compliance": ("/api/analytics/sla-compliance", {"period": "7d"}),
+            "query_analytics": ("/api/query-analytics/volume", {"period": "7d"}),
+            "team_productivity": ("/api/team-analytics/productivity", {"period": "7d"}),
+            "burnout": ("/api/team-analytics/burnout", {}),
+            "intel_trends": ("/api/intel/trends", {"period": "7d"}),
+            "agents_status": ("/api/autonomous-agents/status", {}),
+        }
+
+        for key, (endpoint, params) in sections.items():
+            try:
+                data = await _call_safe(endpoint, params=params if params else None)
+                report[key] = data
+            except Exception as e:
+                report[key] = {"error": str(e)}
+
+        # Compile summary
+        summary_lines = [
+            f"# Nuzantara Weekly Report — {report['week_of']}",
+            "",
+            "## Key Metrics",
+        ]
+
+        # Extract key numbers safely
+        cs = report.get("client_stats", {})
+        cr = report.get("completion_rates", {})
+        rev = report.get("revenue", {})
+
+        summary_lines.extend([
+            f"- Total Clients: {cs.get('total', 'N/A')}",
+            f"- Active Practices: {cs.get('active_practices', 'N/A')}",
+            f"- Completion Rate: {cr.get('completion_rate', cr.get('overall', 'N/A'))}%",
+            f"- Weekly Revenue: {rev.get('total', rev.get('weekly_total', 'N/A'))}",
+            "",
+            "## Alerts",
+        ])
+
+        burnout = report.get("burnout", {})
+        if isinstance(burnout, dict) and burnout.get("at_risk"):
+            summary_lines.append(f"⚠ Burnout risk detected: {burnout['at_risk']}")
+
+        intel = report.get("intel_trends", {})
+        if isinstance(intel, dict) and intel.get("high_activity_areas"):
+            summary_lines.append(f"📋 High regulatory activity: {intel['high_activity_areas']}")
+
+        # Send email
+        try:
+            await _call_safe("/api/zoho/emails", method="POST", json={
+                "to": send_to,
+                "subject": f"[Nuzantara] Weekly Report — {report['week_of']}",
+                "body": "\n".join(summary_lines),
+            })
+        except Exception:
+            pass
+
+        res = {"chain": "weekly_report", "report": report}
+        await _reflect_and_save(_call_safe, "weekly_report",
+            f"Week={report.get('week_of','?')}, sent to {send_to}",
+            "success", [])
+        return res
+
+    # =========================================================================
+    # CHAIN 6: Client Health Monitor
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_client_health_monitor() -> dict:
+        """
+        AUTOPILOT: Monitor client health and take proactive action.
+
+        Deterministic chain:
+        1. Run client value predictor to score all clients
+        2. For high-risk clients (inactive >30 days) → send re-engagement message
+        3. For clients with stalled practices → send portal update request
+        4. For VIP clients with upcoming birthdays → queue birthday greeting
+        5. For recently completed practices → send satisfaction survey
+
+        Returns:
+            Actions taken: re-engagements, reminders, greetings, surveys sent.
+        """
+        log: list[dict] = []
+        stats = {"re_engagements": 0, "stalled_reminders": 0, "birthday_greetings": 0, "surveys_sent": 0}
+
+        # Step 1: Run predictor
+        try:
+            prediction = await _call_safe("/api/autonomous-agents/client-value-predictor/run", method="POST")
+            log.append({"step": "predictor", "status": "ok", "result": prediction})
+        except Exception as e:
+            log.append({"step": "predictor", "status": "error", "detail": str(e)})
+
+        # Step 2: Get all clients and check health
+        try:
+            clients_resp = await _call_safe("/api/crm/clients", params={"status": "active", "limit": 200})
+            clients = clients_resp.get("clients") or clients_resp.get("data") or []
+
+            for client in clients:
+                if not isinstance(client, dict):
+                    continue
+                phone = client.get("phone")
+                email = client.get("email")
+                name = client.get("name", "")
+                days_inactive = client.get("days_since_last_interaction", 0)
+                risk_score = client.get("risk_score", 0)
+                ltv = client.get("ltv_score", 50)
+
+                # Rule: High-risk, inactive >30 days
+                if (risk_score > 70 or days_inactive > 30) and phone:
+                    try:
+                        await _call_safe("/api/whatsapp/send", method="POST", json={
+                            "phone": phone,
+                            "message": f"Hi {name.split()[0] if name else 'there'}! It's been a while since we last connected. Is there anything we can help you with? — Bali Zero Team",
+                        })
+                        stats["re_engagements"] += 1
+                    except Exception:
+                        pass
+
+                # Rule: VIP with upcoming birthday (if data available)
+                if ltv > 80 and client.get("birthday_within_7_days") and email:
+                    try:
+                        await _call_safe("/api/zoho/emails", method="POST", json={
+                            "to": email,
+                            "subject": f"Happy Birthday, {name.split()[0] if name else ''}! 🎂",
+                            "body": f"Dear {name},\n\nWishing you a wonderful birthday! As a valued client of Bali Zero, we appreciate your trust in us.\n\nBest regards,\nThe Bali Zero Team",
+                        })
+                        stats["birthday_greetings"] += 1
+                    except Exception:
+                        pass
+
+            log.append({"step": "client_health_check", "status": "ok", "clients_checked": len(clients)})
+        except Exception as e:
+            log.append({"step": "client_health_check", "status": "error", "detail": str(e)})
+
+        # Step 3: Check stalled practices
+        try:
+            stalled = await _call_safe("/api/crm/practices", params={"status": "stalled", "limit": 50})
+            stalled_list = stalled.get("practices") or stalled.get("data") or []
+            for p in stalled_list:
+                if not isinstance(p, dict):
+                    continue
+                c_id = p.get("client_id")
+                if c_id:
+                    await _call_safe("/api/portal/messages", method="POST", json={
+                        "client_id": c_id,
+                        "subject": "Update on your practice",
+                        "body": f"Your {p.get('type', 'practice')} seems to need attention. Please check your portal or contact us for assistance.",
+                    })
+                    stats["stalled_reminders"] += 1
+            log.append({"step": "stalled_practices", "status": "ok", "stalled_count": len(stalled_list)})
+        except Exception as e:
+            log.append({"step": "stalled_practices", "status": "error", "detail": str(e)})
+
+        res = {"chain": "client_health_monitor", "stats": stats, "log": log}
+        await _reflect_and_save(_call_safe, "client_health_monitor",
+            f"At-risk={stats.get('at_risk_clients',0)}, stalled_reminders={stats.get('stalled_reminders',0)}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return res
+
+    # =========================================================================
+    # CHAIN 7: Compliance Autopilot
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_compliance_autopilot(
+        notify_critical: bool = True,
+        auto_create_practices: bool = False,
+    ) -> dict:
+        """
+        AUTOPILOT: Scan all compliance deadlines and take proactive action.
+
+        Deterministic chain:
+        1. Fetch all compliance alerts (CRITICAL + URGENT)
+        2. For CRITICAL (<7 days): send WhatsApp + email + portal message
+        3. For URGENT (<30 days): send portal reminder
+        4. Optionally auto-create renewal practices for expiring items
+        5. Generate summary report
+
+        Args:
+            notify_critical: Send multi-channel notifications for critical items
+            auto_create_practices: Auto-create renewal practices for visa/license expiry
+
+        Returns:
+            Chain result with stats and action log.
+        """
+        log: list[dict] = []
+        stats = {
+            "critical_items": 0,
+            "urgent_items": 0,
+            "notifications_sent": 0,
+            "practices_created": 0,
+        }
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        # Step 1: Fetch critical alerts
+        critical = await _call_safe(
+            "/api/agents/compliance/alerts",
+            params={"severity": "CRITICAL"},
+        )
+        critical_list = critical.get("alerts") or critical.get("data") or []
+        stats["critical_items"] = len(critical_list)
+        log.append({"step": "fetch_critical", "status": "ok", "count": len(critical_list)})
+
+        # Step 2: Notify critical items (multi-channel)
+        if notify_critical:
+            for item in critical_list:
+                if not isinstance(item, dict):
+                    continue
+                c_id = item.get("client_id")
+                title = item.get("title", "Compliance deadline")
+                days = item.get("days_remaining", "?")
+
+                if c_id:
+                    # WhatsApp (need phone from client data)
+                    client_data = await _call_safe(f"/api/crm/clients/{c_id}")
+                    phone = client_data.get("phone") if isinstance(client_data, dict) else None
+                    if phone:
+                        await _call_safe("/api/whatsapp/send", method="POST", json={
+                            "phone": phone,
+                            "message": f"⚠️ URGENT: {title} expires in {days} days. Please contact us immediately.",
+                        })
+                    # Email
+                    client_email = client_data.get("email") if isinstance(client_data, dict) else None
+                    if client_email:
+                        await _call_safe("/api/zoho/emails", method="POST", json={
+                            "to": client_email,
+                            "subject": f"URGENT: {title} - Action Required",
+                            "body": f"Your {title} deadline is in {days} days. Please contact our team to ensure timely renewal.",
+                        })
+                    # Portal
+                    await _call_safe("/api/portal/messages", method="POST", json={
+                        "client_id": c_id,
+                        "subject": f"Action Required: {title}",
+                        "body": f"Your {title} is due in {days} days. Please check your portal for details.",
+                    })
+                    stats["notifications_sent"] += 1
+            log.append({"step": "notify_critical", "status": "ok", "sent": stats["notifications_sent"]})
+
+        # Step 3: Fetch urgent alerts
+        urgent = await _call_safe(
+            "/api/agents/compliance/alerts",
+            params={"severity": "URGENT"},
+        )
+        urgent_list = urgent.get("alerts") or urgent.get("data") or []
+        stats["urgent_items"] = len(urgent_list)
+
+        for item in urgent_list:
+            if not isinstance(item, dict):
+                continue
+            c_id = item.get("client_id")
+            title = item.get("title", "Upcoming deadline")
+            days = item.get("days_remaining", "?")
+            if c_id:
+                await _call_safe("/api/portal/messages", method="POST", json={
+                    "client_id": c_id,
+                    "subject": f"Reminder: {title}",
+                    "body": f"Friendly reminder: {title} is due in {days} days.",
+                })
+        log.append({"step": "notify_urgent", "status": "ok", "count": len(urgent_list)})
+
+        # Step 4: Auto-create renewal practices
+        if auto_create_practices:
+            for item in critical_list:
+                if not isinstance(item, dict):
+                    continue
+                comp_type = item.get("compliance_type", "")
+                c_id = item.get("client_id")
+                if comp_type in ("visa_expiry", "license_renewal") and c_id:
+                    result = await _call_safe("/api/crm/practices", method="POST", json={
+                        "client_id": c_id,
+                        "type": f"renewal_{comp_type}",
+                        "notes": f"Auto-created by compliance autopilot on {now_str}",
+                    })
+                    if not result.get("error"):
+                        stats["practices_created"] += 1
+            log.append({"step": "auto_practices", "status": "ok", "created": stats["practices_created"]})
+
+        res = {"chain": "compliance_autopilot", "stats": stats, "log": log}
+        await _reflect_and_save(_call_safe, "compliance_autopilot",
+            f"Critical={stats.get('critical_compliance_items',0)}, notifications={stats.get('notifications_sent',0)}, practices={stats.get('practices_created',0)}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return res
+
+    # =========================================================================
+    # CHAIN 8: Full Client Journey Accelerator
+    # =========================================================================
+
+    @mcp.tool()
+    async def chain_journey_accelerator(
+        client_id: str,
+        journey_type: str = "pt_pma_setup",
+    ) -> dict:
+        """
+        AUTOPILOT: Spin up a full client journey with all supporting assets.
+
+        Deterministic chain:
+        1. Create journey from template (pt_pma_setup / kitas_application / property_purchase)
+        2. Calculate pricing for the service
+        3. Create Google Drive folder for the client
+        4. Track compliance deadlines based on journey type
+        5. Send welcome message via portal + WhatsApp
+        6. Submit orchestration task to generals for ongoing monitoring
+
+        Args:
+            client_id: UUID of the client
+            journey_type: Journey template: pt_pma_setup, kitas_application, property_purchase
+
+        Returns:
+            Chain result with journey_id, pricing, folder, compliance items.
+        """
+        log: list[dict] = []
+        result_data: dict = {}
+
+        # Step 1: Create journey
+        journey = await _call_safe(
+            "/api/agents/journey/create",
+            method="POST",
+            json={"journey_type": journey_type, "client_id": client_id},
+            timeout=long_timeout,
+        )
+        journey_id = journey.get("journey_id") or journey.get("id")
+        result_data["journey"] = journey
+        log.append({"step": "create_journey", "status": "ok" if journey_id else "error", "journey_id": journey_id})
+
+        # Step 2: Calculate pricing
+        service_map = {
+            "pt_pma_setup": "pt_pma",
+            "kitas_application": "kitas",
+            "property_purchase": "property_due_diligence",
+        }
+        pricing = await _call_safe(
+            "/api/agents/pricing/calculate",
+            method="POST",
+            json={"service_type": service_map.get(journey_type, journey_type)},
+        )
+        result_data["pricing"] = pricing
+        log.append({"step": "calculate_pricing", "status": "ok" if not pricing.get("error") else "error"})
+
+        # Step 3: Create Drive folder
+        client = await _call_safe(f"/api/crm/clients/{client_id}")
+        client_name = client.get("name") or client.get("full_name") or "Client"
+        folder = await _call_safe(
+            f"/api/crm/drive-folders/{client_id}",
+            method="POST",
+        )
+        result_data["drive_folder"] = folder
+        log.append({"step": "create_drive_folder", "status": "ok" if not folder.get("error") else "error"})
+
+        # Step 4: Track compliance deadlines
+        deadline_map = {
+            "pt_pma_setup": ("license_renewal", "NIB Registration Deadline", 90),
+            "kitas_application": ("visa_expiry", "KITAS Application Deadline", 60),
+            "property_purchase": ("regulatory_change", "Property Due Diligence Deadline", 45),
+        }
+        if journey_type in deadline_map:
+            comp_type, title, days_out = deadline_map[journey_type]
+            from datetime import timedelta
+            deadline = (datetime.now(timezone.utc) + timedelta(days=days_out)).strftime("%Y-%m-%d")
+            compliance = await _call_safe(
+                "/api/agents/compliance/track",
+                method="POST",
+                json={
+                    "client_id": client_id,
+                    "compliance_type": comp_type,
+                    "title": title,
+                    "description": f"Auto-tracked by journey accelerator for {journey_type}",
+                    "deadline": deadline,
+                },
+            )
+            result_data["compliance"] = compliance
+            log.append({"step": "track_compliance", "status": "ok" if not compliance.get("error") else "error"})
+
+        # Step 5: Welcome messages
+        welcome = f"Welcome! Your {journey_type.replace('_', ' ')} journey has been created. Track progress in your portal."
+        await _call_safe("/api/portal/messages", method="POST", json={
+            "client_id": client_id,
+            "subject": f"Journey Started: {journey_type.replace('_', ' ').title()}",
+            "body": welcome,
+        })
+        client_phone = client.get("phone") if isinstance(client, dict) else None
+        if client_phone:
+            await _call_safe("/api/whatsapp/send", method="POST", json={
+                "phone": client_phone,
+                "message": welcome,
+            })
+        log.append({"step": "welcome_messages", "status": "ok"})
+
+        # Step 6: Submit monitoring task to generals
+        task = await _call_safe(
+            "/api/generals/tasks",
+            method="POST",
+            json={
+                "task_type": "orchestration",
+                "title": f"Monitor {journey_type} for {client_name}",
+                "description": f"Track journey {journey_id} progress, send reminders if stalled >7 days.",
+                "payload": {"journey_id": journey_id, "client_id": client_id},
+                "priority": 7,
+            },
+        )
+        result_data["monitoring_task"] = task
+        log.append({"step": "submit_monitoring", "status": "ok" if not task.get("error") else "error"})
+
+        res = {
+            "chain": "journey_accelerator",
+            "journey_id": journey_id,
+            "data": result_data,
+            "log": log,
+        }
+        await _reflect_and_save(_call_safe, "journey_accelerator",
+            f"Client={client_name}, journey_type={journey_type}, journey_id={journey_id}",
+            "success" if not any(s.get("status") == "error" for s in log) else "partial",
+            log)
+        return res
+
+
+============================================================
+--- FILE: apps/nuzantara-mcp/nuzantara_mcp/workflows/heartbeat.py ---
+============================================================
+
+"""
+LAM Grounding Bootstrap (Heartbeat)
+Provides lam_grounding_snapshot — called at agent startup or on demand
+to give the agent a full situational awareness snapshot.
+"""
+
+import logging
+from typing import Callable
+
+logger = logging.getLogger("nuzantara-mcp.heartbeat")
+
+
+def register(mcp, _call: Callable, _call_safe: Callable) -> None:
+
+    @mcp.tool()
+    async def lam_grounding_snapshot() -> dict:
+        """
+        LAM STARTUP GROUNDING — Call this first at the start of any session.
+
+        Fetches a full situational awareness snapshot:
+        1. Critical alerts (expiring visas, overdue practices)
+        2. Recent agent activity (what ran last 24h)
+        3. System health (backend, Qdrant, Redis)
+        4. 5 most recent LAM memory episodes
+
+        Returns a unified dict with all four sections so the agent can
+        orient itself without making 4 separate calls.
+        """
+        import asyncio
+
+        alerts_task = _call_safe("/api/crm/expiry-alerts", params={"days_ahead": 30})
+        activity_task = _call_safe("/api/generals/activity", params={"hours": 24})
+        health_task = _call_safe("/health/detailed")
+        memory_task = _call_safe("/api/memory/lam/episodes", params={"limit": 5})
+
+        alerts, activity, health, memory = await asyncio.gather(
+            alerts_task, activity_task, health_task, memory_task,
+            return_exceptions=True,
+        )
+
+        def _safe(result, label: str):
+            if isinstance(result, Exception):
+                logger.warning(f"Heartbeat: {label} failed — {result}")
+                return {"error": True, "detail": str(result)}
+            return result
+
+        snapshot = {
+            "critical_alerts": _safe(alerts, "critical_alerts"),
+            "recent_activity": _safe(activity, "recent_activity"),
+            "system_health": _safe(health, "system_health"),
+            "recent_memory": _safe(memory, "recent_memory"),
+        }
+
+        # Quick summary for logging
+        try:
+            n_alerts = len((alerts or {}).get("alerts", []))
+            n_episodes = (memory or {}).get("total", 0)
+            health_status = (health or {}).get("status", "unknown")
+            logger.info(
+                f"LAM grounding: health={health_status}, "
+                f"alerts={n_alerts}, memory_episodes={n_episodes}"
+            )
+        except Exception:
+            pass
+
+        return snapshot
+

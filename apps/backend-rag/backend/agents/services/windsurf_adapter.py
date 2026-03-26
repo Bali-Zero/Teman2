@@ -4,8 +4,8 @@
 Windsurf è un "Agentic IDE powered by AI Flow paradigm" installato come app macOS.
 CLI disponibile in: /Applications/Windsurf.app/Contents/Resources/app/bin/windsurf
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import logging
 import os

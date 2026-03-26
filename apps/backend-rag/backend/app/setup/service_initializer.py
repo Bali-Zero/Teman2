@@ -1154,18 +1154,12 @@ async def initialize_services(app: FastAPI) -> None:
             )
 
             nlm_service = NLMEnrichmentService(
-                bridge_url=os.getenv(
-                    "NLM_BRIDGE_URL", "http://100.107.22.111:18790"
-                ),
+                bridge_url=os.getenv("NLM_BRIDGE_URL", "http://100.107.22.111:18790"),
                 bridge_secret=os.getenv("NLM_BRIDGE_SECRET", ""),
             )
             app.state.nlm_enrichment_service = nlm_service
-            service_registry.register(
-                "nlm_enrichment", ServiceStatus.HEALTHY, critical=False
-            )
-            logger.info(
-                "✅ NLM Enrichment Service initialized (ENABLE_NLM_ENRICHMENT=true)"
-            )
+            service_registry.register("nlm_enrichment", ServiceStatus.HEALTHY, critical=False)
+            logger.info("✅ NLM Enrichment Service initialized (ENABLE_NLM_ENRICHMENT=true)")
         except Exception as e:
             app.state.nlm_enrichment_service = None
             service_registry.register(

@@ -27,11 +27,13 @@ For each code, return a JSON object with exactly these 6 fields:
 ### Field Descriptions
 
 **whatItMeans** (2-4 sentences)
+
 - Plain English explanation of what this business activity covers
 - Include what it includes AND what it does NOT include (reference related codes)
 - Use concrete examples relevant to Bali
 
 **whatYouNeed** (structured, detailed)
+
 - Licensing requirements per business scale (Mikro/Kecil/Menengah/Besar)
 - Risk category with Indonesian name: e.g. "Medium-Low (Menengah Rendah)"
 - License type: NIB, Sertifikat Standar, Izin, etc. — always include Indonesian names
@@ -47,6 +49,7 @@ For each code, return a JSON object with exactly these 6 fields:
 - Source regulation: cite PP28/2024, Perpres 10/2021, etc.
 
 **whatChanged** (1-3 sentences)
+
 - KBLI 2020 → 2025 transition. Use exact mapping terminology:
   - MATCH_LANGSUNG = Direct match, unchanged
   - CODICE_RINUMERATO = Renumbered (new code, same business)
@@ -55,6 +58,7 @@ For each code, return a JSON object with exactly these 6 fields:
 - If renumbered: state old code explicitly
 
 **baliContext** (4-8 sentences, THIS IS THE MOST IMPORTANT FIELD)
+
 - Real-world Bali business intelligence — this is what makes our tool unique
 - Specific areas/locations where this business thrives (Seminyak, Canggu, Ubud, etc.)
 - Realistic cost ranges in IDR where possible
@@ -64,11 +68,13 @@ For each code, return a JSON object with exactly these 6 fields:
 - Cultural or local nuances (e.g. banjar relations, adat considerations)
 
 **youllAlsoNeed** (bullet list)
+
 - Related KBLI codes the business owner will likely need
 - Format: `- XXXXX — Brief reason why`
 - 3-6 related codes, practical not theoretical
 
 **zantaraOpener** (1 sentence)
+
 - Conversational hook for our AI assistant "Zantara"
 - Friendly, knowledgeable tone — like a smart consultant friend
 - Must mention the code number

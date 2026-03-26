@@ -4,8 +4,8 @@
 Calcola coverage differenziale vs baseline.
 Identifica regressioni e miglioramenti.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import json
 import logging

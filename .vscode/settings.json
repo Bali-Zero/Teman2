@@ -1,0 +1,110 @@
+{
+  // Python Settings
+  "python.defaultInterpreterPath": "${workspaceFolder}/apps/backend-rag/.venv/bin/python",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.indexing": true,
+  "python.analysis.packageIndexDepths": [
+    { "name": "backend", "depth": 3, "includeAllSymbols": true }
+  ],
+
+  // Formatting
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "python.formatting.provider": "ruff",
+  "ruff.organizeImports": true,
+  "ruff.fixAll": true,
+
+  // Linting
+  "python.linting.enabled": true,
+  "python.linting.mypyEnabled": true,
+  "mypy.enabled": true,
+  "mypy.runUsingActiveInterpreter": true,
+
+  // File Associations
+  "files.associations": {
+    "*.mdx": "markdown"
+  },
+
+  // Search Exclusions
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/*.min.js": true,
+    "**/*.map": true
+  },
+
+  // Files to exclude from explorer
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/*.pyc": true
+  },
+
+  // Editor Settings
+  "editor.rulers": [88, 120],
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.trimAutoWhitespace": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // TypeScript/JavaScript
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "javascript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "javascript.suggest.autoImports": true,
+
+  // Terminal
+  "terminal.integrated.env.osx": {
+    "PYTHONPATH": "${workspaceFolder}/apps/backend-rag"
+  },
+  "terminal.integrated.cwd": "${workspaceFolder}",
+
+  // Git
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "git.autofetch": true,
+
+  // Todo Tree
+  "todo-tree.general.tags": [
+    "TODO",
+    "FIXME",
+    "HACK",
+    "BUG",
+    "NOTE",
+    "IMPORTANT",
+    "CRITICAL"
+  ],
+  "todo-tree.highlights.defaultHighlight": {
+    "gutterIcon": true
+  },
+  "todo-tree.highlights.customHighlight": {
+    "TODO": {
+      "icon": "check",
+      "type": "line",
+      "foreground": "#00ff00"
+    },
+    "FIXME": {
+      "icon": "flame",
+      "type": "line",
+      "foreground": "#ff0000"
+    },
+    "CRITICAL": {
+      "icon": "alert",
+      "type": "line",
+      "foreground": "#ff0000",
+      "background": "#550000"
+    }
+  },
+  "git.ignoreLimitWarning": true
+}

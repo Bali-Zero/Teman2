@@ -85,9 +85,7 @@ class JurnalService:
             )
 
             if response.status_code != 200:
-                logger.error(
-                    f"Jurnal API error: {response.status_code} — {response.text[:200]}"
-                )
+                logger.error(f"Jurnal API error: {response.status_code} — {response.text[:200]}")
                 raise ValueError(f"Jurnal API returned {response.status_code}")
 
             data = response.json()
@@ -159,9 +157,7 @@ class JurnalService:
             )
 
             if response.status_code != 200:
-                logger.error(
-                    f"Jurnal CoA error: {response.status_code} — {response.text[:200]}"
-                )
+                logger.error(f"Jurnal CoA error: {response.status_code} — {response.text[:200]}")
                 raise ValueError(f"Jurnal API returned {response.status_code}")
 
             data = response.json()

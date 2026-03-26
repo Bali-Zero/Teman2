@@ -5,11 +5,7 @@
     "description": "Kelompok ini mencakup kegiatan penyediaan akomodasi yang\nbiasanya berbasis harian atau mingguan, untuk tinggal dalam jangka\nwaktu yang singkat, memenuhi ketentuan sebagai hotel bintang dua,\nserta menggunakan sebagian atau seluruh bangunan.\nKelompok ini mencakup penyediaan akomodasi yang dilengkapi\ndengan perabot di ruang tamu dan suite. Berbagai layanan tambahan\ndapat disediakan seperti pembersihan dan merapikan tempat tidur\nharian, layanan makanan dan minuman, layanan binatu, serta\nfasilitas konferensi dan konvensi. Aktivitas di kelompok ini secara\numum ditandai dengan penyediaan layanan pelanggan/customer\nservice secara langsung di tempat.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -30,16 +26,10 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Menengah Tinggi",
         "perizinan": "NIB dan Sertifikat Standar",
-        "persyaratan": [
-          "Dokumen penilaian mandiri Kesiapan Penerapan Standar"
-        ],
+        "persyaratan": ["Dokumen penilaian mandiri Kesiapan Penerapan Standar"],
         "jangka_waktu": "14 Hari",
         "kewajiban": [
           "Memiliki sertifikat standar usaha pariwisata dari LSPr",
@@ -58,23 +48,16 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil"
-        ],
+        "skala_usaha": ["Mikro", "Kecil"],
         "kategori_risiko": "Menengah Tinggi",
         "perizinan": "NIB dan Sertifikat Standar",
-        "persyaratan": [
-          "Dokumen Penilaian Mandiri Kesiapan Penerapan Standar"
-        ],
+        "persyaratan": ["Dokumen Penilaian Mandiri Kesiapan Penerapan Standar"],
         "jangka_waktu": "14 Hari",
         "kewajiban": [
           "Memiliki Sertifikat laik sehat",
           "Memiliki sertifikat standar usaha pariwisata dari LSPr"
         ],
-        "pb_umku": [
-          "Sertifikat Laik Sehat"
-        ],
+        "pb_umku": ["Sertifikat Laik Sehat"],
         "parameter": "Seluruh",
         "kewenangan": "Gubernur",
         "sanksi_peringatan": "Peringatan tertulis",
@@ -98,11 +81,7 @@
     "description": "Kelompok ini mencakup kegiatan penyediaan akomodasi yang\nbiasanya berbasis harian atau mingguan, untuk tinggal dalam jangka\nwaktu yang singkat, memenuhi ketentuan sebagai hotel bintang satu,\nserta menggunakan sebagian atau seluruh bangunan.\nKelompok ini mencakup penyediaan akomodasi yang dilengkapi\ndengan perabot di ruang tamu dan suite. Berbagai layanan tambahan\ndapat disediakan seperti pembersihan dan merapikan tempat tidur\nharian, layanan makanan dan minuman, layanan binatu, serta\nfasilitas konferensi dan konvensi. Aktivitas di kelompok ini secara\numum ditandai dengan penyediaan layanan pelanggan/customer\nservice secara langsung di tempat.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -123,16 +102,10 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Menengah Tinggi",
         "perizinan": "NIB dan Sertifikat Standar",
-        "persyaratan": [
-          "Dokumen penilaian mandiri Kesiapan Penerapan Standar"
-        ],
+        "persyaratan": ["Dokumen penilaian mandiri Kesiapan Penerapan Standar"],
         "jangka_waktu": "14 Hari",
         "kewajiban": [
           "Memiliki sertifikat standar usaha pariwisata dari LSPr",
@@ -176,10 +149,7 @@
     "description": "Kelompok ini mencakup penyediaan jasa pelayanan minum yang\nutamanya menyajikan minuman siap dikonsumsi yang melalui proses\npembuatan di tempat tetap yang dapat dipindah -pindahkan atau\ndibongkar pasang, biasanya dengan menggunakan tenda, seperti\nkedai kopi dan kedai jus.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil"
-        ],
+        "skala_usaha": ["Mikro", "Kecil"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -189,9 +159,7 @@
           "Menyampaikan laporan kegiatan secara berkala",
           "Menyampaikan dokumen penerapan standar"
         ],
-        "pb_umku": [
-          "Label Higiene Sanitasi Pangan (HSP)"
-        ],
+        "pb_umku": ["Label Higiene Sanitasi Pangan (HSP)"],
         "parameter": "Seluruh",
         "kewenangan": "Bupati/Walikota",
         "sanksi_peringatan": "Peringatan tertulis",
@@ -213,12 +181,7 @@
     "description": "Kelompok ini mencakup kegiatan penyewaan dan sewa guna usaha\ntanpa hak opsi (operational leasing) berbagai jenis kendaraan\nbermotor alat transportasi darat, seperti mobil penumpang tanpa\nsopir, truk, karavan bermotor, trailer (kereta gandeng), dan kendaraan\nrekreasi. Kelompok ini juga mencakup kegiatan penyewaan dan sewa\nguna usaha operasional untuk mobil pribadi tanpa sopir dan sepeda\nmotor. Kelompok ini tidak mencakup\n- penyewaan atau sewa guna usaha tanpa hak opsi alat transportasi\ndarat dengan operatornya, lihat subgolongan 4922 dan 4923;\n- penyewaan sepeda, lihat kelompok 77210;\n- penyewaan perahu motor, lihat kelompok 77312.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -248,12 +211,7 @@
     "description": "BUKAN KENDARAAN BERMOTOR\nKelompok ini mencakup kegiatan penyewaan dan sewa guna usaha\ntanpa hak opsi (operational leasing) tanpa operator untuk semua jenis\nalat transportasi darat bukan kendaraan bermotor seperti kendaraan\nmelalui jalur rel misalnya kereta api, kereta listrik, dan  kereta\nmonorel. Kelompok ini juga mencakup penyewaan karavan tidak\nbermotor.\nKelompok ini tidak mencakup\n- penyewaan alat transportasi darat berupa kendaraan bermotor",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -283,18 +241,12 @@
     "description": "Kelompok ini mencakup kegiatan penyediaan informasi mengenai\nobjek dan sarana pariwisata, jasa pariwisata, transportasi dan\ninformasi lain yang diperlukan oleh wisatawan. Penyebaran informasi\ntentang usaha pariwisata atau informasi lain yang diperlukan\nwisatawan dapat dilakukan melalui media cetak, elektronik, atau\nmedia komunikasi lainnya, termasuk informasi layanan pemesanan,\nakomodasi, makanan, penerbangan, angkutan darat, dan angkutan\nlaut.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
         "jangka_waktu": "Otomatis",
-        "kewajiban": [
-          "Menyampaikan laporan kegiatan secara berkala"
-        ],
+        "kewajiban": ["Menyampaikan laporan kegiatan secara berkala"],
         "pb_umku": [],
         "parameter": "Seluruh",
         "kewenangan": "Bupati/Walikota",
@@ -305,17 +257,12 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil"
-        ],
+        "skala_usaha": ["Mikro", "Kecil"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
         "jangka_waktu": "Otomatis",
-        "kewajiban": [
-          "Menyampaikan laporan kegiatan secara berkala"
-        ],
+        "kewajiban": ["Menyampaikan laporan kegiatan secara berkala"],
         "pb_umku": [],
         "parameter": "Seluruh",
         "kewenangan": "Bupati/Walikota",
@@ -338,11 +285,7 @@
     "description": "Kelompok ini mencakup penyediaan tempat dan fasilitas untuk\nolahraga sepak bola, hoki, kriket/cricket, bisbol/baseball, jai -alai,\natletik (lari, lempar lompat dan lain -lain) sebagai kegiatan pokok.\nPenyelenggaraan sekolah/pendidikan olahraga sepak bola, ho ki,\nkriket, bisbol, jai-alai, atletik (lari, lempar lompat dan lain -lain) yang\ndikelola sendiri dicakup dalam kelompok ini.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -352,9 +295,7 @@
           "Memiliki Dokumen Penilaian Mandiri Kesiapan Penerapan Standar usaha Fasilitas Stadion meliputi Sarana, Struktur Organisasi dan SDM, Pelayanan, Produk usaha dan Sistem Manajemen Usaha",
           "Memiliki sertifikat laik sehat"
         ],
-        "pb_umku": [
-          "Sertifikat Laik Sehat (SLS)"
-        ],
+        "pb_umku": ["Sertifikat Laik Sehat (SLS)"],
         "parameter": "Seluruh",
         "kewenangan": "Bupati/Walikota",
         "sanksi_peringatan": "Peringatan tertulis",
@@ -376,10 +317,7 @@
     "description": "Kelompok ini mencakup kegiatan taman hiburan dan taman bertema\nyang dicirikan oleh pengoperasian berbagai atraksi secara permanen\ndan berbasis lokasi, seperti wahana mekanis, komidi putar,\npermainan, galeri tembak, pertunjukan, pameran bertema, dan\ntempat piknik, yang disediakan berdasarkan arahan ekonomi dan\noperasional dari operator pusat. Taman-taman ini biasanya terletak di\narea yang dibatasi secara struktural, dan pelanggan harus membayar\ntiket masuk.\nKelompok ini juga mencakup\n- aktivitas taman akuatik/air.\nKelompok ini tidak mencakup\n- pengoperasian perjudian dan permainan lotre, lihat subgolongan",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Menengah", "Besar"],
         "kategori_risiko": "Tinggi",
         "perizinan": "NIB dan Izin",
         "persyaratan": [
@@ -390,9 +328,7 @@
           "Sertifikat Standar Usaha Pariwisata yang diterbitkan oleh LSPr",
           "Memiliki Sertifikat laik sehat"
         ],
-        "pb_umku": [
-          "Sertifikat Laik Sehat"
-        ],
+        "pb_umku": ["Sertifikat Laik Sehat"],
         "parameter": "Seluruh",
         "kewenangan": "Menteri/ Kepala Badan",
         "sanksi_peringatan": "Peringatan tertulis",
@@ -403,12 +339,7 @@
         "dati_inferiti": true
       },
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -418,9 +349,7 @@
           "Memiliki sertifikat standar yang diterbitkan oleh LSPr (khusus PMA)",
           "Memiliki Dokumen Penilaian Mandiri Kesiapan Penerapan Standar usaha Aktivitas Taman Bertema atau Taman Hiburan Lainnya meliputi Sarana, Struktur Organisasi dan SDM, Pelayanan, Produk usaha dan Sistem Manajemen Usaha"
         ],
-        "pb_umku": [
-          "Sertifikat Laik Sehat"
-        ],
+        "pb_umku": ["Sertifikat Laik Sehat"],
         "parameter": "Seluruh",
         "kewenangan": "Bupati/Walikota",
         "sanksi_peringatan": "Peringatan tertulis",
@@ -443,11 +372,7 @@
     "description": "BULU\nKelompok ini mencakup\n- pencucian dan dry cleaning, penyetrikaan, dll., dari semua jenis\npakaian (termasuk bulu) dan tekstil, yang disediakan oleh\nperalatan mekanis, dengan tangan atau dengan mesin yang\ndioperasikan dengan koin, baik untuk masyarakat umum atau\nuntuk klien industri atau komersial;\n- pengambilan dan pengiriman cucian;\n- pencucian karpet dan permadani serta pembersihan gorden dan\ntirai, baik di tempat klien atau tidak;\n- penyediaan jasa pencucian dan pembersihan kering, penyetrikaan,\npenyetrikaan, dll., untuk semua jenis pakaian (termasuk bulu) dan\ntekstil, gabungan jasa penyewaan dan perawatan termasuk\npencucian dan pembersihan tekstil, misalnya linen, seragam kerja\ndan barang-barang terkait lainnya;\n- layanan penyediaan popok yang dapat digunakan kembali.\nKelompok ini tidak mencakup\n- perbaikan dan perubahan pakaian lihat subgolongan 9529;\n- penyewaan pakaian selain seragam kerja, yang pencuciannya",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -465,18 +390,12 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
         "jangka_waktu": "Otomatis",
-        "kewajiban": [
-          "Menyampaikan laporan kegiatan secara berkala"
-        ],
+        "kewajiban": ["Menyampaikan laporan kegiatan secara berkala"],
         "pb_umku": [],
         "parameter": "Seluruh",
         "kewenangan": "Bupati/Walikota",
@@ -487,12 +406,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -502,9 +416,7 @@
           "Memiliki Dokumen Penilaian Mandiri Kesiapan Penerapan Standar usaha Aktivitas Kebugaran Lainnya meliputi Sarana, Struktur Organisasi dan SDM, Pelayanan, Produk usaha dan Sistem Manajemen Usaha",
           "Memiliki Sertifikat Laik Sehat (SLS)"
         ],
-        "pb_umku": [
-          "Sertifikat Laik Sehat (SLS)"
-        ],
+        "pb_umku": ["Sertifikat Laik Sehat (SLS)"],
         "parameter": "Seluruh",
         "kewenangan": "Bupati/Walikota",
         "sanksi_peringatan": "Peringatan tertulis",
@@ -514,11 +426,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah"],
         "kategori_risiko": "Menengah Tinggi",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [
@@ -529,9 +437,7 @@
           "Memiliki Sertifikat Standar Usaha Pariwisata yang diterbitkan oleh LSPr",
           "Memiliki Sertifikat Laik Sehat (SLS)"
         ],
-        "pb_umku": [
-          "Sertifikat Laik Sehat (SLS)"
-        ],
+        "pb_umku": ["Sertifikat Laik Sehat (SLS)"],
         "parameter": "Seluruh",
         "kewenangan": "Gubernur",
         "sanksi_peringatan": "Peringatan tertulis",
@@ -541,9 +447,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Besar"
-        ],
+        "skala_usaha": ["Besar"],
         "kategori_risiko": "Tinggi",
         "perizinan": "NIB dan",
         "persyaratan": [
@@ -555,9 +459,7 @@
           "Memiliki Sertifikat Standar Usaha Pariwisata yang diterbitkan oleh LSPr",
           "Memiliki Sertifikat Laik Sehat (SLS)"
         ],
-        "pb_umku": [
-          "Sertifikat Laik Sehat (SLS)"
-        ],
+        "pb_umku": ["Sertifikat Laik Sehat (SLS)"],
         "parameter": "Seluruh",
         "kewenangan": "Menteri/Kepa",
         "sanksi_peringatan": "Peringatan tertulis",
@@ -579,12 +481,7 @@
     "description": "UTAMANYA MAKANAN, MINUMAN, ATAU TEMBAKAU DENGAN\nSISTEM SWALAYAN\nKelompok ini mencakup perdagangan eceran berbagai jenis barang\nkebutuhan yang utamanya bahan makanan, makanan, minuman,\natau tembakau dengan harga yang sudah ditentukan serta pembeli\nmengambil dan membayar sendiri kepada kasir (self\nservice/swalayan). Di samping itu, kegiatan ini juga dapat melakukan\nperdagangan eceran beberapa barang bukan makanan seperti perabot\nrumah tangga, mainan anak -anak, obat-obatan, alat kesehatan, dan\npakaian, namun tetap didominasi oleh barang makanan, minuman,\natau tembakau misalnya minimarket, supermarket, atau hipermarket.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -623,12 +520,7 @@
     "description": "UTAMANYA BUKAN MAKANAN, MINUMAN, ATAU TEMBAKAU SELAIN\nDENGAN SISTEM SWALAYAN\nKelompok ini mencakup perdagangan eceran berbagai jenis barang\nyang utamanya bukan makanan, minuman atau tembakau\nselaindengan sistem swalayan. Pada umumnya, barang -barang yang\ndiperdagangkan antara lain pakaian, perabot rumah tangga,\nperhiasan, mainan ana k-anak dan kosmetik, yang terintegrasi di\nbawah satu pengelolaan, misalnya toko barang kelontong.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -660,12 +552,7 @@
     "description": "Kelompok ini mencakup pengoperasian platform digital (misalnya\nsitus web, aplikasi seluler) yang memfasilitasi perdagangan eceran\nantara penjual dan pembeli untuk pemesanan suatu barang\nberdasarkan imbalan atau komisi tanpa penyediaan atau mengambil\nkepemilikan barang yang diintermediasikan. Balas jasa atau komisi\ndapat diterima dari pihak penjual atau pembeli.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -697,10 +584,7 @@
     "description": "Kelompok ini mencakup aktivitas pengolahan dan tabulasi berbagai\njenis data, termasuk big data (baik terstruktur, semi terstruktur,\nmaupun tidak terstruktur) dan data citra satelit atau penginderaan\njauh. Aktivitas ini mencakup sebagian atau seluruh tahapa n\npengolahan data, meliputi\n- persiapan data (misalnya entri data, migrasi data, pembersihan\ndata, dan normalisasi data);\n- pengembangan algoritma untuk penyimpanan dan pengolahan\ndata;\n- pengolahan data dan pembuatan laporan khusus berdasarkan\ndata yang disediakan oleh klien/pemilik data, yang dilakukan oleh\ndata controller atau data processor, termasuk pengolahan data\nmenggunakan blockchain atau distributed ledger technology\n(DLT).\nKelompok ini juga mencakup aktivitas pembagian fasilitas komputasi\nuntuk pemrosesan dan analisis data, digitalisasi dokumen (untuk\nkeperluan pengolahan data lebih lanjut), pengelolaan data besar (big\ndata management), dan penyediaan layanan informasi dari data yang\ndiolah.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Kecil",
-          "Menengah"
-        ],
+        "skala_usaha": ["Kecil", "Menengah"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -720,9 +604,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Besar"
-        ],
+        "skala_usaha": ["Besar"],
         "kategori_risiko": "Menengah Tinggi",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [
@@ -747,10 +629,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Kecil",
-          "Menengah"
-        ],
+        "skala_usaha": ["Kecil", "Menengah"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -787,10 +666,7 @@
     "description": "DAN AKTIVITAS TERKAIT\nKelompok ini mencakup aktivitas penyediaan infrastruktur komputasi\ndan hosting, serta berbagai jasa terkait lainnya yang mendukung\naktivitas pengelolaan dan distribusi data secara digital, termasuk\npenyediaan infrastruktur komputasi awan (cloud computing),  seperti\nlayanan Infrastructure as a Service (Iaas) dan Platform as a Service\n(PaaS); penyediaan layanan hosting, seperti web hosting, hosting\nlayanan streaming (tanpa mengelola atau mengkurasi konten), dan\naplikasi hosting.\nKelompok ini juga mencakup penyediaan fasilitas mainframe secara\nbersama (time sharing) kepada klien, penyewaan ruang server dan\njaringan dalam pusat data (data center colocation), penyimpanan data\ndan dokumen secara elektronik untuk keperluan akses terbatas, serta\nlayanan penyimpanan data komputer lainnya.\nKelompok ini tidak mencakup aktivitas pengolahan data dan entri data",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Kecil",
-          "Menengah"
-        ],
+        "skala_usaha": ["Kecil", "Menengah"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -815,9 +691,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Besar"
-        ],
+        "skala_usaha": ["Besar"],
         "kategori_risiko": "Menengah Tinggi",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [
@@ -844,10 +718,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Kecil",
-          "Menengah"
-        ],
+        "skala_usaha": ["Kecil", "Menengah"],
         "kategori_risiko": "Menengah Tinggi",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [
@@ -872,9 +743,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Besar"
-        ],
+        "skala_usaha": ["Besar"],
         "kategori_risiko": "Menengah Tinggi",
         "perizinan": "",
         "persyaratan": [
@@ -899,9 +768,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Mikro"
-        ],
+        "skala_usaha": ["Mikro"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -924,11 +791,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Tinggi",
         "perizinan": "",
         "persyaratan": [
@@ -975,11 +838,7 @@
     "description": "Kelompok ini mencakup kegiatan pembuatan kampanye iklan dan\npenempatan iklan, penciptaan identitas merek, pengembangan merek,\npengelolaan kampanye, dan pengembangan materi kreatif iklan,\nseperti pada terbitan berkala, koran, surat kabar, radio, televisi,\ninternet, media digital atau media lainnya untuk konten bidang\nkeolahragaan maupun bidang lainnya, serta perancangan struktur\nlokasi tampilan. Aktivitas periklanan ini umumnya disediakan oleh\nbiro periklanan dan perwakilan media.\nKelompok ini mencakup:\n- pembuatan dan pelaksanaan kampanye iklan pada bidang\nkeolahragaan dan bidang lainnya, meliputi:\n- pembuatan dan penempatan iklan di koran/surat kabar dan\nterbitan berkala, di ratdio dan televisi, melalui internet serta media\nlainnya;\n- pembuatan dan penempatan iklan di luar ruangan, misalnya pada\npapan reklame, papan pengumuman, panel, jenis poster dan\ngambar, selebaran, pamflet, edaran, brosur dan frame, iklan\njendela, penataan/dekorasi etalase, dan iklan mobil dan bus;\n- perwakilan media, yaitu penjualan ruang dan waktu untuk\nberbagai macam media untuk penempatan iklan;\n- iklan udara (aerial advertising)\n- distribusi atau pengiriman materi atau contoh iklan;\n- penyediaan ruang iklan pada papan reklame dan sejenisnya;\n- pembuatan stan dan struktur pameran serta lokasi iklan lainnya;\n- pelaksanaan kampanye pemasaran dan jasa periklanan lainnya\nyang ditujukan untuk menarik dan mempertahankan pelanggan\npada bidang keolahragaan dan bidang lainnya, meliputi:\n- promosi produk;\n- pemasaran di tempat penjualan (point of sale);\n- iklan melalui surat langsung (direct mail);\n- konsultasi pemasaran sebagai bagian dari periklanan.\nKelompok ini tidak mencakup\n- penerbitan materi iklan, lihat subgolongan 5819;\n- produksi pesan komersial untuk radio, televisi, dan film, lihat",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -1042,12 +901,7 @@
     "description": "Kelompok ini mencakup kegiatan penyediaan jasa pembukuan\nakuntansi keuangan, pembukuan akuntansi penggajian dan lainnya,\npenyusunan dan analisis laporan keuangan, persiapan atau\npengauditan laporan keuangan, serta pengujian laporan dan\nsertifikasi keakuratannya.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Mikro",
-          "Kecil",
-          "Menengah",
-          "Besar"
-        ],
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -1078,9 +932,7 @@
     "description": "Kelompok ini mencakup kegiatan pembuatan macam -macam barang\nanyaman yang bahan utamanya rotan atau bambu, seperti tikar,\nwebbing, lampit, kipas tangan, bilik/gedek, dan produk tas anyaman\nseperti tas wanita dan tas laptop.\nKelompok ini tidak mencakup\n- pembuatan sandal/sepatu dengan sol dari berbagai material dan",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Kecil"
-        ],
+        "skala_usaha": ["Kecil"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -1101,9 +953,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Menengah"
-        ],
+        "skala_usaha": ["Menengah"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -1125,9 +975,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Besar"
-        ],
+        "skala_usaha": ["Besar"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -1162,9 +1010,7 @@
     "description": "Kelompok ini mencakup kegiatan pembuatan berbagai macam barang\ndari batu marmer untuk:\n- keperluan rumah tangga dan pajangan, seperti daun meja,\nornamen, dan patung dari marmer;\n- keperluan bahan bangunan, seperti ubin dan bak mandi dari\nmarmer; serta\n- keperluan furnitur, seperti meja dan kursi dari marmer.",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Kecil"
-        ],
+        "skala_usaha": ["Kecil"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -1187,9 +1033,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Menengah"
-        ],
+        "skala_usaha": ["Menengah"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -1211,9 +1055,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Besar"
-        ],
+        "skala_usaha": ["Besar"],
         "kategori_risiko": "Menengah Tinggi",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [
@@ -1243,9 +1085,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Kecil"
-        ],
+        "skala_usaha": ["Kecil"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -1268,9 +1108,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Menengah"
-        ],
+        "skala_usaha": ["Menengah"],
         "kategori_risiko": "Rendah",
         "perizinan": "NIB",
         "persyaratan": [],
@@ -1304,9 +1142,7 @@
     "description": "Kelompok ini mencakup kegiatan pembuatan barang -barang\nperhiasan yang bahan utamanya dari logam mulia (emas, platina, dan\nperak) dan dikenakan pada tubuh, pakaian manusia, dan/atau hewan\npiaraan, seperti cincin, kalung, gelang, anting, bros, ikat pinggang,\ndan kancing, termasuk bagian dan perlengkapannya.\nKelompok ini tidak mencakup kegiatan pembuatan perhiasan imitasi,",
     "scale_licensing": [
       {
-        "skala_usaha": [
-          "Kecil"
-        ],
+        "skala_usaha": ["Kecil"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -1328,9 +1164,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Menengah"
-        ],
+        "skala_usaha": ["Menengah"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],
@@ -1351,9 +1185,7 @@
         "fiktif_positif": true
       },
       {
-        "skala_usaha": [
-          "Besar"
-        ],
+        "skala_usaha": ["Besar"],
         "kategori_risiko": "Menengah Rendah",
         "perizinan": "NIB dan Sertifikat Standar",
         "persyaratan": [],

@@ -454,6 +454,7 @@ class AlertService:
             logger.info(
                 f"[digest] Hourly digest inviato: {len(events)} eventi, {len(by_path)} path"
             )
+
     async def _digest_loop(self) -> None:
         """Background loop: flush digest ogni ora esatta (minuto 0)."""
         while True:

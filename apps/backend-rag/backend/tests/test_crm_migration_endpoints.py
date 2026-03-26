@@ -235,7 +235,7 @@ class TestBatchCategorization:
         results = auto_categorize_documents_batch(filenames)
 
         assert len(results) == 5
-        assert results[0]["document_category"] == "personal"   # passport → 00_Profile
+        assert results[0]["document_category"] == "personal"  # passport → 00_Profile
         assert results[1]["document_category"] == "immigration"  # kitas → 01_Immigration
         assert results[2]["document_category"] == "pma"
         assert results[3]["document_category"] == "tax"

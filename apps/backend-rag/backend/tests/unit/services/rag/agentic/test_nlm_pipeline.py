@@ -1,9 +1,9 @@
 """Tests for NLM speculative enrichment in the streaming pipeline."""
 
 import asyncio
+from unittest.mock import AsyncMock
 
 import pytest
-from unittest.mock import AsyncMock
 
 from backend.services.oracle.nlm_enrichment_service import NLMEnrichmentService
 from backend.services.oracle.nlm_notebook_registry import resolve_notebook
@@ -13,18 +13,20 @@ from backend.services.oracle.nlm_notebook_registry import resolve_notebook
 async def test_speculative_fire_and_cautious_merge():
     """NLM fires speculatively, evidence=CAUTIOUS, result merged."""
     nlm_service = AsyncMock(spec=NLMEnrichmentService)
-    nlm_service.query = AsyncMock(return_value={
-        "answer": "Verified",
-        "citations": [
-            {
-                "source_file": "UU.pdf",
-                "section": "Pasal 48",
-                "excerpt": "...",
-                "page": 23,
-            }
-        ],
-        "confidence": 0.82,
-    })
+    nlm_service.query = AsyncMock(
+        return_value={
+            "answer": "Verified",
+            "citations": [
+                {
+                    "source_file": "UU.pdf",
+                    "section": "Pasal 48",
+                    "excerpt": "...",
+                    "page": 23,
+                }
+            ],
+            "confidence": 0.82,
+        }
+    )
 
     task = asyncio.create_task(nlm_service.query("nb-id", "KITAS requirements"))
     await asyncio.sleep(0.01)
@@ -39,6 +41,7 @@ async def test_speculative_fire_and_cautious_merge():
 @pytest.mark.asyncio
 async def test_speculative_fire_and_confident_cancel():
     """NLM fires, evidence=CONFIDENT, task cancelled."""
+
     async def slow_query(*a, **kw):
         await asyncio.sleep(10)
 
@@ -118,6 +121,7 @@ async def test_cache_hit_skips_bridge():
 @pytest.mark.asyncio
 async def test_parent_cancel_cleans_up():
     """Parent stream cancel cleans up NLM task."""
+
     async def slow_query(*a, **kw):
         await asyncio.sleep(10)
 
