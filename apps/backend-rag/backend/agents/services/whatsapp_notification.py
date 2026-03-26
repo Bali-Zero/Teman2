@@ -20,7 +20,7 @@ class WhatsAppNotificationService:
         twilio_sid: str | None = None,
         twilio_token: str | None = None,
         whatsapp_number: str | None = None,
-    ):
+    ) -> None:
         """
         Initialize WhatsAppNotificationService.
 
