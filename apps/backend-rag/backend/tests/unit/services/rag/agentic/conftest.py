@@ -32,6 +32,7 @@ _mock_settings.enable_skill_detection = False
 _mock_settings.enable_collective_memory = False
 _mock_settings.enable_advanced_analytics = False
 _mock_settings.enable_tool_execution = True
+_mock_settings.enable_hybrid_search = False  # Prevent truthy MagicMock from enabling hybrid search in tools
 
 # Patch the config module before it's imported
 # This prevents Settings() from being called during import
