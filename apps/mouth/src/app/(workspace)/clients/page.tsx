@@ -946,6 +946,7 @@ function ClientsListContent() {
                 label: 'Last Contact',
               },
               { field: 'status' as SortField, label: 'Status' },
+              { field: 'passport_expiry' as SortField, label: 'Passport Exp.' },
             ].map(({ field, label }) => (
               <button
                 key={field}
