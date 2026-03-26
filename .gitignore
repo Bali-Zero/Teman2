@@ -491,3 +491,4 @@ apps/bali-intel-scraper/data/scraped/
 # Venv (both naming conventions)
 venv/
 .venv/
+.worktrees/
