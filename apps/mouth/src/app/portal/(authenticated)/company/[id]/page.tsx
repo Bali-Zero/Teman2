@@ -448,7 +448,7 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
 
   return (
     <div
-      className="rounded-lg border p-4"
+      className="rounded-lg border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
       style={{
         borderColor: config.borderColor,
         background: 'rgba(255,255,255,0.03)',
@@ -546,7 +546,10 @@ function ComplianceCard({ item }: { item: ComplianceItem }) {
   const isPast = dueDate < new Date() && item.status !== 'completed';
 
   return (
-    <div className="rounded-lg p-4 border" style={config.bgStyle}>
+    <div
+      className="rounded-lg p-4 border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+      style={config.bgStyle}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h3 className="font-semibold text-sm">{item.name}</h3>

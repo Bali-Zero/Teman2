@@ -186,7 +186,7 @@ function CompanyCard({
   return (
     <div
       onClick={onClick}
-      className="rounded-xl border p-4 cursor-pointer transition-all active:scale-[0.99]"
+      className="rounded-xl border p-4 cursor-pointer transition-all duration-200 active:scale-[0.99] hover:-translate-y-0.5 hover:shadow-lg"
       style={{
         background: 'rgba(30,30,35,0.7)',
         borderColor: 'rgba(255,255,255,0.05)',
