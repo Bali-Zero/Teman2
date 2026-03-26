@@ -251,15 +251,34 @@ export const ClientCard = React.memo(
 
             {/* Quick Stats Row */}
             <div className="flex items-center justify-between pt-3 border-t border-[var(--glass-rim)] text-[var(--tx-secondary)] font-mono text-[10px] uppercase tracking-wider">
-              <div className="flex items-center gap-1.5" title="Last Contact">
+              <div
+                className="flex items-center gap-1.5"
+                title={
+                  client.last_interaction_date
+                    ? new Date(client.last_interaction_date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'No contact'
+                }
+              >
                 <Clock className="w-3 h-3" />
                 <span>
                   {client.last_interaction_date
                     ? isMounted
-                      ? new Date(client.last_interaction_date).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                        })
+                      ? (() => {
+                          const days = Math.floor(
+                            (Date.now() -
+                              new Date(client.last_interaction_date).getTime()) /
+                              86400000
+                          );
+                          if (days === 0) return 'today';
+                          if (days === 1) return '1d ago';
+                          if (days >= 30) return `${Math.floor(days / 30)}mo ago`;
+                          if (days >= 7) return `${Math.floor(days / 7)}w ago`;
+                          return `${days}d ago`;
+                        })()
                       : '...'
                     : 'Never'}
                 </span>
