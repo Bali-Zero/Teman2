@@ -16,7 +16,7 @@ Usage:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -168,7 +168,7 @@ async def test_notification(
         # If force_send, we may want to modify dates to trigger specific alerts
         if request.alert_type:
             # Override dates to force specific alert type
-            today = datetime.now()
+            today = datetime.now(tz=timezone.utc).replace(tzinfo=None)
 
             if request.alert_type == AlertType.PASSPORT_WARNING:
                 client.passport_expiry = today + timedelta(days=365)
