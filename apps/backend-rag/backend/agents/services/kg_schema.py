@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class KnowledgeGraphSchema:
     """Service for managing knowledge graph database schema"""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         """
         Initialize KnowledgeGraphSchema.
 
