@@ -28,7 +28,7 @@ class GoogleColabAdapter:
     - Colab CLI (se disponibile)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.available = self._check_availability()
 
     def _check_availability(self) -> bool:
