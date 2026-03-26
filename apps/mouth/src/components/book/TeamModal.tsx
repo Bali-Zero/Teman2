@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import * as Dialog from '@radix-ui/react-dialog';
-import { LazyMotion, domAnimation, m, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
-import { X } from 'lucide-react';
-import type { TeamMember } from './book-data';
-import { CONTACTS } from './book-data';
+import * as Dialog from "@radix-ui/react-dialog";
+import { LazyMotion, domAnimation, m, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import { X } from "lucide-react";
+import type { TeamMember } from "./book-data";
+import { CONTACTS } from "./book-data";
 
 interface TeamModalProps {
   member: TeamMember | null;

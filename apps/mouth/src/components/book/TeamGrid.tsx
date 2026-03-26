@@ -1,13 +1,23 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Image from 'next/image';
-import { LazyMotion, domAnimation, m } from 'framer-motion';
-import { TEAM_MEMBERS, type TeamMember } from './book-data';
-import { TeamModal } from './TeamModal';
+import { useState } from "react";
+import Image from "next/image";
+import { LazyMotion, domAnimation, m } from "framer-motion";
+import {
+  TEAM_MEMBERS,
+  TRANSLATIONS,
+  type TeamMember,
+  type Locale,
+} from "./book-data";
+import { TeamModal } from "./TeamModal";
 
-export function TeamGrid() {
+interface TeamGridProps {
+  locale?: Locale;
+}
+
+export function TeamGrid({ locale = "en" }: TeamGridProps) {
   const [selected, setSelected] = useState<TeamMember | null>(null);
+  const t = TRANSLATIONS[locale];
 
   return (
     <LazyMotion features={domAnimation}>
@@ -41,7 +51,10 @@ export function TeamGrid() {
               <p className="font-[family-name:var(--font-spartan)] text-white text-sm font-semibold leading-tight">
                 {member.name}
               </p>
-              <p className="font-[family-name:var(--font-montserrat)] text-white/40 text-xs mt-1">
+              <p className="font-[family-name:var(--font-montserrat)] text-[#d4845a]/70 text-[10px] mt-0.5 uppercase tracking-wider">
+                {t.teamDepts[member.department]}
+              </p>
+              <p className="font-[family-name:var(--font-montserrat)] text-white/40 text-xs mt-0.5">
                 {member.role}
               </p>
             </m.button>
@@ -49,7 +62,11 @@ export function TeamGrid() {
         </div>
       </div>
 
-      <TeamModal member={selected} open={selected !== null} onClose={() => setSelected(null)} />
+      <TeamModal
+        member={selected}
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+      />
     </LazyMotion>
   );
 }

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import { LazyMotion, domAnimation, m } from 'framer-motion';
+import Image from "next/image";
+import { LazyMotion, domAnimation, m } from "framer-motion";
 
 interface ChapterHeroProps {
   image: string;
@@ -11,7 +11,13 @@ interface ChapterHeroProps {
   centered?: boolean;
 }
 
-export function ChapterHero({ image, imageAlt, title, subtitle, centered }: ChapterHeroProps) {
+export function ChapterHero({
+  image,
+  imageAlt,
+  title,
+  subtitle,
+  centered,
+}: ChapterHeroProps) {
   return (
     <LazyMotion features={domAnimation}>
       <div className="relative w-full min-h-screen overflow-hidden flex items-end">
@@ -26,7 +32,7 @@ export function ChapterHero({ image, imageAlt, title, subtitle, centered }: Chap
         <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-[#0c0c0e]/60 to-transparent" />
         <div
           className={`relative z-10 w-full px-8 md:px-16 pb-16 md:pb-24 ${
-            centered ? 'text-center mx-auto max-w-3xl' : 'max-w-3xl'
+            centered ? "text-center mx-auto max-w-3xl" : "max-w-3xl"
           }`}
         >
           <m.h2

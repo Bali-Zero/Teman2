@@ -1,9 +1,15 @@
-'use client';
+"use client";
 
-import { LazyMotion, domAnimation, m } from 'framer-motion';
-import { MILESTONES } from './book-data';
+import { LazyMotion, domAnimation, m } from "framer-motion";
+import { MILESTONES, type Locale } from "./book-data";
 
-export function TimelineComponent() {
+interface TimelineComponentProps {
+  locale?: Locale;
+}
+
+export function TimelineComponent({
+  locale: _locale = "en",
+}: TimelineComponentProps) {
   return (
     <LazyMotion features={domAnimation}>
       <div className="px-8 md:px-16 py-12 overflow-x-auto">
