@@ -129,7 +129,9 @@ export default function VisaPage() {
                         text:
                           visaInfo.current.daysRemaining <= 0
                             ? `Expired ${Math.abs(visaInfo.current.daysRemaining)}d ago`
-                            : `${visaInfo.current.daysRemaining}d left`,
+                            : visaInfo.current.daysRemaining <= 365
+                              ? `⏰ ${visaInfo.current.daysRemaining}d left`
+                              : `${Math.floor(visaInfo.current.daysRemaining / 30)}mo left`,
                         color:
                           visaInfo.current.daysRemaining <= 0
                             ? 'bg-red-500/10 text-red-400'
