@@ -484,7 +484,9 @@ function LicenseCard({ license }: { license: CompanyLicense }) {
             >
               {license.daysRemaining <= 0
                 ? `Expired ${Math.abs(license.daysRemaining)}d ago`
-                : `${license.daysRemaining}d left`}
+                : license.daysRemaining <= 365
+                  ? `⏰ ${license.daysRemaining}d left`
+                  : `${Math.floor(license.daysRemaining / 30)}mo left`}
             </span>
           )}
         </div>
