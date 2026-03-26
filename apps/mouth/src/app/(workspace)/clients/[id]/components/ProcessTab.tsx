@@ -94,7 +94,9 @@ export function ProcessTab({
                           )
                         )
                           return;
-                        setDeletingIds((prev) => new Set(prev).add(practice.id));
+                        setDeletingIds((prev) =>
+                          new Set(prev).add(practice.id),
+                        );
                         try {
                           const user = await api.getProfile();
                           await api.crm.deletePractice(practice.id, user.email);
