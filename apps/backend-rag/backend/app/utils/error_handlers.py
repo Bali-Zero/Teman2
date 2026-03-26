@@ -40,6 +40,17 @@ def handle_database_error(e: Exception) -> HTTPException:
         logger.error(f"Database error: {e}", exc_info=True)
         return HTTPException(status_code=503, detail="Database service temporarily unavailable")
 
+    # asyncpg.InterfaceError: "connection was closed in the middle of operation"
+    # Happens on first request after Fly.io cold start — stale pool connection.
+    # Return 503 so the client retries; the next request will get a fresh connection.
+    if isinstance(e, asyncpg.InterfaceError):
+        logger.warning(f"Stale DB connection (likely cold start): {e}")
+        return HTTPException(
+            status_code=503,
+            detail="Database connection temporarily unavailable. Please retry.",
+            headers={"Retry-After": "3"},
+        )
+
     # Generic fallback
     logger.error(f"Unexpected error: {e}", exc_info=True)
     return HTTPException(status_code=500, detail="Internal server error")
