@@ -533,7 +533,7 @@ export default function CaseDetailPage() {
 
         <div className="flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
               <h1 className="text-3xl font-bold" style={{ color: 'var(--bz-text-1)' }}>
                 {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Process'} #
                 {practice.id}
@@ -544,6 +544,43 @@ export default function CaseDetailPage() {
                 {statusInfo.icon}
                 <span className="text-sm font-medium">{statusInfo.label}</span>
               </div>
+              {(() => {
+                // Age in current status: use last status transition date or updated_at
+                const lastTransition = practice.status_transitions?.length
+                  ? practice.status_transitions[practice.status_transitions.length - 1]
+                  : null;
+                const sinceDate = lastTransition?.at || practice.updated_at;
+                if (!sinceDate) return null;
+                const ageDays = Math.floor((Date.now() - new Date(sinceDate).getTime()) / 86400000);
+                if (ageDays === 0) return null;
+                const label = ageDays >= 30
+                  ? `${Math.floor(ageDays / 30)}mo`
+                  : ageDays >= 7
+                    ? `${Math.floor(ageDays / 7)}w`
+                    : `${ageDays}d`;
+                const isStale = ageDays > 14;
+                const isVeryStale = ageDays > 30;
+                return (
+                  <span
+                    className="text-[10px] px-2 py-1 rounded-full font-medium"
+                    style={{
+                      background: isVeryStale
+                        ? 'rgba(239,68,68,0.15)'
+                        : isStale
+                          ? 'rgba(245,158,11,0.15)'
+                          : 'rgba(255,255,255,0.06)',
+                      color: isVeryStale
+                        ? '#f87171'
+                        : isStale
+                          ? '#fbbf24'
+                          : 'var(--bz-text-2)',
+                    }}
+                    title={`In current status for ${ageDays} days`}
+                  >
+                    {label} in status
+                  </span>
+                );
+              })()}
             </div>
             <p style={{ color: 'var(--bz-text-2)' }}>
               {practice.practice_type_name || 'Process Details'}
