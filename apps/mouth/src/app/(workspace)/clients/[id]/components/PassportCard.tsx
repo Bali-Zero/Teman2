@@ -1,21 +1,19 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import {
-  CreditCard,
-  FileText,
-  Loader2,
-  Upload,
-  Download,
-  Trash2,
-} from 'lucide-react';
+import { CreditCard, FileText, Loader2, Upload, Download, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { api } from '@/lib/api';
 import { fileToBase64 } from '@/lib/utils';
 import type { ClientProfile, ClientDocument } from '@/lib/api/crm/crm.types';
-import { extractDriveFileId, getDriveProxyUrl, getPassportValidityColor, isBirthdayToday } from './utils';
+import {
+  extractDriveFileId,
+  getDriveProxyUrl,
+  getPassportValidityColor,
+  isBirthdayToday,
+} from './utils';
 
 export function PassportCard({
   client,
@@ -392,9 +390,7 @@ export function PassportCard({
             </div>
 
             {/* OCR Error Message */}
-            {ocrError && (
-              <p className="text-xs text-red-400 text-center">{ocrError}</p>
-            )}
+            {ocrError && <p className="text-xs text-red-400 text-center">{ocrError}</p>}
 
             {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-2 pt-2 mt-auto">
@@ -429,10 +425,91 @@ export function PassportCard({
           </div>
         ) : (
           <div className="flex-1 flex flex-col">
-            <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--bz-border)] flex flex-col items-center justify-center gap-2 bg-[var(--bz-base)]/50">
-              <CreditCard className="w-10 h-10 text-[var(--bz-text-2)] opacity-50" />
-              <span className="text-sm text-[var(--bz-text-2)]">No passport</span>
-            </div>
+            {/* Show extracted data if available, even without image */}
+            {client.passport_number || client.passport_expiry || client.date_of_birth ? (
+              <div className="space-y-3 flex-1">
+                <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--bz-border)] flex flex-col items-center justify-center gap-1.5 bg-[var(--bz-base)]/50">
+                  <CreditCard className="w-8 h-8 text-[var(--bz-text-2)] opacity-40" />
+                  <span className="text-xs text-[var(--bz-text-2)]">No scan uploaded</span>
+                  <span className="text-[10px] text-[var(--bz-text-2)] opacity-60">
+                    Data extracted from records
+                  </span>
+                </div>
+
+                {/* Passport Data from OCR/records */}
+                <div className="space-y-2">
+                  {client.passport_number && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[var(--bz-text-2)]">Number:</span>
+                      <span className="font-mono text-[var(--bz-text-1)] font-semibold">
+                        {client.passport_number}
+                      </span>
+                    </div>
+                  )}
+                  {client.passport_expiry && (
+                    <div
+                      className={`rounded-lg p-2 ${passportValidity.bgClass} border ${
+                        passportValidity.alertLevel === 'critical'
+                          ? 'border-red-500/50 animate-pulse'
+                          : passportValidity.alertLevel === 'warning'
+                            ? 'border-yellow-500/50'
+                            : 'border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-wider opacity-80">
+                          Expiry:
+                        </span>
+                        <span className={`text-xs font-semibold ${passportValidity.textClass}`}>
+                          {formatDate(client.passport_expiry)}
+                        </span>
+                      </div>
+                      {passportValidity.alertLevel === 'expired' && (
+                        <div className="mt-1 text-[10px] text-red-600 dark:text-red-300 font-bold">
+                          ⛔ PASSPORT EXPIRED!
+                        </div>
+                      )}
+                      {passportValidity.alertLevel === 'critical' && (
+                        <div className="mt-1 text-[10px] text-red-600 dark:text-red-300 font-bold">
+                          🚨 URGENT: Contact embassy immediately!
+                        </div>
+                      )}
+                      {passportValidity.alertLevel === 'warning' && (
+                        <div className="mt-1 text-[10px] text-yellow-600 dark:text-yellow-300">
+                          ⚠️ Expiring soon
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {client.date_of_birth && (
+                    <div
+                      className={`flex items-center justify-between text-xs p-2 rounded-lg transition-all duration-500 ${
+                        isBirthday
+                          ? 'bg-gradient-to-r from-yellow-300/40 via-amber-300/40 to-yellow-300/40 animate-pulse shadow-[0_0_15px_rgba(255,215,0,0.5)]'
+                          : ''
+                      }`}
+                    >
+                      <span
+                        className={`${isBirthday ? 'text-yellow-700 dark:text-yellow-300 font-semibold' : 'text-[var(--bz-text-2)]'}`}
+                      >
+                        {isBirthday ? '🎂 DOB:' : 'DOB:'}
+                      </span>
+                      <span
+                        className={`${isBirthday ? 'font-bold text-yellow-700 dark:text-yellow-300' : 'text-[var(--bz-text-1)]'}`}
+                      >
+                        {formatDate(client.date_of_birth)}
+                        {isBirthday && ' (Today!)'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="aspect-[3/2] rounded-lg border-2 border-dashed border-[var(--bz-border)] flex flex-col items-center justify-center gap-2 bg-[var(--bz-base)]/50">
+                <CreditCard className="w-10 h-10 text-[var(--bz-text-2)] opacity-50" />
+                <span className="text-sm text-[var(--bz-text-2)]">No passport</span>
+              </div>
+            )}
 
             {/* Upload Button */}
             <input
@@ -454,7 +531,13 @@ export function PassportCard({
               ) : (
                 <Upload className="w-4 h-4 mr-2" />
               )}
-              {isUploading ? 'Uploading...' : 'Upload Passport'}
+              {isUploading
+                ? 'Uploading...'
+                : passportImageUrl
+                  ? 'Upload Passport'
+                  : client.passport_number
+                    ? 'Upload Scan'
+                    : 'Upload Passport'}
             </Button>
           </div>
         )}
