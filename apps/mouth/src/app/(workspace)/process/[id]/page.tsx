@@ -1232,7 +1232,26 @@ export default function CaseDetailPage() {
                   <label className="text-sm mb-1 block" style={{ color: 'var(--bz-text-2)' }}>
                     Expiry Date
                   </label>
-                  <p style={{ color: 'var(--bz-text-1)' }}>{formatDate(practice.expiry_date)}</p>
+                  {(() => {
+                    const daysLeft = Math.ceil(
+                      (new Date(practice.expiry_date!).getTime() - Date.now()) / 86400000
+                    );
+                    const color =
+                      daysLeft < 0 ? '#f87171' : daysLeft <= 30 ? '#fb923c' : 'var(--bz-text-1)';
+                    const label =
+                      daysLeft < 0
+                        ? `Expired ${Math.abs(daysLeft)}d ago`
+                        : daysLeft === 0
+                          ? 'Expires today'
+                          : daysLeft <= 365
+                            ? `⏰ ${daysLeft}d left`
+                            : `${Math.floor(daysLeft / 30)}mo left`;
+                    return (
+                      <p style={{ color }} title={formatDate(practice.expiry_date!)}>
+                        {label}
+                      </p>
+                    );
+                  })()}
                 </div>
               )}
             </div>
