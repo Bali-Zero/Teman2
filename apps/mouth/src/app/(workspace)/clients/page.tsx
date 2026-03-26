@@ -19,6 +19,7 @@ import {
   UserPlus,
   LayoutGrid,
   List,
+  Table2,
   X,
   SortAsc,
   SortDesc,
@@ -50,7 +51,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
 
 type SortField = 'full_name' | 'created_at' | 'last_interaction_date' | 'status';
 type SortOrder = 'asc' | 'desc';
-type ViewMode = 'list' | 'kanban';
+type ViewMode = 'list' | 'kanban' | 'table';
 
 interface Filters {
   status: string;
@@ -480,6 +481,23 @@ function ClientsListContent() {
               aria-label="Switch to kanban board view"
             >
               <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className="p-2 rounded-md transition-all"
+              style={
+                viewMode === 'table'
+                  ? {
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      color: 'var(--bz-text-1)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    }
+                  : { color: 'var(--bz-text-2)' }
+              }
+              title="Table View"
+              aria-label="Switch to table view"
+            >
+              <Table2 className="w-4 h-4" />
             </button>
           </div>
 
@@ -961,6 +979,115 @@ function ClientsListContent() {
                 if (hasMore && !isLoading && !isLoadingMore) loadMore();
               }}
             />
+          ) : viewMode === 'table' ? (
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    {[
+                      { key: 'full_name', label: 'Name' },
+                      { key: 'status', label: 'Status' },
+                      { key: 'nationality', label: 'Nationality' },
+                      { key: 'assigned_to', label: 'Assigned' },
+                      { key: 'last_interaction_date', label: 'Last Contact' },
+                      { key: 'passport_expiry', label: 'Passport Exp.' },
+                    ].map((col) => (
+                      <th
+                        key={col.key}
+                        className="text-left px-3 py-2 font-medium text-xs uppercase tracking-wide cursor-pointer select-none"
+                        style={{ color: 'var(--bz-text-2)' }}
+                        onClick={() => {
+                          if (sortField === col.key) {
+                            setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
+                          } else {
+                            setSortField(col.key as SortField);
+                            setSortOrder('asc');
+                          }
+                        }}
+                      >
+                        <span className="flex items-center gap-1">
+                          {col.label}
+                          {sortField === col.key && (
+                            sortOrder === 'asc'
+                              ? <SortAsc className="w-3 h-3" />
+                              : <SortDesc className="w-3 h-3" />
+                          )}
+                        </span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredClients.map((client, idx) => {
+                    const passportExpiry = client.passport_expiry
+                      ? new Date(client.passport_expiry)
+                      : null;
+                    const passportDaysLeft = passportExpiry
+                      ? Math.ceil((passportExpiry.getTime() - Date.now()) / 86400000)
+                      : null;
+                    const statusStyle = STATUS_STYLES[client.status] ?? { bg: 'bg-gray-500/20', text: 'text-gray-400' };
+                    return (
+                      <tr
+                        key={client.id}
+                        onClick={() => router.push(`/clients/${client.id}`)}
+                        className="cursor-pointer transition-colors"
+                        style={{
+                          background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.06)'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'; }}
+                      >
+                        <td className="px-3 py-2 font-medium" style={{ color: 'var(--bz-text-1)', maxWidth: '200px' }}>
+                          <span className="truncate block">{client.full_name}</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${statusStyle.bg} ${statusStyle.text}`}>
+                            {client.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-xs" style={{ color: 'var(--bz-text-2)' }}>
+                          {client.nationality ?? '—'}
+                        </td>
+                        <td className="px-3 py-2 text-xs" style={{ color: 'var(--bz-text-2)', maxWidth: '120px' }}>
+                          <span className="truncate block">{client.assigned_to ? client.assigned_to.split('@')[0] : '—'}</span>
+                        </td>
+                        <td className="px-3 py-2 text-xs" style={{ color: 'var(--bz-text-2)' }}>
+                          {client.last_interaction_date
+                            ? new Date(client.last_interaction_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })
+                            : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-xs">
+                          {passportExpiry ? (
+                            <span
+                              className={
+                                passportDaysLeft !== null && passportDaysLeft < 0
+                                  ? 'text-red-400'
+                                  : passportDaysLeft !== null && passportDaysLeft <= 90
+                                    ? 'text-yellow-400'
+                                    : ''
+                              }
+                              style={passportDaysLeft !== null && passportDaysLeft >= 90 ? { color: 'var(--bz-text-2)' } : undefined}
+                            >
+                              {passportExpiry.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
+                              {passportDaysLeft !== null && passportDaysLeft < 0 && ' (exp)'}
+                              {passportDaysLeft !== null && passportDaysLeft >= 0 && passportDaysLeft <= 90 && ` (${passportDaysLeft}d)`}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--bz-text-2)' }}>—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {hasMore && (
+                <div ref={loadMoreRef} className="p-4 text-center text-xs" style={{ color: 'var(--bz-text-2)' }}>
+                  {isLoadingMore ? 'Loading more...' : `${clients.length} of ${clients.length} loaded`}
+                </div>
+              )}
+            </div>
           ) : (
             <ClientKanban clients={filteredClients} onStatusChange={handleStatusChange} />
           )}
