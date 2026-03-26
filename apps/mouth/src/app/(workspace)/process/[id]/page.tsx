@@ -1477,7 +1477,7 @@ export default function CaseDetailPage() {
                                 : 'rgba(255,255,255,0.05)',
                             color: durationDays > 14 ? '#fbbf24' : 'var(--bz-text-2)',
                           }}
-                          title={`Entered: ${formatDate(t.at)}`}
+                          title={`Time in this status: ${durationLabel}\nEntered: ${formatDate(t.at)}`}
                         >
                           {durationLabel}
                         </span>
