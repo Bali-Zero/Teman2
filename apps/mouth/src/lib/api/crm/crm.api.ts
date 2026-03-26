@@ -248,6 +248,7 @@ export class CrmApi {
       search?: string;
       status?: string;
       assigned_to?: string;
+      nationality?: string;
       limit?: number;
       offset?: number;
     } = {},
@@ -257,6 +258,8 @@ export class CrmApi {
     if (params.status) queryParams.append("status", params.status);
     if (params.assigned_to)
       queryParams.append("assigned_to", params.assigned_to);
+    if (params.nationality)
+      queryParams.append("nationality", params.nationality);
     if (params.limit) queryParams.append("limit", params.limit.toString());
     if (params.offset) queryParams.append("offset", params.offset.toString());
 

@@ -14,6 +14,7 @@ interface UseCrmClientsOptions {
   status?: string;
   assigned_to?: string;
   search?: string;
+  nationality?: string;
   limit?: number;
   enabled?: boolean;
 }
@@ -40,16 +41,30 @@ const debug = (...args: unknown[]) => {
  * Hook per gestione lista clienti
  */
 export function useCrmClients(options: UseCrmClientsOptions = {}) {
-  const { status, assigned_to, search, limit = 50, enabled = true } = options;
+  const {
+    status,
+    assigned_to,
+    search,
+    nationality,
+    limit = 50,
+    enabled = true,
+  } = options;
   const queryClient = useQueryClient();
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadingRef = useRef(false);
+  // Generation counter: incremented on each filter change so stale data from
+  // a previous filter set is never appended to a fresh accumulation.
+  const generationRef = useRef(0);
 
   // Base query key (without offset — we accumulate results)
-  const queryKey = ["crm", "clients", { status, assigned_to, search }];
+  const queryKey = [
+    "crm",
+    "clients",
+    { status, assigned_to, search, nationality },
+  ];
 
   const {
     data,
@@ -64,6 +79,7 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
         search: search || undefined,
         status: status || undefined,
         assigned_to: assigned_to || undefined,
+        nationality: nationality || undefined,
         limit,
         offset,
       });
@@ -73,13 +89,18 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
     gcTime: 10 * 60 * 1000,
   });
 
-  // Accumulate results when new data arrives
+  // Accumulate results when new data arrives.
+  // Use a captured generation snapshot to discard data from a previous filter
+  // set that arrived after the filter changed (stale flash fix).
   useEffect(() => {
     if (data) {
+      const currentGeneration = generationRef.current;
       if (offset === 0) {
         setAllClients(data);
       } else {
         setAllClients((prev) => {
+          // If filters changed since this fetch started, don't accumulate
+          if (generationRef.current !== currentGeneration) return prev;
           const existingIds = new Set(prev.map((c) => c.id));
           const newClients = data.filter((c) => !existingIds.has(c.id));
           return [...prev, ...newClients];
@@ -99,12 +120,13 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
     }
   }, [isError]);
 
-  // Reset when filters change
+  // Reset when filters change — bump generation so stale accumulations are discarded
   useEffect(() => {
+    generationRef.current += 1;
     setOffset(0);
     setAllClients([]);
     setHasMore(true);
-  }, [status, assigned_to, search]);
+  }, [status, assigned_to, search, nationality]);
 
   const loadMore = useCallback(() => {
     if (hasMore && !isLoading && !loadingRef.current) {

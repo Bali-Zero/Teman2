@@ -345,6 +345,7 @@ async def list_clients(
     ),
     assigned_to: str | None = Query(None, description="Filter by assigned team member email"),
     search: str | None = Query(None, description="Search by name, email, or phone"),
+    nationality: str | None = Query(None, description="Filter by nationality"),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Max results to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -359,6 +360,7 @@ async def list_clients(
     - **status**: Filter by client status
     - **assigned_to**: Filter by assigned team member (optional)
     - **search**: Search in name, email, phone fields
+    - **nationality**: Filter by nationality
     - **limit**: Max results (default: 50, max: 200)
     - **offset**: For pagination
     """
@@ -418,6 +420,11 @@ async def list_clients(
                 )
                 params.extend([search_pattern, search_pattern, search_pattern])
                 param_index += 3
+
+            if nationality:
+                query_parts.append(f" AND c.nationality ILIKE ${param_index}")
+                params.append(f"%{nationality}%")
+                param_index += 1
 
             query_parts.append(
                 f" ORDER BY c.created_at DESC LIMIT ${param_index} OFFSET ${param_index + 1}"
