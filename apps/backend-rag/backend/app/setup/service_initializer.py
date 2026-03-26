@@ -1178,6 +1178,14 @@ async def initialize_services(app: FastAPI) -> None:
         app.state.nlm_enrichment_service = None
         logger.info("⚠️ NLM Enrichment Service DISABLED (set ENABLE_NLM_ENRICHMENT=true to enable)")
 
+    # Register workflow chain executors (lazy — only imports, no heavy init)
+    try:
+        import backend.services.workflow.chains  # noqa: F401
+
+        logger.info("✅ Workflow chain executors registered")
+    except Exception as e:
+        logger.warning(f"⚠️ Workflow chain registration failed (non-critical): {e}")
+
     logger.info("DEBUG: Setting services_initialized to True")
     app.state.services_initialized = True
     logger.info("✅ ZANTARA Services Initialization Complete.")
