@@ -149,9 +149,43 @@ export default function CompanyDetailPage() {
           backdropFilter: 'blur(24px)',
         }}
       >
-        <div className="flex items-center gap-2">
-          <FileCheck className="w-5 h-5" style={{ color: 'var(--bz-accent-warm)' }} />
-          <h2 className="text-lg font-semibold">Licenses</h2>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FileCheck className="w-5 h-5" style={{ color: 'var(--bz-accent-warm)' }} />
+            <h2 className="text-lg font-semibold">Licenses</h2>
+          </div>
+          {company.licenses &&
+            company.licenses.length > 0 &&
+            (() => {
+              const expiring = company.licenses.filter((l) => l.status === 'expiring').length;
+              const expired = company.licenses.filter((l) => l.status === 'expired').length;
+              if (expired > 0)
+                return (
+                  <span
+                    className="text-xs px-2 py-1 rounded-full font-medium"
+                    style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171' }}
+                  >
+                    {expired} expired
+                  </span>
+                );
+              if (expiring > 0)
+                return (
+                  <span
+                    className="text-xs px-2 py-1 rounded-full font-medium"
+                    style={{ background: 'rgba(245,158,11,0.12)', color: '#fbbf24' }}
+                  >
+                    {expiring} expiring soon
+                  </span>
+                );
+              return (
+                <span
+                  className="text-xs px-2 py-1 rounded-full font-medium"
+                  style={{ background: 'rgba(16,185,129,0.12)', color: '#34d399' }}
+                >
+                  All valid
+                </span>
+              );
+            })()}
         </div>
 
         {company.licenses && company.licenses.length > 0 ? (
