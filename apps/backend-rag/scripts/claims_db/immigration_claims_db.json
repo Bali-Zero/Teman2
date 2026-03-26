@@ -3123,5 +3123,125 @@
     "source_law": "Permenkumham 22/2023",
     "permit_type": "E33E",
     "verified": true
+  },
+  {
+    "claim_id": "IMM-389",
+    "claim": "Il Kepmenaker 228/2019 elenca i settori KBLI in cui e ammesso impiegare Tenaga Kerja Asing (TKA).",
+    "verbatim": "Kepmenaker RI No. 228 Tahun 2019 tentang Jabatan Tertentu yang Dapat Diduduki oleh Tenaga Kerja Asing",
+    "pasal_ref": "Kepmenaker 228/2019",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-390",
+    "claim": "Il Kepmenaker 228/2019 individua 20 settori KBLI in cui determinate jabatan possono essere ricoperte da lavoratori stranieri.",
+    "verbatim": "20 sektor yang diizinkan TKA berdasarkan Kepmenaker 228/2019",
+    "pasal_ref": "Kepmenaker 228/2019 Diktum PERTAMA",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-391",
+    "claim": "Il settore Penyediaan Akomodasi dan Makan Minum (KBLI 55-56, sezione I) ammette 12 jabatan per TKA, tra cui General Manager, Executive Chef, F&B Manager.",
+    "verbatim": "Sektor I: 12 jabatan termasuk General Manager, Executive Chef",
+    "pasal_ref": "Kepmenaker 228/2019 Lampiran Sektor 8",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-392",
+    "claim": "Il settore Real Estate (KBLI 68, sezione L) ammette 6 jabatan per TKA.",
+    "verbatim": "Sektor L Real Estate: 6 jabatan diizinkan TKA",
+    "pasal_ref": "Kepmenaker 228/2019 Lampiran Sektor 2",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-393",
+    "claim": "Il settore Kesenian, Hiburan e Rekreasi (KBLI 90-93, sezione R) ammette 57 jabatan per TKA.",
+    "verbatim": "Sektor R: 57 jabatan diizinkan TKA",
+    "pasal_ref": "Kepmenaker 228/2019 Lampiran Sektor 7",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-394",
+    "claim": "Il settore Konstruksi (KBLI 41-43, sezione F) ammette 181 jabatan per TKA, il piu ampio dopo pertambangan.",
+    "verbatim": "Sektor F Konstruksi: 181 jabatan",
+    "pasal_ref": "Kepmenaker 228/2019 Lampiran Sektor 1",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-395",
+    "claim": "Il settore Pertambangan Minyak & Gas (KBLI 06, sezione B) e il solo che permette al TKA di essere Direktur Utama, con S1 e 15 anni di esperienza.",
+    "verbatim": "Satu-satunya sektor yang membolehkan TKA sebagai Direktur Utama: S1 + 15 tahun pengalaman",
+    "pasal_ref": "Kepmenaker 228/2019 Lampiran Sektor 14",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-396",
+    "claim": "Il Kepmenaker 349/2019 elenca 19 jabatan assolutamente vietate ai TKA in tutti i settori, prevalentemente nellarea HR e relazioni industriali.",
+    "verbatim": "Kepmenaker RI No. 349 Tahun 2019 tentang Jabatan Tertentu yang Dilarang Diduduki oleh Tenaga Kerja Asing",
+    "pasal_ref": "Kepmenaker 349/2019",
+    "instrument_id": "KEPMENAKER-349-2019",
+    "category": "tka_jabatan_vietate"
+  },
+  {
+    "claim_id": "IMM-397",
+    "claim": "Le 19 jabatan vietate ai TKA includono: Direktur Personalia, Manajer Hubungan Industrial, Manajer Personalia, e tutti i ruoli HR/personale/relazioni industriali.",
+    "verbatim": "19 jabatan dilarang: Direktur Personalia, Manajer Hubungan Industrial, Manajer Personalia, dst.",
+    "pasal_ref": "Kepmenaker 349/2019 Lampiran",
+    "instrument_id": "KEPMENAKER-349-2019",
+    "category": "tka_jabatan_vietate"
+  },
+  {
+    "claim_id": "IMM-398",
+    "claim": "La posizione di Kepala Eksekutif Kantor (CEO) e classificata come jabatan condizionale: vietata se la funzione principale e la gestione del personale.",
+    "verbatim": "Kepala Eksekutif Kantor: kondisional - tergantung fungsi",
+    "pasal_ref": "Kepmenaker 349/2019",
+    "instrument_id": "KEPMENAKER-349-2019",
+    "category": "tka_jabatan_vietate"
+  },
+  {
+    "claim_id": "IMM-399",
+    "claim": "Il PP 34/2021 disciplina le condizioni generali di impiego dei TKA in Indonesia, incluso obbligo di RPTKA e pagamento del DKP-TKA.",
+    "verbatim": "PP No. 34 Tahun 2021 tentang Penggunaan Tenaga Kerja Asing",
+    "pasal_ref": "PP 34/2021",
+    "instrument_id": "PP-34-2021",
+    "category": "tka_normativa"
+  },
+  {
+    "claim_id": "IMM-400",
+    "claim": "Il DKP-TKA e fissato a USD 100 per jabatan per mese, da versare al Kemnaker prima del rilascio del visto E23.",
+    "verbatim": "DKP-TKA: USD 100 per jabatan per bulan",
+    "pasal_ref": "PP 34/2021 Pasal 32",
+    "instrument_id": "PP-34-2021",
+    "category": "tka_normativa"
+  },
+  {
+    "claim_id": "IMM-401",
+    "claim": "Il datore di lavoro deve presentare il RPTKA tramite il portale Molina (molina.kemnaker.go.id) prima di assumere un TKA.",
+    "verbatim": "RPTKA wajib diajukan melalui portal Molina sebelum mempekerjakan TKA",
+    "pasal_ref": "PP 34/2021 Pasal 10",
+    "instrument_id": "PP-34-2021",
+    "category": "tka_normativa"
+  },
+  {
+    "claim_id": "IMM-402",
+    "claim": "L'IMTA come documento fisico separato e stato abolito: l'approvazione RPTKA sostituisce l'IMTA e abilita il rilascio del visto E23.",
+    "verbatim": "IMTA fisik dihapuskan: RPTKA yang disetujui menggantikan IMTA",
+    "pasal_ref": "PP 34/2021 Pasal 20",
+    "instrument_id": "PP-34-2021",
+    "category": "tka_normativa"
+  },
+  {
+    "claim_id": "IMM-403",
+    "claim": "Il TKA deve avere una jabatan corrispondente alla propria qualifica e il KBLI del datore deve rientrare nei settori ammessi da Kepmenaker 228/2019.",
+    "verbatim": "Jabatan TKA harus sesuai kualifikasi dan KBLI perusahaan harus termasuk dalam sektor yang diizinkan",
+    "pasal_ref": "PP 34/2021 Pasal 7",
+    "instrument_id": "PP-34-2021",
+    "category": "tka_normativa"
   }
 ]
