@@ -73,8 +73,8 @@ A full-screen interactive web experience at `balizero.com/book` — part magazin
 - **Email:** info@balizero.com
 - **Web:** balizero.com
 
-### Clienti (da confermare col fondatore)
-- "5.000+ clienti" presente in MEMORY.md — **da verificare con DB reale prima di pubblicare**
+### Clienti (confermato dal fondatore)
+- **5.000+ clienti** passati dall'agenzia dal 2020 ad oggi — dato verificato e approvato dal fondatore
 
 ### Servizi verificati (da `zantara_core.py`)
 - Visti singola/multipla entrata
@@ -96,8 +96,8 @@ A full-screen interactive web experience at `balizero.com/book` — part magazin
 | # | ID | Opens With (hybrid B — SOLO DATI REALI) | Poi |
 |---|----|-----------------------------------------|-----|
 | 1 | `cover` | Nessun testo — cinematic full-bleed | Logo + "Bali Zero" |
-| 2 | `manifesto` | "Dal 2006 al futuro. Un'eredità, una rivoluzione." | CV Bayu Santero → Bali Zero 2020 |
-| 3 | `origin` | "L'incontro che ha cambiato tutto." | Storia vera: bule Zero + Pak Zainal Abidin |
+| 2 | `manifesto` | "5.000 clienti. 6 anni. Un'eredità dal 2006." | CV Bayu Santero (2006) → Bali Zero (2020), missione unica |
+| 3 | `origin` | "L'incontro che ha cambiato tutto." | Storia vera: bule Zero + Pak Zainal Abidin (owner CV Bayu Santero) |
 | 4 | `team` | "22 persone. Un obiettivo." | Grid team reale con nomi/ruoli verificati |
 | 5 | `services` | "Prezzi reali. Nessuna sorpresa." | ServicePricingCard live dal RAG |
 | 6 | `impact` | "L'unica agenzia AI in Indonesia." | Confronto competitor con dati reali (tutti -19% a -23%) |
