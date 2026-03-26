@@ -553,11 +553,12 @@ export default function CaseDetailPage() {
                 if (!sinceDate) return null;
                 const ageDays = Math.floor((Date.now() - new Date(sinceDate).getTime()) / 86400000);
                 if (ageDays === 0) return null;
-                const label = ageDays >= 30
-                  ? `${Math.floor(ageDays / 30)}mo`
-                  : ageDays >= 7
-                    ? `${Math.floor(ageDays / 7)}w`
-                    : `${ageDays}d`;
+                const label =
+                  ageDays >= 30
+                    ? `${Math.floor(ageDays / 30)}mo`
+                    : ageDays >= 7
+                      ? `${Math.floor(ageDays / 7)}w`
+                      : `${ageDays}d`;
                 const isStale = ageDays > 14;
                 const isVeryStale = ageDays > 30;
                 return (
@@ -569,11 +570,7 @@ export default function CaseDetailPage() {
                         : isStale
                           ? 'rgba(245,158,11,0.15)'
                           : 'rgba(255,255,255,0.06)',
-                      color: isVeryStale
-                        ? '#f87171'
-                        : isStale
-                          ? '#fbbf24'
-                          : 'var(--bz-text-2)',
+                      color: isVeryStale ? '#f87171' : isStale ? '#fbbf24' : 'var(--bz-text-2)',
                     }}
                     title={`In current status for ${ageDays} days`}
                   >
@@ -655,10 +652,20 @@ export default function CaseDetailPage() {
                       }}
                     >
                       {isJumping ? (
-                        <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          className="w-3 h-3 animate-spin"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                         </svg>
-                      ) : isDone ? '✓' : idx + 1}
+                      ) : isDone ? (
+                        '✓'
+                      ) : (
+                        idx + 1
+                      )}
                     </div>
                     <span
                       className="text-[9px] font-medium whitespace-nowrap hidden sm:block transition-colors"
@@ -1210,16 +1217,52 @@ export default function CaseDetailPage() {
                 Status History
               </h3>
               <div className="space-y-2">
-                {[...practice.status_transitions].reverse().map((t, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-sm">
-                    <span className="capitalize font-medium" style={{ color: 'var(--bz-text-1)' }}>
-                      {t.status.replace(/_/g, ' ')}
-                    </span>
-                    <span className="text-xs" style={{ color: 'var(--bz-text-2)' }}>
-                      {formatDate(t.at)}
-                    </span>
-                  </div>
-                ))}
+                {(() => {
+                  const sorted = [...practice.status_transitions].sort(
+                    (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime()
+                  );
+                  return sorted.map((t, idx) => {
+                    const nextAt = idx < sorted.length - 1 ? sorted[idx + 1].at : null;
+                    const isCurrent = idx === sorted.length - 1;
+                    const endMs = nextAt ? new Date(nextAt).getTime() : Date.now();
+                    const durationDays = Math.round((endMs - new Date(t.at).getTime()) / 86400000);
+                    const durationLabel =
+                      durationDays >= 30
+                        ? `${Math.floor(durationDays / 30)}mo ${durationDays % 30}d`
+                        : durationDays >= 7
+                          ? `${Math.floor(durationDays / 7)}w ${durationDays % 7}d`
+                          : `${durationDays}d`;
+                    return (
+                      <div key={idx} className="flex items-center gap-3 text-sm py-1">
+                        <div
+                          className="w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{
+                            background: isCurrent ? 'var(--bz-accent)' : 'rgba(255,255,255,0.25)',
+                          }}
+                        />
+                        <span
+                          className="capitalize font-medium flex-1"
+                          style={{ color: isCurrent ? 'var(--bz-text-1)' : 'var(--bz-text-2)' }}
+                        >
+                          {t.status.replace(/_/g, ' ')}
+                        </span>
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded"
+                          style={{
+                            background: durationDays > 14 ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.05)',
+                            color: durationDays > 14 ? '#fbbf24' : 'var(--bz-text-2)',
+                          }}
+                          title={`Entered: ${formatDate(t.at)}`}
+                        >
+                          {durationLabel}
+                        </span>
+                        <span className="text-[10px]" style={{ color: 'var(--bz-text-2)', minWidth: '60px', textAlign: 'right' }}>
+                          {formatDate(t.at)}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}
