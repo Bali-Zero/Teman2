@@ -25,11 +25,38 @@ import urllib.request
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+import tempfile
+
 WITA = timezone(timedelta(hours=8))
 PROJECT_ROOT = Path(__file__).parent.parent
 BASELINE_DIR = PROJECT_ROOT / "scripts" / ".rag_canary"
 BASELINE_FILE = BASELINE_DIR / "embedding_baseline.json"
 RESULTS_FILE = BASELINE_DIR / "last_run.json"
+AGENT_STATE_DIR = PROJECT_ROOT / ".agent" / "decisions" / "state"
+
+
+def write_sentinel_state(status: str, detail: str = "") -> None:
+    """Write ~/.agent/decisions/state/rag_canary_pro.last.json for Sentinel."""
+    AGENT_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "job": "rag_canary_pro",
+        "status": status,
+        "detail": detail,
+        "ts": datetime.now(timezone.utc).isoformat(),
+    }
+    target = AGENT_STATE_DIR / "rag_canary_pro.last.json"
+    fd, tmp_path = tempfile.mkstemp(dir=str(AGENT_STATE_DIR), suffix=".tmp", prefix="rag_canary")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(payload, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, str(target))
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 # --- Qdrant config (read from .env) ---
 BACKEND_ENV = PROJECT_ROOT / "apps" / "backend-rag" / ".env"
@@ -439,6 +466,21 @@ def main() -> None:
 
     # Print summary
     print(json.dumps(report, indent=2, default=str))
+
+    # Write Sentinel state
+    drift_info = report.get("embedding_drift", {})
+    golden_info = report.get("golden_queries", {})
+    drift_ok = drift_info.get("status") != "drift_detected" if drift_info else True
+    golden_ok = golden_info.get("failed", 0) == 0 if golden_info else True
+    if drift_ok and golden_ok:
+        write_sentinel_state("ok", "drift=ok golden=ok")
+    else:
+        details = []
+        if not drift_ok:
+            details.append(f"drift={drift_info.get('max_distance', '?')}")
+        if not golden_ok:
+            details.append(f"golden_failed={golden_info.get('failed', '?')}")
+        write_sentinel_state("failed", " ".join(details))
 
 
 if __name__ == "__main__":
