@@ -1199,7 +1199,7 @@ export default function PratichePage() {
                                     </p>
                                   </div>
                                 ) : (
-                                  <div />
+                                  <span className="text-[9px] text-[var(--bz-text-2)] opacity-50 italic">Unassigned</span>
                                 )}
                                 <div className="flex items-center gap-1.5">
                                   {practice.actual_price || practice.quoted_price ? (

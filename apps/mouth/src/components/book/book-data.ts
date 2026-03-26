@@ -204,6 +204,7 @@ export const STATS = {
   legalDocs: '66K+', // indexed legal documents
   kbliCodes: '9.612', // KBLI 2025 navigator
   channels: 4, // WhatsApp, Telegram, Web, Instagram
+  kbliNavigatorUrl: 'https://kita.balizero.com/kbli',
 };
 
 // Source: verified from codebase / WhatsApp
