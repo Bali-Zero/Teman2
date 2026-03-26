@@ -9,6 +9,7 @@ import {
   Building2,
   BellOff,
   Tag,
+  Plus,
 } from 'lucide-react';
 import { Client } from '@/lib/api/crm/crm.types';
 import { useRouter } from 'next/navigation';
@@ -297,9 +298,9 @@ export const ClientCard = React.memo(
                     background: 'rgba(99,102,241,0.15)',
                     color: '#818cf8',
                   }}
-                  title={`${(client.active_practices ?? 0)} active process${(client.active_practices ?? 0) > 1 ? 'es' : ''}`}
+                  title={`${client.active_practices ?? 0} active process${(client.active_practices ?? 0) > 1 ? 'es' : ''}`}
                 >
-                  {(client.active_practices ?? 0)}p
+                  {client.active_practices ?? 0}p
                 </span>
               )}
 
@@ -325,6 +326,16 @@ export const ClientCard = React.memo(
                     <Phone className="w-3 h-3" />
                   </a>
                 )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/process/new?client_id=${client.id}`);
+                  }}
+                  className="p-1.5 rounded-md hover:bg-[rgba(99,102,241,0.20)] hover:text-[#818cf8] transition-colors"
+                  title="New process for this client"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
               </div>
             </div>
           </div>
@@ -358,7 +369,8 @@ export const ClientCard = React.memo(
               <div className="flex items-center justify-between">
                 <span className="text-[var(--tx-secondary)]">Active:</span>
                 <span className="font-medium text-indigo-300">
-                  {(client.active_practices ?? 0)} process{(client.active_practices ?? 0) > 1 ? 'es' : ''}
+                  {client.active_practices ?? 0} process
+                  {(client.active_practices ?? 0) > 1 ? 'es' : ''}
                 </span>
               </div>
             )}
