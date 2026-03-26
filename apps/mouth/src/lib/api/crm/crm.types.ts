@@ -255,6 +255,7 @@ export interface ClientProfile {
     actual_price?: number;
     payment_status?: string;
     assigned_to?: string;
+    updated_at?: string;
   }>;
   company_links?: ClientCompanyLink[];
   stats: {
