@@ -105,6 +105,9 @@ from nuzantara_mcp.workflows.heartbeat import register as register_heartbeat
 # --- Observability ---
 from nuzantara_mcp.tools.langsmith import register as register_langsmith
 
+# --- Federation ---
+from nuzantara_mcp.tools.federation import register as register_federation
+
 # --- Prompts, Resources, Chains ---
 from nuzantara_mcp.prompts.templates import register as register_prompts
 from nuzantara_mcp.resources.config import register as register_resources
@@ -137,6 +140,9 @@ register_heartbeat(mcp, _call, _call_safe)
 
 # Observability
 register_langsmith(mcp, _call, _call_safe)
+
+# Federation inter-node bus
+register_federation(mcp, _call, _call_safe)
 
 # Prompts, resources, chains
 register_prompts(mcp)

@@ -197,13 +197,9 @@ export default function PratichePage() {
       try {
         // Enforce RBAC: team members see only their assigned practices
         let assignedTo: string | undefined;
-        try {
-          const user = await api.getProfile();
-          if (user && user.role !== "admin") {
-            assignedTo = user.email;
-          }
-        } catch {
-          // Profile fetch failure is non-fatal — show all if role unknown
+        const user = await api.getProfile();
+        if (user && user.role !== "admin") {
+          assignedTo = user.email;
         }
 
         const data = await api.crm.getPractices({

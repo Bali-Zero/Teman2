@@ -123,11 +123,13 @@ export function ImmigrationTab({
               alt={doc.document_type}
               className="w-full h-full object-contain"
               onError={(e) => {
-                if (doc.google_drive_file_url) {
-                  (e.target as HTMLImageElement).src = doc.google_drive_file_url.replace(
-                    '/view',
-                    '/preview'
-                  );
+                const img = e.target as HTMLImageElement;
+                // Only attempt fallback once to prevent infinite error loop
+                if (!img.dataset.fallbackAttempted && doc.google_drive_file_url) {
+                  img.dataset.fallbackAttempted = 'true';
+                  img.src = doc.google_drive_file_url.replace('/view', '/preview');
+                } else {
+                  img.style.display = 'none';
                 }
               }}
             />

@@ -116,7 +116,13 @@ export interface FamilyMember {
   id: number;
   client_id: number;
   full_name: string;
-  relationship: "spouse" | "child" | "parent" | "sibling" | "other";
+  relationship:
+    | "spouse"
+    | "child"
+    | "parent"
+    | "sibling"
+    | "dependent"
+    | "other";
   date_of_birth?: string;
   nationality?: string;
   passport_number?: string;
