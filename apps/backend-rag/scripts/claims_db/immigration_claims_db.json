@@ -1,0 +1,42 @@
+[
+  {
+    "claim_id": "IMM-001",
+    "claim": "Ogni straniero che entra in Indonesia deve essere in possesso di un visto valido appropriato al tipo di attività che intende svolgere.",
+    "verbatim": "Pasal 8 ayat (1): Setiap Orang Asing yang masuk Wilayah Indonesia wajib memiliki Visa yang sah dan masih berlaku.",
+    "pasal_ref": "UU 6/2011 Pasal 8 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "rule"
+  },
+  {
+    "claim_id": "IMM-002",
+    "claim": "Il KITAS (Izin Tinggal Terbatas) può essere rilasciato per un massimo di 2 anni.",
+    "verbatim": "Pasal 52: Izin Tinggal Terbatas diberikan kepada Orang Asing untuk paling lama 2 (dua) tahun.",
+    "pasal_ref": "UU 6/2011 Pasal 52",
+    "instrument_id": "UU-6-2011",
+    "category": "duration"
+  },
+  {
+    "claim_id": "IMM-003",
+    "claim": "Il rinnovo del KITAS deve essere richiesto prima della scadenza del permesso attuale.",
+    "verbatim": "Pasal 71 ayat (1): Orang Asing yang masa berlaku Izin Tinggal Terbatasnya berakhir dan masih berada di Wilayah Indonesia harus mengurus perpanjangan.",
+    "pasal_ref": "UU 6/2011 Pasal 71 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "procedure"
+  },
+  {
+    "claim_id": "IMM-004",
+    "claim": "Il Visa E28A (investor) richiede un investimento minimo di 10 miliardi di rupiah o il possesso di obbligazioni statali.",
+    "verbatim": "Pasal 16 ayat (2) huruf a: Memiliki investasi di Indonesia paling sedikit Rp10.000.000.000 atau memiliki Surat Berharga Negara.",
+    "pasal_ref": "Permenkumham 22/2023 Pasal 16 Ayat 2 Huruf A",
+    "instrument_id": "Permenkumham-22-2023",
+    "category": "fee"
+  },
+  {
+    "claim_id": "IMM-005",
+    "claim": "Il datore di lavoro che intende assumere lavoratori stranieri (TKA) deve ottenere preventivamente l'approvazione del Piano di Utilizzo TKA (RPTKA) dal Ministro.",
+    "verbatim": "Pasal 3: Pemberi Kerja TKA wajib memiliki Rencana Penggunaan Tenaga Kerja Asing yang disahkan oleh Menteri.",
+    "pasal_ref": "SE Kemnaker SE-3/836/2026 Pasal 3",
+    "instrument_id": "SE-Kemnaker-3-836-2026",
+    "category": "document"
+  }
+]
