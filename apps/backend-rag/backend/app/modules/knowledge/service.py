@@ -41,7 +41,7 @@ class KnowledgeService:
         3: [TierLevel.S, TierLevel.A, TierLevel.B, TierLevel.C, TierLevel.D],
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize Knowledge Service with Qdrant and embeddings.
 
