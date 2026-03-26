@@ -1161,13 +1161,13 @@ function ClientsListContent() {
                         <td className="px-3 py-2 text-xs">
                           {passportExpiry && passportDaysLeft !== null ? (
                             <span
-                              className={
+                              className={`inline-flex items-center px-1.5 py-0.5 rounded-full tabular-nums ${
                                 passportDaysLeft < 0
-                                  ? 'text-red-400'
+                                  ? 'bg-red-500/20 text-red-400'
                                   : passportDaysLeft <= 90
-                                    ? 'text-yellow-400'
-                                    : 'text-[var(--bz-text-2)]'
-                              }
+                                    ? 'bg-yellow-500/15 text-yellow-400'
+                                    : 'bg-[var(--bz-base)] text-[var(--bz-text-2)]'
+                              }`}
                               title={passportExpiry.toLocaleDateString('en-GB', {
                                 day: '2-digit',
                                 month: 'short',
