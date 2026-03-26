@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Check,
   X,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -114,6 +115,7 @@ export default function NewClientPage() {
     address: "",
     lead_source: undefined,
     service_interest: [],
+    avatar_url: "",
   });
 
   // Sync whatsapp with phone if not set
@@ -253,7 +255,7 @@ export default function NewClientPage() {
     try {
       // Crop to square and resize to 400x400px
       const resizedImage = await cropToSquare(file, 400, 0.85);
-      // setFormData((prev) => ({ ...prev, avatar_url: resizedImage })); // Disabled - type mismatch
+      setFormData((prev) => ({ ...prev, avatar_url: resizedImage }));
       logger.debug("Avatar processed", {
         component: "NewClientPage",
         action: "handleAvatarUpload",
@@ -269,7 +271,7 @@ export default function NewClientPage() {
   };
 
   const removeAvatar = () => {
-    // setFormData((prev) => ({ ...prev, avatar_url: '' })); // Disabled - type mismatch
+    setFormData((prev) => ({ ...prev, avatar_url: "" }));
   };
 
   const FieldError = ({ field }: { field: string }) => {
@@ -350,12 +352,29 @@ export default function NewClientPage() {
               Contact Information
             </h3>
 
-            {/* Avatar Upload - Temporarily disabled due to type mismatch */}
-            {/* <div className="flex items-center gap-6 pb-4 border-b border-[var(--border)]">
+            {/* Avatar Upload */}
+            <div className="flex items-center gap-6 pb-4 border-b border-[var(--border)]">
               <div className="relative">
                 <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[var(--border)] bg-[var(--background-elevated)] flex items-center justify-center">
-                  <User className="w-12 h-12 text-[var(--foreground-muted)]" />
+                  {formData.avatar_url ? (
+                    <img
+                      src={formData.avatar_url}
+                      alt="Avatar preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-12 h-12 text-[var(--foreground-muted)]" />
+                  )}
                 </div>
+                {formData.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={removeAvatar}
+                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
               <div className="flex-1">
                 <label className={labelClass}>Client Photo</label>
@@ -364,15 +383,16 @@ export default function NewClientPage() {
                 </p>
                 <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 transition-colors cursor-pointer">
                   <Upload className="w-4 h-4" />
-                  Upload Photo
+                  {formData.avatar_url ? "Change Photo" : "Upload Photo"}
                   <input
                     type="file"
                     accept="image/*"
+                    onChange={handleAvatarUpload}
                     className="hidden"
                   />
                 </label>
               </div>
-            </div> */}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Full Name */}
@@ -388,7 +408,9 @@ export default function NewClientPage() {
                     onChange={handleChange}
                     required
                     type="text"
-                    className={fieldErrors.full_name ? inputErrorClass : inputClass}
+                    className={
+                      fieldErrors.full_name ? inputErrorClass : inputClass
+                    }
                     placeholder="John Doe"
                   />
                 </div>
@@ -473,7 +495,9 @@ export default function NewClientPage() {
                       value={formData.company_name}
                       onChange={handleChange}
                       type="text"
-                      className={fieldErrors.company_name ? inputErrorClass : inputClass}
+                      className={
+                        fieldErrors.company_name ? inputErrorClass : inputClass
+                      }
                       placeholder="PT Example Indonesia"
                     />
                   </div>
@@ -553,7 +577,9 @@ export default function NewClientPage() {
                     value={formData.date_of_birth}
                     onChange={handleChange}
                     type="date"
-                    className={fieldErrors.date_of_birth ? inputErrorClass : inputClass}
+                    className={
+                      fieldErrors.date_of_birth ? inputErrorClass : inputClass
+                    }
                   />
                 </div>
                 <FieldError field="date_of_birth" />
@@ -585,7 +611,9 @@ export default function NewClientPage() {
                     value={formData.passport_expiry}
                     onChange={handleChange}
                     type="date"
-                    className={fieldErrors.passport_expiry ? inputErrorClass : inputClass}
+                    className={
+                      fieldErrors.passport_expiry ? inputErrorClass : inputClass
+                    }
                   />
                 </div>
                 <FieldError field="passport_expiry" />
