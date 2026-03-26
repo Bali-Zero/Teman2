@@ -341,9 +341,26 @@ export function PassportCard({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] uppercase tracking-wider opacity-80">Expiry:</span>
-                    <span className={`text-xs font-semibold ${passportValidity.textClass}`}>
-                      {formatDate(client.passport_expiry)}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-xs font-semibold ${passportValidity.textClass}`}>
+                        {formatDate(client.passport_expiry)}
+                      </span>
+                      {(() => {
+                        const days = Math.ceil(
+                          (new Date(client.passport_expiry!).getTime() - Date.now()) / 86400000
+                        );
+                        if (days < 0) return null;
+                        return (
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                            days < 30 ? 'bg-red-500/20 text-red-400' :
+                            days < 180 ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-green-500/10 text-green-400'
+                          }`}>
+                            {days}d
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   {/* Alert Messages */}
