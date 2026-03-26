@@ -116,7 +116,7 @@ class Settings(BaseSettings):
     # ========================================
     # ZANTARA AI CONFIGURATION (PRIMARY)
     # ========================================
-    zantara_ai_model: str = "gemini-2.0-flash-lite"  # Set via ZANTARA_AI_MODEL
+    zantara_ai_model: str = "gemini-2.5-flash"  # Set via ZANTARA_AI_MODEL
     zantara_ai_cost_input: float = 0.00  # Preview is free? Or check updated pricing.
     zantara_ai_cost_output: float = 0.00  # Preview is free? Or check updated pricing.
     openrouter_api_key: str | None = None  # Set via OPENROUTER_API_KEY env var (free AI fallback)

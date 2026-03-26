@@ -11,7 +11,7 @@ class ModelName:
     """Gemini model names."""
 
     FLASH = "gemini-2.5-flash"  # Primary: Gemini 2.5 Flash (latest stable, June 2025)
-    FLASH_FALLBACK = "gemini-2.0-flash-lite"  # Fallback: Gemini 2.0 Flash
+    FLASH_FALLBACK = "gemini-2.5-flash"  # Fallback: Gemini 2.5 Flash
     PRO = "gemini-2.0-pro"
     PRO_EXPERIMENTAL = "gemini-2.0-pro-exp-02-05"
 
@@ -20,7 +20,7 @@ class ModelName:
 class OpenRouterModel:
     """OpenRouter model identifiers."""
 
-    GEMINI_FLASH = "google/gemini-2.0-flash-lite"
+    GEMINI_FLASH = "google/gemini-2.5-flash"
     DEEPSEEK_CHAT = "deepseek/deepseek-chat"
 
 
