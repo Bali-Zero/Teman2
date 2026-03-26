@@ -836,9 +836,35 @@ export default function PratichePage() {
                                 </button>
                               </div>
 
-                              <p className="text-xs text-[var(--bz-text-2)] truncate mb-2">
-                                {practice.client_name || "Unknown Client"}
-                              </p>
+                              <div className="flex items-center gap-1.5 mb-2">
+                                {practice.client_id ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(`/clients/${practice.client_id}`);
+                                    }}
+                                    className="text-xs text-[var(--bz-text-2)] truncate hover:text-[var(--bz-accent)] transition-colors text-left"
+                                    title="Open client profile"
+                                  >
+                                    {practice.client_name || "Unknown Client"}
+                                  </button>
+                                ) : (
+                                  <p className="text-xs text-[var(--bz-text-2)] truncate">
+                                    {practice.client_name || "Unknown Client"}
+                                  </p>
+                                )}
+                                {practice.payment_status && practice.payment_status !== 'paid' && (
+                                  <span
+                                    className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 font-medium ${
+                                      practice.payment_status === 'unpaid'
+                                        ? 'bg-red-500/20 text-red-400'
+                                        : 'bg-yellow-500/20 text-yellow-400'
+                                    }`}
+                                  >
+                                    {practice.payment_status}
+                                  </span>
+                                )}
+                              </div>
 
                               <div className="flex items-center justify-between">
                                 {practice.client_lead ? (
