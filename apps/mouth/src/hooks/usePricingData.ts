@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import useSWR from 'swr';
-import { PRICING_FALLBACK } from '@/components/book/book-data';
+import useSWR from "swr";
+import { PRICING_FALLBACK } from "@/components/book/book-data";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -20,7 +20,7 @@ export function usePricingData(serviceKey: string): PricingResult {
       revalidateOnReconnect: false,
       shouldRetryOnError: false,
       fallbackData: { price: PRICING_FALLBACK[serviceKey] ?? null },
-    }
+    },
   );
 
   return {
