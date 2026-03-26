@@ -37,17 +37,20 @@ nuzantara/
 ## Tech Stack
 
 <!-- DOCSYNC:TECH_STATS_START -->
-| Layer | Technology |
-|-------|-----------|
-| **Backend** | Python 3.11, FastAPI, 89 routers, 250 services |
-| **Frontend** | Next.js, TypeScript, Tailwind CSS |
-| **Databases** | PostgreSQL (relational), Qdrant v1.17.0 (vector), Redis (cache) |
-| **Infrastructure** | Fly.io (backend, Singapore), Vercel (frontend) |
-| **LLM** | Gemini 2.5 Flash (primary), Gemini 2.0 Flash (fallback), OpenRouter |
-| **Embedding** | `text-embedding-3-small` (1536 dims) — FROZEN |
-| **Knowledge Graph** | 56,113 nodes, 161,173 edges, LangGraph orchestrator |
-| **Vector Store** | 10 collections, 93,283 documents |
+
+| Layer               | Technology                                                          |
+| ------------------- | ------------------------------------------------------------------- |
+| **Backend**         | Python 3.11, FastAPI, 89 routers, 250 services                      |
+| **Frontend**        | Next.js, TypeScript, Tailwind CSS                                   |
+| **Databases**       | PostgreSQL (relational), Qdrant v1.17.0 (vector), Redis (cache)     |
+| **Infrastructure**  | Fly.io (backend, Singapore), Vercel (frontend)                      |
+| **LLM**             | Gemini 2.5 Flash (primary), Gemini 2.0 Flash (fallback), OpenRouter |
+| **Embedding**       | `text-embedding-3-small` (1536 dims) — FROZEN                       |
+| **Knowledge Graph** | 56,113 nodes, 161,173 edges, LangGraph orchestrator                 |
+| **Vector Store**    | 10 collections, 93,283 documents                                    |
+
 <!-- DOCSYNC:TECH_STATS_END -->
+
 | **Vector Store** | 10 collections, 93,283 documents |
 
 ## Search Pipeline (enabled 2026-03-24)
@@ -95,49 +98,51 @@ curl https://nuzantara-rag.fly.dev/health
 
 ## Deploy
 
-| Target | Command | Auto |
-|--------|---------|------|
-| **Backend** | `cd apps/backend-rag && fly deploy --strategy rolling` | No |
-| **Frontend** | `git push origin main` | Yes (Vercel) |
+| Target       | Command                                                | Auto         |
+| ------------ | ------------------------------------------------------ | ------------ |
+| **Backend**  | `cd apps/backend-rag && fly deploy --strategy rolling` | No           |
+| **Frontend** | `git push origin main`                                 | Yes (Vercel) |
 
 ## Production (Fly.io)
 
-| App | CPU | RAM | Region |
-|-----|-----|-----|--------|
-| `nuzantara-rag` | shared-2x | 2GB | Singapore |
+| App                  | CPU       | RAM | Region    |
+| -------------------- | --------- | --- | --------- |
+| `nuzantara-rag`      | shared-2x | 2GB | Singapore |
 | `nuzantara-postgres` | shared-1x | 2GB | Singapore |
-| `nuzantara-qdrant` | shared-1x | 2GB | Singapore |
+| `nuzantara-qdrant`   | shared-1x | 2GB | Singapore |
 
 ## Feature Flags (Fly.io secrets)
 
 <!-- DOCSYNC:FEATURE_FLAGS_START -->
-| Flag | Value | Effect |
-|------|-------|--------|
-| `ENABLE_HYBRID_SEARCH` | `true` | BM25+Dense+RRF in VectorSearchTool |
-| `ENABLE_RERANKER` | `true` | CrossEncoder local reranking |
-| `ENABLE_BM25` | `true` | Sparse vectors for hybrid search |
-| `ENABLE_QUERY_EXPANSION` | `true` | LLM multi-query expansion + RRF |
-| `ENABLE_KG_LANGGRAPH` | `true` | Knowledge Graph LangGraph orchestrator |
+
+| Flag                     | Value  | Effect                                 |
+| ------------------------ | ------ | -------------------------------------- |
+| `ENABLE_HYBRID_SEARCH`   | `true` | BM25+Dense+RRF in VectorSearchTool     |
+| `ENABLE_RERANKER`        | `true` | CrossEncoder local reranking           |
+| `ENABLE_BM25`            | `true` | Sparse vectors for hybrid search       |
+| `ENABLE_QUERY_EXPANSION` | `true` | LLM multi-query expansion + RRF        |
+| `ENABLE_KG_LANGGRAPH`    | `true` | Knowledge Graph LangGraph orchestrator |
+
 <!-- DOCSYNC:FEATURE_FLAGS_END -->
 
 ## Communication Channels
 
-| Channel | Status | Backend |
-|---------|--------|---------|
-| Web Chat | Live | Fly.io |
-| WhatsApp | Live | Fly.io (Meta Cloud API) |
-| Telegram | Live | Pro OpenClaw (@Balizerobot) |
-| Instagram | Live | Fly.io |
-| X/Twitter | CRC broken | Fly.io |
+| Channel   | Status     | Backend                     |
+| --------- | ---------- | --------------------------- |
+| Web Chat  | Live       | Fly.io                      |
+| WhatsApp  | Live       | Fly.io (Meta Cloud API)     |
+| Telegram  | Live       | Pro OpenClaw (@Balizerobot) |
+| Instagram | Live       | Fly.io                      |
+| X/Twitter | CRC broken | Fly.io                      |
 
 ## Documentation
 
-| Doc | Purpose |
-|-----|---------|
-| `CLAUDE.md` | AI agent rules, golden rules, system context |
-| `docs/AI_ONBOARDING.md` | Technical reference for AI assistants |
-| `docs/LIVING_ARCHITECTURE.md` | Auto-generated API + service catalog |
-| `docs/RAG_ARCHITECTURE_DIAGRAM.md` | Search pipeline diagrams |
+| Doc                                | Purpose                                      |
+| ---------------------------------- | -------------------------------------------- |
+| `CLAUDE.md`                        | AI agent rules, golden rules, system context |
+| `docs/AI_ONBOARDING.md`            | Technical reference for AI assistants        |
+| `docs/LIVING_ARCHITECTURE.md`      | Auto-generated API + service catalog         |
+| `docs/RAG_ARCHITECTURE_DIAGRAM.md` | Search pipeline diagrams                     |
 
 ## Prerequisites
 
