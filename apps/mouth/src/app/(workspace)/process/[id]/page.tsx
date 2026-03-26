@@ -90,6 +90,20 @@ export default function CaseDetailPage() {
   // Inline priority cycle
   const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
 
+  // More options dropdown
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showMoreMenu]);
+
   // Inline price edit
   const [editingPrice, setEditingPrice] = useState<'quoted' | 'actual' | null>(null);
   const [priceValue, setPriceValue] = useState('');
@@ -677,9 +691,83 @@ export default function CaseDetailPage() {
               <Edit className="w-4 h-4 mr-2" />
               Edit
             </Button>
-            <Button variant="outline" size="sm" aria-label="More options">
-              <MoreVertical className="w-4 h-4" />
-            </Button>
+            <div className="relative" ref={moreMenuRef}>
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label="More options"
+                onClick={() => setShowMoreMenu((v) => !v)}
+              >
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+              {showMoreMenu && (
+                <div className="absolute right-0 top-full mt-1 z-50 min-w-[180px] rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100">
+                  <button
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--bz-text-1)] hover:bg-[var(--bz-card)] transition-colors"
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.href);
+                      toast.success('Copied', 'Process link copied to clipboard');
+                      setShowMoreMenu(false);
+                    }}
+                  >
+                    <FileText className="w-3.5 h-3.5 opacity-60" />
+                    Copy link
+                  </button>
+                  {practice?.client_phone && (
+                    <button
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--bz-text-1)] hover:bg-[var(--bz-card)] transition-colors"
+                      onClick={() => {
+                        const phone = practice.client_phone?.replace(/\D/g, '');
+                        window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`, '_blank');
+                        setShowMoreMenu(false);
+                      }}
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 text-green-500" />
+                      WhatsApp client
+                    </button>
+                  )}
+                  {practice?.client_email && (
+                    <button
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--bz-text-1)] hover:bg-[var(--bz-card)] transition-colors"
+                      onClick={() => {
+                        window.open(`mailto:${practice.client_email}`, '_blank');
+                        setShowMoreMenu(false);
+                      }}
+                    >
+                      <Mail className="w-3.5 h-3.5 text-blue-400" />
+                      Email client
+                    </button>
+                  )}
+                  {practice?.client_id && (
+                    <button
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--bz-text-1)] hover:bg-[var(--bz-card)] transition-colors"
+                      onClick={() => {
+                        router.push(`/clients/${practice.client_id}`);
+                        setShowMoreMenu(false);
+                      }}
+                    >
+                      <User className="w-3.5 h-3.5 opacity-60" />
+                      View client profile
+                    </button>
+                  )}
+                  <div className="my-1 border-t border-[var(--bz-border)]" />
+                  <button
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    onClick={() => {
+                      if (confirm('Delete this process? This cannot be undone.')) {
+                        setShowMoreMenu(false);
+                        toast.error('Delete not yet implemented');
+                      } else {
+                        setShowMoreMenu(false);
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete process
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
