@@ -5,8 +5,6 @@
 #
 # V2 (A2A): python apps/war-room/pipeline_v2.py "topic" [--dry-run]
 # Override env vars:
-#   CANVA_ROW=upper|lower   (default: upper)
-#   CANVA_PAGE=1|2|3        (default: 1)
 #   CANVA_DESIGN_ID=...     (default: DAHE6lx1lf8)
 # ============================================================
 
@@ -72,8 +70,6 @@ OUTPUT="$WAR_ROOM/output"
 T_START=$(date +%s)
 
 # ── Canva params (overridable) ───────────────────────────────
-CANVA_ROW="${CANVA_ROW:-upper}"
-CANVA_PAGE="${CANVA_PAGE:-1}"
 CANVA_DESIGN="${CANVA_DESIGN_ID:-DAHE6lx1lf8}"
 
 # ── Cleanup output precedente ────────────────────────────────
@@ -352,7 +348,7 @@ fi
 # ══════════════════════════════════════════════════════════
 log ""
 log "━━━ FASE 4: CANVA CAROUSEL (T+07:00) ━━━"
-log "   Design: $CANVA_DESIGN  Row: $CANVA_ROW  Page: $CANVA_PAGE"
+log "   Design: $CANVA_DESIGN"
 
 if ! $DRY_RUN; then
   run_phase "canva_builder" 600 \
@@ -361,8 +357,6 @@ if ! $DRY_RUN; then
     --output    "$OUTPUT/canva/" \
     --master    "$OUTPUT/master/" \
     --design-id "$CANVA_DESIGN" \
-    --row       "$CANVA_ROW" \
-    --page      "$CANVA_PAGE" \
     || log "⚠️  Canva builder fallito — continua senza carousel (non bloccante)"
 
   if [[ -f "$OUTPUT/canva/carousel_canva.json" ]]; then
@@ -377,8 +371,6 @@ else
     --output    "$OUTPUT/canva/" \
     --master    "$OUTPUT/master/" \
     --design-id "$CANVA_DESIGN" \
-    --row       "$CANVA_ROW" \
-    --page      "$CANVA_PAGE" \
     --dry-run   2>/dev/null || true
 fi
 
