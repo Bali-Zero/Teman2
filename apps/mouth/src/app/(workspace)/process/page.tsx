@@ -116,7 +116,8 @@ type SortField =
   | 'client_name'
   | 'client_lead'
   | 'status'
-  | 'created_at';
+  | 'created_at'
+  | 'updated_at';
 type SortOrder = 'asc' | 'desc';
 
 interface FilterState {
@@ -439,6 +440,10 @@ export default function PratichePage() {
             case 'created_at':
               comparison =
                 new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+              break;
+            case 'updated_at':
+              comparison =
+                new Date(a.updated_at || 0).getTime() - new Date(b.updated_at || 0).getTime();
               break;
             default:
               comparison = 0;
@@ -924,23 +929,27 @@ export default function PratichePage() {
                       {columnPractices.length}
                     </span>
                   </div>
-                  {columnPractices.length > 0 && (() => {
-                    const colRevenue = columnPractices.reduce(
-                      (sum, p) => sum + (p.actual_price || p.quoted_price || 0),
-                      0
-                    );
-                    if (colRevenue === 0) return null;
-                    return (
-                      <div className="mb-3 text-[10px] font-medium tabular-nums opacity-70" style={{ color: colors.textColor }}>
-                        {new Intl.NumberFormat('id-ID', {
-                          notation: 'compact',
-                          currency: 'IDR',
-                          style: 'currency',
-                          maximumFractionDigits: 1,
-                        }).format(colRevenue)}
-                      </div>
-                    );
-                  })()}
+                  {columnPractices.length > 0 &&
+                    (() => {
+                      const colRevenue = columnPractices.reduce(
+                        (sum, p) => sum + (p.actual_price || p.quoted_price || 0),
+                        0
+                      );
+                      if (colRevenue === 0) return null;
+                      return (
+                        <div
+                          className="mb-3 text-[10px] font-medium tabular-nums opacity-70"
+                          style={{ color: colors.textColor }}
+                        >
+                          {new Intl.NumberFormat('id-ID', {
+                            notation: 'compact',
+                            currency: 'IDR',
+                            style: 'currency',
+                            maximumFractionDigits: 1,
+                          }).format(colRevenue)}
+                        </div>
+                      );
+                    })()}
 
                   <div className="flex-1 space-y-3">
                     {isLoading ? (
@@ -1334,6 +1343,23 @@ export default function PratichePage() {
                     <th className="px-4 py-3 text-right text-sm font-semibold text-[var(--bz-text-1)]">
                       Price
                     </th>
+                    <th
+                      onClick={() => toggleSort('updated_at')}
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        Updated
+                        {sortField === 'updated_at' &&
+                          (sortOrder === 'asc' ? (
+                            <ArrowUp className="w-4 h-4" />
+                          ) : (
+                            <ArrowDown className="w-4 h-4" />
+                          ))}
+                        {sortField !== 'updated_at' && (
+                          <ArrowUpDown className="w-4 h-4 opacity-30" />
+                        )}
+                      </div>
+                    </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)]">
                       Actions
                     </th>
@@ -1449,6 +1475,45 @@ export default function PratichePage() {
                         ) : (
                           <span className="text-[var(--bz-text-2)] text-xs">—</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {practice.updated_at
+                          ? (() => {
+                              const ageDays = Math.floor(
+                                (Date.now() - new Date(practice.updated_at).getTime()) / 86400000
+                              );
+                              const label =
+                                ageDays === 0
+                                  ? 'today'
+                                  : ageDays >= 30
+                                    ? `${Math.floor(ageDays / 30)}mo`
+                                    : ageDays >= 7
+                                      ? `${Math.floor(ageDays / 7)}w`
+                                      : `${ageDays}d`;
+                              return (
+                                <span
+                                  className="text-xs tabular-nums px-1.5 py-0.5 rounded"
+                                  style={{
+                                    background:
+                                      ageDays > 14
+                                        ? 'rgba(239,68,68,0.12)'
+                                        : ageDays > 7
+                                          ? 'rgba(245,158,11,0.10)'
+                                          : 'transparent',
+                                    color:
+                                      ageDays > 14
+                                        ? '#f87171'
+                                        : ageDays > 7
+                                          ? '#fbbf24'
+                                          : 'var(--bz-text-2)',
+                                  }}
+                                  title={`Last updated: ${new Date(practice.updated_at).toLocaleDateString()}`}
+                                >
+                                  {label}
+                                </span>
+                              );
+                            })()
+                          : <span className="text-[var(--bz-text-2)] text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div
