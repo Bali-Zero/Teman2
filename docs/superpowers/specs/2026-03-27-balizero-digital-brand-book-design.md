@@ -3,6 +3,27 @@ _2026-03-27 · Synthesized from Gemini (narrative), DeepSeek (psychology), Codex
 
 ---
 
+## ⚠️ REGOLA FONDAMENTALE — Nessuna invenzione
+
+**Tutto il contenuto testuale del Brand Book DEVE provenire da fonti verificate:**
+- `data/kb_sources/zantara_core_redacted.md`
+- `data/kb_sources/SOUL_zantara_persona.md`
+- `apps/backend-rag/backend/prompts/zantara_core.py`
+- `apps/backend-rag/backend/data/bali_zero_official_prices_2025.json`
+- Database PostgreSQL (clienti reali, pratiche reali)
+- Qdrant (documenti vettorizzati reali)
+
+**Vietato:**
+- Inventare anni di fondazione
+- Inventare numeri di clienti non verificati
+- Inventare nomi di fondatori o team
+- Inventare storie o aneddoti
+- Usare frasi narrative generate dall'AI come fatti
+
+**Ogni numero, data, nome nel Brand Book deve avere un file sorgente citabile.**
+
+---
+
 ## 1. Vision
 
 A full-screen interactive web experience at `balizero.com/book` — part magazine, part proof of capability. Not a brochure. A book that reads you back.
@@ -25,33 +46,74 @@ A full-screen interactive web experience at `balizero.com/book` — part magazin
 
 ---
 
-## 3. Eight Chapters
+## 3. Dati Reali Verificati (GROUND TRUTH)
 
-| # | ID | Opens With (hybrid B) | Then |
-|---|----|-----------------------|------|
-| 1 | `cover` | Nessun testo — cinematic full-bleed | Logo + "Bali Zero" + caret down |
-| 2 | `manifesto` | "5.000 clienti. 6 anni. 4 servizi. 1 missione." | Perché esiste Bali Zero in 3 paragrafi |
-| 3 | `origin` | "2020. Una coda alle 5 di mattina a Imigrasi." | Narrativo fondatore — Ruptura → Riconoscimento → Arrivo |
-| 4 | `team` | "35 specialisti. 8 nazionalità. 0 tolleranza per le scuse." | Grid team con bio modal + LinkedIn + WhatsApp |
-| 5 | `services` | "Prezzi reali. Nessuna sorpresa." | ServicePricingCard live dal RAG, WhatsApp CTA |
-| 6 | `impact` | StatsCounter animati (5.000+, 6 anni, 93k documenti, 24/7) | Timeline interattiva dalla fondazione |
-| 7 | `technology` | "Il primo studio legale con un AI dedicato, 24/7." | Demo Zantara live in-page |
-| 8 | `contact` | Pull quote finale del fondatore | WhatsApp + email + download PDF |
+> Questi dati provengono da fonti verificate nel codebase. NESSUNA invenzione.
 
-### Fear→Trust map (DeepSeek)
-Ogni capitolo risolve un timore specifico del prospect:
+### Storia aziendale (verificata dal fondatore)
+- **CV Bayu Santero**: fondata 2006, la società madre originale
+- **Bali Zero**: nasce 2020, spin-off/evoluzione di CV Bayu Santero
+- **Origine leggendaria**: incontro tra un bule (Zero, il fondatore europeo) e Pak Zainal Abidin, owner di CV Bayu Santero — un incontro tra due mondi che genera qualcosa di nuovo
+- **Pak Zainal Abidin**: CEO, uomo di straordinaria esperienza nel mercato indonesiano
 
-| Capitolo | Paura | Soluzione narrativa |
-|----------|-------|---------------------|
-| Manifesto | "Sono tutti uguali" | 5.000 prove concrete |
-| Origin | "Non capiscono il mio problema" | "Abbiamo vissuto la stessa cosa" |
-| Team | "Chi mi segue davvero?" | Facce reali, diretti contattabili |
-| Services | "Mi faranno pagare extra" | Prezzi live, trasparenti |
-| Impact | "Funziona davvero?" | Timeline + numeri verificabili |
-| Technology | "Resterò abbandonato?" | Zantara live, risponde ora |
-| Contact | "Come si comincia?" | Un passo solo: un messaggio |
+### Team reale (da `apps/mouth/src/app/(blog)/team/page.tsx`)
+| Dipartimento | Persone | Nomi |
+|---|---|---|
+| Leadership | 2 | Zainal Abidin (CEO), Ruslana (Board Member) |
+| Setup/Company | 11 | Anton, Vino, Krisna, Adit (Lead), Ari, Dea, Surya, Damar, Marta, Olena, Anna |
+| Tax | 5 | Veronika (Manager), Angel, Kadek, Dewa Ayu, Faisha |
+| Accounting | 1 | Asya Nadia |
+| Support/Marketing | 3 | Rina, Nina (ext.), Sahira |
+| **Totale** | **~22** | — |
 
-**Momento di credenza:** capitolo 7 (Technology) — il prospect usa Zantara in tempo reale. È il punto di non ritorno.
+**⚠️ NON USARE "35 specialisti" — era inventato. Il numero reale è ~22.**
+
+### Contatti verificati (dal codebase)
+- **WhatsApp:** +62 859 0436 9574
+- **Email:** info@balizero.com
+- **Web:** balizero.com
+
+### Clienti (da confermare col fondatore)
+- "5.000+ clienti" presente in MEMORY.md — **da verificare con DB reale prima di pubblicare**
+
+### Servizi verificati (da `zantara_core.py`)
+- Visti singola/multipla entrata
+- KITAS / KITAP
+- PT PMA (company setup)
+- Tax & Accounting
+- KBLI Navigator (9.612 codici KBLI 2025)
+
+### Contesto competitivo (da `COMPETITOR_INTELLIGENCE_2026.md`)
+- **Mercato**: Emerhub (2011, 65 emp, -8.5%), InCorp (2012, 100 emp, -19%), LMI (2015, 26 emp, -23.5%), Seven Stones (2016, 32 emp)
+- **Tutti i competitor stanno SHRINKANDO** — Bali Zero è l'unico a crescere
+- **Bali Zero è l'unico player con AI** nel mercato indonesiano (96 MCP tools, KG 56K nodi, 66K documenti legali indicizzati)
+- **Differenziatore assoluto**: KBLI Navigator (1.563 codici), Zantara 24/7 su WhatsApp/Telegram/Web/Instagram, client portal con tracking real-time
+
+---
+
+## 4. Eight Chapters
+
+| # | ID | Opens With (hybrid B — SOLO DATI REALI) | Poi |
+|---|----|-----------------------------------------|-----|
+| 1 | `cover` | Nessun testo — cinematic full-bleed | Logo + "Bali Zero" |
+| 2 | `manifesto` | "Dal 2006 al futuro. Un'eredità, una rivoluzione." | CV Bayu Santero → Bali Zero 2020 |
+| 3 | `origin` | "L'incontro che ha cambiato tutto." | Storia vera: bule Zero + Pak Zainal Abidin |
+| 4 | `team` | "22 persone. Un obiettivo." | Grid team reale con nomi/ruoli verificati |
+| 5 | `services` | "Prezzi reali. Nessuna sorpresa." | ServicePricingCard live dal RAG |
+| 6 | `impact` | "L'unica agenzia AI in Indonesia." | Confronto competitor con dati reali (tutti -19% a -23%) |
+| 7 | `technology` | "Zantara: il tuo consulente, 24/7." | Demo Zantara live in-page |
+| 8 | `contact` | Pull quote del fondatore (da fornire) | WhatsApp + email + PDF |
+
+### Fear→Trust map (basato su contesto reale)
+| Capitolo | Paura del prospect | Risposta con dati reali |
+|----------|-------------------|------------------------|
+| Manifesto | "Sono tutti uguali" | 20 anni di storia (2006+2020) |
+| Origin | "Non capiscono" | Storia vera fondatori — radici locali + visione europea |
+| Team | "Chi mi segue?" | 22 persone reali, nomi, ruoli, contatti diretti |
+| Services | "Mi fregano sui prezzi" | Prezzi live dal DB, pubblicati, nessuna sorpresa |
+| Impact | "Funziona?" | Tutti i competitor shrinkano — noi cresciamo |
+| Technology | "Resterò solo?" | Zantara live ora, risponde in 3 secondi |
+| Contact | "Come inizio?" | Un messaggio WhatsApp |
 
 ---
 
