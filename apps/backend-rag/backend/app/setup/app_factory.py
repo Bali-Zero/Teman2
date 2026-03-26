@@ -108,6 +108,31 @@ async def lifespan(app: FastAPI):
 
         logger.info("✅ ZANTARA startup complete - all services ready")
 
+        # Warm-up CrossEncoder model in background thread (prevents 10-30s first-request spike)
+        try:
+            from backend.services.rag.reranker import CrossEncoderReranker
+            reranker = CrossEncoderReranker()
+            await asyncio.to_thread(lambda: reranker.model)  # triggers _load_model() off event loop
+            logger.info("✅ CrossEncoder model warm-up complete")
+        except Exception as e:
+            logger.warning(f"⚠️ CrossEncoder warm-up failed (non-critical): {e}")
+
+        # Initialize Workflow Queue (PG SKIP LOCKED + LangGraph checkpointer)
+        try:
+            from backend.services.workflow.checkpointer import get_checkpointer
+            from backend.services.workflow.queue import run_worker
+
+            db_url = settings.database_url
+            app.state.workflow_checkpointer = await get_checkpointer(db_url)
+
+            worker_task = asyncio.create_task(
+                run_worker(app.state.db_pool, app.state)
+            )
+            app.state._workflow_worker_task = worker_task
+            logger.info("✅ Workflow queue worker started (PG SKIP LOCKED)")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to initialize Workflow Queue: {e}")
+
     # Schedule background initialization
     init_task = asyncio.create_task(_background_init())
     app.state._init_task = init_task
@@ -128,6 +153,21 @@ async def lifespan(app: FastAPI):
 
     # ========== SHUTDOWN PHASE ==========
     logger.info("🛑 Shutting down ZANTARA services...")
+
+    # Shutdown Workflow Queue Worker
+    workflow_worker_task = getattr(app.state, "_workflow_worker_task", None)
+    if workflow_worker_task and not workflow_worker_task.done():
+        workflow_worker_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await workflow_worker_task
+        logger.info("✅ Workflow queue worker stopped")
+
+    # Close LangGraph checkpointer psycopg3 pool
+    try:
+        from backend.services.workflow.checkpointer import close_checkpointer
+        await close_checkpointer()
+    except Exception:
+        pass
 
     # Shutdown WebSocket Redis Listener
     redis_task = getattr(app.state, "redis_listener_task", None)

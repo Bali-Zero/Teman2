@@ -97,6 +97,7 @@ def include_routers(api: FastAPI) -> None:
         whatsapp_chat,
         whatsapp_conversations,
         workflow_analytics,
+        workflow_queue,
         x_monitor,
         zoho_email,
     )
@@ -262,6 +263,9 @@ def include_routers(api: FastAPI) -> None:
 
     # Workflow Analytics router (LangGraph workflow tracking & feedback)
     api.include_router(workflow_analytics.router)
+
+    # Workflow Queue router (PG SKIP LOCKED job queue + LangGraph resume)
+    api.include_router(workflow_queue.router)
 
     # RAG Monitoring router (Retrieval quality metrics and alerts)
     api.include_router(monitoring_rag.router)
