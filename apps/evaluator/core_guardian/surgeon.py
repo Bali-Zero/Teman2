@@ -550,6 +550,11 @@ def merge_to_main(branch_name: str) -> str | None:
             cwd=str(PROJECT_ROOT), capture_output=True, text=True, timeout=60,
         )
         if r.returncode != 0:
+            # Rollback local main to match remote — prevents corrupted state on retry
+            subprocess.run(
+                ["git", "reset", "--hard", f"origin/{default_branch}"],
+                cwd=str(PROJECT_ROOT), capture_output=True, timeout=15,
+            )
             return f"push failed: {r.stderr[:200]}"
 
         logger.info(f"✅ Merged {branch_name} → {default_branch} + pushed (CI triggered)")
