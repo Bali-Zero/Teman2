@@ -52,7 +52,7 @@ export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const clientId = Number(params?.id ?? 0);
+  const clientId = params?.id ? Number(params.id) : 0;
 
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
@@ -67,29 +67,6 @@ export default function ClientDetailPage() {
   const [editingFamilyMember, setEditingFamilyMember] =
     useState<FamilyMember | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [profileData, interactionsData, categoriesData] = await Promise.all(
-        [
-          api.crm.getClientProfile(clientId),
-          api.crm.getClientTimeline(clientId, 20),
-          api.crm.getDocumentCategories().catch(() => []),
-        ],
-      );
-      setProfile(profileData);
-      setInteractions(interactionsData);
-      setDocCategories(categoriesData);
-    } catch (err) {
-      logger.error("Failed to load client data:", {}, err as Error);
-      setError("Failed to load client data");
-      toast.error("Failed to load client data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const refreshProfile = async () => {
     try {
@@ -106,9 +83,33 @@ export default function ClientDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (clientId) {
-      loadData();
-    }
+    if (!clientId) return;
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+    Promise.all([
+      api.crm.getClientProfile(clientId),
+      api.crm.getClientTimeline(clientId, 20),
+      api.crm.getDocumentCategories().catch(() => []),
+    ])
+      .then(([profileData, interactionsData, categoriesData]) => {
+        if (cancelled) return;
+        setProfile(profileData);
+        setInteractions(interactionsData);
+        setDocCategories(categoriesData);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        logger.error("Failed to load client data:", {}, err as Error);
+        setError("Failed to load client data");
+        toast.error("Failed to load client data");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [clientId]);
 
   // Read tab from URL params and set active tab
@@ -247,24 +248,18 @@ export default function ClientDetailPage() {
 
           {/* Leader Avatar - Next to client name */}
           {client.assigned_to && (
-            <a
-              href={`https://wa.me/${(() => {
-                const phone = client.phone?.replace(/\D/g, "") || "";
-                return phone.startsWith("0") ? "62" + phone.slice(1) : phone;
-              })()}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 group px-3 py-1.5 rounded-lg bg-[var(--bz-surface)] border border-[var(--bz-border)] hover:border-green-500/50 transition-all"
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bz-surface)] border border-[var(--bz-border)]"
               title={`Assigned to: ${client.assigned_to.split("@")[0]}`}
             >
               {getTeamMemberAvatar(client.assigned_to) ? (
                 <img
                   src={getTeamMemberAvatar(client.assigned_to)}
                   alt={client.assigned_to.split("@")[0]}
-                  className="w-8 h-8 rounded-full object-cover ring-2 ring-green-500/30 group-hover:ring-green-500 transition-all"
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-green-500/30"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center group-hover:bg-green-500/30 transition-all">
+                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
                   <User className="w-4 h-4 text-green-500" />
                 </div>
               )}
@@ -276,8 +271,7 @@ export default function ClientDetailPage() {
                   {client.assigned_to.split("@")[0]}
                 </span>
               </div>
-              <MessageCircle className="w-4 h-4 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-            </a>
+            </div>
           )}
         </div>
 

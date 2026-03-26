@@ -180,8 +180,9 @@ export function useCreateClient() {
     onSuccess: (newClient) => {
       // Invalidate clients list
       queryClient.invalidateQueries({ queryKey: ["crm", "clients"] });
-      // Add to cache
+      // Add to cache under both keys (plural list key + singular detail key)
       queryClient.setQueryData(["crm", "clients", newClient.id], newClient);
+      queryClient.setQueryData(["crm", "client", newClient.id], newClient);
       debug("Client created:", newClient.id);
     },
     onError: (err) => {
@@ -209,8 +210,9 @@ export function useUpdateClient(clientId: number) {
       return api.crm.updateClient(clientId, updates, updatedBy);
     },
     onSuccess: (updatedClient) => {
-      // Update cache
+      // Update cache under both keys (plural list key + singular detail key)
       queryClient.setQueryData(["crm", "clients", clientId], updatedClient);
+      queryClient.setQueryData(["crm", "client", clientId], updatedClient);
       // Invalidate list
       queryClient.invalidateQueries({ queryKey: ["crm", "clients"] });
       debug("Client updated:", clientId);

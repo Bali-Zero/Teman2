@@ -182,6 +182,248 @@ const FileUploadField = memo(function FileUploadField({
 });
 
 // ============================================
+// YEAR SELECTOR — module-scope to prevent remount
+// ============================================
+interface YearSelectorProps {
+  selectedYear: TaxYear;
+  onYearChange: (year: TaxYear) => void;
+}
+
+const YearSelector = memo(function YearSelector({
+  selectedYear,
+  onYearChange,
+}: YearSelectorProps) {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-[var(--bz-text-2)]">Year:</span>
+      <div className="flex gap-1">
+        {years.map((year) => (
+          <Button
+            key={year}
+            variant={selectedYear === year ? "default" : "outline"}
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={() => onYearChange(year)}
+          >
+            {year}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+// ============================================
+// TAX CARD — module-scope to prevent remount
+// ============================================
+interface TaxCardProps {
+  title: string;
+  subtitle: string;
+  deadline: Date;
+  icon: React.ElementType;
+  color: string;
+  section: TaxSection;
+  activeSection: TaxSection;
+  onClick: () => void;
+}
+
+const TaxCard = memo(function TaxCard({
+  title,
+  subtitle,
+  deadline,
+  icon: Icon,
+  color,
+  section,
+  activeSection,
+  onClick,
+}: TaxCardProps) {
+  const isActive = activeSection === section;
+  const now = new Date();
+  const daysUntilDeadline = Math.ceil(
+    (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  const isOverdue = daysUntilDeadline < 0;
+  const isUrgent = daysUntilDeadline >= 0 && daysUntilDeadline <= 30;
+
+  return (
+    <div
+      className={`rounded-xl border bg-[var(--bz-surface)] p-5 cursor-pointer transition-all ${
+        isActive
+          ? "border-[var(--accent)] ring-1 ring-[var(--accent)]/30"
+          : "border-[var(--bz-border)] hover:border-[var(--bz-border)]/80"
+      }`}
+      onClick={onClick}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}
+          >
+            <Icon className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-[var(--bz-text-1)]">{title}</h4>
+            <p className="text-xs text-[var(--bz-text-2)]">{subtitle}</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-[var(--bz-text-2)]">Deadline</p>
+          <p
+            className={`text-sm font-medium ${
+              isOverdue
+                ? "text-red-500"
+                : isUrgent
+                  ? "text-yellow-500"
+                  : "text-[var(--bz-text-1)]"
+            }`}
+          >
+            {deadline.toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </p>
+          {isOverdue && (
+            <p className="text-xs text-red-500">
+              {Math.abs(daysUntilDeadline)} days overdue
+            </p>
+          )}
+          {isUrgent && !isOverdue && (
+            <p className="text-xs text-yellow-500">
+              {daysUntilDeadline} days left
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ============================================
+// SIDE WORKSPACE — module-scope to prevent remount
+// ============================================
+interface SideWorkspaceProps {
+  activeSection: TaxSection;
+  selectedYear: TaxYear;
+  isUploading: boolean;
+  uploadError: string | null;
+  onFileUpload: (section: TaxSection, docType: string, file: File) => void;
+}
+
+const DOC_TYPES: Record<TaxSection, { key: string; label: string }[]> = {
+  personal: [
+    { key: "form1770", label: "Form 1770" },
+    { key: "buktiPotong", label: "Bukti Potong" },
+    { key: "sptTahunan", label: "SPT Tahunan" },
+  ],
+  annual: [
+    { key: "sptTahunan", label: "SPT Tahunan Badan" },
+    { key: "laporanKeuangan", label: "Laporan Keuangan" },
+    { key: "buktiPembayaran", label: "Bukti Pembayaran" },
+    { key: "formTaxAmnesty", label: "Form Tax Amnesty" },
+  ],
+  monthly: [
+    { key: "pph21", label: "PPH 21" },
+    { key: "pph23", label: "PPH 23" },
+    { key: "ppn", label: "PPN" },
+    { key: "pph25", label: "PPH 25" },
+  ],
+  lkpm: [
+    { key: "lkpmReport", label: "LKPM Report" },
+    { key: "investmentRealization", label: "Investment Realization" },
+    { key: "employeeReport", label: "Employee Report" },
+    { key: "productionReport", label: "Production Report" },
+  ],
+};
+
+const SECTION_TITLES: Record<TaxSection, string> = {
+  personal: "Personal Tax Documents",
+  annual: "Annual Company Documents",
+  monthly: "Monthly Report Documents",
+  lkpm: "LKPM Documents",
+};
+
+const SideWorkspace = memo(function SideWorkspace({
+  activeSection,
+  selectedYear,
+  isUploading,
+  uploadError,
+  onFileUpload,
+}: SideWorkspaceProps) {
+  const [files, setFiles] = useState<Record<string, File | undefined>>({});
+
+  const docTypes = DOC_TYPES[activeSection];
+  const title = SECTION_TITLES[activeSection];
+
+  const handleFileChange = useCallback(
+    (docKey: string, file: File | undefined) => {
+      setFiles((prev) => ({ ...prev, [docKey]: file }));
+    },
+    [],
+  );
+
+  const handleFileClear = useCallback((docKey: string) => {
+    setFiles((prev) => ({ ...prev, [docKey]: undefined }));
+  }, []);
+
+  const handleUpload = useCallback(
+    (docKey: string) => {
+      const file = files[docKey];
+      if (!file) return;
+      onFileUpload(activeSection, docKey, file);
+      setFiles((prev) => ({ ...prev, [docKey]: undefined }));
+    },
+    [files, activeSection, onFileUpload],
+  );
+
+  return (
+    <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-5 sticky top-4">
+      <h4 className="font-semibold text-[var(--bz-text-1)] mb-1">{title}</h4>
+      <p className="text-xs text-[var(--bz-text-2)] mb-4">
+        Tax year {selectedYear}
+      </p>
+
+      {uploadError && (
+        <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400">
+          {uploadError}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {docTypes.map(({ key, label }) => (
+          <FileUploadField
+            key={key}
+            id={`tax-doc-${activeSection}-${key}`}
+            label={label}
+            file={files[key]}
+            onChange={(file) => handleFileChange(key, file)}
+            onClear={() => handleFileClear(key)}
+            extraButton={
+              files[key] ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2 text-xs gap-1"
+                  onClick={() => handleUpload(key)}
+                  disabled={isUploading}
+                >
+                  <Upload className="w-3 h-3" />
+                  {isUploading ? "..." : "Upload"}
+                </Button>
+              ) : undefined
+            }
+          />
+        ))}
+      </div>
+    </div>
+  );
+});
+
+// ============================================
 // TAX TAB COMPONENT
 // ============================================
 export function TaxTab({
@@ -204,290 +446,31 @@ export function TaxTab({
     annualCompany: new Date(selectedYear, 3, 30), // April 30
   };
 
-  const handleFileUpload = async (
-    section: TaxSection,
-    docType: string,
-    file: File,
-  ) => {
-    setIsUploading(true);
-    setUploadError(null);
-    try {
-      const base64 = await fileToBase64(file);
-      await api.post(`/api/crm/clients/${clientId}/tax-documents`, {
-        file: base64,
-        file_name: file.name,
-        document_type: docType,
-        section: section,
-        year: selectedYear,
-      });
-      toast.success(`${docType} uploaded successfully`);
-    } catch (err) {
-      setUploadError(`Failed to upload ${docType}: ${(err as Error).message}`);
-      toast.error("Upload failed", { description: (err as Error).message });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // Year selector buttons
-  const YearSelector = () => (
-    <div className="flex items-center gap-2">
-      {[
-        new Date().getFullYear() - 1,
-        new Date().getFullYear(),
-        new Date().getFullYear() + 1,
-      ].map((year) => (
-        <Button
-          key={year}
-          variant={selectedYear === year ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSelectedYear(year)}
-        >
-          {year}
-        </Button>
-      ))}
-    </div>
+  const handleFileUpload = useCallback(
+    async (section: TaxSection, docType: string, file: File) => {
+      setIsUploading(true);
+      setUploadError(null);
+      try {
+        const base64 = await fileToBase64(file);
+        await api.post(`/api/crm/clients/${clientId}/tax-documents`, {
+          file: base64,
+          file_name: file.name,
+          document_type: docType,
+          section: section,
+          year: selectedYear,
+        });
+        toast.success(`${docType} uploaded successfully`);
+      } catch (err) {
+        setUploadError(
+          `Failed to upload ${docType}: ${(err as Error).message}`,
+        );
+        toast.error("Upload failed", { description: (err as Error).message });
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [clientId, selectedYear],
   );
-
-  // File upload workspace component
-  const UploadWorkspace = ({
-    section,
-    title,
-    description,
-    docTypes,
-  }: {
-    section: TaxSection;
-    title: string;
-    description: string;
-    docTypes: { key: string; label: string; hint: string }[];
-  }) => (
-    <div className="bg-[var(--bz-surface)] border border-[var(--bz-border)] rounded-xl p-4 space-y-4">
-      <div>
-        <h4 className="font-semibold text-[var(--bz-text-1)]">{title}</h4>
-        <p className="text-xs text-[var(--bz-text-2)]">{description}</p>
-      </div>
-
-      <div className="space-y-3">
-        {docTypes.map((doc) => (
-          <div
-            key={doc.key}
-            className="border border-dashed border-[var(--bz-border)] rounded-lg p-3"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">{doc.label}</span>
-              <span className="text-xs text-[var(--bz-text-2)]">
-                {doc.hint}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="file"
-                id={`${section}-${doc.key}`}
-                accept=".pdf,.jpg,.jpeg,.png"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFileUpload(section, doc.key, file);
-                }}
-                disabled={isUploading}
-              />
-              <label
-                htmlFor={`${section}-${doc.key}`}
-                className="flex-1 px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] cursor-pointer hover:border-[var(--accent)] transition-colors text-sm truncate"
-              >
-                {isUploading ? "Uploading..." : `Select ${doc.label} file`}
-              </label>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
-    </div>
-  );
-
-  // Side panel for upload workspace
-  const SideWorkspace = () => {
-    const configs = {
-      personal: {
-        title: "Personal Tax Documents",
-        description: `Deadline: March 31, ${selectedYear}`,
-        docTypes: [
-          { key: "form1770", label: "Form 1770", hint: "Annual Tax Return" },
-          {
-            key: "buktiPotong",
-            label: "Bukti Potong",
-            hint: "Withholding Tax Slips",
-          },
-          {
-            key: "sptTahunan",
-            label: "SPT Tahunan",
-            hint: "Annual Tax Report",
-          },
-          {
-            key: "bupot1721",
-            label: "Bukti Potong 1721",
-            hint: "Employment Income",
-          },
-          {
-            key: "bupot1721A1",
-            label: "Bukti Potong 1721-A1",
-            hint: "Annual Tax Slip",
-          },
-        ],
-      },
-      annual: {
-        title: "Annual Company Tax",
-        description: `Deadline: April 30, ${selectedYear}`,
-        docTypes: [
-          {
-            key: "sptTahunanBadan",
-            label: "SPT Tahunan Badan",
-            hint: "Corporate Annual Tax Return",
-          },
-          {
-            key: "laporanKeuangan",
-            label: "Laporan Keuangan",
-            hint: "Financial Statements",
-          },
-          {
-            key: "buktiPembayaran",
-            label: "Bukti Pembayaran",
-            hint: "Payment Receipts",
-          },
-          {
-            key: "formTaxAmnesty",
-            label: "Form Tax Amnesty",
-            hint: "If applicable",
-          },
-          { key: "neraca", label: "Neraca", hint: "Balance Sheet" },
-          { key: "labaRugi", label: "Laba Rugi", hint: "Profit & Loss" },
-        ],
-      },
-      monthly: {
-        title: "Monthly Company Reports",
-        description: "Due monthly by the 20th",
-        docTypes: [
-          { key: "pph21", label: "PPH 21", hint: "Employee Income Tax" },
-          { key: "pph23", label: "PPH 23", hint: "Services Withholding Tax" },
-          { key: "ppn", label: "PPN", hint: "VAT Return" },
-          { key: "pph25", label: "PPH 25", hint: "Installment Tax" },
-          { key: "pph4ayat2", label: "PPH 4(2)", hint: "Final Income Tax" },
-          { key: "pph26", label: "PPH 26", hint: "Foreign Tax" },
-        ],
-      },
-      lkpm: {
-        title: "LKPM Quarterly Reports",
-        description: "Investment Activity Reports",
-        docTypes: [
-          {
-            key: "lkpmReport",
-            label: "LKPM Report",
-            hint: "Main Investment Report",
-          },
-          {
-            key: "realisasiInvestasi",
-            label: "Realisasi Investasi",
-            hint: "Investment Realization",
-          },
-          {
-            key: "laporanTenagaKerja",
-            label: "Laporan Tenaga Kerja",
-            hint: "Employment Report",
-          },
-          {
-            key: "laporanProduksi",
-            label: "Laporan Produksi",
-            hint: "Production Report",
-          },
-          {
-            key: "rawMaterial",
-            label: "Raw Material Usage",
-            hint: "Import/Local breakdown",
-          },
-          {
-            key: "exportValue",
-            label: "Export Value",
-            hint: "Export realization",
-          },
-        ],
-      },
-    };
-
-    const config = configs[activeSection];
-    return <UploadWorkspace section={activeSection} {...config} />;
-  };
-
-  // Tax cards
-  const TaxCard = ({
-    title,
-    subtitle,
-    deadline,
-    icon: Icon,
-    color,
-    section,
-    onClick,
-  }: {
-    title: string;
-    subtitle: string;
-    deadline: Date;
-    icon: React.ComponentType<{ className?: string; size?: number }>;
-    color: string;
-    section: TaxSection;
-    onClick: () => void;
-  }) => {
-    const isOverdue = new Date() > deadline;
-    const daysUntil = Math.ceil(
-      (deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
-    );
-
-    return (
-      <div
-        onClick={onClick}
-        className={`rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-5 cursor-pointer transition-all hover:border-[var(--accent)] ${
-          activeSection === section ? "ring-2 ring-[var(--bz-accent)]" : ""
-        }`}
-      >
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}
-            >
-              <Icon className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-[var(--bz-text-1)]">{title}</h4>
-              <p className="text-xs text-[var(--bz-text-2)]">{subtitle}</p>
-            </div>
-          </div>
-          {isOverdue ? (
-            <span className="px-2 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">
-              Overdue
-            </span>
-          ) : daysUntil <= 30 ? (
-            <span className="px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-xs font-medium">
-              {daysUntil}d left
-            </span>
-          ) : (
-            <span className="px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium">
-              On Track
-            </span>
-          )}
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-[var(--bz-border)]">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-[var(--bz-text-2)]">Deadline</span>
-            <span
-              className={`text-sm font-medium ${isOverdue ? "text-red-400" : daysUntil <= 30 ? "text-yellow-400" : "text-emerald-400"}`}
-            >
-              {formatDate(deadline.toISOString())}
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -501,7 +484,10 @@ export function TaxTab({
             Manage tax obligations and filings
           </p>
         </div>
-        <YearSelector />
+        <YearSelector
+          selectedYear={selectedYear}
+          onYearChange={setSelectedYear}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -514,6 +500,7 @@ export function TaxTab({
             icon={User}
             color="bg-gradient-to-br from-emerald-500 to-teal-600"
             section="personal"
+            activeSection={activeSection}
             onClick={() => setActiveSection("personal")}
           />
 
@@ -524,6 +511,7 @@ export function TaxTab({
             icon={Building2}
             color="bg-gradient-to-br from-blue-500 to-cyan-600"
             section="annual"
+            activeSection={activeSection}
             onClick={() => setActiveSection("annual")}
           />
 
@@ -534,6 +522,7 @@ export function TaxTab({
             icon={Calendar}
             color="bg-gradient-to-br from-purple-500 to-pink-600"
             section="monthly"
+            activeSection={activeSection}
             onClick={() => setActiveSection("monthly")}
           />
 
@@ -587,7 +576,13 @@ export function TaxTab({
 
         {/* Side workspace for uploads */}
         <div className="lg:col-span-1">
-          <SideWorkspace />
+          <SideWorkspace
+            activeSection={activeSection}
+            selectedYear={selectedYear}
+            isUploading={isUploading}
+            uploadError={uploadError}
+            onFileUpload={handleFileUpload}
+          />
         </div>
       </div>
     </div>

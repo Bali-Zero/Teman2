@@ -93,9 +93,12 @@ export function EditClientModal({
     setIsSaving(true);
     try {
       const user = await api.getProfile();
+      const requiredFields = ["full_name", "status", "client_type"];
       const updates: Record<string, string> = {};
       Object.entries(formData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) updates[key] = value;
+        if (value !== undefined && value !== null && (value !== "" || requiredFields.includes(key))) {
+          updates[key] = value;
+        }
       });
       await api.crm.updateClient(client.id, updates, user.email);
       onSave();
