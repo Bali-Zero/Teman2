@@ -313,7 +313,10 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 "min_size": getattr(settings, "db_pool_min_size", None) or 2,
                 "max_size": getattr(settings, "db_pool_max_size", None) or 20,
                 "command_timeout": getattr(settings, "db_command_timeout", None) or 60,
-                "max_inactive_connection_lifetime": 300.0,  # Drop idle conns after 5min (prevents stale after Fly cold start)
+                # 30s ensures stale connections are dropped before the first request hits
+                # after a Fly.io cold start (~35s). Previously 300s caused
+                # "connection was closed in the middle of operation" on POST /api/crm/clients.
+                "max_inactive_connection_lifetime": 30.0,
                 "init": init_db_connection,
             }
 

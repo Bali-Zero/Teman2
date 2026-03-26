@@ -47,11 +47,15 @@ export OLLAMA_MODEL="${OLLAMA_MODEL:-qwen2.5:latest}"
 # --- Phase 1: Agent pytest suite ---
 log "--- Phase 1: Agent pytest suite ---"
 cd "$BACKEND_DIR" || exit 1
-# Activate virtualenv for pytest
+# Activate virtualenv for pytest — use full path as fallback for cron
 if [ -d "$BACKEND_DIR/venv" ]; then
-    source "$BACKEND_DIR/venv/bin/activate"
-elif [ -d "$BACKEND_DIR/.venv" ]; then
-    source "$BACKEND_DIR/.venv/bin/activate"
+    source "$BACKEND_DIR/venv/bin/activate" 2>/dev/null || true
+    PYTEST="$BACKEND_DIR/venv/bin/pytest"
+elif [ -d "$BACKEND_DIR/.venv" ] && [ -f "$BACKEND_DIR/.venv/bin/activate" ]; then
+    source "$BACKEND_DIR/.venv/bin/activate" 2>/dev/null || true
+    PYTEST="$BACKEND_DIR/.venv/bin/pytest"
+else
+    PYTEST="pytest"
 fi
 export PYTHONPATH="$BACKEND_DIR:${PYTHONPATH:-}"
 
@@ -68,7 +72,7 @@ for test_dir in "${TEST_DIRS[@]}"; do
     [ ! -d "$test_dir" ] && continue
     dir_name=$(basename "$test_dir")
     log "Running: $dir_name"
-    if pytest "$test_dir" -v --tb=short -q -p no:xonsh >> "$LOG_FILE" 2>&1; then
+    if "$PYTEST" "$test_dir" -v --tb=short -q -p no:xonsh >> "$LOG_FILE" 2>&1; then
         log "✅ $dir_name PASSED"
         ((PASSED++))
     else
