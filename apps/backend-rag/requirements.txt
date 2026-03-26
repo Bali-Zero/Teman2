@@ -87,7 +87,7 @@ brotli-asgi>=1.4.0  # Brotli compression middleware (replaces GZip, ~20% better 
 python-dotenv>=1.0.0
 # loguru removed - using standard logging instead
 pytz>=2024.2  # Required by dateparser
-packaging>=23.2,<26  # Compatible with langchain-core if needed
+packaging>=23.2,<27  # Compatible with langchain-core if needed
 
 # Development & Quality Tools
 pre-commit>=4.5.1  # Security and performance updates
