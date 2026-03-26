@@ -93,6 +93,16 @@ export default function CompaniesPage() {
           <p className="text-sm mt-1" style={{ color: 'var(--bz-text-3)' }}>
             Contact us to set up your Indonesian business entity.
           </p>
+          <a
+            href="/portal/chat"
+            className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
+            style={{
+              background: 'rgba(201,169,110,0.12)',
+              color: 'var(--bz-accent-warm)',
+            }}
+          >
+            Message our team
+          </a>
         </section>
       ) : (
         <section className="space-y-3">
