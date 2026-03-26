@@ -29,10 +29,10 @@ Final cleanup of all production console errors on `kita.balizero.com`. Fixed COR
 
 ```typescript
 const isRSC =
-  request.nextUrl.searchParams.has('_rsc') ||
-  request.headers.get('RSC') === '1' ||
-  request.headers.get('Next-Router-Prefetch') === '1' ||
-  request.headers.get('Purpose') === 'prefetch';
+  request.nextUrl.searchParams.has("_rsc") ||
+  request.headers.get("RSC") === "1" ||
+  request.headers.get("Next-Router-Prefetch") === "1" ||
+  request.headers.get("Purpose") === "prefetch";
 if (isRSC) {
   return new NextResponse(null, { status: 204 });
 }
@@ -57,7 +57,7 @@ Fixed excessive console logging in the Omnichannel page that was causing 2,237+ 
 **Issue:** Logging entire WhatsApp conversations array on every fetch:
 
 ```typescript
-logger.info('WhatsApp conversations fetched', {
+logger.info("WhatsApp conversations fetched", {
   data: waData, // ← Logging ENTIRE array with 14 conversations!
 });
 ```
@@ -71,8 +71,8 @@ logger.info('WhatsApp conversations fetched', {
 **Change:** Removed `data: waData` to only log the count:
 
 ```typescript
-logger.info('WhatsApp conversations fetched', {
-  count: Array.isArray(waData) ? waData.length : 'not an array',
+logger.info("WhatsApp conversations fetched", {
+  count: Array.isArray(waData) ? waData.length : "not an array",
 });
 ```
 
