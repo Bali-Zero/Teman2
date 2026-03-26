@@ -1099,13 +1099,15 @@ function ClientsListContent() {
                           </span>
                         </td>
                         <td className="px-3 py-2 text-xs" style={{ color: 'var(--bz-text-2)' }}>
-                          {client.nationality ?? '—'}
+                          <span title={client.nationality ?? 'Nationality not set'}>
+                            {client.nationality ?? '—'}
+                          </span>
                         </td>
                         <td
                           className="px-3 py-2 text-xs"
                           style={{ color: 'var(--bz-text-2)', maxWidth: '120px' }}
                         >
-                          <span className="truncate block">
+                          <span className="truncate block" title={client.assigned_to ?? 'Unassigned'}>
                             {client.assigned_to ? client.assigned_to.split('@')[0] : '—'}
                           </span>
                         </td>
