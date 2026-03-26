@@ -123,40 +123,44 @@ export default function TaxesPage() {
             <p className="text-xs mb-1" style={{ color: 'var(--bz-text-2)' }}>
               Next Deadline
             </p>
-            {taxData.summary.nextDeadline
-              ? (() => {
-                  const dl = new Date(taxData.summary.nextDeadline);
-                  const daysLeft = Math.ceil((dl.getTime() - Date.now()) / 86400000);
-                  const chipColor =
-                    daysLeft <= 0
-                      ? 'bg-red-500/15 text-red-400'
-                      : daysLeft <= 7
-                        ? 'bg-red-500/10 text-red-400'
-                        : daysLeft <= 30
-                          ? 'bg-amber-500/10 text-amber-400'
-                          : 'bg-emerald-500/10 text-emerald-400';
-                  const chipLabel =
-                    daysLeft <= 0
-                      ? `${Math.abs(daysLeft)}d overdue`
-                      : daysLeft === 1
-                        ? 'tomorrow'
-                        : `${daysLeft}d left`;
-                  return (
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <p className="text-lg font-bold">
-                        {dl.toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </p>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}>
-                        {chipLabel}
-                      </span>
-                    </div>
-                  );
-                })()
-              : <p className="text-lg font-bold">None</p>}
+            {taxData.summary.nextDeadline ? (
+              (() => {
+                const dl = new Date(taxData.summary.nextDeadline);
+                const daysLeft = Math.ceil((dl.getTime() - Date.now()) / 86400000);
+                const chipColor =
+                  daysLeft <= 0
+                    ? 'bg-red-500/15 text-red-400'
+                    : daysLeft <= 7
+                      ? 'bg-red-500/10 text-red-400'
+                      : daysLeft <= 30
+                        ? 'bg-amber-500/10 text-amber-400'
+                        : 'bg-emerald-500/10 text-emerald-400';
+                const chipLabel =
+                  daysLeft <= 0
+                    ? `${Math.abs(daysLeft)}d overdue`
+                    : daysLeft === 1
+                      ? 'tomorrow'
+                      : `${daysLeft}d left`;
+                return (
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <p className="text-lg font-bold">
+                      {dl.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </p>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}
+                    >
+                      {chipLabel}
+                    </span>
+                  </div>
+                );
+              })()
+            ) : (
+              <p className="text-lg font-bold">None</p>
+            )}
           </div>
         </div>
 
@@ -193,15 +197,30 @@ export default function TaxesPage() {
               }}
             />
             <div className="flex-1">
-              <p className="text-sm font-semibold">
-                {taxData.summary.daysToDeadline} days to deadline
-              </p>
-              <p className="text-xs" style={{ color: 'var(--bz-text-2)' }}>
+              <div className="flex items-baseline gap-2">
+                <span
+                  className="text-2xl font-bold font-mono"
+                  style={{
+                    color:
+                      taxData.summary.daysToDeadline <= 7
+                        ? '#f87171'
+                        : taxData.summary.daysToDeadline <= 30
+                          ? '#fbbf24'
+                          : '#34d399',
+                  }}
+                >
+                  {taxData.summary.daysToDeadline}
+                </span>
+                <span className="text-sm font-semibold" style={{ color: 'var(--bz-text-1)' }}>
+                  days to deadline
+                </span>
+              </div>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--bz-text-2)' }}>
                 {taxData.summary.daysToDeadline <= 7
-                  ? 'Urgent: Please file immediately'
+                  ? 'Please file immediately to avoid penalties.'
                   : taxData.summary.daysToDeadline <= 30
-                    ? 'Action required soon'
-                    : 'No immediate action required'}
+                    ? 'Action required soon — we will remind you.'
+                    : 'No immediate action required.'}
               </p>
             </div>
           </div>
@@ -382,9 +401,7 @@ function ObligationCard({
                     ? 'bg-amber-500/10 text-amber-400'
                     : undefined;
             const chipLabel =
-              daysLeft <= 0
-                ? `${Math.abs(daysLeft)}d overdue`
-                : `${daysLeft}d left`;
+              daysLeft <= 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`;
             return chipColor ? (
               <span className={`ml-1 px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}>
                 {chipLabel}
