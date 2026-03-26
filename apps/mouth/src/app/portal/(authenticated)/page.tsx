@@ -466,7 +466,15 @@ function TimelineItem({ entry, isLast }: { entry: TimelineEntry; isLast: boolean
           >
             {getIcon()}
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)]">
+          <span
+            className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)]"
+            title={new Date(entry.occurredAt).toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+          >
             {new Date(entry.occurredAt).toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',
