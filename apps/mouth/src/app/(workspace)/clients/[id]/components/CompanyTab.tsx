@@ -50,6 +50,8 @@ function CompanyDocUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ocrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ocrAbortedRef = useRef(false);
+  const onUploadedRef = useRef(onUploaded);
+  onUploadedRef.current = onUploaded;
 
   useEffect(() => {
     ocrAbortedRef.current = false;
@@ -73,7 +75,7 @@ function CompanyDocUpload({
         if (status.pending_ocr === 0 || attempts >= 10) {
           if (!ocrAbortedRef.current) {
             setOcrPolling(false);
-            onUploaded?.();
+            onUploadedRef.current?.();
           }
           return;
         }
@@ -84,7 +86,7 @@ function CompanyDocUpload({
       }
     };
     ocrTimerRef.current = setTimeout(poll, 2000);
-  }, [clientId, onUploaded]);
+  }, [clientId]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

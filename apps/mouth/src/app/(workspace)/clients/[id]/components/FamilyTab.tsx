@@ -45,6 +45,8 @@ function FamilyMemberUploadButton({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ocrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ocrAbortedRef = useRef(false);
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
 
   // Cleanup OCR polling timers when component unmounts
   useEffect(() => {
@@ -69,7 +71,7 @@ function FamilyMemberUploadButton({
         if (status.pending_ocr === 0 || attempts >= 10) {
           if (!ocrAbortedRef.current) {
             setOcrPolling(false);
-            await onRefresh();
+            await onRefreshRef.current();
           }
           return;
         }
@@ -78,12 +80,12 @@ function FamilyMemberUploadButton({
       } catch {
         if (!ocrAbortedRef.current) {
           setOcrPolling(false);
-          await onRefresh();
+          await onRefreshRef.current();
         }
       }
     };
     ocrTimerRef.current = setTimeout(poll, 2000);
-  }, [clientId, onRefresh]);
+  }, [clientId]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
