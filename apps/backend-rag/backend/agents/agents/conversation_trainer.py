@@ -271,8 +271,10 @@ Based on analysis of successful conversations:
             timestamp = datetime.now().strftime("%Y%m%d-%H%M")
             branch_name = f"auto/prompt-improvement-{timestamp}"
 
-            # Get prompt file path
-            prompt_file = Path("apps/backend-rag/backend/prompts/zantara_system_prompt.md")
+            # Write proposed prompt to a staging file for human review.
+            # The real SSOT is backend/prompts/zantara_core.py (Python constants).
+            # Do NOT auto-overwrite zantara_core.py — a human must review and apply.
+            prompt_file = Path("apps/backend-rag/backend/prompts/proposed_prompt_update.md")
             prompt_file.parent.mkdir(parents=True, exist_ok=True)
 
             # Create reports directory

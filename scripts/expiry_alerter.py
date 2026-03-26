@@ -32,8 +32,8 @@ BACKEND_ENV = PROJECT_ROOT / "apps" / "backend-rag" / ".env"
 # SMTP config (Zoho via damar@, send as zantara@)
 SMTP_HOST = "smtppro.zoho.com"
 SMTP_PORT = 465
-SMTP_LOGIN = "damar@balizero.com"
-SMTP_PASS = "Zantara2026#"
+SMTP_LOGIN = os.environ.get("SMTP_LOGIN", "damar@balizero.com")
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
 FROM_EMAIL = "zantara@balizero.com"
 FROM_NAME = "Zantara AI"
 
@@ -333,6 +333,57 @@ def _build_telegram_summary(all_items: list[dict], emails_sent: int) -> str:
     return "\n".join(lines)
 
 
+def _writeback_renewal_required(items: list[dict], dry_run: bool = False) -> None:
+    """Update practice status to renewal_required in CRM for items ≤30 days to expiry."""
+    # Only practice-type expirations (not overdue_practice, not passport)
+    practice_items = [
+        i for i in items
+        if i.get("exp_type") not in ("overdue_practice", "passport")
+        and i.get("days", 999) <= 30
+        and i.get("client_id")
+    ]
+
+    if not practice_items:
+        log("No practices to mark renewal_required")
+        return
+
+    import base64
+    client_ids = list({str(i["client_id"]) for i in practice_items})
+    ids_csv = ",".join(client_ids)
+
+    code = f"""import asyncio,os,asyncpg
+async def m():
+ c=await asyncpg.connect(os.environ["DATABASE_URL"])
+ r=await c.execute(\"\"\"
+  UPDATE practices
+  SET status='renewal_required', updated_at=NOW()
+  WHERE client_id=ANY($1::int[])
+    AND status NOT IN ('completed','cancelled','renewal_required','declined')
+    AND expiry_date IS NOT NULL
+    AND expiry_date < now() + interval '30 days'
+    AND expiry_date > now() - interval '90 days'
+ \"\"\", [{ids_csv}])
+ print(f"Updated: {{r}}")
+ await c.close()
+asyncio.run(m())
+"""
+    encoded = base64.b64encode(code.encode()).decode()
+
+    if dry_run:
+        print(f"[DRY RUN] Would mark renewal_required for {len(client_ids)} clients: {ids_csv}")
+        return
+
+    result = subprocess.run(
+        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro",
+         f'fly ssh console --app nuzantara-rag -C "python3 -c \\"import base64;exec(base64.b64decode(b\'{encoded}\'))\\"" 2>/dev/null'],
+        capture_output=True, text=True, timeout=30,
+    )
+    if result.returncode == 0:
+        log(f"CRM write-back: marked {len(client_ids)} clients renewal_required")
+    else:
+        log(f"CRM write-back failed: {result.stderr[:100]}")
+
+
 def main() -> None:
     global VERBOSE
 
@@ -372,6 +423,10 @@ def main() -> None:
         return
 
     log(f"Found {len(items)} expiries needing attention")
+
+    # Write-back to CRM: mark practices with ≤30 days to expiry as renewal_required
+    # (practice-type items only, not overdue_practice — those already have their own flow)
+    _writeback_renewal_required(items, args.dry_run)
 
     # Group by assigned_to
     by_member: dict[str, list[dict]] = {}

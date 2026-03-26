@@ -64,6 +64,7 @@ log "Found $TOTAL_COLLECTIONS collections"
 TOTAL_SIZE=0
 FAILED=0
 SUCCEEDED=0
+declare -A SNAP_NAMES_TO_DELETE  # collection → snap_name, filled after download, deleted after upload
 
 for COLLECTION in $COLLECTIONS; do
     log "Backing up: $COLLECTION"
@@ -100,15 +101,21 @@ for COLLECTION in $COLLECTIONS; do
     fi
 
     FILE_SIZE=$(stat -f%z "$OUTPUT_FILE" 2>/dev/null || stat --printf=%s "$OUTPUT_FILE" 2>/dev/null)
+
+    # Validate snapshot is not empty
+    if [[ "$FILE_SIZE" -lt 1024 ]]; then
+        log "ERROR: Snapshot for $COLLECTION is too small (${FILE_SIZE} bytes) — skipping"
+        rm -f "$OUTPUT_FILE"
+        FAILED=$((FAILED + 1))
+        continue
+    fi
+
     FILE_SIZE_MB=$(echo "scale=1; $FILE_SIZE / 1048576" | bc)
     TOTAL_SIZE=$((TOTAL_SIZE + FILE_SIZE))
     log "  Downloaded: ${FILE_SIZE_MB}MB"
 
-    # Delete remote snapshot (cleanup server-side)
-    curl -sf -X DELETE -H "api-key: $QDRANT_API_KEY" \
-        "$QDRANT_URL/collections/$COLLECTION/snapshots/$SNAP_NAME" > /dev/null 2>&1 || true
-
     SUCCEEDED=$((SUCCEEDED + 1))
+    SNAP_NAMES_TO_DELETE[$COLLECTION]="$SNAP_NAME"
 done
 
 TOTAL_SIZE_MB=$(echo "scale=1; $TOTAL_SIZE / 1048576" | bc)
@@ -137,6 +144,15 @@ if command -v aws &> /dev/null; then
            --endpoint-url "$TIGRIS_ENDPOINT" \
            --region auto 2>/dev/null; then
         log "Uploaded to Tigris: s3://$TIGRIS_BUCKET/qdrant/$(basename "$ARCHIVE")"
+
+        # Step 4b: Delete server-side snapshots only after confirmed Tigris upload
+        log "Cleaning up server-side snapshots..."
+        for COLL in "${!SNAP_NAMES_TO_DELETE[@]}"; do
+            SNAME="${SNAP_NAMES_TO_DELETE[$COLL]}"
+            curl -sf -X DELETE -H "api-key: $QDRANT_API_KEY" \
+                "$QDRANT_URL/collections/$COLL/snapshots/$SNAME" > /dev/null 2>&1 || \
+                log "WARN: Could not delete server snapshot for $COLL ($SNAME)"
+        done
 
         # Cleanup old remote backups (keep last KEEP_REMOTE)
         AWS_ACCESS_KEY_ID="$TIGRIS_KEY" \

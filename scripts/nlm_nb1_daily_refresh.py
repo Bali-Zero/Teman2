@@ -328,6 +328,57 @@ def main():
     with open(log_file, "a") as f:
         f.write(json.dumps(summary) + "\n")
 
+    # Staleness alert: warn if the log hasn't recorded any refresh in >48h
+    _check_staleness_alert(log_file)
+
+
+def _check_staleness_alert(log_file: Path) -> None:
+    """Alert via Telegram if no NB-1 refresh has been logged in the last 48 hours."""
+    import urllib.parse
+    import urllib.request
+
+    threshold_hours = 48
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "413539912")
+
+    if not log_file.exists():
+        return
+
+    now_ts = time.time()
+    last_run_ts: float | None = None
+
+    try:
+        with open(log_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    ts = datetime.fromisoformat(entry["timestamp"]).timestamp()
+                    if last_run_ts is None or ts > last_run_ts:
+                        last_run_ts = ts
+                except Exception:
+                    pass
+    except Exception:
+        return
+
+    if last_run_ts is None:
+        return
+
+    age_hours = (now_ts - last_run_ts) / 3600
+    if age_hours > threshold_hours:
+        msg = f"⚠️ NB-1 refresh STALE: last run was {age_hours:.0f}h ago (threshold: {threshold_hours}h)"
+        log.warning(msg)
+        if bot_token:
+            try:
+                data = urllib.parse.urlencode({"chat_id": chat_id, "text": msg}).encode()
+                urllib.request.urlopen(
+                    f"https://api.telegram.org/bot{bot_token}/sendMessage", data, timeout=10
+                )
+            except Exception as e:
+                log.warning(f"Telegram alert failed: {e}")
+
 
 if __name__ == "__main__":
     main()
