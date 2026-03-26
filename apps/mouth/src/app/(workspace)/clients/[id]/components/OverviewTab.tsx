@@ -274,7 +274,10 @@ export function OverviewTab({
                                   ? `⏰ ${daysLeft}d left`
                                   : `${Math.floor(daysLeft / 30)}mo left`;
                           return (
-                            <p className={`text-sm font-medium ${color}`} title={formatDate(client.passport_expiry)}>
+                            <p
+                              className={`text-sm font-medium ${color}`}
+                              title={formatDate(client.passport_expiry)}
+                            >
                               {label}
                             </p>
                           );
@@ -776,7 +779,7 @@ export function OverviewTab({
                       </p>
                       {p.completion_date && (
                         <p className="text-[10px] text-[var(--bz-text-2)]">
-                          {formatDate(p.completion_date)}
+                          Completed {formatDate(p.completion_date)}
                         </p>
                       )}
                     </div>
