@@ -830,25 +830,39 @@ export default function CaseDetailPage() {
           {/* Required Documents */}
           {caseId && <RequiredDocumentsCard practiceId={caseId} />}
 
-          {/* Timeline Placeholder */}
-          <div
-            className="rounded-xl p-6"
-            style={{
-              border: '1px solid var(--bz-border)',
-              background: 'rgba(26,26,30,0.5)',
-            }}
-          >
-            <h3
-              className="text-lg font-semibold mb-4 flex items-center gap-2"
-              style={{ color: 'var(--bz-text-1)' }}
+          {/* Status History */}
+          {practice.status_transitions && practice.status_transitions.length > 0 && (
+            <div
+              className="rounded-xl p-6"
+              style={{
+                border: '1px solid var(--bz-border)',
+                background: 'rgba(26,26,30,0.5)',
+              }}
             >
-              <Clock className="w-5 h-5" />
-              Activity Timeline
-            </h3>
-            <p className="text-sm" style={{ color: 'var(--bz-text-2)' }}>
-              Timeline feature coming soon...
-            </p>
-          </div>
+              <h3
+                className="text-lg font-semibold mb-4 flex items-center gap-2"
+                style={{ color: 'var(--bz-text-1)' }}
+              >
+                <Clock className="w-5 h-5" />
+                Status History
+              </h3>
+              <div className="space-y-2">
+                {[...practice.status_transitions].reverse().map((t, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-sm">
+                    <span
+                      className="capitalize font-medium"
+                      style={{ color: 'var(--bz-text-1)' }}
+                    >
+                      {t.status.replace(/_/g, ' ')}
+                    </span>
+                    <span className="text-xs" style={{ color: 'var(--bz-text-2)' }}>
+                      {formatDate(t.at)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
