@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 import {
   ArrowLeft,
   FolderKanban,
@@ -14,17 +14,14 @@ import {
   Briefcase,
   DollarSign,
   UserCheck,
-} from "lucide-react";
-import Link from "next/link";
-import { api } from "@/lib/api";
-import type { CreatePracticeParams, Client } from "@/lib/api/crm/crm.types";
-import {
-  createPracticeSchema,
-  flattenErrors,
-} from "@/lib/api/crm/crm.schemas";
-import { casesMetrics } from "@/lib/metrics/cases-metrics";
-import { logger } from "@/lib/logger";
-import { toError } from "@/lib/types/common";
+} from 'lucide-react';
+import Link from 'next/link';
+import { api } from '@/lib/api';
+import type { CreatePracticeParams, Client } from '@/lib/api/crm/crm.types';
+import { createPracticeSchema, flattenErrors } from '@/lib/api/crm/crm.schemas';
+import { casesMetrics } from '@/lib/metrics/cases-metrics';
+import { logger } from '@/lib/logger';
+import { toError } from '@/lib/types/common';
 
 export default function NewPracticePage() {
   const router = useRouter();
@@ -33,18 +30,21 @@ export default function NewPracticePage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const preselectedClientId = searchParams?.get('client_id')
+    ? Number(searchParams.get('client_id'))
+    : undefined;
+
   const [formData, setFormData] = useState({
-    title: "", // Maps to notes
-    practice_type_code: "visa",
-    client_id: searchParams?.get("client_id")
-      ? Number(searchParams.get("client_id"))
-      : undefined,
-    quoted_price: "",
-    assigned_to: "",
+    title: '', // Maps to notes
+    practice_type_code: 'visa',
+    client_id: preselectedClientId,
+    quoted_price: '',
+    assigned_to: '',
+    priority: 'normal',
   });
 
   // Client Search State
-  const [clientSearch, setClientSearch] = useState("");
+  const [clientSearch, setClientSearch] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isSearchingClients, setIsSearchingClients] = useState(false);
@@ -61,12 +61,12 @@ export default function NewPracticePage() {
       try {
         const user = await api.getProfile();
         userEmail.current = user.email;
-        casesMetrics.trackPageView("new", undefined, user.email);
+        casesMetrics.trackPageView('new', undefined, user.email);
       } catch (err) {
         logger.error(
-          "Failed to init metrics",
-          { component: "NewProcess", action: "initMetrics" },
-          toError(err),
+          'Failed to init metrics',
+          { component: 'NewProcess', action: 'initMetrics' },
+          toError(err)
         );
       }
     };
@@ -76,7 +76,7 @@ export default function NewPracticePage() {
 
   // Load initial client if provided in URL
   useEffect(() => {
-    const preselectedId = searchParams?.get("client_id");
+    const preselectedId = searchParams?.get('client_id');
     if (preselectedId) {
       api.crm
         .getClient(Number(preselectedId))
@@ -84,7 +84,7 @@ export default function NewPracticePage() {
           setSelectedClient(client);
           setFormData((prev) => ({ ...prev, client_id: client.id }));
         })
-        .catch((err) => logger.error("Failed to load preselected client", err));
+        .catch((err) => logger.error('Failed to load preselected client', err));
     }
   }, [searchParams]);
 
@@ -106,40 +106,40 @@ export default function NewPracticePage() {
         });
         const apiDuration = performance.now() - apiStart;
         casesMetrics.trackApiCall(
-          "/api/crm/clients/search",
-          "GET",
+          '/api/crm/clients/search',
+          'GET',
           true,
           apiDuration,
           undefined,
-          userEmail.current || undefined,
+          userEmail.current || undefined
         );
         casesMetrics.trackClientSearch(
           clientSearch,
           results.length,
-          userEmail.current || undefined,
+          userEmail.current || undefined
         );
         setClients(results);
       } catch (error) {
         const apiDuration = performance.now() - apiStart;
         casesMetrics.trackApiCall(
-          "/api/crm/clients/search",
-          "GET",
+          '/api/crm/clients/search',
+          'GET',
           false,
           apiDuration,
           undefined,
-          userEmail.current || undefined,
+          userEmail.current || undefined
         );
         casesMetrics.trackError(
-          "Client Search Failed",
+          'Client Search Failed',
           (error as Error).message,
-          "CasesNewPage",
+          'CasesNewPage',
           undefined,
-          userEmail.current || undefined,
+          userEmail.current || undefined
         );
         logger.error(
-          "Failed to search clients",
-          { component: "NewProcess", action: "searchClients" },
-          toError(error),
+          'Failed to search clients',
+          { component: 'NewProcess', action: 'searchClients' },
+          toError(error)
         );
       } finally {
         setIsSearchingClients(false);
@@ -157,8 +157,8 @@ export default function NewPracticePage() {
         setShowClientDropdown(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -176,50 +176,48 @@ export default function NewPracticePage() {
       const errors = flattenErrors(result.error);
       setFieldErrors(errors);
       casesMetrics.trackError(
-        "Validation Error",
-        Object.values(errors).join(", "),
-        "CasesNewPage",
+        'Validation Error',
+        Object.values(errors).join(', '),
+        'CasesNewPage',
         undefined,
-        userEmail.current || undefined,
+        userEmail.current || undefined
       );
       return;
     }
 
     setIsLoading(true);
     casesMetrics.trackButtonClick(
-      "Create Case",
-      "CasesNewPage",
+      'Create Case',
+      'CasesNewPage',
       undefined,
       undefined,
-      userEmail.current || undefined,
+      userEmail.current || undefined
     );
-    casesMetrics.startPerformanceMark("case_creation");
+    casesMetrics.startPerformanceMark('case_creation');
     const apiStart = performance.now();
 
     try {
       const user = await api.getProfile();
 
       // Check for duplicate practices (same client + same type + active status)
-      const existingPractices = await api.crm.getClientPractices(
-        result.data.client_id,
-      );
+      const existingPractices = await api.crm.getClientPractices(result.data.client_id);
       const duplicateCheck = existingPractices.find(
         (p) =>
           p.practice_type_code === result.data.practice_type_code &&
-          !["completed", "cancelled"].includes(p.status),
+          !['completed', 'cancelled'].includes(p.status)
       );
 
       if (duplicateCheck) {
         toast.error(
-          "Duplicate Process",
-          `Client already has an active ${result.data.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Please complete or cancel it first.`,
+          'Duplicate Process',
+          `Client already has an active ${result.data.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Please complete or cancel it first.`
         );
         casesMetrics.trackError(
-          "Duplicate Process Blocked",
+          'Duplicate Process Blocked',
           `Prevented duplicate ${result.data.practice_type_code} for client ${result.data.client_id}`,
-          "CasesNewPage",
+          'CasesNewPage',
           duplicateCheck.id,
-          user.email,
+          user.email
         );
         return;
       }
@@ -227,25 +225,22 @@ export default function NewPracticePage() {
       const backendData: CreatePracticeParams = {
         client_id: result.data.client_id,
         practice_type_code: result.data.practice_type_code,
-        status: "inquiry",
-        priority: "normal",
+        status: 'inquiry',
+        priority: (formData.priority || 'normal') as 'normal' | 'high' | 'urgent',
         notes: result.data.notes,
         ...(formData.quoted_price ? { quoted_price: Number(formData.quoted_price) } : {}),
         ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
       };
 
-      const createdPractice = await api.crm.createPractice(
-        backendData,
-        user.email,
-      );
+      const createdPractice = await api.crm.createPractice(backendData, user.email);
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
-        "/api/crm/practices/create",
-        "POST",
+        '/api/crm/practices/create',
+        'POST',
         true,
         apiDuration,
         undefined,
-        user.email,
+        user.email
       );
 
       // Track case creation
@@ -254,66 +249,63 @@ export default function NewPracticePage() {
         caseId,
         result.data.practice_type_code,
         result.data.client_id,
-        user.email,
+        user.email
       );
-      casesMetrics.endPerformanceMark("case_creation", caseId, user.email);
+      casesMetrics.endPerformanceMark('case_creation', caseId, user.email);
 
-      toast.success("Process Created", "Successfully created new process.");
-      router.push("/process");
+      toast.success('Process Created', 'Successfully created new process.');
+      // Return to client page if we came from one, otherwise go to the new process detail
+      if (preselectedClientId) {
+        router.push(`/clients/${preselectedClientId}?tab=process`);
+      } else {
+        const newId = (createdPractice as any)?.id;
+        router.push(newId ? `/process/${newId}` : '/process');
+      }
     } catch (error) {
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
-        "/api/crm/practices/create",
-        "POST",
+        '/api/crm/practices/create',
+        'POST',
         false,
         apiDuration,
         undefined,
-        userEmail.current || undefined,
+        userEmail.current || undefined
       );
       casesMetrics.trackError(
-        "Create Case Failed",
+        'Create Case Failed',
         (error as Error).message,
-        "CasesNewPage",
+        'CasesNewPage',
         undefined,
-        userEmail.current || undefined,
+        userEmail.current || undefined
       );
 
       logger.error(
-        "Failed to create case",
-        { component: "NewProcess", action: "createCase" },
-        toError(error),
+        'Failed to create case',
+        { component: 'NewProcess', action: 'createCase' },
+        toError(error)
       );
-      toast.error("Error", (error as Error).message);
+      toast.error('Error', (error as Error).message);
     } finally {
       setIsLoading(false);
     }
   };
 
   const inputClass =
-    "w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all";
-  const labelClass =
-    "text-sm font-medium text-[var(--foreground)] mb-1.5 block";
+    'w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all';
+  const labelClass = 'text-sm font-medium text-[var(--foreground)] mb-1.5 block';
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/process">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Go back to process list"
-          >
+          <Button variant="ghost" size="icon" aria-label="Go back to process list">
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">
-            New Process
-          </h1>
-          <p className="text-sm text-[var(--foreground-muted)]">
-            Start a new process
-          </p>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">New Process</h1>
+          <p className="text-sm text-[var(--foreground-muted)]">Start a new process</p>
         </div>
       </div>
 
@@ -344,7 +336,7 @@ export default function NewPracticePage() {
                       {selectedClient.full_name}
                     </p>
                     <p className="text-xs text-[var(--foreground-muted)]">
-                      {selectedClient.email || "No email"}
+                      {selectedClient.email || 'No email'}
                     </p>
                   </div>
                 </div>
@@ -355,7 +347,7 @@ export default function NewPracticePage() {
                   onClick={() => {
                     setSelectedClient(null);
                     setFormData((prev) => ({ ...prev, client_id: undefined }));
-                    setClientSearch("");
+                    setClientSearch('');
                   }}
                 >
                   Change
@@ -402,9 +394,7 @@ export default function NewPracticePage() {
                               {client.full_name}
                             </p>
                             <p className="text-xs text-[var(--foreground-muted)]">
-                              {client.email ||
-                                client.phone ||
-                                "No contact info"}
+                              {client.email || client.phone || 'No contact info'}
                             </p>
                           </div>
                           {client.nationality && (
@@ -416,9 +406,7 @@ export default function NewPracticePage() {
                       ))
                     ) : (
                       <div className="p-4 text-center text-sm text-[var(--foreground-muted)]">
-                        {isSearchingClients
-                          ? "Searching..."
-                          : "No clients found"}
+                        {isSearchingClients ? 'Searching...' : 'No clients found'}
                       </div>
                     )}
                     {/* Show hint if max results reached */}
@@ -467,7 +455,8 @@ export default function NewPracticePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className={labelClass}>
-                Quoted Price <span className="text-[var(--foreground-muted)] font-normal">(IDR, optional)</span>
+                Quoted Price{' '}
+                <span className="text-[var(--foreground-muted)] font-normal">(IDR, optional)</span>
               </label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
@@ -476,7 +465,9 @@ export default function NewPracticePage() {
                   min="0"
                   step="100000"
                   value={formData.quoted_price}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, quoted_price: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, quoted_price: e.target.value }))
+                  }
                   className={inputClass}
                   placeholder="e.g. 5000000"
                 />
@@ -484,13 +475,16 @@ export default function NewPracticePage() {
             </div>
             <div className="space-y-2">
               <label className={labelClass}>
-                Assigned To <span className="text-[var(--foreground-muted)] font-normal">(optional)</span>
+                Assigned To{' '}
+                <span className="text-[var(--foreground-muted)] font-normal">(optional)</span>
               </label>
               <div className="relative">
                 <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
                 <select
                   value={formData.assigned_to}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, assigned_to: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, assigned_to: e.target.value }))
+                  }
                   className={`${inputClass} appearance-none cursor-pointer`}
                 >
                   <option value="">— unassigned —</option>
@@ -502,6 +496,33 @@ export default function NewPracticePage() {
             </div>
           </div>
 
+          {/* Priority */}
+          <div className="space-y-2">
+            <label className={labelClass}>Priority</label>
+            <div className="flex gap-2">
+              {(
+                [
+                  { value: 'normal', label: 'Normal', color: 'text-zinc-400', activeBg: 'bg-zinc-500/20', activeBorder: 'border-zinc-500/40' },
+                  { value: 'high', label: '↑ High', color: 'text-orange-400', activeBg: 'bg-orange-500/20', activeBorder: 'border-orange-500/40' },
+                  { value: 'urgent', label: '🔥 Urgent', color: 'text-red-400', activeBg: 'bg-red-500/20', activeBorder: 'border-red-500/40' },
+                ] as const
+              ).map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, priority: p.value }))}
+                  className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    formData.priority === p.value
+                      ? `${p.activeBg} ${p.activeBorder} ${p.color}`
+                      : 'border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:border-[var(--border)] hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Title / Initial Notes */}
           <div className="space-y-2">
             <label className={labelClass}>Initial Notes / Title</label>
@@ -509,9 +530,7 @@ export default function NewPracticePage() {
               <FolderKanban className="absolute left-3 top-3 w-4 h-4 text-[var(--foreground-muted)]" />
               <textarea
                 value={formData.title}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, title: e.target.value }))
-                }
+                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all resize-none"
                 placeholder="e.g. KITAS Renewal 2025, special requirements..."
                 rows={3}
