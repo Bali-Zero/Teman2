@@ -48,14 +48,14 @@ export OLLAMA_MODEL="${OLLAMA_MODEL:-qwen2.5:latest}"
 log "--- Phase 1: Agent pytest suite ---"
 cd "$BACKEND_DIR" || exit 1
 # Activate virtualenv for pytest — use full path as fallback for cron
-if [ -d "$BACKEND_DIR/venv" ]; then
+# Prefer venv (Python 3.11, has pytest) over .venv (Python 3.13, no pytest)
+if [ -d "$BACKEND_DIR/venv" ] && "$BACKEND_DIR/venv/bin/python" -c "import pytest" 2>/dev/null; then
     source "$BACKEND_DIR/venv/bin/activate" 2>/dev/null || true
-    PYTEST="$BACKEND_DIR/venv/bin/pytest"
-elif [ -d "$BACKEND_DIR/.venv" ] && [ -f "$BACKEND_DIR/.venv/bin/activate" ]; then
-    source "$BACKEND_DIR/.venv/bin/activate" 2>/dev/null || true
-    PYTEST="$BACKEND_DIR/.venv/bin/pytest"
+    PYTEST_CMD=("$BACKEND_DIR/venv/bin/python" "-m" "pytest")
+elif [ -d "$BACKEND_DIR/.venv" ] && "$BACKEND_DIR/.venv/bin/python3.13" -c "import pytest" 2>/dev/null; then
+    PYTEST_CMD=("$BACKEND_DIR/.venv/bin/python3.13" "-m" "pytest")
 else
-    PYTEST="pytest"
+    PYTEST_CMD=("python3" "-m" "pytest")
 fi
 export PYTHONPATH="$BACKEND_DIR:${PYTHONPATH:-}"
 
@@ -64,15 +64,15 @@ FAILED=0
 FAILED_TESTS=()
 
 TEST_DIRS=(
-    "tests/unit/services/rag/agentic"
-    "tests/unit/llm"
+    "backend/tests/unit/services/rag/agentic"
+    "backend/tests/unit/llm"
 )
 
 for test_dir in "${TEST_DIRS[@]}"; do
     [ ! -d "$test_dir" ] && continue
     dir_name=$(basename "$test_dir")
     log "Running: $dir_name"
-    if "$PYTEST" "$test_dir" -v --tb=short -q -p no:xonsh >> "$LOG_FILE" 2>&1; then
+    if "${PYTEST_CMD[@]}" "$test_dir" -v --tb=short -q -p no:xonsh >> "$LOG_FILE" 2>&1; then
         log "✅ $dir_name PASSED"
         ((PASSED++))
     else

@@ -148,6 +148,11 @@
     "hono": ">=4.11.7",
     "@isaacs/brace-expansion": ">=5.0.1",
     "undici": ">=7.24.0",
-    "next": ">=15.3.3"
+    "next": ">=15.3.3",
+    "flatted": ">=3.4.2",
+    "minimatch": ">=9.0.5",
+    "rollup": ">=4.60.0",
+    "picomatch": ">=4.0.4",
+    "effect": ">=3.20.0"
   }
 }
