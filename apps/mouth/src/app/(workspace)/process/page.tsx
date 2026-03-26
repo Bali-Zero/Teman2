@@ -129,6 +129,7 @@ interface FilterState {
   status: string;
   type: string;
   assigned_to: string;
+  payment_filter: string;
 }
 
 export default function PratichePage() {
@@ -143,6 +144,7 @@ export default function PratichePage() {
     status: "",
     type: "",
     assigned_to: "",
+    payment_filter: "",
   });
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
@@ -237,10 +239,12 @@ export default function PratichePage() {
         previousFiltersRef.current[key as keyof typeof filters]
       ) {
         if (filters[key as keyof typeof filters]) {
-          trackFilterApplied(
-            key as "status" | "type" | "assigned_to",
-            filters[key as keyof typeof filters],
-          );
+          if (key === "status" || key === "type" || key === "assigned_to") {
+            trackFilterApplied(
+              key,
+              filters[key as keyof typeof filters],
+            );
+          }
         } else {
           trackFilterRemoved(key);
         }
@@ -332,7 +336,7 @@ export default function PratichePage() {
   };
 
   const clearFilters = () => {
-    setFilters({ status: "", type: "", assigned_to: "" });
+    setFilters({ status: "", type: "", assigned_to: "", payment_filter: "" });
   };
 
   const toggleSort = useCallback((field: SortField) => {
@@ -397,6 +401,13 @@ export default function PratichePage() {
           // Assigned to filter
           if (filters.assigned_to && p.client_lead !== filters.assigned_to) {
             return false;
+          }
+
+          // Payment filter
+          if (filters.payment_filter === "unpaid") {
+            if (p.payment_status !== "unpaid" && p.payment_status !== "partial") {
+              return false;
+            }
           }
 
           return true;
@@ -568,6 +579,26 @@ export default function PratichePage() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Quick Filter Chips */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() =>
+              setFilters((f) => ({
+                ...f,
+                payment_filter: f.payment_filter === "unpaid" ? "" : "unpaid",
+              }))
+            }
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+              filters.payment_filter === "unpaid"
+                ? "bg-red-500/20 text-red-400 border-red-500/40"
+                : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-red-500/30 hover:text-red-400"
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+            Unpaid
+          </button>
         </div>
 
         {/* Filters Panel */}
