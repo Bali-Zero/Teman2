@@ -183,7 +183,7 @@ def jwt_required(_func: Callable) -> Callable:
 class AuthException(Exception):
     """Custom authentication exception"""
 
-    def __init__(self, status_code: int, detail: str):
+    def __init__(self, status_code: int, detail: str) -> None:
         self.status_code = status_code
         self.detail = detail
         super().__init__(detail)
