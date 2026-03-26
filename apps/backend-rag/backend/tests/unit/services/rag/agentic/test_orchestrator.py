@@ -2209,6 +2209,10 @@ class TestTeamQueryHandling:
             assert any(e["data"].get("status") == "team-query" for e in metadata_events)
 
     @pytest.mark.asyncio
+    @pytest.mark.skip(
+        reason="detect_team_query was removed from orchestrator in the streaming refactor. "
+        "Team queries now go through the standard ReAct loop."
+    )
     async def test_stream_query_team_query_failure_fallback(self, mock_db_pool):
         """Test team query failure falls back to RAG - covers lines 1041-1042"""
         from unittest.mock import MagicMock
