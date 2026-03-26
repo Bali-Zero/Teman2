@@ -1066,6 +1066,29 @@ export default function PratichePage() {
                                         </span>
                                       );
                                     })()}
+                                  {practice.expiry_date &&
+                                    (() => {
+                                      const d = Math.ceil(
+                                        (new Date(practice.expiry_date).getTime() - Date.now()) /
+                                          86400000
+                                      );
+                                      if (d < 0)
+                                        return (
+                                          <span className="text-[9px] px-1 py-0.5 rounded bg-red-500/20 text-red-400 tabular-nums">
+                                            exp
+                                          </span>
+                                        );
+                                      if (d <= 30)
+                                        return (
+                                          <span
+                                            className="text-[9px] px-1 py-0.5 rounded bg-yellow-500/15 text-yellow-400 tabular-nums"
+                                            title={`Expires in ${d} days`}
+                                          >
+                                            ⏰{d}d
+                                          </span>
+                                        );
+                                      return null;
+                                    })()}
                                 </div>
                               </div>
 
