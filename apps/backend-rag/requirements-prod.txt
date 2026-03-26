@@ -98,7 +98,7 @@ scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
 # Force rebuild 2026-02-13_00:12:41
 python-json-logger>=2.0.0
 aiosmtplib>=3.0.0
-apscheduler==3.10.4
+apscheduler==3.11.2
 
 # Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
 setuptools>=78.1.1
