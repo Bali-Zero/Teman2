@@ -396,6 +396,7 @@ apps/backend-rag/.venv/
 apps/backend-rag/backend/app/routers/*.before-claude
 harvested_zones/
 main.py
+!apps/cell/cell/main.py
 master_building_codes_complete.json
 service_roi_calculator.py
 service_zone_finder.py
