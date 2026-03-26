@@ -1,13 +1,18 @@
-'use client';
+"use client";
 
-import { CHAPTERS } from './book-data';
+import { CHAPTERS } from "./book-data";
 
 interface BookNavProps {
   activeChapter: string;
   onNavigate: (id: string) => void;
+  chapterNames?: string[];
 }
 
-export function BookNav({ activeChapter, onNavigate }: BookNavProps) {
+export function BookNav({
+  activeChapter,
+  onNavigate,
+  chapterNames,
+}: BookNavProps) {
   const activeIndex = CHAPTERS.findIndex((c) => c.id === activeChapter);
 
   return (
@@ -19,19 +24,19 @@ export function BookNav({ activeChapter, onNavigate }: BookNavProps) {
           className="w-px bg-[#d4845a] absolute left-1/2 -translate-x-1/2 top-0 origin-top transition-transform duration-500 -z-10"
           style={{
             transform: `scaleY(${activeIndex / (CHAPTERS.length - 1)})`,
-            height: '100%',
+            height: "100%",
           }}
         />
-        {CHAPTERS.map((chapter) => (
+        {CHAPTERS.map((chapter, i) => (
           <button
             key={chapter.id}
             onClick={() => onNavigate(chapter.id)}
-            aria-label={`Vai al capitolo: ${chapter.title}`}
-            title={chapter.title}
+            aria-label={chapterNames?.[i] ?? chapter.title}
+            title={chapterNames?.[i] ?? chapter.title}
             className={`w-2.5 h-2.5 rounded-full transition-all duration-300 border ${
               activeChapter === chapter.id
-                ? 'bg-[#d4845a] border-[#d4845a] scale-125'
-                : 'bg-transparent border-white/30 hover:border-white/60'
+                ? "bg-[#d4845a] border-[#d4845a] scale-125"
+                : "bg-transparent border-white/30 hover:border-white/60"
             }`}
           />
         ))}
@@ -46,14 +51,16 @@ export function BookNav({ activeChapter, onNavigate }: BookNavProps) {
           }}
           disabled={activeIndex === 0}
           className="text-white/50 disabled:opacity-20 hover:text-white transition-colors text-xl"
-          aria-label="Capitolo precedente"
+          aria-label="Previous chapter"
         >
           ←
         </button>
         <span className="text-white/60 text-xs text-center">
           {activeIndex + 1} / {CHAPTERS.length}
           <br />
-          <span className="text-white/40 text-[10px]">{CHAPTERS[activeIndex]?.id}</span>
+          <span className="text-white/40 text-[10px]">
+            {CHAPTERS[activeIndex]?.id}
+          </span>
         </span>
         <button
           onClick={() => {
@@ -62,7 +69,7 @@ export function BookNav({ activeChapter, onNavigate }: BookNavProps) {
           }}
           disabled={activeIndex === CHAPTERS.length - 1}
           className="text-white/50 disabled:opacity-20 hover:text-white transition-colors text-xl"
-          aria-label="Capitolo successivo"
+          aria-label="Next chapter"
         >
           →
         </button>

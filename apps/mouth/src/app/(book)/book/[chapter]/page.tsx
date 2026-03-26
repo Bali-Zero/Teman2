@@ -1,7 +1,7 @@
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { CHAPTERS } from '@/components/book/book-data';
-import { BookPage } from '../BookPage';
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { CHAPTERS } from "@/components/book/book-data";
+import { BookPage } from "../BookPage";
 
 interface Props {
   params: Promise<{ chapter: string }>;

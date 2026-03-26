@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { m, LazyMotion, domAnimation } from 'framer-motion';
+import { m, LazyMotion, domAnimation } from "framer-motion";
 
 interface ZantaraCTAProps {
   onClick: () => void;
