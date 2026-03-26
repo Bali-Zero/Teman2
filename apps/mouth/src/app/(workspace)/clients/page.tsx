@@ -49,7 +49,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   inactive: { bg: 'bg-gray-500/20', text: 'text-gray-400' },
 };
 
-type SortField = 'full_name' | 'created_at' | 'last_interaction_date' | 'status';
+type SortField = 'full_name' | 'created_at' | 'last_interaction_date' | 'status' | 'passport_expiry';
 type SortOrder = 'asc' | 'desc';
 type ViewMode = 'list' | 'kanban' | 'table';
 
@@ -374,6 +374,12 @@ function ClientsListContent() {
         case 'status':
           comparison = (a.status || '').localeCompare(b.status || '');
           break;
+        case 'passport_expiry': {
+          const aExp = a.passport_expiry ? new Date(a.passport_expiry).getTime() : Infinity;
+          const bExp = b.passport_expiry ? new Date(b.passport_expiry).getTime() : Infinity;
+          comparison = aExp - bExp;
+          break;
+        }
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
@@ -544,14 +550,9 @@ function ClientsListContent() {
                 maximumFractionDigits: 1,
               }).format(stats.revenue.outstanding),
               color: stats.revenue.outstanding > 0 ? '#fb923c' : '#4ade80',
-              bg:
-                stats.revenue.outstanding > 0
-                  ? 'rgba(249,115,22,0.08)'
-                  : 'rgba(74,222,128,0.08)',
+              bg: stats.revenue.outstanding > 0 ? 'rgba(249,115,22,0.08)' : 'rgba(74,222,128,0.08)',
               border:
-                stats.revenue.outstanding > 0
-                  ? 'rgba(249,115,22,0.15)'
-                  : 'rgba(74,222,128,0.15)',
+                stats.revenue.outstanding > 0 ? 'rgba(249,115,22,0.15)' : 'rgba(74,222,128,0.15)',
             },
             {
               label: 'Paid Revenue',
@@ -980,10 +981,18 @@ function ClientsListContent() {
               }}
             />
           ) : viewMode === 'table' ? (
-            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+            >
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <tr
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      borderBottom: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
                     {[
                       { key: 'full_name', label: 'Name' },
                       { key: 'status', label: 'Status' },
@@ -1007,11 +1016,12 @@ function ClientsListContent() {
                       >
                         <span className="flex items-center gap-1">
                           {col.label}
-                          {sortField === col.key && (
-                            sortOrder === 'asc'
-                              ? <SortAsc className="w-3 h-3" />
-                              : <SortDesc className="w-3 h-3" />
-                          )}
+                          {sortField === col.key &&
+                            (sortOrder === 'asc' ? (
+                              <SortAsc className="w-3 h-3" />
+                            ) : (
+                              <SortDesc className="w-3 h-3" />
+                            ))}
                         </span>
                       </th>
                     ))}
@@ -1025,7 +1035,10 @@ function ClientsListContent() {
                     const passportDaysLeft = passportExpiry
                       ? Math.ceil((passportExpiry.getTime() - Date.now()) / 86400000)
                       : null;
-                    const statusStyle = STATUS_STYLES[client.status] ?? { bg: 'bg-gray-500/20', text: 'text-gray-400' };
+                    const statusStyle = STATUS_STYLES[client.status] ?? {
+                      bg: 'bg-gray-500/20',
+                      text: 'text-gray-400',
+                    };
                     return (
                       <tr
                         key={client.id}
@@ -1035,26 +1048,46 @@ function ClientsListContent() {
                           background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
                           borderBottom: '1px solid rgba(255,255,255,0.05)',
                         }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.06)'; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)'; }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLTableRowElement).style.background =
+                            'rgba(255,255,255,0.06)';
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLTableRowElement).style.background =
+                            idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)';
+                        }}
                       >
-                        <td className="px-3 py-2 font-medium" style={{ color: 'var(--bz-text-1)', maxWidth: '200px' }}>
+                        <td
+                          className="px-3 py-2 font-medium"
+                          style={{ color: 'var(--bz-text-1)', maxWidth: '200px' }}
+                        >
                           <span className="truncate block">{client.full_name}</span>
                         </td>
                         <td className="px-3 py-2">
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${statusStyle.bg} ${statusStyle.text}`}>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ${statusStyle.bg} ${statusStyle.text}`}
+                          >
                             {client.status}
                           </span>
                         </td>
                         <td className="px-3 py-2 text-xs" style={{ color: 'var(--bz-text-2)' }}>
                           {client.nationality ?? '—'}
                         </td>
-                        <td className="px-3 py-2 text-xs" style={{ color: 'var(--bz-text-2)', maxWidth: '120px' }}>
-                          <span className="truncate block">{client.assigned_to ? client.assigned_to.split('@')[0] : '—'}</span>
+                        <td
+                          className="px-3 py-2 text-xs"
+                          style={{ color: 'var(--bz-text-2)', maxWidth: '120px' }}
+                        >
+                          <span className="truncate block">
+                            {client.assigned_to ? client.assigned_to.split('@')[0] : '—'}
+                          </span>
                         </td>
                         <td className="px-3 py-2 text-xs" style={{ color: 'var(--bz-text-2)' }}>
                           {client.last_interaction_date
-                            ? new Date(client.last_interaction_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })
+                            ? new Date(client.last_interaction_date).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: '2-digit',
+                              })
                             : '—'}
                         </td>
                         <td className="px-3 py-2 text-xs">
@@ -1067,11 +1100,22 @@ function ClientsListContent() {
                                     ? 'text-yellow-400'
                                     : ''
                               }
-                              style={passportDaysLeft !== null && passportDaysLeft >= 90 ? { color: 'var(--bz-text-2)' } : undefined}
+                              style={
+                                passportDaysLeft !== null && passportDaysLeft >= 90
+                                  ? { color: 'var(--bz-text-2)' }
+                                  : undefined
+                              }
                             >
-                              {passportExpiry.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
+                              {passportExpiry.toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: '2-digit',
+                              })}
                               {passportDaysLeft !== null && passportDaysLeft < 0 && ' (exp)'}
-                              {passportDaysLeft !== null && passportDaysLeft >= 0 && passportDaysLeft <= 90 && ` (${passportDaysLeft}d)`}
+                              {passportDaysLeft !== null &&
+                                passportDaysLeft >= 0 &&
+                                passportDaysLeft <= 90 &&
+                                ` (${passportDaysLeft}d)`}
                             </span>
                           ) : (
                             <span style={{ color: 'var(--bz-text-2)' }}>—</span>
@@ -1083,8 +1127,14 @@ function ClientsListContent() {
                 </tbody>
               </table>
               {hasMore && (
-                <div ref={loadMoreRef} className="p-4 text-center text-xs" style={{ color: 'var(--bz-text-2)' }}>
-                  {isLoadingMore ? 'Loading more...' : `${clients.length} of ${clients.length} loaded`}
+                <div
+                  ref={loadMoreRef}
+                  className="p-4 text-center text-xs"
+                  style={{ color: 'var(--bz-text-2)' }}
+                >
+                  {isLoadingMore
+                    ? 'Loading more...'
+                    : `${clients.length} of ${clients.length} loaded`}
                 </div>
               )}
             </div>
