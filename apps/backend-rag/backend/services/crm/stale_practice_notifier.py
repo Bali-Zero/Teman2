@@ -272,7 +272,7 @@ class StalePracticeNotifier:
         rows_html = ""
         for p in practices:
             crm_url = CRM_PRACTICE_URL.format(id=p["id"])
-            updated_str = _fmt_datetime(p.get("updated_at"))
+            _updated_str = _fmt_datetime(p.get("updated_at"))
             rows_html += (
                 f"<tr>"
                 f'<td style="{_TD}">'
