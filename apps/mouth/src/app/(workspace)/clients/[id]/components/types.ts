@@ -7,7 +7,8 @@ export type TabType =
   | "family"
   | "visas"
   | "company"
-  | "tax";
+  | "tax"
+  | "timeline";
 
 export type ModalType =
   | "none"
