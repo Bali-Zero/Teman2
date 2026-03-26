@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { Plus, FolderOpen, Calendar, Eye, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import type { ClientProfile } from '@/lib/api/crm/crm.types';
-import { STATUS_COLORS, ALERT_COLORS } from './constants';
+import React from "react";
+import { useRouter } from "next/navigation";
+import { Plus, FolderOpen, Calendar, Eye, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import type { ClientProfile } from "@/lib/api/crm/crm.types";
+import { STATUS_COLORS, ALERT_COLORS } from "./constants";
 
 export function ProcessTab({
   clientId,
@@ -16,7 +16,7 @@ export function ProcessTab({
   onRefresh,
 }: {
   clientId: number;
-  practices: ClientProfile['practices'];
+  practices: ClientProfile["practices"];
   formatDate: (d: string) => string;
   onRefresh: () => void;
 }) {
@@ -25,7 +25,9 @@ export function ProcessTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">All Process</h3>
+        <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
+          All Process
+        </h3>
         <Button
           size="sm"
           className="gap-2"
@@ -56,15 +58,18 @@ export function ProcessTab({
                   <span className="text-sm font-medium text-[var(--bz-text-1)]">
                     {practice.practice_type_name}
                   </span>
-                  <span className="text-xs text-[var(--bz-text-2)] ml-2">#{practice.id}</span>
+                  <span className="text-xs text-[var(--bz-text-2)] ml-2">
+                    #{practice.id}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${
-                      STATUS_COLORS[practice.status] || 'bg-gray-500/20 text-gray-400'
+                      STATUS_COLORS[practice.status] ||
+                      "bg-gray-500/20 text-gray-400"
                     }`}
                   >
-                    {practice.status.replace(/_/g, ' ')}
+                    {practice.status.replace(/_/g, " ")}
                   </span>
                   {/* View/Delete buttons - show on hover */}
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -83,16 +88,17 @@ export function ProcessTab({
                         e.stopPropagation();
                         if (
                           !window.confirm(
-                            `Delete process "${practice.practice_type_name}"?\n\nThis will mark the process as cancelled.`
+                            `Delete process "${practice.practice_type_name}"?\n\nThis will mark the process as cancelled.`,
                           )
-                        ) return;
+                        )
+                          return;
                         try {
                           const user = await api.getProfile();
                           await api.crm.deletePractice(practice.id, user.email);
-                          toast.success('Process deleted');
+                          toast.success("Process deleted");
                           onRefresh();
                         } catch (err) {
-                          toast.error('Error', {
+                          toast.error("Error", {
                             description: (err as Error).message,
                           });
                         }
@@ -108,7 +114,7 @@ export function ProcessTab({
               {practice.expiry_date && (
                 <div
                   className={`text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded ${
-                    ALERT_COLORS[practice.alert_color || 'green']
+                    ALERT_COLORS[practice.alert_color || "green"]
                   }`}
                 >
                   <Calendar className="w-3 h-3" />

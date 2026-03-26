@@ -199,7 +199,7 @@ export default function PratichePage() {
         let assignedTo: string | undefined;
         try {
           const user = await api.getProfile();
-          if (user && user.role !== 'admin') {
+          if (user && user.role !== "admin") {
             assignedTo = user.email;
           }
         } catch {
