@@ -159,6 +159,44 @@ export default function PortalHomePage() {
         />
       </section>
 
+      {/* Quick Stats Bar */}
+      {(defaultDashboard.documents.pending > 0 || defaultDashboard.messages.unread > 0) && (
+        <section className="flex flex-wrap gap-3">
+          {defaultDashboard.documents.pending > 0 && (
+            <div
+              onClick={() => router.push('/portal/process')}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all hover:scale-[1.01]"
+              style={{
+                background: 'rgba(245,158,11,0.06)',
+                borderColor: 'rgba(245,158,11,0.2)',
+              }}
+            >
+              <FileText className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-medium text-amber-400">
+                {defaultDashboard.documents.pending} document
+                {defaultDashboard.documents.pending !== 1 ? 's' : ''} pending
+              </span>
+            </div>
+          )}
+          {defaultDashboard.messages.unread > 0 && (
+            <div
+              onClick={() => router.push('/portal/messages')}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all hover:scale-[1.01]"
+              style={{
+                background: 'rgba(59,130,246,0.06)',
+                borderColor: 'rgba(59,130,246,0.2)',
+              }}
+            >
+              <MessageCircle className="w-4 h-4 text-blue-400" />
+              <span className="text-sm font-medium text-blue-400">
+                {defaultDashboard.messages.unread} unread message
+                {defaultDashboard.messages.unread !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Action Items */}
       {defaultDashboard.actions.length > 0 && (
         <section className="space-y-3">
