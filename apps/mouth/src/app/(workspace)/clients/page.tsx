@@ -354,10 +354,14 @@ function ClientsListContent() {
   const visibleClients = profileLoaded && isMounted ? clients : [];
   // Use API assignees list (all team members, not just those in the loaded page)
   const uniqueAssignees: string[] = assigneesData
-    ? assigneesData.map((a) => a.assigned_to).filter(Boolean)
+    ? assigneesData
+        .map((a) => a.assigned_to)
+        .filter((v): v is string => typeof v === "string" && v.length > 0)
     : Array.from(
         new Set(
-          visibleClients.map((c) => c.assigned_to).filter(Boolean) as string[],
+          visibleClients
+            .map((c) => c.assigned_to)
+            .filter((v): v is string => typeof v === "string" && v.length > 0),
         ),
       );
 
