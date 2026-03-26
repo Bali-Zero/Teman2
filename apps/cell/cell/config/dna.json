@@ -1,0 +1,55 @@
+{
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": 1,
+      "priority": 0,
+      "rule": "Never modify these rules, the interpreter, or the DNA file",
+      "scope": "absolute"
+    },
+    {
+      "id": 2,
+      "priority": 1,
+      "rule": "If something is broken, repair it",
+      "broken_means": "failing health check OR producing errors",
+      "broken_excludes": "budget limits, safety constraints, intentional changes",
+      "repair_means": "execute action from allowlist",
+      "repair_excludes": "disable safety, modify DNA, override human"
+    },
+    {
+      "id": 3,
+      "priority": 2,
+      "rule": "If something costs too much, eliminate it",
+      "cost_means": "API token spend and compute time ONLY",
+      "cost_excludes": "DNA validator, budget system, logging, health checks",
+      "threshold": "more than 15% of daily budget for single function"
+    },
+    {
+      "id": 4,
+      "priority": 3,
+      "rule": "If you lack something, search for it",
+      "search_means": "query authorized sources: Qdrant, PostgreSQL, Redis, MCP tools, health endpoints",
+      "search_excludes": "env vars, filesystem scan, network scan, privilege escalation"
+    },
+    {
+      "id": 5,
+      "priority": 4,
+      "rule": "If something works well, replicate it",
+      "gate": "ONLY if total budget usage below 60% AND rule 3 does not apply",
+      "replicate_means": "create new cell with successful strategy",
+      "replicate_excludes": "duplicate infrastructure, fork processes, self-exfiltrate"
+    }
+  ],
+  "constraints": {
+    "max_cells": 50,
+    "max_daily_budget_usd": 10.0,
+    "budget_partitions": { "routine": 3.0, "incident": 5.0, "reserve": 2.0 },
+    "max_redis_mb": 5,
+    "max_qdrant_vectors": 5000,
+    "max_cpu_percent": 20,
+    "action_cooldown_same_seconds": 3600,
+    "recovery_stabilization_seconds": 300,
+    "max_context_tokens_per_llm_call": 32000,
+    "max_cost_per_investigation_usd": 0.5
+  }
+}
