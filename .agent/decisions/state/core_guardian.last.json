@@ -1,0 +1,6 @@
+{
+  "job": "core_guardian",
+  "status": "failed",
+  "detail": "merge failed: merge_to_main exception: Command '['git', 'push', 'origin', 'main']' timed out after 60 seconds",
+  "ts": "2026-03-26T19:06:03.572623+00:00"
+}
