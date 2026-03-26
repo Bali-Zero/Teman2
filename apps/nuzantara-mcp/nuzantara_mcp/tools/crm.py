@@ -221,14 +221,14 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         Shows all touchpoints: emails, calls, WhatsApp, meetings, document submissions.
 
         Args:
-            client_id: UUID of the client
+            client_id: Numeric ID of the client
             limit: Max interactions to return
 
         Returns:
             Chronological list of interactions with type, date, summary, sentiment.
         """
         return await _call(
-            f"/api/crm/interactions/{client_id}/timeline",
+            f"/api/crm/interactions/client/{client_id}/timeline",
             params={"limit": limit},
         )
 

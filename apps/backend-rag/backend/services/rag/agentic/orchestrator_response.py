@@ -75,7 +75,7 @@ class OrchestratorResponseBuilder:
 
         timings.get("total", 0.0)
         verification_score = getattr(state, "verification_score", 0.0)
-        evidence_score = getattr(state, "evidence_score", 0.0)
+        evidence_score = getattr(state, "evidence_score", None) or 0.0
 
         # Determine if this is an ABSTAIN response
         abstain = evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD

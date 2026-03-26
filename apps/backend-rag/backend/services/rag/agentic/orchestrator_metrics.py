@@ -167,7 +167,7 @@ class OrchestratorMetricsManager:
         """
         primary_collection = next(iter(collections_used), "unknown")
         route_used = "agentic" if tool_execution_count > 0 else "direct"
-        evidence_score = getattr(state, "evidence_score", 0.0)
+        evidence_score = getattr(state, "evidence_score", None) or 0.0
 
         # Record RAG query metrics
         metrics_collector.record_rag_query(
@@ -232,7 +232,7 @@ class OrchestratorMetricsManager:
             tool_execution_count: Tool eseguiti
             token_usage: Token usage stats
         """
-        evidence_score = getattr(state, "evidence_score", 0.0)
+        evidence_score = getattr(state, "evidence_score", None) or 0.0
         sources = self.extract_sources_from_state(state)
 
         logger.info(
