@@ -348,6 +348,13 @@ export default function PratichePage() {
     setMenuPosition({ x: rect.right - 10, y: rect.bottom + 5 });
   };
 
+  const handleContextMenu = (e: React.MouseEvent, practice: Practice) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedPractice(practice);
+    setMenuPosition({ x: e.clientX, y: e.clientY });
+  };
+
   const handlePriorityChange = async (practiceId: number, newPriority: string) => {
     setUpdatingId(practiceId);
     try {
@@ -1107,6 +1114,7 @@ export default function PratichePage() {
                                         'linear-gradient(145deg, rgba(40,40,45,0.7) 0%, rgba(30,30,35,0.4) 100%)',
                                     }
                               }
+                              onContextMenu={(e) => handleContextMenu(e, practice)}
                               onClick={() => router.push(`/process/${practice.id}`)}
                             >
                               {updatingId === practice.id && (
@@ -1485,6 +1493,7 @@ export default function PratichePage() {
                     <tr
                       key={practice.id}
                       className="hover:bg-[rgba(255,255,255,0.05)] transition-colors cursor-pointer"
+                      onContextMenu={(e) => handleContextMenu(e, practice)}
                       onClick={() => router.push(`/process/${practice.id}`)}
                     >
                       <td className="px-4 py-3 text-sm font-medium text-[var(--bz-text-1)]">
