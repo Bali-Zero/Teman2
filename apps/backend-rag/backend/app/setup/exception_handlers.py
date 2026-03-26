@@ -8,6 +8,7 @@ and prevent TypeError when serializing HTTPException with non-serializable objec
 import logging
 from typing import Any
 
+import asyncpg
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -177,6 +178,28 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
     error_type = type(exc).__name__
     error_module = getattr(type(exc), "__module__", "unknown")
+
+    # asyncpg.InterfaceError = stale connection after Fly.io cold start.
+    # Expire pool connections so the next request gets a fresh one, then return 503.
+    if isinstance(exc, asyncpg.InterfaceError):
+        logger.warning(
+            f"[{correlation_id}] Stale DB connection on {request.method} {request.url.path}: {exc}. "
+            "Expiring pool connections."
+        )
+        try:
+            db_pool = getattr(request.app.state, "db_pool", None)
+            if db_pool is not None:
+                await db_pool.expire_connections()
+        except Exception as pool_err:
+            logger.warning(f"[{correlation_id}] Pool expire failed: {pool_err}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": "Database connection temporarily unavailable. Please retry.",
+                "correlation_id": correlation_id,
+            },
+            headers={"X-Correlation-ID": correlation_id, "Retry-After": "3"},
+        )
 
     logger.critical(
         f"[{correlation_id}] Unhandled exception: Type={error_type}, Module={error_module}, "

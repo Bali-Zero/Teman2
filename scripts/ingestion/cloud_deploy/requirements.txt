@@ -1,5 +1,0 @@
-openai
-qdrant-client
-python-dotenv
-httpx
-uuid

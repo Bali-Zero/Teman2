@@ -1,10 +1,37 @@
 {
   "daily_spend_usd": 0.0,
   "daily_spend_date": "2026-03-25",
-  "consecutive_failures": 3,
-  "last_failure_at": "2026-03-25T10:27:29.232443+00:00",
-  "breaker_active_until": "2026-03-26T10:27:29.232463+00:00",
+  "consecutive_failures": 0,
+  "last_failure_at": null,
+  "breaker_active_until": null,
   "runs": [
+    {
+      "run_id": "e0a926ad",
+      "timestamp": "2026-03-20T08:31:19.959969+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Claude Code failed: exit 1: error: unknown option '--prompt'\n(Did you mean one of --from-pr, --print?)\n"
+    },
+    {
+      "run_id": "1579c04c",
+      "timestamp": "2026-03-20T09:05:18.268536+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Regression: 3916 passed < 3917 baseline"
+    },
+    {
+      "run_id": "5697702b",
+      "timestamp": "2026-03-20T09:14:35.654121+00:00",
+      "ruff_code": "DTZ005",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Test failures: 1"
+    },
     {
       "run_id": "e7928572",
       "timestamp": "2026-03-20T09:20:32.909923+00:00",
@@ -427,33 +454,6 @@
       "outcome": "failed",
       "cost_usd": 0,
       "error": "Regression: 3856 passed < 3934 baseline (delta=78)"
-    },
-    {
-      "run_id": "fbd2f2db",
-      "timestamp": "2026-03-25T10:21:16.284210+00:00",
-      "ruff_code": "ANN204",
-      "target_file": "",
-      "outcome": "failed",
-      "cost_usd": 0,
-      "error": "Test failures: 17 real (+ 0 known/flaky ignored)"
-    },
-    {
-      "run_id": "eec5c37b",
-      "timestamp": "2026-03-25T10:24:48.209041+00:00",
-      "ruff_code": "ANN204",
-      "target_file": "",
-      "outcome": "failed",
-      "cost_usd": 0,
-      "error": "Test failures: 17 real (+ 0 known/flaky ignored)"
-    },
-    {
-      "run_id": "4dee0a18",
-      "timestamp": "2026-03-25T10:27:30.097575+00:00",
-      "ruff_code": "ANN204",
-      "target_file": "",
-      "outcome": "failed",
-      "cost_usd": 0,
-      "error": "Test failures: 17 real (+ 0 known/flaky ignored)"
     }
   ]
 }
