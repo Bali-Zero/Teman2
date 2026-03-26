@@ -194,7 +194,7 @@ export function FamilyTab({
       try {
         await api.crm.deleteFamilyMember(clientId, id);
         toast.success("Family member removed");
-        onRefresh();
+        await onRefresh();
       } catch (err) {
         toast.error("Error", { description: (err as Error).message });
       }
