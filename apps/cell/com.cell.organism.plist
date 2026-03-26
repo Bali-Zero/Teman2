@@ -22,6 +22,8 @@
         <string>1125336968</string>
         <key>GOOGLE_API_KEY</key>
         <string>AIzaSyDYeEjpYWCD2KD08Vky3IHJ8gOBrGLaHQo</string>
+        <key>REDIS_URL</key>
+        <string>redis://localhost:6379/0</string>
     </dict>
     <key>RunAtLoad</key>
     <true/>
