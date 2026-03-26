@@ -198,16 +198,24 @@ export default function ProfilePage() {
         {/* Info Fields */}
         <div className="space-y-4 pt-4 border-t" style={{ borderColor: 'var(--bz-border)' }}>
           <ProfileField icon={Mail} label="Email" value={profile.email} />
-
-          {profile.phone && <ProfileField icon={Phone} label="Phone" value={profile.phone} />}
-
-          {profile.whatsapp && (
-            <ProfileField icon={Phone} label="WhatsApp" value={profile.whatsapp} />
-          )}
-
-          {profile.nationality && (
-            <ProfileField icon={Globe} label="Nationality" value={profile.nationality} />
-          )}
+          <ProfileField
+            icon={Phone}
+            label="Phone"
+            value={profile.phone || 'Not provided'}
+            muted={!profile.phone}
+          />
+          <ProfileField
+            icon={Phone}
+            label="WhatsApp"
+            value={profile.whatsapp || 'Not provided'}
+            muted={!profile.whatsapp}
+          />
+          <ProfileField
+            icon={Globe}
+            label="Nationality"
+            value={profile.nationality || 'Not provided'}
+            muted={!profile.nationality}
+          />
 
           {/* Date of Birth with Birthday Glow */}
           {profile.dateOfBirth && (
@@ -401,10 +409,12 @@ function ProfileField({
   icon: Icon,
   label,
   value,
+  muted,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
+  muted?: boolean;
 }) {
   return (
     <div className="flex items-start gap-3 group" aria-label={`${label}: ${value} (read-only)`}>
@@ -412,7 +422,10 @@ function ProfileField({
         className="p-2 rounded-md backdrop-blur-sm shadow-sm"
         style={{ background: 'rgba(255,255,255,0.03)' }}
       >
-        <Icon className="w-4 h-4" style={{ color: 'var(--bz-text-2)' }} />
+        <Icon
+          className="w-4 h-4"
+          style={{ color: muted ? 'var(--bz-text-3)' : 'var(--bz-text-2)' }}
+        />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1">
@@ -424,7 +437,12 @@ function ProfileField({
             style={{ color: 'var(--bz-text-3)' }}
           />
         </div>
-        <p className="text-sm font-medium break-words">{value}</p>
+        <p
+          className={cn('text-sm break-words', muted ? 'italic' : 'font-medium')}
+          style={muted ? { color: 'var(--bz-text-3)' } : undefined}
+        >
+          {value}
+        </p>
       </div>
     </div>
   );
