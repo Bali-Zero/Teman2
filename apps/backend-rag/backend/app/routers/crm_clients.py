@@ -327,6 +327,16 @@ async def create_client(
         # Invalidazione extra cache HTTP (il service invalida la memory cache)
         await invalidate_cache("zantara:crm_clients_stats:*")
 
+        # Welcome communications (Trigger 1a + 1b)
+        try:
+            from backend.services.crm.welcome.welcome_whatsapp_service import send_client_welcome
+            from backend.services.crm.welcome.welcome_email_service import schedule_client_welcome_email
+
+            background_tasks.add_task(send_client_welcome, new_client["id"], db_pool)
+            schedule_client_welcome_email(new_client["id"], db_pool)
+        except Exception as e:
+            logger.error(f"Welcome communication setup failed: {e}")
+
         return ClientResponse(**new_client)
 
     except ResourceConflictError as e:
