@@ -266,7 +266,7 @@ export class CrmApi {
     const queryString = queryParams.toString();
     const url = `/api/crm/clients${queryString ? `?${queryString}` : ""}`;
 
-    return this.client.request<Client[]>(url);
+    return this.client.request<Client[]>(url, undefined, 10000);
   }
 
   /**
@@ -344,7 +344,11 @@ export class CrmApi {
    * Get a single client by ID
    */
   async getClient(clientId: number): Promise<Client> {
-    return this.client.request<Client>(`/api/crm/clients/${clientId}`);
+    return this.client.request<Client>(
+      `/api/crm/clients/${clientId}`,
+      undefined,
+      10000,
+    );
   }
 
   /**
@@ -370,6 +374,8 @@ export class CrmApi {
   async getClientSummary(clientId: number): Promise<ClientSummary> {
     return this.client.request<ClientSummary>(
       `/api/crm/clients/${clientId}/summary`,
+      undefined,
+      10000,
     );
   }
 
@@ -383,8 +389,10 @@ export class CrmApi {
     // Backend returns {client_id, total_interactions, timeline: Interaction[]}
     const response = await this.client.request<{ timeline: Interaction[] }>(
       `/api/crm/interactions/client/${clientId}/timeline?limit=${limit}`,
+      undefined,
+      10000,
     );
-    return response.timeline || [];
+    return Array.isArray(response.timeline) ? response.timeline : [];
   }
 
   /**

@@ -140,7 +140,7 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
     setOffset(0);
     setAllClients([]);
     setHasMore(true);
-    refetch();
+    void refetch();
   }, [refetch]);
 
   return {
