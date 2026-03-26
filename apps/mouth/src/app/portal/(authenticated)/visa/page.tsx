@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 import {
   Loader2,
   Plane,
@@ -9,16 +9,12 @@ import {
   AlertTriangle,
   FileText,
   Clock,
-} from "lucide-react";
-import { api } from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
-import { logger } from "@/lib/logger";
-import type {
-  VisaInfo,
-  VisaHistoryItem,
-  PortalDocument,
-} from "@/lib/api/portal/portal.types";
+} from 'lucide-react';
+import { api } from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
+import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
+import type { VisaInfo, VisaHistoryItem, PortalDocument } from '@/lib/api/portal/portal.types';
 
 export default function VisaPage() {
   const { error } = useToast();
@@ -35,8 +31,8 @@ export default function VisaPage() {
       const data = await api.portal.getVisaStatus();
       setVisaInfo(data);
     } catch (err) {
-      error("Failed to load visa information", "Please try again later");
-      logger.error("Failed to load portal visa info", {}, err as Error);
+      error('Failed to load visa information', 'Please try again later');
+      logger.error('Failed to load portal visa info', {}, err as Error);
     } finally {
       setIsLoading(false);
     }
@@ -45,26 +41,47 @@ export default function VisaPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2
-          className="w-8 h-8 animate-spin"
-          style={{ color: "var(--bz-accent-warm)" }}
-        />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--bz-accent-warm)' }} />
       </div>
     );
   }
 
-  if (!visaInfo) return null;
+  if (!visaInfo) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <section>
+          <h1 className="text-2xl font-bold tracking-tight">Immigration Status</h1>
+          <p style={{ color: 'var(--bz-text-2)' }}>Your visa and permit information</p>
+        </section>
+        <section
+          className="rounded-xl border border-dashed p-12 text-center"
+          style={{
+            background: 'rgba(30,30,35,0.7)',
+            borderColor: 'rgba(255,255,255,0.05)',
+            backdropFilter: 'blur(24px)',
+          }}
+        >
+          <Plane
+            className="w-16 h-16 mx-auto mb-4 opacity-30"
+            style={{ color: 'var(--bz-text-2)' }}
+          />
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--bz-text-2)' }}>
+            No visa information
+          </h2>
+          <p className="text-sm mt-1" style={{ color: 'var(--bz-text-3)' }}>
+            Visa details will appear here once your immigration process begins.
+          </p>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <section>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Immigration Status
-        </h1>
-        <p style={{ color: "var(--bz-text-2)" }}>
-          Your visa and permit information
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">Immigration Status</h1>
+        <p style={{ color: 'var(--bz-text-2)' }}>Your visa and permit information</p>
       </section>
 
       {/* Current Visa */}
@@ -72,17 +89,14 @@ export default function VisaPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
+            background: 'rgba(30,30,35,0.7)',
+            borderColor: 'rgba(255,255,255,0.05)',
+            backdropFilter: 'blur(24px)',
           }}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Plane
-                className="w-5 h-5"
-                style={{ color: "var(--bz-accent-warm)" }}
-              />
+              <Plane className="w-5 h-5" style={{ color: 'var(--bz-accent-warm)' }} />
               <h2 className="text-lg font-semibold">Current Visa</h2>
             </div>
             <StatusBadge status={visaInfo.current.status} />
@@ -90,37 +104,25 @@ export default function VisaPage() {
 
           <div className="space-y-3">
             <InfoRow label="Visa Type" value={visaInfo.current.type} />
-            <InfoRow
-              label="Permit Number"
-              value={visaInfo.current.permitNumber}
-            />
+            <InfoRow label="Permit Number" value={visaInfo.current.permitNumber} />
             <InfoRow label="Sponsor" value={visaInfo.current.sponsor} />
 
-            <div
-              className="pt-3 border-t"
-              style={{ borderColor: "var(--bz-border)" }}
-            >
+            <div className="pt-3 border-t" style={{ borderColor: 'var(--bz-border)' }}>
               <InfoRow
                 label="Issue Date"
-                value={new Date(visaInfo.current.issueDate).toLocaleDateString(
-                  "en-US",
-                  {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  },
-                )}
+                value={new Date(visaInfo.current.issueDate).toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
               />
               <InfoRow
                 label="Expiry Date"
-                value={new Date(visaInfo.current.expiryDate).toLocaleDateString(
-                  "en-US",
-                  {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  },
-                )}
+                value={new Date(visaInfo.current.expiryDate).toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
               />
             </div>
           </div>
@@ -129,39 +131,32 @@ export default function VisaPage() {
           {visaInfo.current.daysRemaining !== null && (
             <div
               className={cn(
-                "mt-4 p-4 rounded-lg flex items-start gap-3 border",
-                visaInfo.current.daysRemaining <= 60 &&
-                  "animate-pulse border-2",
+                'mt-4 p-4 rounded-lg flex items-start gap-3 border',
+                visaInfo.current.daysRemaining <= 60 && 'animate-pulse border-2'
               )}
               style={
                 visaInfo.current.daysRemaining <= 60
                   ? {
-                      background: "rgba(239,68,68,0.08)",
-                      borderColor: "rgba(239,68,68,0.4)",
+                      background: 'rgba(239,68,68,0.08)',
+                      borderColor: 'rgba(239,68,68,0.4)',
                     }
                   : {
-                      background: "rgba(16,185,129,0.06)",
-                      borderColor: "rgba(16,185,129,0.25)",
+                      background: 'rgba(16,185,129,0.06)',
+                      borderColor: 'rgba(16,185,129,0.25)',
                     }
               }
             >
               <Clock
                 className="w-5 h-5 mt-0.5"
                 style={{
-                  color:
-                    visaInfo.current.daysRemaining <= 60
-                      ? "#f87171"
-                      : "#34d399",
+                  color: visaInfo.current.daysRemaining <= 60 ? '#f87171' : '#34d399',
                 }}
               />
               <div className="flex-1">
                 <p
                   className="text-sm font-semibold"
                   style={{
-                    color:
-                      visaInfo.current.daysRemaining <= 60
-                        ? "#f87171"
-                        : "#34d399",
+                    color: visaInfo.current.daysRemaining <= 60 ? '#f87171' : '#34d399',
                   }}
                 >
                   {visaInfo.current.daysRemaining} days remaining
@@ -169,17 +164,13 @@ export default function VisaPage() {
                 <p
                   className="text-xs mt-1"
                   style={{
-                    color:
-                      visaInfo.current.daysRemaining <= 60
-                        ? "#f87171"
-                        : "var(--bz-text-2)",
-                    fontWeight:
-                      visaInfo.current.daysRemaining <= 60 ? 500 : 400,
+                    color: visaInfo.current.daysRemaining <= 60 ? '#f87171' : 'var(--bz-text-2)',
+                    fontWeight: visaInfo.current.daysRemaining <= 60 ? 500 : 400,
                   }}
                 >
                   {visaInfo.current.daysRemaining <= 60
-                    ? "🚨 URGENT: Your visa expires in less than 2 months. Please contact us immediately to begin renewal planning or communicate your departure date."
-                    : "Your visa is valid"}
+                    ? '🚨 URGENT: Your visa expires in less than 2 months. Please contact us immediately to begin renewal planning or communicate your departure date.'
+                    : 'Your visa is valid'}
                 </p>
               </div>
             </div>
@@ -189,18 +180,16 @@ export default function VisaPage() {
         <section
           className="rounded-xl border border-dashed p-8 text-center"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
+            background: 'rgba(30,30,35,0.7)',
+            borderColor: 'rgba(255,255,255,0.05)',
+            backdropFilter: 'blur(24px)',
           }}
         >
           <Plane
             className="w-12 h-12 mx-auto mb-3 opacity-30"
-            style={{ color: "var(--bz-text-2)" }}
+            style={{ color: 'var(--bz-text-2)' }}
           />
-          <p style={{ color: "var(--bz-text-2)" }}>
-            No active visa information
-          </p>
+          <p style={{ color: 'var(--bz-text-2)' }}>No active visa information</p>
         </section>
       )}
 
@@ -209,16 +198,13 @@ export default function VisaPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
+            background: 'rgba(30,30,35,0.7)',
+            borderColor: 'rgba(255,255,255,0.05)',
+            backdropFilter: 'blur(24px)',
           }}
         >
           <div className="flex items-center gap-2">
-            <FileText
-              className="w-5 h-5"
-              style={{ color: "var(--bz-accent-warm)" }}
-            />
+            <FileText className="w-5 h-5" style={{ color: 'var(--bz-accent-warm)' }} />
             <h2 className="text-lg font-semibold">Related Documents</h2>
           </div>
 
@@ -235,16 +221,13 @@ export default function VisaPage() {
         <section
           className="rounded-xl border p-6 space-y-4"
           style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
+            background: 'rgba(30,30,35,0.7)',
+            borderColor: 'rgba(255,255,255,0.05)',
+            backdropFilter: 'blur(24px)',
           }}
         >
           <div className="flex items-center gap-2">
-            <Calendar
-              className="w-5 h-5"
-              style={{ color: "var(--bz-accent-warm)" }}
-            />
+            <Calendar className="w-5 h-5" style={{ color: 'var(--bz-accent-warm)' }} />
             <h2 className="text-lg font-semibold">Visa History</h2>
           </div>
 
@@ -260,34 +243,30 @@ export default function VisaPage() {
 }
 
 // Sub-components
-function StatusBadge({
-  status,
-}: {
-  status: "active" | "pending" | "warning" | "expired";
-}) {
+function StatusBadge({ status }: { status: 'active' | 'pending' | 'warning' | 'expired' }) {
   const config: Record<
     string,
     { icon: React.ElementType; label: string; style: React.CSSProperties }
   > = {
     active: {
       icon: CheckCircle,
-      label: "Active",
-      style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+      label: 'Active',
+      style: { background: 'rgba(16,185,129,0.12)', color: '#34d399' },
     },
     pending: {
       icon: Clock,
-      label: "Pending",
-      style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+      label: 'Pending',
+      style: { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
     },
     warning: {
       icon: AlertTriangle,
-      label: "Expiring Soon",
-      style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+      label: 'Expiring Soon',
+      style: { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
     },
     expired: {
       icon: AlertTriangle,
-      label: "Expired",
-      style: { background: "rgba(239,68,68,0.12)", color: "#f87171" },
+      label: 'Expired',
+      style: { background: 'rgba(239,68,68,0.12)', color: '#f87171' },
     },
   };
 
@@ -307,7 +286,7 @@ function StatusBadge({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between py-2">
-      <span className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+      <span className="text-sm" style={{ color: 'var(--bz-text-2)' }}>
         {label}
       </span>
       <span className="text-sm font-medium text-right">{value}</span>
@@ -318,16 +297,16 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function DocumentCard({ document }: { document: PortalDocument }) {
   const getStatusStyle = (status: string): React.CSSProperties => {
     switch (status) {
-      case "verified":
-        return { background: "rgba(16,185,129,0.12)", color: "#34d399" };
-      case "pending":
-        return { background: "rgba(245,158,11,0.12)", color: "#fbbf24" };
-      case "expired":
-        return { background: "rgba(239,68,68,0.12)", color: "#f87171" };
+      case 'verified':
+        return { background: 'rgba(16,185,129,0.12)', color: '#34d399' };
+      case 'pending':
+        return { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' };
+      case 'expired':
+        return { background: 'rgba(239,68,68,0.12)', color: '#f87171' };
       default:
         return {
-          background: "rgba(255,255,255,0.03)",
-          color: "var(--bz-text-2)",
+          background: 'rgba(255,255,255,0.03)',
+          color: 'var(--bz-text-2)',
         };
     }
   };
@@ -336,19 +315,13 @@ function DocumentCard({ document }: { document: PortalDocument }) {
     <div
       className="rounded-lg border p-3 transition-colors"
       style={{
-        background: "rgba(255,255,255,0.03)",
-        borderColor: "rgba(255,255,255,0.05)",
+        background: 'rgba(255,255,255,0.03)',
+        borderColor: 'rgba(255,255,255,0.05)',
       }}
     >
       <div className="flex items-center gap-3">
-        <div
-          className="p-2 rounded-md"
-          style={{ background: "rgba(201,169,110,0.1)" }}
-        >
-          <FileText
-            className="w-4 h-4"
-            style={{ color: "var(--bz-accent-warm)" }}
-          />
+        <div className="p-2 rounded-md" style={{ background: 'rgba(201,169,110,0.1)' }}>
+          <FileText className="w-4 h-4" style={{ color: 'var(--bz-accent-warm)' }} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{document.name}</p>
@@ -359,7 +332,7 @@ function DocumentCard({ document }: { document: PortalDocument }) {
             >
               {document.status}
             </span>
-            <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+            <span className="text-xs" style={{ color: 'var(--bz-text-2)' }}>
               {document.size}
             </span>
           </div>
@@ -374,22 +347,22 @@ function HistoryCard({ item }: { item: VisaHistoryItem }) {
     <div
       className="rounded-lg border p-3"
       style={{
-        background: "rgba(255,255,255,0.03)",
-        borderColor: "rgba(255,255,255,0.05)",
+        background: 'rgba(255,255,255,0.03)',
+        borderColor: 'rgba(255,255,255,0.05)',
       }}
     >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium">{item.type}</p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--bz-text-2)" }}>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--bz-text-2)' }}>
             {item.period}
           </p>
         </div>
         <span
           className="text-xs px-2 py-1 rounded-full font-medium"
           style={{
-            background: "rgba(255,255,255,0.05)",
-            color: "var(--bz-text-2)",
+            background: 'rgba(255,255,255,0.05)',
+            color: 'var(--bz-text-2)',
           }}
         >
           {item.status}
