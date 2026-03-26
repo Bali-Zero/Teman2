@@ -123,6 +123,22 @@ export default function VisaPage() {
                   day: 'numeric',
                   year: 'numeric',
                 })}
+                chip={
+                  visaInfo.current.daysRemaining !== null
+                    ? {
+                        text:
+                          visaInfo.current.daysRemaining <= 0
+                            ? `Expired ${Math.abs(visaInfo.current.daysRemaining)}d ago`
+                            : `${visaInfo.current.daysRemaining}d left`,
+                        color:
+                          visaInfo.current.daysRemaining <= 0
+                            ? 'bg-red-500/10 text-red-400'
+                            : visaInfo.current.daysRemaining <= 60
+                              ? 'bg-amber-500/10 text-amber-400'
+                              : 'bg-emerald-500/10 text-emerald-400',
+                      }
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -153,14 +169,24 @@ export default function VisaPage() {
                 }}
               />
               <div className="flex-1">
-                <p
-                  className="text-sm font-semibold"
-                  style={{
-                    color: visaInfo.current.daysRemaining <= 60 ? '#f87171' : '#34d399',
-                  }}
-                >
-                  {visaInfo.current.daysRemaining} days remaining
-                </p>
+                <div className="flex items-baseline gap-2">
+                  <span
+                    className="text-2xl font-bold font-mono"
+                    style={{
+                      color: visaInfo.current.daysRemaining <= 60 ? '#f87171' : '#34d399',
+                    }}
+                  >
+                    {visaInfo.current.daysRemaining}
+                  </span>
+                  <span
+                    className="text-sm font-semibold"
+                    style={{
+                      color: visaInfo.current.daysRemaining <= 60 ? '#f87171' : '#34d399',
+                    }}
+                  >
+                    days remaining
+                  </span>
+                </div>
                 <p
                   className="text-xs mt-1"
                   style={{
@@ -169,8 +195,8 @@ export default function VisaPage() {
                   }}
                 >
                   {visaInfo.current.daysRemaining <= 60
-                    ? '🚨 URGENT: Your visa expires in less than 2 months. Please contact us immediately to begin renewal planning or communicate your departure date.'
-                    : 'Your visa is valid'}
+                    ? 'Your visa expires in less than 2 months. Please contact us immediately to begin renewal.'
+                    : 'Your visa is valid. We will notify you when renewal is needed.'}
                 </p>
               </div>
             </div>
@@ -283,13 +309,28 @@ function StatusBadge({ status }: { status: 'active' | 'pending' | 'warning' | 'e
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({
+  label,
+  value,
+  chip,
+}: {
+  label: string;
+  value: string;
+  chip?: { text: string; color: string };
+}) {
   return (
     <div className="flex items-center justify-between py-2">
       <span className="text-sm" style={{ color: 'var(--bz-text-2)' }}>
         {label}
       </span>
-      <span className="text-sm font-medium text-right">{value}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-right">{value}</span>
+        {chip && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${chip.color}`}>
+            {chip.text}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
