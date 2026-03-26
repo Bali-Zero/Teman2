@@ -8,22 +8,22 @@
 
 ## Matrice Priorità
 
-| Rank | # | Problema | Componente | Effort | Quick Win | ROI |
-|------|---|----------|-----------|--------|-----------|-----|
-| ⚡ | 10 | Query Expansion dead | `fly secrets set` | **5 min** | ✅ | +15-20% RAG |
-| 1 | 12 | Dependency Debt | `dependabot.yml` | 1h | ✅ | Compliance auto |
-| 2 | 4 | Test Debt CI | Fix `tests.yml` path | 2h | ✅ | Blocca ciclo sporco |
-| 3 | 1 | Rogue AI Refactor | `.pre-commit-config.yaml` | 2h | ✅ | Previene production crash |
-| 4 | 2 | asyncpg stale (residuo) | `pool_pre_ping` + `pool_recycle` | 30min | ✅ | Chiude fix di oggi |
-| 5 | 3 | Drive OAuth alert | `drive_token_watchdog.py` | 3h | ✅ | Silent failure → alert |
-| 6 | 7 | Monitoring cron inattivi | Attivare cron Air | 2h | ✅ | Proattivo invece reattivo |
-| 7 | 13 | No Deploy Gate CI | `fly-deploy.yml` GitHub Actions | 3h | — | Deploy impossibile senza test verdi |
-| 8 | 14 | Memory→CLAUDE.md | Migrazione + Core Guardian check | 2h | — | AI agent non ripete errori |
-| 9 | 6 | Cache Invalidation | AST analyzer Core Guardian | 3h | — | Audit continuo automatico |
-| 10 | 11 | Drive Polling fragile | `DrivePollCircuitBreaker` | 3h | — | Circuit breaker |
-| 11 | 5 | CRM Data Quality | Pydantic bulk + cron hygiene | 4h | — | Rompe ciclo sporco |
-| 12 | 8 | RAG Evaluation | `ragas_eval.py` + cron | 4h | — | Metriche oggettive |
-| 13 | 9 | KG Visa hardcoded | Fix RPTKA sezione | 2h | — | Parziale, non totale |
+| Rank | #   | Problema                 | Componente                       | Effort    | Quick Win | ROI                                 |
+| ---- | --- | ------------------------ | -------------------------------- | --------- | --------- | ----------------------------------- |
+| ⚡   | 10  | Query Expansion dead     | `fly secrets set`                | **5 min** | ✅        | +15-20% RAG                         |
+| 1    | 12  | Dependency Debt          | `dependabot.yml`                 | 1h        | ✅        | Compliance auto                     |
+| 2    | 4   | Test Debt CI             | Fix `tests.yml` path             | 2h        | ✅        | Blocca ciclo sporco                 |
+| 3    | 1   | Rogue AI Refactor        | `.pre-commit-config.yaml`        | 2h        | ✅        | Previene production crash           |
+| 4    | 2   | asyncpg stale (residuo)  | `pool_pre_ping` + `pool_recycle` | 30min     | ✅        | Chiude fix di oggi                  |
+| 5    | 3   | Drive OAuth alert        | `drive_token_watchdog.py`        | 3h        | ✅        | Silent failure → alert              |
+| 6    | 7   | Monitoring cron inattivi | Attivare cron Air                | 2h        | ✅        | Proattivo invece reattivo           |
+| 7    | 13  | No Deploy Gate CI        | `fly-deploy.yml` GitHub Actions  | 3h        | —         | Deploy impossibile senza test verdi |
+| 8    | 14  | Memory→CLAUDE.md         | Migrazione + Core Guardian check | 2h        | —         | AI agent non ripete errori          |
+| 9    | 6   | Cache Invalidation       | AST analyzer Core Guardian       | 3h        | —         | Audit continuo automatico           |
+| 10   | 11  | Drive Polling fragile    | `DrivePollCircuitBreaker`        | 3h        | —         | Circuit breaker                     |
+| 11   | 5   | CRM Data Quality         | Pydantic bulk + cron hygiene     | 4h        | —         | Rompe ciclo sporco                  |
+| 12   | 8   | RAG Evaluation           | `ragas_eval.py` + cron           | 4h        | —         | Metriche oggettive                  |
+| 13   | 9   | KG Visa hardcoded        | Fix RPTKA sezione                | 2h        | —         | Parziale, non totale                |
 
 **Totale effort:** ~120h (3 settimane) | **ROI atteso:** -80% incidenti, recupero 40h/settimana firefighting
 
@@ -34,14 +34,17 @@
 ---
 
 ### #1 — Rogue AI Refactor
+
 > Gemini/Windsurf/Cursor rimuovono import critici → production crash (5+ volte, feb-mar 2026)
 
 **Automazioni esistenti:**
+
 - Pre-push hook presente ma `exit 0` forzato (non bloccante)
 - Core Guardian V3 ogni 3h — rileva ma non blocca
 - `scripts/preflight.sh pre` — manuale
 
 **Automazione che azzera:**
+
 ```yaml
 # .pre-commit-config.yaml (da creare nel repo root)
 repos:
@@ -61,12 +64,15 @@ repos:
         pass_filenames: false
         always_run: true
 ```
+
 ```bash
 # Attivazione (una tantum):
 pip install pre-commit
 pre-commit install
 ```
+
 **TRIGGER → DETECTOR → ACTOR → VERIFIER:**
+
 - TRIGGER: `git commit`
 - DETECTOR: AST import chain test + file name check
 - ACTOR: blocco commit con messaggio esplicito
@@ -78,15 +84,18 @@ pre-commit install
 ---
 
 ### #2 — asyncpg Stale Connection (residuo)
+
 > Fix principale completato questa sessione. Rimane un edge case: cold start >30s + prima request <15s prima del primo health loop cycle.
 
 **Automazioni esistenti (mature):**
+
 - `max_inactive_connection_lifetime=30s` ✅
 - `_database_health_check_loop()` ogni 15s con `expire_connections()` ✅
 - `exception_handlers.py` InterfaceError → 503 + Retry-After ✅
 - `preflight.sh post` con auto-restart Fly machine ✅
 
 **Fix residuo (30 minuti):**
+
 ```python
 # service_initializer.py — aggiungere agli init_kwargs del pool
 pool_kwargs = {
@@ -105,14 +114,17 @@ pool_kwargs = {
 ---
 
 ### #3 — Google Drive OAuth/SA Scaduta
+
 > Silent failure ricorrente ogni ~trimestre: token scade, documenti clienti non visibili, scoperto solo da segnalazione cliente
 
 **Automazioni esistenti:**
+
 - `google_drive_tokens` table con `expires_at` ✅
 - Admin endpoint che espone `expires_at` ✅
 - **MANCA:** qualsiasi alert proattivo
 
 **Automazione che azzera:**
+
 ```python
 # scripts/drive_token_watchdog.py (da creare)
 """
@@ -186,9 +198,11 @@ if __name__ == "__main__":
 ---
 
 ### #4 — Test Debt a Ciclo
+
 > CI usa `--cov=src` invece di `backend/` → raccoglie 0 items → nessun gate reale
 
 **Fix parte 1 — 1 riga in tests.yml:**
+
 ```yaml
 # .github/workflows/tests.yml — CORREGGERE
 - name: Run tests
@@ -200,12 +214,13 @@ if __name__ == "__main__":
 ```
 
 **Fix parte 2 — gate bloccante su PR:**
+
 ```yaml
 # .github/workflows/tests.yml — aggiungere
 on:
   pull_request:
     branches: [main]
-    paths: ['apps/backend-rag/**']
+    paths: ["apps/backend-rag/**"]
 # Aggiungere branch protection rule su GitHub:
 # Settings → Branches → main → Required status checks → "test-gate"
 ```
@@ -215,9 +230,11 @@ on:
 ---
 
 ### #5 — CRM Data Quality
+
 > Bulk import senza validazione → ciclo sporco/pulito ogni 2 settimane
 
 **Schema validation pre-insert (Pydantic v2):**
+
 ```python
 # backend/app/schemas/crm_import.py (da creare)
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
@@ -246,6 +263,7 @@ class ClientImportRow(BaseModel):
 ```
 
 **Daily hygiene cron (05:00 Air):**
+
 ```python
 # scripts/crm_hygiene.py (da creare)
 """
@@ -269,9 +287,11 @@ ANOMALY_QUERIES = [
 ---
 
 ### #6 — Cache Invalidation Mancante
+
 > Mutation senza `invalidate_cache()` → dati stale visibili agli utenti
 
 **AST Analyzer per Core Guardian V3:**
+
 ```python
 # apps/evaluator/core_guardian/checks/cache_invalidation_audit.py (da creare)
 import ast
@@ -311,9 +331,11 @@ def find_mutation_without_cache_invalidation() -> Iterator[str]:
 ---
 
 ### #7 — Monitoring Reattivo
+
 > Cron esistenti non attivi su Air, system_doctor manuale, rag_canary manuale
 
 **Fix immediato — attivare cron su Air (2h):**
+
 ```bash
 # Aggiungere a crontab Air (crontab -e):
 # RAG canary ogni 6h
@@ -330,6 +352,7 @@ def find_mutation_without_cache_invalidation() -> Iterator[str]:
 ```
 
 **Proactive forecast (HealthForecaster — DeepSeek):**
+
 ```python
 # Aggiungere a system_doctor.py
 def check_trends(metrics_history: list[dict]) -> list[str]:
@@ -349,9 +372,11 @@ def check_trends(metrics_history: list[dict]) -> list[str]:
 ---
 
 ### #8 — RAG Evaluation (RAGAS)
+
 > Pianificata feb-16, rimanda ogni sessione. Canary misura solo cosine similarity, non faithfulness.
 
 **Pipeline minimale:**
+
 ```python
 # scripts/ragas_eval.py (da creare)
 """
@@ -404,9 +429,11 @@ asyncio.run(run_eval())
 ---
 
 ### #9 — KG Subgraph Hardcoded
+
 > Situazione reale: meno grave del previsto. Company usa KG reale. Solo visa RPTKA è hardcoded.
 
 **Fix mirato (solo sezione RPTKA):**
+
 ```python
 # backend/services/rag/kg_subgraph_visa.py — linea ~150
 # PRIMA:
@@ -430,6 +457,7 @@ async def _get_rptka_requirements(db_pool) -> list[str]:
 ---
 
 ### #10 — Query Expansion (⚡ QUICK WIN 5 MINUTI)
+
 > Il wiring c'è già. `ENABLE_QUERY_EXPANSION` è False per default. Un comando risolve.
 
 ```bash
@@ -443,6 +471,7 @@ fly secrets set ENABLE_QUERY_EXPANSION=true -a nuzantara-rag
 ---
 
 ### #11 — Drive Polling Fragilità
+
 > Circuit breaker mancante: 3x fallimenti consecutivi non vengono rilevati
 
 ```python
@@ -490,6 +519,7 @@ class CircuitBreaker:
 ---
 
 ### #12 — Dependency Debt
+
 > `.github/workflows/security.yml` esiste ma tutti i job hanno `continue-on-error: true` — non bloccano nulla
 
 **Fix in 2 file:**
@@ -504,7 +534,7 @@ updates:
       interval: weekly
       day: monday
     ignore:
-      - dependency-name: sentence-transformers  # pinned per torch compat
+      - dependency-name: sentence-transformers # pinned per torch compat
     labels:
       - "dependencies"
       - "security"
@@ -532,6 +562,7 @@ updates:
 ---
 
 ### #13 — Nessun Gate Pre-Deploy Automatico
+
 > `fly deploy` può essere eseguito manualmente senza che preflight.sh venga mai chiamato
 
 ```yaml
@@ -540,7 +571,7 @@ name: Deploy Backend to Fly.io
 on:
   push:
     branches: [main]
-    paths: ['apps/backend-rag/**']
+    paths: ["apps/backend-rag/**"]
 
 jobs:
   pre-deploy-gate:
@@ -553,8 +584,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
       - run: pip install -r requirements.txt -q
       - name: Import chain test
         run: python -c "from backend.app.dependencies import get_current_user; print('✅ Import chain OK')"
@@ -565,7 +596,7 @@ jobs:
 
   deploy:
     name: Fly.io rolling deploy
-    needs: pre-deploy-gate  # BLOCCATO se gate fallisce
+    needs: pre-deploy-gate # BLOCCATO se gate fallisce
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -608,38 +639,46 @@ jobs:
 ---
 
 ### #14 — Logiche Istituzionali solo in Memory
+
 > Logiche critiche in `~/.claude/MEMORY.md` invisibili a Gemini CLI, Windsurf, Codex
 
 **Logiche da spostare in `CLAUDE.md` (sezione nuova):**
+
 ```markdown
 ## CRITICAL OPERATIONAL RULES — Non Documentate Altrove
 
 ### Virtualenv
+
 - SEMPRE `.venv` — NON `venv` (venv è deprecated). Path: `apps/backend-rag/.venv/`
 - Su cron/CI: usare path assoluto `.venv/bin/python` o `.venv/bin/pytest`
 
 ### Drive Polling
+
 - Gira su Air cron ogni 5min (`apps/backend-rag/scripts/drive_poll_cron.sh`)
 - NON su Fly.io scheduler — incompatibile con auto_stop=true (perde page_token)
 - Se si aggiunge alla pipeline Fly → rischio loss sync silenzioso
 
 ### OCR Multi-page
+
 - Leggere SEMPRE tutte le pagine del PDF, non solo pagina 0
 - I direttori delle perseroan sono tipicamente in pagina 2-3
 - Timeout: 120s per PDF >3 pagine
 
 ### Cache Invalidation
+
 - Pattern obbligatorio: `await invalidate_cache("zantara:namespace:*")` dopo OGNI mutation
 - Namespace: `zantara:crm_clients_stats:*` per clients, `zantara:crm_practices:*` per practices
 - Non invalidare → dati stale → confusion clienti
 
 ### KG Subgraph Status
+
 - Company: wired al KG reale ✅
 - Visa: wired al KG reale tranne sezione RPTKA (hardcoded) ⚠️
 - Property/Tax: da verificare
 ```
 
 **Core Guardian check automatico (da aggiungere):**
+
 ```python
 # apps/evaluator/core_guardian/checks/memory_sync.py
 def check_memory_vs_claude_md():
@@ -656,21 +695,22 @@ def check_memory_vs_claude_md():
 
 ## Integrazione con Automazioni Esistenti
 
-| Automazione Esistente | Problemi Coperti | Estensione Necessaria |
-|---|---|---|
-| **Core Guardian V3** (ogni 3h) | #1 parziale, #6 parziale | Aggiungere: import-chain check, AST cache audit, memory sync check |
-| **preflight.sh** (pre/post deploy) | #2, #13 parziale | Aggiungere: Drive token check, SA key age |
-| **auto_test.sh** (OpenClaw) | #4 parziale | Fix path `backend/` invece di `src/` |
-| **rag_canary.py** (manuale) | #7, #8 parziale | Aggiungere cron OpenClaw + RAGAS layer |
-| **system_doctor.py** (47 check) | #7 parziale | Attivare cron + aggiungere trend analysis |
-| **GitHub Actions CI** | #4 parziale | Fix path + aggiungere `fly-deploy.yml` |
-| **drive_poll_cron.sh** (Air) | #11 parziale | Aggiungere circuit breaker |
+| Automazione Esistente              | Problemi Coperti         | Estensione Necessaria                                              |
+| ---------------------------------- | ------------------------ | ------------------------------------------------------------------ |
+| **Core Guardian V3** (ogni 3h)     | #1 parziale, #6 parziale | Aggiungere: import-chain check, AST cache audit, memory sync check |
+| **preflight.sh** (pre/post deploy) | #2, #13 parziale         | Aggiungere: Drive token check, SA key age                          |
+| **auto_test.sh** (OpenClaw)        | #4 parziale              | Fix path `backend/` invece di `src/`                               |
+| **rag_canary.py** (manuale)        | #7, #8 parziale          | Aggiungere cron OpenClaw + RAGAS layer                             |
+| **system_doctor.py** (47 check)    | #7 parziale              | Attivare cron + aggiungere trend analysis                          |
+| **GitHub Actions CI**              | #4 parziale              | Fix path + aggiungere `fly-deploy.yml`                             |
+| **drive_poll_cron.sh** (Air)       | #11 parziale             | Aggiungere circuit breaker                                         |
 
 ---
 
 ## Roadmap di Implementazione
 
 ### Settimana 1 — Quick Wins (totale ~10h)
+
 1. ⚡ `fly secrets set ENABLE_QUERY_EXPANSION=true` (5min) — **fare subito**
 2. ✅ `.github/dependabot.yml` (1h)
 3. ✅ Fix `tests.yml` path (2h)
@@ -679,6 +719,7 @@ def check_memory_vs_claude_md():
 6. ✅ Attivare cron su Air (2h)
 
 ### Settimana 2 — Gates e Guardrails (totale ~15h)
+
 7. `.github/workflows/fly-deploy.yml` (3h)
 8. `drive_token_watchdog.py` + cron (3h)
 9. Migrazione Memory → `CLAUDE.md` (2h)
@@ -686,11 +727,12 @@ def check_memory_vs_claude_md():
 11. `DrivePollCircuitBreaker` (3h)
 
 ### Settimana 3 — Evaluation e Quality (totale ~10h)
+
 12. `ragas_eval.py` + cron domenicale (4h)
 13. `crm_hygiene.py` + cron giornaliero (4h)
 14. Fix KG subgraph visa RPTKA (2h)
 
 ---
 
-*Documento generato da: Claude Code (Air) + DeepSeek R1 671b + Web Research + Gemini codebase analysis*
-*2026-03-26*
+_Documento generato da: Claude Code (Air) + DeepSeek R1 671b + Web Research + Gemini codebase analysis_
+_2026-03-26_

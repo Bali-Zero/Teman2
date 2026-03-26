@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/backend-rag/**'
-      - '.github/workflows/fly-deploy.yml'
+      - "apps/backend-rag/**"
+      - ".github/workflows/fly-deploy.yml"
 
 concurrency:
   group: fly-deploy
@@ -44,8 +44,8 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
           cache-dependency-path: apps/backend-rag/requirements.txt
 
       - name: Install dependencies
