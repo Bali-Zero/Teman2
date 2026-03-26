@@ -1768,8 +1768,24 @@ export default function PratichePage() {
           }}
         >
           <div className="px-3 py-2 border-b border-[rgba(255,255,255,0.05)] bg-[rgba(40,40,45,0.6)] backdrop-blur-md rounded-t-lg">
-            <p className="text-xs font-semibold text-[var(--bz-text-1)]">Update Status</p>
-            <p className="text-[10px] text-[var(--bz-text-2)]">Process #{selectedPractice.id}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[var(--bz-text-1)]">Update Status</p>
+                <p className="text-[10px] text-[var(--bz-text-2)]">
+                  {selectedPractice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Process'} #{selectedPractice.id}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  router.push(`/process/${selectedPractice.id}`);
+                  setSelectedPractice(null);
+                  setMenuPosition(null);
+                }}
+                className="text-[10px] px-2 py-1 rounded border border-[rgba(255,255,255,0.08)] text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:border-[var(--bz-accent)]/40 transition-colors"
+              >
+                Open →
+              </button>
+            </div>
           </div>
           <div className="max-h-[300px] overflow-y-auto p-1 space-y-0.5">
             {STATUS_OPTIONS.map((option) => (
