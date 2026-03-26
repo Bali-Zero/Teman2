@@ -9,7 +9,7 @@ import { logger } from '@/lib/logger';
 import type { PortalMessage, MessagesResponse } from '@/lib/api/portal/portal.types';
 import { Button } from '@/components/ui/button';
 
-const POLL_INTERVAL = 30000; // 30 seconds
+const POLL_INTERVAL = 60000; // 60 seconds (avoids 429 rate limits)
 
 const PAGE_SIZE = 100;
 
