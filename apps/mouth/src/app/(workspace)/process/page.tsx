@@ -949,6 +949,27 @@ export default function PratichePage() {
                   )}
                 </select>
               </div>
+
+              {/* Priority Filter */}
+              <div>
+                <label
+                  htmlFor="priority-filter"
+                  className="block text-sm font-medium text-[var(--bz-text-2)] mb-1.5"
+                >
+                  Priority
+                </label>
+                <select
+                  id="priority-filter"
+                  value={filters.priority}
+                  onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50"
+                >
+                  <option value="">All priorities</option>
+                  <option value="urgent">🔥 Urgent</option>
+                  <option value="high">↑ High</option>
+                  <option value="normal">Normal</option>
+                </select>
+              </div>
             </div>
           </div>
         )}
