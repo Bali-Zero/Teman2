@@ -242,6 +242,7 @@ function ClientsListContent() {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [silentFilter, setSilentFilter] = useState<number | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Load current user profile
@@ -346,6 +347,13 @@ function ClientsListContent() {
       if (filters.assigned_to && client.assigned_to !== filters.assigned_to) return false;
       // Hide inactive/test clients by default unless user explicitly filters by inactive status
       if (!filters.status && client.status === 'inactive') return false;
+      // Silent filter: only show clients not contacted in N days
+      if (silentFilter !== null) {
+        const lastContact = client.last_interaction_date
+          ? (Date.now() - new Date(client.last_interaction_date).getTime()) / 86400000
+          : Infinity;
+        if (lastContact < silentFilter) return false;
+      }
       return true;
     })
     .sort((a, b) => {
@@ -375,9 +383,10 @@ function ClientsListContent() {
 
   const clearFilters = () => {
     setFilters({ status: '', nationality: '', assigned_to: '', passport_expiring_days: undefined });
+    setSilentFilter(null);
   };
 
-  const activeFiltersCount = Object.values(filters).filter((v) => v !== '' && v !== undefined).length;
+  const activeFiltersCount = Object.values(filters).filter((v) => v !== '' && v !== undefined).length + (silentFilter !== null ? 1 : 0);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -545,6 +554,23 @@ function ClientsListContent() {
               My Clients
             </button>
           )}
+          {/* Silent filters */}
+          {[7, 30].map((days) => (
+            <button
+              key={days}
+              onClick={() => setSilentFilter(silentFilter === days ? null : days)}
+              className="px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+              style={{
+                background: silentFilter === days ? 'rgba(239,68,68,0.2)' : 'rgba(35, 35, 40, 0.45)',
+                color: silentFilter === days ? '#f87171' : 'var(--bz-text-2)',
+                border: `1px solid ${silentFilter === days ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`,
+              }}
+              title={`Clients not contacted in ${days}+ days`}
+            >
+              Silent {days}d
+            </button>
+          ))}
+
           <Button
             variant={showFilters ? 'default' : 'outline'}
             className="gap-2"
