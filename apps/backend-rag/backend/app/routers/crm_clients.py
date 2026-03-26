@@ -1491,6 +1491,7 @@ async def delete_client_document(
 
 
 class NpwpExtractRequest(BaseModel):
+    client_id: int
     file: str  # base64 encoded file
     file_name: str
 
@@ -1506,7 +1507,8 @@ class NpwpExtractResponse(BaseModel):
 @router.post("/extract-npwp", response_model=NpwpExtractResponse)
 async def extract_npwp(
     request: NpwpExtractRequest,
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> NpwpExtractResponse:
     """
     Extract NPWP data from uploaded NPWP card image using Gemini Vision.
@@ -1522,6 +1524,10 @@ async def extract_npwp(
     from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 
     try:
+        # RBAC check: verify caller has access to this client
+        async with db_pool.acquire() as conn:
+            await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
+
         if not GENAI_AVAILABLE:
             return NpwpExtractResponse(success=False, message="Vision service not available")
 
@@ -1529,11 +1535,16 @@ async def extract_npwp(
         if not genai_client.is_available:
             return NpwpExtractResponse(success=False, message="Gemini Vision not configured")
 
+        # Validate base64 before decoding
+        raw = request.file.split(",")[-1] if "," in request.file else request.file
+        try:
+            base64.b64decode(raw, validate=True)
+        except Exception:
+            return NpwpExtractResponse(success=False, message="Invalid base64 data")
+
         # Decode base64 file
         try:
-            file_data = base64.b64decode(
-                request.file.split(",")[-1] if "," in request.file else request.file
-            )
+            file_data = base64.b64decode(raw)
         except Exception as e:
             logger.error(f"Failed to decode base64 file: {e}")
             return NpwpExtractResponse(success=False, message="Invalid file format")
@@ -1603,6 +1614,16 @@ Rules:
             else:
                 npwp = npwp_clean
 
+        # Save to DB if extracted successfully
+        if npwp:
+            async with db_pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE clients SET npwp = $1, updated_at = NOW() WHERE id = $2",
+                    npwp,
+                    request.client_id,
+                )
+                logger.info(f"Saved NPWP for client {request.client_id}")
+
         return NpwpExtractResponse(
             success=True,
             npwp=npwp if npwp else None,
@@ -1611,6 +1632,8 @@ Rules:
             message=f"OCR completed with confidence {extracted.get('confidence', 'unknown')}",
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"NPWP extraction failed: {e}", exc_info=True)
         return NpwpExtractResponse(success=False, message=f"Extraction failed: {str(e)}")
