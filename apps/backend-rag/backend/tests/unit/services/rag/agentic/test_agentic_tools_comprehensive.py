@@ -23,6 +23,21 @@ from backend.services.rag.agentic.tools import (
 )
 
 
+@pytest.fixture(autouse=True)
+def patch_tools_deps():
+    """Patch trace_span (no-op) and disable hybrid search to isolate VectorSearchTool tests."""
+    mock_span = MagicMock()
+    mock_span.return_value.__enter__ = MagicMock(return_value=MagicMock())
+    mock_span.return_value.__exit__ = MagicMock(return_value=False)
+    mock_settings = MagicMock()
+    mock_settings.enable_hybrid_search = False
+    with (
+        patch("backend.services.rag.agentic.tools.trace_span", mock_span),
+        patch("backend.app.core.config.settings", mock_settings),
+    ):
+        yield
+
+
 @pytest.fixture
 def mock_retriever():
     """Mock retriever"""
