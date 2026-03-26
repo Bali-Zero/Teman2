@@ -4,11 +4,11 @@
  * Hook ottimizzato per gestione clienti CRM con caching e sincronizzazione
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import type { Client, CreateClientParams } from "@/lib/api/crm/crm.types";
-import { logger } from "@/lib/logger";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import type { Client, CreateClientParams } from '@/lib/api/crm/crm.types';
+import { logger } from '@/lib/logger';
 
 interface UseCrmClientsOptions {
   status?: string;
@@ -26,29 +26,18 @@ interface ClientsResponse {
 }
 
 const logError = (...args: unknown[]) => {
-  logger.error(
-    "[CRM]",
-    {},
-    args[0] instanceof Error ? args[0] : new Error(String(args[0])),
-  );
+  logger.error('[CRM]', {}, args[0] instanceof Error ? args[0] : new Error(String(args[0])));
 };
 
 const debug = (...args: unknown[]) => {
-  logger.debug("[CRM] " + args.join(" "), {});
+  logger.debug('[CRM] ' + args.join(' '), {});
 };
 
 /**
  * Hook per gestione lista clienti
  */
 export function useCrmClients(options: UseCrmClientsOptions = {}) {
-  const {
-    status,
-    assigned_to,
-    search,
-    nationality,
-    limit = 50,
-    enabled = true,
-  } = options;
+  const { status, assigned_to, search, nationality, limit = 50, enabled = true } = options;
   const queryClient = useQueryClient();
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [offset, setOffset] = useState(0);
@@ -60,11 +49,7 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
   const generationRef = useRef(0);
 
   // Base query key (without offset — we accumulate results)
-  const queryKey = [
-    "crm",
-    "clients",
-    { status, assigned_to, search, nationality },
-  ];
+  const queryKey = ['crm', 'clients', { status, assigned_to, search, nationality }];
 
   const {
     data,
@@ -164,9 +149,9 @@ export function useCrmClient(clientId: number | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["crm", "client", clientId],
+    queryKey: ['crm', 'client', clientId],
     queryFn: async (): Promise<Client> => {
-      if (!clientId) throw new Error("Client ID required");
+      if (!clientId) throw new Error('Client ID required');
       return api.crm.getClient(clientId);
     },
     enabled: !!clientId,
@@ -174,7 +159,7 @@ export function useCrmClient(clientId: number | null) {
   });
 
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["crm", "client", clientId] });
+    queryClient.invalidateQueries({ queryKey: ['crm', 'client', clientId] });
   }, [queryClient, clientId]);
 
   return {
@@ -190,25 +175,19 @@ export function useCreateClient() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({
-      data,
-      createdBy,
-    }: {
-      data: CreateClientParams;
-      createdBy: string;
-    }) => {
+    mutationFn: async ({ data, createdBy }: { data: CreateClientParams; createdBy: string }) => {
       return api.crm.createClient(data, createdBy);
     },
     onSuccess: (newClient) => {
       // Invalidate clients list
-      queryClient.invalidateQueries({ queryKey: ["crm", "clients"] });
+      queryClient.invalidateQueries({ queryKey: ['crm', 'clients'] });
       // Add to cache under both keys (plural list key + singular detail key)
-      queryClient.setQueryData(["crm", "clients", newClient.id], newClient);
-      queryClient.setQueryData(["crm", "client", newClient.id], newClient);
-      debug("Client created:", newClient.id);
+      queryClient.setQueryData(['crm', 'clients', newClient.id], newClient);
+      queryClient.setQueryData(['crm', 'client', newClient.id], newClient);
+      debug('Client created:', newClient.id);
     },
     onError: (err) => {
-      logError("Failed to create client:", err);
+      logError('Failed to create client:', err);
     },
   });
 
@@ -233,14 +212,14 @@ export function useUpdateClient(clientId: number) {
     },
     onSuccess: (updatedClient) => {
       // Update cache under both keys (plural list key + singular detail key)
-      queryClient.setQueryData(["crm", "clients", clientId], updatedClient);
-      queryClient.setQueryData(["crm", "client", clientId], updatedClient);
+      queryClient.setQueryData(['crm', 'clients', clientId], updatedClient);
+      queryClient.setQueryData(['crm', 'client', clientId], updatedClient);
       // Invalidate list
-      queryClient.invalidateQueries({ queryKey: ["crm", "clients"] });
-      debug("Client updated:", clientId);
+      queryClient.invalidateQueries({ queryKey: ['crm', 'clients'] });
+      debug('Client updated:', clientId);
     },
     onError: (err) => {
-      logError("Failed to update client:", err);
+      logError('Failed to update client:', err);
     },
   });
 
@@ -252,22 +231,27 @@ export function useUpdateClient(clientId: number) {
  */
 export function useCrmStats() {
   return useQuery({
-    queryKey: ["crm", "stats"],
+    queryKey: ['crm', 'stats'],
     queryFn: async () => {
-      const [practiceStats, interactionStats] = await Promise.all([
+      const [clientStats, practiceStats, interactionStats] = await Promise.all([
+        api.crm.request<{
+          total_clients: number;
+          by_status: Record<string, number>;
+          by_team_member: Array<{ assigned_to: string; count: number }>;
+        }>('/api/crm/clients/stats/overview'),
         api.crm.getPracticeStats(),
         api.crm.getInteractionStats(),
       ]);
 
       return {
-        totalClients: practiceStats.total_practices,
+        totalClients: clientStats.total_clients,
         activePractices: practiceStats.active_practices,
         revenue: {
           total: practiceStats.revenue.total_revenue,
           paid: practiceStats.revenue.paid_revenue,
           outstanding: practiceStats.revenue.outstanding_revenue,
         },
-        byStatus: practiceStats.by_status,
+        byStatus: clientStats.by_status,
         interactions: interactionStats,
       };
     },
