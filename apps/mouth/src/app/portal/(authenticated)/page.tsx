@@ -6,7 +6,7 @@
  * Usa React Query per caching e ottimizzazione
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CheckCircle2,
@@ -30,6 +30,9 @@ export default function PortalHomePage() {
   const { data: timelineData, isLoading: isLoadingTimeline } = usePortalTimeline(20);
 
   const timeline = timelineData?.entries || [];
+  const [showAllTimeline, setShowAllTimeline] = useState(false);
+  const TIMELINE_PREVIEW_COUNT = 5;
+  const visibleTimeline = showAllTimeline ? timeline : timeline.slice(0, TIMELINE_PREVIEW_COUNT);
 
   if (isLoadingDashboard || isLoadingTimeline) {
     return (
@@ -195,8 +198,12 @@ export default function PortalHomePage() {
         </h2>
 
         <div className="relative border-l-2 ml-3 space-y-8 pb-10 border-[var(--glass-rim)]">
-          {timeline.map((entry: TimelineEntry, index: number) => (
-            <TimelineItem key={entry.id} entry={entry} isLast={index === timeline.length - 1} />
+          {visibleTimeline.map((entry: TimelineEntry, index: number) => (
+            <TimelineItem
+              key={entry.id}
+              entry={entry}
+              isLast={index === visibleTimeline.length - 1}
+            />
           ))}
 
           {timeline.length === 0 && (
@@ -205,6 +212,16 @@ export default function PortalHomePage() {
             </div>
           )}
         </div>
+
+        {!showAllTimeline && timeline.length > TIMELINE_PREVIEW_COUNT && (
+          <button
+            onClick={() => setShowAllTimeline(true)}
+            className="w-full text-center text-xs py-2 rounded-lg transition-opacity hover:opacity-80"
+            style={{ color: 'var(--bz-accent-warm)', background: 'rgba(201,169,110,0.06)' }}
+          >
+            Show {timeline.length - TIMELINE_PREVIEW_COUNT} more events
+          </button>
+        )}
       </section>
     </div>
   );
