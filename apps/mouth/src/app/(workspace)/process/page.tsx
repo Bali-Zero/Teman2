@@ -564,6 +564,40 @@ export default function PratichePage() {
         onMonthChange={handleMonthChange}
       />
 
+      {/* Quick Stats Row */}
+      {!isLoading && filteredPractices.length > 0 && (() => {
+        const active = filteredPractices.filter((p) => getStatusColumn(p.status) !== 'completed').length;
+        const completed = filteredPractices.filter((p) => getStatusColumn(p.status) === 'completed').length;
+        const unpaidRevenue = filteredPractices
+          .filter((p) => p.payment_status === 'unpaid' || p.payment_status === 'partial')
+          .reduce((s, p) => s + (p.actual_price || p.quoted_price || 0), 0);
+        const totalRevenue = filteredPractices
+          .filter((p) => p.payment_status === 'paid')
+          .reduce((s, p) => s + (p.actual_price || p.quoted_price || 0), 0);
+        return (
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.06)] text-[var(--bz-text-2)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              {active} active
+            </span>
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.06)] text-[var(--bz-text-2)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+              {completed} completed
+            </span>
+            {totalRevenue > 0 && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400">
+                {new Intl.NumberFormat('id-ID', { notation: 'compact', currency: 'IDR', style: 'currency', maximumFractionDigits: 0 }).format(totalRevenue)} paid
+              </span>
+            )}
+            {unpaidRevenue > 0 && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400">
+                {new Intl.NumberFormat('id-ID', { notation: 'compact', currency: 'IDR', style: 'currency', maximumFractionDigits: 0 }).format(unpaidRevenue)} unpaid
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Search & Filter Bar */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row gap-3">
