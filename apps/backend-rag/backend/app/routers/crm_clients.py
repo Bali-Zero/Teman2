@@ -1645,6 +1645,7 @@ Rules:
 
 
 class NibExtractRequest(BaseModel):
+    client_id: int
     file: str  # base64 encoded file
     file_name: str
 
@@ -1660,7 +1661,8 @@ class NibExtractResponse(BaseModel):
 @router.post("/extract-nib", response_model=NibExtractResponse)
 async def extract_nib(
     request: NibExtractRequest,
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> NibExtractResponse:
     """
     Extract NIB (Nomor Induk Berusaha) data from uploaded NIB document using Gemini Vision.
@@ -1676,6 +1678,10 @@ async def extract_nib(
     from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 
     try:
+        # RBAC check: verify caller has access to this client
+        async with db_pool.acquire() as conn:
+            await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
+
         if not GENAI_AVAILABLE:
             return NibExtractResponse(success=False, message="Vision service not available")
 
@@ -1683,11 +1689,16 @@ async def extract_nib(
         if not genai_client.is_available:
             return NibExtractResponse(success=False, message="Gemini Vision not configured")
 
+        # Validate base64 before decoding
+        raw = request.file.split(",")[-1] if "," in request.file else request.file
+        try:
+            base64.b64decode(raw, validate=True)
+        except Exception:
+            return NibExtractResponse(success=False, message="Invalid base64 data")
+
         # Decode base64 file
         try:
-            file_data = base64.b64decode(
-                request.file.split(",")[-1] if "," in request.file else request.file
-            )
+            file_data = base64.b64decode(raw)
         except Exception as e:
             logger.error(f"Failed to decode base64 file: {e}")
             return NibExtractResponse(success=False, message="Invalid file format")
@@ -1757,6 +1768,16 @@ Rules:
             else:
                 nib = nib_clean
 
+        # Save to DB if extracted successfully
+        if nib:
+            async with db_pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE clients SET nib = $1, updated_at = NOW() WHERE id = $2",
+                    nib,
+                    request.client_id,
+                )
+                logger.info(f"Saved NIB for client {request.client_id}")
+
         return NibExtractResponse(
             success=True,
             nib=nib if nib else None,
@@ -1765,6 +1786,8 @@ Rules:
             message=f"OCR completed with confidence {extracted.get('confidence', 'unknown')}",
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"NIB extraction failed: {e}", exc_info=True)
         return NibExtractResponse(success=False, message=f"Extraction failed: {str(e)}")
