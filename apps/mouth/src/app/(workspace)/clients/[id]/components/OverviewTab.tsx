@@ -324,26 +324,27 @@ export function OverviewTab({
                 <>
                   <div className="border-t border-[var(--bz-border)]" />
                   <div className="flex items-center gap-2">
-                    {client.phone && (() => {
-                      const wa = client.phone.replace(/[^0-9]/g, '').replace(/^0/, '62');
-                      return (
-                        <a
-                          href={`https://wa.me/${wa}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-                          style={{
-                            background: 'rgba(37,211,102,0.12)',
-                            color: '#25d366',
-                            border: '1px solid rgba(37,211,102,0.25)',
-                          }}
-                          title={`WhatsApp ${client.phone}`}
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          WhatsApp
-                        </a>
-                      );
-                    })()}
+                    {client.phone &&
+                      (() => {
+                        const wa = client.phone.replace(/[^0-9]/g, '').replace(/^0/, '62');
+                        return (
+                          <a
+                            href={`https://wa.me/${wa}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                            style={{
+                              background: 'rgba(37,211,102,0.12)',
+                              color: '#25d366',
+                              border: '1px solid rgba(37,211,102,0.25)',
+                            }}
+                            title={`WhatsApp ${client.phone}`}
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            WhatsApp
+                          </a>
+                        );
+                      })()}
                     {client.email && (
                       <a
                         href={`mailto:${client.email}`}
@@ -569,6 +570,36 @@ export function OverviewTab({
                         )}
                         <div className="flex items-center gap-2 mt-1">
                           <Clock className="w-3 h-3 text-[var(--bz-text-2)]" />
+                          {(() => {
+                            const ageDays = Math.floor(
+                              (Date.now() - new Date(interaction.interaction_date).getTime()) /
+                                86400000
+                            );
+                            const label =
+                              ageDays === 0
+                                ? 'today'
+                                : ageDays === 1
+                                  ? '1d ago'
+                                  : ageDays >= 30
+                                    ? `${Math.floor(ageDays / 30)}mo ago`
+                                    : ageDays >= 7
+                                      ? `${Math.floor(ageDays / 7)}w ago`
+                                      : `${ageDays}d ago`;
+                            return (
+                              <span
+                                className="text-[9px] px-1.5 py-0.5 rounded tabular-nums"
+                                style={{
+                                  background:
+                                    ageDays === 0
+                                      ? 'rgba(34,197,94,0.12)'
+                                      : 'rgba(255,255,255,0.04)',
+                                  color: ageDays === 0 ? '#4ade80' : 'var(--bz-text-2)',
+                                }}
+                              >
+                                {label}
+                              </span>
+                            );
+                          })()}
                           <span className="text-[10px] text-[var(--bz-text-2)]">
                             {formatDate(interaction.interaction_date)}
                           </span>
@@ -645,9 +676,22 @@ export function OverviewTab({
                     onClick={() => router.push(`/process/${p.id}`)}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-[var(--bz-text-1)] truncate group-hover/p:text-[var(--bz-accent)] transition-colors">
-                        {p.practice_type_name || `Practice #${p.id}`}
-                      </p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="text-sm text-[var(--bz-text-1)] truncate group-hover/p:text-[var(--bz-accent)] transition-colors">
+                          {p.practice_type_name || `Practice #${p.id}`}
+                        </p>
+                        {p.priority && p.priority !== 'normal' && (
+                          <span
+                            className={`shrink-0 text-[9px] px-1 py-0.5 rounded font-semibold ${
+                              p.priority === 'urgent'
+                                ? 'bg-red-500/20 text-red-400'
+                                : 'bg-orange-500/20 text-orange-400'
+                            }`}
+                          >
+                            {p.priority === 'urgent' ? '🔥' : '↑'}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                         <span className="text-[10px] text-[var(--bz-text-2)]">
                           {p.status.replace(/_/g, ' ')}
