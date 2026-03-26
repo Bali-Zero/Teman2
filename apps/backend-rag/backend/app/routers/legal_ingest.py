@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 
+from backend.app.dependencies import get_current_user
 from backend.app.models import TierLevel
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.json_utils import to_jsonb
@@ -367,10 +368,12 @@ async def register_parent_document(
 
 
 @router.get("/parent-documents/{document_id}", status_code=status.HTTP_200_OK)
-async def get_parent_documents(document_id: str) -> dict[str, Any]:
+async def get_parent_documents(
+    document_id: str,
+    current_user: dict = Depends(get_current_user),  # noqa: ARG001 — auth gate
+) -> dict[str, Any]:
     """
     Get parent documents (BAB/chapters) from PostgreSQL for a legal document.
-    PUBLIC endpoint - no auth required.
 
     Args:
         document_id: Document ID (e.g. "PP_31_2013")
@@ -428,10 +431,13 @@ async def get_parent_documents(document_id: str) -> dict[str, Any]:
 
 
 @router.get("/parent-documents/{document_id}/{bab_id}/text", status_code=status.HTTP_200_OK)
-async def get_bab_full_text(document_id: str, bab_id: str) -> dict[str, Any]:
+async def get_bab_full_text(
+    document_id: str,
+    bab_id: str,
+    current_user: dict = Depends(get_current_user),  # noqa: ARG001 — auth gate
+) -> dict[str, Any]:
     """
     Get full text of a specific BAB from PostgreSQL.
-    PUBLIC endpoint - no auth required.
 
     Args:
         document_id: Document ID

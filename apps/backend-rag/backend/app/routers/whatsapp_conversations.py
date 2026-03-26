@@ -51,6 +51,7 @@ async def get_whatsapp_conversations(
     limit: int = 50,
     offset: int = 0,
     db: Pool | None = Depends(get_optional_database_pool),
+    current_user: dict = Depends(get_current_user),  # noqa: ARG001 — auth gate
 ) -> Any:
     if not db:
         logger.warning("Database unavailable")
