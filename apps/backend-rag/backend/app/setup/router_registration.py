@@ -34,6 +34,7 @@ def include_routers(api: FastAPI) -> None:
         autonomous_agents,
         autonomous_execution,
         blog_ask,
+        cell_status,  # [CELL] CELL organism dashboard status
         collective_memory,
         conversations,
         crm_analytics,  # [NEW] CRM Analytics dashboard
@@ -275,3 +276,6 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(dashboard.router)  # [NEW] Interactive map dashboard for Streamlit
     api.include_router(dashboard_featured_articles.router)
     api.include_router(dashboard_summary.router)
+
+    # CELL organism dashboard
+    api.include_router(cell_status.router)
