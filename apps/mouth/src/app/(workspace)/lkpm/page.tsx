@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 import {
   Loader2,
   ClipboardCheck,
@@ -11,18 +11,15 @@ import {
   Calendar,
   Filter,
   Plus,
-} from "lucide-react";
-import Link from "next/link";
-import { useToast } from "@/components/ui/toast";
-import { logger } from "@/lib/logger";
-import { lkpmApi } from "@/lib/api/workspace/lkpm.api";
-import type {
-  LKPMBatchItem,
-  LKPMDeadline,
-} from "@/lib/api/portal/portal.types";
+} from 'lucide-react';
+import Link from 'next/link';
+import { useToast } from '@/components/ui/toast';
+import { logger } from '@/lib/logger';
+import { lkpmApi } from '@/lib/api/workspace/lkpm.api';
+import type { LKPMBatchItem, LKPMDeadline } from '@/lib/api/portal/portal.types';
 
-const QUARTERS = ["Q1", "Q2", "Q3", "Q4"] as const;
-type StatusFilter = "all" | "draft" | "validated" | "approved" | "submitted";
+const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'] as const;
+type StatusFilter = 'all' | 'draft' | 'validated' | 'approved' | 'submitted';
 
 export default function LKPMBatchPage() {
   const { error, success } = useToast();
@@ -34,7 +31,7 @@ export default function LKPMBatchPage() {
   const [items, setItems] = useState<LKPMBatchItem[]>([]);
   const [deadlines, setDeadlines] = useState<LKPMDeadline[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [validatingId, setValidatingId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -51,12 +48,8 @@ export default function LKPMBatchPage() {
       setItems(batchData.items);
       setDeadlines(deadlineData);
     } catch (err) {
-      error("Failed to load LKPM batch", "Please try again");
-      logger.error(
-        `Failed to load LKPM batch ${quarter} ${year}`,
-        {},
-        err as Error,
-      );
+      error('Failed to load LKPM batch', 'Please try again');
+      logger.error(`Failed to load LKPM batch ${quarter} ${year}`, {}, err as Error);
     } finally {
       setIsLoading(false);
     }
@@ -67,14 +60,12 @@ export default function LKPMBatchPage() {
     try {
       const result = await lkpmApi.validateDraft(draftId);
       success(
-        "Validation complete",
-        result.is_valid
-          ? "All checks passed"
-          : `${result.red_count} issues found`,
+        'Validation complete',
+        result.is_valid ? 'All checks passed' : `${result.red_count} issues found`
       );
       loadData();
     } catch (err) {
-      error("Validation failed", "Please try again");
+      error('Validation failed', 'Please try again');
       logger.error(`LKPM validation failed ${draftId}`, {}, err as Error);
     } finally {
       setValidatingId(null);
@@ -84,47 +75,37 @@ export default function LKPMBatchPage() {
   const handleMarkSubmitted = async (draftId: number) => {
     try {
       await lkpmApi.markSubmitted(draftId);
-      success(
-        "Marked as submitted",
-        "LKPM report has been marked as submitted to OSS",
-      );
+      success('Marked as submitted', 'LKPM report has been marked as submitted to OSS');
       loadData();
     } catch (err) {
-      error("Failed to mark submitted", "Please try again");
+      error('Failed to mark submitted', 'Please try again');
       logger.error(`LKPM mark submitted failed ${draftId}`, {}, err as Error);
     }
   };
 
   const filteredItems =
-    statusFilter === "all"
-      ? items
-      : items.filter((item) => item.status === statusFilter);
+    statusFilter === 'all' ? items : items.filter((item) => item.status === statusFilter);
 
   const counts = {
     total: items.length,
-    submitted: items.filter((i) => i.status === "submitted").length,
-    pending: items.filter((i) => i.status !== "submitted").length,
+    submitted: items.filter((i) => i.status === 'submitted').length,
+    pending: items.filter((i) => i.status !== 'submitted').length,
     redAlerts: items.reduce((sum, i) => sum + i.red_alerts, 0),
   };
 
   const formatIDR = (amount: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
+    new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(amount);
 
-  const nextDeadline = deadlines.find(
-    (d) => d.quarter === quarter && d.year === year,
-  );
+  const nextDeadline = deadlines.find((d) => d.quarter === quarter && d.year === year);
 
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2
-          className="w-8 h-8 animate-spin"
-          style={{ color: "var(--bz-accent-warm)" }}
-        />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--bz-accent-warm)' }} />
       </div>
     );
   }
@@ -135,7 +116,7 @@ export default function LKPMBatchPage() {
       <section className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">LKPM Reports</h1>
-          <p style={{ color: "var(--bz-text-2)" }}>
+          <p style={{ color: 'var(--bz-text-2)' }}>
             Quarterly investment activity report batch management
           </p>
         </div>
@@ -143,7 +124,7 @@ export default function LKPMBatchPage() {
           <Link
             href="/lkpm/submit"
             className="px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2"
-            style={{ background: "var(--bz-accent-warm)" }}
+            style={{ background: 'var(--bz-accent-warm)' }}
           >
             <Plus className="w-4 h-4" />
             Submit Data
@@ -153,8 +134,8 @@ export default function LKPMBatchPage() {
             onChange={(e) => setQuarter(e.target.value)}
             className="rounded-lg border px-3 py-2 text-sm backdrop-blur-md"
             style={{
-              background: "rgba(35,35,40,0.6)",
-              borderColor: "rgba(255,255,255,0.05)",
+              background: 'rgba(35,35,40,0.6)',
+              borderColor: 'rgba(255,255,255,0.05)',
             }}
           >
             {QUARTERS.map((q) => (
@@ -168,8 +149,8 @@ export default function LKPMBatchPage() {
             onChange={(e) => setYear(Number(e.target.value))}
             className="rounded-lg border px-3 py-2 text-sm backdrop-blur-md"
             style={{
-              background: "rgba(35,35,40,0.6)",
-              borderColor: "rgba(255,255,255,0.05)",
+              background: 'rgba(35,35,40,0.6)',
+              borderColor: 'rgba(255,255,255,0.05)',
             }}
           >
             {[currentYear, currentYear - 1, currentYear - 2].map((y) => (
@@ -186,14 +167,13 @@ export default function LKPMBatchPage() {
         <section
           className="rounded-lg border p-4 flex items-center gap-2"
           style={{
-            background: "rgba(239,68,68,0.08)",
-            borderColor: "rgba(239,68,68,0.3)",
+            background: 'rgba(239,68,68,0.08)',
+            borderColor: 'rgba(239,68,68,0.3)',
           }}
         >
-          <AlertTriangle className="w-5 h-5" style={{ color: "#f87171" }} />
+          <AlertTriangle className="w-5 h-5" style={{ color: '#f87171' }} />
           <span className="text-sm font-medium">
-            {counts.redAlerts} critical alert{counts.redAlerts !== 1 ? "s" : ""}{" "}
-            across all clients
+            {counts.redAlerts} critical alert{counts.redAlerts !== 1 ? 's' : ''} across all clients
           </span>
         </section>
       )}
@@ -205,17 +185,17 @@ export default function LKPMBatchPage() {
           style={
             nextDeadline.is_overdue
               ? {
-                  background: "rgba(239,68,68,0.08)",
-                  borderColor: "rgba(239,68,68,0.3)",
+                  background: 'rgba(239,68,68,0.08)',
+                  borderColor: 'rgba(239,68,68,0.3)',
                 }
               : nextDeadline.days_remaining <= 14
                 ? {
-                    background: "rgba(245,158,11,0.08)",
-                    borderColor: "rgba(245,158,11,0.3)",
+                    background: 'rgba(245,158,11,0.08)',
+                    borderColor: 'rgba(245,158,11,0.3)',
                   }
                 : {
-                    background: "rgba(16,185,129,0.06)",
-                    borderColor: "rgba(16,185,129,0.25)",
+                    background: 'rgba(16,185,129,0.06)',
+                    borderColor: 'rgba(16,185,129,0.25)',
                   }
           }
         >
@@ -223,85 +203,84 @@ export default function LKPMBatchPage() {
             className="w-5 h-5"
             style={{
               color: nextDeadline.is_overdue
-                ? "#f87171"
+                ? '#f87171'
                 : nextDeadline.days_remaining <= 14
-                  ? "#fbbf24"
-                  : "#34d399",
+                  ? '#fbbf24'
+                  : '#34d399',
             }}
           />
-          <span className="text-sm">
-            {nextDeadline.is_overdue
-              ? `OVERDUE — Deadline was ${new Date(nextDeadline.deadline).toLocaleDateString()}`
-              : `${nextDeadline.days_remaining} days to deadline (${new Date(nextDeadline.deadline).toLocaleDateString()})`}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm">
+              {nextDeadline.is_overdue ? 'OVERDUE — Deadline was' : 'Deadline:'}
+              {' '}
+              {new Date(nextDeadline.deadline).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </span>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                nextDeadline.is_overdue
+                  ? 'bg-red-500/15 text-red-400'
+                  : nextDeadline.days_remaining <= 14
+                    ? 'bg-amber-500/15 text-amber-400'
+                    : 'bg-emerald-500/10 text-emerald-400'
+              }`}
+            >
+              {nextDeadline.is_overdue
+                ? `${Math.abs(nextDeadline.days_remaining)}d overdue`
+                : nextDeadline.days_remaining === 0
+                  ? 'today'
+                  : `⏰ ${nextDeadline.days_remaining}d left`}
+            </span>
+          </div>
         </section>
       )}
 
       {/* KPI Cards */}
       <section className="grid grid-cols-4 gap-4">
-        <KPICard
-          label="Total Clients"
-          value={counts.total}
-          icon={ClipboardCheck}
-        />
-        <KPICard
-          label="Submitted"
-          value={counts.submitted}
-          icon={CheckCircle}
-          color="#34d399"
-        />
-        <KPICard
-          label="Pending"
-          value={counts.pending}
-          icon={Clock}
-          color="#fbbf24"
-        />
-        <KPICard
-          label="Red Alerts"
-          value={counts.redAlerts}
-          icon={AlertTriangle}
-          color="#f87171"
-        />
+        <KPICard label="Total Clients" value={counts.total} icon={ClipboardCheck} />
+        <KPICard label="Submitted" value={counts.submitted} icon={CheckCircle} color="#34d399" />
+        <KPICard label="Pending" value={counts.pending} icon={Clock} color="#fbbf24" />
+        <KPICard label="Red Alerts" value={counts.redAlerts} icon={AlertTriangle} color="#f87171" />
       </section>
 
       {/* Filter Bar */}
       <section className="flex items-center gap-2">
-        <Filter className="w-4 h-4" style={{ color: "var(--bz-text-2)" }} />
-        {(["all", "draft", "validated", "approved", "submitted"] as const).map(
-          (filter) => (
-            <button
-              key={filter}
-              onClick={() => setStatusFilter(filter)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors"
-              style={
-                statusFilter === filter
-                  ? {
-                      background:
-                        "linear-gradient(135deg, var(--bz-accent-warm) 0%, rgba(212, 132, 90, 0.8) 100%)",
-                      color: "white",
-                      boxShadow: "0 4px 15px rgba(212, 132, 90, 0.3)",
-                    }
-                  : {
-                      background: "rgba(35,35,40,0.6)",
-                      backdropFilter: "blur(12px)",
-                      color: "var(--bz-text-2)",
-                      border: "1px solid rgba(255,255,255,0.05)",
-                    }
-              }
-            >
-              {filter}
-            </button>
-          ),
-        )}
+        <Filter className="w-4 h-4" style={{ color: 'var(--bz-text-2)' }} />
+        {(['all', 'draft', 'validated', 'approved', 'submitted'] as const).map((filter) => (
+          <button
+            key={filter}
+            onClick={() => setStatusFilter(filter)}
+            className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-colors"
+            style={
+              statusFilter === filter
+                ? {
+                    background:
+                      'linear-gradient(135deg, var(--bz-accent-warm) 0%, rgba(212, 132, 90, 0.8) 100%)',
+                    color: 'white',
+                    boxShadow: '0 4px 15px rgba(212, 132, 90, 0.3)',
+                  }
+                : {
+                    background: 'rgba(35,35,40,0.6)',
+                    backdropFilter: 'blur(12px)',
+                    color: 'var(--bz-text-2)',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                  }
+            }
+          >
+            {filter}
+          </button>
+        ))}
       </section>
 
       {/* Batch Table */}
       <section
         className="rounded-xl border shadow-2xl backdrop-blur-xl overflow-hidden"
         style={{
-          background:
-            "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
-          borderColor: "rgba(255, 255, 255, 0.05)",
+          background: 'linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)',
+          borderColor: 'rgba(255, 255, 255, 0.05)',
         }}
       >
         <div className="overflow-x-auto">
@@ -310,8 +289,8 @@ export default function LKPMBatchPage() {
               <tr
                 className="border-b text-xs"
                 style={{
-                  borderColor: "var(--bz-border)",
-                  color: "var(--bz-text-2)",
+                  borderColor: 'var(--bz-border)',
+                  color: 'var(--bz-text-2)',
                 }}
               >
                 <th className="text-left px-4 py-3">Company</th>
@@ -321,29 +300,21 @@ export default function LKPMBatchPage() {
                 <th className="text-right px-4 py-3">Actions</th>
               </tr>
             </thead>
-            <tbody
-              className="divide-y"
-              style={{ borderColor: "var(--bz-border)" }}
-            >
+            <tbody className="divide-y" style={{ borderColor: 'var(--bz-border)' }}>
               {filteredItems.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
                     className="px-4 py-8 text-center text-sm"
-                    style={{ color: "var(--bz-text-2)" }}
+                    style={{ color: 'var(--bz-text-2)' }}
                   >
                     No reports found for {quarter} {year}
                   </td>
                 </tr>
               ) : (
                 filteredItems.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-[rgba(255,255,255,0.05)] transition-colors"
-                  >
-                    <td className="px-4 py-3 font-medium">
-                      {item.company_name}
-                    </td>
+                  <tr key={item.id} className="hover:bg-[rgba(255,255,255,0.05)] transition-colors">
+                    <td className="px-4 py-3 font-medium">{item.company_name}</td>
                     <td className="px-4 py-3">
                       <BatchStatusBadge status={item.status} />
                     </td>
@@ -356,8 +327,8 @@ export default function LKPMBatchPage() {
                           <span
                             className="px-1.5 py-0.5 rounded text-xs font-medium"
                             style={{
-                              background: "rgba(239,68,68,0.12)",
-                              color: "#f87171",
+                              background: 'rgba(239,68,68,0.12)',
+                              color: '#f87171',
                             }}
                           >
                             {item.red_alerts}
@@ -367,47 +338,44 @@ export default function LKPMBatchPage() {
                           <span
                             className="px-1.5 py-0.5 rounded text-xs font-medium"
                             style={{
-                              background: "rgba(245,158,11,0.12)",
-                              color: "#fbbf24",
+                              background: 'rgba(245,158,11,0.12)',
+                              color: '#fbbf24',
                             }}
                           >
                             {item.yellow_alerts}
                           </span>
                         )}
                         {item.red_alerts === 0 && item.yellow_alerts === 0 && (
-                          <CheckCircle
-                            className="w-4 h-4"
-                            style={{ color: "#34d399" }}
-                          />
+                          <CheckCircle className="w-4 h-4" style={{ color: '#34d399' }} />
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        {item.status === "draft" && (
+                        {item.status === 'draft' && (
                           <button
                             onClick={() => handleValidate(item.id)}
                             disabled={validatingId === item.id}
                             className="px-2 py-1 rounded text-xs font-medium"
                             style={{
-                              background: "rgba(59,130,246,0.12)",
-                              color: "#60a5fa",
+                              background: 'rgba(59,130,246,0.12)',
+                              color: '#60a5fa',
                             }}
                           >
                             {validatingId === item.id ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              "Validate"
+                              'Validate'
                             )}
                           </button>
                         )}
-                        {item.status === "approved" && (
+                        {item.status === 'approved' && (
                           <button
                             onClick={() => handleMarkSubmitted(item.id)}
                             className="px-2 py-1 rounded text-xs font-medium"
                             style={{
-                              background: "rgba(16,185,129,0.12)",
-                              color: "#34d399",
+                              background: 'rgba(16,185,129,0.12)',
+                              color: '#34d399',
                             }}
                           >
                             Mark Submitted
@@ -417,8 +385,8 @@ export default function LKPMBatchPage() {
                           href={`/lkpm/${item.id}`}
                           className="px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
                           style={{
-                            background: "rgba(255,255,255,0.05)",
-                            color: "var(--bz-text-2)",
+                            background: 'rgba(255,255,255,0.05)',
+                            color: 'var(--bz-text-2)',
                           }}
                         >
                           <Eye className="w-3 h-3" />
@@ -452,17 +420,13 @@ function KPICard({
     <div
       className="rounded-xl border p-4 shadow-xl backdrop-blur-md transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
       style={{
-        background:
-          "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
-        borderColor: "rgba(255, 255, 255, 0.05)",
+        background: 'linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)',
+        borderColor: 'rgba(255, 255, 255, 0.05)',
       }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <Icon
-          className="w-4 h-4"
-          style={{ color: color || "var(--bz-accent-warm)" }}
-        />
-        <span className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+        <Icon className="w-4 h-4" style={{ color: color || 'var(--bz-accent-warm)' }} />
+        <span className="text-xs" style={{ color: 'var(--bz-text-2)' }}>
           {label}
         </span>
       </div>
@@ -474,27 +438,26 @@ function KPICard({
 function BatchStatusBadge({
   status,
 }: {
-  status: "draft" | "validated" | "approved" | "submitted";
+  status: 'draft' | 'validated' | 'approved' | 'submitted';
 }) {
-  const config: Record<string, { label: string; style: React.CSSProperties }> =
-    {
-      draft: {
-        label: "Draft",
-        style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
-      },
-      validated: {
-        label: "Validated",
-        style: { background: "rgba(59,130,246,0.12)", color: "#60a5fa" },
-      },
-      approved: {
-        label: "Approved",
-        style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
-      },
-      submitted: {
-        label: "Submitted",
-        style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
-      },
-    };
+  const config: Record<string, { label: string; style: React.CSSProperties }> = {
+    draft: {
+      label: 'Draft',
+      style: { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
+    },
+    validated: {
+      label: 'Validated',
+      style: { background: 'rgba(59,130,246,0.12)', color: '#60a5fa' },
+    },
+    approved: {
+      label: 'Approved',
+      style: { background: 'rgba(16,185,129,0.12)', color: '#34d399' },
+    },
+    submitted: {
+      label: 'Submitted',
+      style: { background: 'rgba(16,185,129,0.12)', color: '#34d399' },
+    },
+  };
 
   const { label, style } = config[status] ?? config.draft;
   return (
