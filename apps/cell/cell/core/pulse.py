@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+from cell.core import db as cell_db
 from cell.fast.health_triage import HealthStatus
 
 logger = logging.getLogger("cell.pulse")
@@ -37,7 +38,7 @@ class PulseEngine:
         self._metabolism = metabolism
         self._dna_hash = dna_expected_hash
 
-    async def single_pulse(self) -> PulseResult:
+    async def single_pulse(self, pulse_number: int = 0) -> PulseResult:
         now = datetime.now(timezone.utc)
 
         # 1. DNA INTEGRITY
@@ -70,5 +71,18 @@ class PulseEngine:
 
         # 5. ACT (embryo: observe only, no actions yet)
         action = None
+
+        # 6. PERSIST to PostgreSQL for dashboard
+        try:
+            await cell_db.log_pulse(
+                pulse_number=pulse_number,
+                health_status=status.value,
+                response_time_ms=int(reading.response_time_seconds * 1000) if reading.reachable else 0,
+                dna_intact=True,
+                budget_spent=self._metabolism.daily_spend,
+                budget_limit=self._metabolism._daily_limit,
+            )
+        except Exception as e:
+            logger.error(f"Pulse DB log failed: {e}")
 
         return PulseResult(timestamp=now, health_status=status, action_taken=action)

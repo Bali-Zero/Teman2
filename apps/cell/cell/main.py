@@ -67,7 +67,7 @@ async def main() -> None:
         while not _shutdown.is_set():
             pulse_count += 1
             try:
-                result = await engine.single_pulse()
+                result = await engine.single_pulse(pulse_number=pulse_count)
                 if result.halted:
                     logger.critical(f"ORGANISM HALTED: {result.halt_reason}")
                     sys.exit(1)
@@ -84,6 +84,8 @@ async def main() -> None:
             except asyncio.TimeoutError:
                 pass
 
+    from cell.core.db import close_pool
+    await close_pool()
     logger.info("CELL organism shutdown complete.")
 
 
