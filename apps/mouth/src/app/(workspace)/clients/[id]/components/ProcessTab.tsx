@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, FolderOpen, Calendar, Eye, Trash2, DollarSign, ArrowUpCircle, ArrowDownCircle, MinusCircle } from "lucide-react";
+import { Plus, FolderOpen, Calendar, Eye, Trash2, DollarSign, ArrowUpCircle, ArrowDownCircle, MinusCircle, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -36,12 +36,43 @@ export function ProcessTab({
 }) {
   const router = useRouter();
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+  const [sortBy, setSortBy] = useState<"default" | "priority" | "expiry" | "amount">("default");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+
+  const activeStatuses = Array.from(new Set(practices.map((p) => p.status)));
+
+  const sortedPractices = useMemo(() => {
+    let list = [...practices];
+    if (filterStatus !== "all") list = list.filter((p) => p.status === filterStatus);
+    if (sortBy === "priority") {
+      const order: Record<string, number> = { high: 0, medium: 1, low: 2 };
+      list.sort((a, b) => (order[a.priority || "low"] ?? 2) - (order[b.priority || "low"] ?? 2));
+    } else if (sortBy === "expiry") {
+      list.sort((a, b) => {
+        if (!a.expiry_date) return 1;
+        if (!b.expiry_date) return -1;
+        return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+      });
+    } else if (sortBy === "amount") {
+      list.sort((a, b) => {
+        const aAmt = a.actual_price || a.quoted_price || 0;
+        const bAmt = b.actual_price || b.quoted_price || 0;
+        return bAmt - aAmt;
+      });
+    }
+    return list;
+  }, [practices, sortBy, filterStatus]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
           All Process
+          {filterStatus !== "all" && (
+            <span className="ml-2 text-xs text-[var(--bz-text-2)] font-normal">
+              ({sortedPractices.length} of {practices.length})
+            </span>
+          )}
         </h3>
         <Button
           size="sm"
@@ -53,14 +84,57 @@ export function ProcessTab({
         </Button>
       </div>
 
+      {practices.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--bz-text-2)] shrink-0" />
+          <div className="flex items-center gap-1 flex-wrap">
+            {(["all", ...activeStatuses] as string[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilterStatus(s)}
+                className={`text-xs px-2 py-1 rounded-full transition-colors ${
+                  filterStatus === s
+                    ? "bg-[var(--bz-accent)] text-white"
+                    : "bg-[var(--bz-surface)] text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]"
+                }`}
+              >
+                {s === "all" ? "All" : s.replace(/_/g, " ")}
+              </button>
+            ))}
+          </div>
+          <div className="ml-auto flex items-center gap-1">
+            {(["default", "priority", "expiry", "amount"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSortBy(s)}
+                className={`text-xs px-2 py-1 rounded transition-colors ${
+                  sortBy === s
+                    ? "bg-[var(--bz-accent)]/20 text-[var(--bz-accent)]"
+                    : "text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
+                }`}
+              >
+                {s === "default" ? "Date" : s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {practices.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl">
           <FolderOpen className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
           <p className="text-[var(--bz-text-2)]">No process yet</p>
         </div>
+      ) : sortedPractices.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-8 text-center">
+          <p className="text-[var(--bz-text-2)] text-sm">No processes match this filter</p>
+          <button onClick={() => setFilterStatus("all")} className="text-xs text-[var(--bz-accent)] mt-2 hover:underline">
+            Clear filter
+          </button>
+        </div>
       ) : (
         <div className="space-y-3">
-          {practices.map((practice) => (
+          {sortedPractices.map((practice) => (
             <div
               key={practice.id}
               className="rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] p-4 hover:border-[var(--bz-accent)]/50 transition-colors group"

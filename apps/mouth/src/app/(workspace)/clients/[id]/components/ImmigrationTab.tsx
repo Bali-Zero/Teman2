@@ -9,7 +9,10 @@ import {
   Trash2,
   Download,
   FileText,
+  RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -32,6 +35,8 @@ export function ImmigrationTab({
   onEditClick: (doc: ClientDocument) => void;
   onRefresh: () => void;
 }) {
+  const router = useRouter();
+
   const handleDelete = async (docId: number, fileName: string) => {
     if (confirm(`Archive document "${fileName || "Document"}"?`)) {
       try {
@@ -205,16 +210,48 @@ export function ImmigrationTab({
             {doc.file_name}
           </p>
         )}
-        {doc.expiry_date && (
-          <div
-            className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[doc.alert_color || "green"]}`}
-          >
-            <Calendar className="w-3 h-3" />
-            {doc.alert_color === "expired"
-              ? "Expired"
-              : `Expires: ${formatDate(doc.expiry_date)}`}
-          </div>
-        )}
+        {doc.expiry_date && (() => {
+          const daysLeft = Math.ceil(
+            (new Date(doc.expiry_date).getTime() - Date.now()) / 86400000,
+          );
+          const isExpired = daysLeft < 0;
+          const isUrgent = daysLeft >= 0 && daysLeft <= 60;
+          return (
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <div
+                className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[doc.alert_color || "green"]}`}
+              >
+                <Calendar className="w-3 h-3" />
+                {isExpired
+                  ? `Expired ${Math.abs(daysLeft)}d ago`
+                  : `Expires: ${formatDate(doc.expiry_date)}`}
+              </div>
+              {!isExpired && isUrgent && (
+                <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded inline-flex items-center gap-1 font-medium">
+                  <AlertTriangle className="w-3 h-3" />
+                  {daysLeft === 0 ? "Today!" : `${daysLeft}d left`}
+                </span>
+              )}
+              {(isExpired || daysLeft <= 90) &&
+                (doc.document_type?.toLowerCase().includes("kitas") ||
+                  doc.document_type?.toLowerCase().includes("kitap") ||
+                  doc.document_type?.toLowerCase().includes("visa")) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(
+                        `/process/new?client_id=${clientId}&type=visa_renewal`,
+                      );
+                    }}
+                    className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 px-2 py-1 rounded inline-flex items-center gap-1 transition-colors"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Start Renewal
+                  </button>
+                )}
+            </div>
+          );
+        })()}
         {doc.family_member_name && (
           <p className="text-xs text-[var(--bz-text-2)] mt-1">
             {doc.family_member_name}
