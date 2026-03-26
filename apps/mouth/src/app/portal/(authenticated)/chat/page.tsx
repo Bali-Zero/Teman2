@@ -11,11 +11,16 @@ import { Button } from '@/components/ui/button';
 
 const POLL_INTERVAL = 30000; // 30 seconds
 
+const PAGE_SIZE = 100;
+
 export default function ChatPage() {
   const { error, success } = useToast();
   const [messages, setMessages] = useState<PortalMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -27,13 +32,14 @@ export default function ChatPage() {
     async (silent = false) => {
       try {
         if (!silent) setIsLoading(true);
-        const data: MessagesResponse = await api.portal.getMessages(100, 0);
-        // Sort messages: oldest first (top), newest last (bottom)
+        const data: MessagesResponse = await api.portal.getMessages(PAGE_SIZE, 0);
         const sortedMessages = [...data.messages].sort(
           (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
         setMessages(sortedMessages);
         setUnreadCount(data.unreadCount);
+        setOffset(PAGE_SIZE);
+        setHasMore(data.messages.length === PAGE_SIZE);
       } catch (err) {
         if (!silent) {
           error('Failed to load messages', 'Please try again later');
@@ -45,6 +51,28 @@ export default function ChatPage() {
     },
     [error]
   );
+
+  // Load earlier messages (prepend)
+  const loadMoreMessages = useCallback(async () => {
+    try {
+      setIsLoadingMore(true);
+      const data: MessagesResponse = await api.portal.getMessages(PAGE_SIZE, offset);
+      if (data.messages.length === 0) {
+        setHasMore(false);
+        return;
+      }
+      const older = [...data.messages].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      setMessages((prev) => [...older, ...prev]);
+      setOffset((prev) => prev + PAGE_SIZE);
+      setHasMore(data.messages.length === PAGE_SIZE);
+    } catch (err) {
+      logger.error('Failed to load earlier messages', {}, err as Error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [offset]);
 
   // Mark visible messages as read
   const markVisibleMessagesAsRead = useCallback(async () => {
@@ -231,25 +259,44 @@ export default function ChatPage() {
             </p>
           </div>
         ) : (
-          Object.entries(groupedMessages).map(([date, dateMessages]) => (
-            <div key={date}>
-              {/* Date Separator */}
-              <div className="flex items-center gap-3 my-4">
-                <div className="flex-1 h-px" style={{ background: 'var(--bz-border)' }} />
-                <span className="text-xs font-medium px-2" style={{ color: 'var(--bz-text-2)' }}>
-                  {formatDate(dateMessages[0].createdAt)}
-                </span>
-                <div className="flex-1 h-px" style={{ background: 'var(--bz-border)' }} />
+          <>
+            {hasMore && (
+              <div className="text-center py-2">
+                <button
+                  onClick={loadMoreMessages}
+                  disabled={isLoadingMore}
+                  className="text-xs px-3 py-1.5 rounded-full border transition-opacity hover:opacity-80 disabled:opacity-40"
+                  style={{
+                    borderColor: 'var(--bz-border)',
+                    color: 'var(--bz-text-2)',
+                    background: 'rgba(255,255,255,0.03)',
+                  }}
+                >
+                  {isLoadingMore ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : null}
+                  Load earlier messages
+                </button>
               </div>
+            )}
+            {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+              <div key={date}>
+                {/* Date Separator */}
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px" style={{ background: 'var(--bz-border)' }} />
+                  <span className="text-xs font-medium px-2" style={{ color: 'var(--bz-text-2)' }}>
+                    {formatDate(dateMessages[0].createdAt)}
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: 'var(--bz-border)' }} />
+                </div>
 
-              {/* Messages for this date */}
-              <div className="space-y-3">
-                {dateMessages.map((message) => (
-                  <MessageBubble key={message.id} message={message} formatTime={formatTime} />
-                ))}
+                {/* Messages for this date */}
+                <div className="space-y-3">
+                  {dateMessages.map((message) => (
+                    <MessageBubble key={message.id} message={message} formatTime={formatTime} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
