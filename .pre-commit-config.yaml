@@ -60,3 +60,22 @@ repos:
         language: system
         files: ^apps/
         pass_filenames: false
+
+      # ── ANTI-ROGUE-AI GATES ─────────────────────────────────────────────────
+      # Prevents Gemini/Windsurf/Cursor from silently breaking the import chain
+      # or modifying OFF-LIMITS files. Both hooks BLOCK the commit on failure.
+      # Scripts live in scripts/hooks/ to avoid inline quoting complexity.
+
+      - id: import-chain-gate
+        name: "FastAPI import chain (anti-rogue-AI)"
+        language: script
+        entry: scripts/hooks/check_import_chain.sh
+        pass_filenames: false
+        files: ^apps/backend-rag/backend/
+
+      - id: protected-files-gate
+        name: "Block edits to OFF-LIMITS files"
+        language: script
+        entry: scripts/hooks/check_protected_files.sh
+        pass_filenames: false
+        always_run: true
