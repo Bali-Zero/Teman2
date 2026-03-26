@@ -380,7 +380,7 @@ export const ClientCard = React.memo(
                 );
                 return (
                   <div className="flex items-center justify-between">
-                    <span className="text-[var(--tx-secondary)]">Silent:</span>
+                    <span className="text-[var(--tx-secondary)]">Last contact:</span>
                     <span
                       className={`font-medium ${days > 30 ? 'text-red-400' : days > 14 ? 'text-yellow-400' : 'text-green-400'}`}
                     >
