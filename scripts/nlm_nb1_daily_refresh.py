@@ -332,11 +332,13 @@ def main():
     _check_staleness_alert(log_file)
 
     # Sentinel heartbeat
-    import pathlib
+    import pathlib, socket as _sock
     state_dir = pathlib.Path.home() / ".agent" / "decisions" / "state"
     state_dir.mkdir(parents=True, exist_ok=True)
+    _h = _sock.gethostname()
+    _ts = int(time.time())
     (state_dir / "nlm_nb1_daily_refresh.last.json").write_text(
-        f'{{"job":"nlm_nb1_daily_refresh","ts":{int(time.time())},"status":"ok","host":"{__import__(\"socket\").gethostname()}"}}'
+        f'{{"job":"nlm_nb1_daily_refresh","ts":{_ts},"status":"ok","host":"{_h}"}}'
     )
 
 
