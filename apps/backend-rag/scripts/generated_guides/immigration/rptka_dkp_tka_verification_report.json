@@ -1,0 +1,25 @@
+{
+  "total_claims": 3,
+  "verified_count": 3,
+  "verified_ratio": 1.0,
+  "passed": true,
+  "results": [
+    {
+      "claim_id": "IMM-360",
+      "verdict": "FAITHFUL",
+      "reason": "Il documento IMTA come documento fisico separato e' stato abolito da PP 34/2021."
+    },
+    {
+      "claim_id": "IMM-005",
+      "verdict": "FAITHFUL",
+      "reason": "Il datore di lavoro che intende assumere lavoratori stranieri (TKA) deve ottener"
+    },
+    {
+      "claim_id": "IMM-361",
+      "verdict": "FAITHFUL",
+      "reason": "Il datore di lavoro che utilizza lavoratori stranieri (TKA) e' obbligato a pagar"
+    }
+  ],
+  "blocked_claims": [],
+  "note": "Manual verification against immigration_claims_db.json"
+}

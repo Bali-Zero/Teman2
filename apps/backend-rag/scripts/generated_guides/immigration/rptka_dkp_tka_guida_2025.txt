@@ -1,0 +1,144 @@
+RPTKA E DKP-TKA: PIANO DI UTILIZZO E TASSA PER LAVORATORI STRANIERI
+PROCEDURA COMPLETA 2024-2025
+
+Guida normativa verificata | Aggiornata a PP 34/2021, Permenaker 8/2021
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. INQUADRAMENTO NORMATIVO
+
+Con PP 34/2021 (Peraturan Pemerintah tentang Penggunaan Tenaga Kerja Asing) il sistema
+di autorizzazione per l'impiego di lavoratori stranieri in Indonesia è stato
+completamente riformato. [IMM-360]
+
+Il documento IMTA (Izin Mempekerjakan Tenaga Asing) come documento fisico separato
+è stato abolito. [IMM-360] Il nuovo sistema si basa su due elementi:
+1. Approvazione del RPTKA (Rencana Penggunaan Tenaga Kerja Asing)
+2. Pagamento della tassa DKP-TKA (Dana Kompensasi Penggunaan TKA)
+
+Base giuridica:
+- PP 34/2021 sull'impiego di TKA
+- Permenaker 8/2021 (regolamento attuativo di PP 34/2021)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. RPTKA — COS'È E CHI NE HA BISOGNO
+
+L'RPTKA (Rencana Penggunaan Tenaga Kerja Asing) è il Piano di Utilizzo di Lavoratori
+Stranieri che ogni datore di lavoro deve ottenere dal Kementerian Ketenagakerjaan
+(Kemnaker) prima di poter assumere un lavoratore straniero. [IMM-005]
+
+L'obbligo si applica a:
+- PT e PT PMA con dipendenti stranieri
+- Uffici di rappresentanza estera (Perwakilan Asing)
+- Organismi internazionali che assumono personale straniero
+
+Non è richiesto per:
+- Direttori/Commissari stranieri di PT PMA (trattati diversamente)
+- Stagisti su accordi governativi bilaterali specifici
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. PROCEDURA RPTKA (Portale TKA Online)
+
+Accesso: tka-online.kemnaker.go.id (portale Kemnaker)
+
+STEP 1 — Registrazione azienda sul portale TKA Online
+- Registrare l'azienda con NIB, NPWP, SK Kehakiman
+- Creare account aziendale verificato
+
+STEP 2 — Permohonan RPTKA
+Compilare il formulir di richiesta RPTKA includendo:
+- Jabatan (posizione) e job description del TKA
+- Alasan kebutuhan (motivazione per l'assunzione del TKA)
+- Bagan organisasi (organigramma con posizione del TKA)
+- Rencana pendampingan (piano di affiancamento dipendente WNI)
+- Durasi contratto proposta
+
+STEP 3 — Istruttoria Kemnaker
+Il Kemnaker esamina la richiesta verificando:
+- Pertinenza della posizione alla qualifica del TKA
+- Impossibilità di coprire la posizione con personale locale (WNI)
+- Rispetto del ratio TKA/WNI (solitamente 1:1 o superiore)
+Tempo: 10–15 giorni lavorativi.
+
+STEP 4 — Approvazione RPTKA
+Dopo approvazione, il sistema genera automaticamente la notifica di billing
+per la tassa DKP-TKA.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. DKP-TKA — TASSA DI COMPENSAZIONE
+
+Il DKP-TKA (Dana Kompensasi Penggunaan Tenaga Kerja Asing) è la tassa governativa
+obbligatoria che il datore di lavoro deve pagare per ogni lavoratore straniero
+utilizzato. [IMM-361]
+
+Importo: USD 100 per lavoratore per mese [IMM-361]
+
+Modalità di pagamento:
+- Pagamento anticipato per l'intera durata del contratto
+- Esempio: contratto 12 mesi = USD 1.200 da pagare prima dell'emissione del VITAS
+- Tramite sistema billing del portale TKA Online
+
+Il DKP-TKA viene incassato dallo Stato come fondo di compensazione per favorire
+la formazione e occupazione dei lavoratori locali (WNI).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. ABOLIZIONE IMTA — IMPATTO PRATICO
+
+Prima di PP 34/2021:
+  Flusso: RPTKA → IMTA fisico (documento separato) → Visto
+
+Dopo PP 34/2021: [IMM-360]
+  Flusso: RPTKA approvato + DKP-TKA pagato → Visto E23 (senza IMTA)
+
+Questo semplifica il processo eliminando un documento fisico intermedio e
+rendendo l'iter interamente digitale tramite portale TKA Online + portale Evisa.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. RINNOVO RPTKA
+
+Al rinnovo del KITAS E23:
+- L'RPTKA deve essere aggiornato sul portale TKA Online
+- Se il contratto di lavoro si rinnova, nuovo DKP-TKA per la nuova durata
+- Se la posizione cambia, nuova richiesta RPTKA per la nuova posizione
+
+Il processo di rinnovo segue gli stessi step della richiesta iniziale
+ma con tempi generalmente più rapidi (5–10 giorni vs 10–15 giorni).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. POSIZIONI VIETATE AI LAVORATORI STRANIERI
+
+Indipendentemente dall'RPTKA, alcune posizioni rimangono VIETATE agli stranieri:
+- Posizioni HR (Sumber Daya Manusia / personale)
+- Ruoli amministrativi di basso livello
+- Posizioni riservate a WNI per legge
+
+Il Kemnaker rifiuterà qualsiasi RPTKA per queste posizioni.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. SCHEMA RIEPILOGATIVO
+
+                  PRIMA PP 34/2021          DOPO PP 34/2021
+                  ─────────────────         ─────────────────
+Documento         RPTKA + IMTA fisico       Solo RPTKA + DKP-TKA
+Costo per mese    DKP + IMTA fee           DKP-TKA USD 100/mese
+Tasso digitale    Parzialmente             100% portale online
+Tempo (totale)    6–10 settimane           4–8 settimane
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+IMM-005, IMM-360, IMM-361
+
+Nota: per i costi dei servizi Bali Zero consultare sempre il PricingTool.
+I costi governativi indicati (DKP-TKA USD 100/mese) sono tasse statali, non prezzi agenzia.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

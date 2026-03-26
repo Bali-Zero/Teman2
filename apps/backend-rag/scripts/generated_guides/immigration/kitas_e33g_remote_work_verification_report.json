@@ -1,0 +1,50 @@
+{
+  "total_claims": 8,
+  "verified_count": 8,
+  "verified_ratio": 1.0,
+  "passed": true,
+  "results": [
+    {
+      "claim_id": "IMM-364",
+      "verdict": "FAITHFUL",
+      "reason": "Il KITAS per lavoratori da remoto (digital nomad) utilizza l'indice E33G, introd"
+    },
+    {
+      "claim_id": "IMM-362",
+      "verdict": "FAITHFUL",
+      "reason": "Con la UU 63/2024 il Multiple Exit Re-entry Permit (MERP) non e' piu' un documen"
+    },
+    {
+      "claim_id": "IMM-003",
+      "verdict": "FAITHFUL",
+      "reason": "Il rinnovo del KITAS deve essere richiesto prima della scadenza del permesso att"
+    },
+    {
+      "claim_id": "IMM-100",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza dell'immigrazione nei confronti dei garanti è effettuata solo pe"
+    },
+    {
+      "claim_id": "IMM-005",
+      "verdict": "FAITHFUL",
+      "reason": "Il datore di lavoro che intende assumere lavoratori stranieri (TKA) deve ottener"
+    },
+    {
+      "claim_id": "IMM-361",
+      "verdict": "FAITHFUL",
+      "reason": "Il datore di lavoro che utilizza lavoratori stranieri (TKA) e' obbligato a pagar"
+    },
+    {
+      "claim_id": "IMM-076",
+      "verdict": "FAITHFUL",
+      "reason": "Lo Straniero deve aver soggiornato continuamente nel Territorio dell'Indonesia p"
+    },
+    {
+      "claim_id": "IMM-075",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di cambio di stato da Permesso di soggiorno limitato a Permesso di "
+    }
+  ],
+  "blocked_claims": [],
+  "note": "Manual verification against immigration_claims_db.json"
+}
