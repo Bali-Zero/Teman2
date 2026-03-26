@@ -170,7 +170,14 @@ jobs:
       - name: Install Safety
         run: pip install safety
 
-      - name: Run Safety check
+      - name: Run Safety check (critical — blocks CI)
+        run: |
+          safety check \
+            --file apps/backend-rag/requirements.txt \
+            --severity=critical \
+            --output screen
+        # Critical vulns block the pipeline. For full report (non-blocking):
+      - name: Run Safety check (full report)
         run: |
           safety check \
             --file apps/backend-rag/requirements.txt \

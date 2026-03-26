@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /apps/backend-rag
+    schedule:
+      interval: weekly
+      day: monday
+    ignore:
+      # Pinned for torch 2.2.x compatibility — upgrading requires torch 2.3+ (breaking)
+      - dependency-name: sentence-transformers
+    labels:
+      - "dependencies"
+      - "security"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - "dependencies"
+    open-pull-requests-limit: 5
