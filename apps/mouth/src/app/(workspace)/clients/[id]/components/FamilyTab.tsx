@@ -346,18 +346,34 @@ export function FamilyTab({
                                 <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                                   Expiry
                                 </p>
-                                <p
-                                  className={`text-sm font-medium ${
-                                    new Date(member.passport_expiry) < new Date()
+                                {(() => {
+                                  const daysLeft = Math.ceil(
+                                    (new Date(member.passport_expiry).getTime() - Date.now()) /
+                                      86400000
+                                  );
+                                  const color =
+                                    daysLeft < 0
                                       ? 'text-red-500'
-                                      : new Date(member.passport_expiry) <
-                                          new Date(Date.now() + 365 * 86400000)
+                                      : daysLeft <= 180
                                         ? 'text-yellow-500'
-                                        : 'text-green-500'
-                                  }`}
-                                >
-                                  {formatDate(member.passport_expiry)}
-                                </p>
+                                        : 'text-green-500';
+                                  const label =
+                                    daysLeft < 0
+                                      ? `Expired ${Math.abs(daysLeft)}d ago`
+                                      : daysLeft === 0
+                                        ? 'Expires today'
+                                        : daysLeft <= 365
+                                          ? `⏰ ${daysLeft}d left`
+                                          : `${Math.floor(daysLeft / 30)}mo left`;
+                                  return (
+                                    <p
+                                      className={`text-sm font-medium ${color}`}
+                                      title={formatDate(member.passport_expiry)}
+                                    >
+                                      {label}
+                                    </p>
+                                  );
+                                })()}
                               </div>
                             )}
                           </div>
@@ -373,11 +389,23 @@ export function FamilyTab({
                             className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[member.passport_alert]}`}
                           >
                             <AlertTriangle className="w-3 h-3" />
-                            {member.passport_alert === 'expired'
-                              ? 'Expired'
-                              : member.passport_alert === 'red'
-                                ? 'Expiring soon'
-                                : 'Renewal recommended'}
+                            {member.passport_expiry
+                              ? (() => {
+                                  const d = Math.ceil(
+                                    (new Date(member.passport_expiry).getTime() - Date.now()) /
+                                      86400000
+                                  );
+                                  return d < 0
+                                    ? `Expired ${Math.abs(d)}d ago`
+                                    : d === 0
+                                      ? 'Expires today'
+                                      : `⏰ ${d}d left`;
+                                })()
+                              : member.passport_alert === 'expired'
+                                ? 'Expired'
+                                : member.passport_alert === 'red'
+                                  ? 'Expiring soon'
+                                  : 'Renewal recommended'}
                           </div>
                         )}
                         {memberPassportDoc?.google_drive_file_url && (
@@ -464,18 +492,33 @@ export function FamilyTab({
                                 <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                                   Expiry
                                 </p>
-                                <p
-                                  className={`text-sm font-medium ${
-                                    new Date(member.visa_expiry) < new Date()
+                                {(() => {
+                                  const daysLeft = Math.ceil(
+                                    (new Date(member.visa_expiry).getTime() - Date.now()) / 86400000
+                                  );
+                                  const color =
+                                    daysLeft < 0
                                       ? 'text-red-500'
-                                      : new Date(member.visa_expiry) <
-                                          new Date(Date.now() + 90 * 86400000)
+                                      : daysLeft <= 90
                                         ? 'text-yellow-500'
-                                        : 'text-green-500'
-                                  }`}
-                                >
-                                  {formatDate(member.visa_expiry)}
-                                </p>
+                                        : 'text-green-500';
+                                  const label =
+                                    daysLeft < 0
+                                      ? `Expired ${Math.abs(daysLeft)}d ago`
+                                      : daysLeft === 0
+                                        ? 'Expires today'
+                                        : daysLeft <= 365
+                                          ? `⏰ ${daysLeft}d left`
+                                          : `${Math.floor(daysLeft / 30)}mo left`;
+                                  return (
+                                    <p
+                                      className={`text-sm font-medium ${color}`}
+                                      title={formatDate(member.visa_expiry)}
+                                    >
+                                      {label}
+                                    </p>
+                                  );
+                                })()}
                               </div>
                             )}
                           </div>
@@ -491,11 +534,22 @@ export function FamilyTab({
                             className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[member.visa_alert]}`}
                           >
                             <AlertTriangle className="w-3 h-3" />
-                            {member.visa_alert === 'expired'
-                              ? 'Expired'
-                              : member.visa_alert === 'red'
-                                ? 'Expiring soon'
-                                : 'Renewal recommended'}
+                            {member.visa_expiry
+                              ? (() => {
+                                  const d = Math.ceil(
+                                    (new Date(member.visa_expiry).getTime() - Date.now()) / 86400000
+                                  );
+                                  return d < 0
+                                    ? `Expired ${Math.abs(d)}d ago`
+                                    : d === 0
+                                      ? 'Expires today'
+                                      : `⏰ ${d}d left`;
+                                })()
+                              : member.visa_alert === 'expired'
+                                ? 'Expired'
+                                : member.visa_alert === 'red'
+                                  ? 'Expiring soon'
+                                  : 'Renewal recommended'}
                           </div>
                         )}
                         {memberVisaDoc?.google_drive_file_url && (
