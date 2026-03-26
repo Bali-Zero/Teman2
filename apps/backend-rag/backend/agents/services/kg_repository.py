@@ -25,7 +25,7 @@ DEFAULT_TOP_K = 10
 class KnowledgeGraphRepository:
     """Service for knowledge graph database operations using kg_nodes/kg_edges schema"""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         """
         Initialize KnowledgeGraphRepository.
 
