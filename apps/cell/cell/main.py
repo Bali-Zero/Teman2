@@ -12,6 +12,7 @@ from cell.core.dna import DNALoader
 from cell.core.dna_interpreter import DNAInterpreter
 from cell.core.pulse import PulseEngine
 from cell.core.safety import SafetyGate
+from cell.effectors.telegram import TelegramAlerter
 from cell.metabolism.tracker import MetabolismTracker
 from cell.sensors.health_sensor import HealthSensor
 from cell.slow.reasoner import SlowReasoner
@@ -63,6 +64,16 @@ async def main() -> None:
         mock_redis.get = AsyncMock(return_value=None)
         safety_gate = SafetyGate(redis=mock_redis)
 
+        # Telegram alerter — CELL's voice
+        tg_token = os.environ.get("CELL_TELEGRAM_BOT_TOKEN", "")
+        tg_chat = os.environ.get("CELL_TELEGRAM_CHAT_ID", "")
+        alerter: TelegramAlerter | None = None
+        if tg_token and tg_chat:
+            alerter = TelegramAlerter(client=http_client, bot_token=tg_token, chat_id=tg_chat)
+            logger.info("Telegram alerter initialized")
+        else:
+            logger.warning("CELL_TELEGRAM_BOT_TOKEN or CELL_TELEGRAM_CHAT_ID not set — alerts disabled")
+
         engine = PulseEngine(
             dna_loader=dna_loader,
             safety_gate=safety_gate,
@@ -71,6 +82,7 @@ async def main() -> None:
             reasoner=reasoner,
             dna_interpreter=interpreter,
             dna_expected_hash=dna_hash,
+            alerter=alerter,
         )
 
         logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")
