@@ -63,7 +63,7 @@ export function ImageGenModal({
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Es: Un unicorno magico in una foresta incantata..."
-            className="w-full h-28 px-4 py-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+            className="w-full h-28 px-4 py-3 bg-[var(--background)] border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
             autoFocus
           />
           <div className="mt-4 flex justify-end gap-3">

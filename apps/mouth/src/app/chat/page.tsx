@@ -48,7 +48,7 @@ export default function ChatPage() {
   // 2. Gestione dello stato di caricamento iniziale (Blocking UI)
   if (isInitialLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#1a1a1a] text-white">
+      <div className="flex h-screen items-center justify-center bg-[var(--background)] text-white">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--bz-accent)]" />
       </div>
     );
@@ -56,7 +56,7 @@ export default function ChatPage() {
 
   // 3. Rendering Puramente Dichiarativo
   return (
-    <div className="flex h-screen bg-[#1a1a1a] text-white overflow-hidden">
+    <div className="flex h-screen bg-[var(--background)] text-white overflow-hidden">
       
       <ChatSidebar
         isOpen={sidebar.sidebarOpen}

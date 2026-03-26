@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Client, CreateClientParams } from "@/lib/api/crm/crm.types";
+import { logger } from "@/lib/logger";
 
 interface UseCrmClientsOptions {
   status?: string;
@@ -23,15 +24,16 @@ interface ClientsResponse {
   hasMore: boolean;
 }
 
-// Debug helper
-const debug = (...args: unknown[]) => {
-  if (process.env.NODE_ENV === "development") {
-    console.log("[CRM]", ...args);
-  }
+const logError = (...args: unknown[]) => {
+  logger.error(
+    "[CRM]",
+    {},
+    args[0] instanceof Error ? args[0] : new Error(String(args[0])),
+  );
 };
 
-const logError = (...args: unknown[]) => {
-  console.error("[CRM]", ...args);
+const debug = (...args: unknown[]) => {
+  logger.debug("[CRM] " + args.join(" "), {});
 };
 
 /**
@@ -60,6 +62,7 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
     queryFn: async (): Promise<Client[]> => {
       return api.crm.getClients({
         search: search || undefined,
+        assigned_to: assigned_to || undefined,
         limit,
         offset,
       });

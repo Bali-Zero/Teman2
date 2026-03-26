@@ -74,6 +74,7 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
+
 - **Backend:** Python 3.11+, FastAPI, 89 routers, 253 services, 419 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
@@ -342,7 +343,9 @@ Classification confidence thresholds:
 **Dimensions:** 1536
 
 <!-- DOCSYNC:EMBEDDING_FROZEN_START -->
+
 **CRITICAL:** This model is FROZEN. Changing it would invalidate 93,283 existing vectors.
+
 <!-- DOCSYNC:EMBEDDING_FROZEN_END -->
 
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.

@@ -35,6 +35,7 @@ import { ClientKanban } from "@/components/crm/ClientKanban";
 import { ClientCard } from "@/components/crm/ClientCard";
 import { CRMErrorBoundary, CRMSkeleton } from "@/components/crm";
 import { useCrmClients, useCrmStats } from "@/hooks";
+import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "@/lib/hooks/optimized/useDebounce";
 import { logger } from "@/lib/logger";
 
@@ -299,6 +300,13 @@ function ClientsListContent() {
   // Stats hook
   const { data: stats } = useCrmStats();
 
+  // Load team assignees from API (not just from loaded clients)
+  const { data: assigneesData } = useQuery({
+    queryKey: ["crm", "client-assignees"],
+    queryFn: () => api.crm.getClientAssignees(),
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Infinite scroll — check if near bottom on scroll + interval fallback
   const hasMoreRef = useRef(hasMore);
   const isLoadingRef = useRef(isLoading || isLoadingMore);
@@ -343,9 +351,14 @@ function ClientsListContent() {
 
   // Filtering
   const visibleClients = profileLoaded && isMounted ? clients : [];
-  const uniqueAssignees = Array.from(
-    new Set(visibleClients.map((c) => c.assigned_to).filter(Boolean)),
-  );
+  // Use API assignees list (all team members, not just those in the loaded page)
+  const uniqueAssignees: string[] = assigneesData
+    ? assigneesData.map((a) => a.assigned_to).filter(Boolean)
+    : Array.from(
+        new Set(
+          visibleClients.map((c) => c.assigned_to).filter(Boolean) as string[],
+        ),
+      );
 
   const filteredClients = visibleClients
     .filter((client) => {
@@ -549,6 +562,33 @@ function ClientsListContent() {
               </button>
             )}
           </div>
+          {currentUserEmail && (
+            <button
+              onClick={() =>
+                setFilters((prev) => ({
+                  ...prev,
+                  assigned_to:
+                    prev.assigned_to === currentUserEmail
+                      ? ""
+                      : currentUserEmail,
+                }))
+              }
+              className="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                background:
+                  filters.assigned_to === currentUserEmail
+                    ? "var(--bz-accent)"
+                    : "rgba(35, 35, 40, 0.45)",
+                color:
+                  filters.assigned_to === currentUserEmail
+                    ? "#fff"
+                    : "var(--bz-text-2)",
+                border: "1px solid rgba(255,255,255,0.05)",
+              }}
+            >
+              My Clients
+            </button>
+          )}
           <Button
             variant={showFilters ? "default" : "outline"}
             className="gap-2"
