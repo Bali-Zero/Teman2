@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { api } from '@/lib/api';
 import { fileToBase64 } from '@/lib/utils';
 import type { ClientProfile, ClientDocument } from '@/lib/api/crm/crm.types';
@@ -101,7 +102,7 @@ export function VisaCard({
   const visaExpiryDate = latestVisa?.expiry_date;
 
   // Auto-extract visa dates via OCR when visa doc exists but no dates
-  const handleExtractVisa = useCallback(async () => {
+  const handleExtractVisa = useCallback(async (isManual = false) => {
     if (!latestVisa?.google_drive_file_url || isExtracting) return;
     const fileId = extractDriveFileId(latestVisa.google_drive_file_url);
     if (!fileId) return;
@@ -131,8 +132,12 @@ export function VisaCard({
         }
         await onRefresh();
       }
-    } catch {
-      // Silent fail for auto-extract
+    } catch (err) {
+      if (isManual) {
+        toast.error('OCR failed. Please try again.');
+      } else {
+        logger.error('Auto-extract visa OCR failed', { metadata: { error: String(err) } });
+      }
     } finally {
       setIsExtracting(false);
     }
@@ -382,7 +387,7 @@ export function VisaCard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleExtractVisa}
+                onClick={() => handleExtractVisa(true)}
                 disabled={isExtracting}
               >
                 {isExtracting ? (

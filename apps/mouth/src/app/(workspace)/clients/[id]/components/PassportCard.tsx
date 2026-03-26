@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 import { api } from '@/lib/api';
 import { fileToBase64 } from '@/lib/utils';
 import type { ClientProfile, ClientDocument } from '@/lib/api/crm/crm.types';
@@ -33,6 +34,7 @@ export function PassportCard({
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [ocrPolling, setOcrPolling] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Poll OCR status after upload/extract
@@ -100,6 +102,9 @@ export function PassportCard({
     }
   };
 
+  // Auto-trigger OCR when passport image exists but no extracted data
+  const hasTriggeredOcr = useRef(false);
+
   // Enhanced OCR extraction with Gemini Vision
   const handleExtractData = useCallback(async () => {
     if (!passportImageUrl || isExtracting) return;
@@ -109,6 +114,7 @@ export function PassportCard({
       return;
     }
     setIsExtracting(true);
+    setOcrError(null);
     try {
       const response = (await api.post('/api/crm/clients/extract-passport-enhanced', {
         client_id: client.id,
@@ -144,14 +150,15 @@ export function PassportCard({
         });
       }
     } catch (err) {
+      logger.error('Passport OCR failed', { metadata: { error: String(err) } });
+      setOcrError('OCR failed. Click to retry.');
+      hasTriggeredOcr.current = false;
       toast.error('Extraction failed', { description: (err as Error).message });
     } finally {
       setIsExtracting(false);
     }
   }, [passportImageUrl, isExtracting, client.id, onRefresh]);
 
-  // Auto-trigger OCR when passport image exists but no extracted data
-  const hasTriggeredOcr = useRef(false);
   useEffect(() => {
     if (passportImageUrl && !client.passport_number && !isExtracting && !hasTriggeredOcr.current) {
       hasTriggeredOcr.current = true;
@@ -383,6 +390,11 @@ export function PassportCard({
                 </div>
               )}
             </div>
+
+            {/* OCR Error Message */}
+            {ocrError && (
+              <p className="text-xs text-red-400 text-center">{ocrError}</p>
+            )}
 
             {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-2 pt-2 mt-auto">
