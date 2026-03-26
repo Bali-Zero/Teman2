@@ -156,6 +156,7 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
       const response = (await api.post('/api/crm/clients/extract-npwp', {
         file: base64,
         file_name: documents.npwp.name,
+        client_id: clientId,
       })) as {
         success: boolean;
         npwp?: string;
@@ -185,7 +186,7 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
     } finally {
       setIsExtractingNpwp(false);
     }
-  }, [documents.npwp]);
+  }, [documents.npwp, clientId]);
 
   const extractNib = useCallback(async (): Promise<boolean> => {
     if (!documents.nib) {
@@ -199,6 +200,7 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
       const response = (await api.post('/api/crm/clients/extract-nib', {
         file: base64,
         file_name: documents.nib.name,
+        client_id: clientId,
       })) as {
         success: boolean;
         nib?: string;
@@ -228,7 +230,7 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
     } finally {
       setIsExtractingNib(false);
     }
-  }, [documents.nib]);
+  }, [documents.nib, clientId]);
 
   const submit = useCallback(async (): Promise<boolean> => {
     if (!validateForm()) {
@@ -260,28 +262,35 @@ function useCompanyForm(clientId: number, onSuccess: () => void) {
       });
 
       // Upload documents if any
-      const uploadPromises = Object.entries(documents)
-        .filter(([, file]) => file !== undefined)
-        .map(async ([type, file]) => {
-          try {
-            const base64 = await fileToBase64(file!);
-            await api.post(`/api/crm/companies/${company.id}/documents`, {
-              file: base64,
-              file_name: file!.name,
-              document_type: type,
-            });
-          } catch (err) {
-            logger.error(`Failed to upload ${type}:`, {}, err as Error);
-            setUploadErrors((prev) => ({
-              ...prev,
-              [type as DocumentType]: 'Upload failed',
-            }));
-          }
+      const documentEntries = Object.entries(documents).filter(([, file]) => file !== undefined);
+      const uploadResults = await Promise.allSettled(
+        documentEntries.map(async ([type, file]) => {
+          const base64 = await fileToBase64(file!);
+          await api.post(`/api/crm/companies/${company.id}/documents`, {
+            file: base64,
+            file_name: file!.name,
+            document_type: type,
+          });
+          return type;
+        })
+      );
+
+      const failures = uploadResults.filter((r) => r.status === 'rejected');
+      if (failures.length > 0) {
+        failures.forEach((result, index) => {
+          const [type] = documentEntries[index];
+          logger.error(`Failed to upload ${type}:`, {}, (result as PromiseRejectedResult).reason);
+          setUploadErrors((prev) => ({
+            ...prev,
+            [type as DocumentType]: 'Upload failed',
+          }));
         });
-
-      await Promise.all(uploadPromises);
-
-      toast.success('Company created and linked successfully');
+        toast.warning(`Company created, but ${failures.length} document(s) failed to upload`, {
+          description: 'You can re-upload them from the company documents tab.',
+        });
+      } else {
+        toast.success('Company created and linked successfully');
+      }
       onSuccess();
       return true;
     } catch (err) {
@@ -415,7 +424,7 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
                   </label>
                   {documents.nib && (
                     <>
-                      <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={extractNib} disabled={isExtractingNib}>
+                      <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { void extractNib(); }} disabled={isExtractingNib}>
                         {isExtractingNib ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />} Extract
                       </Button>
                       <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => updateDocument('nib', undefined)}>
@@ -441,7 +450,7 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
                   </label>
                   {documents.npwp && (
                     <>
-                      <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={extractNpwp} disabled={isExtractingNpwp}>
+                      <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { void extractNpwp(); }} disabled={isExtractingNpwp}>
                         {isExtractingNpwp ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />} Extract
                       </Button>
                       <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500" onClick={() => updateDocument('npwp', undefined)}>
