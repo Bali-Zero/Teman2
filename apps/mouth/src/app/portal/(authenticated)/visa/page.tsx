@@ -384,9 +384,20 @@ function DocumentCard({ document }: { document: PortalDocument }) {
 }
 
 function HistoryCard({ item }: { item: VisaHistoryItem }) {
+  const statusStyle = (() => {
+    const s = item.status?.toLowerCase();
+    if (s === 'active' || s === 'approved' || s === 'completed')
+      return { background: 'rgba(16,185,129,0.12)', color: '#34d399' };
+    if (s === 'expired' || s === 'rejected' || s === 'cancelled')
+      return { background: 'rgba(239,68,68,0.12)', color: '#f87171' };
+    if (s === 'pending' || s === 'processing')
+      return { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' };
+    return { background: 'rgba(255,255,255,0.05)', color: 'var(--bz-text-2)' };
+  })();
+
   return (
     <div
-      className="rounded-lg border p-3"
+      className="rounded-lg border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
       style={{
         background: 'rgba(255,255,255,0.03)',
         borderColor: 'rgba(255,255,255,0.05)',
@@ -399,13 +410,7 @@ function HistoryCard({ item }: { item: VisaHistoryItem }) {
             {item.period}
           </p>
         </div>
-        <span
-          className="text-xs px-2 py-1 rounded-full font-medium"
-          style={{
-            background: 'rgba(255,255,255,0.05)',
-            color: 'var(--bz-text-2)',
-          }}
-        >
+        <span className="text-xs px-2 py-1 rounded-full font-medium" style={statusStyle}>
           {item.status}
         </span>
       </div>
