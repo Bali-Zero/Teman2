@@ -385,3 +385,50 @@ class TestGetClientsStats:
         assert "by_status" in response.json()
         assert "by_team_member" in response.json()
         assert "new_last_30_days" in response.json()
+
+
+class TestExtractPassportEnhancedRBAC:
+    """Tests for RBAC on POST /extract-passport-enhanced"""
+
+    def test_extract_passport_enhanced_requires_own_client_access(self, mock_db_pool):
+        """Non-assigned user cannot access another user's passport endpoint."""
+        from unittest.mock import patch
+
+        from fastapi import FastAPI, HTTPException
+        from fastapi.testclient import TestClient
+
+        from backend.app.dependencies import get_current_user, get_database_pool
+        from backend.app.routers import crm_clients
+
+        app = FastAPI()
+        app.include_router(crm_clients.router)
+
+        pool, conn = mock_db_pool
+
+        def override_get_database_pool():
+            return pool
+
+        # Non-admin team member (not assigned to this client)
+        def override_get_current_user():
+            return {"email": "other_team@balizero.com", "role": "team"}
+
+        app.dependency_overrides[get_database_pool] = override_get_database_pool
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        test_client = TestClient(app, raise_server_exceptions=False)
+
+        # Mock verify_client_access to raise 403 (simulating non-assigned user)
+        with patch(
+            "backend.app.routers.crm_clients.verify_client_access",
+            new=AsyncMock(
+                side_effect=HTTPException(status_code=403, detail="Access denied")
+            ),
+        ):
+            response = test_client.post(
+                "/api/crm/clients/extract-passport-enhanced",
+                json={"client_id": 99, "file_id": "some-drive-file-id"},
+            )
+
+        assert response.status_code == 403, (
+            f"Expected 403 but got {response.status_code}: {response.json()}"
+        )
