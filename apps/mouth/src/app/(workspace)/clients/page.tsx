@@ -293,6 +293,7 @@ function ClientsListContent() {
   } = useCrmClients({
     status: filters.status || undefined,
     assigned_to: filters.assigned_to || undefined,
+    nationality: filters.nationality || undefined,
     search: debouncedSearch || undefined,
     limit: PAGE_SIZE,
   });
@@ -362,9 +363,10 @@ function ClientsListContent() {
 
   const filteredClients = visibleClients
     .filter((client) => {
-      if (filters.status && client.status !== filters.status) return false;
-      if (filters.nationality && client.nationality !== filters.nationality)
-        return false;
+      // status, nationality, assigned_to are already applied server-side via API.
+      // Client-side filter handles only cases where the server didn't filter
+      // (e.g. stale cache with mismatched data) — kept as a safety net for
+      // assigned_to which the API may not always honour for all roles.
       if (filters.assigned_to && client.assigned_to !== filters.assigned_to)
         return false;
       return true;
