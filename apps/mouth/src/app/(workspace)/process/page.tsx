@@ -326,6 +326,32 @@ export default function PratichePage() {
     setMenuPosition({ x: rect.right - 10, y: rect.bottom + 5 });
   };
 
+  const handlePaymentChange = async (practiceId: number, newPaymentStatus: string) => {
+    setUpdatingId(practiceId);
+    try {
+      const user = await api.getProfile();
+      await api.crm.updatePractice(practiceId, { payment_status: newPaymentStatus }, user.email);
+      setPractices((prev) =>
+        prev.map((p) => (p.id === practiceId ? { ...p, payment_status: newPaymentStatus } : p))
+      );
+      setSelectedPractice((prev) =>
+        prev?.id === practiceId ? { ...prev, payment_status: newPaymentStatus } : prev
+      );
+      toast.success('Payment Updated', `→ ${newPaymentStatus}`);
+      setSelectedPractice(null);
+      setMenuPosition(null);
+    } catch (error) {
+      logger.error(
+        'Failed to update payment',
+        { component: 'Process', action: 'updatePayment' },
+        toError(error)
+      );
+      toast.error('Error', 'Failed to update payment status');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const handleNewCase = () => {
     router.push('/process/new');
   };
@@ -1477,43 +1503,45 @@ export default function PratichePage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        {practice.updated_at
-                          ? (() => {
-                              const ageDays = Math.floor(
-                                (Date.now() - new Date(practice.updated_at).getTime()) / 86400000
-                              );
-                              const label =
-                                ageDays === 0
-                                  ? 'today'
-                                  : ageDays >= 30
-                                    ? `${Math.floor(ageDays / 30)}mo`
-                                    : ageDays >= 7
-                                      ? `${Math.floor(ageDays / 7)}w`
-                                      : `${ageDays}d`;
-                              return (
-                                <span
-                                  className="text-xs tabular-nums px-1.5 py-0.5 rounded"
-                                  style={{
-                                    background:
-                                      ageDays > 14
-                                        ? 'rgba(239,68,68,0.12)'
-                                        : ageDays > 7
-                                          ? 'rgba(245,158,11,0.10)'
-                                          : 'transparent',
-                                    color:
-                                      ageDays > 14
-                                        ? '#f87171'
-                                        : ageDays > 7
-                                          ? '#fbbf24'
-                                          : 'var(--bz-text-2)',
-                                  }}
-                                  title={`Last updated: ${new Date(practice.updated_at).toLocaleDateString()}`}
-                                >
-                                  {label}
-                                </span>
-                              );
-                            })()
-                          : <span className="text-[var(--bz-text-2)] text-xs">—</span>}
+                        {practice.updated_at ? (
+                          (() => {
+                            const ageDays = Math.floor(
+                              (Date.now() - new Date(practice.updated_at).getTime()) / 86400000
+                            );
+                            const label =
+                              ageDays === 0
+                                ? 'today'
+                                : ageDays >= 30
+                                  ? `${Math.floor(ageDays / 30)}mo`
+                                  : ageDays >= 7
+                                    ? `${Math.floor(ageDays / 7)}w`
+                                    : `${ageDays}d`;
+                            return (
+                              <span
+                                className="text-xs tabular-nums px-1.5 py-0.5 rounded"
+                                style={{
+                                  background:
+                                    ageDays > 14
+                                      ? 'rgba(239,68,68,0.12)'
+                                      : ageDays > 7
+                                        ? 'rgba(245,158,11,0.10)'
+                                        : 'transparent',
+                                  color:
+                                    ageDays > 14
+                                      ? '#f87171'
+                                      : ageDays > 7
+                                        ? '#fbbf24'
+                                        : 'var(--bz-text-2)',
+                                }}
+                                title={`Last updated: ${new Date(practice.updated_at).toLocaleDateString()}`}
+                              >
+                                {label}
+                              </span>
+                            );
+                          })()
+                        ) : (
+                          <span className="text-[var(--bz-text-2)] text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div
@@ -1676,6 +1704,50 @@ export default function PratichePage() {
                 )}
               </button>
             ))}
+          </div>
+          {/* Payment Status Section */}
+          <div className="border-t border-[rgba(255,255,255,0.05)] px-3 py-2">
+            <p className="text-[10px] text-[var(--bz-text-2)] mb-1.5 font-medium uppercase tracking-wide">
+              Payment
+            </p>
+            <div className="flex gap-1">
+              {(['unpaid', 'partial', 'paid'] as const).map((ps) => (
+                <button
+                  key={ps}
+                  onClick={() => handlePaymentChange(selectedPractice.id, ps)}
+                  disabled={selectedPractice.payment_status === ps || updatingId !== null}
+                  className="flex-1 text-[10px] py-1 rounded font-medium transition-all disabled:opacity-40 disabled:cursor-default capitalize"
+                  style={{
+                    background:
+                      selectedPractice.payment_status === ps
+                        ? ps === 'paid'
+                          ? 'rgba(34,197,94,0.25)'
+                          : ps === 'partial'
+                            ? 'rgba(245,158,11,0.25)'
+                            : 'rgba(239,68,68,0.25)'
+                        : 'rgba(255,255,255,0.05)',
+                    color:
+                      selectedPractice.payment_status === ps
+                        ? ps === 'paid'
+                          ? '#4ade80'
+                          : ps === 'partial'
+                            ? '#fbbf24'
+                            : '#f87171'
+                        : 'var(--bz-text-2)',
+                    border:
+                      selectedPractice.payment_status === ps
+                        ? ps === 'paid'
+                          ? '1px solid rgba(34,197,94,0.4)'
+                          : ps === 'partial'
+                            ? '1px solid rgba(245,158,11,0.4)'
+                            : '1px solid rgba(239,68,68,0.4)'
+                        : '1px solid rgba(255,255,255,0.06)',
+                  }}
+                >
+                  {ps}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
