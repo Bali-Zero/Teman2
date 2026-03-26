@@ -3,12 +3,10 @@ import { motion } from "framer-motion";
 import {
   MessageCircle,
   Clock,
-  MoreHorizontal,
-  TrendingUp,
   AlertCircle,
-  CheckCircle2,
   Mail,
   Phone,
+  User,
 } from "lucide-react";
 import { Client } from "@/lib/api/crm/crm.types";
 import { useRouter } from "next/navigation";
@@ -35,6 +33,7 @@ const SENTIMENT_BG = {
 };
 
 import { getCountryFlag } from "@/lib/utils/nationality-flags";
+import { getTeamMemberAvatar, TEAM_MEMBERS } from "@/app/(workspace)/clients/[id]/components/constants";
 
 export const ClientCard = React.memo(
   ({ client, isDragging }: ClientCardProps) => {
@@ -56,6 +55,22 @@ export const ClientCard = React.memo(
     // Get country flag for fallback
     const countryFlag = getCountryFlag(client.nationality);
 
+    // Passport expiry alert
+    const passportAlert = client.passport_expiry
+      ? new Date(client.passport_expiry) < new Date()
+        ? "expired"
+        : new Date(client.passport_expiry) < new Date(Date.now() + 180 * 86400000)
+          ? "soon"
+          : null
+      : null;
+
+    // Assigned team member
+    const assignedMember = client.assigned_to
+      ? TEAM_MEMBERS.find((m) => m.value === client.assigned_to)
+      : null;
+    const assignedAvatar = client.assigned_to ? getTeamMemberAvatar(client.assigned_to) : null;
+    const assignedName = assignedMember?.label || client.assigned_to?.split("@")[0] || null;
+
     return (
       <div className="relative group perspective-1000">
         <motion.div
@@ -73,7 +88,7 @@ export const ClientCard = React.memo(
           {/* Header with Avatar & Name */}
           <div className="flex items-start gap-3 mb-3">
             <div
-              className={`relative w-10 h-10 rounded-full ${ringColor} ring-2 ring-offset-2 ring-offset-[var(--background-secondary)]`}
+              className={`relative w-10 h-10 rounded-full ${ringColor} ring-2 ring-offset-2 ring-offset-[var(--background-secondary)] shrink-0`}
             >
               {client.avatar_url ? (
                 <img
@@ -133,7 +148,36 @@ export const ClientCard = React.memo(
                   </>
                 )}
               </div>
+              {/* Passport alert */}
+              {passportAlert && (
+                <div className={`mt-1 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${passportAlert === "expired" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                  <AlertCircle className="w-2.5 h-2.5" />
+                  {passportAlert === "expired" ? "Passport expired" : "Passport expiring"}
+                </div>
+              )}
             </div>
+
+            {/* Assigned team member avatar */}
+            {assignedName && (
+              <div
+                className="shrink-0"
+                title={`Assigned: ${assignedName}`}
+              >
+                {assignedAvatar ? (
+                  <img
+                    src={assignedAvatar}
+                    alt={assignedName}
+                    className="w-7 h-7 rounded-full object-cover ring-1 ring-[rgba(255,255,255,0.15)]"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-[rgba(255,255,255,0.08)] ring-1 ring-[rgba(255,255,255,0.15)] flex items-center justify-center">
+                    <span className="text-[9px] font-bold text-[var(--tx-secondary)] uppercase">
+                      {assignedName.slice(0, 2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Strategic Peek Info (Always visible in card, but stylized) */}
@@ -228,6 +272,8 @@ export const ClientCard = React.memo(
         nextProps.client.last_interaction_date &&
       prevProps.client.last_interaction_summary ===
         nextProps.client.last_interaction_summary &&
+      prevProps.client.assigned_to === nextProps.client.assigned_to &&
+      prevProps.client.passport_expiry === nextProps.client.passport_expiry &&
       prevProps.isDragging === nextProps.isDragging
     );
   },

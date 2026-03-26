@@ -79,15 +79,19 @@ export function OverviewTab({
           <div
             className="rounded-xl border shadow-xl backdrop-blur-xl transition-all duration-300 overflow-hidden flex-1 flex flex-col h-full hover:shadow-2xl hover:-translate-y-1"
             style={{
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-              background: 'rgba(32, 32, 36, 0.65)',
+              border: isClientBirthday ? '1px solid rgba(251,191,36,0.4)' : '1px solid rgba(255, 255, 255, 0.05)',
+              background: isClientBirthday ? 'rgba(45,38,20,0.8)' : 'rgba(32, 32, 36, 0.65)',
+              boxShadow: isClientBirthday ? '0 0 24px rgba(251,191,36,0.15), 0 10px 20px -10px rgba(0,0,0,0.5)' : undefined,
             }}
           >
             <div
               className="flex items-center justify-between px-4 py-3 border-b"
               style={{ borderColor: 'rgba(255,255,255,0.05)' }}
             >
-              <h3 className="font-semibold text-[var(--bz-text-1)]">Client Info</h3>
+              <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
+                Client Info
+                {isClientBirthday && <span className="text-base" title="Birthday today!">🎂</span>}
+              </h3>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
