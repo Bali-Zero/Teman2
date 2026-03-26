@@ -535,13 +535,26 @@ export function OverviewTab({
                       <p className="text-sm text-[var(--bz-text-1)] truncate group-hover/p:text-[var(--bz-accent)] transition-colors">
                         {p.practice_type_name || `Practice #${p.id}`}
                       </p>
-                      <p className="text-[10px] text-[var(--bz-text-2)]">
-                        {p.status} • {p.priority}
-                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <span className="text-[10px] text-[var(--bz-text-2)]">
+                          {p.status.replace(/_/g, ' ')}
+                        </span>
+                        {p.payment_status && p.payment_status !== 'paid' && (
+                          <span
+                            className={`text-[9px] px-1 py-0.5 rounded ${
+                              p.payment_status === 'unpaid'
+                                ? 'bg-red-500/20 text-red-400'
+                                : 'bg-yellow-500/20 text-yellow-400'
+                            }`}
+                          >
+                            {p.payment_status}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {p.quoted_price != null && p.quoted_price > 0 && (
                       <span className="text-xs font-medium text-[var(--bz-accent)] ml-2 shrink-0">
-                        {formatCurrency(p.quoted_price)}
+                        {formatCurrency(p.actual_price || p.quoted_price)}
                       </span>
                     )}
                     <ArrowRight className="w-3 h-3 text-[var(--bz-text-2)] ml-1 opacity-0 group-hover/p:opacity-100 transition-opacity shrink-0" />
@@ -587,15 +600,30 @@ export function OverviewTab({
                       </p>
                       {p.completion_date && (
                         <p className="text-[10px] text-[var(--bz-text-2)]">
-                          Completed {formatDate(p.completion_date)}
+                          {formatDate(p.completion_date)}
                         </p>
                       )}
                     </div>
-                    {p.actual_price != null && p.actual_price > 0 && (
-                      <span className="text-xs font-medium text-green-400 ml-2 shrink-0">
-                        {formatCurrency(p.actual_price)}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {p.payment_status && (
+                        <span
+                          className={`text-[9px] px-1 py-0.5 rounded ${
+                            p.payment_status === 'paid'
+                              ? 'bg-green-500/20 text-green-400'
+                              : p.payment_status === 'partial'
+                                ? 'bg-yellow-500/20 text-yellow-400'
+                                : 'bg-red-500/20 text-red-400'
+                          }`}
+                        >
+                          {p.payment_status}
+                        </span>
+                      )}
+                      {p.actual_price != null && p.actual_price > 0 && (
+                        <span className="text-xs font-medium text-green-400">
+                          {formatCurrency(p.actual_price)}
+                        </span>
+                      )}
+                    </div>
                     <ArrowRight className="w-3 h-3 text-[var(--bz-text-2)] ml-1 opacity-0 group-hover/p:opacity-100 transition-opacity shrink-0" />
                   </div>
                 ))
