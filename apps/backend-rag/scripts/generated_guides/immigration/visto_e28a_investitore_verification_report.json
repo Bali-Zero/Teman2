@@ -1,0 +1,265 @@
+{
+  "total_claims": 51,
+  "verified_count": 51,
+  "verified_ratio": 1.0,
+  "passed": true,
+  "results": [
+    {
+      "claim_id": "IMM-364",
+      "verdict": "FAITHFUL",
+      "reason": "Il KITAS per lavoratori da remoto (digital nomad) utilizza l'indice E33G, introd"
+    },
+    {
+      "claim_id": "IMM-363",
+      "verdict": "FAITHFUL",
+      "reason": "Il sistema degli indici visa e' stato rinnovato da Permenkumham 22/2023. Il KITA"
+    },
+    {
+      "claim_id": "IMM-360",
+      "verdict": "FAITHFUL",
+      "reason": "Il documento IMTA come documento fisico separato e' stato abolito da PP 34/2021."
+    },
+    {
+      "claim_id": "IMM-004",
+      "verdict": "FAITHFUL",
+      "reason": "Il Visa E28A (investor) richiede un investimento minimo di 10 miliardi di rupiah"
+    },
+    {
+      "claim_id": "IMM-343",
+      "verdict": "FAITHFUL",
+      "reason": "Il permesso di soggiorno limitato è concesso a stranieri che entrano in Indonesi"
+    },
+    {
+      "claim_id": "IMM-298",
+      "verdict": "FAITHFUL",
+      "reason": "La domanda di visto per soggiorno limitato funge contemporaneamente da domanda d"
+    },
+    {
+      "claim_id": "IMM-362",
+      "verdict": "FAITHFUL",
+      "reason": "Con la UU 63/2024 il Multiple Exit Re-entry Permit (MERP) non e' piu' un documen"
+    },
+    {
+      "claim_id": "IMM-346",
+      "verdict": "FAITHFUL",
+      "reason": "Il permesso di soggiorno limitato è concesso per attività quali: esperto, lavora"
+    },
+    {
+      "claim_id": "IMM-303",
+      "verdict": "FAITHFUL",
+      "reason": "Per investitori di capitale estero è richiesta proprietà di azioni di almeno 10 "
+    },
+    {
+      "claim_id": "IMM-307",
+      "verdict": "FAITHFUL",
+      "reason": "L'importo minimo di proprietà azionaria è stabilito dal Direttore Generale previ"
+    },
+    {
+      "claim_id": "IMM-309",
+      "verdict": "FAITHFUL",
+      "reason": "Se la società è costituita da meno di 2 mesi, l'estratto conto deve essere prese"
+    },
+    {
+      "claim_id": "IMM-308",
+      "verdict": "FAITHFUL",
+      "reason": "Se il requisito di proprietà azionaria non è soddisfatto, lo straniero può richi"
+    },
+    {
+      "claim_id": "IMM-290",
+      "verdict": "FAITHFUL",
+      "reason": "Gli stranieri che investono capitale estero possono soggiornare per un massimo d"
+    },
+    {
+      "claim_id": "IMM-310",
+      "verdict": "FAITHFUL",
+      "reason": "Per il visto di soggiorno limitato di 5 anni è richiesta prova di garanzia immig"
+    },
+    {
+      "claim_id": "IMM-312",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero investor individuale che intende costituire una società in Indonesi"
+    },
+    {
+      "claim_id": "IMM-313",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero investor individuale che non intende costituire una società in Indo"
+    },
+    {
+      "claim_id": "IMM-314",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero investor individuale che non intende costituire una società in Indo"
+    },
+    {
+      "claim_id": "IMM-315",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero investor individuale che non intende costituire una società in Indo"
+    },
+    {
+      "claim_id": "IMM-316",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero investor individuale che non intende costituire una società in Indo"
+    },
+    {
+      "claim_id": "IMM-317",
+      "verdict": "FAITHFUL",
+      "reason": "Gli impegni di investimento di cui agli articoli 40(2), 40(3) e relativi devono "
+    },
+    {
+      "claim_id": "IMM-311",
+      "verdict": "FAITHFUL",
+      "reason": "Gli investitori stranieri devono impegnare investimenti di almeno 2,5 milioni di"
+    },
+    {
+      "claim_id": "IMM-251",
+      "verdict": "FAITHFUL",
+      "reason": "L'investitore straniero deve versare una garanzia finanziaria in sostituzione de"
+    },
+    {
+      "claim_id": "IMM-352",
+      "verdict": "FAITHFUL",
+      "reason": "Le esenzioni dall'obbligo di garante possono essere sostituite da una Garanzia I"
+    },
+    {
+      "claim_id": "IMM-322",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero investor individuale che intende costituire una società in Indonesi"
+    },
+    {
+      "claim_id": "IMM-249",
+      "verdict": "FAITHFUL",
+      "reason": "Non è richiesto un Garante per investitori stranieri che investono in Indonesia."
+    },
+    {
+      "claim_id": "IMM-349",
+      "verdict": "FAITHFUL",
+      "reason": "L'obbligo di avere un garante è esentato per imprenditori stranieri che investon"
+    },
+    {
+      "claim_id": "IMM-353",
+      "verdict": "FAITHFUL",
+      "reason": "La Garanzia Immigrazione è uno strumento dell'Ufficiale Immigrazione per valutar"
+    },
+    {
+      "claim_id": "IMM-261",
+      "verdict": "FAITHFUL",
+      "reason": "L'importo della garanzia immigratoria è fissato dal Ministro."
+    },
+    {
+      "claim_id": "IMM-257",
+      "verdict": "FAITHFUL",
+      "reason": "La durata della garanzia immigratoria coincide con la durata del permesso di sog"
+    },
+    {
+      "claim_id": "IMM-321",
+      "verdict": "FAITHFUL",
+      "reason": "La domanda di visto di soggiorno limitato per investitori stranieri deve essere "
+    },
+    {
+      "claim_id": "IMM-252",
+      "verdict": "FAITHFUL",
+      "reason": "La garanzia immigratoria deve essere versata su un conto di deposito presso la D"
+    },
+    {
+      "claim_id": "IMM-260",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero versare la garanzia immigratoria su un conto designato."
+    },
+    {
+      "claim_id": "IMM-002",
+      "verdict": "FAITHFUL",
+      "reason": "Il KITAS (Izin Tinggal Terbatas) può essere rilasciato per un massimo di 2 anni."
+    },
+    {
+      "claim_id": "IMM-231",
+      "verdict": "FAITHFUL",
+      "reason": "La durata del Permesso di Soggiorno Limitato non può superare la validità del Pa"
+    },
+    {
+      "claim_id": "IMM-230",
+      "verdict": "FAITHFUL",
+      "reason": "La durata del Permesso di Soggiorno Limitato è determinata secondo la Decisione "
+    },
+    {
+      "claim_id": "IMM-135",
+      "verdict": "FAITHFUL",
+      "reason": "L'Autorizzazione di Soggiorno Limitato può essere prorogata, ad eccezione di que"
+    },
+    {
+      "claim_id": "IMM-003",
+      "verdict": "FAITHFUL",
+      "reason": "Il rinnovo del KITAS deve essere richiesto prima della scadenza del permesso att"
+    },
+    {
+      "claim_id": "IMM-136",
+      "verdict": "FAITHFUL",
+      "reason": "La proroga dell'Autorizzazione di Soggiorno Limitato è effettuata dal Capo dell'"
+    },
+    {
+      "claim_id": "IMM-138",
+      "verdict": "FAITHFUL",
+      "reason": "Gli stranieri come specificato in Pasal 72 Ayat 2 Huruf A possono prolungare l'A"
+    },
+    {
+      "claim_id": "IMM-139",
+      "verdict": "FAITHFUL",
+      "reason": "Gli stranieri come specificati in Pasal 72 Ayat 2 Huruf B-I possono prolungare l"
+    },
+    {
+      "claim_id": "IMM-016",
+      "verdict": "FAITHFUL",
+      "reason": "Il permesso di soggiorno permanente è un'autorizzazione rilasciata agli stranier"
+    },
+    {
+      "claim_id": "IMM-076",
+      "verdict": "FAITHFUL",
+      "reason": "Lo Straniero deve aver soggiornato continuamente nel Territorio dell'Indonesia p"
+    },
+    {
+      "claim_id": "IMM-077",
+      "verdict": "FAITHFUL",
+      "reason": "Il cambio di stato è disponibile per religiosi, lavoratori, investitori, turisti"
+    },
+    {
+      "claim_id": "IMM-235",
+      "verdict": "FAITHFUL",
+      "reason": "Il cambio di status include religiosi, lavoratori, investitori, titolari di stru"
+    },
+    {
+      "claim_id": "IMM-233",
+      "verdict": "FAITHFUL",
+      "reason": "Il cambio di status da Permesso di Soggiorno Limitato a Permesso di Soggiorno Pe"
+    },
+    {
+      "claim_id": "IMM-075",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di cambio di stato da Permesso di soggiorno limitato a Permesso di "
+    },
+    {
+      "claim_id": "IMM-164",
+      "verdict": "FAITHFUL",
+      "reason": "Il Permesso di Soggiorno Permanente può essere prorogato per una durata illimita"
+    },
+    {
+      "claim_id": "IMM-274",
+      "verdict": "FAITHFUL",
+      "reason": "La dichiarazione di integrazione è una dichiarazione dello straniero al Governo "
+    },
+    {
+      "claim_id": "IMM-345",
+      "verdict": "FAITHFUL",
+      "reason": "Il permesso di soggiorno limitato può essere concesso anche mediante cambio di s"
+    },
+    {
+      "claim_id": "IMM-366",
+      "verdict": "FAITHFUL",
+      "reason": "Le regole sui garanti (penjamin) per visti e permessi di soggiorno sono ora disc"
+    },
+    {
+      "claim_id": "IMM-100",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza dell'immigrazione nei confronti dei garanti è effettuata solo pe"
+    }
+  ],
+  "blocked_claims": [],
+  "note": "Manual verification against immigration_claims_db.json"
+}

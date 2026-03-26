@@ -1,0 +1,300 @@
+{
+  "total_claims": 58,
+  "verified_count": 58,
+  "verified_ratio": 1.0,
+  "passed": true,
+  "results": [
+    {
+      "claim_id": "IMM-366",
+      "verdict": "FAITHFUL",
+      "reason": "Le regole sui garanti (penjamin) per visti e permessi di soggiorno sono ora disc"
+    },
+    {
+      "claim_id": "IMM-017",
+      "verdict": "FAITHFUL",
+      "reason": "Un garante è una persona o una corporazione responsabile della presenza e delle "
+    },
+    {
+      "claim_id": "IMM-271",
+      "verdict": "FAITHFUL",
+      "reason": "Un garante è una persona o una società responsabile della permanenza e delle att"
+    },
+    {
+      "claim_id": "IMM-347",
+      "verdict": "FAITHFUL",
+      "reason": "Un garante individuale di una persona straniera deve essere un cittadino indones"
+    },
+    {
+      "claim_id": "IMM-247",
+      "verdict": "FAITHFUL",
+      "reason": "Alcuni stranieri devono avere un Garante che garantisca la loro permanenza nel t"
+    },
+    {
+      "claim_id": "IMM-005",
+      "verdict": "FAITHFUL",
+      "reason": "Il datore di lavoro che intende assumere lavoratori stranieri (TKA) deve ottener"
+    },
+    {
+      "claim_id": "IMM-128",
+      "verdict": "FAITHFUL",
+      "reason": "Per le richieste di Autorizzazione di Soggiorno Limitato, deve essere fornita un"
+    },
+    {
+      "claim_id": "IMM-075",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di cambio di stato da Permesso di soggiorno limitato a Permesso di "
+    },
+    {
+      "claim_id": "IMM-169",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di proroga del Permesso di Soggiorno Permanente deve essere present"
+    },
+    {
+      "claim_id": "IMM-310",
+      "verdict": "FAITHFUL",
+      "reason": "Per il visto di soggiorno limitato di 5 anni è richiesta prova di garanzia immig"
+    },
+    {
+      "claim_id": "IMM-251",
+      "verdict": "FAITHFUL",
+      "reason": "L'investitore straniero deve versare una garanzia finanziaria in sostituzione de"
+    },
+    {
+      "claim_id": "IMM-004",
+      "verdict": "FAITHFUL",
+      "reason": "Il Visa E28A (investor) richiede un investimento minimo di 10 miliardi di rupiah"
+    },
+    {
+      "claim_id": "IMM-311",
+      "verdict": "FAITHFUL",
+      "reason": "Gli investitori stranieri devono impegnare investimenti di almeno 2,5 milioni di"
+    },
+    {
+      "claim_id": "IMM-312",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero investor individuale che intende costituire una società in Indonesi"
+    },
+    {
+      "claim_id": "IMM-322",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero investor individuale che intende costituire una società in Indonesi"
+    },
+    {
+      "claim_id": "IMM-364",
+      "verdict": "FAITHFUL",
+      "reason": "Il KITAS per lavoratori da remoto (digital nomad) utilizza l'indice E33G, introd"
+    },
+    {
+      "claim_id": "IMM-350",
+      "verdict": "FAITHFUL",
+      "reason": "L'obbligo di avere un garante è esentato per cittadini di paesi che forniscono r"
+    },
+    {
+      "claim_id": "IMM-351",
+      "verdict": "FAITHFUL",
+      "reason": "L'esenzione dall'obbligo di garante può applicarsi ai permessi di soggiorno per "
+    },
+    {
+      "claim_id": "IMM-352",
+      "verdict": "FAITHFUL",
+      "reason": "Le esenzioni dall'obbligo di garante possono essere sostituite da una Garanzia I"
+    },
+    {
+      "claim_id": "IMM-353",
+      "verdict": "FAITHFUL",
+      "reason": "La Garanzia Immigrazione è uno strumento dell'Ufficiale Immigrazione per valutar"
+    },
+    {
+      "claim_id": "IMM-272",
+      "verdict": "FAITHFUL",
+      "reason": "La garanzia di immigrazione è denaro o altra forma come sostituto del garante."
+    },
+    {
+      "claim_id": "IMM-252",
+      "verdict": "FAITHFUL",
+      "reason": "La garanzia immigratoria deve essere versata su un conto di deposito presso la D"
+    },
+    {
+      "claim_id": "IMM-260",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero versare la garanzia immigratoria su un conto designato."
+    },
+    {
+      "claim_id": "IMM-253",
+      "verdict": "FAITHFUL",
+      "reason": "La garanzia immigratoria deve essere versata prima che lo straniero entri nel te"
+    },
+    {
+      "claim_id": "IMM-261",
+      "verdict": "FAITHFUL",
+      "reason": "L'importo della garanzia immigratoria è fissato dal Ministro."
+    },
+    {
+      "claim_id": "IMM-254",
+      "verdict": "FAITHFUL",
+      "reason": "La garanzia immigratoria può essere utilizzata per il rimpatrio dello straniero."
+    },
+    {
+      "claim_id": "IMM-255",
+      "verdict": "FAITHFUL",
+      "reason": "La garanzia immigratoria può essere utilizzata per i costi dello straniero che r"
+    },
+    {
+      "claim_id": "IMM-256",
+      "verdict": "FAITHFUL",
+      "reason": "La garanzia immigratoria può essere utilizzata per il pagamento di altri costi r"
+    },
+    {
+      "claim_id": "IMM-257",
+      "verdict": "FAITHFUL",
+      "reason": "La durata della garanzia immigratoria coincide con la durata del permesso di sog"
+    },
+    {
+      "claim_id": "IMM-258",
+      "verdict": "FAITHFUL",
+      "reason": "Se il permesso scade e la garanzia non è utilizzata, deve essere restituita allo"
+    },
+    {
+      "claim_id": "IMM-259",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero può richiedere il prelievo della garanzia dopo aver ottenuto il per"
+    },
+    {
+      "claim_id": "IMM-143",
+      "verdict": "FAITHFUL",
+      "reason": "Se i requisiti sono incompleti, il Capo dell'Ufficio Immigrazione deve restituir"
+    },
+    {
+      "claim_id": "IMM-171",
+      "verdict": "FAITHFUL",
+      "reason": "Se la documentazione è incompleta, il Capo dell'Ufficio Immigrazione deve restit"
+    },
+    {
+      "claim_id": "IMM-330",
+      "verdict": "FAITHFUL",
+      "reason": "Il permesso di soggiorno è inviato elettronicamente allo straniero, garante o re"
+    },
+    {
+      "claim_id": "IMM-175",
+      "verdict": "FAITHFUL",
+      "reason": "Il garante o responsabile è obbligato a far uscire lo straniero dal territorio i"
+    },
+    {
+      "claim_id": "IMM-174",
+      "verdict": "FAITHFUL",
+      "reason": "Il garante o responsabile di uno straniero che desidera terminare la garanzia de"
+    },
+    {
+      "claim_id": "IMM-178",
+      "verdict": "FAITHFUL",
+      "reason": "La segnalazione del permesso di soggiorno permanente deve essere effettuata attr"
+    },
+    {
+      "claim_id": "IMM-325",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta deve essere presentata tramite applicazione allegando passaporto va"
+    },
+    {
+      "claim_id": "IMM-157",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta deve essere accompagnata da lettera di agenzia navale, elenco dell'"
+    },
+    {
+      "claim_id": "IMM-084",
+      "verdict": "FAITHFUL",
+      "reason": "Il Ministero effettua la sorveglianza sull'immigrazione che comprende il control"
+    },
+    {
+      "claim_id": "IMM-086",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza sull'immigrazione nei confronti degli Stranieri avviene durante "
+    },
+    {
+      "claim_id": "IMM-100",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza dell'immigrazione nei confronti dei garanti è effettuata solo pe"
+    },
+    {
+      "claim_id": "IMM-101",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza dei garanti persone giuridiche verifica la documentazione, la pr"
+    },
+    {
+      "claim_id": "IMM-091",
+      "verdict": "FAITHFUL",
+      "reason": "Il controllo amministrativo degli stranieri deve includere la raccolta, l'elabor"
+    },
+    {
+      "claim_id": "IMM-092",
+      "verdict": "FAITHFUL",
+      "reason": "Il controllo sul campo degli stranieri comprende la verifica della loro presenza"
+    },
+    {
+      "claim_id": "IMM-102",
+      "verdict": "FAITHFUL",
+      "reason": "Il controllo sul campo può essere effettuato periodicamente o quando necessario."
+    },
+    {
+      "claim_id": "IMM-094",
+      "verdict": "FAITHFUL",
+      "reason": "In circostanze particolari, il controllo sul campo può essere effettuato senza u"
+    },
+    {
+      "claim_id": "IMM-095",
+      "verdict": "FAITHFUL",
+      "reason": "L'ufficiale di immigrazione che effettua controlli senza ordine scritto deve seg"
+    },
+    {
+      "claim_id": "IMM-218",
+      "verdict": "FAITHFUL",
+      "reason": "Il controllo di immigrazione sul campo è facoltativo e può essere effettuato sec"
+    },
+    {
+      "claim_id": "IMM-221",
+      "verdict": "FAITHFUL",
+      "reason": "Il controllo di immigrazione sul campo è obbligatorio se la richiesta si basa su"
+    },
+    {
+      "claim_id": "IMM-099",
+      "verdict": "FAITHFUL",
+      "reason": "I dati degli stranieri ospitati devono essere consegnati all'ufficiale di immigr"
+    },
+    {
+      "claim_id": "IMM-104",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza dell'immigrazione su stranieri che richiedono visti è effettuata"
+    },
+    {
+      "claim_id": "IMM-176",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero è obbligato a lasciare il territorio indonesiano, restituire il per"
+    },
+    {
+      "claim_id": "IMM-198",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta scritta per l'esenzione dal permesso di soggiorno deve includere pa"
+    },
+    {
+      "claim_id": "IMM-363",
+      "verdict": "FAITHFUL",
+      "reason": "Il sistema degli indici visa e' stato rinnovato da Permenkumham 22/2023. Il KITA"
+    },
+    {
+      "claim_id": "IMM-249",
+      "verdict": "FAITHFUL",
+      "reason": "Non è richiesto un Garante per investitori stranieri che investono in Indonesia."
+    },
+    {
+      "claim_id": "IMM-107",
+      "verdict": "FAITHFUL",
+      "reason": "Il PP 31/1994 sulla sorveglianza degli stranieri e sui provvedimenti di immigraz"
+    },
+    {
+      "claim_id": "IMM-248",
+      "verdict": "FAITHFUL",
+      "reason": "Non è richiesto un Garante per stranieri coniugati con cittadini indonesiani."
+    }
+  ],
+  "blocked_claims": [],
+  "note": "Manual verification against immigration_claims_db.json"
+}
