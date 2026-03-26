@@ -1,13 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import {
-  FileText,
-  Loader2,
-  Upload,
-  Trash2,
-  ExternalLink,
-} from 'lucide-react';
+import { FileText, Loader2, Upload, Trash2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
@@ -102,46 +96,50 @@ export function VisaCard({
   const visaExpiryDate = latestVisa?.expiry_date;
 
   // Auto-extract visa dates via OCR when visa doc exists but no dates
-  const handleExtractVisa = useCallback(async (isManual = false) => {
-    if (!latestVisa?.google_drive_file_url || isExtracting) return;
-    const fileId = extractDriveFileId(latestVisa.google_drive_file_url);
-    if (!fileId) return;
-    setIsExtracting(true);
-    try {
-      const response = (await api.post(`/api/crm/clients/${clientId}/extract-visa`, {
-        file_id: fileId,
-        doc_id: latestVisa.id,
-      })) as {
-        success: boolean;
-        extracted?: {
-          expiry_date?: string;
-          issue_date?: string;
-          visa_type?: string;
+  const handleExtractVisa = useCallback(
+    async (isManual = false) => {
+      if (!latestVisa?.google_drive_file_url || isExtracting) return;
+      const fileId = extractDriveFileId(latestVisa.google_drive_file_url);
+      if (!fileId) return;
+      setIsExtracting(true);
+      try {
+        const response = (await api.post(`/api/crm/clients/${clientId}/extract-visa`, {
+          file_id: fileId,
+          doc_id: latestVisa.id,
+        })) as {
+          success: boolean;
+          extracted?: {
+            expiry_date?: string;
+            issue_date?: string;
+            visa_type?: string;
+          };
         };
-      };
-      if (response.success && response.extracted) {
-        const details = [];
-        if (response.extracted.visa_type) details.push(`Type: ${response.extracted.visa_type}`);
-        if (response.extracted.issue_date) details.push(`Issue: ${response.extracted.issue_date}`);
-        if (response.extracted.expiry_date)
-          details.push(`Expiry: ${response.extracted.expiry_date}`);
-        if (details.length > 0) {
-          toast.success('Visa data extracted!', {
-            description: details.join(' | '),
-          });
+        if (response.success && response.extracted) {
+          const details = [];
+          if (response.extracted.visa_type) details.push(`Type: ${response.extracted.visa_type}`);
+          if (response.extracted.issue_date)
+            details.push(`Issue: ${response.extracted.issue_date}`);
+          if (response.extracted.expiry_date)
+            details.push(`Expiry: ${response.extracted.expiry_date}`);
+          if (details.length > 0) {
+            toast.success('Visa data extracted!', {
+              description: details.join(' | '),
+            });
+          }
+          await onRefresh();
         }
-        await onRefresh();
+      } catch (err) {
+        if (isManual) {
+          toast.error('OCR failed. Please try again.');
+        } else {
+          logger.error('Auto-extract visa OCR failed', { metadata: { error: String(err) } });
+        }
+      } finally {
+        setIsExtracting(false);
       }
-    } catch (err) {
-      if (isManual) {
-        toast.error('OCR failed. Please try again.');
-      } else {
-        logger.error('Auto-extract visa OCR failed', { metadata: { error: String(err) } });
-      }
-    } finally {
-      setIsExtracting(false);
-    }
-  }, [latestVisa, isExtracting, clientId, onRefresh]);
+    },
+    [latestVisa, isExtracting, clientId, onRefresh]
+  );
 
   // Auto-trigger visa OCR when visa doc exists but no expiry date
   useEffect(() => {
@@ -372,16 +370,30 @@ export function VisaCard({
                         const days = Math.ceil(
                           (new Date(visaExpiryDate).getTime() - Date.now()) / 86400000
                         );
-                        if (days < 0) return null;
+                        const label =
+                          days < 0
+                            ? `Exp ${Math.abs(days)}d ago`
+                            : days === 0
+                              ? 'today'
+                              : days <= 365
+                                ? `⏰ ${days}d`
+                                : `${Math.floor(days / 30)}mo`;
                         return (
-                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                            visaAlert.alertLevel === 'critical' || visaAlert.alertLevel === 'warning'
-                              ? 'bg-black/20 text-current'
-                              : days < 30 ? 'bg-red-500/20 text-red-400' :
-                              days < 60 ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-green-500/10 text-green-400'
-                          }`}>
-                            {days}d
+                          <span
+                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                              visaAlert.alertLevel === 'critical' ||
+                              visaAlert.alertLevel === 'warning'
+                                ? 'bg-black/20 text-current'
+                                : days < 0
+                                  ? 'bg-red-500/20 text-red-400'
+                                  : days < 30
+                                    ? 'bg-red-500/15 text-red-400'
+                                    : days < 60
+                                      ? 'bg-yellow-500/20 text-yellow-400'
+                                      : 'bg-green-500/10 text-green-400'
+                            }`}
+                          >
+                            {label}
                           </span>
                         );
                       })()}
