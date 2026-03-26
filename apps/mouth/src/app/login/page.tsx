@@ -126,7 +126,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex w-full min-h-screen bg-[var(--bz-base)] overflow-hidden font-sans text-white selection:bg-cyan-500/30 relative">
+    <div className="flex w-full min-h-screen bg-[#0c0c0e] overflow-hidden font-sans text-white selection:bg-cyan-500/30 relative">
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -179,7 +179,7 @@ export default function LoginPage() {
           opacity: loginStage === "authenticating" ? 0.5 : 1, // Dim on authenticating
         }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="w-full lg:w-[35%] h-full min-h-screen bg-[var(--bz-elevated)] relative z-20 flex flex-col px-12 lg:px-16 py-12"
+        className="w-full lg:w-[35%] h-full min-h-screen bg-[#131315] relative z-20 flex flex-col px-12 lg:px-16 py-12"
       >
         {/* Top: Brand Identity */}
         <div className="flex flex-col items-center w-full pt-8 mb-auto">
@@ -290,7 +290,7 @@ export default function LoginPage() {
       </motion.div>
 
       {/* RIGHT COLUMN - Kintsugi Capital */}
-      <div className="hidden lg:block lg:w-[65%] relative z-0 h-screen bg-[var(--bz-elevated)]">
+      <div className="hidden lg:block lg:w-[65%] relative z-0 h-screen bg-[#131315]">
         <motion.div
           className="relative w-full h-full"
           animate={{
@@ -310,8 +310,8 @@ export default function LoginPage() {
         </motion.div>
 
         {/* Cinematic Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[var(--bz-elevated)] via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[var(--bz-elevated)] via-transparent to-transparent opacity-90" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#131315] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#131315] via-transparent to-transparent opacity-90" />
 
         {/* Kintsugi Text Overlay */}
         <div className="absolute bottom-12 right-16 text-right max-w-md flex flex-col items-end">
