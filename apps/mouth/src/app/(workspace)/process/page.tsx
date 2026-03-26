@@ -1089,6 +1089,9 @@ export default function PratichePage() {
                       </div>
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)]">
+                      Payment
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)]">
                       Actions
                     </th>
                   </tr>
@@ -1108,8 +1111,22 @@ export default function PratichePage() {
                           ?.toUpperCase()
                           .replace(/_/g, " ") || "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-[var(--bz-text-1)]">
-                        {practice.client_name || "Unknown"}
+                      <td className="px-4 py-3 text-sm">
+                        {practice.client_id ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/clients/${practice.client_id}`);
+                            }}
+                            className="text-[var(--bz-text-1)] hover:text-[var(--bz-accent)] transition-colors text-left"
+                          >
+                            {practice.client_name || "Unknown"}
+                          </button>
+                        ) : (
+                          <span className="text-[var(--bz-text-1)]">
+                            {practice.client_name || "Unknown"}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {practice.client_lead ? (
@@ -1151,6 +1168,24 @@ export default function PratichePage() {
                               "-"}
                           </span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {practice.payment_status ? (
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                              practice.payment_status === 'paid'
+                                ? 'bg-green-500/15 text-green-400'
+                                : practice.payment_status === 'partial'
+                                  ? 'bg-yellow-500/15 text-yellow-400'
+                                  : 'bg-red-500/15 text-red-400'
+                            }`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                            {practice.payment_status}
+                          </span>
+                        ) : (
+                          <span className="text-[var(--bz-text-2)] text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div
