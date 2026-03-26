@@ -41,6 +41,9 @@ archives/kbli-feb2026/KBLI_2025_*.json
 # Mypy cache
 **/.mypy_cache/
 
+# Coverage reports (auto-generated)
+**/coverage/
+
 # War room outputs (raw AI dumps)
 apps/war-room/output/
 
