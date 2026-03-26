@@ -1893,10 +1893,11 @@ async def get_client_required_documents(
                     prd.id, prd.practice_id, prd.document_type, prd.document_label,
                     prd.description, prd.is_required, prd.uploaded_by_client,
                     prd.status, prd.client_notes, prd.team_member_notes,
-                    p.practice_type_name as process_name,
+                    COALESCE(pt.name, p.practice_type_code) as process_name,
                     p.status as process_status
                 FROM practice_required_documents prd
                 JOIN practices p ON prd.practice_id = p.id
+                LEFT JOIN practice_types pt ON p.practice_type_id = pt.id
                 WHERE p.client_id = $1 AND p.status NOT IN ('completed', 'cancelled')
                 ORDER BY prd.is_required DESC, prd.created_at DESC
                 """,
