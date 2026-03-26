@@ -267,7 +267,16 @@ export function OverviewTab({
                         <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           Date of Birth
                         </p>
-                        <p className="text-sm font-medium">{formatDate(client.date_of_birth)}</p>
+                        <p className="text-sm font-medium flex items-center gap-2">
+                          {formatDate(client.date_of_birth)}
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(255,255,255,0.06)] text-[var(--bz-text-2)]">
+                            {Math.floor(
+                              (Date.now() - new Date(client.date_of_birth).getTime()) /
+                                (365.25 * 86400000)
+                            )}
+                            y
+                          </span>
+                        </p>
                       </div>
                     )}
                     {client.birthplace && (
@@ -316,7 +325,7 @@ export function OverviewTab({
           {(() => {
             const pipelineValue = activePractices.reduce(
               (sum, p) => sum + (p.actual_price || p.quoted_price || 0),
-              0,
+              0
             );
             const unpaidValue = [...activePractices, ...completedPractices]
               .filter((p) => p.payment_status === 'unpaid' || p.payment_status === 'partial')
@@ -325,7 +334,10 @@ export function OverviewTab({
               <div className="grid grid-cols-2 gap-3 mt-4">
                 <div
                   className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                  style={{ border: '1px solid rgba(255, 255, 255, 0.05)', background: 'rgba(35, 35, 40, 0.45)' }}
+                  style={{
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    background: 'rgba(35, 35, 40, 0.45)',
+                  }}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <Users className="w-3.5 h-3.5 text-blue-500" />
@@ -335,7 +347,10 @@ export function OverviewTab({
                 </div>
                 <div
                   className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                  style={{ border: '1px solid rgba(255, 255, 255, 0.05)', background: 'rgba(35, 35, 40, 0.45)' }}
+                  style={{
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    background: 'rgba(35, 35, 40, 0.45)',
+                  }}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <FileText className="w-3.5 h-3.5 text-purple-500" />
@@ -346,25 +361,35 @@ export function OverviewTab({
                 {pipelineValue > 0 && (
                   <div
                     className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                    style={{ border: '1px solid rgba(255, 255, 255, 0.05)', background: 'rgba(35, 35, 40, 0.45)' }}
+                    style={{
+                      border: '1px solid rgba(255, 255, 255, 0.05)',
+                      background: 'rgba(35, 35, 40, 0.45)',
+                    }}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
                       <Activity className="w-3.5 h-3.5 text-yellow-500" />
                       <span className="text-[10px] text-[var(--bz-text-2)]">Pipeline</span>
                     </div>
-                    <p className="text-sm font-bold text-yellow-400 truncate">{formatCurrency(pipelineValue)}</p>
+                    <p className="text-sm font-bold text-yellow-400 truncate">
+                      {formatCurrency(pipelineValue)}
+                    </p>
                   </div>
                 )}
                 {unpaidValue > 0 && (
                   <div
                     className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                    style={{ border: '1px solid rgba(255, 100, 80, 0.12)', background: 'rgba(35, 35, 40, 0.45)' }}
+                    style={{
+                      border: '1px solid rgba(255, 100, 80, 0.12)',
+                      background: 'rgba(35, 35, 40, 0.45)',
+                    }}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
                       <Clock className="w-3.5 h-3.5 text-red-500" />
                       <span className="text-[10px] text-[var(--bz-text-2)]">Unpaid</span>
                     </div>
-                    <p className="text-sm font-bold text-red-400 truncate">{formatCurrency(unpaidValue)}</p>
+                    <p className="text-sm font-bold text-red-400 truncate">
+                      {formatCurrency(unpaidValue)}
+                    </p>
                   </div>
                 )}
               </div>
@@ -671,7 +696,7 @@ export function OverviewTab({
             {(() => {
               const totalRevenue = completedPractices.reduce(
                 (sum, p) => sum + (p.actual_price || 0),
-                0,
+                0
               );
               const paidRevenue = completedPractices
                 .filter((p) => p.payment_status === 'paid')
