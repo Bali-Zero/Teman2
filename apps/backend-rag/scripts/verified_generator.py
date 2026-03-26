@@ -29,6 +29,10 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
+
 logger = logging.getLogger(__name__)
 
 SCRIPTS_DIR = Path(__file__).parent

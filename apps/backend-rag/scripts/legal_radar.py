@@ -17,6 +17,10 @@ import urllib.request
 from datetime import date
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
+
 logger = logging.getLogger(__name__)
 
 DOMAINS = ["immigration", "company", "tax", "property"]
