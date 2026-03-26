@@ -355,7 +355,7 @@ class TestStreamQueryRouting:
     async def test_stream_query_out_of_domain(self, orchestrator):
         """Test out-of-domain detection in stream"""
         with patch(
-            "backend.services.rag.agentic.orchestrator.is_out_of_domain",
+            "backend.services.rag.agentic.query_gates.is_out_of_domain",
             return_value=(True, "coding"),
         ):
             events = []

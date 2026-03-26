@@ -44,6 +44,10 @@ class TeamDriveService:
             auth_manager=self.auth, http_client=self.http_client, audit=self.audit
         )
 
+    def is_configured(self) -> bool:
+        """Check if Drive service is configured (auth manager available)."""
+        return self.auth is not None
+
     async def close(self) -> None:
         """
         Garantisce la chiusura corretta del connection pool HTTPX.

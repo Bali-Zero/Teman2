@@ -160,7 +160,7 @@ def orchestrator(mock_llm_gateway, mock_reasoning_engine):
         # Mock followup_service.get_followups (async) for stream_query
         orch.followup_service.get_followups = AsyncMock(return_value=[])
 
-        return orch
+        yield orch
 
 
 @pytest.mark.asyncio
