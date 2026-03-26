@@ -90,8 +90,12 @@ def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
         env = os.environ.copy()
         env.pop('ANTHROPIC_API_KEY', None)
         
+        # Use absolute path so launchd (limited PATH) can find claude
+        import shutil
+        claude_bin = shutil.which('claude') or '/Users/nuzantara/.local/bin/claude'
+
         result = subprocess.run(
-            ['claude', '--print', '--model', 'claude-sonnet-4-6', prompt],
+            [claude_bin, '--print', '--model', 'claude-sonnet-4-6', prompt],
             capture_output=True,
             text=True,
             timeout=180,  # 180s timeout

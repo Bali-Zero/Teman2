@@ -16,7 +16,8 @@ set -euo pipefail
 [[ -n "${1:-}" && "${1:0:2}" != "--" ]] && TOPIC="$1" || TOPIC=""
 DRY_RUN=false
 AUTO_MODE=false
-WAR_ROOM="$(cd "$(dirname "$0")" && pwd)"
+# Use WAR_ROOM from env if already set (e.g. when launched via cp to /tmp by launchd)
+WAR_ROOM="${WAR_ROOM:-$(cd "$(dirname "$0")" && pwd)}"
 mkdir -p "$WAR_ROOM/logs"
 LOG_FILE="$WAR_ROOM/logs/pipeline_$(date +%Y%m%d_%H%M%S).log"
 
