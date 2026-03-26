@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import Any
 
@@ -95,11 +94,11 @@ class ClientRepository:
                     client_data.get("avatar_url"),
                     client_data.get("address"),
                     client_data.get("notes"),
-                    json.dumps(client_data.get("tags", [])),
-                    json.dumps(client_data.get("custom_fields", {})),
+                    client_data.get("tags", []),
+                    client_data.get("custom_fields", {}),
                     client_data.get("created_by"),
                     client_data.get("lead_source"),
-                    json.dumps(client_data.get("service_interest", [])),
+                    client_data.get("service_interest", []),
                     client_data.get("tax_id"),
                 )
 
