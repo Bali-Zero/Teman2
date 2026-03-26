@@ -26,7 +26,7 @@ except ImportError:
 class NurturingMessageService:
     """Service for generating personalized nurturing messages"""
 
-    def __init__(self, ai_client: Any = None):
+    def __init__(self, ai_client: Any = None) -> None:
         """
         Initialize NurturingMessageService.
 
