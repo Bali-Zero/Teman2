@@ -77,6 +77,7 @@ export default function CaseDetailPage() {
     quoted_price: '',
     actual_price: '',
     assigned_to: '',
+    start_date: '',
   });
 
   // Inline notes edit
@@ -334,6 +335,7 @@ export default function CaseDetailPage() {
       quoted_price: practice.quoted_price?.toString() || '',
       actual_price: practice.actual_price?.toString() || '',
       assigned_to: practice.assigned_to || '',
+      start_date: practice.start_date ? practice.start_date.split('T')[0] : '',
     });
     setIsEditModalOpen(true);
   };
@@ -349,7 +351,13 @@ export default function CaseDetailPage() {
       const updates: Partial<
         Pick<
           Practice,
-          'status' | 'priority' | 'payment_status' | 'quoted_price' | 'actual_price' | 'assigned_to'
+          | 'status'
+          | 'priority'
+          | 'payment_status'
+          | 'quoted_price'
+          | 'actual_price'
+          | 'assigned_to'
+          | 'start_date'
         >
       > = {};
 
@@ -364,6 +372,9 @@ export default function CaseDetailPage() {
         updates.actual_price = Number(editForm.actual_price);
       if (editForm.assigned_to !== (practice.assigned_to || ''))
         updates.assigned_to = editForm.assigned_to || undefined;
+      const currentStartDate = practice.start_date ? practice.start_date.split('T')[0] : '';
+      if (editForm.start_date !== currentStartDate)
+        updates.start_date = editForm.start_date || undefined;
 
       if (Object.keys(updates).length === 0) {
         toast.error('No Changes', 'No fields were modified.');
@@ -1690,6 +1701,26 @@ export default function CaseDetailPage() {
                   <option value="asya@balizero.com">Asya</option>
                   <option value="antonellosiano@gmail.com">Antonello</option>
                 </select>
+              </div>
+
+              {/* Start Date */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium" style={{ color: 'var(--bz-text-1)' }}>
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={editForm.start_date}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, start_date: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                  style={{
+                    border: '1px solid var(--bz-border)',
+                    background: 'var(--bz-card)',
+                    color: 'var(--bz-text-1)',
+                  }}
+                />
               </div>
             </div>
 
