@@ -1,0 +1,1770 @@
+[
+  {
+    "claim": "La terra è la superficie terrestre, incluso lo spazio sopra e sotto di essa, il cui uso e sfruttamento è direttamente o indirettamente collegato all'uso della superficie terrestre.",
+    "verbatim": "Tanah adalah permukaan bumi baik berupa daratan maupun yang tertutup air, termasuk ruang di atas dan di dalam tubuh bumi",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-001"
+  },
+  {
+    "claim": "La terra dello stato è la terra che non è gravata da alcun diritto sulla terra, non è terra wakaf, non è terra ulayat e non è bene patrimoniale dello stato/regione.",
+    "verbatim": "Tanah Negara adalah Tanah yang tidak dilekati dengan sesuatu hak atas tanah, bukan Tanah wakaf, bukan Tanah Ulayat",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-002"
+  },
+  {
+    "claim": "Il diritto di gestione è il diritto di controllo dello stato la cui esecuzione è parzialmente delegata al titolare del diritto di gestione.",
+    "verbatim": "Hak Pengelolaan adalah hak menguasai dari negara yang kewenangan pelaksanaannya sebagian dilimpahkan",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 3",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-003"
+  },
+  {
+    "claim": "Il diritto sulla terra è il diritto ottenuto dal rapporto giuridico tra il titolare e la terra per controllare, possedere, usare e sfruttare la terra.",
+    "verbatim": "Hak Atas Tanah adalah hak yang diperoleh dari hubungan hukum antara pemegang hak dengan Tanah",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 4",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-004"
+  },
+  {
+    "claim": "Lo spazio sopra la terra è lo spazio situato sopra la superficie terrestre utilizzato per attività specifiche, il cui controllo e uso sono separati da quelli del terreno sottostante.",
+    "verbatim": "Ruang Atas Tanah adalah ruang yang berada di atas permukaan Tanah yang digunakan untuk kegiatan tertentu",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 5",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-005"
+  },
+  {
+    "claim": "Lo spazio sotto la terra è lo spazio situato sotto la superficie terrestre utilizzato per attività specifiche, il cui controllo e uso sono separati da quelli del terreno sovrastante.",
+    "verbatim": "Ruang Bawah Tanah adalah ruang yang berada di bawah permukaan Tanah yang digunakan untuk kegiatan tertentu",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 6",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-006"
+  },
+  {
+    "claim": "La proroga è l'estensione della durata di un diritto senza modificare i termini della sua concessione.",
+    "verbatim": "Perpanjangan Jangka Waktu Hak adalah penambahan jangka waktu berlakunya sesuatu hak tanpa mengubah syarat-syarat",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 7",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-007"
+  },
+  {
+    "claim": "Il rinnovo è l'estensione della durata di un diritto dopo la sua scadenza o prima della scadenza della proroga.",
+    "verbatim": "Pembaruan Hak adalah penambahan jangka waktu berlakunya sesuatu hak setelah jangka waktu berakhir",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 8",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-008"
+  },
+  {
+    "claim": "La registrazione della terra è una serie di attività svolte continuamente dal governo per raccogliere, elaborare, registrare e mantenere dati fisici e giuridici sulla terra.",
+    "verbatim": "Pendaftaran Tanah adalah rangkaian kegiatan yang dilakukan oleh Pemerintah secara terus menerus, berkesinambungan dan teratur",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 9",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-009"
+  },
+  {
+    "claim": "L'unità di casa a schiera è un'unità abitativa destinata principalmente a uso residenziale e con accesso a una strada pubblica.",
+    "verbatim": "Satuan Rumah Susun adalah unit rumah susun yang tujuan utamanya digunakan sebagai tempat hunian",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 10",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-010"
+  },
+  {
+    "claim": "La terra abbandonata è la terra con diritto, terra con diritto di gestione, o terra con diritto di controllo intenzionalmente non coltivata o non utilizzata.",
+    "verbatim": "Tanah Telantar adalah Tanah hak, Tanah Hak Pengelolaan, atau Tanah yang sengaja tidak diusahakan, tidak dipergunakan",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 11",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-011"
+  },
+  {
+    "claim": "La terra distrutta è la terra che ha cambiato forma a causa di un evento naturale e non può essere identificata, utilizzata o sfruttata.",
+    "verbatim": "Tanah Musnah adalah Tanah yang sudah berubah dari bentuk asalnya karena peristiwa alam",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 12",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-012"
+  },
+  {
+    "claim": "La terra ulayat è la terra situata nel territorio controllato dalla comunità di diritto consuetudinario che non è gravata da alcun diritto sulla terra.",
+    "verbatim": "Tanah Ulayat adalah Tanah yang berada di wilayah penguasaan masyarakat hukum adat yang menurut kenyataannya masih ada",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 13",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-013"
+  },
+  {
+    "claim": "Lo straniero è una persona che non è cittadino indonesiano la cui presenza fornisce benefici, conduce attività, lavora o investe in Indonesia.",
+    "verbatim": "Orang Asing adalah orang yang bukan Warga Negara Indonesia yang keberadaannya memberikan manfaat",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 14",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-014"
+  },
+  {
+    "claim": "Lo stato può concedere terra dello stato a persone fisiche o giuridiche con un diritto sulla terra secondo la destinazione e le necessità.",
+    "verbatim": "Tanah Negara dapat memberikannya kepada perorangan atau badan hukum dengan sesuatu Hak Atas Tanah",
+    "pasal_ref": "PP 18/2021 Pasal 2 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "right",
+    "claim_id": "PRO-015"
+  },
+  {
+    "claim": "La terra dello stato include terra stabilita per legge, terra di bonifica, terra affondata, terra da rilascio di diritti, terra da rilascio di zone forestali.",
+    "verbatim": "Tanah Negara meliputi: a. Tanah yang ditetapkan Undang-Undang atau Penetapan Pemerintah; b. Tanah reklamasi",
+    "pasal_ref": "PP 18/2021 Pasal 2 Ayat 3",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-016"
+  },
+  {
+    "claim": "Il diritto di gestione può derivare da terra dello stato e terra ulayat.",
+    "verbatim": "Hak Pengelolaan dapat berasal dari Tanah Negara dan Tanah Ulayat",
+    "pasal_ref": "PP 18/2021 Pasal 4",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-017"
+  },
+  {
+    "claim": "Il diritto di gestione derivante da terra dello stato è concesso a istituzioni governative centrali, enti locali e società statali.",
+    "verbatim": "Hak Pengelolaan yang berasal dari Tanah Negara diberikan kepada: a. instansi Pemerintah Pusat; b. Pemerintah Daerah",
+    "pasal_ref": "PP 18/2021 Pasal 5 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-018"
+  },
+  {
+    "claim": "Il detentore del Diritto di Gestione e/o del Diritto sulla Terra riceve assistenza finanziaria in caso di ricostruzione o bonifica effettuate dal Governo Centrale, Governo Locale o da terzi.",
+    "verbatim": "pemegang Hak Pengelolaa n dan/atau Hak Atas Tanah diberikan bantuan dana kerohiman",
+    "pasal_ref": "PP 18/2021 Pasal 4 Ayat 4",
+    "instrument_id": "PP-18-2021",
+    "category": "right",
+    "claim_id": "PRO-019"
+  },
+  {
+    "claim": "Il diritto di proprietà su una Unità di Casa in Condominio può essere concesso a cittadini indonesiani, persone giuridiche indonesiane, stranieri con permesso appropriato, persone giuridiche estere con rappresentanza in Indonesia, o rappresentanze di stati esteri e istituzioni internazionali.",
+    "verbatim": "Hak mil ik atas Satuan Rumah Susun diberikan kepada: a. Warga Negara Indonesia",
+    "pasal_ref": "PP 18/2021 Pasal 67 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-020"
+  },
+  {
+    "claim": "Il diritto di proprietà su una Unità di Casa in Condominio può essere concesso anche a istanze del Governo Centrale o Locale, oltre ai soggetti di cui all'Articolo 67 Comma 1.",
+    "verbatim": "hak milik atas Satuan Rumah Susun juga dapat diberikan kepada instansi Pemerintah Pusat",
+    "pasal_ref": "PP 18/2021 Pasal 67 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-021"
+  },
+  {
+    "claim": "Il diritto di proprietà su una Unità di Casa in Condominio concesso a istanze del Governo Centrale o Locale non può essere gravato da diritto di pegno immobiliare.",
+    "verbatim": "tidak dapat dijaminkan dengan dibebani hak tanggungan",
+    "pasal_ref": "PP 18/2021 Pasal 67 Ayat 3",
+    "instrument_id": "PP-18-2021",
+    "category": "prohibition",
+    "claim_id": "PRO-022"
+  },
+  {
+    "claim": "La divisione o fusione del diritto di proprietà su una Unità di Casa in Condominio richiede l'allegazione della modifica all'atto di separazione del diritto di proprietà approvato o autenticato dall'autorità competente.",
+    "verbatim": "dapat dilakukan pemecahan atau penggabungan dengan melampirkan perubahan akta pemisahan hak milik",
+    "pasal_ref": "PP 18/2021 Pasal 68 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-023"
+  },
+  {
+    "claim": "La divisione o fusione di un diritto di proprietà su una Unità di Casa in Condominio gravata da diritto di pegno immobiliare richiede il consenso scritto del titolare del diritto di pegno.",
+    "verbatim": "dilaksana kan setelah memperoleh persetujuan tertulis dari pemegang hak tanggungan",
+    "pasal_ref": "PP 18/2021 Pasal 68 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-024"
+  },
+  {
+    "claim": "Uno straniero può possedere una casa di abitazione o una dimora solo se possiede documenti di immigrazione conformi alle disposizioni normative vigenti.",
+    "verbatim": "Orang Asing yang dapat memiliki rumah tempat tinggal atau hunian merupakan Orang Asing yang mempunyai dokumen keimigrasian",
+    "pasal_ref": "PP 18/2021 Pasal 69 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-025"
+  },
+  {
+    "claim": "Una casa di abitazione o dimora di uno straniero deceduto può essere ereditata dagli eredi.",
+    "verbatim": "rumah tempat tinggal atau hunian dapat diwariskan kepada ahli waris",
+    "pasal_ref": "PP 18/2021 Pasal 69 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "right",
+    "claim_id": "PRO-026"
+  },
+  {
+    "claim": "Un erede straniero deve possedere documenti di immigrazione conformi alle disposizioni normative vigenti.",
+    "verbatim": "ahli waris harus mempunyai dokumen keimigrasian sesuai dengan ketentuan peraturan perundang-undangan",
+    "pasal_ref": "PP 18/2021 Pasal 69 Ayat 3",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-027"
+  },
+  {
+    "claim": "Un cittadino indonesiano che sposa uno straniero può possedere Diritti sulla Terra con le stesse modalità di altri cittadini indonesiani.",
+    "verbatim": "dapat memiliki Hak  Atas Tanah yang sama dengan Warga Negara Indonesia lainnya",
+    "pasal_ref": "PP 18/2021 Pasal 70 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "right",
+    "claim_id": "PRO-028"
+  },
+  {
+    "claim": "I Diritti sulla Terra posseduti da un cittadino indonesiano che sposa uno straniero non costituiscono proprietà coniugale se provati da un accordo notarile di separazione dei beni tra coniugi.",
+    "verbatim": "bukan merupakan harta bersama yang dibuktikan dengan perjanjian pemisahan harta antara suami dan istri",
+    "pasal_ref": "PP 18/2021 Pasal 70 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-029"
+  },
+  {
+    "claim": "Una casa di abitazione o dimora posseduta da uno straniero deve essere costruita su terreni con diritto d'uso o diritto di gestione, secondo le modalità specificate.",
+    "verbatim": "rumah tapak di atas Tanah: 1. hak pakai; atau 2. hak pakai di atas",
+    "pasal_ref": "PP 18/2021 Pasal 71 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-030"
+  },
+  {
+    "claim": "Un condominio posseduto da uno straniero costruito su diritto d'uso o diritto di costruzione deve trovarsi in zone economiche speciali, zone di libero scambio, porti franchi, zone industriali o altre zone economiche.",
+    "verbatim": "kawasan ekonomi khusus, kawasan perdagangan bebas dan pelabuhan bebas, kawasan industri",
+    "pasal_ref": "PP 18/2021 Pasal 71 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-031"
+  },
+  {
+    "claim": "Il possesso di una casa di abitazione o dimora da parte di uno straniero è soggetto a limitazioni riguardanti il prezzo minimo, l'area del terreno, il numero di lotti o unità, e l'uso residenziale.",
+    "verbatim": "diberikan dengan batasan: a. minimal harga; b. luas bidang Tanah; c. jumlah bidang Tanah",
+    "pasal_ref": "PP 18/2021 Pasal 72",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-032"
+  },
+  {
+    "claim": "L'uso e lo sfruttamento di un lotto di terra sono limitati dall'altezza massima in base ai coefficienti di densità fondiaria e dai limiti di profondità stabiliti nel piano di assetto territoriale.",
+    "verbatim": "dibatasi oleh: a. batas ketinggian sesuai koefisien dasar bangunan dan koefisien lantai bangunan",
+    "pasal_ref": "PP 18/2021 Pasal 74 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-033"
+  },
+  {
+    "claim": "La profondità massima per lo sfruttamento è di 30 metri dalla superficie del terreno, salvo diversamente specificato nel piano di assetto territoriale.",
+    "verbatim": "sampai dengan kedalaman 30 (tiga puluh) meter dari permukaan Tanah dalam hal belum diatur dalam rencana tata ruang",
+    "pasal_ref": "PP 18/2021 Pasal 74 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-034"
+  },
+  {
+    "claim": "Lo spazio sopra o sotto terra strutturalmente o funzionalmente separato dalla proprietà è controllato direttamente dallo stato.",
+    "verbatim": "merupakan Ruang Atas Tanah atau Ruang Bawah Tanah yang dikuasai langsung oleh negara",
+    "pasal_ref": "PP 18/2021 Pasal 74 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-035"
+  },
+  {
+    "claim": "Lo spazio sotterraneo è classificato in spazio sotterraneo superficiale e spazio sotterraneo profondo.",
+    "verbatim": "Ruang Bawah Tanah terdiri dari: a. Ruang Bawah Tanah dangkal; dan b. Ruang Bawah Tanah dalam",
+    "pasal_ref": "PP 18/2021 Pasal 74 Ayat 3",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-036"
+  },
+  {
+    "claim": "Non può essere concesso un Diritto sulla Terra nello spazio sotterraneo se vi è sfruttamento di petrolio, gas naturale, minerali e carbone.",
+    "verbatim": "Hak Atas Tanah pada Ruang Bawah Tanah tidak dapat diberikan",
+    "pasal_ref": "PP 18/2021 Pasal 75",
+    "instrument_id": "PP-18-2021",
+    "category": "prohibition",
+    "claim_id": "PRO-037"
+  },
+  {
+    "claim": "Lo sfruttamento dello spazio sopra o sotto terra richiede l'approvazione della conformità dell'attività di sfruttamento dello spazio emessa dal Ministro.",
+    "verbatim": "harus mendapat kesesuaian kegiatan pemanfaatan ruang yang diterbitkan oleh Menteri",
+    "pasal_ref": "PP 18/2021 Pasal 76 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-038"
+  },
+  {
+    "claim": "Un Diritto di Gestione, un Diritto di Costruzione o un Diritto d'Uso su spazio sopra o sotto terra può essere concesso solo dopo che tale spazio è stato sfruttato.",
+    "verbatim": "dapat diberikan Hak Pengelolaan, hak guna bangunan, atau hak pakai setelah Ruang Atas Tanah atau Ruang Bawah Tanah dimanfaatkan",
+    "pasal_ref": "PP 18/2021 Pasal 77 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-039"
+  },
+  {
+    "claim": "Un Diritto di Gestione, un Diritto di Costruzione o un Diritto d'Uso su spazio sopra o sotto terra è concesso con decreto di concessione del diritto dal Ministro.",
+    "verbatim": "diberikan dengan keputusan pemberian  hak oleh Menteri",
+    "pasal_ref": "PP 18/2021 Pasal 77 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-040"
+  },
+  {
+    "claim": "Un Diritto di Costruzione o un Diritto d'Uso su spazio sopra o sotto terra concesso sopra un Diritto di Gestione richiede l'approvazione del titolare del Diritto di Gestione.",
+    "verbatim": "diberikan dengan keputusan pemberian hak oleh Menteri berdasarkan persetujua n pemegang Hak Pengelolaan",
+    "pasal_ref": "PP 18/2021 Pasal 77 Ayat 3",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-041"
+  },
+  {
+    "claim": "Se lo sfruttamento dello spazio sopra terra pregiudica l'interesse pubblico, è richiesta l'approvazione del Governo Centrale.",
+    "verbatim": "kepentingan umum maka diperlukan persetujuan dari Pemerintah Pusat",
+    "pasal_ref": "PP 18/2021 Pasal 78 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-042"
+  },
+  {
+    "claim": "Se lo sfruttamento dello spazio sopra terra pregiudica gli interessi del titolare del Diritto sulla Terra, è richiesta l'approvazione del titolare del Diritto sulla Terra.",
+    "verbatim": "kepentingan pemegang Hak Atas Tanah pada bidang Tanah maka diperlukan persetujuan dari pemegang Hak Atas Tanah",
+    "pasal_ref": "PP 18/2021 Pasal 78 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-043"
+  },
+  {
+    "claim": "L'approvazione del titolare del Diritto sulla Terra deve essere redatta in forma di atto autentico conforme alle disposizioni normative vigenti.",
+    "verbatim": "Persetujuan dari pemegang Hak Atas Tanah dibuat dalam bentuk akta autentik sesuai dengan ketentuan peraturan perundang-undangan",
+    "pasal_ref": "PP 18/2021 Pasal 78 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "document",
+    "claim_id": "PRO-044"
+  },
+  {
+    "claim": "La parte interessata può presentare una richiesta di iscrizione all'Ufficio Terreni affinché un diritto sulla terra o la proprietà di un'unità abitativa diventi oggetto di causa giudiziale, allegando una copia della citazione.",
+    "verbatim": "pihak yang berkepentingan dapat mengajukan permohonan pencatatan ke Kantor Pertanahan",
+    "pasal_ref": "PP 18/2021 Pasal 91 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-045"
+  },
+  {
+    "claim": "L'iscrizione relativa a una causa giudiziale si cancella automaticamente entro 30 giorni di calendario dalla data dell'iscrizione o se la parte richiedente ritira la richiesta prima della scadenza.",
+    "verbatim": "Catatan sebagaimana dimaksud pada ayat (1) hapus dengan sendirinya dalam jangka waktu 30 (tiga puluh) hari kalender",
+    "pasal_ref": "PP 18/2021 Pasal 91 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "duration",
+    "claim_id": "PRO-046"
+  },
+  {
+    "claim": "Se il giudice ordina lo status quo su un diritto sulla terra, l'ordine deve essere iscritto presso l'Ufficio Terreni su richiesta del giudice.",
+    "verbatim": "atas permohonan hakim perintah tersebut dicatatkan ke Kantor Pertanahan",
+    "pasal_ref": "PP 18/2021 Pasal 91 Ayat 3",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-047"
+  },
+  {
+    "claim": "L'iscrizione dell'ordine di status quo si cancella automaticamente entro 30 giorni di calendario, salvo che sia seguita da una sentenza di sequestro cautelare con copia ufficiale e rapporto di esecuzione inviati al capo dell'Ufficio Terreni.",
+    "verbatim": "Catatan mengenai perintah status quo hapus dengan sendirinya dalam waktu 30 (tiga puluh) hari kalender kecuali apabila diikuti dengan putusan sita jaminan",
+    "pasal_ref": "PP 18/2021 Pasal 91 Ayat 4",
+    "instrument_id": "PP-18-2021",
+    "category": "duration",
+    "claim_id": "PRO-048"
+  },
+  {
+    "claim": "Il capo dell'Ufficio Terreni rifiuta di effettuare la registrazione del trasferimento o dell'onere di diritti quando la terra è oggetto di causa giudiziale, status quo o sequestro.",
+    "verbatim": "kepala Kantor Pertanahan menolak untuk melakukan pendaftaran peralihan atau pembebanan hak",
+    "pasal_ref": "PP 18/2021 Pasal 92 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "prohibition",
+    "claim_id": "PRO-049"
+  },
+  {
+    "claim": "La registrazione del trasferimento o dell'onere di diritti può essere effettuata dopo la scadenza dei termini di iscrizione della causa giudiziale e dello status quo, qualora non sia seguita da sequestro cautelare.",
+    "verbatim": "pendaftaran peralihan atau pembebanan hak dapat dilaksanakan",
+    "pasal_ref": "PP 18/2021 Pasal 92 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-050"
+  },
+  {
+    "claim": "Il rifiuto del capo dell'Ufficio Terreni deve essere comunicato per iscritto con l'indicazione dei motivi del rifiuto.",
+    "verbatim": "Penolakan kepala Kantor Pertanahan dilakukan secara tertulis yang memuat alasan penolakan",
+    "pasal_ref": "PP 18/2021 Pasal 92 Ayat 3",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-051"
+  },
+  {
+    "claim": "Il giudice che esamina una causa può richiedere la misurazione presso l'Ufficio Terreni per accertare la posizione e i confini della terra oggetto della causa.",
+    "verbatim": "hakim yang memeriksa perkara dapat meminta pengukuran pada Kantor Pertanahan setempat",
+    "pasal_ref": "PP 18/2021 Pasal 93 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "right",
+    "claim_id": "PRO-052"
+  },
+  {
+    "claim": "Prima dell'esecuzione di una sentenza giudiziale, il cancelliere della corte deve presentare una richiesta di misurazione all'Ufficio Terreni per accertare la posizione e i confini della terra oggetto dell'esecuzione.",
+    "verbatim": "panitera pengadilan wajib mengajukan permohonan pengukuran kepada Kantor Pertanahan atas objek eksekusi",
+    "pasal_ref": "PP 18/2021 Pasal 93 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "obligation",
+    "claim_id": "PRO-053"
+  },
+  {
+    "claim": "I diritti di uso edificatorio e di uso posseduti da cittadini indonesiani, utilizzati per abitazioni comprese case-negozio e case-ufficio, possono essere convertiti in diritto di proprietà su richiesta del titolare del diritto.",
+    "verbatim": "dapat diberikan hak milik atas permohonan pemegang hak",
+    "pasal_ref": "PP 18/2021 Pasal 94",
+    "instrument_id": "PP-18-2021",
+    "category": "right",
+    "claim_id": "PRO-054"
+  },
+  {
+    "claim": "I documenti scritti relativi a terre ex diritti occidentali non sono più validi e il loro status diventa terra controllata direttamente dallo Stato.",
+    "verbatim": "Alat bukti tertulis Tanah bekas hak barat dinyatakan tidak berlaku dan statusnya menjadi Tanah yang Dikuasai Langsung oleh Negara",
+    "pasal_ref": "PP 18/2021 Pasal 95 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-055"
+  },
+  {
+    "claim": "La registrazione di terre ex diritti occidentali si basa su una dichiarazione scritta di possesso fisico testimoniato da due testimoni che assumono responsabilità civile e penale, descrivendo gli elementi richiesti dal paragrafo 2.",
+    "verbatim": "mendasarkan pada surat pernyataan penguasaan fisik yang diketahui 2 (dua) orang saksi",
+    "pasal_ref": "PP 18/2021 Pasal 95 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-056"
+  },
+  {
+    "claim": "I documenti scritti relativi a terre ex proprietà collettiva possedute da persone fisiche devono essere registrati entro massimo 5 anni dall'entrata in vigore di questo Regolamento del Governo.",
+    "verbatim": "wajib didaftarkan dalam jangka waktu paling lama 5 (lima) tahun sejak berlakunya Peraturan Pemerintah ini",
+    "pasal_ref": "PP 18/2021 Pasal 96 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "duration",
+    "claim_id": "PRO-057"
+  },
+  {
+    "claim": "Scaduto il termine per la registrazione di terre ex proprietà collettiva, i documenti scritti non sono più validi e non possono essere utilizzati come prove ma solo come indicazioni per la registrazione della terra.",
+    "verbatim": "alat bukti tertulis Tanah bekas milik adat dinyatakan tidak berlaku dan tidak dapat digunakan sebagai alat pembuktian",
+    "pasal_ref": "PP 18/2021 Pasal 96 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-058"
+  },
+  {
+    "claim": "I certificati di terra, certificati di indennizzo, certificati comunali e simili emessi da capi villaggio, sindaci o sottoprefetti possono essere utilizzati solo come indicazioni per la registrazione della terra.",
+    "verbatim": "hanya dapat digunakan sebagai petunjuk dalam rangka Pendaftaran Tanah",
+    "pasal_ref": "PP 18/2021 Pasal 97",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-059"
+  },
+  {
+    "claim": "Le terre swapraja o ex swapraja costituiscono terre controllate direttamente dallo Stato.",
+    "verbatim": "Tanah swapraja atau bekas swapraja merupakan Tanah yang Dikuasai Langsung oleh Negara",
+    "pasal_ref": "PP 18/2021 Pasal 98 Ayat 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-060"
+  },
+  {
+    "claim": "Le terre swapraja o ex swapraja possono essere concesse agli ex titolari se soddisfano i requisiti e coltivano o utilizzano personalmente la terra per scopi swapraja.",
+    "verbatim": "dapat diberikan kepada bekas pemegang Tanah swapraja apabila memenuhi syarat dan mengusahakan atau menggarap sendiri Tanah",
+    "pasal_ref": "PP 18/2021 Pasal 98 Ayat 2",
+    "instrument_id": "PP-18-2021",
+    "category": "right",
+    "claim_id": "PRO-061"
+  },
+  {
+    "claim": "Le terre swapraja o ex swapraja controllate da altri possono essere concesse a chi le coltiva o utilizza in buona fede.",
+    "verbatim": "diberikan kepada pihak yang mengusahakan atau menggarap Tanah dengan iktikad baik",
+    "pasal_ref": "PP 18/2021 Pasal 98 Ayat 3",
+    "instrument_id": "PP-18-2021",
+    "category": "right",
+    "claim_id": "PRO-062"
+  },
+  {
+    "claim": "Le concessioni o gli affitti di terre ex swapraja decadono e la terra diventa terra controllata direttamente dallo Stato.",
+    "verbatim": "Konsesi atau sewa atas Tanah bekas swapraja hapus dan menjadi Tanah yang Dikuasai Langsung oleh Negara",
+    "pasal_ref": "PP 18/2021 Pasal 98 Ayat 4",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-063"
+  },
+  {
+    "claim": "Le disposizioni relative a terre swapraja o ex swapraja non si applicano alle terre swapraja regolate da leggi speciali.",
+    "verbatim": "tidak berlaku untuk Tanah swapraja atau bekas swapraja yang diatur menurut Undang-Undang",
+    "pasal_ref": "PP 18/2021 Pasal 98 Ayat 5",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-064"
+  },
+  {
+    "claim": "I diritti di uso edificatorio e di uso già concessi prima dell'entrata in vigore di questo Regolamento del Governo rimangono validi e in vigore.",
+    "verbatim": "Hak Pengelolaan, hak guna usaha, hak guna bangunan, atau hak pakai yang telah diberikan sebelum berlakunya Peraturan Pemerintah ini, tetap sah dan berlaku",
+    "pasal_ref": "PP 18/2021 Pasal 101 Punto 1",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-065"
+  },
+  {
+    "claim": "Le richieste di diritti di uso edificatorio e di uso già ricevute completamente ma non ancora sottoposte a decisione prima dell'entrata in vigore di questo Regolamento devono essere completate secondo le disposizioni di questo Regolamento.",
+    "verbatim": "diselesaikan sesuai dengan ketentuan Peraturan Pemerintah ini",
+    "pasal_ref": "PP 18/2021 Pasal 101 Punto 2",
+    "instrument_id": "PP-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-066"
+  },
+  {
+    "claim": "Le disposizioni di PP 40/1996, PP 103/2015 e determinate disposizioni di PP 24/1997 sono abrogate e cessano di avere effetto.",
+    "verbatim": "dicabut dan dinyatakan tidak berlaku",
+    "pasal_ref": "PP 18/2021 Pasal 103",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-067"
+  },
+  {
+    "claim": "Le disposizioni precedenti continuano ad applicarsi nella misura in cui non sono in conflitto con le disposizioni del presente Regolamento.",
+    "verbatim": "dinyatakan tetap berlaku sepanjang tidak bertentangan dengan ketentuan dalam Peraturan Pemerintah ini",
+    "pasal_ref": "PP 18/2021 Pasal 103",
+    "instrument_id": "PP-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-068"
+  },
+  {
+    "claim": "Il presente Regolamento entra in vigore nella data della sua pubblicazione.",
+    "verbatim": "Peraturan Pemerintah ini mulai berlaku pada tanggal diundangkan",
+    "pasal_ref": "PP 18/2021 Pasal 104",
+    "instrument_id": "PP-18-2021",
+    "category": "duration",
+    "claim_id": "PRO-069"
+  },
+  {
+    "claim": "Gli stranieri residenti in Indonesia possono possedere case di residenza mediante il diritto d'uso.",
+    "verbatim": "Orang Asing dapat memiliki rumah untuk tempat tinggal atau hunian dengan Hak Pakai.",
+    "pasal_ref": "PP-103-2015 Pasal 2 Ayat 1",
+    "instrument_id": "PP-103-2015",
+    "category": "right",
+    "claim_id": "PRO-070"
+  },
+  {
+    "claim": "Solo gli stranieri titolari di permesso di soggiorno in Indonesia possono possedere case di residenza.",
+    "verbatim": "Orang Asing pemegang izin tinggal di Indonesia sesuai dengan ketentuan peraturan perundang-undangan.",
+    "pasal_ref": "PP-103-2015 Pasal 2 Ayat 2",
+    "instrument_id": "PP-103-2015",
+    "category": "rule",
+    "claim_id": "PRO-071"
+  },
+  {
+    "claim": "In caso di morte dello straniero, la casa di residenza può essere ereditata dagli eredi.",
+    "verbatim": "Dalam hal Orang Asing meninggal dunia, rumah tempat tinggal atau hunian dapat diwariskan.",
+    "pasal_ref": "PP-103-2015 Pasal 2 Ayat 3",
+    "instrument_id": "PP-103-2015",
+    "category": "right",
+    "claim_id": "PRO-072"
+  },
+  {
+    "claim": "Gli eredi stranieri devono possedere un permesso di soggiorno in Indonesia per ereditare la proprietà.",
+    "verbatim": "ahli waris harus mempunyai izin tinggal di Indonesia sesuai dengan ketentuan peraturan perundang-undangan.",
+    "pasal_ref": "PP-103-2015 Pasal 2 Ayat 4",
+    "instrument_id": "PP-103-2015",
+    "category": "rule",
+    "claim_id": "PRO-073"
+  },
+  {
+    "claim": "I cittadini indonesiani che si sposano con stranieri hanno diritti sulla terra uguali ad altri cittadini indonesiani.",
+    "verbatim": "Warga Negara Indonesia yang melaksanakan perkawinan dengan Orang Asing dapat memiliki hak atas tanah yang sama.",
+    "pasal_ref": "PP-103-2015 Pasal 3 Ayat 1",
+    "instrument_id": "PP-103-2015",
+    "category": "right",
+    "claim_id": "PRO-074"
+  },
+  {
+    "claim": "Le case unifamiliari possono essere costruite su terreni con diritto d'uso o diritto d'uso su proprietà privata.",
+    "verbatim": "Rumah Tunggal di atas tanah: 1. Hak Pakai; atau 2. Hak Pakai di atas Hak Milik.",
+    "pasal_ref": "PP-103-2015 Pasal 4 Huruf a",
+    "instrument_id": "PP-103-2015",
+    "category": "rule",
+    "claim_id": "PRO-075"
+  },
+  {
+    "claim": "Le unità di edilizia residenziale possono essere costruite su terreni con diritto d'uso.",
+    "verbatim": "Sarusun yang dibangun di atas bidang tanah Hak Pakai.",
+    "pasal_ref": "PP-103-2015 Pasal 4 Huruf b",
+    "instrument_id": "PP-103-2015",
+    "category": "rule",
+    "claim_id": "PRO-076"
+  },
+  {
+    "claim": "Gli stranieri ricevono il diritto d'uso per case unifamiliari nuove e proprietà su unità residenziali nuove.",
+    "verbatim": "Orang Asing diberikan Hak Pakai untuk Rumah Tunggal pembelian baru dan Hak Milik atas Sarusun.",
+    "pasal_ref": "PP-103-2015 Pasal 5",
+    "instrument_id": "PP-103-2015",
+    "category": "rule",
+    "claim_id": "PRO-077"
+  },
+  {
+    "claim": "Il diritto d'uso per case unifamiliari su terreni pubblici è concesso per 30 anni.",
+    "verbatim": "diberikan untuk jangka waktu 30 (tiga puluh) tahun.",
+    "pasal_ref": "PP-103-2015 Pasal 6 Ayat 1",
+    "instrument_id": "PP-103-2015",
+    "category": "duration",
+    "claim_id": "PRO-078"
+  },
+  {
+    "claim": "Il diritto d'uso può essere rinnovato per ulteriori 20 anni.",
+    "verbatim": "Hak Pakai dapat diperpanjang untuk jangka waktu 20 (dua puluh) tahun.",
+    "pasal_ref": "PP-103-2015 Pasal 6 Ayat 2",
+    "instrument_id": "PP-103-2015",
+    "category": "duration",
+    "claim_id": "PRO-079"
+  },
+  {
+    "claim": "Alla scadenza del rinnovo, il diritto d'uso può essere aggiornato per ulteriori 30 anni.",
+    "verbatim": "Hak Pakai dapat diperbaharui untuk jangka waktu 30 (tiga puluh) tahun.",
+    "pasal_ref": "PP-103-2015 Pasal 6 Ayat 3",
+    "instrument_id": "PP-103-2015",
+    "category": "duration",
+    "claim_id": "PRO-080"
+  },
+  {
+    "claim": "Il diritto d'uso per case su terreni privati è concesso per massimo 30 anni secondo l'accordo.",
+    "verbatim": "diberikan Hak Pakai untuk jangka waktu yang disepakati tidak lebih lama dari 30 (tiga puluh) tahun.",
+    "pasal_ref": "PP-103-2015 Pasal 7 Ayat 1",
+    "instrument_id": "PP-103-2015",
+    "category": "duration",
+    "claim_id": "PRO-081"
+  },
+  {
+    "claim": "Alla scadenza, il diritto d'uso può essere rinnovato per massimo 20 anni con accordo del proprietario.",
+    "verbatim": "Hak Pakai dapat diperpanjang untuk jangka waktu paling lama 20 (dua puluh) tahun sesuai kesepakatan.",
+    "pasal_ref": "PP-103-2015 Pasal 7 Ayat 2",
+    "instrument_id": "PP-103-2015",
+    "category": "duration",
+    "claim_id": "PRO-082"
+  },
+  {
+    "claim": "Alla scadenza del rinnovo, il diritto può essere aggiornato per massimo 30 anni con accordo.",
+    "verbatim": "Hak Pakai dapat diperbaharui untuk jangka waktu paling lama 30 (tiga puluh) tahun.",
+    "pasal_ref": "PP-103-2015 Pasal 7 Ayat 3",
+    "instrument_id": "PP-103-2015",
+    "category": "duration",
+    "claim_id": "PRO-083"
+  },
+  {
+    "claim": "Il rinnovo e l'aggiornamento sono possibili solo se lo straniero mantiene il permesso di soggiorno.",
+    "verbatim": "dilaksanakan sepanjang Orang Asing masih memiliki izin tinggal di Indonesia.",
+    "pasal_ref": "PP-103-2015 Pasal 8",
+    "instrument_id": "PP-103-2015",
+    "category": "rule",
+    "claim_id": "PRO-084"
+  },
+  {
+    "claim": "L'accordo per il diritto d'uso su terreni privati deve essere registrato nel libro e certificato fondiario.",
+    "verbatim": "Perjanjian wajib dicatat dalam buku tanah dan sertifikat hak atas tanah yang bersangkutan.",
+    "pasal_ref": "PP-103-2015 Pasal 9",
+    "instrument_id": "PP-103-2015",
+    "category": "procedure",
+    "claim_id": "PRO-085"
+  },
+  {
+    "claim": "Lo straniero che non risiede più in Indonesia deve cedere la casa entro 1 anno a persona idonea.",
+    "verbatim": "dalam jangka waktu 1 (satu) tahun wajib melepaskan atau mengalihkan hak atas rumah dan tanahnya.",
+    "pasal_ref": "PP-103-2015 Pasal 10 Ayat 1",
+    "instrument_id": "PP-103-2015",
+    "category": "obligation",
+    "claim_id": "PRO-086"
+  },
+  {
+    "claim": "Se non ceduta in tempo, la casa su terreni pubblici è messa all'asta dal governo.",
+    "verbatim": "rumah di lelang oleh Negara, dalam hal dibangun di atas tanah Hak Pakai atas tanah Negara.",
+    "pasal_ref": "PP-103-2015 Pasal 10 Ayat 2 Huruf a",
+    "instrument_id": "PP-103-2015",
+    "category": "sanction",
+    "claim_id": "PRO-087"
+  },
+  {
+    "claim": "Se non ceduta in tempo, la casa su terreni privati diventa proprietà del titolare del diritto sulla terra.",
+    "verbatim": "rumah menjadi milik pemegang hak atas tanah yang bersangkutan.",
+    "pasal_ref": "PP-103-2015 Pasal 10 Ayat 2 Huruf b",
+    "instrument_id": "PP-103-2015",
+    "category": "sanction",
+    "claim_id": "PRO-088"
+  },
+  {
+    "claim": "Il ricavato dell'asta appartiene all'ex proprietario straniero.",
+    "verbatim": "Hasil lelang menjadi hak dari bekas pemegang hak.",
+    "pasal_ref": "PP-103-2015 Pasal 10 Ayat 3",
+    "instrument_id": "PP-103-2015",
+    "category": "right",
+    "claim_id": "PRO-089"
+  },
+  {
+    "claim": "Lo Stato mantiene il controllo diretto su terre che non sono gravate da diritti reali, non sono terre di wakaf, non sono terre consuetudinarie e non costituiscono beni statali.",
+    "verbatim": "tanah yang tidak dilekati dengan sesuatu Hak Atas Tanah, bukan tanah wakaf, bukan Tanah Ulayat",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-090"
+  },
+  {
+    "claim": "La terra con diritto è la terra già posseduta con un diritto reale specifico.",
+    "verbatim": "Tanah Hak adalah tanah yang telah dipunyai dengan sesuatu Hak Atas Tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 4",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-091"
+  },
+  {
+    "claim": "La terra consuetudinaria è la terra nel territorio controllato da comunità legali indigene che di fatto ancora esiste e non è gravata da diritti reali.",
+    "verbatim": "Tanah Ulayat adalah tanah yang berada di wilayah penguasaan masyarakat hukum adat",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 5",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-092"
+  },
+  {
+    "claim": "I dati fisici includono informazioni sulla ubicazione, confini e area della terra e unità immobiliare registrate, compresi dettagli su edifici o parti di edifici sopra.",
+    "verbatim": "Data Fisik adalah keterangan mengenai letak, batas dan luas bidang tanah dan satuan rumah susun",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 6",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-093"
+  },
+  {
+    "claim": "I dati giuridici sono informazioni sullo status legale della terra e unità immobiliare, sui titolari dei diritti e su altri oneri che la gravano.",
+    "verbatim": "Data Yuridis adalah keterangan mengenai status hukum bidang tanah dan satuan rumah susun yang didaftar",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 7",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-094"
+  },
+  {
+    "claim": "Il ricorrente è la parte che presenta una richiesta di diritto di gestione o diritto sulla terra e agisce come titolare del diritto o suo rappresentante.",
+    "verbatim": "Pemohon adalah pihak yang mengajukan permohonan Hak Pengelolaan atau Hak Atas Tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 8",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-095"
+  },
+  {
+    "claim": "La costituzione del diritto di gestione è l'atto di governo che assegna il diritto di gestione su terra statale o riconosce il diritto su terra consuetudinaria.",
+    "verbatim": "Penetapan Hak Pengelolaan adalah penetapan Pemerintah untuk memberikan Hak Pengelolaan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 9",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-096"
+  },
+  {
+    "claim": "La costituzione del diritto sulla terra è l'atto di governo che conferisce il diritto sulla terra mediante concessione, proroga o rinnovamento.",
+    "verbatim": "Penetapan Hak Atas Tanah adalah penetapan Pemerintah untuk memberikan Hak Atas Tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 10",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-097"
+  },
+  {
+    "claim": "La concessione di diritto sulla terra è l'atto governativo che conferisce un diritto su terra statale o su diritto di gestione.",
+    "verbatim": "Pemberian Hak Atas Tanah yang selanjutnya disebut Pemberian adalah penetapan Pemerintah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 11",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-098"
+  },
+  {
+    "claim": "La concessione individuale di diritto è la concessione di diritto su una singola particella terrestre a una o più persone fisiche o giuridiche con un singolo atto.",
+    "verbatim": "Pemberian Hak Secara Individual adalah pemberian hak atas sebidang tanah kepada perorangan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 12",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-099"
+  },
+  {
+    "claim": "La concessione collettiva di diritto è la concessione di diritto su più particelle terresti a soggetti individuali o collettivi con un singolo atto.",
+    "verbatim": "Pemberian Hak Secara Kolektif adalah pemberian hak atas beberapa bidang tanah masing-masing",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 13",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-100"
+  },
+  {
+    "claim": "La concessione generale di diritto sulla terra è la concessione di diritto su una particella terrestre a soggetti idonei con un singolo atto.",
+    "verbatim": "Pemberian Hak Atas Tanah Secara Umum adalah pemberian hak atas sebidang tanah kepada pihak",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 14",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-101"
+  },
+  {
+    "claim": "La proroga della durata del diritto è l'estensione del periodo di validità di un diritto senza modificare le condizioni della concessione originale.",
+    "verbatim": "Perpanjangan Jangka Waktu Hak yang selanjutnya disebut Perpanjangan adalah penambahan jangka waktu",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 15",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-102"
+  },
+  {
+    "claim": "Il rinnovamento del diritto è l'estensione del periodo di validità di un diritto dopo la scadenza o prima della scadenza della proroga.",
+    "verbatim": "Pembaruan Hak yang selanjutnya disebut Pembaruan adalah penambahan jangka waktu berlakunya",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 16",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-103"
+  },
+  {
+    "claim": "La conversione del diritto è l'atto governativo che riconferma che una particella terrestre posseduta con un diritto diventa terra statale e viene riconcessa con diritto diverso.",
+    "verbatim": "Perubahan Hak adalah penetapan Pemerintah mengenai penegasan bahwa sebidang tanah yang semula",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 17",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-104"
+  },
+  {
+    "claim": "Il trasferimento del diritto sulla terra è l'atto legale mediante il quale il titolare trasferisce il diritto a un'altra parte.",
+    "verbatim": "Peralihan Hak Atas Tanah adalah perbuatan hukum yang dilakukan oleh pemegang Hak Atas Tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 18",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-105"
+  },
+  {
+    "claim": "Il rilascio del diritto è l'atto di sciogliere la relazione legale tra titolare e terra affinché diventi terra statale o consuetudinaria.",
+    "verbatim": "Pelepasan Hak adalah perbuatan melepaskan hubungan hukum antara pemegang Hak Pengelolaan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 19",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-106"
+  },
+  {
+    "claim": "La Commissione di Verifica A è l'organo incaricato di verificare, ricercare e valutare i dati fisici e giuridici per decisioni su diritti di gestione e concessioni.",
+    "verbatim": "Panitia Pemeriksaan Tanah A yang selanjutnya disebut Panitia A adalah panitia yang mempunyai tugas",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 20",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-107"
+  },
+  {
+    "claim": "La Commissione di Verifica B è l'organo incaricato di verificare dati fisici e giuridici per decisioni su concessioni, proroghe e rinnovi di diritti di usufrutti.",
+    "verbatim": "Panitia Pemeriksaan Tanah B yang selanjutnya disebut Panitia B adalah panitia yang mempunyai tugas",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 21",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-108"
+  },
+  {
+    "claim": "L'ufficiale di constatazione è l'incaricato di verificare dati fisici e giuridici per concessioni di diritti su terre già registrate e rinnovi di diritti temporali.",
+    "verbatim": "Petugas Konstatasi adalah petugas yang mempunyai tugas melaksanakan pemeriksaan, penelitian",
+    "pasal_ref": "PermenATR-18-2021 Pasal 1 Ayat 22",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-109"
+  },
+  {
+    "claim": "La domanda di Diritto di Gestione o Diritto sulla Terra deve essere presentata al Kantor Pertanahan competente per territorio o al Kantor Wilayah, a seconda della tipologia di diritto richiesto e della competenza.",
+    "verbatim": "Permohonan Hak Pengelolaan atau Hak Atas Tanah diajukan oleh Pemohon kepada: a. Kantor Pertanahan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 23 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-110"
+  },
+  {
+    "claim": "I documenti in fotocopia allegati alla domanda devono essere autenticati dal funzionario che ha emesso il documento o da un funzionario pubblico competente.",
+    "verbatim": "dokumen persyaratan berupa fotokopi maka harus dilegalisir oleh pejabat yang menerbitkan dokumen atau pejabat umum",
+    "pasal_ref": "PermenATR-18-2021 Pasal 23 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "requirement",
+    "claim_id": "PRO-111"
+  },
+  {
+    "claim": "La domanda per Diritto di Gestione e Diritto sulla Terra deve essere accompagnata da Documento di Pianificazione dell'Assegnazione, Uso e Utilizzo della Terra, tranne per richieste di Diritto di Proprietà.",
+    "verbatim": "Pengajuan permohonan Hak Pengelolaan dan Hak Atas Tanah dilengkapi dengan Dokumen Perencanaan Peruntukan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 23 Ayat 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-112"
+  },
+  {
+    "claim": "La competenza per la presentazione della domanda al Ministro, Capo Ufficio Regionale o Capo Ufficio Pertanahan è determinata in base all'estensione della terra secondo la KKPR o il fondamento di acquisizione.",
+    "verbatim": "Permohonan ditujukan kepada Menteri, Kepala Kantor Wilayah atau Kepala Kantor Pertanahan sesuai dengan luas tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 23 Ayat 4",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-113"
+  },
+  {
+    "claim": "È vietato al Capo Ufficio Regionale e/o Capo Ufficio Pertanahan di frazionare parcelle di terreno al fine di attribuire la competenza decisionale a sé stessi; tale violazione è sanzionata secondo la legge.",
+    "verbatim": "Kepala Kantor Wilayah dan/atau Kepala Kantor Pertanahan memecah bidang tanah yang dimohon dikenakan sanksi",
+    "pasal_ref": "PermenATR-18-2021 Pasal 23 Ayat 5",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "prohibition",
+    "claim_id": "PRO-114"
+  },
+  {
+    "claim": "Quando la competenza per la determinazione del Diritto di Gestione o Diritto sulla Terra spetta al Ministro o Capo Ufficio Regionale, la documentazione deve essere accompagnata da Lettera di Trasmissione della Domanda.",
+    "verbatim": "penyampaian berkas dilengkapi dengan Surat Pengantar Penyampaian Berkas Permohonan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 23 Ayat 6",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-115"
+  },
+  {
+    "claim": "La domanda può essere presentata attraverso il sistema elettronico messo a disposizione dal Ministero.",
+    "verbatim": "Pengajuan permohonan dapat diajukan melalui sistem elektronik yang disediakan oleh Kementerian",
+    "pasal_ref": "PermenATR-18-2021 Pasal 24 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-116"
+  },
+  {
+    "claim": "I documenti elettronici emessi da enti competenti possono essere consultati tramite il sistema elettronico integrato.",
+    "verbatim": "dokumen elektronik dapat diakses melalui sistem elektronik yang terintegrasi",
+    "pasal_ref": "PermenATR-18-2021 Pasal 24 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-117"
+  },
+  {
+    "claim": "Il richiedente è responsabile civilmente e penalmente della validità e della correttezza sostanziale della documentazione presentata, inclusa la Dichiarazione di Possesso Fisico del Terreno.",
+    "verbatim": "Pemohon bertanggung jawab secara perdata dan pidana atas keabsahan dan kebenaran materiil berkas permohonan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 25",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "obligation",
+    "claim_id": "PRO-118"
+  },
+  {
+    "claim": "Dopo la ricezione della domanda, il personale designato deve verificare la completezza della documentazione secondo l'elenco dei requisiti stabilito.",
+    "verbatim": "petugas yang ditunjuk memeriksa kelengkapan berkas permohonan berdasarkan daftar kelengkapan persyaratan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 26 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-119"
+  },
+  {
+    "claim": "Le domande di Proroga del Diritto sulla Terra sono accettate solo se la durata del Diritto sulla Terra non è ancora scaduta.",
+    "verbatim": "Perpanjangan Hak Atas Tanah maka hanya dapat diterima sepanjang jangka waktu Hak Atas Tanah belum berakhir",
+    "pasal_ref": "PermenATR-18-2021 Pasal 26 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "requirement",
+    "claim_id": "PRO-120"
+  },
+  {
+    "claim": "Se manca della documentazione, il richiedente deve essere notificato per provvedere al completamento della domanda.",
+    "verbatim": "masih terdapat kekurangan persyaratan berkas permohonan maka diberitahukan kepada Pemohon untuk melengkapi",
+    "pasal_ref": "PermenATR-18-2021 Pasal 26 Ayat 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-121"
+  },
+  {
+    "claim": "Dopo l'accertamento della completezza della domanda, il richiedente riceve una ricevuta di ricezione della documentazione e un ordine di pagamento per i diritti di ricezione dello Stato secondo la legge vigente.",
+    "verbatim": "Pemohon diberikan tanda penerimaan dokumen persyaratan dan surat perintah setor atas biaya penerimaan negara bukan pajak",
+    "pasal_ref": "PermenATR-18-2021 Pasal 26 Ayat 4",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-122"
+  },
+  {
+    "claim": "Dopo la ricezione completa della documentazione e il pagamento dei diritti di ricezione dello Stato, la domanda procede con l'ispezione del terreno.",
+    "verbatim": "proses permohonan ditindaklanjuti dengan pemeriksaan tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 27",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-123"
+  },
+  {
+    "claim": "La documentazione allegata alla domanda di Diritto di Gestione e Diritto sulla Terra deve includere specifici moduli e documenti di pianificazione come indicato nella Parte I dell'Allegato.",
+    "verbatim": "Lampiran dalam rangka permohonan Hak Pengelolaan dan Hak Atas Tanah berupa: a. Daftar dan Peta Perolehan Tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 28",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-124"
+  },
+  {
+    "claim": "Il Diritto di Gestione può derivare da Terreno dello Stato o da Terreno Ulayat (terreno tradizionale).",
+    "verbatim": "Tanah Hak Pengelolaan dapat berasal dari: a. Tanah Negara; atau b. Tanah Ulayat",
+    "pasal_ref": "PermenATR-18-2021 Pasal 29",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-125"
+  },
+  {
+    "claim": "Il Diritto di Gestione derivante da Terreno dello Stato può essere assegnato a istituzioni governative centrali, governi locali, BUMN/BUMD, enti giuridici statali/locali, Banca della Terra o enti designati dal governo centrale.",
+    "verbatim": "Hak Pengelolaan yang berasal dari Tanah Negara dapat diberikan kepada: a. instansi Pemerintah Pusat",
+    "pasal_ref": "PermenATR-18-2021 Pasal 30 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-126"
+  },
+  {
+    "claim": "BUMN/BUMD include anche controllate possedute tramite partecipazione al capitale di altre BUMN/BUMD e joint venture formate da più BUMN/BUMD secondo i Decreti Presidenziali.",
+    "verbatim": "BUMN/BUMD sebagaimana dimaksud pada ayat (1) huruf c meliputi juga: a. anak perusahaan yang dimiliki oleh BUMN/BUMD",
+    "pasal_ref": "PermenATR-18-2021 Pasal 30 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-127"
+  },
+  {
+    "claim": "Il Diritto di Gestione derivante da Terreno Ulayat può essere assegnato alle Comunità Giuridiche Indigene.",
+    "verbatim": "Hak Pengelolaan yang berasal dari Tanah Ulayat dapat diberikan kepada Masyarakat Hukum Adat",
+    "pasal_ref": "PermenATR-18-2021 Pasal 30 Ayat 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-128"
+  },
+  {
+    "claim": "Il Diritto di Gestione derivante da Terreno dello Stato è assegnato ai soggetti se i loro compiti primari sono direttamente correlati alla gestione della terra.",
+    "verbatim": "diberikan kepada subjek Hak Pengelolaan sepanjang tugas pokok dan fungsinya langsung berhubungan dengan pengelolaan tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 31 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "requirement",
+    "claim_id": "PRO-129"
+  },
+  {
+    "claim": "Se i compiti primari non sono direttamente correlati alla gestione della terra, le istituzioni governative centrali devono ottenere approvazione scritta dal ministro per le finanze; BUMN/BUMD devono modificare lo statuto; enti giuridici pubblici/locali devono ottenere approvazione dal ministro competente.",
+    "verbatim": "tugas pokok dan fungsinya tidak langsung berhubungan dengan pengelolaan tanah maka untuk: a. instansi Pemerintah Pusat, harus memperoleh persetujuan tertulis",
+    "pasal_ref": "PermenATR-18-2021 Pasal 31 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "requirement",
+    "claim_id": "PRO-130"
+  },
+  {
+    "claim": "Il Diritto di Gestione derivante da Terreno Ulayat è assegnato a Comunità Giuridiche Indigene che sono state formalmente designate e riconosciute secondo la legge applicabile.",
+    "verbatim": "diberikan kepada Masyarakat Hukum Adat yang telah ditetapkan dan diakui keberadaannya sesuai dengan ketentuan peraturan perundang-undangan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 32",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "requirement",
+    "claim_id": "PRO-131"
+  },
+  {
+    "claim": "I requisiti della domanda di Diritto di Gestione da Terreno dello Stato includono: identità del richiedente, documentazione legale dell'ente, titolo di proprietà o fondamento di acquisizione del terreno secondo specifiche categorie.",
+    "verbatim": "Syarat permohonan Hak Pengelolaan yang berasal dari Tanah Negara meliputi: a. mengenai Pemohon: 1. identitas Pemohon",
+    "pasal_ref": "PermenATR-18-2021 Pasal 33 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "requirement",
+    "claim_id": "PRO-132"
+  },
+  {
+    "claim": "Il trasferimento di diritti su terreni soggetti a Diritto di Gestione richiede la raccomandazione o l'approvazione del titolare del Diritto di Gestione, eccetto in caso di esecuzione forzata.",
+    "verbatim": "perubahan menjadi Hak Milik atas tanah Hak Pengelolaan memerlukan rekomendasi/persetujuan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 49 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-133"
+  },
+  {
+    "claim": "L'esecuzione della procedura di asta deve essere comunicata al titolare del Diritto di Gestione.",
+    "verbatim": "pelaksanaan lelang diberitahukan kepada pemegang Hak Pengelolaan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 49 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-134"
+  },
+  {
+    "claim": "La raccomandazione o l'approvazione per atti giuridici non sono soggetti a tariffe, contributi annuali obbligatori o altri costi.",
+    "verbatim": "tidak dikenakan tarif dan/atau uang wajib tahunan serta biaya lainnya",
+    "pasal_ref": "PermenATR-18-2021 Pasal 49 Ayat 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "fee",
+    "claim_id": "PRO-135"
+  },
+  {
+    "claim": "Per il trasferimento di diritti su terreni per eredità, l'approvazione del titolare del Diritto di Gestione non è necessaria.",
+    "verbatim": "peralihan Hak Atas Tanah di atas Hak Pengelolaan karena pewarisan maka rekomendasi/persetujuan tidak diperlukan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 49 Ayat 4",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-136"
+  },
+  {
+    "claim": "Gli allegati per la fissazione del Diritto di Gestione devono essere redatti secondo il formato specificato nell'Allegato II del presente Regolamento.",
+    "verbatim": "dibuat sesuai format sebagaimana tercantum dalam Lampiran II",
+    "pasal_ref": "PermenATR-18-2021 Pasal 50",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-137"
+  },
+  {
+    "claim": "Il Diritto di Proprietà può essere concesso per attività agricole e non agricole.",
+    "verbatim": "Hak Milik diberikan untuk kegiatan usaha pertanian dan nonpertanian",
+    "pasal_ref": "PermenATR-18-2021 Pasal 53",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-138"
+  },
+  {
+    "claim": "Il Diritto di Proprietà può essere concesso a cittadini indonesiani.",
+    "verbatim": "Hak Milik dapat diberikan kepada: a. Warga Negara Indonesia",
+    "pasal_ref": "PermenATR-18-2021 Pasal 52 Ayat 1 Huruf a",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "right",
+    "claim_id": "PRO-139"
+  },
+  {
+    "claim": "Il Diritto di Proprietà può essere concesso a persone giuridiche designate dal Governo, incluse banche statali, enti religiosi e sociali, e cooperative agricole.",
+    "verbatim": "badan hukum yang ditetapkan oleh Pemerintah meliputi: 1. bank negara; 2. badan keagamaan dan badan sosial",
+    "pasal_ref": "PermenATR-18-2021 Pasal 52 Ayat 1 Huruf b",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "right",
+    "claim_id": "PRO-140"
+  },
+  {
+    "claim": "Gli enti religiosi e sociali designati dal Governo possono ottenere il Diritto di Proprietà solo previa designazione del Ministro basata su raccomandazione dei ministeri competenti.",
+    "verbatim": "diberikan Hak Milik setelah mendapat penunjukan oleh Menteri berdasarkan rekomendasi dari menteri yang menyelenggarakan urusan pemerintahan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 52 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-141"
+  },
+  {
+    "claim": "Il Diritto di Proprietà per persone giuridiche può essere concesso solo su terreni specifici direttamente correlati e a supporto dei loro compiti principali, inclusi luoghi di culto, strutture sanitarie e educative.",
+    "verbatim": "hanya dapat diberikan atas bidang tanah tertentu sepanjang berkaitan langsung dan menunjang tugas pokok dan fungsinya",
+    "pasal_ref": "PermenATR-18-2021 Pasal 52 Ayat 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-142"
+  },
+  {
+    "claim": "La domanda di Diritto di Proprietà su Terreno Statale deve includere l'identità del richiedente o del richiedente e del suo rappresentante con lettera di procura.",
+    "verbatim": "identità Pemohon, atau identitas Pemohon dan kuasanya serta surat kuasa apabila dikuasakan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 1 Huruf a Angka 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-143"
+  },
+  {
+    "claim": "Per persone giuridiche, la domanda deve includere l'atto costitutivo, il numero di identificazione dell'impresa e la decisione di designazione come soggetto di diritto di proprietà.",
+    "verbatim": "akta pendirian dan perubahan terakhir beserta pengesahannya, Nomor Induk Berusaha, surat keputusan penunjukan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 1 Huruf a Angka 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-144"
+  },
+  {
+    "claim": "La domanda deve includere il fondamento del possesso come certificato, atto di trasferimento, sentenza giudiziale o altra prova di acquisizione.",
+    "verbatim": "dasar penguasaan atau alas haknya berupa: a) sertipikat, akta pemindahan hak, putusan pengadilan atau surat bukti perolehan tanah lainnya",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 1 Huruf b Angka 1 Huruf a",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-145"
+  },
+  {
+    "claim": "Se non esiste prova di proprietà, il possesso fisico deve essere documentato in una dichiarazione sottoscritta da almeno due testimoni locali e certificata dal capo villaggio.",
+    "verbatim": "surat pernyataan penguasaan fisik bidang tanah disaksikan paling sedikit 2 (dua) orang saksi dari lingkungan setempat diketahui kepala desa/lurah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 1 Huruf b Angka 1 Huruf b",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-146"
+  },
+  {
+    "claim": "La domanda deve includere la Mappa del Lotto Terreno.",
+    "verbatim": "Peta Bidang Tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 1 Huruf b Angka 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-147"
+  },
+  {
+    "claim": "La domanda deve includere prove fiscali relative al terreno richiesto, se disponibili.",
+    "verbatim": "bukti perpajakan yang berkaitan dengan tanah yang dimohon, apabila ada",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 1 Huruf c",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-148"
+  },
+  {
+    "claim": "Il richiedente deve dichiarare sotto responsabilità civile e penale che il terreno è di sua proprietà, posseduto legittimamente, senza controversie e non è bene pubblico.",
+    "verbatim": "surat pernyataan penguasaan fisik bidang tanah dan bertanggung jawab secara perdata dan pidana yang menyatakan bahwa tanah tersebut adalah benar milik",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 1 Huruf d",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-149"
+  },
+  {
+    "claim": "Il richiedente dichiara che il terreno non è in area boschiva protetta, foresta primaria o torbiera.",
+    "verbatim": "tanah yang dimohon berada di luar kawasan hutan dan/atau di luar areal yang dihentikan perizinannya pada hutan alam primer dan lahan gambut",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 1 Huruf d Angka 8",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-150"
+  },
+  {
+    "claim": "Il richiedente si impegna a non chiudere il terreno dall'accesso pubblico, dal traffico pubblico e dalle vie d'acqua.",
+    "verbatim": "bersedia untuk tidak mengurung/menutup pekarangan atau bidang tanah lain dari lalu lintas umum, akses publik dan/atau jalan air",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 1 Huruf d Angka 9",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "obligation",
+    "claim_id": "PRO-151"
+  },
+  {
+    "claim": "Il richiedente si impegna a cedere il terreno per l'interesse pubblico, in tutto o in parte.",
+    "verbatim": "bersedia melepaskan tanah untuk kepentingan umum baik sebagian atau seluruhnya",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 1 Huruf d Angka 10",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "obligation",
+    "claim_id": "PRO-152"
+  },
+  {
+    "claim": "Per il Diritto di Proprietà su terreni da Diritto di Gestione, la domanda deve includere l'approvazione del titolare del Diritto di Gestione.",
+    "verbatim": "surat persetujuan pemberian Hak Milik atas bagian tanah Hak Pengelolaan dari pemegang Hak Pengelolaan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 54 Ayat 2 Huruf b Angka 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-153"
+  },
+  {
+    "claim": "I richiedenti persone giuridiche devono facilitare lo sviluppo di orti comunitari pari al 20% della superficie fondiaria richiesta per il Diritto di Uso Aziendale.",
+    "verbatim": "diwajibkan memfasilitasi pembangunan kebun masyarakat sekitar seluas 20% (dua puluh persen)",
+    "pasal_ref": "PermenATR-18-2021 Pasal 82 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "obligation",
+    "claim_id": "PRO-154"
+  },
+  {
+    "claim": "Se l'obbligo di facilitare lo sviluppo di orti comunitari non è stato eseguito, deve essere realizzato al momento del Rinnovo o dell'Aggiornamento del diritto.",
+    "verbatim": "kewajiban memfasilitasi pembangunan kebun masyarakat dilaksanakan pada saat Perpanjangan atau Pembaruan hak",
+    "pasal_ref": "PermenATR-18-2021 Pasal 82 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-155"
+  },
+  {
+    "claim": "L'obbligo di facilitare orti comunitari deve essere eseguito secondo le disposizioni normative in materia di piantagioni.",
+    "verbatim": "dilaksanakan sesuai dengan ketentuan peraturan perundang-undangan di bidang perkebunan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 82 Ayat 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-156"
+  },
+  {
+    "claim": "Se la facilitazione degli orti comunitari è fornita in forma di terra, le comunità partecipanti organizzate in persone giuridiche possono richiedere il Diritto di Uso Aziendale o il Diritto di Proprietà.",
+    "verbatim": "dalam hal masyarakat peserta plasma tergabung dalam badan hukum, permohonannya dalam bentuk Hak Guna Usaha atau Hak Milik",
+    "pasal_ref": "PermenATR-18-2021 Pasal 83 Ayat 1 Huruf a",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-157"
+  },
+  {
+    "claim": "Se la facilitazione degli orti comunitari è fornita in forma di terra, i singoli partecipanti della comunità possono richiedere il Diritto di Proprietà.",
+    "verbatim": "dalam hal masyarakat peserta plasma perorangan, permohonannya dalam bentuk Hak Milik",
+    "pasal_ref": "PermenATR-18-2021 Pasal 83 Ayat 1 Huruf b",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-158"
+  },
+  {
+    "claim": "Le richieste di Diritti su Terreni per gli orti comunitari possono essere presentate contemporaneamente alla richiesta di Diritto di Uso Aziendale principale.",
+    "verbatim": "Permohonan Hak Atas Tanah dapat diajukan bersamaan dengan permohonan Hak Guna Usaha inti",
+    "pasal_ref": "PermenATR-18-2021 Pasal 83 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-159"
+  },
+  {
+    "claim": "Il Diritto di Uso Edificatorio può essere concesso a cittadini indonesiani e a persone giuridiche costituite secondo la legge indonesiana e con sede in Indonesia.",
+    "verbatim": "Hak Guna Bangunan dapat diberikan kepada: a. Warga Negara Indonesia; dan b. Badan Hukum yang didirikan menurut hukum Indonesia",
+    "pasal_ref": "PermenATR-18-2021 Pasal 85",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-160"
+  },
+  {
+    "claim": "Il Diritto di Uso Edificatorio è concesso per attività economiche non agricole specificate quali abitazioni, uffici, industria, magazzini, negozi, alberghi e strutture simili.",
+    "verbatim": "Hak Guna Bangunan diberikan untuk kegiatan usaha nonpertanian, antara lain: a. perumahan; b. perkantoran; c. industri",
+    "pasal_ref": "PermenATR-18-2021 Pasal 86 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-161"
+  },
+  {
+    "claim": "L'uso del terreno nel Diritto di Uso Edificatorio include strutture di supporto come campi da golf, agriturismo, incubatoi e fattorie di allevamento secondo il piano principale.",
+    "verbatim": "termasuk sarana pendukungnya seperti lapangan golf, agrowisata, penetasan (hatchery) dan peternakan pembibitan (breeding farm) sesuai dengan rencana induk",
+    "pasal_ref": "PermenATR-18-2021 Pasal 86 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-162"
+  },
+  {
+    "claim": "Il Diritto di Uso Edificatorio è concesso per un periodo massimo di 30 anni, rinnovabile per un massimo di 20 anni e aggiornabile per un massimo di 30 anni.",
+    "verbatim": "Hak Guna Bangunan diberikan untuk jangka waktu paling lama 30 (tiga puluh) tahun, diperpanjang untuk jangka waktu paling lama 20 (dua puluh) tahun dan diperbarui untuk jangka waktu paling lama 30 (tiga puluh) tahun",
+    "pasal_ref": "PermenATR-18-2021 Pasal 87 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "duration",
+    "claim_id": "PRO-163"
+  },
+  {
+    "claim": "Per il Diritto di Uso Edificatorio su Terreno dello Stato con costruzione di Unità di Condominio, la concessione e il rinnovo possono essere effettuati insieme con durata massima cumulativa di 50 anni dopo ottenimento del Certificato di Funzionalità.",
+    "verbatim": "di atas Tanah Negara maka jangka waktu Pemberian dan Perpanjangan dapat dilakukan sekaligus dengan jangka waktu akumulatif paling lama 50 (lima puluh) tahun setelah memperoleh Sertifikat Laik Fungsi",
+    "pasal_ref": "PermenATR-18-2021 Pasal 87 Ayat 2 Huruf a",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "duration",
+    "claim_id": "PRO-164"
+  },
+  {
+    "claim": "Per il Diritto di Uso Edificatorio su Diritto di Gestione con costruzione di Unità di Condominio, la concessione, il rinnovo e l'aggiornamento possono essere effettuati insieme con durata massima cumulativa di 80 anni dopo ottenimento del Certificato di Funzionalità.",
+    "verbatim": "di atas tanah Hak Pengelolaan maka jangka waktu Pemberian, Perpanjangan dan Pembaruan dapat dilakukan sekaligus dengan jangka waktu akumulatif paling lama 80 (delapan puluh) tahun",
+    "pasal_ref": "PermenATR-18-2021 Pasal 87 Ayat 2 Huruf b",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "duration",
+    "claim_id": "PRO-165"
+  },
+  {
+    "claim": "La richiesta di Diritto di Uso Edificatorio su Terreno dello Stato deve includere l'identità del richiedente e del suo procuratore con documentazione di incarico.",
+    "verbatim": "identitas Pemohon, atau identitas Pemohon dan kuasanya serta surat kuasa apabila dikuasakan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 88 Ayat 1 Huruf a Angka 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-166"
+  },
+  {
+    "claim": "Se il richiedente è una persone giuridica, deve allegare l'atto costitutivo, modifiche e relativa approvazione, oppure il numero di iscrizione da OSS o il Numero di Registrazione Aziendale.",
+    "verbatim": "akta pendirian dan perubahan terakhir beserta pengesahannya dari instansi yang berwenang atau Nomor Induk Berusaha dari Online Single Submission (OSS) atau Tanda Daftar Perusahaan (TDP)",
+    "pasal_ref": "PermenATR-18-2021 Pasal 88 Ayat 1 Huruf a Angka 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-167"
+  },
+  {
+    "claim": "La richiesta di Diritto di Uso Edificatorio deve includere la base di possesso o titolo del terreno mediante certificato, atto di trasferimento, atto di cessione o altri documenti idonei.",
+    "verbatim": "dasar penguasaan atau alas haknya berupa: a) sertipikat, akta pemindahan hak, akta/surat bukti pelepasan hak, surat penunjukan atau pembelian kaveling",
+    "pasal_ref": "PermenATR-18-2021 Pasal 88 Ayat 1 Huruf b Angka 1 Huruf a",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-168"
+  },
+  {
+    "claim": "Nel caso di terreno acquisito per scopi di pubblica utilità, la prova di acquisizione deve essere costituita dal verbale di consegna dei risultati dell'acquisizione secondo le norme vigenti.",
+    "verbatim": "dalam hal hasil kegiatan pengadaan tanah bagi pembangunan untuk kepentingan umum maka bukti perolehan tanahnya berupa berita acara penyerahan hasil pengadaan tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 88 Ayat 1 Huruf b Angka 1 Huruf b",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-169"
+  },
+  {
+    "claim": "Se non esiste alcuna prova di proprietà del terreno, il possesso fisico deve essere attestato mediante dichiarazione scritta testimoniata da almeno 2 testimoni locali non consanguinei, a conoscenza del capo villaggio.",
+    "verbatim": "penguasaan fisik atas tanah dimuat dalam surat pernyataan penguasaan fisik bidang tanah yang disaksikan paling sedikit 2 (dua) orang saksi dari lingkungan setempat yang mengetahui riwayat tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 88 Ayat 1 Huruf b Angka 1 Huruf c",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-170"
+  },
+  {
+    "claim": "Se la richiesta riguarda più di 5 parcelle, deve essere allegato un elenco e una mappa delle parcelle acquisite.",
+    "verbatim": "daftar dan peta perolehan tanah, apabila permohonan lebih dari 5 (lima) bidang",
+    "pasal_ref": "PermenATR-18-2021 Pasal 88 Ayat 1 Huruf b Angka 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-171"
+  },
+  {
+    "claim": "La richiesta di Diritto di Uso Edificatorio deve includere la certificazione di conformità nel Rencana Tata Ruang Wilayah (KKPR).",
+    "verbatim": "KKPR",
+    "pasal_ref": "PermenATR-18-2021 Pasal 88 Ayat 1 Huruf c Angka 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-172"
+  },
+  {
+    "claim": "Se il terreno è acquisito per scopi di pubblica utilità, deve essere allegata la determinazione della localizzazione.",
+    "verbatim": "penetapan lokasi, dalam hal tanah yang dimohon merupakan hasil kegiatan pengadaan tanah bagi pembangunan untuk kepentingan umum",
+    "pasal_ref": "PermenATR-18-2021 Pasal 88 Ayat 1 Huruf c Angka 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-173"
+  },
+  {
+    "claim": "Se il terreno è terreno bonificato, deve essere allegato il permesso di esercizio per l'esecuzione della bonifica.",
+    "verbatim": "perizinan berusaha untuk pelaksanaan reklamasi, apabila tanah yang dimohon merupakan Tanah Reklamasi",
+    "pasal_ref": "PermenATR-18-2021 Pasal 88 Ayat 1 Huruf c Angka 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-174"
+  },
+  {
+    "claim": "La terra deve essere ancora conforme al piano di assetto territoriale regionale.",
+    "verbatim": "tanahnya masih sesuai dengan RTR",
+    "pasal_ref": "PermenATR-18-2021 Pasal 108 Ayat 1 Huruf d",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-175"
+  },
+  {
+    "claim": "La terra non deve essere utilizzata o pianificata per interesse pubblico.",
+    "verbatim": "tidak dipergunakan dan/atau direncanakan untuk kepentingan umum",
+    "pasal_ref": "PermenATR-18-2021 Pasal 108 Ayat 1 Huruf e",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "prohibition",
+    "claim_id": "PRO-176"
+  },
+  {
+    "claim": "I risultati della ricerca devono essere segnalati al Ministro.",
+    "verbatim": "Hasil penelitian dilaporkan kepada Menteri",
+    "pasal_ref": "PermenATR-18-2021 Pasal 108 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-177"
+  },
+  {
+    "claim": "Il Ministro può concedere o negare il diritto di edificazione in tutto o in parte.",
+    "verbatim": "Menteri dapat memberikan kembali atau tidak memberikan kembali Hak Guna Bangunan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 108 Ayat 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "right",
+    "claim_id": "PRO-178"
+  },
+  {
+    "claim": "La domanda di concessione del diritto di edificazione deve essere presentata dopo la scadenza del termine.",
+    "verbatim": "permohonan pemberian kembali Hak Guna Bangunan diajukan setelah jangka waktu Hak Guna Bangunan berakhir",
+    "pasal_ref": "PermenATR-18-2021 Pasal 108 Ayat 4",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-179"
+  },
+  {
+    "claim": "La concessione del diritto di edificazione deve essere sottoposta a ispezione fondiaria da parte della Commissione A.",
+    "verbatim": "pemberian kembali Hak Guna Bangunan dilakukan pemeriksaan tanah oleh Panitia A",
+    "pasal_ref": "PermenATR-18-2021 Pasal 108 Ayat 5",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-180"
+  },
+  {
+    "claim": "I requisiti e le procedure della concessione devono essere applicati analogicamente alla richiesta di concessione.",
+    "verbatim": "Persyaratan dan tata cara pemberian Hak Guna Bangunan berlaku secara mutatis mutandis",
+    "pasal_ref": "PermenATR-18-2021 Pasal 108 Ayat 6",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-181"
+  },
+  {
+    "claim": "Il mancato rilascio del diritto di edificazione deve essere notificato preliminarmente dal Ministro o dal titolare del diritto di gestione.",
+    "verbatim": "Hak Guna Bangunan tidak diberikan kembali maka diberitahukan terlebih dahulu oleh",
+    "pasal_ref": "PermenATR-18-2021 Pasal 109 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-182"
+  },
+  {
+    "claim": "Se il diritto di edificazione non è concesso, gli edifici e i beni devono essere gestiti secondo le modalità previste dalla legge.",
+    "verbatim": "bangunan beserta benda-benda maupun tanam tumbuh dikuasai langsung oleh Negara",
+    "pasal_ref": "PermenATR-18-2021 Pasal 109 Ayat 2 Huruf a",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-183"
+  },
+  {
+    "claim": "Gli allegati per la concessione del diritto di edificazione devono essere conformi al formato nell'Allegato V.",
+    "verbatim": "dibuat sesuai format sebagaimana tercantum dalam Lampiran V",
+    "pasal_ref": "PermenATR-18-2021 Pasal 110",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-184"
+  },
+  {
+    "claim": "Il diritto di uso comprende il diritto di uso a tempo determinato e il diritto di uso durante l'utilizzo.",
+    "verbatim": "Hak Pakai terdiri atas: a. Hak Pakai dengan jangka waktu; dan b. Hak Pakai selama dipergunakan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 111 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-185"
+  },
+  {
+    "claim": "Il diritto di uso a tempo determinato è concesso a cittadini indonesiani, persone giuridiche indonesiane, società estere, enti religiosi e persone straniere.",
+    "verbatim": "Hak Pakai dengan jangka waktu diberikan kepada: a. Warga Negara Indonesia; b. badan hukum yang didirikan menurut hukum Indonesia",
+    "pasal_ref": "PermenATR-18-2021 Pasal 111 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-186"
+  },
+  {
+    "claim": "Il diritto di uso durante l'utilizzo è concesso a enti pubblici centrali, amministrazioni locali, amministrazioni comunali e rappresentanze estere.",
+    "verbatim": "Hak Pakai selama dipergunakan diberikan kepada: a. instansi Pemerintah Pusat; b. Pemerintah Daerah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 111 Ayat 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-187"
+  },
+  {
+    "claim": "Il diritto di uso è concesso per attività agricole e non agricole.",
+    "verbatim": "Hak Pakai diberikan untuk kegiatan usaha pertanian dan nonpertanian",
+    "pasal_ref": "PermenATR-18-2021 Pasal 112 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-188"
+  },
+  {
+    "claim": "Le attività agricole includono colture non contemplate negli standard di agricoltura secondo le normative vigenti.",
+    "verbatim": "Usaha pertanian berupa tanaman yang tidak diakomodir dalam jenis tanaman pertanian",
+    "pasal_ref": "PermenATR-18-2021 Pasal 112 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-189"
+  },
+  {
+    "claim": "Le attività non agricole includono uffici governativi, sedi di società estere, rappresentanze estere, attività estrattive e altre attività commerciali.",
+    "verbatim": "Nonpertanian dapat berupa: a. kantor pemerintahan; b. kantor badan hukum asing",
+    "pasal_ref": "PermenATR-18-2021 Pasal 112 Ayat 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-190"
+  },
+  {
+    "claim": "Il diritto di uso a tempo determinato è concesso per un periodo massimo di 30 anni, rinnovabile per 20 anni e rinnovabile per 30 anni.",
+    "verbatim": "Hak Pakai dengan jangka waktu diberikan untuk jangka waktu paling lama 30 tahun, diperpanjang paling lama 20 tahun",
+    "pasal_ref": "PermenATR-18-2021 Pasal 113 Ayat 1",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "duration",
+    "claim_id": "PRO-191"
+  },
+  {
+    "claim": "Il diritto di uso durante l'utilizzo è concesso per un periodo indeterminato finché è utilizzato e sfruttato.",
+    "verbatim": "Hak Pakai selama dipergunakan diberikan untuk waktu yang tidak ditentukan selama dipergunakan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 113 Ayat 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "duration",
+    "claim_id": "PRO-192"
+  },
+  {
+    "claim": "Per richiedenti stranieri è richiesta documentazione immigratoria quale visto, passaporto o permesso di soggiorno.",
+    "verbatim": "dokumen keimigrasian berupa visa, paspor atau izin tinggal dalam hal Pemohon Orang Asing",
+    "pasal_ref": "PermenATR-18-2021 Pasal 114 Ayat 1 Huruf a Angka 2",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-193"
+  },
+  {
+    "claim": "Per richiedenti persone giuridiche è richiesto l'atto costitutivo, le ultime modifiche, il numero di iscrizione e la registrazione aziendale.",
+    "verbatim": "akta pendirian dan perubahan terakhir beserta pengesahannya atau peraturan pendirian perusahaan, Nomor Induk Berusaha",
+    "pasal_ref": "PermenATR-18-2021 Pasal 114 Ayat 1 Huruf a Angka 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-194"
+  },
+  {
+    "claim": "La dichiarazione scritta per la richiesta di permesso di trasferimento dei diritti sulla terra deve essere redatta secondo il format allegato IX.",
+    "verbatim": "dibuat sesuai format sebagaimana tercantum dalam Lampiran IX",
+    "pasal_ref": "PermenATR-18-2021 Pasal 183 ayat (4)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "document",
+    "claim_id": "PRO-195"
+  },
+  {
+    "claim": "Lo straniero che possiede un documento di immigrazione può possedere una casa o abitazione su specifici diritti sulla terra.",
+    "verbatim": "Orang Asing yang mempunyai dokumen keimigrasian yang diterbitkan oleh instansi yang berwenang dapat memiliki rumah tinggal atau hunian",
+    "pasal_ref": "PermenATR-18-2021 Pasal 185",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "right",
+    "claim_id": "PRO-196"
+  },
+  {
+    "claim": "La proprietà di case unifamiliari da parte di stranieri è limitata a case di lusso, un terreno per persona/famiglia, e una superficie massima di 2.000 m².",
+    "verbatim": "rumah dengan kategori rumah mewah; 1 (satu) bidang tanah per orang/keluarga; tanahnya paling luas 2.000 m2",
+    "pasal_ref": "PermenATR-18-2021 Pasal 186 ayat (1) huruf a",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-197"
+  },
+  {
+    "claim": "Le abitazioni plurifamiliari possedute da stranieri devono essere della categoria commerciale.",
+    "verbatim": "untuk rumah susun dengan kategori rumah susun komersial",
+    "pasal_ref": "PermenATR-18-2021 Pasal 186 ayat (1) huruf b",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-198"
+  },
+  {
+    "claim": "Un minatore può ottenere più di un terreno o una superficie superiore a 2.000 m² se produce effetti positivi sull'economia e sulla società, con autorizzazione del Ministro.",
+    "verbatim": "dapat diberikan lebih dari 1 (satu) bidang tanah atau luasannya lebih dari 2.000 m2, dengan izin Menteri",
+    "pasal_ref": "PermenATR-18-2021 Pasal 186 ayat (2)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-199"
+  },
+  {
+    "claim": "I limiti alla proprietà non si applicano ai rappresentanti di stati stranieri e organismi internazionali.",
+    "verbatim": "dikecualikan bagi pemilikan rumah tempat tinggal atau hunian oleh perwakilan negara asing dan/atau perwakilan badan internasional",
+    "pasal_ref": "PermenATR-18-2021 Pasal 186 ayat (3)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "prohibition",
+    "claim_id": "PRO-200"
+  },
+  {
+    "claim": "L'acquisizione di case da parte di stranieri può avvenire mediante compravendita, donazione, permuta, asta o altri modi di trasferimento dei diritti sulla terra.",
+    "verbatim": "berasal dari jual beli, hibah, tukar menukar, lelang atau cara lain yang dimaksudkan untuk memindahkan Hak Atas Tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 187 ayat (1)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-201"
+  },
+  {
+    "claim": "L'acquisizione di case può riguardare proprietà nuove o vecchie, con prezzi fissati dal Decreto del Ministro.",
+    "verbatim": "pembelian rumah/unit baru atau rumah/unit lama dan harga rumah tempat tinggal atau hunian ditetapkan dengan Keputusan Menteri",
+    "pasal_ref": "PermenATR-18-2021 Pasal 187 ayat (2)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-202"
+  },
+  {
+    "claim": "I diritti sulla terra di proprietà o di diritto di costruzione su terreni acquisiti da stranieri devono essere trasformati in diritto di uso.",
+    "verbatim": "dilakukan perubahan menjadi Hak Pakai",
+    "pasal_ref": "PermenATR-18-2021 Pasal 187 ayat (3)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-203"
+  },
+  {
+    "claim": "Le unità abitative plurifamiliari di proprietà di stranieri costruite su terreni con diritto di uso o di costruzione conferiscono la proprietà dell'unità abitativa.",
+    "verbatim": "diberikan Hak Milik atas Satuan Rumah Susun",
+    "pasal_ref": "PermenATR-18-2021 Pasal 188 ayat (1)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "right",
+    "claim_id": "PRO-204"
+  },
+  {
+    "claim": "La quota di proprietà comune di unità abitative plurifamiliari di stranieri costruite su diritto di costruzione è calcolata in base al valore proporzionale.",
+    "verbatim": "hak bersama atas kepemilikan Satuan Rumah Susun dihitung berdasarkan Nilai Perbandingan Proporsional",
+    "pasal_ref": "PermenATR-18-2021 Pasal 188 ayat (2)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-205"
+  },
+  {
+    "claim": "Gli obblighi sul terreno comune rimangono a carico dello straniero come titolare del diritto di proprietà sull'unità abitativa.",
+    "verbatim": "Kewajiban atas tanah bersama kepemilikan Satuan Rumah Susun tetap melekat pada Orang Asing",
+    "pasal_ref": "PermenATR-18-2021 Pasal 188 ayat (3)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "obligation",
+    "claim_id": "PRO-206"
+  },
+  {
+    "claim": "La bonifica può essere eseguita solo dopo aver ottenuto il permesso di bonifica dal governo centrale o locale.",
+    "verbatim": "Reklamasi dapat dilaksanakan setelah memperoleh Izin Reklamasi dari Pemerintah Pusat atau Pemerintah Daerah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 189 ayat (1)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "obligation",
+    "claim_id": "PRO-207"
+  },
+  {
+    "claim": "L'uso e lo sfruttamento dei terreni bonificati deve essere in conformità con le destinazioni d'uso previste nel piano territoriale regionale o altri strumenti di pianificazione.",
+    "verbatim": "penggunaan dan pemanfaatannya diberikan sesuai dengan arahan peruntukannya dalam: RTR wilayah provinsi/kabupaten/kota",
+    "pasal_ref": "PermenATR-18-2021 Pasal 189 ayat (2) huruf a",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-208"
+  },
+  {
+    "claim": "I terreni bonificati assegnati a organi del governo centrale, imprese pubbliche o enti designati sono concessi con diritto di gestione o diritti di costruzione/uso.",
+    "verbatim": "Tanah Reklamasi diberikan: Hak Pengelolaan; atau Hak Atas Tanah berupa Hak Guna Bangunan atau Hak Pakai",
+    "pasal_ref": "PermenATR-18-2021 Pasal 190 ayat (1)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-209"
+  },
+  {
+    "claim": "I terreni bonificati assegnati a persone fisiche o società private sono concessi con diritti sulla terra e/o diritto di gestione con durata limitata.",
+    "verbatim": "diberikan Hak Atas Tanah di atas Tanah Negara dan/atau Hak Atas Tanah di atas Hak Pengelolaan berupa Hak Guna Bangunan dan Hak Pakai dengan jangka waktu",
+    "pasal_ref": "PermenATR-18-2021 Pasal 190 ayat (2) huruf a",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-210"
+  },
+  {
+    "claim": "Le procedure per l'assegnazione di diritti sui terreni bonificati seguono le stesse regole applicate ai terreni ordinari.",
+    "verbatim": "berlaku secara mutatis mutandis terhadap Penetapan Hak Pengelolaan dan Pemberian Hak Atas Tanah di atas Tanah Reklamasi",
+    "pasal_ref": "PermenATR-18-2021 Pasal 191",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-211"
+  },
+  {
+    "claim": "Quando la bonifica è effettuata senza autorizzazione, l'autorità competente conduce una ricerca tecnica e di pianificazione.",
+    "verbatim": "pejabat yang berwenang memberikan Izin Reklamasi melakukan penelitian secara teknis maupun tata ruang",
+    "pasal_ref": "PermenATR-18-2021 Pasal 192 ayat (1)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-212"
+  },
+  {
+    "claim": "Se la ricerca tecnica è positiva, il terreno bonificato diventa proprietà dello Stato e il suo uso è disciplinato dal Ministro.",
+    "verbatim": "tanah hasil reklamasi menjadi Tanah Negara dan penggunaan, pemanfaatan, dan pemilikan selanjutnya menjadi kewenangan Menteri",
+    "pasal_ref": "PermenATR-18-2021 Pasal 192 ayat (2)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-213"
+  },
+  {
+    "claim": "Il Ministro può assegnare terreni bonificati abusivamente a chi soddisfa i requisiti dopo l'ottenimento del permesso di bonifica.",
+    "verbatim": "pihak yang memenuhi syarat berdasarkan hasil penelitian setelah mendapat Izin Reklamasi",
+    "pasal_ref": "PermenATR-18-2021 Pasal 192 ayat (3) huruf a",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-214"
+  },
+  {
+    "claim": "Il Ministro può assegnare terreni bonificati abusivamente alla Banca dei Terreni con diritto di gestione.",
+    "verbatim": "Badan Bank Tanah dengan Hak Pengelolaan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 192 ayat (3) huruf b",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-215"
+  },
+  {
+    "claim": "Se la ricerca tecnica è negativa, il terreno bonificato abusivamente deve essere ripristinato allo stato originario da chi lo ha bonificato.",
+    "verbatim": "tanah hasil reklamasi dapat dikembalikan seperti keadaan semula oleh pihak yang melakukan reklamasi",
+    "pasal_ref": "PermenATR-18-2021 Pasal 192 ayat (4)",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "obligation",
+    "claim_id": "PRO-216"
+  },
+  {
+    "claim": "Le piccole isole e le zone marine utilizzate da soggetti qualificati possono essere assegnate con diritto di gestione e/o diritti sulla terra.",
+    "verbatim": "Pulau Kecil dan Wilayah Perairan yang telah dimanfaatkan oleh pihak yang memenuhi syarat dapat diberikan Hak Pengelolaan dan/atau Hak Atas Tanah",
+    "pasal_ref": "PermenATR-18-2021 Pasal 193",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "right",
+    "claim_id": "PRO-217"
+  },
+  {
+    "claim": "L'Ufficio Fondiario deve registrare la proroga della durata del diritto quando la domanda di registrazione soddisfa i requisiti prescritti.",
+    "verbatim": "Kantor Pertanahan melakukan pendaftaran Perpanjangan jangka waktu hak",
+    "pasal_ref": "PermenATR-18-2021 Pasal 206 Ayat 3",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "procedure",
+    "claim_id": "PRO-218"
+  },
+  {
+    "claim": "Le disposizioni relative alla proroga si applicano mutatis mutandis alle domande di registrazione per il Rinnovo del Diritto di Uso Agricolo, del Diritto di Uso Edificatorio o del Diritto di Uso.",
+    "verbatim": "berlaku mutatis mutandis terhadap permohonan pendaftaran Pembaruan Hak Guna Usaha",
+    "pasal_ref": "PermenATR-18-2021 Pasal 206 Ayat 4",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-219"
+  },
+  {
+    "claim": "Il presente Regolamento Ministeriale entra in vigore a partire dalla data di promulgazione ufficiale.",
+    "verbatim": "Peraturan Menteri ini mulai berlaku pada tanggal diundangkan",
+    "pasal_ref": "PermenATR-18-2021 Pasal 209",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "duration",
+    "claim_id": "PRO-220"
+  },
+  {
+    "claim": "Diverse precedenti disposizioni ministeriali e regolamentari sono abrogate e dichiarate non più vigenti.",
+    "verbatim": "dicabuk dan dinyatakan tidak berlaku",
+    "pasal_ref": "PermenATR-18-2021 Pasal 208",
+    "instrument_id": "PermenATR-18-2021",
+    "category": "rule",
+    "claim_id": "PRO-221"
+  }
+]

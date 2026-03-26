@@ -1,0 +1,458 @@
+[
+  {
+    "claim": "Un contribuente è una persona fisica o giuridica che secondo le disposizioni normative sulla tassazione è tenuta ad adempiere agli obblighi fiscali.",
+    "verbatim": "Wajib Pajak adalah orang atau badan yang menurut ketentuan peraturan perundang-undangan perpajakan ditentukan untuk melakukan kewajiban perpajakan",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf a",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-001"
+  },
+  {
+    "claim": "Il periodo d'imposta è il lasso di tempo specifico utilizzato come base per calcolare l'importo dell'imposta dovuta.",
+    "verbatim": "Masa Pajak adalah jangka waktu tertentu yang digunakan sebagai dasar untuk menghitung jumlah pajak yang terhutang",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf c",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-002"
+  },
+  {
+    "claim": "L'anno d'imposta è il periodo di un anno solare o di un anno contabile.",
+    "verbatim": "Tahun Pajak adalah jangka waktu satu tahun takwim atau satu tahun buku",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf d",
+    "instrument_id": "UU-6-1983",
+    "category": "duration",
+    "claim_id": "TAX-003"
+  },
+  {
+    "claim": "La dichiarazione dei redditi è il documento che il contribuente utilizza per comunicare il calcolo e il pagamento dell'imposta dovuta.",
+    "verbatim": "Surat Pemberitahuan adalah surat yang oleh Wajib Pajak digunakan untuk melaporkan penghitungan dan pembayaran pajak",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf f",
+    "instrument_id": "UU-6-1983",
+    "category": "document",
+    "claim_id": "TAX-004"
+  },
+  {
+    "claim": "La dichiarazione periodica è il documento che il contribuente utilizza per comunicare l'imposta dovuta in un determinato periodo d'imposta.",
+    "verbatim": "Surat Pemberitahuan Masa adalah surat yang oleh Wajib Pajak digunakan untuk memberitahukan pajak yang terhutang dalam suatu Masa Pajak",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf g",
+    "instrument_id": "UU-6-1983",
+    "category": "document",
+    "claim_id": "TAX-005"
+  },
+  {
+    "claim": "La dichiarazione annuale è il documento che il contribuente utilizza per comunicare l'imposta dovuta in un anno d'imposta.",
+    "verbatim": "Surat Pemberitahuan Tahunan adalah surat yang oleh Wajib Pajak digunakan untuk memberitahukan pajak yang terhutang dalam suatu Tahun Pajak",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf h",
+    "instrument_id": "UU-6-1983",
+    "category": "document",
+    "claim_id": "TAX-006"
+  },
+  {
+    "claim": "Il modulo di versamento dell'imposta è il documento che il contribuente utilizza per versare l'imposta dovuta alla Tesoreria di Stato o presso gli uffici di pagamento designati dal Ministro delle Finanze.",
+    "verbatim": "Surat Setoran Pajak adalah surat yang oleh Wajib Pajak digunakan untuk melakukan pembayaran pajak yang terhutang di Kas Negara",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf i",
+    "instrument_id": "UU-6-1983",
+    "category": "document",
+    "claim_id": "TAX-007"
+  },
+  {
+    "claim": "L'avviso di riscossione è il documento per il recupero dell'imposta e delle relative sanzioni amministrative quali interessi e ammende.",
+    "verbatim": "Surat Tagihan Pajak adalah surat untuk melakukan tagihan pajak dan,/atau sanksi berupa bunga dan denda administrasi",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf j",
+    "instrument_id": "UU-6-1983",
+    "category": "document",
+    "claim_id": "TAX-008"
+  },
+  {
+    "claim": "L'accertamento tributario è il provvedimento amministrativo che determina l'importo dell'imposta dovuta, le riduzioni, le carenze di pagamento e le sanzioni amministrative.",
+    "verbatim": "Surat Ketetapan Pajak adalah surat keputusan yang menentukan besarnya jumlah pajak yang terhutang",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf k",
+    "instrument_id": "UU-6-1983",
+    "category": "document",
+    "claim_id": "TAX-009"
+  },
+  {
+    "claim": "L'accertamento integrativo è il provvedimento che aumenta l'importo dell'imposta precedentemente accertato.",
+    "verbatim": "Surat Ketetapan Pajak Tambahan adalah Surat keputusan yang menambah jumlah pajak yang telah ditetapkan",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf l",
+    "instrument_id": "UU-6-1983",
+    "category": "document",
+    "claim_id": "TAX-010"
+  },
+  {
+    "claim": "Il provvedimento di rimborso dell'eccedenza di imposta è il documento che determina la restituzione del pagamento eccessivo rispetto all'imposta dovuta.",
+    "verbatim": "Surat Keputusan Kelebihan Pembayaran Pajak adalah surat keputusan yang menentukan pengembalian kelebihan pembayaran",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf m",
+    "instrument_id": "UU-6-1983",
+    "category": "document",
+    "claim_id": "TAX-011"
+  },
+  {
+    "claim": "L'imposta dovuta è l'imposta che deve essere versata in un determinato periodo d'imposta, anno d'imposta o parte dell'anno d'imposta secondo le disposizioni normative.",
+    "verbatim": "Pajak yang terhutang adalah pajak yang harus dibayar pada suatu saat, dalam Masa Pajak, dalam Tahun Pajak",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf o",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-012"
+  },
+  {
+    "claim": "Il credito d'imposta è l'importo dei pagamenti effettuati dal contribuente, aumentato delle imposte ritenute da terzi e diminuito dell'intera imposta dovuta.",
+    "verbatim": "Kredit Pajak adalah jumlah pembayaran pajak yang dibayar oleh Wajib Pajak sendiri, setelah ditambah dengan pajak yang dipotong",
+    "pasal_ref": "UU-6-1983 Pasal 1 Huruf q",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-013"
+  },
+  {
+    "claim": "La Notifica Fiscale non deve essere presentata oltre il termine di cui al Pasal 3 ayat (3), e dopo diffida scritta deve essere presentata nel termine stabilito nella Diffida.",
+    "verbatim": "Surat Pemberitahuan tidak disampaikan dalam jangka waktu sebagaimana dimaksud dalam Pasal 3 ayat (3)",
+    "pasal_ref": "UU-6-1983 Pasal 13 Ayat 1 Huruf b",
+    "instrument_id": "UU-6-1983",
+    "category": "procedure",
+    "claim_id": "TAX-014"
+  },
+  {
+    "claim": "La sanzione amministrativa per ritardata presentazione della Notifica Fiscale consiste in un interesse composto del 2% mensile per un massimo di ventiquattro mesi, calcolato dal momento dell'esigibilità dell'imposta fino all'emissione dell'Avviso.",
+    "verbatim": "sanksi administrasi berlipat bunga sebesar 2 % sebulan untuk selama-lamanya dua puluh empat bulan",
+    "pasal_ref": "UU-6-1983 Pasal 13 Ayat 2",
+    "instrument_id": "UU-6-1983",
+    "category": "sanction",
+    "claim_id": "TAX-015"
+  },
+  {
+    "claim": "Per omissioni previste al Pasal 13 ayat (1) huruf b, c, d, si applica una sanzione amministrativa di maggiorazione del 50% per Imposta sul Reddito non pagata o insufficientemente pagata in un anno d'imposta.",
+    "verbatim": "sanksi administrasi berupa kenaikan sebesar 50 % dari Pajak Penghasilan yang kurang atau tidak dibayar",
+    "pasal_ref": "UU-6-1983 Pasal 13 Ayat 3 Huruf a",
+    "instrument_id": "UU-6-1983",
+    "category": "sanction",
+    "claim_id": "TAX-016"
+  },
+  {
+    "claim": "Per Imposta sul Reddito non ritenuta, non riscossa o non versata, si applica una sanzione amministrativa di maggiorazione del 100% della somma non ritenuta, riscossa o versata.",
+    "verbatim": "100% dari Pajak Penghasilan yang tidak atau kurang dipotong, tidak atau kurang dipungut",
+    "pasal_ref": "UU-6-1983 Pasal 13 Ayat 3 Huruf b",
+    "instrument_id": "UU-6-1983",
+    "category": "sanction",
+    "claim_id": "TAX-017"
+  },
+  {
+    "claim": "Per Imposta sul Valore Aggiunto e Imposta di Vendita su Beni di Lusso non pagati o insufficientemente pagati, si applica una sanzione amministrativa di maggiorazione del 100%.",
+    "verbatim": "100% dari Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah",
+    "pasal_ref": "UU-6-1983 Pasal 13 Ayat 3 Huruf c",
+    "instrument_id": "UU-6-1983",
+    "category": "sanction",
+    "claim_id": "TAX-018"
+  },
+  {
+    "claim": "Le sanzioni amministrative costituite da interessi, multa amministrativa e maggiorazioni non possono essere computate dall'importo dell'imposta dovuta.",
+    "verbatim": "Sanksi administrasi berupa bunga, denda administrasi, dan kenaikan, tidak dapat dikreditkan",
+    "pasal_ref": "UU-6-1983 Pasal 13 Ayat 5",
+    "instrument_id": "UU-6-1983",
+    "category": "prohibition",
+    "claim_id": "TAX-019"
+  },
+  {
+    "claim": "Se l'Avviso di Accertamento Fiscale non è emesso entro il termine stabilito, l'imposta dichiarata dal Contribuente nella Notifica Fiscale Annuale diventa definitiva secondo le norme tributarie.",
+    "verbatim": "Besarnya pajak yang terhutang diberitahukan oleh Wajib Pajak menjadi pasti menurut ketentuan",
+    "pasal_ref": "UU-6-1983 Pasal 13 Ayat 6",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-020"
+  },
+  {
+    "claim": "Anche dopo la scadenza di cinque anni, l'Avviso di Accertamento Fiscale può essere emesso se il Contribuente è successivamente condannato penalmente per reato tributario relativo all'imposta con riscossione decaduta.",
+    "verbatim": "Surat Keputusan Pajak tetap dapat diterbitkan setelah jangka waktu lima tahun tersebut dipidana",
+    "pasal_ref": "UU-6-1983 Pasal 13 Ayat 7",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-021"
+  },
+  {
+    "claim": "La Richiesta di Pagamento Fiscale è emessa quando l'imposta nell'anno in corso non è pagata o è insufficientemente pagata.",
+    "verbatim": "Surat Tagihan Pajak dikeluarkan apabila pajak dalam tahun berjalan tidak atau kurang dibayar",
+    "pasal_ref": "UU-6-1983 Pasal 14 Ayat 1 Huruf a",
+    "instrument_id": "UU-6-1983",
+    "category": "procedure",
+    "claim_id": "TAX-022"
+  },
+  {
+    "claim": "La Richiesta di Pagamento Fiscale è emessa quando il Contribuente è soggetto a sanzioni amministrative costituite da multa amministrativa e/o interessi.",
+    "verbatim": "Wajib Pajak dikenakan sanksi administrasi berupa denda administrasi dan/atau bunga",
+    "pasal_ref": "UU-6-1983 Pasal 14 Ayat 1 Huruf b",
+    "instrument_id": "UU-6-1983",
+    "category": "procedure",
+    "claim_id": "TAX-023"
+  },
+  {
+    "claim": "La Richiesta di Pagamento Fiscale è emessa quando dalla verifica della Notifica Fiscale emerge una deficienza nel pagamento dell'imposta dovuta a errore di scrittura e/o di calcolo.",
+    "verbatim": "hasil penelitian Surat Pemberitahuan terdapat kekurangan pembayaran pajak sebagai akibat salah tulis",
+    "pasal_ref": "UU-6-1983 Pasal 14 Ayat 1 Huruf c",
+    "instrument_id": "UU-6-1983",
+    "category": "procedure",
+    "claim_id": "TAX-024"
+  },
+  {
+    "claim": "La Richiesta di Pagamento Fiscale ha la medesima efficacia giuridica dell'Avviso di Accertamento Fiscale.",
+    "verbatim": "Surat Tagihan Pajak mempunyai kekuatan hukum yang sama dengan Surat Ketetapan Pajak",
+    "pasal_ref": "UU-6-1983 Pasal 14 Ayat 2",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-025"
+  },
+  {
+    "claim": "Il Direttore Generale delle Entrate può emettere un Avviso di Accertamento Fiscale Integrativo entro cinque anni dalla data di esigibilità dell'imposta se scopre dati nuovi o precedentemente non acquisiti che comportano un maggiore importo d'imposta dovuta.",
+    "verbatim": "Direktur Jenderal Pajak dapat menerbitkan Surat Ketetapan Pajak Tambahan dalam jangka waktu lima tahun",
+    "pasal_ref": "UU-6-1983 Pasal 15 Ayat 1",
+    "instrument_id": "UU-6-1983",
+    "category": "procedure",
+    "claim_id": "TAX-026"
+  },
+  {
+    "claim": "All'importo della deficienza d'imposta dell'Avviso di Accertamento Fiscale Integrativo si aggiunge una sanzione amministrativa di maggiorazione del 100% della deficienza stessa.",
+    "verbatim": "kekurangan pajak yang terhutang ditambah dengan sanksi administrasi berupa kenaikan sebesar 100%",
+    "pasal_ref": "UU-6-1983 Pasal 15 Ayat 2",
+    "instrument_id": "UU-6-1983",
+    "category": "sanction",
+    "claim_id": "TAX-027"
+  },
+  {
+    "claim": "La maggiorazione del 100% non si applica se l'Avviso di Accertamento Fiscale Integrativo è emesso su dichiarazione scritta volontaria del Contribuente, sempre che il Direttore Generale non abbia già avviato azioni di verifica.",
+    "verbatim": "Kenaikan tidak dikenakan apabila Surat Ketetapan Pajak Tambahan diterbitkan berdasarkan keterangan tertulis",
+    "pasal_ref": "UU-6-1983 Pasal 15 Ayat 3",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-028"
+  },
+  {
+    "claim": "Anche dopo la scadenza di cinque anni, l'Avviso di Accertamento Fiscale Integrativo può essere emesso se il Contribuente è successivamente condannato penalmente per reato tributario relativo all'imposta con riscossione decaduta.",
+    "verbatim": "Surat Ketetapan Pajak Tambahan tetap dapat diterbitkan dalam hal Wajib Pajak setelah jangka waktu lima tahun",
+    "pasal_ref": "UU-6-1983 Pasal 15 Ayat 4",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-029"
+  },
+  {
+    "claim": "Il Direttore Generale delle Entrate può rettificare errori di scrittura, di calcolo o di applicazione della normativa tributaria contenuti in un Avviso di Accertamento Fiscale di propria iniziativa o su richiesta del Contribuente.",
+    "verbatim": "Kesalahan tulis, kesalahan hitung dapat dibetulkan oleh Direktur Jenderal Pajak karena jabatan",
+    "pasal_ref": "UU-6-1983 Pasal 16",
+    "instrument_id": "UU-6-1983",
+    "category": "procedure",
+    "claim_id": "TAX-030"
+  },
+  {
+    "claim": "Il Direttore Generale delle Entrate deve emettere un Avviso di Eccedenza di Pagamento entro dodici mesi dal ricevimento della richiesta, qualora l'imposta pagata risulti superiore all'imposta dovuta.",
+    "verbatim": "Surat Keputusan Kelebihan Pembayaran Pajak dalam jangka waktu paling lama dua belas bulan sejak diterima",
+    "pasal_ref": "UU-6-1983 Pasal 17 Ayat 1 Huruf a",
+    "instrument_id": "UU-6-1983",
+    "category": "duration",
+    "claim_id": "TAX-031"
+  },
+  {
+    "claim": "Se il Direttore Generale delle Entrate non emette un provvedimento entro il termine di dodici mesi, la richiesta di rimborso dell'eccedenza è ritenuta accolta.",
+    "verbatim": "Apabila setelah lewat jangka waktu Direktur Jenderal Pajak tidak memberi suatu keputusan, permohonan dianggap dikabulkan",
+    "pasal_ref": "UU-6-1983 Pasal 17 Ayat 2",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-032"
+  },
+  {
+    "claim": "La Richiesta di Pagamento Fiscale, l'Avviso di Accertamento Fiscale e l'Avviso di Accertamento Fiscale Integrativo costituiscono il fondamento della riscossione dell'imposta.",
+    "verbatim": "Surat Tagihan Pajak, Surat Ketetapan Pajak merupakan dasar penagihan pajak",
+    "pasal_ref": "UU-6-1983 Pasal 18 Ayat 1",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-033"
+  },
+  {
+    "claim": "Se l'imposta non è pagata o è insufficientemente pagata alla scadenza, si applica un interesse del 2% mensile calcolato dalla data di scadenza fino al pagamento, considerando i periodi inferiori al mese come un mese intero.",
+    "verbatim": "dikenakan bunga sebesar 2% sebulan untuk seluruh masa, yang dihitung dari jatuh tempo sampai dengan hari pembayaran",
+    "pasal_ref": "UU-6-1983 Pasal 19 Ayat 1",
+    "instrument_id": "UU-6-1983",
+    "category": "fee",
+    "claim_id": "TAX-034"
+  },
+  {
+    "claim": "Qualora al Contribuente sia consentito il pagamento a rate o il rinvio del pagamento dell'imposta, si applica comunque un interesse del 2% mensile.",
+    "verbatim": "Wajib Pajak diperbolehkan mengangsur, atau menunda pembayaran pajak, juga dikenakan bunga sebesar 2%",
+    "pasal_ref": "UU-6-1983 Pasal 19 Ayat 2",
+    "instrument_id": "UU-6-1983",
+    "category": "fee",
+    "claim_id": "TAX-035"
+  },
+  {
+    "claim": "Se il Contribuente è autorizzato a ritardare la presentazione della Notifica Fiscale e il calcolo provvisorio è inferiore all'imposta effettivamente dovuta, si applica un interesse del 2% mensile sulla deficienza dal termine di presentazione della Notifica fino al pagamento.",
+    "verbatim": "atas kekurangan pembayaran pajak tersebut, dikenakan bunga sebesar 2% sebulan yang dihitung dari saat berakhirnya kewajiban",
+    "pasal_ref": "UU-6-1983 Pasal 19 Ayat 3",
+    "instrument_id": "UU-6-1983",
+    "category": "fee",
+    "claim_id": "TAX-036"
+  },
+  {
+    "claim": "L'imposta dovuta sulla base di Richiesta di Pagamento Fiscale, Avviso di Accertamento Fiscale o Avviso di Accertamento Fiscale Integrativo è riscossa immediatamente in determinati casi derogatori dal regime ordinario.",
+    "verbatim": "jumlah pajak yang terhutang ditagih seketika, dalam hal Wajib Pajak atau wakilnya akan",
+    "pasal_ref": "UU-6-1983 Pasal 20 Huruf a",
+    "instrument_id": "UU-6-1983",
+    "category": "procedure",
+    "claim_id": "TAX-037"
+  },
+  {
+    "claim": "È prevista una sanzione pecuniaria massima di Rp 1.000.000 (un milione di rupiah).",
+    "verbatim": "denda setinggi-tingginya Rp 1.000.000,- (satu juta rupiah)",
+    "pasal_ref": "UU-6-1983 Pasal 41 Ayat 1",
+    "instrument_id": "UU-6-1983",
+    "category": "sanction",
+    "claim_id": "TAX-038"
+  },
+  {
+    "claim": "Un funzionario che intenzionalmente non adempie ai propri obblighi è soggetto a pena detentiva fino a un anno e/o multa fino a Rp 2.000.000.",
+    "verbatim": "pidana penjara selama-lamanya satu tahun dan/atau denda setinggi-tingginya Rp 2.000.000",
+    "pasal_ref": "UU-6-1983 Pasal 41 Ayat 2",
+    "instrument_id": "UU-6-1983",
+    "category": "sanction",
+    "claim_id": "TAX-039"
+  },
+  {
+    "claim": "Il procedimento penale per violazioni di cui ai Pasal 38 e 41 Ayat 1 può essere avviato solo su denuncia della persona la cui riservatezza è stata violata.",
+    "verbatim": "Penuntutan terhadap tindak pidana sebagaimana dimaksud dalam ayat (1) dan ayat (2) hanya dilakukan atas pengaduan orang yang kerahasiaannya dilanggar",
+    "pasal_ref": "UU-6-1983 Pasal 41 Ayat 3",
+    "instrument_id": "UU-6-1983",
+    "category": "procedure",
+    "claim_id": "TAX-040"
+  },
+  {
+    "claim": "Le violazioni di cui ai Pasal 38 e 41 Ayat 1 costituiscono contravvenzioni.",
+    "verbatim": "Tindak pidana sebagaimana dimaksud dalam Pasal 38 dan Pasal 41 ayat (1) adalah pelanggaran",
+    "pasal_ref": "UU-6-1983 Pasal 42 Ayat 1",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-041"
+  },
+  {
+    "claim": "Le violazioni di cui ai Pasal 39 e 41 Ayat 2 costituiscono crimini.",
+    "verbatim": "Tindak pidana sebagaimana dimaksud dalam Pasal 39 dan Pasal 41 ayat (2) adalah kejahatan",
+    "pasal_ref": "UU-6-1983 Pasal 42 Ayat 2",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-042"
+  },
+  {
+    "claim": "Le disposizioni relative ai Pasal 38 e 39 si applicano anche ai rappresentanti, procuratori o dipendenti del Contribuente.",
+    "verbatim": "berlaku juga bagi wakil, kuasa, atau pegawai dari Wajib Pajak",
+    "pasal_ref": "UU-6-1983 Pasal 43",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-043"
+  },
+  {
+    "claim": "Determinati funzionari della Direzione Generale delle Imposte sono autorizzati a condurre investigazioni su reati in materia fiscale secondo la legge sul procedimento penale.",
+    "verbatim": "Pejabat Pegawai Negeri Sipil tertentu di lingkungan Direktorat Jenderal Pajak diberi wewenang khusus sebagai Penyidik",
+    "pasal_ref": "UU-6-1983 Pasal 44 Ayat 1",
+    "instrument_id": "UU-6-1983",
+    "category": "right",
+    "claim_id": "TAX-044"
+  },
+  {
+    "claim": "L'investigatore è autorizzato a condurre ricerche sulla veridicità di segnalazioni e informazioni relative a reati fiscali.",
+    "verbatim": "melakukan penelitian atas kebenaran laporan atau keterangan berkenaan dengan tindak pidana di bidang perpajakan",
+    "pasal_ref": "UU-6-1983 Pasal 44 Ayat 2 Huruf a",
+    "instrument_id": "UU-6-1983",
+    "category": "right",
+    "claim_id": "TAX-045"
+  },
+  {
+    "claim": "L'investigatore è autorizzato a condurre ricerche su persone sospettate di aver commesso reati fiscali.",
+    "verbatim": "melakukan penelitian terhadap orang yang diduga melakukan tindak pidana di bidang perpajakan",
+    "pasal_ref": "UU-6-1983 Pasal 44 Ayat 2 Huruf b",
+    "instrument_id": "UU-6-1983",
+    "category": "right",
+    "claim_id": "TAX-046"
+  },
+  {
+    "claim": "L'investigatore è autorizzato a richiedere informazioni e prove materiali da persone o enti riguardanti reati fiscali.",
+    "verbatim": "meminta keterangan dan bahan bukti dari orang atau Badan sehubungan dengan peristiwa tindak pidana di bidang perpajakan",
+    "pasal_ref": "UU-6-1983 Pasal 44 Ayat 2 Huruf c",
+    "instrument_id": "UU-6-1983",
+    "category": "right",
+    "claim_id": "TAX-047"
+  },
+  {
+    "claim": "L'investigatore è autorizzato a ispezionare libri contabili, registrazioni e documenti relativi a reati fiscali.",
+    "verbatim": "melakukan pemeriksaan atas pembukuan, pencatatan, dan dokumen-dokumen lain berkenan dengan tindak pidana di bidang perpajakan",
+    "pasal_ref": "UU-6-1983 Pasal 44 Ayat 2 Huruf d",
+    "instrument_id": "UU-6-1983",
+    "category": "right",
+    "claim_id": "TAX-048"
+  },
+  {
+    "claim": "L'investigatore è autorizzato a ispezionare determinati luoghi per prove materiali e a sequestrare documentazione fiscale.",
+    "verbatim": "melakukan pemeriksaan di tempat tertentu yang diduga terdapat bahan bukti pembukuan, pencatatan, dan dokumen- dokumen lain serta melakukan penyitaan",
+    "pasal_ref": "UU-6-1983 Pasal 44 Ayat 2 Huruf e",
+    "instrument_id": "UU-6-1983",
+    "category": "right",
+    "claim_id": "TAX-049"
+  },
+  {
+    "claim": "L'investigatore è autorizzato a richiedere l'assistenza di esperti nell'esecuzione di compiti di investigazione su reati fiscali.",
+    "verbatim": "meminta bantuan ahli dalam rangka pelaksanaan tugas penyidikan tindak pidana di bidang perpajakan",
+    "pasal_ref": "UU-6-1983 Pasal 44 Ayat 2 Huruf f",
+    "instrument_id": "UU-6-1983",
+    "category": "right",
+    "claim_id": "TAX-050"
+  },
+  {
+    "claim": "L'investigatore deve notificare l'inizio dell'investigazione e comunicare i risultati al Pubblico Ministero secondo la legge sul procedimento penale.",
+    "verbatim": "memberitahukan dimulainya penyidikan dan menyampaikan hasil penyidikannya kepada Penuntut Umum",
+    "pasal_ref": "UU-6-1983 Pasal 44 Ayat 3",
+    "instrument_id": "UU-6-1983",
+    "category": "procedure",
+    "claim_id": "TAX-051"
+  },
+  {
+    "claim": "Alle imposte scadute per periodi fiscali che terminano prima dell'entrata in vigore di questa legge continua ad applicarsi la vecchia normativa fino al 31 dicembre 1988.",
+    "verbatim": "tetap berlaku ketentuan peraturan perundang-undangan perpajakan yang lama, sampai dengan tanggal 31 Desember 1988",
+    "pasal_ref": "UU-6-1983 Pasal 45",
+    "instrument_id": "UU-6-1983",
+    "category": "duration",
+    "claim_id": "TAX-052"
+  },
+  {
+    "claim": "I vecchi regolamenti attuativi fiscali rimangono in vigore per quanto non in conflitto con questa legge.",
+    "verbatim": "semua peraturan pelaksanaan di bidang perpajakan yang lama tetap berlaku sepanjang tidak bertentangan dengan undang-undang ini",
+    "pasal_ref": "UU-6-1983 Pasal 46",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-053"
+  },
+  {
+    "claim": "Le imposte sul reddito da miniere di petrolio, gas naturale e altre miniere con Contratti di Lavoro sono assoggettate all'Ordinanza Fiscale Societaria 1925 e alla Legge sulle Imposte su Interessi, Dividendi e Royalti 1970.",
+    "verbatim": "dikenakan pajak berdasarkan ketentuan-ketentuan Ordonansi Pajak Perseroan 1925 dan Undang-undang Pajak atas Bunga, Dividen dan Royalti 1970",
+    "pasal_ref": "UU-6-1983 Pasal 47",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-054"
+  },
+  {
+    "claim": "Le questioni non sufficientemente regolate da questa legge saranno disciplinate da Decreti del Governo.",
+    "verbatim": "Hal-hal yang belum cukup diatur dalam undang-undang ini, diatur lebih lanjut dengan Peraturan Pemerintah",
+    "pasal_ref": "UU-6-1983 Pasal 48",
+    "instrument_id": "UU-6-1983",
+    "category": "procedure",
+    "claim_id": "TAX-055"
+  },
+  {
+    "claim": "Le disposizioni di questa legge si applicano anche ad altre leggi fiscali, salvo diversa disposizione.",
+    "verbatim": "Ketentuan dalam undang-undang ini berlaku pula bagi undang- undang perpajakan lainnya, kecuali apabila ditentukan lain",
+    "pasal_ref": "UU-6-1983 Pasal 49",
+    "instrument_id": "UU-6-1983",
+    "category": "rule",
+    "claim_id": "TAX-056"
+  },
+  {
+    "claim": "Questa legge entra in vigore il 1º gennaio 1984.",
+    "verbatim": "Undang-undang ini mulai berlaku pada tanggal 1 Januari 1984",
+    "pasal_ref": "UU-6-1983 Pasal 50",
+    "instrument_id": "UU-6-1983",
+    "category": "duration",
+    "claim_id": "TAX-057"
+  }
+]

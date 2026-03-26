@@ -1,5 +1,5 @@
 """
-Bali Zero — Company Brochure PDF Generator v2
+Bali Zero — Company Brochure PDF Generator v3
 =============================================
 One-time script. Run when services/prices change.
 Output: data/assets/brochure_balizero_en.pdf
@@ -8,34 +8,19 @@ Usage:
     cd apps/backend-rag
     python scripts/generate_brochure.py
 
-Psychological arc (DeepSeek synthesis):
-    Page 1 (Cover)        → Relief:              "You are in the right place"
-    Page 2 (Who We Are)   → Orientation:          "Here is what we are"
-    Page 3 (Immigration)  → Impressed Confidence: "They know this cold"
-    Page 4 (Business)     → Safety:               "They have done this before"
-    Page 5 (Tax)          → Informed Confidence:  "Nothing will surprise me"
-    Page 6 (How We Work)  → Belonging:            "This system was built for me"
-    Page 7 (Contact)      → Readiness:            "I know exactly what to do next"
-
-Content strategy (Gemini research):
-    - Premium immigration brochures fail when they describe services.
-      They succeed when they eliminate the prospect's dominant fear.
-    - Every section answers: "Can I trust these people with something this consequential?"
-    - Anti-fraud signals critical for Bali market (PT MGI scandal documented)
-    - AI messaging: "AI verifies. Humans decide." — never say "automated" or "algorithm"
-    - Fear hierarchy: wrong visa/deportation > fraud > wrong PT PMA > regulations change
-
-Design (Codex research):
-    - BaseDocTemplate + PageTemplate per-page background (not SimpleDocTemplate)
-    - All custom elements as Flowable subclasses
-    - Logo: RGBA transparency via Pillow, mask='auto' in drawImage
-    - Semi-transparent fills: Color(r,g,b,alpha) not hex string concatenation
-    - Section accent colors: cover/who/biz/contact=#d4845a, imm=#5e7fb5, tax=#c9a96e, ai=#4db87a
+v3 changes:
+    - Real pricing data from bali_zero_official_prices_2025.json
+    - League Spartan (VF TTF) for titles — white
+    - Montserrat (VF TTF) for body — white
+    - Cleaner layout: more whitespace, stronger hierarchy
+    - Real service categories with actual prices
+    - Contact: info@balizero.com / +62 813 3805 1876 / Canggu Bali
 """
 
 from __future__ import annotations
 
 import io
+import json
 import os
 import sys
 from pathlib import Path
@@ -47,6 +32,7 @@ REPO_ROOT    = Path(__file__).parent.parent.parent.parent  # monorepo root
 BACKEND_ROOT = Path(__file__).parent.parent                # apps/backend-rag
 OUTPUT_PATH  = BACKEND_ROOT / "data" / "assets" / "brochure_balizero_en.pdf"
 LOGO_PATH    = REPO_ROOT / "apps" / "mouth" / "public" / "static" / "balizero-logo-clean.png"
+PRICING_PATH = BACKEND_ROOT / "backend" / "data" / "bali_zero_official_prices_2025.json"
 
 OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -56,8 +42,8 @@ OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 import numpy as np
 from PIL import Image as PILImage
 
-from reportlab.lib.colors import Color, HexColor
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.colors import Color, HexColor, white, black
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
@@ -75,33 +61,25 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+    KeepTogether,
 )
-
-# ─────────────────────────────────────────────────────────
-# PAGE GEOMETRY
-# ─────────────────────────────────────────────────────────
-W, H = A4  # 595.28 x 841.89 pt
-MARGIN = 20 * mm
 
 # ─────────────────────────────────────────────────────────
 # BRAND PALETTE
 # ─────────────────────────────────────────────────────────
-BASE      = HexColor("#0c0c0e")
-PANEL     = HexColor("#111115")
-CARD_BG   = HexColor("#1a1a1e")
-CARD_BG2  = HexColor("#202024")
-BORDER    = HexColor("#262629")
-TERRA     = HexColor("#d4845a")
-GOLD      = HexColor("#c9a96e")
-TEXT      = HexColor("#edeae4")
-MUTED     = HexColor("#8c8884")
-FAINT     = HexColor("#575350")
-INDIGO    = HexColor("#5e7fb5")
-GREEN     = HexColor("#4db87a")
-GREEN_BG  = Color(0.302, 0.722, 0.478, alpha=0.12)
-TERRA_BG  = Color(0.831, 0.518, 0.353, alpha=0.12)
+BASE        = HexColor("#0c0c0e")   # near-black background
+DARK2       = HexColor("#141416")   # slightly lighter background
+TERRA       = HexColor("#d4845a")   # terracotta accent
+GOLD        = HexColor("#c9a96e")   # gold accent
+INDIGO      = HexColor("#5e7fb5")   # immigration
+GREEN       = HexColor("#4db87a")   # AI/how-we-work
+TEXT_MAIN   = HexColor("#edeae4")   # off-white body text
+TEXT_DIM    = HexColor("#9d9a94")   # dimmed text
+CARD_BG     = Color(1, 1, 1, 0.06) # subtle card surface
+DIVIDER     = Color(1, 1, 1, 0.12) # faint dividers
+WHITE       = HexColor("#ffffff")
 
-# Section accent colors per page
+# section accent per page
 SECTION_COLORS = {
     "cover":   TERRA,
     "who":     TERRA,
@@ -113,1007 +91,932 @@ SECTION_COLORS = {
 }
 
 # ─────────────────────────────────────────────────────────
-# FONT LOADING
+# PAGE SIZE
 # ─────────────────────────────────────────────────────────
-def _load_fonts() -> dict[str, str]:
-    fonts: dict[str, str] = {}
-    montserrat = Path("/Users/nuzantara/Library/Fonts/Montserrat[wght].ttf")
-    sf         = Path("/System/Library/Fonts/SFNS.ttf")
-    sf_italic  = Path("/System/Library/Fonts/SFNSItalic.ttf")
+W, H = A4  # 210 × 297 mm
 
-    if montserrat.exists():
-        pdfmetrics.registerFont(TTFont("Display", str(montserrat)))
-        fonts["display"] = "Display"
-    else:
-        fonts["display"] = "Helvetica-Bold"
+# ─────────────────────────────────────────────────────────
+# LOAD PRICING DATA
+# ─────────────────────────────────────────────────────────
+def load_pricing() -> dict:
+    try:
+        with open(PRICING_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"⚠️  Pricing load failed: {e}")
+        return {}
 
-    if sf.exists():
-        pdfmetrics.registerFont(TTFont("Body", str(sf)))
-        fonts["body"] = "Body"
-    else:
-        fonts["body"] = "Helvetica"
+PRICING = load_pricing()
 
-    if sf_italic.exists():
-        pdfmetrics.registerFont(TTFont("BodyItalic", str(sf_italic)))
-        fonts["body_italic"] = "BodyItalic"
-    else:
-        fonts["body_italic"] = "Helvetica-Oblique"
 
-    return fonts
+def fmt_price(idr_str: str) -> str:
+    """'5.800.000 IDR' → 'Rp 5.8M'"""
+    try:
+        num = int(idr_str.replace(".", "").replace(",", "").replace(" IDR", "").replace("IDR", "").strip())
+        if num >= 1_000_000:
+            val = num / 1_000_000
+            return f"Rp {val:g}M"
+        elif num >= 1_000:
+            return f"Rp {num // 1000}K"
+        return f"Rp {num:,}"
+    except Exception:
+        return idr_str
 
-FONTS = _load_fonts()
-DF = FONTS["display"]   # display / headline font
-BF = FONTS["body"]      # body font
-BI = FONTS["body_italic"]
+
+def get_price(category: str, key_fragment: str) -> str:
+    """Get first matching price from pricing data."""
+    cat = PRICING.get("services", {}).get(category, {})
+    for k, v in cat.items():
+        if key_fragment.lower() in k.lower():
+            return fmt_price(v.get("price", ""))
+    return "–"
+
+
+# ─────────────────────────────────────────────────────────
+# FONT REGISTRATION
+# ─────────────────────────────────────────────────────────
+FONT_DIR = Path("/Users/nuzantara/Library/Fonts")
+SYS_FONT_DIR = Path("/System/Library/Fonts")
+
+def _reg(name: str, path: Path) -> bool:
+    if path.exists():
+        try:
+            pdfmetrics.registerFont(TTFont(name, str(path)))
+            return True
+        except Exception:
+            return False
+    return False
+
+# League Spartan — titles
+LS_VF = FONT_DIR / "LeagueSpartan-VF.ttf"
+if not _reg("LS", LS_VF):
+    _reg("LS", FONT_DIR / "LeagueSpartan-Regular.otf")  # fallback (won't work OTF, handled below)
+
+# For OTF files that don't work, fall back to Helvetica
+try:
+    pdfmetrics.getFont("LS")
+    TITLE_FONT = "LS"
+except Exception:
+    TITLE_FONT = "Helvetica-Bold"
+
+# Montserrat — body
+MONT_VF = FONT_DIR / "Montserrat[wght].ttf"
+if _reg("Mont", MONT_VF):
+    BODY_FONT = "Mont"
+elif _reg("Mont", FONT_DIR / "Montserrat-Regular.ttf"):
+    BODY_FONT = "Mont"
+else:
+    BODY_FONT = "Helvetica"
+
+print(f"   Fonts: title={TITLE_FONT}, body={BODY_FONT}")
 
 # ─────────────────────────────────────────────────────────
 # PARAGRAPH STYLES
 # ─────────────────────────────────────────────────────────
-def _s(**kw: object) -> ParagraphStyle:
-    return ParagraphStyle("_", **kw)
+def S(name: str, font: str, size: float, color=WHITE, leading_mul: float = 1.3,
+      align=TA_LEFT, bold: bool = False, space_before: float = 0, space_after: float = 0) -> ParagraphStyle:
+    return ParagraphStyle(
+        name,
+        fontName=font,
+        fontSize=size,
+        textColor=color,
+        leading=size * leading_mul,
+        alignment=align,
+        spaceBefore=space_before,
+        spaceAfter=space_after,
+    )
 
-S = {
-    "h1": _s(fontName=DF, fontSize=28, leading=36, textColor=TERRA,
-              spaceAfter=12, spaceBefore=6, alignment=TA_LEFT),
-    "h2": _s(fontName=DF, fontSize=18, leading=24, textColor=GOLD,
-              spaceAfter=8, spaceBefore=16),
-    "h3": _s(fontName="Helvetica-Bold", fontSize=12, leading=18,
-              textColor=TEXT, spaceAfter=5, spaceBefore=12),
-    "body": _s(fontName=BF, fontSize=10, leading=16, textColor=TEXT,
-               spaceAfter=7),
-    "body_muted": _s(fontName=BF, fontSize=9.5, leading=15, textColor=MUTED,
-                     spaceAfter=5),
-    "label": _s(fontName="Helvetica-Bold", fontSize=7.5, leading=11,
-                textColor=MUTED, spaceAfter=2),
-    "caption": _s(fontName=BF, fontSize=7.5, leading=11, textColor=FAINT,
-                  spaceAfter=3),
-    "cover_title": _s(fontName=DF, fontSize=40, leading=48, textColor=TEXT,
-                      spaceAfter=16, alignment=TA_CENTER),
-    "cover_sub": _s(fontName=BF, fontSize=13, leading=20, textColor=MUTED,
-                    spaceAfter=10, alignment=TA_CENTER),
-    "cover_accent": _s(fontName=DF, fontSize=10, leading=15, textColor=TERRA,
-                       alignment=TA_CENTER),
-    "bullet": _s(fontName=BF, fontSize=9.5, leading=15, textColor=TEXT,
-                 spaceAfter=3, leftIndent=12),
-    "table_header": _s(fontName="Helvetica-Bold", fontSize=8.5, leading=12,
-                       textColor=TERRA),
-    "table_cell": _s(fontName=BF, fontSize=9, leading=13, textColor=TEXT),
-    "table_cell_muted": _s(fontName=BF, fontSize=9, leading=13, textColor=MUTED),
+ST = {
+    # Headings — League Spartan
+    "H1":    S("H1",    TITLE_FONT, 36, WHITE, 1.1, TA_LEFT),
+    "H1C":   S("H1C",   TITLE_FONT, 36, WHITE, 1.1, TA_CENTER),
+    "H2":    S("H2",    TITLE_FONT, 22, WHITE, 1.2, TA_LEFT),
+    "H2C":   S("H2C",   TITLE_FONT, 22, WHITE, 1.2, TA_CENTER),
+    "H3":    S("H3",    TITLE_FONT, 15, WHITE, 1.25, TA_LEFT),
+    "H3C":   S("H3C",   TITLE_FONT, 15, WHITE, 1.25, TA_CENTER),
+    "TAGLINE": S("TAGLINE", TITLE_FONT, 13, TEXT_DIM, 1.4, TA_LEFT),
+    "TAGLINEC": S("TAGLINEC", TITLE_FONT, 13, TEXT_DIM, 1.4, TA_CENTER),
+    # Body — Montserrat
+    "BODY":  S("BODY",  BODY_FONT, 9.5, TEXT_MAIN, 1.5, TA_LEFT),
+    "BODYC": S("BODYC", BODY_FONT, 9.5, TEXT_MAIN, 1.5, TA_CENTER),
+    "SMALL": S("SMALL", BODY_FONT, 8,   TEXT_DIM,  1.4, TA_LEFT),
+    "SMALLC":S("SMALLC",BODY_FONT, 8,   TEXT_DIM,  1.4, TA_CENTER),
+    "LABEL": S("LABEL", BODY_FONT, 7.5, TEXT_DIM,  1.3, TA_LEFT),
+    "LABELC":S("LABELC",BODY_FONT, 7.5, TEXT_DIM,  1.3, TA_CENTER),
+    "PRICE": S("PRICE", TITLE_FONT, 13, TERRA, 1.2, TA_RIGHT),
+    "PRICEG":S("PRICEG",TITLE_FONT, 13, GOLD,  1.2, TA_RIGHT),
+    "PRICEI":S("PRICEI",TITLE_FONT, 13, INDIGO,1.2, TA_RIGHT),
+    "BULLET":S("BULLET",BODY_FONT, 9,  TEXT_MAIN, 1.45, TA_LEFT),
+    "FOOTER":S("FOOTER",BODY_FONT, 7.5, TEXT_DIM, 1.3, TA_CENTER),
+    "ACCENT":S("ACCENT",TITLE_FONT, 10, TERRA, 1.3, TA_LEFT),
+    "ACCENTG":S("ACCENTG",TITLE_FONT, 10, GOLD, 1.3, TA_LEFT),
+    "ACCENTI":S("ACCENTI",TITLE_FONT, 10, INDIGO, 1.3, TA_LEFT),
+    "ACCENTGR":S("ACCENTGR",TITLE_FONT, 10, GREEN, 1.3, TA_LEFT),
+    "URL":   S("URL",   BODY_FONT, 9.5, TERRA, 1.4, TA_CENTER),
 }
 
+
 # ─────────────────────────────────────────────────────────
-# LOGO PREPARATION
+# LOGO PREPROCESSING
 # ─────────────────────────────────────────────────────────
-def _prepare_logo(logo_path: Path) -> ImageReader | None:
-    """Convert near-black-background logo PNG to RGBA for dark PDF use."""
-    if not logo_path.exists():
+def _prepare_logo(path: Path) -> ImageReader | None:
+    if not path.exists():
+        print(f"⚠️  Logo not found: {path}")
         return None
     try:
-        img = PILImage.open(str(logo_path)).convert("RGB")
-        arr = np.array(img)
-        rgba = np.zeros((*arr.shape[:2], 4), dtype=np.uint8)
-        rgba[:, :, :3] = arr
-        brightness = arr.max(axis=2)
-        # Hard cut at 25, soft antialiasing 25–60
-        alpha = np.where(brightness < 25, 0, 255).astype(np.uint8)
-        soft_mask = (brightness >= 25) & (brightness < 60)
-        alpha[soft_mask] = ((brightness[soft_mask] - 25) / 35.0 * 255).astype(np.uint8)
-        rgba[:, :, 3] = alpha
-        pil_rgba = PILImage.fromarray(rgba, "RGBA")
+        img = PILImage.open(path).convert("RGBA")
+        arr = np.array(img, dtype=np.float32)
+        r, g, b, a = arr[..., 0], arr[..., 1], arr[..., 2], arr[..., 3]
+        brightness = 0.299 * r + 0.587 * g + 0.114 * b
+        # Dark pixels (near-black background) → transparent
+        mask = brightness < 30
+        soft = (brightness >= 30) & (brightness < 60)
+        arr[mask, 3] = 0
+        arr[soft, 3] = ((brightness[soft] - 30) / 30 * 255).clip(0, 255)
+        out = PILImage.fromarray(arr.astype(np.uint8), "RGBA")
         buf = io.BytesIO()
-        pil_rgba.save(buf, format="PNG")
+        out.save(buf, format="PNG")
         buf.seek(0)
         return ImageReader(buf)
     except Exception as e:
-        print(f"⚠ Logo preparation failed: {e}", file=sys.stderr)
+        print(f"⚠️  Logo prep failed: {e}")
         return None
 
 LOGO_READER = _prepare_logo(LOGO_PATH)
 
-# ─────────────────────────────────────────────────────────
-# CUSTOM FLOWABLES
-# ─────────────────────────────────────────────────────────
-
-class AccentDivider(Flowable):
-    """Terracotta/gold horizontal rule with left diamond marker."""
-    def __init__(self, width: float = 165 * mm, color: HexColor = TERRA, thickness: float = 1.5):
-        super().__init__()
-        self.width = width
-        self.height = 14
-        self.color = color
-        self.thickness = thickness
-
-    def draw(self) -> None:
-        c = self.canv
-        c.setStrokeColor(self.color)
-        c.setLineWidth(self.thickness)
-        c.line(0, 7, self.width, 7)
-        c.setFillColor(self.color)
-        c.saveState()
-        c.translate(0, 7)
-        c.rotate(45)
-        c.rect(-3.5, -3.5, 7, 7, fill=1, stroke=0)
-        c.restoreState()
-
-
-class StatCard(Flowable):
-    """Numbered stat card: big number + label."""
-    def __init__(self, number: str, label: str, width: float = 36 * mm,
-                 height: float = 32 * mm, accent: HexColor = TERRA):
-        super().__init__()
-        self.width = width
-        self.height = height
-        self.number = number
-        self.label = label
-        self.accent = accent
-
-    def draw(self) -> None:
-        c = self.canv
-        c.setFillColor(CARD_BG)
-        c.roundRect(0, 0, self.width, self.height, 6, fill=1, stroke=0)
-        c.setFillColor(self.accent)
-        c.rect(0, self.height - 2.5, self.width, 2.5, fill=1, stroke=0)
-        # Number
-        c.setFillColor(self.accent)
-        c.setFont(DF, 18)
-        c.drawCentredString(self.width / 2, self.height / 2 + 2, self.number)
-        # Label
-        c.setFillColor(MUTED)
-        c.setFont("Helvetica", 7)
-        c.drawCentredString(self.width / 2, self.height / 2 - 10, self.label.upper())
-
-
-class ProcessStep(Flowable):
-    """Numbered process step with optional connector line."""
-    def __init__(self, number: int, title: str, description: str,
-                 is_last: bool = False, accent: HexColor = GREEN,
-                 width: float = 155 * mm):
-        super().__init__()
-        self.width = width
-        self.height = 48
-        self.number = str(number)
-        self.title = title
-        self.description = description
-        self.is_last = is_last
-        self.accent = accent
-
-    def draw(self) -> None:
-        c = self.canv
-        # Connector (dashed vertical line below circle)
-        if not self.is_last:
-            c.setStrokeColor(BORDER)
-            c.setLineWidth(1)
-            c.setDash(3, 4)
-            c.line(13, 0, 13, self.height - 25)
-            c.setDash()
-        # Circle
-        c.setFillColor(self.accent)
-        c.circle(13, self.height - 13, 10, fill=1, stroke=0)
-        # Number in circle
-        c.setFillColor(BASE)
-        c.setFont("Helvetica-Bold", 8)
-        c.drawCentredString(13, self.height - 17, self.number)
-        # Title
-        c.setFillColor(TEXT)
-        c.setFont("Helvetica-Bold", 10.5)
-        c.drawString(34, self.height - 11, self.title)
-        # Description
-        c.setFillColor(MUTED)
-        c.setFont(BF, 9)
-        c.drawString(34, self.height - 24, self.description)
-
-
-class GuardrailBadge(Flowable):
-    """Pill badge for AI guardrail features."""
-    def __init__(self, label: str, color: HexColor = GREEN, width: float = 72 * mm):
-        super().__init__()
-        self.label = label
-        self.width = width
-        self.height = 26
-        self.color = color
-        if color == GREEN:
-            self.bg = GREEN_BG
-        else:
-            self.bg = TERRA_BG
-
-    def draw(self) -> None:
-        c = self.canv
-        c.setFillColor(self.bg)
-        c.roundRect(0, 0, self.width, self.height, 13, fill=1, stroke=0)
-        c.setStrokeColor(self.color)
-        c.setLineWidth(0.8)
-        c.roundRect(0, 0, self.width, self.height, 13, fill=0, stroke=1)
-        c.setFillColor(self.color)
-        c.circle(12, self.height / 2, 3.5, fill=1, stroke=0)
-        c.setFillColor(TEXT)
-        c.setFont(BF, 8.5)
-        c.drawString(22, self.height / 2 - 3.5, self.label)
-
-
-class ServiceCard(Flowable):
-    """Service category card with title, accent line, and bullet points."""
-    def __init__(self, title: str, bullets: list[str],
-                 width: float = 77 * mm, accent: HexColor = TERRA):
-        super().__init__()
-        self.title = title
-        self.bullets = bullets
-        self.width = width
-        self.accent = accent
-        self.height = 28 + len(bullets) * 14
-
-    def draw(self) -> None:
-        c = self.canv
-        c.setFillColor(CARD_BG)
-        c.roundRect(0, 0, self.width, self.height, 5, fill=1, stroke=0)
-        c.setFillColor(self.accent)
-        c.roundRect(0, self.height - 3, self.width, 3, 5, fill=1, stroke=0)
-        # Title
-        c.setFillColor(self.accent)
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(10, self.height - 17, self.title)
-        # Bullets
-        c.setFillColor(TEXT)
-        c.setFont(BF, 8.5)
-        for i, bullet in enumerate(self.bullets):
-            y = self.height - 30 - i * 14
-            c.setFillColor(self.accent)
-            c.circle(15, y + 4, 2, fill=1, stroke=0)
-            c.setFillColor(TEXT)
-            c.drawString(22, y, bullet)
-
-
-class KeyValueCard(Flowable):
-    """Dark card with key:value rows (e.g. processing times, rates)."""
-    def __init__(self, rows: list[tuple[str, str]],
-                 width: float = 60 * mm, accent: HexColor = INDIGO):
-        super().__init__()
-        self.rows = rows
-        self.width = width
-        self.accent = accent
-        self.height = 16 + len(rows) * 20
-
-    def draw(self) -> None:
-        c = self.canv
-        c.setFillColor(CARD_BG)
-        c.roundRect(0, 0, self.width, self.height, 5, fill=1, stroke=0)
-        c.setFillColor(self.accent)
-        c.roundRect(0, self.height - 3, self.width, 3, 5, fill=1, stroke=0)
-        for i, (key, val) in enumerate(self.rows):
-            y = self.height - 20 - i * 20
-            c.setStrokeColor(BORDER)
-            c.setLineWidth(0.4)
-            if i > 0:
-                c.line(8, y + 18, self.width - 8, y + 18)
-            c.setFillColor(MUTED)
-            c.setFont("Helvetica", 7)
-            c.drawString(10, y + 5, key.upper())
-            c.setFillColor(TEXT)
-            c.setFont("Helvetica-Bold", 9)
-            c.drawRightString(self.width - 10, y + 5, val)
-
 
 # ─────────────────────────────────────────────────────────
-# PAGE BACKGROUND CALLBACKS
+# BACKGROUND CALLBACKS
 # ─────────────────────────────────────────────────────────
-
-def _make_cover_bg(canvas: object, doc: object) -> None:  # type: ignore[override]
+def _bg_cover(canvas, doc):
     canvas.saveState()
-    # Dark gradient background (60 bands)
-    for i in range(60):
-        t = i / 60
-        r = 0.047 + t * 0.035
-        g = 0.047 + t * 0.025
-        b = 0.055 + t * 0.035
-        canvas.setFillColorRGB(r, g, b)
-        canvas.rect(0, i * (H / 60), W, H / 60 + 1, fill=1, stroke=0)
-    # Top accent bar
+    # Dark base
+    canvas.setFillColor(HexColor("#0a0a0c"))
+    canvas.rect(0, 0, W, H, fill=1, stroke=0)
+    # Warm gradient panel left ~40%
+    canvas.setFillColor(HexColor("#1a100a"))
+    canvas.rect(0, 0, W * 0.42, H, fill=1, stroke=0)
+    # Terracotta vertical bar
     canvas.setFillColor(TERRA)
-    canvas.rect(0, H - 4, W, 4, fill=1, stroke=0)
-    # Bottom accent bar
-    canvas.setFillColor(HexColor("#1e1e23"))
-    canvas.rect(0, 0, W, 50, fill=1, stroke=0)
+    canvas.rect(W * 0.42 - 3, 0, 3, H, fill=1, stroke=0)
+    # Decorative dots grid (subtle)
+    canvas.setFillColor(Color(0.83, 0.52, 0.35, 0.08))
+    dot_size = 2
+    for row in range(0, int(H / 18) + 1):
+        for col in range(0, int(W * 0.42 / 18) + 1):
+            canvas.circle(col * 18 + 9, row * 18 + 9, dot_size, fill=1, stroke=0)
+    # Top accent band
+    canvas.setFillColor(TERRA)
+    canvas.rect(0, H - 3*mm, W, 3*mm, fill=1, stroke=0)
+    # Footer line
+    canvas.setFillColor(TERRA)
+    canvas.rect(0, 12*mm, W, 0.5, fill=1, stroke=0)
+    canvas.setFillColor(TEXT_DIM)
+    canvas.setFont(BODY_FONT, 7.5)
+    canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  info@balizero.com  ·  +62 813 3805 1876  ·  Canggu, Bali")
     canvas.restoreState()
 
 
-def _make_content_bg(section_id: str) -> object:
+def _make_content_bg(section_id: str):
     accent = SECTION_COLORS.get(section_id, TERRA)
-
-    def _bg(canvas: object, doc: object) -> None:  # type: ignore[override]
+    def _bg(canvas, doc):
         canvas.saveState()
-        # Flat base
+        # Base
         canvas.setFillColor(BASE)
         canvas.rect(0, 0, W, H, fill=1, stroke=0)
+        # Subtle top panel
+        canvas.setFillColor(HexColor("#111113"))
+        canvas.rect(0, H - 28*mm, W, 28*mm, fill=1, stroke=0)
+        # Accent top stripe
+        canvas.setFillColor(accent)
+        canvas.rect(0, H - 1.5, W, 1.5, fill=1, stroke=0)
         # Left accent bar
         canvas.setFillColor(accent)
-        canvas.rect(0, 35 * mm, 3, H - 55 * mm, fill=1, stroke=0)
-        # Footer divider
-        canvas.setStrokeColor(BORDER)
-        canvas.setLineWidth(0.5)
-        canvas.line(MARGIN, 17 * mm, W - MARGIN, 17 * mm)
-        # Footer text
-        canvas.setFillColor(FAINT)
-        canvas.setFont(BF, 7)
-        canvas.drawString(MARGIN, 11 * mm, "BALI ZERO  ·  balizero.com  ·  wa.me/6281338051876")
-        canvas.drawRightString(W - MARGIN, 11 * mm, str(doc.page - 1))
+        canvas.rect(0, 18*mm, 3, H - 36*mm, fill=1, stroke=0)
+        # Footer
+        canvas.setFillColor(Color(1, 1, 1, 0.08))
+        canvas.rect(0, 0, W, 14*mm, fill=1, stroke=0)
+        canvas.setFillColor(accent)
+        canvas.rect(0, 14*mm, W, 0.5, fill=1, stroke=0)
+        canvas.setFillColor(TEXT_DIM)
+        canvas.setFont(BODY_FONT, 7.5)
+        canvas.drawCentredString(W / 2, 5*mm, "balizero.com  ·  info@balizero.com  ·  +62 813 3805 1876  ·  Canggu, Bali")
         canvas.restoreState()
-
     return _bg
 
 
 # ─────────────────────────────────────────────────────────
-# STORY BUILDERS
+# CUSTOM FLOWABLES
 # ─────────────────────────────────────────────────────────
+class HRule(Flowable):
+    """Horizontal rule with optional accent color."""
+    def __init__(self, width_mm: float = 60, color=TERRA, thickness: float = 1.5, space_after: float = 6):
+        super().__init__()
+        self._w = width_mm * mm
+        self._color = color
+        self._t = thickness
+        self._sa = space_after
+        self.hAlign = "LEFT"
 
-def _sp(h: float = 8) -> Spacer:
-    return Spacer(1, h)
+    def wrap(self, avail_w, avail_h):
+        return self._w, self._t + self._sa
 
-
-def _p(text: str, style: str = "body") -> Paragraph:
-    return Paragraph(text, S[style])
-
-
-def _comparison_table(data: list[list[str]], col_widths: list[float]) -> Table:
-    """Dark alternating-row comparison table."""
-    para_data = []
-    for r_idx, row in enumerate(data):
-        para_row = []
-        for c_idx, cell in enumerate(row):
-            if r_idx == 0:
-                para_row.append(_p(cell, "table_header"))
-            elif c_idx == 0:
-                para_row.append(_p(cell, "table_cell"))
-            else:
-                para_row.append(_p(cell, "table_cell_muted"))
-        para_data.append(para_row)
-
-    t = Table(para_data, colWidths=col_widths)
-    t.setStyle(TableStyle([
-        ("BACKGROUND",   (0, 0), (-1, 0),  CARD_BG2),
-        ("LINEBELOW",    (0, 0), (-1, 0),  1.5, TERRA),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [HexColor("#131315"), CARD_BG]),
-        ("TOPPADDING",   (0, 0), (-1, -1), 7),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 7),
-        ("LEFTPADDING",  (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-        ("LINEBELOW",    (0, 1), (-1, -2), 0.4, BORDER),
-        ("BOX",          (0, 0), (-1, -1), 0.4, BORDER),
-        ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
-    ]))
-    return t
+    def draw(self):
+        self.canv.setFillColor(self._color)
+        self.canv.rect(0, self._sa, self._w, self._t, fill=1, stroke=0)
 
 
-def _two_col(left: Flowable, right: Flowable,
-             lw: float = 92 * mm, rw: float = 63 * mm) -> Table:
-    t = Table([[left, right]], colWidths=[lw, rw])
-    t.setStyle(TableStyle([
-        ("VALIGN",       (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING",  (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING",   (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 0),
-    ]))
-    return t
+class SectionHeader(Flowable):
+    """Full-width section header with accent label + title."""
+    def __init__(self, label: str, title: str, accent=TERRA):
+        super().__init__()
+        self._label = label.upper()
+        self._title = title
+        self._accent = accent
+
+    def wrap(self, avail_w, avail_h):
+        self._avail_w = avail_w
+        return avail_w, 22*mm
+
+    def draw(self):
+        c = self.canv
+        c.saveState()
+        # label
+        c.setFont(BODY_FONT, 8)
+        c.setFillColor(self._accent)
+        c.drawString(0, 14*mm, self._label)
+        # rule under label
+        c.setFillColor(self._accent)
+        c.rect(0, 13*mm, self._avail_w * 0.25, 1, fill=1, stroke=0)
+        # title
+        c.setFont(TITLE_FONT, 24)
+        c.setFillColor(WHITE)
+        c.drawString(0, 3*mm, self._title)
+        c.restoreState()
 
 
-def _badge_row(badges: list[GuardrailBadge], col_width: float = 52 * mm) -> Table:
-    t = Table([badges], colWidths=[col_width] * len(badges))
-    t.setStyle(TableStyle([
-        ("LEFTPADDING",  (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING",   (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 0),
-        ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
-    ]))
-    return t
+class PriceRow(Flowable):
+    """One price line: service name (left) + price (right) + subtle divider."""
+    def __init__(self, service: str, price: str, accent=TERRA, note: str = ""):
+        super().__init__()
+        self._service = service
+        self._price = price
+        self._accent = accent
+        self._note = note
+
+    def wrap(self, avail_w, avail_h):
+        self._avail_w = avail_w
+        return avail_w, 8*mm
+
+    def draw(self):
+        c = self.canv
+        c.saveState()
+        # divider
+        c.setFillColor(DIVIDER)
+        c.rect(0, 7.5*mm, self._avail_w, 0.5, fill=1, stroke=0)
+        # service name
+        c.setFont(BODY_FONT, 9)
+        c.setFillColor(TEXT_MAIN)
+        c.drawString(0, 1.5*mm, self._service)
+        # note
+        if self._note:
+            c.setFont(BODY_FONT, 7)
+            c.setFillColor(TEXT_DIM)
+            c.drawString(0, -1.5*mm, self._note)
+        # price
+        c.setFont(TITLE_FONT, 11)
+        c.setFillColor(self._accent)
+        c.drawRightString(self._avail_w, 1.5*mm, self._price)
+        c.restoreState()
 
 
-def _stat_row(stats: list[tuple[str, str, str]]) -> Table:
-    """Row of StatCards. stats = [(number, label, accent_hex), ...]"""
-    cards = [StatCard(n, l, accent=HexColor(a)) for n, l, a in stats]
-    cw = 155 * mm / len(cards)
-    t = Table([cards], colWidths=[cw] * len(cards))
-    t.setStyle(TableStyle([
-        ("LEFTPADDING",  (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING",   (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 0),
-    ]))
-    return t
+class StatBox(Flowable):
+    """Stat number + label in a card box."""
+    def __init__(self, number: str, label: str, accent=TERRA, width_mm: float = 40):
+        super().__init__()
+        self._number = number
+        self._label = label
+        self._accent = accent
+        self._bw = width_mm * mm
+
+    def wrap(self, avail_w, avail_h):
+        return self._bw, 22*mm
+
+    def draw(self):
+        c = self.canv
+        c.saveState()
+        # card bg
+        c.setFillColor(CARD_BG)
+        c.roundRect(0, 0, self._bw, 21*mm, 3, fill=1, stroke=0)
+        # accent left bar
+        c.setFillColor(self._accent)
+        c.rect(0, 0, 3, 21*mm, fill=1, stroke=0)
+        # number
+        c.setFont(TITLE_FONT, 20)
+        c.setFillColor(self._accent)
+        c.drawCentredString(self._bw / 2 + 1.5, 12*mm, self._number)
+        # label
+        c.setFont(BODY_FONT, 7.5)
+        c.setFillColor(TEXT_DIM)
+        c.drawCentredString(self._bw / 2 + 1.5, 5*mm, self._label)
+        c.restoreState()
+
+
+class ProcessStep(Flowable):
+    """Numbered process step."""
+    def __init__(self, number: int, title: str, desc: str, accent=TERRA):
+        super().__init__()
+        self._n = str(number)
+        self._title = title
+        self._desc = desc
+        self._accent = accent
+
+    def wrap(self, avail_w, avail_h):
+        self._avail_w = avail_w
+        return avail_w, 18*mm
+
+    def draw(self):
+        c = self.canv
+        c.saveState()
+        # circle
+        cx, cy = 6*mm, 9*mm
+        c.setFillColor(self._accent)
+        c.circle(cx, cy, 5.5*mm, fill=1, stroke=0)
+        c.setFont(TITLE_FONT, 11)
+        c.setFillColor(WHITE)
+        c.drawCentredString(cx, cy - 1.5*mm, self._n)
+        # connector line
+        c.setFillColor(Color(0.83, 0.52, 0.35, 0.3))
+        c.rect(cx, 0, 1, cy - 5.5*mm, fill=1, stroke=0)
+        # title
+        c.setFont(TITLE_FONT, 11)
+        c.setFillColor(WHITE)
+        c.drawString(14*mm, 12*mm, self._title)
+        # desc
+        c.setFont(BODY_FONT, 8.5)
+        c.setFillColor(TEXT_MAIN)
+        c.drawString(14*mm, 6*mm, self._desc)
+        c.restoreState()
+
+
+class ContactCard(Flowable):
+    """Contact info card with icon-label pairs."""
+    def __init__(self, items: list[tuple[str, str]], accent=TERRA):
+        super().__init__()
+        self._items = items
+        self._accent = accent
+
+    def wrap(self, avail_w, avail_h):
+        self._avail_w = avail_w
+        h = len(self._items) * 10*mm + 6*mm
+        return avail_w, h
+
+    def draw(self):
+        c = self.canv
+        c.saveState()
+        h = len(self._items) * 10*mm + 6*mm
+        # card bg
+        c.setFillColor(CARD_BG)
+        c.roundRect(0, 0, self._avail_w, h, 4, fill=1, stroke=0)
+        c.setFillColor(self._accent)
+        c.rect(0, 0, 3, h, fill=1, stroke=0)
+        # items
+        for i, (icon, text) in enumerate(self._items):
+            y = h - (i + 1) * 10*mm + 1*mm
+            c.setFont(BODY_FONT, 9)
+            c.setFillColor(self._accent)
+            c.drawString(6*mm, y + 2*mm, icon)
+            c.setFillColor(TEXT_MAIN)
+            c.drawString(18*mm, y + 2*mm, text)
+        c.restoreState()
 
 
 # ─────────────────────────────────────────────────────────
-# PAGE CONTENT FUNCTIONS
+# HELPER: build two-column table
 # ─────────────────────────────────────────────────────────
-
-def _page_cover(story: list) -> None:
-    """
-    Page 1: Relief — "You are in the right place"
-    Cover is assembled via a custom canvas Flowable (drawn directly).
-    """
-
-    class CoverContent(Flowable):
-        def __init__(self) -> None:
-            super().__init__()
-            self.width = 170 * mm
-            self.height = 252 * mm
-
-        def draw(self) -> None:
-            c = self.canv
-            cx = self.width / 2
-
-            # Logo
-            if LOGO_READER:
-                logo_size = 62
-                c.drawImage(LOGO_READER, cx - logo_size / 2,
-                            self.height - 90, logo_size, logo_size, mask="auto")
-
-            # Brand name
-            c.setFillColor(TEXT)
-            c.setFont(DF, 38)
-            c.drawCentredString(cx, self.height - 118, "BALI ZERO")
-
-            # Terracotta accent rule
-            c.setStrokeColor(TERRA)
-            c.setLineWidth(1.2)
-            c.line(cx - 55, self.height - 128, cx + 55, self.height - 128)
-
-            # Tagline
-            c.setFillColor(MUTED)
-            c.setFont(BF, 12)
-            c.drawCentredString(cx, self.height - 142, "Guided by humans. Powered by AI.")
-
-            # Hero statement
-            c.setFillColor(TERRA)
-            c.setFont(DF, 11)
-            c.drawCentredString(cx, self.height - 162,
-                                "INDONESIAN BUSINESS & IMMIGRATION SPECIALISTS")
-
-            # Stat cards row
-            stats = [
-                ("5,000+", "Clients Served", "#d4845a"),
-                ("10 Yrs",  "In Bali", "#c9a96e"),
-                ("7",       "Services", "#d4845a"),
-                ("24/7",    "AI Support", "#c9a96e"),
-            ]
-            card_w = 35 * mm
-            card_h = 30 * mm
-            total_w = len(stats) * card_w + (len(stats) - 1) * 4
-            start_x = cx - total_w / 2
-            y_cards = self.height - 235
-
-            for i, (number, label, accent) in enumerate(stats):
-                x = start_x + i * (card_w + 4)
-                # Card bg
-                c.setFillColor(CARD_BG)
-                c.roundRect(x, y_cards, card_w, card_h, 5, fill=1, stroke=0)
-                # Accent top
-                c.setFillColor(HexColor(accent))
-                c.roundRect(x, y_cards + card_h - 2.5, card_w, 2.5, 5, fill=1, stroke=0)
-                # Number
-                c.setFillColor(HexColor(accent))
-                c.setFont(DF, 16)
-                c.drawCentredString(x + card_w / 2, y_cards + card_h / 2 + 2, number)
-                # Label
-                c.setFillColor(MUTED)
-                c.setFont("Helvetica", 6.5)
-                c.drawCentredString(x + card_w / 2, y_cards + card_h / 2 - 9,
-                                    label.upper())
-
-            # Service list
-            c.setStrokeColor(BORDER)
-            c.setLineWidth(0.4)
-            c.line(cx - 70, self.height - 280, cx + 70, self.height - 280)
-
-            services = "Visa  ·  Company Setup  ·  Tax  ·  Property  ·  Compliance  ·  KBLI"
-            c.setFillColor(FAINT)
-            c.setFont(BF, 8)
-            c.drawCentredString(cx, self.height - 291, services)
-
-            # Website
-            c.setFillColor(GOLD)
-            c.setFont(DF, 9)
-            c.drawCentredString(cx, self.height - 308, "www.balizero.com")
-
-            # Anti-fraud signal (bottom area)
-            c.setFillColor(CARD_BG)
-            c.roundRect(cx - 80, 8, 160, 18, 4, fill=1, stroke=0)
-            c.setFillColor(MUTED)
-            c.setFont("Helvetica", 7)
-            c.drawCentredString(cx, 14,
-                "Registered PT PMA  ·  KBLI 62090  ·  Jl. Raya Canggu, Bali, Indonesia")
-
-    story.append(CoverContent())
-
-
-def _page_who_we_are(story: list) -> None:
-    """Page 2: Orientation — "Here is what we are" """
-    story += [
-        AccentDivider(color=TERRA),
-        _p("Who We Are", "h1"),
-        _p("Bali's first AI-powered business &amp; immigration platform", "h2"),
-        _sp(4),
-        _p(
-            "Bali Zero was founded as a traditional consulting firm — lawyers, immigration "
-            "specialists, and tax advisors based in Canggu. Over the past decade, we evolved "
-            "into something different: a hybrid human+AI system where specialized agents "
-            "handle deterministic work (price lookups, document checklists, deadline tracking, "
-            "legal database searches) so our human experts can focus entirely on judgment, "
-            "relationships, and complex problem-solving.",
-            "body",
-        ),
-        _p(
-            "The vast majority of our processes run on rules, not memory — which means you get "
-            "consistent, reliable answers whether you reach us on a Monday morning or a "
-            "Friday afternoon. No guesses. No outdated information. No hallucinated prices.",
-            "body",
-        ),
-        _sp(10),
-        _stat_row([
-            ("5,000+",  "Clients Served", "#d4845a"),
-            ("10+ Yrs", "In Bali", "#c9a96e"),
-            ("40+",     "Nationalities", "#d4845a"),
-            ("&lt;2h",  "Response Time", "#c9a96e"),
+def two_col(left: list, right: list, col_ratio: float = 0.5, gap_mm: float = 6) -> Table:
+    gap = gap_mm * mm
+    avail = W - 25*mm  # frame width
+    lw = avail * col_ratio - gap / 2
+    rw = avail * (1 - col_ratio) - gap / 2
+    return Table(
+        [[left, right]],
+        colWidths=[lw, rw],
+        style=TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ("INNERGRID", (0, 0), (-1, -1), 0, white),
         ]),
-        _sp(14),
-        _p("Our Commitment", "h3"),
-        AccentDivider(width=60 * mm, color=GOLD, thickness=1),
-        _sp(4),
-        _p(
-            "Every regulation verified. Every decision reviewed by a human. "
-            "Payments only through official bank transfers. Your documents never leave "
-            "our secure client portal.",
-            "body",
-        ),
-        _sp(8),
-        _p(
-            "We have been asked many times what separates us from the dozens of visa agents "
-            "operating on the island. The answer is simple: we are the only firm in Bali "
-            "where the AI cannot invent a price, and every answer is grounded in a cited "
-            "Indonesian government source.",
-            "body",
-        ),
-        _sp(12),
-        AccentDivider(color=GOLD, thickness=1),
-        _sp(4),
-        _p(
-            "PT Zero Intelligence Indonesia  ·  Registered PT PMA  ·  KBLI 62090  ·  "
-            "Jl. Raya Canggu, Kuta Utara, Bali 80361",
-            "body_muted",
-        ),
-    ]
-
-
-def _page_immigration(story: list) -> None:
-    """Page 3: Impressed Confidence — "They know this cold" """
-    story += [
-        AccentDivider(color=INDIGO),
-        _p("Immigration Services", "h1"),
-        _p("From tourist visa to permanent residency — we handle the full journey", "h2"),
-        _sp(6),
-    ]
-
-    left_content: list[Flowable] = [
-        _p("Visa-on-Arrival &amp; Short-Stay", "h3"),
-        _p(
-            "VOA (30 days), B211A Social/Cultural (60 days extendable to 180 days), "
-            "B211B Investor Visit. We handle extensions and conversions.",
-            "body",
-        ),
-        _sp(6),
-        _p("KITAS — Limited Stay Permits", "h3"),
-        _p(
-            "KITAS Employment (sponsored by your PT PMA), KITAS Investor, "
-            "KITAS Retirement (Lansia), Digital Nomad KITAS. "
-            "We select the correct category for your exact situation — "
-            "a wrong KITAS type leads to detention and two-year blacklisting.",
-            "body",
-        ),
-        _sp(6),
-        _p("KITAP — Permanent Stay", "h3"),
-        _p(
-            "After 5 consecutive years of valid KITAS, you qualify for KITAP. "
-            "We track your eligibility date and initiate the process automatically.",
-            "body",
-        ),
-    ]
-
-    right_content: list[Flowable] = [
-        _sp(4),
-        KeyValueCard([
-            ("Processing", "2–5 weeks"),
-            ("Validity",   "1–2 years"),
-            ("Multi-entry", "Yes"),
-            ("Sponsor req.", "PT PMA"),
-        ], accent=INDIGO),
-        _sp(10),
-        _badge_row([
-            GuardrailBadge("AI-verified", GREEN, 54 * mm),
-            GuardrailBadge("Regulation-grounded", GREEN, 70 * mm),
-        ], col_width=76 * mm),
-    ]
-
-    story.append(_two_col(
-        Table([[f] for f in left_content], colWidths=[92 * mm]),
-        Table([[f] for f in right_content], colWidths=[63 * mm]),
-    ))
-
-    story += [
-        _sp(12),
-        _p("Common Visa Pathways", "h3"),
-        _comparison_table(
-            [
-                ["Visa Type",    "Timeline",   "Key Requirement",    "Starting From"],
-                ["VOA",          "On arrival", "Eligible passport",  "IDR 500K"],
-                ["B211A",        "1 week",     "Any nationality",    "IDR 3.5M"],
-                ["KITAS Invest", "3–5 weeks",  "PT PMA + min. cap.", "IDR 8.5M"],
-                ["KITAS Employ", "3–4 weeks",  "Work permit (IMTA)", "IDR 9.5M"],
-                ["KITAP",        "4–6 weeks",  "5 yrs KITAS",        "IDR 12M"],
-            ],
-            [48 * mm, 26 * mm, 46 * mm, 35 * mm],
-        ),
-    ]
-
-
-def _page_business(story: list) -> None:
-    """Page 4: Safety — "They have done this before" """
-    story += [
-        AccentDivider(color=TERRA),
-        _p("Business Setup", "h1"),
-        _p("PT PMA, CV, Yayasan — the right structure for your goals", "h2"),
-        _sp(6),
-        _p(
-            "The wrong business structure in Indonesia is not just inconvenient — it can "
-            "freeze your bank accounts, invalidate your licenses, or expose you to personal "
-            "liability. We match your activity to the correct structure before we file anything.",
-            "body",
-        ),
-        _sp(8),
-    ]
-
-    cards = [
-        ServiceCard("PT PMA (Foreign-Owned)",
-                    ["100% foreign ownership", "Requires IDR 10B capital",
-                     "Full operational rights"],
-                    accent=TERRA),
-        ServiceCard("CV (Local Partnership)",
-                    ["Lower capital requirements", "Requires Indonesian partner",
-                     "Suitable for small operations"],
-                    accent=GOLD),
-        ServiceCard("Yayasan (Foundation)",
-                    ["Non-profit structure", "Educational / social activities",
-                     "No shareholder profits"],
-                    accent=INDIGO),
-        ServiceCard("Representative Office",
-                    ["No commercial activity", "Market research & liaison",
-                     "Bridge to full PT PMA"],
-                    accent=MUTED),
-    ]
-
-    cards_row1 = Table([[cards[0], cards[1]]],
-                       colWidths=[77 * mm, 77 * mm])
-    cards_row1.setStyle(TableStyle([
-        ("LEFTPADDING",  (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING",   (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 0),
-    ]))
-    cards_row2 = Table([[cards[2], cards[3]]],
-                       colWidths=[77 * mm, 77 * mm])
-    cards_row2.setStyle(TableStyle([
-        ("LEFTPADDING",  (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING",   (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 0),
-    ]))
-    story += [cards_row1, _sp(6), cards_row2, _sp(12)]
-
-    story += [
-        _p("PT PMA Setup — What We Handle", "h3"),
-        _comparison_table(
-            [
-                ["Step", "What We Do",                               "Timeline"],
-                ["01",   "KBLI selection + business plan review",    "Day 1–2"],
-                ["02",   "NIB registration (OSS-RBA system)",        "Day 3–5"],
-                ["03",   "Notarial deed + Ministry of Law approval", "Week 2"],
-                ["04",   "NPWP + DJP tax registration",             "Week 3"],
-                ["05",   "Bank account + operational permits",       "Week 4–6"],
-            ],
-            [12 * mm, 100 * mm, 43 * mm],
-        ),
-        _sp(8),
-        _p(
-            "All KBLI codes verified against the 2025 KBLI classification database. "
-            "Wrong KBLI selection is the #1 cause of PT PMA license rejection.",
-            "body_muted",
-        ),
-    ]
-
-
-def _page_tax(story: list) -> None:
-    """Page 5: Informed Confidence — "Nothing will surprise me" """
-    story += [
-        AccentDivider(color=GOLD),
-        _p("Tax &amp; Compliance", "h1"),
-        _p("Indonesia's tax regime — end-to-end management", "h2"),
-        _sp(6),
-    ]
-
-    left_content: list[Flowable] = [
-        _p("Monthly Obligations", "h3"),
-        _p(
-            "<b>PPh 21</b> (employee income tax), <b>PPh 23</b> (withholding on services), "
-            "<b>PPN</b> (VAT, 12% from Jan 2025) — due by the 15th or end of each month.",
-            "body",
-        ),
-        _sp(6),
-        _p("Annual Obligations", "h3"),
-        _p(
-            "<b>PPh Badan</b> (corporate income tax, 22%), <b>SPT Tahunan</b> (annual tax "
-            "return, due end of March), transfer pricing documentation for related-party "
-            "transactions.",
-            "body",
-        ),
-        _sp(6),
-        _p("LKPM Reporting", "h3"),
-        _p(
-            "Quarterly investment activity reports to BKPM. Missing a LKPM filing "
-            "triggers automatic PT PMA suspension — the fine exceeds a full year of "
-            "our compliance service fee.",
-            "body",
-        ),
-    ]
-
-    right_content: list[Flowable] = [
-        _sp(4),
-        KeyValueCard([
-            ("PPN Rate",    "12% (Jan 2025)"),
-            ("PPh Badan",  "22% standard"),
-            ("PPh 21",     "5–35% prog."),
-            ("LKPM",       "Quarterly"),
-            ("SPT Due",    "End of March"),
-        ], accent=GOLD),
-    ]
-
-    story.append(_two_col(
-        Table([[f] for f in left_content], colWidths=[92 * mm]),
-        Table([[f] for f in right_content], colWidths=[63 * mm]),
-    ))
-
-    story += [
-        _sp(12),
-        _p("Compliance Calendar — Key Deadlines", "h3"),
-        _comparison_table(
-            [
-                ["Obligation",   "Frequency",  "Deadline",     "Penalty for Late"],
-                ["PPh 21",       "Monthly",    "15th",         "2% per month"],
-                ["PPN",          "Monthly",    "End of month", "2% per month"],
-                ["LKPM",         "Quarterly",  "End of Q",     "PT PMA suspension"],
-                ["SPT Tahunan",  "Annual",     "End of March", "IDR 1M flat"],
-                ["PPh Badan",    "Annual",     "End of April", "2% per month"],
-            ],
-            [47 * mm, 27 * mm, 33 * mm, 48 * mm],
-        ),
-        _sp(8),
-        _badge_row([
-            GuardrailBadge("Updated for UU 20/2025", GREEN, 65 * mm),
-            GuardrailBadge("AI-verified rates", GREEN, 56 * mm),
-            GuardrailBadge("PMK-grounded", GOLD, 48 * mm),
-        ], col_width=60 * mm),
-    ]
-
-
-def _page_how_we_work(story: list) -> None:
-    """Page 6: Belonging — "This system was built for people like me" """
-    story += [
-        AccentDivider(color=GREEN),
-        _p("How We Work", "h1"),
-        _p("Deterministic AI with human guardrails", "h2"),
-        _sp(4),
-        _p(
-            "Zantara, our AI assistant, is built on a knowledge graph of 56,000+ verified "
-            "regulatory nodes and 93,000+ sourced documents. Think of it as the difference "
-            "between a calculator and a mathematician: the AI handles computation, "
-            "the humans handle judgment.",
-            "body",
-        ),
-        _sp(10),
-        ProcessStep(1, "You Ask",
-                    "Via WhatsApp, Telegram, Web Chat — in your language"),
-        ProcessStep(2, "RAG Retrieval",
-                    "Hybrid search across 93,000+ verified documents and regulations"),
-        ProcessStep(3, "Evidence Scoring",
-                    "Each answer scored 0–1 against source confidence thresholds"),
-        ProcessStep(4, "Guardrail Check",
-                    "Low-confidence answers escalated to human specialists immediately"),
-        ProcessStep(5, "Verified Response",
-                    "Cited answer delivered — source document referenced, never invented",
-                    is_last=True),
-        _sp(12),
-        _p("What Our AI Does vs. What Humans Do", "h3"),
-        _comparison_table(
-            [
-                ["Deterministic System (AI)",     "Human Intelligence (Advisors)"],
-                ["Prices from verified database", "Strategy and judgment"],
-                ["Deadlines from legal calendar", "Client relationships"],
-                ["Docs from official registries", "Complex negotiations"],
-                ["Status tracking &amp; alerts",  "Problem solving &amp; advocacy"],
-            ],
-            [82 * mm, 73 * mm],
-        ),
-        _sp(10),
-        _badge_row([
-            GuardrailBadge("Never invents a price", GREEN, 64 * mm),
-            GuardrailBadge("Regulation-grounded", GREEN, 60 * mm),
-            GuardrailBadge("Human escalation path", GOLD, 64 * mm),
-        ], col_width=64 * mm),
-        _sp(6),
-        _p(
-            "Evidence threshold: 0.60. Scores below 0.15 → system refuses to answer. "
-            "Scores 0.15–0.60 → cautious answer with explicit uncertainty disclaimer. "
-            "Above 0.60 → confident cited answer.",
-            "body_muted",
-        ),
-    ]
-
-
-def _page_contact(story: list) -> None:
-    """Page 7: Readiness — "I know exactly what to do next" """
-
-    class ContactContent(Flowable):
-        def __init__(self) -> None:
-            super().__init__()
-            self.width = 165 * mm
-            self.height = 200 * mm
-
-        def draw(self) -> None:
-            c = self.canv
-            cx = self.width / 2
-            y = self.height
-
-            # Logo
-            if LOGO_READER:
-                logo_size = 56
-                c.drawImage(LOGO_READER, cx - logo_size / 2, y - 75,
-                            logo_size, logo_size, mask="auto")
-
-            # "Ready to Start?"
-            c.setFillColor(TEXT)
-            c.setFont(DF, 30)
-            c.drawCentredString(cx, y - 98, "Ready to Start?")
-
-            # Accent rule
-            c.setStrokeColor(TERRA)
-            c.setLineWidth(1.2)
-            c.line(cx - 55, y - 108, cx + 55, y - 108)
-
-            # Subtext
-            c.setFillColor(MUTED)
-            c.setFont(BF, 11)
-            c.drawCentredString(cx, y - 122,
-                                "Talk to Zantara, our AI assistant, or book a free consultation.")
-
-            # Contact cards
-            contacts = [
-                ("WhatsApp", "wa.me/6281338051876", TERRA),
-                ("Telegram", "@balizerobot", GOLD),
-                ("Web Chat", "balizero.com/chat", INDIGO),
-            ]
-            card_w = 46 * mm
-            gap = 5
-            total = len(contacts) * card_w + (len(contacts) - 1) * gap
-            start_x = cx - total / 2
-
-            for i, (ch, val, accent) in enumerate(contacts):
-                x = start_x + i * (card_w + gap)
-                y_card = y - 178
-                card_h = 34
-                c.setFillColor(CARD_BG)
-                c.roundRect(x, y_card, card_w, card_h, 5, fill=1, stroke=0)
-                c.setFillColor(accent)
-                c.roundRect(x, y_card + card_h - 2.5, card_w, 2.5, 5, fill=1, stroke=0)
-                c.setFillColor(accent)
-                c.setFont("Helvetica-Bold", 8)
-                c.drawCentredString(x + card_w / 2, y_card + 20, ch)
-                c.setFillColor(TEXT)
-                c.setFont(BF, 7.5)
-                c.drawCentredString(x + card_w / 2, y_card + 8, val)
-
-            # Address
-            c.setFillColor(MUTED)
-            c.setFont(BF, 9)
-            c.drawCentredString(cx, y - 195, "Jl. Raya Canggu, Kuta Utara, Bali 80361")
-
-            # Response time
-            c.setFillColor(FAINT)
-            c.setFont("Helvetica", 7.5)
-            c.drawCentredString(cx, y - 206, "We reply within 2 business hours · Mon–Sat 09:00–18:00 WITA")
-
-    story.append(ContactContent())
-
-    story += [
-        _sp(12),
-        AccentDivider(color=GOLD, thickness=1),
-        _sp(8),
-        _p(
-            "5,000+ clients served across 40+ nationalities since 2014. "
-            "Italian · English · Russian · Ukrainian · Indonesian.",
-            "body_muted",
-        ),
-        _sp(4),
-        _p(
-            "PT Zero Intelligence Indonesia  ·  PT PMA  ·  KBLI 62090  ·  "
-            "© 2026 Bali Zero. All rights reserved.",
-            "caption",
-        ),
-    ]
+    )
 
 
 # ─────────────────────────────────────────────────────────
-# MAIN BUILD
+# PAGE CONTENT BUILDERS
 # ─────────────────────────────────────────────────────────
+def page_cover() -> list:
+    story = []
 
-def build_brochure() -> None:
-    # Frames
-    cover_frame   = Frame(MARGIN, MARGIN, W - 2 * MARGIN, H - 2 * MARGIN,
-                          id="cover", showBoundary=0)
-    content_frame = Frame(25 * mm, 22 * mm, W - 25 * mm - MARGIN, H - 42 * mm,
-                          id="content", showBoundary=0)
+    # ── Logo (top-right zone, drawn on canvas in bg — here we place it via spacer + inline)
+    story.append(Spacer(1, 15*mm))
 
-    templates = [
-        PageTemplate(id="cover",   frames=[cover_frame],   onPage=_make_cover_bg),
-        PageTemplate(id="who",     frames=[content_frame], onPage=_make_content_bg("who")),
-        PageTemplate(id="imm",     frames=[content_frame], onPage=_make_content_bg("imm")),
-        PageTemplate(id="biz",     frames=[content_frame], onPage=_make_content_bg("biz")),
-        PageTemplate(id="tax",     frames=[content_frame], onPage=_make_content_bg("tax")),
-        PageTemplate(id="how",     frames=[content_frame], onPage=_make_content_bg("how")),
-        PageTemplate(id="contact", frames=[content_frame], onPage=_make_content_bg("contact")),
+    # ── Big headline
+    story.append(Paragraph("Your Bali.", ST["H1"]))
+    story.append(Paragraph("Done Right.", ST["H1"]))
+    story.append(Spacer(1, 4*mm))
+    story.append(HRule(50, TERRA, 2))
+    story.append(Spacer(1, 4*mm))
+    story.append(Paragraph(
+        "Expert immigration, company setup & tax advisory\n"
+        "for expats and investors in Bali, Indonesia.",
+        ST["TAGLINE"]))
+
+    story.append(Spacer(1, 20*mm))
+
+    # ── Stats row
+    stats = [
+        StatBox("5,000+", "Clients served",  TERRA, 42),
+        StatBox("10+",    "Years in Bali",    GOLD,  42),
+        StatBox("3",      "Core services",    INDIGO, 42),
+        StatBox("99%",    "Compliance rate",  GREEN,  42),
     ]
+    gap = 4*mm
+    tbl = Table(
+        [stats],
+        colWidths=[42*mm, 42*mm, 42*mm, 42*mm],
+        style=TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), gap),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]),
+    )
+    story.append(tbl)
 
+    story.append(Spacer(1, 20*mm))
+
+    # ── Tagline block
+    story.append(Paragraph("AI-powered intelligence.", ST["ACCENT"]))
+    story.append(Paragraph("Human expertise.", ST["ACCENT"]))
+    story.append(Paragraph("Local authority.", ST["ACCENT"]))
+
+    story.append(Spacer(1, 20*mm))
+
+    # ── Service pills
+    pills = ["Immigration", "Company Setup", "Tax & Accounting"]
+    pill_str = "  ·  ".join(f'<font color="{TERRA.hexval()}">{p}</font>' for p in pills)
+    story.append(Paragraph(pill_str, ST["SMALL"]))
+
+    # Logo positioned in top-right via onPage canvas
+    story.append(NextPageTemplate("who"))
+    story.append(PageBreak())
+    return story
+
+
+def page_who() -> list:
+    story = []
+    story.append(SectionHeader("About Bali Zero", "Who We Are", TERRA))
+    story.append(Spacer(1, 6*mm))
+
+    intro = (
+        "Bali Zero is Bali's leading immigration and business services firm, "
+        "serving expats and investors from over 40 countries since 2014. "
+        "We combine deep local expertise with AI-powered intelligence to deliver "
+        "accurate, fast, and reliable guidance — so you can build your life in Bali "
+        "with full confidence and zero uncertainty."
+    )
+    story.append(Paragraph(intro, ST["BODY"]))
+    story.append(Spacer(1, 6*mm))
+
+    # Why us: 3 pillars
+    pillars = [
+        ("Local Authority", "10+ years in Bali. We know every immigration officer, every notary, every rule change — often before it's announced."),
+        ("AI-Verified Accuracy", "Our AI cross-references every regulation, flags inconsistencies, and ensures every answer is grounded in current law. AI verifies. Humans decide."),
+        ("End-to-End Service", "From your first visa to company setup, KBLI compliance, tax filing, and property acquisition — one team, one relationship."),
+    ]
+    for title, desc in pillars:
+        story.append(KeepTogether([
+            Paragraph(f'<font color="{TERRA.hexval()}">{title}</font>', ST["H3"]),
+            Spacer(1, 1.5*mm),
+            Paragraph(desc, ST["BODY"]),
+            Spacer(1, 4*mm),
+        ]))
+
+    story.append(Spacer(1, 3*mm))
+    story.append(HRule(40, TERRA, 1))
+    story.append(Spacer(1, 4*mm))
+
+    # Anti-fraud note
+    story.append(Paragraph(
+        "Transparency guarantee: We never ask for personal document originals. "
+        "All work is traceable in your client portal. Our team identities are verifiable.",
+        ST["SMALL"]))
+
+    story.append(NextPageTemplate("imm"))
+    story.append(PageBreak())
+    return story
+
+
+def page_immigration() -> list:
+    story = []
+    story.append(SectionHeader("Immigration Services", "Visas & Permits", INDIGO))
+    story.append(Spacer(1, 4*mm))
+
+    story.append(Paragraph(
+        "From a 60-day tourist visa to a lifetime KITAP — we handle every immigration "
+        "pathway in Indonesia. All applications are filed digitally via the Molina portal "
+        "by our licensed team.",
+        ST["BODY"]))
+    story.append(Spacer(1, 5*mm))
+
+    # Left column: visa categories + prices
+    # Right column: key notes
+
+    # Popular single-entry
+    left = []
+    left.append(Paragraph("Single-Entry Visas", ST["ACCENTI"]))
+    left.append(Spacer(1, 2*mm))
+
+    single_entries = [
+        ("C1 Tourism (60 days)",      get_price("single_entry_visas", "C1 Tourism")),
+        ("C2 Business (60 days)",     get_price("single_entry_visas", "C2 Business")),
+        ("C18 Work Trial (90 days)",  get_price("single_entry_visas", "C18 Work Trial")),
+        ("C22A&B Internship (180d)",  get_price("single_entry_visas", "C22A&B Internship (180")),
+    ]
+    for name, price in single_entries:
+        left.append(PriceRow(name, price, INDIGO))
+    left.append(Spacer(1, 4*mm))
+
+    left.append(Paragraph("Multiple-Entry Visas", ST["ACCENTI"]))
+    left.append(Spacer(1, 2*mm))
+    left.append(PriceRow("D12 Business (1 year)",  get_price("multiple_entry_visas", "D12 Business Investigation (1"), INDIGO))
+    left.append(PriceRow("D12 Business (2 years)", get_price("multiple_entry_visas", "D12 Business Investigation (2"), INDIGO))
+    left.append(Spacer(1, 4*mm))
+
+    left.append(Paragraph("KITAS / Stay Permits", ST["ACCENTI"]))
+    left.append(Spacer(1, 2*mm))
+    kitas_rows = [
+        ("E33G Remote Worker (Offshore)", get_price("kitas_permits", "E33G Remote Worker (Offshore")),
+        ("E33G Remote Worker (Altus)",    get_price("kitas_permits", "E33G Remote Worker (Altus")),
+        ("Freelance E23 (Offshore)",      get_price("kitas_permits", "Freelance E23 (Offshore")),
+        ("Investor KITAS 2Y (Offshore)",  get_price("kitas_permits", "Investor KITAS 2 Years (Offshore")),
+        ("Retirement KITAS (Offshore)",   get_price("kitas_permits", "Retirement (Offshore")),
+        ("Spouse / Dependent 1Y",         get_price("kitas_permits", "Spouse 1 Year (Offshore")),
+    ]
+    for name, price in kitas_rows:
+        left.append(PriceRow(name, price, INDIGO))
+
+    # Right column: key info
+    right = []
+    right.append(Paragraph("Offshore vs Altus", ST["ACCENTI"]))
+    right.append(Spacer(1, 1.5*mm))
+    right.append(Paragraph(
+        "<b>Offshore:</b> Applied from outside Indonesia (recommended for new applicants).\n\n"
+        "<b>Altus/Onshore:</b> Applied while in Bali — faster, no flight required.",
+        ST["SMALL"]))
+    right.append(Spacer(1, 4*mm))
+
+    right.append(Paragraph("Urgent Processing", ST["ACCENTI"]))
+    right.append(Spacer(1, 1.5*mm))
+    right.append(PriceRow("Same day (1 day)",  "Rp 3M", TERRA))
+    right.append(PriceRow("2-day service",     "Rp 2.5M", GOLD))
+    right.append(PriceRow("3-day service",     "Rp 1M",  TEXT_DIM))
+    right.append(Spacer(1, 4*mm))
+
+    right.append(Paragraph("KITAP (Permanent)", ST["ACCENTI"]))
+    right.append(Spacer(1, 1.5*mm))
+    right.append(PriceRow("Investor KITAP + MERP", get_price("kitas_permits", "Investor KITAP"), GOLD))
+    right.append(PriceRow("Retirement KITAP",      get_price("kitas_permits", "Retirement KITAP"), GOLD))
+    right.append(Spacer(1, 4*mm))
+
+    right.append(Paragraph("MERP (Re-entry)", ST["ACCENTI"]))
+    right.append(Spacer(1, 1.5*mm))
+    right.append(PriceRow("MERP 1 year", get_price("kitas_permits", "MERP 1 Year"), INDIGO))
+    right.append(PriceRow("MERP 2 year", get_price("kitas_permits", "MERP 2 Year"), INDIGO))
+
+    story.append(two_col(left, right, col_ratio=0.56))
+    story.append(NextPageTemplate("biz"))
+    story.append(PageBreak())
+    return story
+
+
+def page_business() -> list:
+    story = []
+    story.append(SectionHeader("Business Services", "Company Setup", TERRA))
+    story.append(Spacer(1, 4*mm))
+
+    story.append(Paragraph(
+        "Setting up a PT PMA (foreign-owned company) or PT PMDN in Bali requires "
+        "navigating OSS, KBLI codes, notarial deeds, and LKPM reporting. "
+        "We handle every step — from entity selection to BKPM registration and "
+        "the June 2026 KBLI 2025 migration.",
+        ST["BODY"]))
+    story.append(Spacer(1, 5*mm))
+
+    # Prices
+    left = []
+    left.append(Paragraph("Company Formation", ST["ACCENT"]))
+    left.append(Spacer(1, 2*mm))
+    left.append(PriceRow("New PMA Company (full package)", get_price("other_services", "NEW COMPANY"), TERRA, "Includes OSS, BKPM, NIB, notarial deed"))
+    left.append(PriceRow("Virtual Office (1 year)",        get_price("other_services", "VIRTUAL OFFICE"), TERRA))
+    left.append(Spacer(1, 4*mm))
+
+    left.append(Paragraph("Work Permits (Foreign Employees)", ST["ACCENT"]))
+    left.append(Spacer(1, 2*mm))
+    working_rows = [
+        ("Working KITAS (Offshore)", get_price("kitas_permits", "Working KITAS (Offshore")),
+        ("Working KITAS (Altus)",    get_price("kitas_permits", "Working KITAS (Altus")),
+        ("Working KITAS (Extend)",   get_price("kitas_permits", "Working KITAS (Extend")),
+    ]
+    for name, price in working_rows:
+        left.append(PriceRow(name, price, TERRA))
+    left.append(Spacer(1, 4*mm))
+
+    left.append(Paragraph("Compliance & Admin", ST["ACCENT"]))
+    left.append(Spacer(1, 2*mm))
+    admin_rows = [
+        ("Cancel RPTKA / IMTA / Wajib Lapor", get_price("other_services", "CANCEL (RPTKA")),
+        ("Cancel RPTKA only",                  get_price("other_services", "CANCEL RPTKA")),
+        ("Reset Molina",                       get_price("other_services", "RESET MOLINA")),
+        ("EPO (OSS permit)",                   get_price("other_services", "EPO")),
+        ("ERP (OSS amendment)",                get_price("other_services", "ERP")),
+    ]
+    for name, price in admin_rows:
+        left.append(PriceRow(name, price, TERRA))
+
+    right = []
+    right.append(Paragraph("KBLI 2025 Deadline", ST["ACCENT"]))
+    right.append(Spacer(1, 1.5*mm))
+    right.append(Paragraph(
+        "All businesses must migrate from KBLI 2020 to KBLI 2025 codes "
+        "by <b>18 June 2026</b>. Non-compliant NIBs risk suspension.\n\n"
+        "Use our KBLI Navigator at <b>balizero.com/kbli</b> to check "
+        "your codes and PMA status instantly.",
+        ST["SMALL"]))
+    right.append(Spacer(1, 4*mm))
+
+    right.append(Paragraph("What's Included", ST["ACCENT"]))
+    right.append(Spacer(1, 1.5*mm))
+    included = [
+        "OSS & BKPM registration",
+        "KBLI 2025 selection & PMA check",
+        "Notarial deed coordination",
+        "NIB issuance",
+        "LKPM reporting setup",
+        "Virtual office address",
+    ]
+    for item in included:
+        right.append(Paragraph(f'<font color="{TERRA.hexval()}">✓</font>  {item}', ST["SMALL"]))
+        right.append(Spacer(1, 1.5*mm))
+
+    story.append(two_col(left, right, col_ratio=0.58))
+    story.append(NextPageTemplate("tax"))
+    story.append(PageBreak())
+    return story
+
+
+def page_tax() -> list:
+    story = []
+    story.append(SectionHeader("Tax & Accounting", "Financial Compliance", GOLD))
+    story.append(Spacer(1, 4*mm))
+
+    story.append(Paragraph(
+        "Indonesian tax law is complex — and the wrong structure can cost more than "
+        "the tax itself. Our certified advisors ensure your PT PMA, KITAS, and personal "
+        "obligations are met, with zero surprises.",
+        ST["BODY"]))
+    story.append(Spacer(1, 5*mm))
+
+    left = []
+    left.append(Paragraph("Personal Tax", ST["ACCENTG"]))
+    left.append(Spacer(1, 2*mm))
+    left.append(Paragraph(
+        "If you hold a KITAS (working, investor, freelance), you are a tax resident "
+        "and must file an annual SPT. We handle registration, filing, and NPWP issuance.",
+        ST["SMALL"]))
+    left.append(Spacer(1, 4*mm))
+
+    left.append(Paragraph("Corporate Tax", ST["ACCENTG"]))
+    left.append(Spacer(1, 2*mm))
+    left.append(Paragraph(
+        "PT PMA companies must file monthly VAT (PPN), income tax (PPh 21/25), "
+        "and annual reports. We act as your local tax representative.",
+        ST["SMALL"]))
+    left.append(Spacer(1, 4*mm))
+
+    left.append(Paragraph("Document Services", ST["ACCENTG"]))
+    left.append(Spacer(1, 2*mm))
+    doc_rows = [
+        ("SKTT (Resident Card)",        get_price("other_services", "SKTT")),
+        ("SKCK (Police Clearance)",     get_price("other_services", "SKCK")),
+        ("Domicile Letter",             get_price("other_services", "DOMICILIE LETTER")),
+        ("Domicile + SKTT (combined)",  get_price("other_services", "DOMICILIE + SKTT")),
+        ("Passport 5 years",            get_price("other_services", "PASSPORT 5 YEARS")),
+        ("Passport 10 years",           get_price("other_services", "PASSPORT 10 YEARS")),
+        ("Mutation (passport/address)", get_price("other_services", "MUTATION PASSPORT")),
+    ]
+    for name, price in doc_rows:
+        left.append(PriceRow(name, price, GOLD))
+
+    right = []
+    right.append(Paragraph("Key Tax Facts", ST["ACCENTG"]))
+    right.append(Spacer(1, 1.5*mm))
+    facts = [
+        ("Personal income tax", "5%–35% progressive"),
+        ("Corporate income tax", "22% flat"),
+        ("VAT (PPN)",            "12% (2025)"),
+        ("NPWP requirement",     "Mandatory for KITAS holders"),
+        ("Filing deadline",      "Annual SPT: 31 March"),
+        ("DGT jurisdiction",     "Worldwide income (tax residents)"),
+    ]
+    for k, v in facts:
+        right.append(Paragraph(f'<font color="{GOLD.hexval()}">{k}:</font>  {v}', ST["SMALL"]))
+        right.append(Spacer(1, 2*mm))
+
+    right.append(Spacer(1, 4*mm))
+    right.append(Paragraph("Property Documents", ST["ACCENTG"]))
+    right.append(Spacer(1, 1.5*mm))
+    right.append(Paragraph(
+        "Foreign nationals cannot hold Hak Milik (freehold). "
+        "We structure Hak Pakai (Right of Use) and Hak Sewa (Leasehold) "
+        "arrangements that are legally compliant under PP 18/2021.",
+        ST["SMALL"]))
+
+    story.append(two_col(left, right, col_ratio=0.55))
+    story.append(NextPageTemplate("how"))
+    story.append(PageBreak())
+    return story
+
+
+def page_how() -> list:
+    story = []
+    story.append(SectionHeader("Our Process", "How We Work", GREEN))
+    story.append(Spacer(1, 4*mm))
+
+    story.append(Paragraph(
+        "Every client gets a dedicated advisor, a private portal to track their case, "
+        "and access to our AI assistant Zantara — available 24/7 for questions, "
+        "document checklists, and status updates.",
+        ST["BODY"]))
+    story.append(Spacer(1, 5*mm))
+
+    steps = [
+        (1, "Free Discovery Call",    "We map your situation: visa needs, business goals, tax obligations."),
+        (2, "Proposal & Onboarding",  "You receive a fixed-price proposal. No surprises. No hidden fees."),
+        (3, "Dedicated Advisor",      "Your advisor coordinates everything. You have one point of contact."),
+        (4, "AI-Backed Preparation",  "Zantara cross-checks all documents before submission. AI verifies. Humans decide."),
+        (5, "Filing & Tracking",      "We file with the relevant authority. You track progress in real-time."),
+        (6, "Approval & Aftercare",   "We deliver your permit/certificate. Annual reminders keep you compliant."),
+    ]
+    for n, title, desc in steps:
+        story.append(ProcessStep(n, title, desc, GREEN))
+        story.append(Spacer(1, 1.5*mm))
+
+    story.append(Spacer(1, 4*mm))
+    story.append(HRule(40, GREEN, 1))
+    story.append(Spacer(1, 3*mm))
+
+    story.append(Paragraph(
+        "Your client portal at <b>my.balizero.com</b> gives you "
+        "real-time case status, document vault, and direct messaging with your advisor.",
+        ST["SMALL"]))
+
+    story.append(NextPageTemplate("contact"))
+    story.append(PageBreak())
+    return story
+
+
+def page_contact() -> list:
+    story = []
+    story.append(SectionHeader("Get In Touch", "Start Today", TERRA))
+    story.append(Spacer(1, 6*mm))
+
+    story.append(Paragraph(
+        "Ready to make Bali official? Our team is available Monday–Saturday, "
+        "9am–6pm WITA. WhatsApp is the fastest way to reach us.",
+        ST["BODY"]))
+    story.append(Spacer(1, 6*mm))
+
+    contact_items = [
+        ("✉",  "info@balizero.com"),
+        ("📱",  "+62 813 3805 1876  (WhatsApp)"),
+        ("🌐",  "balizero.com"),
+        ("📍",  "Canggu, Bali, Indonesia"),
+        ("🕐",  "Mon–Sat  09:00–18:00 WITA"),
+        ("🤖",  "AI chat available 24/7 at zantara.balizero.com"),
+    ]
+    story.append(ContactCard(contact_items, TERRA))
+    story.append(Spacer(1, 8*mm))
+
+    # Second column: QR prompt + note
+    story.append(Paragraph("First consultation is always free.", ST["H3"]))
+    story.append(Spacer(1, 3*mm))
+    story.append(Paragraph(
+        "We'll map your situation, identify the right pathway, and give you "
+        "a fixed-price quote before you commit to anything.",
+        ST["BODY"]))
+    story.append(Spacer(1, 5*mm))
+
+    story.append(HRule(60, TERRA, 1.5))
+    story.append(Spacer(1, 4*mm))
+
+    story.append(Paragraph(
+        '"We built Bali Zero because we saw too many expats get caught by wrong visas, '
+        'fraudulent agents, and surprise tax bills. '
+        'Ten years later, we\'ve helped 5,000 people do it right."',
+        ST["BODY"]))
+    story.append(Spacer(1, 3*mm))
+    story.append(Paragraph("— Bali Zero Founding Team", ST["LABEL"]))
+
+    return story
+
+
+# ─────────────────────────────────────────────────────────
+# COVER LOGO OVERLAY
+# ─────────────────────────────────────────────────────────
+def _cover_logo_overlay(canvas, doc):
+    """Draw logo on cover page (called as onPage)."""
+    _bg_cover(canvas, doc)
+    if LOGO_READER:
+        lw = 45*mm
+        lh = 18*mm
+        lx = W - lw - 12*mm
+        ly = H - lh - 12*mm
+        canvas.drawImage(LOGO_READER, lx, ly, width=lw, height=lh, mask="auto")
+
+
+def _content_logo_overlay(section_id: str):
+    """Return onPage callback that draws background + small logo for content pages."""
+    bg_fn = _make_content_bg(section_id)
+    def _fn(canvas, doc):
+        bg_fn(canvas, doc)
+        if LOGO_READER:
+            lw = 28*mm
+            lh = 11*mm
+            lx = W - lw - 10*mm
+            ly = H - lh - 9*mm
+            canvas.drawImage(LOGO_READER, lx, ly, width=lw, height=lh, mask="auto")
+    return _fn
+
+
+# ─────────────────────────────────────────────────────────
+# DOCUMENT ASSEMBLY
+# ─────────────────────────────────────────────────────────
+MARGIN_LR = 15*mm
+MARGIN_TOP_COVER = 20*mm
+MARGIN_BOT_COVER = 18*mm
+MARGIN_TOP = 18*mm
+MARGIN_BOT = 20*mm
+
+def build_doc() -> None:
     doc = BaseDocTemplate(
         str(OUTPUT_PATH),
         pagesize=A4,
-        pageTemplates=templates,
-        leftMargin=MARGIN,
-        rightMargin=MARGIN,
-        topMargin=MARGIN,
-        bottomMargin=MARGIN,
+        leftMargin=MARGIN_LR,
+        rightMargin=MARGIN_LR,
+        topMargin=MARGIN_TOP_COVER,
+        bottomMargin=MARGIN_BOT_COVER,
     )
 
-    story: list[Flowable] = []
+    # Frames
+    f_cover = Frame(MARGIN_LR, MARGIN_BOT_COVER, W - 2*MARGIN_LR, H - MARGIN_TOP_COVER - MARGIN_BOT_COVER, id="cover")
+    f_content = Frame(MARGIN_LR + 5, MARGIN_BOT, W - 2*MARGIN_LR - 5, H - MARGIN_TOP - MARGIN_BOT, id="content")
 
-    # Page 1: Cover
-    _page_cover(story)
+    pages = [
+        PageTemplate(id="cover",   frames=[f_cover],   onPage=_cover_logo_overlay),
+        PageTemplate(id="who",     frames=[f_content],  onPage=_content_logo_overlay("who")),
+        PageTemplate(id="imm",     frames=[f_content],  onPage=_content_logo_overlay("imm")),
+        PageTemplate(id="biz",     frames=[f_content],  onPage=_content_logo_overlay("biz")),
+        PageTemplate(id="tax",     frames=[f_content],  onPage=_content_logo_overlay("tax")),
+        PageTemplate(id="how",     frames=[f_content],  onPage=_content_logo_overlay("how")),
+        PageTemplate(id="contact", frames=[f_content],  onPage=_content_logo_overlay("contact")),
+    ]
+    doc.addPageTemplates(pages)
 
-    # Page 2: Who We Are
-    story += [NextPageTemplate("who"), PageBreak()]
-    _page_who_we_are(story)
-
-    # Page 3: Immigration
-    story += [NextPageTemplate("imm"), PageBreak()]
-    _page_immigration(story)
-
-    # Page 4: Business Setup
-    story += [NextPageTemplate("biz"), PageBreak()]
-    _page_business(story)
-
-    # Page 5: Tax & Compliance
-    story += [NextPageTemplate("tax"), PageBreak()]
-    _page_tax(story)
-
-    # Page 6: How We Work
-    story += [NextPageTemplate("how"), PageBreak()]
-    _page_how_we_work(story)
-
-    # Page 7: Contact
-    story += [NextPageTemplate("contact"), PageBreak()]
-    _page_contact(story)
+    story = []
+    story += page_cover()
+    story += page_who()
+    story += page_immigration()
+    story += page_business()
+    story += page_tax()
+    story += page_how()
+    story += page_contact()
 
     doc.build(story)
+
+
+# ─────────────────────────────────────────────────────────
+# MAIN
+# ─────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    print("🏝  Bali Zero Brochure Generator v3")
+    print(f"   Output: {OUTPUT_PATH}")
+    build_doc()
     size_kb = OUTPUT_PATH.stat().st_size // 1024
     print(f"✅ Brochure generated: {OUTPUT_PATH}")
     print(f"   Size: {size_kb} KB | Pages: 7")
-    print(f"   Logo: {'embedded (RGBA)' if LOGO_READER else 'NOT FOUND'}")
-
-
-if __name__ == "__main__":
-    build_brochure()
+    print(f"   Pricing source: {PRICING_PATH.name}")
+    print(f"   Logo: {'embedded (RGBA)' if LOGO_READER else 'missing'}")

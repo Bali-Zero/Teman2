@@ -56,15 +56,21 @@ def trace_span(span_name: str, attributes: dict[str, Any] | None = None) -> Any:
         yield None
         return
 
+    span_err: Exception | None = None
     try:
         with tracer.start_as_current_span(span_name) as span:
             if attributes and span:
                 for key, value in attributes.items():
                     span.set_attribute(key, str(value))
-            yield span
+            try:
+                yield span
+            except Exception as inner_e:
+                span_err = inner_e
+                raise
     except Exception as e:
+        if span_err is not None:
+            raise span_err from None
         logger.warning(f"Failed to create span {span_name}: {e}")
-        yield None
 
 
 def add_span_event(event_name: str, attributes: dict[str, Any] | None = None) -> None:
