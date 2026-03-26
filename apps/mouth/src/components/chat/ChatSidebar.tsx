@@ -62,7 +62,7 @@ export function ChatSidebar({
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-72 bg-[#1a1a1a] border-r border-white/5 z-50 transform transition-transform duration-300 ${
+        className={`fixed left-0 top-0 h-full w-72 bg-[var(--background)] border-r border-white/5 z-50 transform transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

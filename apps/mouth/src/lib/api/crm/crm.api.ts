@@ -157,6 +157,18 @@ export class CrmApi {
   }
 
   /**
+   * Get client team assignees (emails with client count)
+   */
+  async getClientAssignees(): Promise<
+    Array<{ assigned_to: string; count: number }>
+  > {
+    const stats = await this.client.request<{
+      by_team_member: Array<{ assigned_to: string; count: number }>;
+    }>("/api/crm/clients/stats/overview");
+    return stats.by_team_member || [];
+  }
+
+  /**
    * Get interaction statistics
    */
   async getInteractionStats(): Promise<InteractionStats> {
@@ -234,12 +246,15 @@ export class CrmApi {
   async getClients(
     params: {
       search?: string;
+      assigned_to?: string;
       limit?: number;
       offset?: number;
     } = {},
   ): Promise<Client[]> {
     const queryParams = new URLSearchParams();
     if (params.search) queryParams.append("search", params.search);
+    if (params.assigned_to)
+      queryParams.append("assigned_to", params.assigned_to);
     if (params.limit) queryParams.append("limit", params.limit.toString());
     if (params.offset) queryParams.append("offset", params.offset.toString());
 

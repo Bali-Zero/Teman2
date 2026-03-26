@@ -4,7 +4,9 @@
 **Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`.
 
 <!-- DOCSYNC:QUICK_NUMBERS_START -->
+
 **Quick Numbers:** 89 routers · 253 services · 419 tests · 131 MCP tools · 10 Qdrant collections (93,283 docs) · 6 channels · 56K KG nodes
+
 <!-- DOCSYNC:QUICK_NUMBERS_END -->
 
 > **Role split:** `CLAUDE.md` = how to act (rules, delegation, language, deploy QA). This file = how to build (architecture, code patterns, debugging, workflows).

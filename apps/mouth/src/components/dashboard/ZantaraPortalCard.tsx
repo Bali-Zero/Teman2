@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { ExternalLink, Sparkles } from "lucide-react";
 
-const ZANTARA_URL = "https://zantara.balizero.com";
+const ZANTARA_URL = "https://zantara.balizero.com/chat";
 
 export function ZantaraPortalCard() {
   return (

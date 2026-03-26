@@ -15,8 +15,6 @@ export {
   HomepageSEOSchemas,
 } from "./HomepageFAQ";
 
-export { SchemaInjector } from "./SchemaInjector";
-
 export {
   ArticleWithFAQJsonLd,
   HowToJsonLd,
@@ -26,9 +24,3 @@ export {
 export { DynamicJsonLd } from "./DynamicJsonLd";
 
 export { AnswerBox, KeyTakeaway } from "./AnswerBox";
-
-export {
-  AuthorJsonLd,
-  PredefinedAuthorJsonLd,
-  BALI_ZERO_AUTHORS,
-} from "./AuthorJsonLd";
