@@ -511,7 +511,7 @@ describe("Cases Page", () => {
       await user.selectOptions(statusSelect, "inquiry");
 
       const typeSelect = screen.getByLabelText(/Process Type/i);
-      await user.selectOptions(typeSelect, "KITAS");
+      await user.selectOptions(typeSelect, "kitas");
 
       await waitFor(() => {
         // Filter count badge should show "2"
