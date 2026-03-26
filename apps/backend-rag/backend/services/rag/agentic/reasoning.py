@@ -52,13 +52,15 @@ from backend.services.tools.definitions import AgentState, AgentStep
 logger = logging.getLogger(__name__)
 
 # Trusted tools bypass evidence scoring — tool output IS the evidence
-_TRUSTED_TOOL_NAMES: frozenset[str] = frozenset({
-    "calculator",
-    "get_pricing",
-    "team_knowledge",
-    "timesheet",
-    "vector_search",
-})
+_TRUSTED_TOOL_NAMES: frozenset[str] = frozenset(
+    {
+        "calculator",
+        "get_pricing",
+        "team_knowledge",
+        "timesheet",
+        "vector_search",
+    }
+)
 
 
 # NOTE: Deprecated local functions removed 2026-02-08 (System Audit).

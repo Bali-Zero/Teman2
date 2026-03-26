@@ -244,6 +244,5 @@ class UnpaidInvoiceNotifier:
             response.raise_for_status()
 
         logger.info(
-            f"[UnpaidInvoiceNotifier] Brevo accepted reminder email "
-            f"(status {response.status_code})"
+            f"[UnpaidInvoiceNotifier] Brevo accepted reminder email (status {response.status_code})"
         )

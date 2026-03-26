@@ -12,8 +12,9 @@ import os
 import time
 import urllib.parse
 import urllib.request
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable
+from typing import Any
 
 import asyncpg
 
@@ -57,9 +58,7 @@ class DriveCircuitBreaker:
         self._last_failure_time = time.time()
         if self._failures >= self.failure_threshold:
             if self._state != "open":
-                logger.error(
-                    f"Drive circuit breaker OPEN dopo {self._failures} errori consecutivi"
-                )
+                logger.error(f"Drive circuit breaker OPEN dopo {self._failures} errori consecutivi")
             self._state = "open"
 
     async def call(
@@ -101,11 +100,13 @@ def _send_telegram_alert(message: str) -> None:
         logger.warning("TELEGRAM_BOT_TOKEN non trovato — skip alert circuit breaker")
         return
     try:
-        data = urllib.parse.urlencode({
-            "chat_id": chat_id,
-            "text": message,
-            "parse_mode": "HTML",
-        }).encode()
+        data = urllib.parse.urlencode(
+            {
+                "chat_id": chat_id,
+                "text": message,
+                "parse_mode": "HTML",
+            }
+        ).encode()
         urllib.request.urlopen(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
             data,
@@ -128,6 +129,7 @@ async def poll_drive_changes() -> dict[str, Any]:
     Returns summary of what was processed.
     Gestito da DriveCircuitBreaker: si apre dopo 3 errori consecutivi.
     """
+
     def _on_circuit_open(error: str) -> None:
         alert_msg = (
             f"⚠️ <b>Drive Polling</b>: circuit breaker APERTO\n"

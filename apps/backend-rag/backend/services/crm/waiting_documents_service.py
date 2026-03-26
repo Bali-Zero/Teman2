@@ -61,9 +61,7 @@ class WaitingDocumentsService:
             if not client_data:
                 return {"success": False, "error": "Client not found"}
 
-            team_leader_email = practice_data.get("assigned_to") or practice_data.get(
-                "created_by"
-            )
+            team_leader_email = practice_data.get("assigned_to") or practice_data.get("created_by")
 
             results = {
                 "team_leader_notified": False,
@@ -96,9 +94,7 @@ class WaitingDocumentsService:
                         practice_data=practice_data,
                     )
                     results["client_notified"] = True
-                    logger.info(
-                        f"Document request email sent to client {client_data['email']}"
-                    )
+                    logger.info(f"Document request email sent to client {client_data['email']}")
                 except Exception as e:
                     logger.error(f"Failed to send document request to client: {e}")
             else:

@@ -329,8 +329,10 @@ async def create_client(
 
         # Welcome communications (Trigger 1a + 1b)
         try:
+            from backend.services.crm.welcome.welcome_email_service import (
+                schedule_client_welcome_email,
+            )
             from backend.services.crm.welcome.welcome_whatsapp_service import send_client_welcome
-            from backend.services.crm.welcome.welcome_email_service import schedule_client_welcome_email
 
             background_tasks.add_task(send_client_welcome, new_client["id"], db_pool)
             schedule_client_welcome_email(new_client["id"], db_pool)
@@ -447,7 +449,7 @@ async def list_clients(
                 if passport_expiring_days == 0:
                     # Already expired
                     query_parts.append(
-                        f" AND c.passport_expiry IS NOT NULL AND c.passport_expiry < CURRENT_DATE"
+                        " AND c.passport_expiry IS NOT NULL AND c.passport_expiry < CURRENT_DATE"
                     )
                 else:
                     query_parts.append(

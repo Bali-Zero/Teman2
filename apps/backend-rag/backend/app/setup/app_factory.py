@@ -111,6 +111,7 @@ async def lifespan(app: FastAPI):
         # Warm-up CrossEncoder model in background thread (prevents 10-30s first-request spike)
         try:
             from backend.services.rag.reranker import CrossEncoderReranker
+
             reranker = CrossEncoderReranker()
             await asyncio.to_thread(lambda: reranker.model)  # triggers _load_model() off event loop
             logger.info("✅ CrossEncoder model warm-up complete")
@@ -125,9 +126,7 @@ async def lifespan(app: FastAPI):
             db_url = settings.database_url
             app.state.workflow_checkpointer = await get_checkpointer(db_url)
 
-            worker_task = asyncio.create_task(
-                run_worker(app.state.db_pool, app.state)
-            )
+            worker_task = asyncio.create_task(run_worker(app.state.db_pool, app.state))
             app.state._workflow_worker_task = worker_task
             logger.info("✅ Workflow queue worker started (PG SKIP LOCKED)")
         except Exception as e:
@@ -165,6 +164,7 @@ async def lifespan(app: FastAPI):
     # Close LangGraph checkpointer psycopg3 pool
     try:
         from backend.services.workflow.checkpointer import close_checkpointer
+
         await close_checkpointer()
     except Exception:
         pass

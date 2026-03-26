@@ -1,4 +1,5 @@
 """CELL organism status endpoint — serves dashboard data."""
+
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -19,9 +20,7 @@ async def get_cell_status(
 ) -> dict[str, Any]:
     """Get CELL organism status for dashboard."""
     async with db_pool.acquire() as conn:
-        last = await conn.fetchrow(
-            "SELECT * FROM cell_pulse_log ORDER BY created_at DESC LIMIT 1"
-        )
+        last = await conn.fetchrow("SELECT * FROM cell_pulse_log ORDER BY created_at DESC LIMIT 1")
         recent = await conn.fetch(
             """SELECT pulse_number, health_status, response_time_ms, created_at
                FROM cell_pulse_log ORDER BY created_at DESC LIMIT 50"""

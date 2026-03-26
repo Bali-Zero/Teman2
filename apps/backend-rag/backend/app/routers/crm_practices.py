@@ -306,7 +306,9 @@ async def create_practice(
 
             # Practice kickoff communications (Trigger 2)
             try:
-                from backend.services.crm.welcome.welcome_practice_service import send_practice_kickoff
+                from backend.services.crm.welcome.welcome_practice_service import (
+                    send_practice_kickoff,
+                )
 
                 background_tasks.add_task(
                     send_practice_kickoff,
@@ -897,9 +899,7 @@ async def update_practice(
                         triggered_by=user_email,
                     )
                 )
-                logger.info(
-                    f"🚀 Waiting documents automation triggered for practice {practice_id}"
-                )
+                logger.info(f"🚀 Waiting documents automation triggered for practice {practice_id}")
 
             # 🚀 Invoice Automation: Trigger when status changes to 'sending_invoice'
             if updates.status == "sending_invoice":

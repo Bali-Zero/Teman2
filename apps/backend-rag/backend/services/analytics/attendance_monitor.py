@@ -146,9 +146,7 @@ class AttendanceMonitor:
                         "last_seen": "mai",
                     }
                 )
-                logger.debug(
-                    "check_absent_members: %s has never clocked in", member_email
-                )
+                logger.debug("check_absent_members: %s has never clocked in", member_email)
                 continue
 
             working_days_absent = await self._count_working_days_since(last_date, today)
@@ -268,9 +266,7 @@ class AttendanceMonitor:
     # Email senders
     # ------------------------------------------------------------------
 
-    async def _send_late_notification(
-        self, email: str, full_name: str, checkin_time: str
-    ) -> None:
+    async def _send_late_notification(self, email: str, full_name: str, checkin_time: str) -> None:
         """
         Send a friendly late check-in email to the member (CC zero@balizero.com).
 
@@ -422,16 +418,16 @@ class AttendanceMonitor:
             table_rows += f"""
             <tr>
                 <td style="padding:10px 14px; border-bottom:1px solid #e8e8e8;">
-                    {m['full_name']}
+                    {m["full_name"]}
                 </td>
                 <td style="padding:10px 14px; border-bottom:1px solid #e8e8e8; color:#555;">
-                    {m['email']}
+                    {m["email"]}
                 </td>
                 <td style="padding:10px 14px; border-bottom:1px solid #e8e8e8; color:#e53e3e; font-weight:600;">
                     {days_label}
                 </td>
                 <td style="padding:10px 14px; border-bottom:1px solid #e8e8e8; color:#777;">
-                    {m['last_seen']}
+                    {m["last_seen"]}
                 </td>
             </tr>"""
 

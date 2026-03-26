@@ -26,7 +26,6 @@ import httpx
 
 from backend.services.crm.birthday_notifier_service import NATIONALITY_LANGUAGE_MAP
 from backend.services.crm.welcome.welcome_templates import (
-    ADVISOR_FALLBACK,
     WELCOME_EMAIL_CTA,
     WELCOME_EMAIL_OPENING,
     WELCOME_EMAIL_SUBJECT,
@@ -55,10 +54,15 @@ _EMAIL_API_URL = os.getenv(
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "REDACTED-ROTATED-KEY")
 
 # ─── BROCHURE PATH ───────────────────────────────────────
-_BROCHURE_PATH = Path(__file__).parent.parent.parent.parent.parent / "data" / "assets" / "brochure_balizero_en.pdf"
+_BROCHURE_PATH = (
+    Path(__file__).parent.parent.parent.parent.parent
+    / "data"
+    / "assets"
+    / "brochure_balizero_en.pdf"
+)
 
 
-def schedule_client_welcome_email(client_id: int, db_pool: "asyncpg.Pool") -> None:
+def schedule_client_welcome_email(client_id: int, db_pool: asyncpg.Pool) -> None:
     """
     Schedule the welcome email to be sent 30 minutes from now.
     Called from BackgroundTasks in the clients router.
@@ -73,8 +77,11 @@ def schedule_client_welcome_email(client_id: int, db_pool: "asyncpg.Pool") -> No
 
         scheduler = get_scheduler()
         if not scheduler or not scheduler.scheduler:
-            logger.warning("WelcomeEmail: scheduler not available, falling back to asyncio.sleep pattern")
+            logger.warning(
+                "WelcomeEmail: scheduler not available, falling back to asyncio.sleep pattern"
+            )
             import asyncio
+
             asyncio.create_task(_send_with_delay(client_id, db_pool))
             return
 
@@ -90,20 +97,23 @@ def schedule_client_welcome_email(client_id: int, db_pool: "asyncpg.Pool") -> No
             replace_existing=True,
             misfire_grace_time=300,  # up to 5min late is OK
         )
-        logger.info("WelcomeEmail: scheduled for client %d at %s", client_id, run_at.strftime("%H:%M UTC"))
+        logger.info(
+            "WelcomeEmail: scheduled for client %d at %s", client_id, run_at.strftime("%H:%M UTC")
+        )
 
     except Exception:
         logger.error("WelcomeEmail: failed to schedule for client %d", client_id, exc_info=True)
 
 
-async def _send_with_delay(client_id: int, db_pool: "asyncpg.Pool") -> None:
+async def _send_with_delay(client_id: int, db_pool: asyncpg.Pool) -> None:
     """Fallback: asyncio.sleep(1800) if scheduler unavailable."""
     import asyncio
+
     await asyncio.sleep(1800)
     await _send_client_welcome_now(client_id, db_pool)
 
 
-async def _send_client_welcome_now(client_id: int, db_pool: "asyncpg.Pool") -> None:
+async def _send_client_welcome_now(client_id: int, db_pool: asyncpg.Pool) -> None:
     """Execute the actual email send. Called by APScheduler after the 30-min delay."""
     try:
         await _send_client_welcome_impl(client_id, db_pool)
@@ -111,7 +121,7 @@ async def _send_client_welcome_now(client_id: int, db_pool: "asyncpg.Pool") -> N
         logger.error("WelcomeEmail: unhandled error for client %d", client_id, exc_info=True)
 
 
-async def _send_client_welcome_impl(client_id: int, db_pool: "asyncpg.Pool") -> None:
+async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> None:
     async with db_pool.acquire() as conn:
         client = await conn.fetchrow(
             "SELECT id, full_name, email, nationality, assigned_to FROM clients WHERE id = $1",
@@ -129,7 +139,8 @@ async def _send_client_welcome_impl(client_id: int, db_pool: "asyncpg.Pool") -> 
         # Idempotency check
         already_sent = await conn.fetchval(
             "SELECT id FROM activity_log WHERE client_id = $1 AND action = $2 LIMIT 1",
-            client_id, ACTIVITY_ACTION,
+            client_id,
+            ACTIVITY_ACTION,
         )
         if already_sent:
             logger.info("WelcomeEmail: already sent for client %d, skipping", client_id)
@@ -168,7 +179,9 @@ async def _send_client_welcome_impl(client_id: int, db_pool: "asyncpg.Pool") -> 
                 }
             ]
         except Exception:
-            logger.warning("WelcomeEmail: could not read brochure for client %d", client_id, exc_info=True)
+            logger.warning(
+                "WelcomeEmail: could not read brochure for client %d", client_id, exc_info=True
+            )
     else:
         logger.warning("WelcomeEmail: brochure not found at %s", _BROCHURE_PATH)
 
@@ -188,19 +201,24 @@ async def _send_client_welcome_impl(client_id: int, db_pool: "asyncpg.Pool") -> 
                 VALUES ($1, $2, $3, NOW())
                 ON CONFLICT DO NOTHING
                 """,
-                client_id, ACTIVITY_ACTION, f"lang={lang} email={email}",
+                client_id,
+                ACTIVITY_ACTION,
+                f"lang={lang} email={email}",
             )
         logger.info("WelcomeEmail: sent to client %d (lang=%s, email=%s)", client_id, lang, email)
     else:
         logger.error(
             "WelcomeEmail: send failed for client %d: %d %s",
-            client_id, resp.status_code, resp.text[:200],
+            client_id,
+            resp.status_code,
+            resp.text[:200],
         )
 
 
 # ─────────────────────────────────────────────────────────
 # HTML BUILDER
 # ─────────────────────────────────────────────────────────
+
 
 def _build_html(lang: str, first_name: str, advisor_first: str, advisor_email: str) -> str:
     """Assemble the 7-block welcome HTML email."""

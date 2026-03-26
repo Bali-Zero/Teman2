@@ -1,4 +1,5 @@
 """Tests for claims extraction pure functions (no I/O, no API calls)."""
+
 from __future__ import annotations
 
 from scripts.claims_extractor import (
@@ -18,7 +19,7 @@ def test_generate_claim_id_sequential() -> None:
 
 
 def test_parse_claims_response_valid() -> None:
-    llm_output = '''
+    llm_output = """
 [
   {
     "claim": "Il KITAS dura massimo 2 anni.",
@@ -28,7 +29,7 @@ def test_parse_claims_response_valid() -> None:
     "category": "duration"
   }
 ]
-'''
+"""
     claims = parse_claims_response(llm_output)
     assert len(claims) == 1
     assert "2 anni" in claims[0]["claim"]
@@ -71,9 +72,26 @@ def test_validate_claim_missing_verbatim() -> None:
 
 def test_stamp_claims_adds_ids_and_filters_invalid() -> None:
     claims = [
-        {"claim": "C1", "verbatim": "V1", "pasal_ref": "P1", "instrument_id": "I1", "category": "rule"},
-        {"claim": "C2", "verbatim": "V2", "pasal_ref": "P2", "instrument_id": "I2"},  # missing category
-        {"claim": "C3", "verbatim": "V3", "pasal_ref": "P3", "instrument_id": "I3", "category": "procedure"},
+        {
+            "claim": "C1",
+            "verbatim": "V1",
+            "pasal_ref": "P1",
+            "instrument_id": "I1",
+            "category": "rule",
+        },
+        {
+            "claim": "C2",
+            "verbatim": "V2",
+            "pasal_ref": "P2",
+            "instrument_id": "I2",
+        },  # missing category
+        {
+            "claim": "C3",
+            "verbatim": "V3",
+            "pasal_ref": "P3",
+            "instrument_id": "I3",
+            "category": "procedure",
+        },
     ]
     stamped = stamp_claims(claims, "immigration", start_index=5)
     assert len(stamped) == 2  # one invalid filtered
