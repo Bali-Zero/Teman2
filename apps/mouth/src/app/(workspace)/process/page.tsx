@@ -1169,6 +1169,9 @@ export default function PratichePage() {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)]">
                       Payment
                     </th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold text-[var(--bz-text-1)]">
+                      Price
+                    </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)]">
                       Actions
                     </th>
@@ -1260,6 +1263,20 @@ export default function PratichePage() {
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-current" />
                             {practice.payment_status}
+                          </span>
+                        ) : (
+                          <span className="text-[var(--bz-text-2)] text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right">
+                        {(practice.actual_price || practice.quoted_price) ? (
+                          <span className="font-medium tabular-nums" style={{ color: 'var(--bz-accent)' }}>
+                            {new Intl.NumberFormat('id-ID', {
+                              notation: 'compact',
+                              currency: 'IDR',
+                              style: 'currency',
+                              maximumFractionDigits: 0,
+                            }).format(practice.actual_price || practice.quoted_price || 0)}
                           </span>
                         ) : (
                           <span className="text-[var(--bz-text-2)] text-xs">—</span>
