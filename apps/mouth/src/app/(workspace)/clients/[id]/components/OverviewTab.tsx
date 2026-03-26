@@ -313,34 +313,63 @@ export function OverviewTab({
           </div>
 
           {/* Stats Row */}
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            <div
-              className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-              style={{
-                border: '1px solid rgba(255, 255, 255, 0.05)',
-                background: 'rgba(35, 35, 40, 0.45)',
-              }}
-            >
-              <div className="flex items-center gap-1.5 mb-1">
-                <Users className="w-3.5 h-3.5 text-blue-500" />
-                <span className="text-[10px] text-[var(--bz-text-2)]">Family</span>
+          {(() => {
+            const pipelineValue = activePractices.reduce(
+              (sum, p) => sum + (p.actual_price || p.quoted_price || 0),
+              0,
+            );
+            const unpaidValue = [...activePractices, ...completedPractices]
+              .filter((p) => p.payment_status === 'unpaid' || p.payment_status === 'partial')
+              .reduce((sum, p) => sum + (p.actual_price || p.quoted_price || 0), 0);
+            return (
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <div
+                  className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                  style={{ border: '1px solid rgba(255, 255, 255, 0.05)', background: 'rgba(35, 35, 40, 0.45)' }}
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Users className="w-3.5 h-3.5 text-blue-500" />
+                    <span className="text-[10px] text-[var(--bz-text-2)]">Family</span>
+                  </div>
+                  <p className="text-lg font-bold">{stats.family_count}</p>
+                </div>
+                <div
+                  className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                  style={{ border: '1px solid rgba(255, 255, 255, 0.05)', background: 'rgba(35, 35, 40, 0.45)' }}
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <FileText className="w-3.5 h-3.5 text-purple-500" />
+                    <span className="text-[10px] text-[var(--bz-text-2)]">Docs</span>
+                  </div>
+                  <p className="text-lg font-bold">{stats.documents_count}</p>
+                </div>
+                {pipelineValue > 0 && (
+                  <div
+                    className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                    style={{ border: '1px solid rgba(255, 255, 255, 0.05)', background: 'rgba(35, 35, 40, 0.45)' }}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Activity className="w-3.5 h-3.5 text-yellow-500" />
+                      <span className="text-[10px] text-[var(--bz-text-2)]">Pipeline</span>
+                    </div>
+                    <p className="text-sm font-bold text-yellow-400 truncate">{formatCurrency(pipelineValue)}</p>
+                  </div>
+                )}
+                {unpaidValue > 0 && (
+                  <div
+                    className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                    style={{ border: '1px solid rgba(255, 100, 80, 0.12)', background: 'rgba(35, 35, 40, 0.45)' }}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Clock className="w-3.5 h-3.5 text-red-500" />
+                      <span className="text-[10px] text-[var(--bz-text-2)]">Unpaid</span>
+                    </div>
+                    <p className="text-sm font-bold text-red-400 truncate">{formatCurrency(unpaidValue)}</p>
+                  </div>
+                )}
               </div>
-              <p className="text-lg font-bold">{stats.family_count}</p>
-            </div>
-            <div
-              className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-              style={{
-                border: '1px solid rgba(255, 255, 255, 0.05)',
-                background: 'rgba(35, 35, 40, 0.45)',
-              }}
-            >
-              <div className="flex items-center gap-1.5 mb-1">
-                <FileText className="w-3.5 h-3.5 text-purple-500" />
-                <span className="text-[10px] text-[var(--bz-text-2)]">Docs</span>
-              </div>
-              <p className="text-lg font-bold">{stats.documents_count}</p>
-            </div>
-          </div>
+            );
+          })()}
         </div>
 
         {/* COLUMN 2: Passport */}
