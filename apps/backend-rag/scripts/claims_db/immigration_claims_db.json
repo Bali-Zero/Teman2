@@ -888,148 +888,12 @@
     "claim_id": "IMM-111"
   },
   {
-    "claim": "Il Ministro della Giustizia e dei Diritti Umani restringe l'ingresso di stranieri nel territorio indonesiano o il transito nel territorio indonesiano.",
-    "verbatim": "Menteri melakukan pembatasan terhadap Orang Asing untuk masuk ke wilayah Indonesia",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 2 Ayat 1",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "prohibition",
-    "claim_id": "IMM-112"
-  },
-  {
-    "claim": "La restrizione rimane in vigore durante l'applicazione della Limitazione delle Attività della Comunità in situazione di emergenza.",
-    "verbatim": "Pembatasan dilaksanakan selama pemberlakuan Pembatasan Kegiatan Masyarakat darurat",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 2 Ayat 2",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "duration",
-    "claim_id": "IMM-113"
-  },
-  {
-    "claim": "Stranieri con visti diplomatici e ufficiali sono esentati dalle restrizioni di ingresso.",
-    "verbatim": "Orang Asing pemegang Visa diplomatik dan Visa dinas",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 2 Ayat 3 huruf a",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "rule",
-    "claim_id": "IMM-114"
-  },
-  {
-    "claim": "Stranieri con permessi di soggiorno diplomatici e ufficiali sono esentati dalle restrizioni.",
-    "verbatim": "Orang Asing pemegang Izin Tinggal diplomatik dan Izin Tinggal dinas",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 2 Ayat 3 huruf b",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "rule",
-    "claim_id": "IMM-115"
-  },
-  {
-    "claim": "Stranieri con permessi di soggiorno limitato e permanente sono esentati dalle restrizioni.",
-    "verbatim": "Orang Asing pemegang Izin Tinggal terbatas dan Izin Tinggal tetap",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 2 Ayat 3 huruf c",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "rule",
-    "claim_id": "IMM-116"
-  },
-  {
-    "claim": "Stranieri con scopi sanitari e umanitari sono esentati dalle restrizioni di ingresso.",
-    "verbatim": "Orang Asing dengan tujuan kesehatan dan kemanusiaan",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 2 Ayat 3 huruf d",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "rule",
-    "claim_id": "IMM-117"
-  },
-  {
-    "claim": "L'equipaggio dei mezzi di trasporto che arriva con il proprio mezzo è esentato dalle restrizioni.",
-    "verbatim": "awak alat angkut yang datang dengan alat angkutnya",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 2 Ayat 3 huruf e",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "rule",
-    "claim_id": "IMM-118"
-  },
-  {
-    "claim": "Stranieri esentati devono rispettare i protocolli sanitari secondo la normativa vigente.",
-    "verbatim": "dapat masuk wilayah Indonesia setelah memenuhi protokol kesehatan",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 2 Ayat 4",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "procedure",
-    "claim_id": "IMM-119"
-  },
-  {
-    "claim": "L'esenzione per scopi sanitari e umanitari richiede una raccomandazione dal ministero/ente che gestisce la risposta al Covid-19.",
-    "verbatim": "diberikan setelah mendapat rekomendasi dari kementerian/lembaga yang menyelenggarakan fungsi penanganan Covid-19",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 2 Ayat 5",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "procedure",
-    "claim_id": "IMM-120"
-  },
-  {
-    "claim": "Stranieri con permessi di soggiorno devono ottenere un nuovo visto per ricevere un nuovo permesso di soggiorno.",
-    "verbatim": "dapat diberikan Izin Tinggal yang baru setelah memperoleh Visa",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 3 Ayat 1",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "requirement",
-    "claim_id": "IMM-121"
-  },
-  {
-    "claim": "L'approvazione del visto può essere un visto di visita o un visto di soggiorno limitato.",
-    "verbatim": "persetujuan Visa kunjungan; atau persetujuan Visa tinggal terbatas",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 3 Ayat 2",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "rule",
-    "claim_id": "IMM-122"
-  },
-  {
-    "claim": "Il garante deve presentare domanda al Direttore Generale dell'Immigrazione tramite procedura elettronica.",
-    "verbatim": "pengajuan permohonan secara elektronik",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 3 Ayat 3 huruf a",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "procedure",
-    "claim_id": "IMM-123"
-  },
-  {
-    "claim": "Il garante deve pagare i diritti di approvazione del visto e i diritti del visto secondo la normativa vigente.",
-    "verbatim": "pembayaran biaya persetujuan Visa dan biaya Visa",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 3 Ayat 3 huruf b",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "fee",
-    "claim_id": "IMM-124"
-  },
-  {
-    "claim": "Il visto è trasmesso elettronicamente.",
-    "verbatim": "Visa dikirimkan secara elektronik",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 3 Ayat 4",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "procedure",
-    "claim_id": "IMM-125"
-  },
-  {
-    "claim": "Il Ministro può emanare altre politiche su strutture immigratorie e motivi umanitari se forniscono vantaggio pubblico.",
-    "verbatim": "dapat mengeluarkan kebijakan lain terkait fasilitas keimigrasian dan alasan kemanusiaan",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 4",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "rule",
-    "claim_id": "IMM-126"
-  },
-  {
-    "claim": "La Peraturan Menteri Hukum dan Hak Asasi Manusia Nomor 26 Tahun 2020 è abrogata e cessa di avere effetto.",
-    "verbatim": "Peraturan Menteri Nomor 26 Tahun 2020 dicabut dan dinyatakan tidak berlaku",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 5",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "rule",
-    "claim_id": "IMM-127"
-  },
-  {
-    "claim": "Questo regolamento entra in vigore il 21 luglio 2021.",
-    "verbatim": "Peraturan Menteri ini mulai berlaku pada tanggal 21 Juli 2021",
-    "pasal_ref": "Permenkumham-27-2021 Pasal 6",
-    "instrument_id": "Permenkumham-27-2021",
-    "category": "duration",
-    "claim_id": "IMM-128"
-  },
-  {
     "claim": "Un passaporto straniero deve essere valido e rilasciato da un'autorità competente con validità residua di almeno sei mesi.",
     "verbatim": "paspor yang dikeluarkan oleh pejabat yang berwenang dan berlaku sekurang-kurangnya selama 6 (enam) bulan",
     "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 14",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-129"
+    "claim_id": "IMM-112"
   },
   {
     "claim": "Un visto è una dichiarazione scritta che autorizza il viaggio verso il territorio dell'Indonesia e costituisce la base per il rilascio del permesso di soggiorno.",
@@ -1037,7 +901,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 15",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-130"
+    "claim_id": "IMM-113"
   },
   {
     "claim": "Il permesso di soggiorno è un'autorizzazione rilasciata da un ufficiale dell'immigrazione o da un ufficiale del ministero degli esteri per risiedere nel territorio dell'Indonesia.",
@@ -1045,7 +909,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 16",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-131"
+    "claim_id": "IMM-114"
   },
   {
     "claim": "Il permesso di soggiorno per visitatori è concesso agli stranieri per soggiorni brevi a scopo di visita nel territorio dell'Indonesia.",
@@ -1053,7 +917,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 17",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-132"
+    "claim_id": "IMM-115"
   },
   {
     "claim": "Il permesso di soggiorno permanente è concesso a determinati stranieri per stabilirsi e risiedere nel territorio dell'Indonesia come residenti dell'Indonesia.",
@@ -1061,7 +925,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 19",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-133"
+    "claim_id": "IMM-116"
   },
   {
     "claim": "Il permesso di soggiorno temporaneo per le acque territoriali è concesso a comandanti di navi, equipaggi o esperti stranieri che lavorano su navi o piattaforme nelle acque territoriali dell'Indonesia.",
@@ -1069,7 +933,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 20",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-134"
+    "claim_id": "IMM-117"
   },
   {
     "claim": "Una dichiarazione di integrazione è una dichiarazione dello straniero al governo della Repubblica dell'Indonesia come uno dei requisiti per ottenere il permesso di soggiorno permanente.",
@@ -1077,7 +941,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 21",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-135"
+    "claim_id": "IMM-118"
   },
   {
     "claim": "I documenti ufficiali rilasciati da istituzioni governative indonesiane o enti riconosciuti dal governo, come certificati di nascita, carta d'identità, passaporto o diploma, possono provare lo status di ex cittadino indonesiano.",
@@ -1085,7 +949,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 92 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-136"
+    "claim_id": "IMM-119"
   },
   {
     "claim": "Chi lavora presso un'istituzione governativa deve allegare una raccomandazione dal ministero competente o dall'ente governativo competente.",
@@ -1093,7 +957,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 93",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-137"
+    "claim_id": "IMM-120"
   },
   {
     "claim": "Chi lavora come esperto tecnico in cooperazione tecnica governativa deve allegare una raccomandazione dal ministero competente o dall'ente governativo competente.",
@@ -1101,7 +965,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 94",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-138"
+    "claim_id": "IMM-121"
   },
   {
     "claim": "La procedura per l'Autorizzazione di Soggiorno Limitato comprende: verifica dei requisiti, inserimento dati, scansione, pagamento, colloquio, identificazione, acquisizione dati biometrici, approvazione, emissione e consegna.",
@@ -1109,7 +973,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 95 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-139"
+    "claim_id": "IMM-122"
   },
   {
     "claim": "Il pagamento delle spese di immigrazione è obbligatorio secondo le disposizioni normative applicabili.",
@@ -1117,7 +981,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 95 Ayat 1 Huruf C",
     "instrument_id": "Permenkumham-29-2021",
     "category": "fee",
-    "claim_id": "IMM-140"
+    "claim_id": "IMM-123"
   },
   {
     "claim": "Il colloquio, l'identificazione e la verifica dei dati nonché l'acquisizione di dati biometrici possono essere esclusi per stranieri specifici su approvazione del Direttore Generale.",
@@ -1125,7 +989,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 95 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-141"
+    "claim_id": "IMM-124"
   },
   {
     "claim": "Il colloquio deve essere effettuato entro 3 giorni lavorativi dal ricevimento della domanda.",
@@ -1133,7 +997,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 95 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-142"
+    "claim_id": "IMM-125"
   },
   {
     "claim": "La domanda di Autorizzazione di Soggiorno Limitato deve essere completata entro 3 giorni lavorativi dal colloquio.",
@@ -1141,7 +1005,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 95 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-143"
+    "claim_id": "IMM-126"
   },
   {
     "claim": "L'Autorizzazione di Soggiorno Limitato può essere concessa a cittadini di determinate entità che lavorano presso camere di commercio in Indonesia, incluse le loro famiglie.",
@@ -1149,7 +1013,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-144"
+    "claim_id": "IMM-127"
   },
   {
     "claim": "Per le richieste di Autorizzazione di Soggiorno Limitato, deve essere fornita una lettera di garanzia dal garante, passaporto valido e raccomandazione dall'Agenzia di Intelligenza di Stato.",
@@ -1157,7 +1021,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-145"
+    "claim_id": "IMM-128"
   },
   {
     "claim": "Cittadini di determinate entità che si uniscono al coniuge con Autorizzazione di Soggiorno Limitato devono allegare l'atto di matrimonio tradotto in indonesiano.",
@@ -1165,7 +1029,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-146"
+    "claim_id": "IMM-129"
   },
   {
     "claim": "Figli minori di 18 anni non coniugati di dipendenti della camera di commercio devono allegare atto di matrimonio e certificato di nascita dei genitori tradotti in indonesiano.",
@@ -1173,7 +1037,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-147"
+    "claim_id": "IMM-130"
   },
   {
     "claim": "I figli nati in Indonesia di genitori stranieri devono allegare certificato di nascita, passaporti dei genitori e certificato di notifica di nascita emesso dalla Direzione Generale dell'Immigrazione.",
@@ -1181,7 +1045,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 5",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-148"
+    "claim_id": "IMM-131"
   },
   {
     "claim": "L'Autorizzazione di Soggiorno Limitato per dipendenti di camere di commercio è concessa secondo il principio della reciprocità.",
@@ -1189,7 +1053,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 6",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-149"
+    "claim_id": "IMM-132"
   },
   {
     "claim": "L'Autorizzazione di Soggiorno Limitato per dipendenti di camere di commercio è concessa per un massimo di 1 anno.",
@@ -1197,7 +1061,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 8",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-150"
+    "claim_id": "IMM-133"
   },
   {
     "claim": "La procedura per l'Autorizzazione di Soggiorno Limitato per dipendenti di camere di commercio comprende: verifica requisiti, inserimento dati, pagamento, colloquio, identificazione, approvazione, emissione e consegna.",
@@ -1205,7 +1069,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 97 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-151"
+    "claim_id": "IMM-134"
   },
   {
     "claim": "L'Autorizzazione di Soggiorno Limitato può essere prorogata, ad eccezione di quella originaria da visto di soggiorno limitato al momento dell'arrivo.",
@@ -1213,7 +1077,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 98 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-152"
+    "claim_id": "IMM-135"
   },
   {
     "claim": "La proroga dell'Autorizzazione di Soggiorno Limitato è effettuata dal Capo dell'Ufficio Immigrazione secondo la giurisdizione del luogo di residenza dello straniero.",
@@ -1221,7 +1085,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 98 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-153"
+    "claim_id": "IMM-136"
   },
   {
     "claim": "Per i cittadini di determinate entità, la proroga dell'Autorizzazione di Soggiorno Limitato è effettuata dal Direttore Generale dell'Immigrazione.",
@@ -1229,7 +1093,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 98 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-154"
+    "claim_id": "IMM-137"
   },
   {
     "claim": "Gli stranieri come specificato in Pasal 72 Ayat 2 Huruf A possono prolungare l'Autorizzazione di Soggiorno Limitato fino a 5 anni per volta, con un totale non superiore a 10 anni.",
@@ -1237,7 +1101,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 99 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-155"
+    "claim_id": "IMM-138"
   },
   {
     "claim": "Gli stranieri come specificati in Pasal 72 Ayat 2 Huruf B-I possono prolungare l'Autorizzazione di Soggiorno Limitato fino a 2 anni per volta, con un totale non superiore a 6 anni.",
@@ -1245,7 +1109,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 99 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-156"
+    "claim_id": "IMM-139"
   },
   {
     "claim": "L'approvazione o il rifiuto della richiesta deve essere comunicato al Capo dell'Ufficio Immigrazione con copia al Capo dell'Ufficio Regionale entro massimo 5 giorni lavorativi dalla ricezione della richiesta.",
@@ -1253,7 +1117,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 106 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-157"
+    "claim_id": "IMM-140"
   },
   {
     "claim": "Il Capo dell'Ufficio Immigrazione o l'ufficiale designato deve completare il timbro del Permesso di Soggiorno Limitato entro massimo 3 giorni lavorativi dalla ricezione dell'approvazione.",
@@ -1261,7 +1125,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 107 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-158"
+    "claim_id": "IMM-141"
   },
   {
     "claim": "Il Capo dell'Ufficio Immigrazione deve rilasciare una ricevuta della richiesta come prova quando la richiesta e i requisiti sono stati ricevuti completamente.",
@@ -1269,7 +1133,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 108 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-159"
+    "claim_id": "IMM-142"
   },
   {
     "claim": "Se i requisiti sono incompleti, il Capo dell'Ufficio Immigrazione deve restituire il fascicolo al Garante con ricevuta indicante le ragioni al primo opportuno.",
@@ -1277,7 +1141,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 108 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-160"
+    "claim_id": "IMM-143"
   },
   {
     "claim": "Il Permesso di Soggiorno Limitato Acque è concesso agli Stranieri che lavorano come capitano, membro dell'equipaggio o esperto tecnico.",
@@ -1285,7 +1149,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 109 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-161"
+    "claim_id": "IMM-144"
   },
   {
     "claim": "Il Permesso di Soggiorno Limitato Acque è concesso per il lavoro su navi, piattaforme galleggianti o installazioni che operano nelle acque territoriali indonesiane.",
@@ -1293,7 +1157,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 109 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-162"
+    "claim_id": "IMM-145"
   },
   {
     "claim": "Il Capo dell'Ufficio Immigrazione può autorizzare il titolare del Permesso di Soggiorno Limitato Acque a stare a terra per massimo 7 giorni per motivi amministrativi, cura medica, o altre ragioni specifiche.",
@@ -1301,7 +1165,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 109 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-163"
+    "claim_id": "IMM-146"
   },
   {
     "claim": "L'autorizzazione a stare a terra è concessa in forma di lettera di autorizzazione, timbro di rimpatrio, o timbro di deportazione a seconda dei motivi.",
@@ -1309,7 +1173,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 109 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-164"
+    "claim_id": "IMM-147"
   },
   {
     "claim": "Gli Stranieri che lavorano in acque territoriali possono entrare direttamente con la nave o senza di essa.",
@@ -1317,7 +1181,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 110 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-165"
+    "claim_id": "IMM-148"
   },
   {
     "claim": "I capitani e i membri dell'equipaggio che entrano direttamente con la nave sono esentati dall'obbligo di possedere un Visto.",
@@ -1325,7 +1189,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 110 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "right",
-    "claim_id": "IMM-166"
+    "claim_id": "IMM-149"
   },
   {
     "claim": "I capitani e i membri dell'equipaggio che entrano senza la nave sono obbligati a possedere un Visto.",
@@ -1333,7 +1197,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 110 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-167"
+    "claim_id": "IMM-150"
   },
   {
     "claim": "Il Permesso di Soggiorno Limitato Acque è concesso per una durata massima di 1 anno o 180 giorni secondo la decisione del Direttore Generale.",
@@ -1341,7 +1205,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 111 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-168"
+    "claim_id": "IMM-151"
   },
   {
     "claim": "La durata del Permesso di Soggiorno Limitato Acque non può superare la validità del Passaporto o del Documento di Viaggio dello Straniero.",
@@ -1349,7 +1213,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 111 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-169"
+    "claim_id": "IMM-152"
   },
   {
     "claim": "Il Permesso di Soggiorno Limitato Acque è rilasciato come timbro sul Passaporto o sul Documento di Viaggio dello Straniero.",
@@ -1357,7 +1221,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 111 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-170"
+    "claim_id": "IMM-153"
   },
   {
     "claim": "La concessione del Permesso di Soggiorno Limitato Acque è attuata mediante decisione del Direttore Generale e timbro da parte del Capo dell'Ufficio Immigrazione.",
@@ -1365,7 +1229,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-171"
+    "claim_id": "IMM-154"
   },
   {
     "claim": "La richiesta di decisione del Direttore Generale deve essere presentata prima dell'entrata del mezzo di trasporto nel territorio indonesiano.",
@@ -1373,7 +1237,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-172"
+    "claim_id": "IMM-155"
   },
   {
     "claim": "In caso di sostituzione o aggiunta di capitani o equipaggio estero, la richiesta deve essere presentata dopo l'entrata del mezzo nel territorio indonesiano.",
@@ -1381,7 +1245,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-173"
+    "claim_id": "IMM-156"
   },
   {
     "claim": "La richiesta deve essere accompagnata da lettera di agenzia navale, elenco dell'equipaggio, lettera di garanzia, passaporto valido, e raccomandazione dell'ente competente.",
@@ -1389,7 +1253,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 5",
     "instrument_id": "Permenkumham-29-2021",
     "category": "document",
-    "claim_id": "IMM-174"
+    "claim_id": "IMM-157"
   },
   {
     "claim": "La decisione del Direttore Generale deve essere trasmessa al Capo dell'Ufficio Immigrazione competente, al Capo dell'Ufficio Regionale, e ad altri enti interessati.",
@@ -1397,7 +1261,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 7",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-175"
+    "claim_id": "IMM-158"
   },
   {
     "claim": "La decisione del Direttore Generale deve essere emanata entro massimo 3 giorni lavorativi dalla ricezione della richiesta.",
@@ -1405,7 +1269,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 8",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-176"
+    "claim_id": "IMM-159"
   },
   {
     "claim": "Il Capo dell'Ufficio Immigrazione deve trasmettere la richiesta al Capo dell'Ufficio Regionale entro un massimo di 7 giorni lavorativi dalla data della richiesta.",
@@ -1413,7 +1277,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 131 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-177"
+    "claim_id": "IMM-160"
   },
   {
     "claim": "Il Capo dell'Ufficio Regionale deve trasmettere la richiesta al Direttore Generale entro un massimo di 3 giorni lavorativi dalla ricezione della richiesta.",
@@ -1421,7 +1285,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 131 Ayat 5",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-178"
+    "claim_id": "IMM-161"
   },
   {
     "claim": "Il Direttore Generale deve rilasciare l'approvazione o il rifiuto del Permesso di Soggiorno Permanente entro un massimo di 5 giorni lavorativi dalla ricezione della richiesta.",
@@ -1429,7 +1293,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 131 Ayat 8",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-179"
+    "claim_id": "IMM-162"
   },
   {
     "claim": "Il Capo dell'Ufficio Immigrazione deve completare il rilascio del Permesso di Soggiorno Permanente entro un massimo di 3 giorni lavorativi dalla ricezione dell'approvazione o del rifiuto.",
@@ -1437,7 +1301,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 132 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-180"
+    "claim_id": "IMM-163"
   },
   {
     "claim": "Il Permesso di Soggiorno Permanente può essere prorogato per una durata illimitata.",
@@ -1445,7 +1309,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 133 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-181"
+    "claim_id": "IMM-164"
   },
   {
     "claim": "La proroga del Permesso di Soggiorno Permanente deve essere richiesta per iscritto.",
@@ -1453,7 +1317,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 133 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-182"
+    "claim_id": "IMM-165"
   },
   {
     "claim": "La richiesta di proroga del Permesso di Soggiorno Permanente può essere presentata al più presto 3 mesi prima e al più tardi il giorno lavorativo antecedente la data di scadenza.",
@@ -1461,7 +1325,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 133 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-183"
+    "claim_id": "IMM-166"
   },
   {
     "claim": "Una richiesta di proroga registrata prima della scadenza del Permesso di Soggiorno Permanente non costituisce violazione del soggiorno anche se completata dopo la data di scadenza.",
@@ -1469,7 +1333,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 133 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-184"
+    "claim_id": "IMM-167"
   },
   {
     "claim": "La proroga del Permesso di Soggiorno Permanente decorre dalla data di scadenza del permesso precedente.",
@@ -1477,7 +1341,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 133 Ayat 5",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-185"
+    "claim_id": "IMM-168"
   },
   {
     "claim": "La richiesta di proroga del Permesso di Soggiorno Permanente deve essere presentata dallo Straniero, dal Garante o dal Responsabile tramite applicazione allegando la documentazione prevista.",
@@ -1485,7 +1349,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 134 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-186"
+    "claim_id": "IMM-169"
   },
   {
     "claim": "Il Capo dell'Ufficio Regionale deve trasmettere la richiesta di proroga al Direttore Generale entro un massimo di 3 giorni lavorativi dalla ricezione della richiesta.",
@@ -1493,7 +1357,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 134 Ayat 5",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-187"
+    "claim_id": "IMM-170"
   },
   {
     "claim": "Se la documentazione è incompleta, il Capo dell'Ufficio Immigrazione deve restituire i documenti al primo ricevimento.",
@@ -1501,7 +1365,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 136 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-188"
+    "claim_id": "IMM-171"
   },
   {
     "claim": "Il rifiuto del Permesso di Soggiorno Permanente è disposto dal Capo dell'Ufficio Immigrazione o dall'Ufficiale designato.",
@@ -1509,7 +1373,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 137 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-189"
+    "claim_id": "IMM-172"
   },
   {
     "claim": "Il rifiuto del Permesso di Soggiorno Permanente è disposto quando la richiesta non soddisfa i requisiti previsti.",
@@ -1517,7 +1381,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 137 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-190"
+    "claim_id": "IMM-173"
   },
   {
     "claim": "Il garante o responsabile di uno straniero che desidera terminare la garanzia deve segnalare all'ufficio immigrazione che ha emesso il permesso di soggiorno permanente per estinguerlo.",
@@ -1525,7 +1389,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 142 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-191"
+    "claim_id": "IMM-174"
   },
   {
     "claim": "Il garante o responsabile è obbligato a far uscire lo straniero dal territorio indonesiano e a restituire il permesso di soggiorno permanente.",
@@ -1533,7 +1397,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 142 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-192"
+    "claim_id": "IMM-175"
   },
   {
     "claim": "Lo straniero è obbligato a lasciare il territorio indonesiano, restituire il permesso di soggiorno permanente e effettuare lo scioglimento della garanzia immigratoria.",
@@ -1541,7 +1405,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 142 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-193"
+    "claim_id": "IMM-176"
   },
   {
     "claim": "Lo straniero titolare di permesso di soggiorno permanente a durata illimitata è obbligato a segnalare ogni 5 anni all'ufficio immigrazione senza alcun costo.",
@@ -1549,7 +1413,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 144 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-194"
+    "claim_id": "IMM-177"
   },
   {
     "claim": "La segnalazione del permesso di soggiorno permanente deve essere effettuata attraverso applicazione allegando il passaporto valido e il permesso di soggiorno permanente.",
@@ -1557,7 +1421,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 144 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-195"
+    "claim_id": "IMM-178"
   },
   {
     "claim": "La segnalazione del permesso di soggiorno permanente deve essere effettuata non prima di 3 mesi e non oltre il giorno lavorativo prima della data di scadenza.",
@@ -1565,7 +1429,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 145 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-196"
+    "claim_id": "IMM-179"
   },
   {
     "claim": "La segnalazione presentata oltre la scadenza della data di segnalazione del permesso di soggiorno permanente richiede l'approvazione del Direttore Generale.",
@@ -1573,7 +1437,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 145 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-197"
+    "claim_id": "IMM-180"
   },
   {
     "claim": "La segnalazione del permesso di soggiorno permanente comprende verifiche sulla completezza dei requisiti, inserimento dati, biometria e rilascio di un numero di registrazione.",
@@ -1581,7 +1445,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 146 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-198"
+    "claim_id": "IMM-181"
   },
   {
     "claim": "Il capo dell'ufficio immigrazione deve trasmettere la segnalazione con considerazioni e raccomandazioni al capo ufficio regionale secondo procedure specifiche.",
@@ -1589,7 +1453,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-199"
+    "claim_id": "IMM-182"
   },
   {
     "claim": "La segnalazione deve essere trasmessa al capo ufficio regionale entro massimo 7 giorni lavorativi dalla ricezione.",
@@ -1597,7 +1461,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-200"
+    "claim_id": "IMM-183"
   },
   {
     "claim": "Il capo ufficio regionale deve trasmettere la segnalazione al Direttore Generale con considerazioni secondo procedure specifiche.",
@@ -1605,7 +1469,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-201"
+    "claim_id": "IMM-184"
   },
   {
     "claim": "La segnalazione deve essere trasmessa al Direttore Generale entro massimo 3 giorni lavorativi dalla ricezione della lettera di segnalazione.",
@@ -1613,7 +1477,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 5",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-202"
+    "claim_id": "IMM-185"
   },
   {
     "claim": "Il Direttore Generale deve approvare o rifiutare la segnalazione del permesso di soggiorno permanente secondo procedure specifiche.",
@@ -1621,7 +1485,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 6",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-203"
+    "claim_id": "IMM-186"
   },
   {
     "claim": "L'approvazione o il rifiuto della segnalazione deve essere comunicato al capo ufficio immigrazione entro massimo 5 giorni lavorativi dalla ricezione della richiesta.",
@@ -1629,7 +1493,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 7",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-204"
+    "claim_id": "IMM-187"
   },
   {
     "claim": "Il capo ufficio immigrazione deve completare la segnalazione approvata dal Direttore Generale attraverso l'emissione di numero di registrazione e il timbro di segnalazione.",
@@ -1637,7 +1501,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 8",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-205"
+    "claim_id": "IMM-188"
   },
   {
     "claim": "In caso di rifiuto della segnalazione, il capo ufficio immigrazione deve apporre un timbro di rimpatrio sul passaporto e ordinare allo straniero di lasciare l'Indonesia entro massimo 7 giorni.",
@@ -1645,7 +1509,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 10",
     "instrument_id": "Permenkumham-29-2021",
     "category": "sanction",
-    "claim_id": "IMM-206"
+    "claim_id": "IMM-189"
   },
   {
     "claim": "Quando la documentazione della segnalazione è completa, il capo ufficio immigrazione deve rilasciare una ricevuta di segnalazione.",
@@ -1653,7 +1517,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 148 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-207"
+    "claim_id": "IMM-190"
   },
   {
     "claim": "Se la documentazione della segnalazione è incompleta, il capo ufficio immigrazione deve restituirla immediatamente allo straniero con le motivazioni indicate.",
@@ -1661,7 +1525,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 148 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-208"
+    "claim_id": "IMM-191"
   },
   {
     "claim": "Lo straniero può essere escluso dall'obbligo di possedere un permesso di soggiorno in determinate circostanze.",
@@ -1669,7 +1533,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 149 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-209"
+    "claim_id": "IMM-192"
   },
   {
     "claim": "Lo straniero è escluso dall'obbligo di avere un permesso di soggiorno se sottoposto a detenzione per procedimenti investigativi, processuali o giudiziari, o detenuto in un carcere quando il permesso di soggiorno è scaduto.",
@@ -1677,7 +1541,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 149 Ayat 2 Huruf a",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-210"
+    "claim_id": "IMM-193"
   },
   {
     "claim": "Lo straniero può ottenere il permesso di soggiorno se vittima di tratta di persone nel territorio indonesiano.",
@@ -1685,7 +1549,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 149 Ayat 2 Huruf c",
     "instrument_id": "Permenkumham-29-2021",
     "category": "right",
-    "claim_id": "IMM-211"
+    "claim_id": "IMM-194"
   },
   {
     "claim": "Lo straniero assolto o non colpevole di reato può ricevere il ripristino del permesso di soggiorno precedente secondo i termini della normativa applicabile.",
@@ -1693,7 +1557,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 150 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "right",
-    "claim_id": "IMM-212"
+    "claim_id": "IMM-195"
   },
   {
     "claim": "Lo straniero senza permesso di soggiorno deve lasciare l'Indonesia entro massimo 7 giorni dal timbro di deportazione sul documento di viaggio.",
@@ -1701,7 +1565,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 150 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-213"
+    "claim_id": "IMM-196"
   },
   {
     "claim": "Lo straniero in libertà condizionata o assimilazione deve ottenere una decisione del Direttore Generale per l'esenzione dall'obbligo del permesso di soggiorno.",
@@ -1709,7 +1573,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 151 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-214"
+    "claim_id": "IMM-197"
   },
   {
     "claim": "La richiesta scritta per l'esenzione dal permesso di soggiorno deve includere passaporto, sentenza finale, documento d'identità del garante e lettere di garanzia.",
@@ -1717,7 +1581,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 151 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-215"
+    "claim_id": "IMM-198"
   },
   {
     "claim": "La decisione del Direttore Generale deve essere emessa entro massimo 7 giorni lavorativi dalla ricezione della richiesta completa.",
@@ -1725,7 +1589,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 151 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-216"
+    "claim_id": "IMM-199"
   },
   {
     "claim": "Lo straniero detenuto per 10 anni o più può ottenere permesso di risiedere fuori dal centro di detenzione e l'esenzione dal permesso di soggiorno su richiesta.",
@@ -1733,7 +1597,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "right",
-    "claim_id": "IMM-217"
+    "claim_id": "IMM-200"
   },
   {
     "claim": "La richiesta deve contenere l'indirizzo del detenuto, dichiarazione di obbligo di rendicontazione mensile e certificato di residenza dal capo del quartiere.",
@@ -1741,7 +1605,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-218"
+    "claim_id": "IMM-201"
   },
   {
     "claim": "Il detenuto deve rendicontare la propria ubicazione mensilmente e eventuali cambiamenti nello stato civile, lavoro o indirizzo.",
@@ -1749,7 +1613,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 2 Huruf b",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-219"
+    "claim_id": "IMM-202"
   },
   {
     "claim": "Il capo del centro di detenzione deve esaminare la richiesta entro massimo 3 giorni lavorativi dalla ricezione.",
@@ -1757,7 +1621,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-220"
+    "claim_id": "IMM-203"
   },
   {
     "claim": "Il capo dell'ufficio regionale deve presentare i risultati dell'esame al Direttore Generale entro massimo 7 giorni lavorativi.",
@@ -1765,7 +1629,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 6",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-221"
+    "claim_id": "IMM-204"
   },
   {
     "claim": "Il Direttore Generale deve esaminare e decidere entro massimo 5 giorni lavorativi dalla ricezione dei risultati dell'esame.",
@@ -1773,7 +1637,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 7",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-222"
+    "claim_id": "IMM-205"
   },
   {
     "claim": "Il capo del centro di detenzione deve emettere il permesso di risiedere fuori entro massimo 3 giorni lavorativi e aggiornare i dati.",
@@ -1781,7 +1645,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 8",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-223"
+    "claim_id": "IMM-206"
   },
   {
     "claim": "Lo straniero può ricevere un permesso di soggiorno di emergenza quando il suo permesso scade per ragioni umanitarie, calamità naturali o ordine governativo.",
@@ -1789,7 +1653,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 153 Ayat 1 e 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "right",
-    "claim_id": "IMM-224"
+    "claim_id": "IMM-207"
   },
   {
     "claim": "Il permesso di soggiorno di emergenza è valido per massimo 30 giorni e può essere prorogato per altri 30 giorni.",
@@ -1797,7 +1661,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 154",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-225"
+    "claim_id": "IMM-208"
   },
   {
     "claim": "Per motivi umanitari, il permesso di soggiorno di emergenza si richiede fornendo il passaporto e certificato medico ospedaliero o di un medico.",
@@ -1805,7 +1669,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 155 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-226"
+    "claim_id": "IMM-209"
   },
   {
     "claim": "Il capo dell'ufficio immigrazione deve timbrare il permesso di soggiorno di emergenza sul documento di viaggio dello straniero.",
@@ -1813,7 +1677,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 155 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-227"
+    "claim_id": "IMM-210"
   },
   {
     "claim": "Il capo dell'ufficio immigrazione deve aggiornare i dati dello straniero che ha ricevuto il permesso di soggiorno di emergenza.",
@@ -1821,7 +1685,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 155 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-228"
+    "claim_id": "IMM-211"
   },
   {
     "claim": "Per calamità naturali e non naturali, il permesso di soggiorno di emergenza è concesso per decisione del Direttore Generale.",
@@ -1829,7 +1693,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 156 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-229"
+    "claim_id": "IMM-212"
   },
   {
     "claim": "Il capo dell'ufficio immigrazione deve registrare i dati degli stranieri per il permesso di soggiorno in caso di calamità.",
@@ -1837,7 +1701,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 156 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-230"
+    "claim_id": "IMM-213"
   },
   {
     "claim": "La registrazione dei dati per calamità include passaporto, visto e permesso di soggiorno in possesso dello straniero.",
@@ -1845,7 +1709,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 156 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-231"
+    "claim_id": "IMM-214"
   },
   {
     "claim": "L'ufficio immigrazione deve completare la richiesta attraverso il controllo della completezza dei requisiti, l'inserimento dati, la scansione dei fascicoli e la stampa del ricevimento.",
@@ -1853,7 +1717,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-232"
+    "claim_id": "IMM-215"
   },
   {
     "claim": "Lo straniero deve versare le spese di immigrazione secondo le norme vigenti.",
@@ -1861,7 +1725,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "fee",
-    "claim_id": "IMM-233"
+    "claim_id": "IMM-216"
   },
   {
     "claim": "L'ufficio immigrazione deve condurre interviste, identificazione, verifica dati e raccolta dati biometrici foto e impronte digitali.",
@@ -1869,7 +1733,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-234"
+    "claim_id": "IMM-217"
   },
   {
     "claim": "Il controllo di immigrazione sul campo è facoltativo e può essere effettuato secondo la valutazione del Capo Ufficio Immigrazione.",
@@ -1877,7 +1741,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-235"
+    "claim_id": "IMM-218"
   },
   {
     "claim": "Se non è richiesto il controllo di immigrazione sul campo, la richiesta deve essere presentata entro un massimo di 3 giorni lavorativi dalla ricezione completa della richiesta.",
@@ -1885,7 +1749,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-236"
+    "claim_id": "IMM-219"
   },
   {
     "claim": "Se è richiesto il controllo di immigrazione sul campo, la richiesta deve essere presentata entro un massimo di 4 giorni lavorativi dalla ricezione completa della richiesta.",
@@ -1893,7 +1757,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-237"
+    "claim_id": "IMM-220"
   },
   {
     "claim": "Il controllo di immigrazione sul campo è obbligatorio se la richiesta si basa su matrimonio misto.",
@@ -1901,7 +1765,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 4",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-238"
+    "claim_id": "IMM-221"
   },
   {
     "claim": "Il Capo Ufficio Regionale deve verificare la completezza e valutare i requisiti della richiesta di cambio di status del Permesso di Soggiorno Visitatori.",
@@ -1909,7 +1773,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 184 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-239"
+    "claim_id": "IMM-222"
   },
   {
     "claim": "La richiesta di approvazione del cambio di status deve essere presentata entro un massimo di 3 giorni lavorativi dalla ricezione della richiesta tramite il Sistema di Gestione delle Informazioni Immigrazione.",
@@ -1917,7 +1781,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 184 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-240"
+    "claim_id": "IMM-223"
   },
   {
     "claim": "Se la richiesta non può essere presa in considerazione, il Capo Divisione Immigrazione deve respingere la richiesta.",
@@ -1925,7 +1789,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 185 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-241"
+    "claim_id": "IMM-224"
   },
   {
     "claim": "Il rigetto deve essere comunicato al Capo Ufficio Immigrazione con le ragioni del rigetto entro un massimo di 3 giorni lavorativi dalla ricezione della richiesta.",
@@ -1933,7 +1797,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 185 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-242"
+    "claim_id": "IMM-225"
   },
   {
     "claim": "Il Direttore Generale deve completare la richiesta di cambio di status entro un massimo di 5 giorni lavorativi.",
@@ -1941,7 +1805,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 186 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-243"
+    "claim_id": "IMM-226"
   },
   {
     "claim": "Se la richiesta non può essere presa in considerazione, il Direttore Generale deve respingere la richiesta.",
@@ -1949,7 +1813,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 187 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-244"
+    "claim_id": "IMM-227"
   },
   {
     "claim": "Il Capo Ufficio Immigrazione deve consegnare il Passaporto e la Decisione del Direttore Generale allo straniero entro un massimo di 3 giorni lavorativi.",
@@ -1957,7 +1821,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 188",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-245"
+    "claim_id": "IMM-228"
   },
   {
     "claim": "Se la richiesta è rigettata, il Capo Ufficio Immigrazione deve applicare il timbro di rimpatrio e ordinare allo straniero di lasciare l'Indonesia entro un massimo di 7 giorni.",
@@ -1965,7 +1829,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 189",
     "instrument_id": "Permenkumham-29-2021",
     "category": "sanction",
-    "claim_id": "IMM-246"
+    "claim_id": "IMM-229"
   },
   {
     "claim": "La durata del Permesso di Soggiorno Limitato è determinata secondo la Decisione del Direttore Generale.",
@@ -1973,7 +1837,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 190 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-247"
+    "claim_id": "IMM-230"
   },
   {
     "claim": "La durata del Permesso di Soggiorno Limitato non può superare la validità del Passaporto nazionale dello straniero.",
@@ -1981,7 +1845,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 190 Ayat 3",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-248"
+    "claim_id": "IMM-231"
   },
   {
     "claim": "La durata del Permesso di Soggiorno Limitato per un bambino nato in Indonesia è determinata secondo la durata del Permesso di Soggiorno Limitato del padre e/o della madre.",
@@ -1989,7 +1853,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 191",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-249"
+    "claim_id": "IMM-232"
   },
   {
     "claim": "Il cambio di status da Permesso di Soggiorno Limitato a Permesso di Soggiorno Permanente può essere concesso al titolare del Permesso di Soggiorno Limitato.",
@@ -1997,7 +1861,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 192 Ayat 1",
     "instrument_id": "Permenkumham-29-2021",
     "category": "right",
-    "claim_id": "IMM-250"
+    "claim_id": "IMM-233"
   },
   {
     "claim": "Il cambio di status è escluso per i titolari di Permesso di Soggiorno Limitato concesso per attività nel settore acqueo, per motivi di pubblica utilità, per massimo 90 giorni o all'arrivo per massimo 180 giorni.",
@@ -2005,7 +1869,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 192 Ayat 2",
     "instrument_id": "Permenkumham-29-2021",
     "category": "prohibition",
-    "claim_id": "IMM-251"
+    "claim_id": "IMM-234"
   },
   {
     "claim": "Il cambio di status include religiosi, lavoratori, investitori, titolari di strutture per casa vacanzionale, coniugi che si uniscono al titolare del Permesso Permanente, minori non coniugati che si uniscono ai genitori titolari del Permesso Permanente.",
@@ -2013,7 +1877,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 193",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-252"
+    "claim_id": "IMM-235"
   },
   {
     "claim": "La lettera e deve essere eseguita.",
@@ -2021,7 +1885,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 215 Ayat (1)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-253"
+    "claim_id": "IMM-236"
   },
   {
     "claim": "Il Capo della Divisione Immigrazione deve elaborare la richiesta entro un massimo di 3 giorni lavorativi.",
@@ -2029,7 +1893,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 215 Ayat (1)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-254"
+    "claim_id": "IMM-237"
   },
   {
     "claim": "La richiesta conforme deve essere sottoposta al Direttore Generale attraverso fasi specifiche di verifica e trasmissione.",
@@ -2037,7 +1901,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 215 Ayat (2)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-255"
+    "claim_id": "IMM-238"
   },
   {
     "claim": "Se la richiesta non è idonea, deve essere emesso un rifiuto motivato dal Capo della Divisione Immigrazione.",
@@ -2045,7 +1909,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 216",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-256"
+    "claim_id": "IMM-239"
   },
   {
     "claim": "Il Direttore Generale deve elaborare la richiesta entro un massimo di 5 giorni lavorativi.",
@@ -2053,7 +1917,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 217 Ayat (1)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-257"
+    "claim_id": "IMM-240"
   },
   {
     "claim": "Se conforme, il Direttore Generale deve emettere un decreto di approvazione del cambio di status da Permesso Temporaneo a Permesso Permanente.",
@@ -2061,7 +1925,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 217 Ayat (2)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-258"
+    "claim_id": "IMM-241"
   },
   {
     "claim": "Se la richiesta non è idonea, il Direttore Generale deve emettere un rifiuto motivato al Capo Ufficio Immigrazione.",
@@ -2069,7 +1933,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 218",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-259"
+    "claim_id": "IMM-242"
   },
   {
     "claim": "Il Capo Ufficio Immigrazione deve notificare la decisione al richiedente entro 3 giorni lavorativi.",
@@ -2077,7 +1941,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 219 Ayat (1)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-260"
+    "claim_id": "IMM-243"
   },
   {
     "claim": "Il richiedente deve presentarsi in Ufficio Immigrazione entro un massimo di 5 giorni lavorativi dalla ricezione della notifica.",
@@ -2085,7 +1949,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 219 Ayat (2)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-261"
+    "claim_id": "IMM-244"
   },
   {
     "claim": "Se approvato, il cambio di status da Permesso Temporaneo a Permanente deve completarsi entro 3 giorni lavorativi.",
@@ -2093,7 +1957,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 219 Ayat (4)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-262"
+    "claim_id": "IMM-245"
   },
   {
     "claim": "L'estero rifiutato con ordine di rimpatrio deve lasciare il territorio indonesiano entro 7 giorni.",
@@ -2101,7 +1965,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 220 Ayat (2)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-263"
+    "claim_id": "IMM-246"
   },
   {
     "claim": "Alcuni stranieri devono avere un Garante che garantisca la loro permanenza nel territorio indonesiano.",
@@ -2109,7 +1973,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 221 Ayat (1)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-264"
+    "claim_id": "IMM-247"
   },
   {
     "claim": "Non è richiesto un Garante per stranieri coniugati con cittadini indonesiani.",
@@ -2117,7 +1981,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 221 Ayat (2) Huruf a",
     "instrument_id": "Permenkumham-29-2021",
     "category": "prohibition",
-    "claim_id": "IMM-265"
+    "claim_id": "IMM-248"
   },
   {
     "claim": "Non è richiesto un Garante per investitori stranieri che investono in Indonesia.",
@@ -2125,7 +1989,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 221 Ayat (2) Huruf b",
     "instrument_id": "Permenkumham-29-2021",
     "category": "prohibition",
-    "claim_id": "IMM-266"
+    "claim_id": "IMM-249"
   },
   {
     "claim": "Lo straniero coniugato con cittadino indonesiano deve avere un Responsabile, che sia il coniuge o un genitore.",
@@ -2133,7 +1997,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 222",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-267"
+    "claim_id": "IMM-250"
   },
   {
     "claim": "L'investitore straniero deve versare una garanzia finanziaria in sostituzione del Garante.",
@@ -2141,7 +2005,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 224 Ayat (1)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-268"
+    "claim_id": "IMM-251"
   },
   {
     "claim": "La garanzia immigratoria deve essere versata su un conto di deposito presso la Direzione Generale.",
@@ -2149,7 +2013,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 224 Ayat (2)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-269"
+    "claim_id": "IMM-252"
   },
   {
     "claim": "La garanzia immigratoria deve essere versata prima che lo straniero entri nel territorio indonesiano.",
@@ -2157,7 +2021,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (1)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "obligation",
-    "claim_id": "IMM-270"
+    "claim_id": "IMM-253"
   },
   {
     "claim": "La garanzia immigratoria può essere utilizzata per il rimpatrio dello straniero.",
@@ -2165,7 +2029,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (2) Huruf a",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-271"
+    "claim_id": "IMM-254"
   },
   {
     "claim": "La garanzia immigratoria può essere utilizzata per i costi dello straniero che rimane dopo la scadenza del permesso, fino a 60 giorni.",
@@ -2173,7 +2037,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (2) Huruf b",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-272"
+    "claim_id": "IMM-255"
   },
   {
     "claim": "La garanzia immigratoria può essere utilizzata per il pagamento di altri costi relativi agli obblighi immigrativi.",
@@ -2181,7 +2045,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (2) Huruf c",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-273"
+    "claim_id": "IMM-256"
   },
   {
     "claim": "La durata della garanzia immigratoria coincide con la durata del permesso di soggiorno dello straniero.",
@@ -2189,7 +2053,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (3)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-274"
+    "claim_id": "IMM-257"
   },
   {
     "claim": "Se il permesso scade e la garanzia non è utilizzata, deve essere restituita allo straniero.",
@@ -2197,7 +2061,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (4)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-275"
+    "claim_id": "IMM-258"
   },
   {
     "claim": "Lo straniero può richiedere il prelievo della garanzia dopo aver ottenuto il permesso di lasciare l'Indonesia.",
@@ -2205,7 +2069,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (5)",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-276"
+    "claim_id": "IMM-259"
   },
   {
     "claim": "Lo straniero versare la garanzia immigratoria su un conto designato.",
@@ -2213,7 +2077,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 226",
     "instrument_id": "Permenkumham-29-2021",
     "category": "procedure",
-    "claim_id": "IMM-277"
+    "claim_id": "IMM-260"
   },
   {
     "claim": "L'importo della garanzia immigratoria è fissato dal Ministro.",
@@ -2221,7 +2085,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 227",
     "instrument_id": "Permenkumham-29-2021",
     "category": "fee",
-    "claim_id": "IMM-278"
+    "claim_id": "IMM-261"
   },
   {
     "claim": "I permessi di soggiorno temporaneo e permanente non per motivi di lavoro come turista anziano straniero già emessi rimangono validi come permessi di soggiorno per stranieri nel contesto di seconda casa.",
@@ -2229,7 +2093,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 229",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-279"
+    "claim_id": "IMM-262"
   },
   {
     "claim": "Diversi regolamenti ministeriali precedenti relativi a visti e permessi di soggiorno sono abrogati e cessano di avere effetto.",
@@ -2237,7 +2101,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 230",
     "instrument_id": "Permenkumham-29-2021",
     "category": "rule",
-    "claim_id": "IMM-280"
+    "claim_id": "IMM-263"
   },
   {
     "claim": "Questo regolamento ministeriale entra in vigore alla data della sua pubblicazione nella Gazzetta Ufficiale della Repubblica Indonesiana.",
@@ -2245,7 +2109,7 @@
     "pasal_ref": "Permenkumham-29-2021 Pasal 231",
     "instrument_id": "Permenkumham-29-2021",
     "category": "duration",
-    "claim_id": "IMM-281"
+    "claim_id": "IMM-264"
   },
   {
     "claim": "Lo straniero è definito come qualsiasi persona che non possiede la cittadinanza indonesiana.",
@@ -2253,7 +2117,7 @@
     "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 3 (sebagaimana diubah oleh Permenkumham-11-2024)",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-282"
+    "claim_id": "IMM-265"
   },
   {
     "claim": "L'autorizzazione di rientro è un permesso scritto rilasciato dall'ufficiale dell'immigrazione agli stranieri titolari di permesso di soggiorno temporaneo o permanente.",
@@ -2261,7 +2125,7 @@
     "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 7 (sebagaimana diubah oleh Permenkumham-11-2024)",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-283"
+    "claim_id": "IMM-266"
   },
   {
     "claim": "Il visto è una comunicazione scritta rilasciata da funzionari autorizzati che consente i viaggi verso il territorio indonesiano e costituisce il fondamento per l'autorizzazione di soggiorno.",
@@ -2269,7 +2133,7 @@
     "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 12 (sebagaimana diubah oleh Permenkumham-11-2024)",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-284"
+    "claim_id": "IMM-267"
   },
   {
     "claim": "L'autorizzazione di soggiorno per visita è un permesso concesso agli stranieri per soggiorni di breve durata nel territorio indonesiano per motivi di visita.",
@@ -2277,7 +2141,7 @@
     "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 14 (sebagaimana diubah oleh Permenkumham-11-2024)",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-285"
+    "claim_id": "IMM-268"
   },
   {
     "claim": "L'autorizzazione di soggiorno temporaneo è un permesso rilasciato agli stranieri per soggiorni di durata limitata nel territorio indonesiano.",
@@ -2285,7 +2149,7 @@
     "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 15 (sebagaimana diubah oleh Permenkumham-11-2024)",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-286"
+    "claim_id": "IMM-269"
   },
   {
     "claim": "L'autorizzazione di soggiorno temporaneo per acque è un permesso rilasciato a capitani, marinai o esperti stranieri che lavorano su navi o installazioni nel territorio indonesiano.",
@@ -2293,7 +2157,7 @@
     "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 17 (sebagaimana diubah oleh Permenkumham-11-2024)",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-287"
+    "claim_id": "IMM-270"
   },
   {
     "claim": "Un garante è una persona o una società responsabile della permanenza e delle attività dello straniero nel territorio indonesiano.",
@@ -2301,7 +2165,7 @@
     "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 18 (sebagaimana diubah oleh Permenkumham-11-2024)",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-288"
+    "claim_id": "IMM-271"
   },
   {
     "claim": "La garanzia di immigrazione è denaro o altra forma come sostituto del garante.",
@@ -2309,7 +2173,7 @@
     "pasal_ref": "Permenkumham-11-2024 Definisi 19",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-289"
+    "claim_id": "IMM-272"
   },
   {
     "claim": "Il responsabile deve essere coniuge, genitore o figlio di età pari o superiore a 21 anni, cittadino indonesiano.",
@@ -2317,7 +2181,7 @@
     "pasal_ref": "Permenkumham-11-2024 Definisi 21",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-290"
+    "claim_id": "IMM-273"
   },
   {
     "claim": "La dichiarazione di integrazione è una dichiarazione dello straniero al Governo per ottenere il permesso di soggiorno permanente.",
@@ -2325,7 +2189,7 @@
     "pasal_ref": "Permenkumham-11-2024 Definisi 22",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-291"
+    "claim_id": "IMM-274"
   },
   {
     "claim": "Il visto di visita deve essere utilizzato entro 90 giorni dalla data di emissione.",
@@ -2333,7 +2197,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 7 Ayat 1",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-292"
+    "claim_id": "IMM-275"
   },
   {
     "claim": "Il visto non utilizzato entro il termine prescritto è dichiarato non valido.",
@@ -2341,7 +2205,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 7 Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "sanction",
-    "claim_id": "IMM-293"
+    "claim_id": "IMM-276"
   },
   {
     "claim": "Il visto di visita pluriennale ha una validità massima di 10 anni dalla data di emissione.",
@@ -2349,7 +2213,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 7 Ayat 4",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-294"
+    "claim_id": "IMM-277"
   },
   {
     "claim": "Il visto di visita pluriennale è disponibile in 6 durate: 60 giorni, 180 giorni, 1 anno, 2 anni, 5 anni, 10 anni.",
@@ -2357,7 +2221,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 7 Ayat 5",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-295"
+    "claim_id": "IMM-278"
   },
   {
     "claim": "Il visto di visita adesivo è emesso per visti di una sola volta richiesti presso rappresentanze estere.",
@@ -2365,7 +2229,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 5B Ayat 1 Huruf a",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-296"
+    "claim_id": "IMM-279"
   },
   {
     "claim": "Il visto adesivo all'arrivo è emesso dopo l'ottenimento del buono visto.",
@@ -2373,7 +2237,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 5B Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-297"
+    "claim_id": "IMM-280"
   },
   {
     "claim": "Il visto elettronico è emesso per richieste presso la Direzione generale dell'immigrazione o al controllo all'arrivo.",
@@ -2381,7 +2245,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 5C",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-298"
+    "claim_id": "IMM-281"
   },
   {
     "claim": "Il visto di visita pluriennale per la prima volta è rilasciato per durate massime di 5 anni.",
@@ -2389,7 +2253,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 16 Ayat 1",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-299"
+    "claim_id": "IMM-282"
   },
   {
     "claim": "Per ottenere il visto pluriennale di 10 anni, lo straniero deve aver precedentemente entrato l'Indonesia con visto di visita.",
@@ -2397,7 +2261,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 16 Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-300"
+    "claim_id": "IMM-283"
   },
   {
     "claim": "Il visto e il buono visto devono avere specifiche tecniche di sicurezza generale e speciale.",
@@ -2405,7 +2269,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 5D Ayat 1",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-301"
+    "claim_id": "IMM-284"
   },
   {
     "claim": "Le specifiche di sicurezza generale devono contenere standard di dimensioni, materiale, stampa, design e caratteristiche visibili ad occhio nudo.",
@@ -2413,7 +2277,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 5D Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-302"
+    "claim_id": "IMM-285"
   },
   {
     "claim": "Le specifiche di sicurezza speciale sono riconoscibili solo da ufficiali autorizzati con strumenti ausiliari.",
@@ -2421,7 +2285,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 5D Ayat 3",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-303"
+    "claim_id": "IMM-286"
   },
   {
     "claim": "Il visto di visita in forma adesiva è emesso al punto di controllo dell'immigrazione per visti all'arrivo.",
@@ -2429,7 +2293,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 5B Ayat 1 Huruf b",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-304"
+    "claim_id": "IMM-287"
   },
   {
     "claim": "Il visto di visita pluriennale può essere concesso per attività turistiche, familiari, commerciali, mediche e altre specifiche.",
@@ -2437,7 +2301,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 15 Ayat 1",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-305"
+    "claim_id": "IMM-288"
   },
   {
     "claim": "Il rilascio del visto di visita pluriennale è effettuato da ufficiali autorizzati della Direzione generale dell'immigrazione.",
@@ -2445,7 +2309,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 15 Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-306"
+    "claim_id": "IMM-289"
   },
   {
     "claim": "Gli stranieri che investono capitale estero possono soggiornare per un massimo di 2 anni.",
@@ -2453,7 +2317,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf e Angka 1",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-307"
+    "claim_id": "IMM-290"
   },
   {
     "claim": "Gli stranieri nella categoria investimento estero possono soggiornare per un massimo di 5 anni.",
@@ -2461,7 +2325,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf e Angka 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-308"
+    "claim_id": "IMM-291"
   },
   {
     "claim": "Gli stranieri nella categoria investimento estero possono soggiornare per un massimo di 10 anni.",
@@ -2469,7 +2333,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf e Angka 3",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-309"
+    "claim_id": "IMM-292"
   },
   {
     "claim": "I figli biologici non sposati sotto i 18 anni devono riunirsi con genitori titolari di Permesso Soggiorno Limitato o Permanente.",
@@ -2477,7 +2341,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf h Angka 5",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-310"
+    "claim_id": "IMM-293"
   },
   {
     "claim": "I genitori stranieri possono riunirsi con figli cittadini indonesiani di 21 anni o più.",
@@ -2485,7 +2349,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf h Angka 7",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-311"
+    "claim_id": "IMM-294"
   },
   {
     "claim": "I rientri dei discendenti di ex cittadini indonesiani fino al secondo grado sono consentiti.",
@@ -2493,7 +2357,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf i Angka 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-312"
+    "claim_id": "IMM-295"
   },
   {
     "claim": "Stranieri classificati come casa vacanza devono avere almeno 55 anni di età.",
@@ -2501,7 +2365,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf j Angka 4",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-313"
+    "claim_id": "IMM-296"
   },
   {
     "claim": "Il visto per lavoro-vacanza è concesso solo da Paesi con accordi bilaterali con l'Indonesia.",
@@ -2509,7 +2373,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 3",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-314"
+    "claim_id": "IMM-297"
   },
   {
     "claim": "La domanda di visto per soggiorno limitato funge contemporaneamente da domanda di Permesso Soggiorno Limitato e Rientro.",
@@ -2517,7 +2381,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 6",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-315"
+    "claim_id": "IMM-298"
   },
   {
     "claim": "Determinati visti per riunificazione familiare non sono concedibili per la riunificazione con titolari di visto famiglia.",
@@ -2525,7 +2389,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 7",
     "instrument_id": "Permenkumham-11-2024",
     "category": "prohibition",
-    "claim_id": "IMM-316"
+    "claim_id": "IMM-299"
   },
   {
     "claim": "Il passaporto deve essere valido per almeno 6 mesi al momento della domanda.",
@@ -2533,7 +2397,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 1 Huruf a",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-317"
+    "claim_id": "IMM-300"
   },
   {
     "claim": "È richiesta prova di disponibilità fondi di sussistenza per il richiedente e la sua famiglia.",
@@ -2541,7 +2405,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 1 Huruf c",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-318"
+    "claim_id": "IMM-301"
   },
   {
     "claim": "È richiesta una fotografia colore recente per la domanda.",
@@ -2549,7 +2413,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 1 Huruf d",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-319"
+    "claim_id": "IMM-302"
   },
   {
     "claim": "Per investitori di capitale estero è richiesta proprietà di azioni di almeno 10 miliardi di rupiah.",
@@ -2557,7 +2421,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 2 Huruf a",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-320"
+    "claim_id": "IMM-303"
   },
   {
     "claim": "È richiesta Decisione Ministeriale per l'approvazione della costituzione di una società a responsabilità limitata.",
@@ -2565,7 +2429,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 2 Huruf b",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-321"
+    "claim_id": "IMM-304"
   },
   {
     "claim": "È richiesto l'estratto conto della società degli ultimi 2 mesi.",
@@ -2573,7 +2437,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 2 Huruf c",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-322"
+    "claim_id": "IMM-305"
   },
   {
     "claim": "L'importo dei fondi di sussistenza è stabilito dal Direttore Generale.",
@@ -2581,7 +2445,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 3",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-323"
+    "claim_id": "IMM-306"
   },
   {
     "claim": "L'importo minimo di proprietà azionaria è stabilito dal Direttore Generale previa consultazione.",
@@ -2589,7 +2453,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 4",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-324"
+    "claim_id": "IMM-307"
   },
   {
     "claim": "Se il requisito di proprietà azionaria non è soddisfatto, lo straniero può richiedere il visto per lavoro secondo la normativa sul lavoro.",
@@ -2597,7 +2461,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 5",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-325"
+    "claim_id": "IMM-308"
   },
   {
     "claim": "Se la società è costituita da meno di 2 mesi, l'estratto conto deve essere presentato entro 90 giorni dal rilascio del permesso.",
@@ -2605,7 +2469,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 6",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-326"
+    "claim_id": "IMM-309"
   },
   {
     "claim": "Per il visto di soggiorno limitato di 5 anni è richiesta prova di garanzia immigratoria.",
@@ -2613,7 +2477,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 39 Ayat 1 Huruf b",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-327"
+    "claim_id": "IMM-310"
   },
   {
     "claim": "Gli investitori stranieri devono impegnare investimenti di almeno 2,5 milioni di dollari entro 90 giorni.",
@@ -2621,7 +2485,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 39 Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-328"
+    "claim_id": "IMM-311"
   },
   {
     "claim": "Lo straniero investor individuale che intende costituire una società in Indonesia deve impegnarvisi con un capitale minimo di USD 5.000.000, da realizzarsi entro 90 giorni dalla concessione del Permesso di Soggiorno Limitato.",
@@ -2629,7 +2493,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-329"
+    "claim_id": "IMM-312"
   },
   {
     "claim": "Lo straniero investor individuale che non intende costituire una società in Indonesia deve impegnarsi a comprare obbligazioni governative indonesiane per almeno USD 700.000.",
@@ -2637,7 +2501,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 3 Huruf a",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-330"
+    "claim_id": "IMM-313"
   },
   {
     "claim": "Lo straniero investor individuale che non intende costituire una società in Indonesia deve impegnarsi a comprare azioni in una società pubblica indonesiana per almeno USD 700.000.",
@@ -2645,7 +2509,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 3 Huruf b",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-331"
+    "claim_id": "IMM-314"
   },
   {
     "claim": "Lo straniero investor individuale che non intende costituire una società in Indonesia deve impegnarsi a comprare fondi comuni di investimento in una società pubblica indonesiana per almeno USD 700.000.",
@@ -2653,7 +2517,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 3 Huruf c",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-332"
+    "claim_id": "IMM-315"
   },
   {
     "claim": "Lo straniero investor individuale che non intende costituire una società in Indonesia deve impegnarsi a comprare un edificio residenziale o appartamento del valore minimo di USD 1.000.000.",
@@ -2661,7 +2525,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 3 Huruf d",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-333"
+    "claim_id": "IMM-316"
   },
   {
     "claim": "Gli impegni di investimento di cui agli articoli 40(2), 40(3) e relativi devono essere adempiuti entro il termine massimo di 90 giorni dal rilascio del Permesso di Soggiorno Limitato.",
@@ -2669,7 +2533,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 3",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-334"
+    "claim_id": "IMM-317"
   },
   {
     "claim": "Lo straniero che ricopre una carica di amministratore o consigliere in una filiale o società controllata straniera in Indonesia deve impegnarsi a un investimento minimo di USD 50.000.000.",
@@ -2677,7 +2541,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 4",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-335"
+    "claim_id": "IMM-318"
   },
   {
     "claim": "Lo straniero deve fornire prova di disporre di mezzi di sussistenza per sé e per la propria famiglia durante il soggiorno in Indonesia.",
@@ -2685,7 +2549,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 1 Huruf c",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-336"
+    "claim_id": "IMM-319"
   },
   {
     "claim": "Lo straniero deve fornire documenti che spieghino il motivo e lo scopo del suo arrivo in Indonesia.",
@@ -2693,7 +2557,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 1 Huruf e",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-337"
+    "claim_id": "IMM-320"
   },
   {
     "claim": "La domanda di visto di soggiorno limitato per investitori stranieri deve essere presentata tramite applicazione al Direttore Generale dell'Immigrazione.",
@@ -2701,7 +2565,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 1",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-338"
+    "claim_id": "IMM-321"
   },
   {
     "claim": "Lo straniero investor individuale che intende costituire una società in Indonesia deve presentare prova di garanzia immobiliare sotto forma di dichiarazione di impegno.",
@@ -2709,7 +2573,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "document",
-    "claim_id": "IMM-339"
+    "claim_id": "IMM-322"
   },
   {
     "claim": "Lo straniero che ricopre una carica di amministratore o consigliere deve impegnarsi entro 90 giorni dal rilascio del Permesso di Soggiorno Limitato.",
@@ -2717,7 +2581,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 4",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-340"
+    "claim_id": "IMM-323"
   },
   {
     "claim": "La richiesta di permesso di soggiorno per visitatori può essere presentata da stranieri titolari di permesso di soggiorno per visitatori derivante da visto di ingresso, permesso di soggiorno limitato, o permesso di soggiorno permanente.",
@@ -2725,7 +2589,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 94A Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-341"
+    "claim_id": "IMM-324"
   },
   {
     "claim": "La richiesta deve essere presentata tramite applicazione allegando passaporto valido, permesso di soggiorno, prova di garanzia se applicabile, e dichiarazione dei motivi.",
@@ -2733,7 +2597,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 94A Ayat 3",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-342"
+    "claim_id": "IMM-325"
   },
   {
     "claim": "La richiesta deve essere presentata entro 3 giorni prima della scadenza del permesso di soggiorno attuale.",
@@ -2741,7 +2605,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 94A Ayat 4",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-343"
+    "claim_id": "IMM-326"
   },
   {
     "claim": "Se la richiesta è presentata e il pagamento effettuato prima della scadenza, non è considerato overstay anche se il processo si conclude dopo la scadenza.",
@@ -2749,7 +2613,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 94A Ayat 5",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-344"
+    "claim_id": "IMM-327"
   },
   {
     "claim": "Il procedimento di concessione del permesso di soggiorno per visitatori comprende ricezione della domanda, verifica del pagamento, approvazione e rilascio del permesso.",
@@ -2757,7 +2621,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 94B Ayat 1",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-345"
+    "claim_id": "IMM-328"
   },
   {
     "claim": "Il permesso di soggiorno deve essere completato entro 3 giorni lavorativi dal ricevimento del pagamento.",
@@ -2765,7 +2629,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 94B Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-346"
+    "claim_id": "IMM-329"
   },
   {
     "claim": "Il permesso di soggiorno è inviato elettronicamente allo straniero, garante o responsabile.",
@@ -2773,7 +2637,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 94B Ayat 3",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-347"
+    "claim_id": "IMM-330"
   },
   {
     "claim": "Il rinnovo del permesso di soggiorno per visitatori può essere concesso a stranieri con visto per una sola entrata, più entrate, o ingresso al momento dell'arrivo.",
@@ -2781,7 +2645,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 1",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-348"
+    "claim_id": "IMM-331"
   },
   {
     "claim": "Il rinnovo per cittadini di paesi con visto di chiamata richiede l'approvazione del Direttore Generale o ufficiale immigrazione designato.",
@@ -2789,7 +2653,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-349"
+    "claim_id": "IMM-332"
   },
   {
     "claim": "Il rinnovo per visto singolo o multiplo è concesso per massimo 60 giorni per rinnovo, con permanenza totale massima di 180 giorni in Indonesia.",
@@ -2797,7 +2661,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 3",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-350"
+    "claim_id": "IMM-333"
   },
   {
     "claim": "Il rinnovo per pre-investimento è concesso per 180 giorni per rinnovo, con permanenza totale massima di 12 mesi in Indonesia.",
@@ -2805,7 +2669,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 4",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-351"
+    "claim_id": "IMM-334"
   },
   {
     "claim": "Il rinnovo per incarico governativo è concesso per 60 giorni per rinnovo, con permanenza totale massima di 12 mesi in Indonesia.",
@@ -2813,7 +2677,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 5",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-352"
+    "claim_id": "IMM-335"
   },
   {
     "claim": "Il rinnovo per tirocinio è concesso per 180 giorni per rinnovo, con permanenza totale massima di 12 mesi in Indonesia.",
@@ -2821,7 +2685,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 6",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-353"
+    "claim_id": "IMM-336"
   },
   {
     "claim": "Il rinnovo per visto di ingresso al momento dell'arrivo è concesso per massimo 30 giorni per rinnovo, con permanenza totale massima di 60 giorni in Indonesia.",
@@ -2829,7 +2693,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 7",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-354"
+    "claim_id": "IMM-337"
   },
   {
     "claim": "In applicazione di reciprocità basata su accordo scritto, il rinnovo può essere concesso per massimo 180 giorni con permanenza totale massima di 12 mesi.",
@@ -2837,7 +2701,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 8",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-355"
+    "claim_id": "IMM-338"
   },
   {
     "claim": "Il rinnovo del permesso di soggiorno per visitatori è gestito dal Capo Ufficio Immigrazione o ufficiale designato sulla base di richiesta.",
@@ -2845,7 +2709,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 97 Ayat 1",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-356"
+    "claim_id": "IMM-339"
   },
   {
     "claim": "La richiesta di rinnovo può essere presentata al più presto 14 giorni e al più tardi prima della scadenza del permesso.",
@@ -2853,7 +2717,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 97 Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-357"
+    "claim_id": "IMM-340"
   },
   {
     "claim": "Il rinnovo decorre dal primo giorno successivo alla data di scadenza del permesso di soggiorno per visitatori.",
@@ -2861,7 +2725,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 97 Ayat 4",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-358"
+    "claim_id": "IMM-341"
   },
   {
     "claim": "In applicazione di reciprocità basata su accordo, la richiesta di rinnovo può essere presentata al più presto dal giorno di rilascio del timbro di ingresso e al più tardi prima della scadenza.",
@@ -2869,7 +2733,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 97 Ayat 5",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-359"
+    "claim_id": "IMM-342"
   },
   {
     "claim": "Il permesso di soggiorno limitato è concesso a stranieri che entrano in Indonesia con visto di soggiorno limitato.",
@@ -2877,7 +2741,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 101 Ayat 1",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-360"
+    "claim_id": "IMM-343"
   },
   {
     "claim": "Il permesso di soggiorno limitato può anche essere concesso a figli nati in Indonesia da genitori titolari di permesso di soggiorno limitato, e a comandanti, equipaggi, esperti stranieri su navi.",
@@ -2885,7 +2749,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 101 Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-361"
+    "claim_id": "IMM-344"
   },
   {
     "claim": "Il permesso di soggiorno limitato può essere concesso anche mediante cambio di status dal permesso di soggiorno per visitatori.",
@@ -2893,7 +2757,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 101 Ayat 3",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-362"
+    "claim_id": "IMM-345"
   },
   {
     "claim": "Il permesso di soggiorno limitato è concesso per attività quali: esperto, lavoratore, lavoro su navi/installazioni, religioso, investimento estero per 2 o 5 anni.",
@@ -2901,7 +2765,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal 101 Ayat 4",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-363"
+    "claim_id": "IMM-346"
   },
   {
     "claim": "Un garante individuale di una persona straniera deve essere un cittadino indonesiano.",
@@ -2909,7 +2773,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal (3)",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-364"
+    "claim_id": "IMM-347"
   },
   {
     "claim": "L'obbligo di avere un garante è esentato per persone straniere coniugate con cittadini indonesiani.",
@@ -2917,7 +2781,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal (4) huruf a",
     "instrument_id": "Permenkumham-11-2024",
     "category": "exemption",
-    "claim_id": "IMM-365"
+    "claim_id": "IMM-348"
   },
   {
     "claim": "L'obbligo di avere un garante è esentato per imprenditori stranieri che investono in Indonesia secondo le normative sulla pianificazione modale.",
@@ -2925,7 +2789,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal (4) huruf b",
     "instrument_id": "Permenkumham-11-2024",
     "category": "exemption",
-    "claim_id": "IMM-366"
+    "claim_id": "IMM-349"
   },
   {
     "claim": "L'obbligo di avere un garante è esentato per cittadini di paesi che forniscono reciprocamente l'esenzione dalla garanzia.",
@@ -2933,7 +2797,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal (4) huruf c",
     "instrument_id": "Permenkumham-11-2024",
     "category": "exemption",
-    "claim_id": "IMM-367"
+    "claim_id": "IMM-350"
   },
   {
     "claim": "L'esenzione dall'obbligo di garante può applicarsi ai permessi di soggiorno per repatriazione.",
@@ -2941,7 +2805,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal (5) huruf a",
     "instrument_id": "Permenkumham-11-2024",
     "category": "exemption",
-    "claim_id": "IMM-368"
+    "claim_id": "IMM-351"
   },
   {
     "claim": "Le esenzioni dall'obbligo di garante possono essere sostituite da una Garanzia Immigrazione.",
@@ -2949,7 +2813,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal (6)",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-369"
+    "claim_id": "IMM-352"
   },
   {
     "claim": "La Garanzia Immigrazione è uno strumento dell'Ufficiale Immigrazione per valutare selettivamente l'idoneità e l'utilità della presenza di stranieri in Indonesia.",
@@ -2957,7 +2821,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal (7)",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-370"
+    "claim_id": "IMM-353"
   },
   {
     "claim": "Le domande di visto, permesso di soggiorno e permesso di rientro presentate prima dell'entrata in vigore della presente regolamentazione rimangono elaborate secondo la regolamentazione precedente.",
@@ -2965,7 +2829,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 1 huruf a",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-371"
+    "claim_id": "IMM-354"
   },
   {
     "claim": "Gli adesivi visto e voucher visto acquisiti secondo la regolamentazione precedente rimangono in uso fino all'esaurimento delle scorte.",
@@ -2973,7 +2837,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 1 huruf b",
     "instrument_id": "Permenkumham-11-2024",
     "category": "procedure",
-    "claim_id": "IMM-372"
+    "claim_id": "IMM-355"
   },
   {
     "claim": "I visti emessi prima dell'entrata in vigore della presente regolamentazione rimangono validi fino alla scadenza.",
@@ -2981,7 +2845,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 1 huruf c",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-373"
+    "claim_id": "IMM-356"
   },
   {
     "claim": "Il Sistema Informativo di Gestione Immigrazione deve essere adattato alla presente regolamentazione entro 30 giorni dalla pubblicazione.",
@@ -2989,7 +2853,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 1 huruf d",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-374"
+    "claim_id": "IMM-357"
   },
   {
     "claim": "La Regolamentazione Ministeriale Numero 11 del 2015 sulla forma e formato del visto è abrogata e cessa di essere in vigore.",
@@ -2997,7 +2861,7 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 2",
     "instrument_id": "Permenkumham-11-2024",
     "category": "rule",
-    "claim_id": "IMM-375"
+    "claim_id": "IMM-358"
   },
   {
     "claim": "La presente regolamentazione ministeriale entra in vigore 30 giorni dopo la data di pubblicazione.",
@@ -3005,6 +2869,70 @@
     "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 3",
     "instrument_id": "Permenkumham-11-2024",
     "category": "duration",
-    "claim_id": "IMM-376"
+    "claim_id": "IMM-359"
+  },
+  {
+    "claim": "Il documento IMTA come documento fisico separato e' stato abolito da PP 34/2021. Il sostituto e' l'approvazione del RPTKA combinata con il pagamento della tassa DKP-TKA.",
+    "verbatim": "IMTA dihapuskan, digantikan dengan pengesahan RPTKA dan pembayaran DKP-TKA",
+    "pasal_ref": "PP 34/2021",
+    "instrument_id": "PP-34-2021",
+    "category": "rule",
+    "claim_id": "IMM-360"
+  },
+  {
+    "claim": "Il datore di lavoro che utilizza lavoratori stranieri (TKA) e' obbligato a pagare la tassa DKP-TKA pari a USD 100 per lavoratore per mese.",
+    "verbatim": "Pemberi Kerja TKA wajib membayar DKP-TKA sebesar USD 100 per TKA per bulan",
+    "pasal_ref": "PP 34/2021 Pasal 32",
+    "instrument_id": "PP-34-2021",
+    "category": "fee",
+    "claim_id": "IMM-361"
+  },
+  {
+    "claim": "Con la UU 63/2024 il Multiple Exit Re-entry Permit (MERP) non e' piu' un documento separato: la sua validita' e' automaticamente allineata alla validita' del KITAS o KITAP.",
+    "verbatim": "MERP berlaku sesuai dengan masa berlaku Izin Tinggal Terbatas atau Izin Tinggal Tetap",
+    "pasal_ref": "UU 63/2024 (Perubahan Ketiga UU 6/2011)",
+    "instrument_id": "UU-63-2024",
+    "category": "rule",
+    "claim_id": "IMM-362"
+  },
+  {
+    "claim": "Il sistema degli indici visa e' stato rinnovato da Permenkumham 22/2023. Il KITAS per lavoratore straniero usa ora l'indice E23. Il vecchio indice E31 e' obsoleto.",
+    "verbatim": "Indeks Visa dan Izin Tinggal diatur ulang dalam Permenkumham 22/2023, indeks E23 untuk TKA",
+    "pasal_ref": "Permenkumham 22/2023",
+    "instrument_id": "Permenkumham-22-2023",
+    "category": "rule",
+    "claim_id": "IMM-363"
+  },
+  {
+    "claim": "Il Golden Visa utilizza l'indice E33G ed e' regolato da PP 40/2023. Richiede un investimento minimo in strumenti finanziari indonesiani o depositi bancari.",
+    "verbatim": "Golden Visa dengan indeks E33G diatur dalam PP 40/2023",
+    "pasal_ref": "PP 40/2023 Pasal 1",
+    "instrument_id": "PP-40-2023",
+    "category": "rule",
+    "claim_id": "IMM-364"
+  },
+  {
+    "claim": "Il ministero competente per l'immigrazione e' ora il Kementerian Imigrasi dan Pemasyarakatan (Kemenimipas), separato dal Kemenkumham a partire dalla fine del 2024.",
+    "verbatim": "Kementerian Imigrasi dan Pemasyarakatan (Kemenimipas) dibentuk akhir 2024",
+    "pasal_ref": "Perpres pembentukan Kemenimipas 2024",
+    "instrument_id": "Kemenimipas-2024",
+    "category": "rule",
+    "claim_id": "IMM-365"
+  },
+  {
+    "claim": "Le regole sui garanti (penjamin) per visti e permessi di soggiorno sono ora disciplinate da Permenimipas 5/2025, che ha abrogato Permenkumham 36/2021.",
+    "verbatim": "Permenimipas 5/2025 mencabut Permenkumham 36/2021 tentang Penjamin",
+    "pasal_ref": "Permenimipas 5/2025 Pasal 1",
+    "instrument_id": "Permenimipas-5-2025",
+    "category": "rule",
+    "claim_id": "IMM-366"
+  },
+  {
+    "claim": "Il bando di uscita (cekal) per stranieri puo' essere applicato solo durante indagini formali (penyidikan) o procedimenti penali, non durante indagini preliminari (penyelidikan).",
+    "verbatim": "Pencegahan hanya dapat dilakukan pada tahap penyidikan atau penuntutan, bukan penyelidikan",
+    "pasal_ref": "UU 63/2024 (Perubahan Ketiga UU 6/2011)",
+    "instrument_id": "UU-63-2024",
+    "category": "rule",
+    "claim_id": "IMM-367"
   }
 ]
