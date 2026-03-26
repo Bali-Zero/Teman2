@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.cell.organism</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nuzantara/Desktop/nuzantara/apps/cell/.venv/bin/python</string>
+        <string>-m</string>
+        <string>cell.main</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/cell</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONPATH</key>
+        <string>/Users/nuzantara/Desktop/nuzantara/apps/cell</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/cell.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/cell.stderr.log</string>
+</dict>
+</plist>
