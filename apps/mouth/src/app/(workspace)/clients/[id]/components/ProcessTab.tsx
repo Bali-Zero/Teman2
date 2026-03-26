@@ -9,9 +9,6 @@ import {
   Eye,
   Trash2,
   DollarSign,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  MinusCircle,
   SlidersHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,11 +18,9 @@ import type { ClientProfile } from '@/lib/api/crm/crm.types';
 import { STATUS_COLORS, ALERT_COLORS } from './constants';
 import { formatCurrency } from './utils';
 
-const PRIORITY_STYLES: Record<string, { icon: typeof ArrowUpCircle; color: string }> = {
-  urgent: { icon: ArrowUpCircle, color: 'text-red-500' },
-  high: { icon: ArrowUpCircle, color: 'text-orange-400' },
-  medium: { icon: MinusCircle, color: 'text-yellow-400' },
-  low: { icon: ArrowDownCircle, color: 'text-blue-400' },
+const PRIORITY_BADGES: Record<string, { label: string; className: string }> = {
+  urgent: { label: '🔥 urgent', className: 'bg-red-500/15 text-red-400' },
+  high: { label: '↑ high', className: 'bg-orange-500/12 text-orange-400' },
 };
 
 const PAYMENT_STYLES: Record<string, string> = {
@@ -203,15 +198,16 @@ export function ProcessTab({
                   onClick={() => router.push(`/process/${practice.id}`)}
                 >
                   <div className="flex items-center gap-2">
-                    {practice.priority &&
-                      PRIORITY_STYLES[practice.priority] &&
-                      (() => {
-                        const { icon: PIcon, color } = PRIORITY_STYLES[practice.priority!];
-                        return <PIcon className={`w-3.5 h-3.5 shrink-0 ${color}`} />;
-                      })()}
                     <span className="text-sm font-medium text-[var(--bz-text-1)] truncate">
                       {practice.practice_type_name}
                     </span>
+                    {practice.priority && PRIORITY_BADGES[practice.priority] && (
+                      <span
+                        className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${PRIORITY_BADGES[practice.priority].className}`}
+                      >
+                        {PRIORITY_BADGES[practice.priority].label}
+                      </span>
+                    )}
                     <span className="text-xs text-[var(--bz-text-2)] shrink-0">#{practice.id}</span>
                   </div>
                 </div>
@@ -272,16 +268,36 @@ export function ProcessTab({
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap mt-1">
-                {practice.expiry_date && (
-                  <div
-                    className={`text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded ${
-                      ALERT_COLORS[practice.alert_color || 'green']
-                    }`}
-                  >
-                    <Calendar className="w-3 h-3" />
-                    Expires: {formatDate(practice.expiry_date)}
-                  </div>
-                )}
+                {practice.expiry_date &&
+                  (() => {
+                    const daysLeft = Math.ceil(
+                      (new Date(practice.expiry_date).getTime() - Date.now()) / 86400000
+                    );
+                    const isExpired = daysLeft < 0;
+                    const isCritical = daysLeft >= 0 && daysLeft <= 14;
+                    const isWarning = daysLeft > 14 && daysLeft <= 30;
+                    const chipClass = isExpired
+                      ? 'bg-red-500/20 text-red-400'
+                      : isCritical
+                        ? 'bg-red-500/15 text-red-400'
+                        : isWarning
+                          ? 'bg-yellow-500/15 text-yellow-400'
+                          : ALERT_COLORS[practice.alert_color || 'green'];
+                    const label = isExpired
+                      ? `exp ${Math.abs(daysLeft)}d ago`
+                      : daysLeft === 0
+                        ? 'expires today'
+                        : `⏰ ${daysLeft}d left`;
+                    return (
+                      <div
+                        className={`text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded ${chipClass}`}
+                        title={`Expires: ${formatDate(practice.expiry_date)}`}
+                      >
+                        <Calendar className="w-3 h-3" />
+                        {label}
+                      </div>
+                    );
+                  })()}
                 {(practice.quoted_price || practice.actual_price) && (
                   <div className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--bz-base)] text-[var(--bz-text-2)]">
                     <DollarSign className="w-3 h-3" />
