@@ -561,6 +561,52 @@ export default function ClientDetailPage() {
               <X className="w-4 h-4" />
             </button>
           </div>
+          {/* Quick presets — one click to prefill + submit */}
+          <div className="flex flex-wrap gap-1.5">
+            <span className="text-[10px] text-[var(--bz-text-2)] self-center mr-1 uppercase tracking-wide font-medium">Quick:</span>
+            {(
+              [
+                { type: 'call' as const, label: '📞 Called', summary: 'Called client' },
+                { type: 'call' as const, label: '📵 No answer', summary: 'Called — no answer' },
+                { type: 'whatsapp' as const, label: '💬 WA sent', summary: 'WhatsApp message sent' },
+                { type: 'note' as const, label: '✅ Updated', summary: 'Process updated' },
+              ]
+            ).map(({ type, label, summary }) => (
+              <button
+                key={label}
+                onClick={async () => {
+                  setLogType(type);
+                  setLogSummary(summary);
+                  setIsLogging(true);
+                  try {
+                    const user = await api.getProfile();
+                    const newInteraction = await api.crm.createInteraction({
+                      client_id: clientId,
+                      interaction_type: type,
+                      summary,
+                      team_member: user.email,
+                      direction: 'outbound',
+                    });
+                    setInteractions((prev) => [newInteraction, ...prev]);
+                    toast.success('Logged: ' + summary);
+                    setLogSaved(true);
+                    setTimeout(() => setLogSaved(false), 1500);
+                    setLogSummary('');
+                    setShowLogPanel(false);
+                    refreshProfile();
+                  } catch (err) {
+                    toast.error('Failed to log', { description: (err as Error).message });
+                  } finally {
+                    setIsLogging(false);
+                  }
+                }}
+                disabled={isLogging}
+                className="text-xs px-2.5 py-1 rounded-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-2)] hover:border-[var(--bz-accent)]/50 hover:text-[var(--bz-text-1)] transition-colors disabled:opacity-50"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {/* Type chips */}
           <div className="flex flex-wrap gap-2">
             {(
