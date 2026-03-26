@@ -71,6 +71,8 @@ export default function ClientDetailPage() {
   const [editingDocument, setEditingDocument] = useState<ClientDocument | null>(null);
   const [editingFamilyMember, setEditingFamilyMember] = useState<FamilyMember | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [logType, setLogType] = useState<
     'note' | 'call' | 'whatsapp' | 'email' | 'meeting' | 'chat'
@@ -112,6 +114,33 @@ export default function ClientDetailPage() {
       setIsLogging(false);
     }
   };
+
+  const updateStatus = async (newStatus: string) => {
+    if (newStatus === profile?.client.status) {
+      setShowStatusMenu(false);
+      return;
+    }
+    setIsUpdatingStatus(true);
+    setShowStatusMenu(false);
+    try {
+      const user = await api.getProfile();
+      await api.crm.updateClient(clientId, { status: newStatus }, user.email);
+      await refreshProfile();
+      toast.success(`Status updated to ${newStatus}`);
+    } catch (err) {
+      toast.error('Failed to update status', { description: (err as Error).message });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  // Close status menu on outside click
+  useEffect(() => {
+    if (!showStatusMenu) return;
+    const handleClick = () => setShowStatusMenu(false);
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showStatusMenu]);
 
   // Fix hydration mismatch: only render dates on client
   useEffect(() => {
@@ -322,20 +351,49 @@ export default function ClientDetailPage() {
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">{client.full_name}</h1>
-              {/* Status badge */}
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  {
-                    lead: 'bg-blue-500/20 text-blue-400',
-                    active: 'bg-green-500/20 text-green-400',
-                    completed: 'bg-purple-500/20 text-purple-400',
-                    lost: 'bg-red-500/20 text-red-400',
-                    inactive: 'bg-gray-500/20 text-gray-400',
-                  }[client.status] || 'bg-gray-500/20 text-gray-400'
-                }`}
-              >
-                {client.status}
-              </span>
+              {/* Status badge — click to change */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowStatusMenu((v) => !v)}
+                  disabled={isUpdatingStatus}
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-pointer hover:opacity-80 transition-opacity disabled:cursor-wait ${
+                    {
+                      lead: 'bg-blue-500/20 text-blue-400',
+                      active: 'bg-green-500/20 text-green-400',
+                      completed: 'bg-purple-500/20 text-purple-400',
+                      lost: 'bg-red-500/20 text-red-400',
+                      inactive: 'bg-gray-500/20 text-gray-400',
+                    }[client.status] || 'bg-gray-500/20 text-gray-400'
+                  }`}
+                  title="Click to change status"
+                >
+                  {isUpdatingStatus ? '...' : client.status}
+                </button>
+                {showStatusMenu && (
+                  <div className="absolute top-full left-0 mt-1 z-50 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] shadow-xl py-1 min-w-[120px]">
+                    {(['lead', 'active', 'completed', 'lost', 'inactive'] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => updateStatus(s)}
+                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bz-card)] transition-colors ${
+                          s === client.status ? 'font-bold' : ''
+                        } ${
+                          {
+                            lead: 'text-blue-400',
+                            active: 'text-green-400',
+                            completed: 'text-purple-400',
+                            lost: 'text-red-400',
+                            inactive: 'text-gray-400',
+                          }[s]
+                        }`}
+                      >
+                        {s === client.status ? '✓ ' : ''}
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <p className="text-sm text-[var(--bz-text-2)]">
               Client #{client.id} • {client.client_type || 'Individual'}
