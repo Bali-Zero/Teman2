@@ -1600,7 +1600,7 @@ export default function PratichePage() {
                             ↑ high
                           </span>
                         ) : (
-                          <span className="text-[var(--bz-text-2)] text-xs">—</span>
+                          <span className="text-[var(--bz-text-2)] text-xs" title="Normal priority">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -1618,7 +1618,7 @@ export default function PratichePage() {
                             {practice.payment_status}
                           </span>
                         ) : (
-                          <span className="text-[var(--bz-text-2)] text-xs">—</span>
+                          <span className="text-[var(--bz-text-2)] text-xs" title="Payment not set">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-right">
