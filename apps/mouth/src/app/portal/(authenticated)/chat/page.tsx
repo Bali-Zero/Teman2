@@ -311,6 +311,8 @@ export default function ChatPage() {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
+            aria-label="Type a message to Bali Zero team"
+            id="message-input"
             disabled={isSending}
             className={cn(
               'flex-1 px-4 py-3 rounded-xl border',
