@@ -1179,7 +1179,7 @@ class PassportEnhancedResponse(BaseModel):
 @router.post("/extract-passport-enhanced", response_model=PassportEnhancedResponse)
 async def extract_passport_enhanced(
     request: PassportEnhancedRequest,
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> PassportEnhancedResponse:
     """
@@ -1214,6 +1214,9 @@ async def extract_passport_enhanced(
 
         # Get current client data for name verification
         async with db_pool.acquire() as conn:
+            # RBAC: verify user has access to this specific client
+            await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
+
             client = await conn.fetchrow(
                 "SELECT full_name FROM clients WHERE id = $1", request.client_id
             )
@@ -1396,6 +1399,8 @@ Use null for unclear fields. Return ONLY JSON."""
             message="Passport data extracted and saved successfully",
         )
 
+    except HTTPException:
+        raise
     except json.JSONDecodeError as e:
         logger.warning(f"Enhanced OCR JSON parse error: {e}")
         return PassportEnhancedResponse(success=False, message="Failed to parse OCR response")
