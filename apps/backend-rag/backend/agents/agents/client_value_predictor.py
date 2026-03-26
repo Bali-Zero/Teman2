@@ -197,15 +197,15 @@ class ClientValuePredictor:
                 "errors": [],
             }
 
-            # Process each client
-            async with self.db_pool.acquire() as conn, conn.transaction():
-                for client_id in client_ids:
-                    try:
-                        client_data = client_scores.get(client_id)
-                        if not client_data:
-                            logger.warning(f"No score data for client {client_id}")
-                            continue
+            # Process each client in its own transaction so one failure doesn't block others
+            for client_id in client_ids:
+                try:
+                    client_data = client_scores.get(client_id)
+                    if not client_data:
+                        logger.warning(f"No score data for client {client_id}")
+                        continue
 
+                    async with self.db_pool.acquire() as conn, conn.transaction():
                         # Update client score in DB
                         await conn.execute(
                             """
@@ -261,10 +261,10 @@ class ClientValuePredictor:
 
                                 logger.info(f"✅ Nurtured {client_data['name']} ({reason})")
 
-                    except Exception as e:
-                        error_msg = f"Client {client_id}: {str(e)}"
-                        results["errors"].append(error_msg)
-                        logger.error(f"❌ Error processing client {client_id}: {e}", exc_info=True)
+                except Exception as e:
+                    error_msg = f"Client {client_id}: {str(e)}"
+                    results["errors"].append(error_msg)
+                    logger.error(f"❌ Error processing client {client_id}: {e}", exc_info=True)
 
             # Send summary to team
             from backend.app.core.config import settings
