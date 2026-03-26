@@ -18,6 +18,7 @@ import {
   Loader2,
   AlertTriangle,
   Activity,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -116,7 +117,7 @@ export default function ClientDetailPage() {
     const tabParam = searchParams?.get('tab');
     if (
       tabParam &&
-      ['overview', 'documents', 'process', 'family', 'visas', 'company', 'tax'].includes(tabParam)
+      ['overview', 'documents', 'process', 'family', 'visas', 'company', 'tax', 'timeline'].includes(tabParam)
     ) {
       setActiveTab(tabParam as TabType);
     }
@@ -363,6 +364,17 @@ export default function ClientDetailPage() {
                 Telegram
               </Button>
             </>
+          )}
+          {client.email && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 text-indigo-400 border-indigo-400/30 hover:bg-indigo-400/10"
+              onClick={() => window.open(`mailto:${client.email}`, '_blank')}
+            >
+              <Mail className="w-4 h-4" />
+              Email
+            </Button>
           )}
         </div>
       </div>
