@@ -560,6 +560,11 @@ export default function PratichePage() {
           const totalRevenue = filteredPractices
             .filter((p) => p.payment_status === 'paid')
             .reduce((s, p) => s + (p.actual_price || p.quoted_price || 0), 0);
+          const expiringCount = practices.filter((p) => {
+            if (!p.expiry_date) return false;
+            const d = Math.ceil((new Date(p.expiry_date).getTime() - Date.now()) / 86400000);
+            return d >= 0 && d <= 30;
+          }).length;
           return (
             <div className="flex flex-wrap gap-2 text-xs">
               <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.06)] text-[var(--bz-text-2)]">
@@ -591,6 +596,18 @@ export default function PratichePage() {
                   }).format(unpaidRevenue)}{' '}
                   unpaid
                 </span>
+              )}
+              {expiringCount > 0 && (
+                <button
+                  onClick={() => setFilters((f) => ({ ...f, expiring: !f.expiring }))}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition-colors ${
+                    filters.expiring
+                      ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400'
+                      : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20'
+                  }`}
+                >
+                  ⏰ {expiringCount} expiring
+                </button>
               )}
             </div>
           );
