@@ -950,7 +950,9 @@ class TestStreamQueryGates:
                 for e in events
             )
 
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — clarification now via QueryGates.run_all_gates()")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — clarification now via QueryGates.run_all_gates()"
+    )
     async def test_stream_clarification(self, orchestrator_setup):
         """Test clarification gate in stream_query"""
         orch = orchestrator_setup["orchestrator"]
@@ -988,7 +990,9 @@ class TestStreamQueryGates:
                 for e in events
             )
 
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — out-of-domain now via QueryGates.run_all_gates()")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — out-of-domain now via QueryGates.run_all_gates()"
+    )
     async def test_stream_out_of_domain(self, orchestrator_setup):
         """Test out-of-domain in stream_query"""
         orch = orchestrator_setup["orchestrator"]
@@ -1044,7 +1048,9 @@ class TestStreamQueryGates:
                 for e in events
             )
 
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — user_id validation no longer raises ValueError")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — user_id validation no longer raises ValueError"
+    )
     async def test_stream_user_id_validation(self, orchestrator_setup):
         """Test user_id validation in stream_query"""
         orch = orchestrator_setup["orchestrator"]
@@ -1085,7 +1091,9 @@ class TestStreamQueryGates:
             # Should process images - verify events were generated
             assert events is not None  # Just verify it doesn't crash
 
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — team-query gate removed, queries go through ReAct loop")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — team-query gate removed, queries go through ReAct loop"
+    )
     async def test_stream_team_query(self, orchestrator_setup):
         """Test team query handling in stream_query"""
         orch = orchestrator_setup["orchestrator"]
@@ -1121,7 +1129,9 @@ class TestStreamQueryGates:
                 for e in events
             )
 
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — recall gate removed, queries go through ReAct loop")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — recall gate removed, queries go through ReAct loop"
+    )
     async def test_stream_recall_query(self, orchestrator_setup):
         """Test conversation recall query in stream_query"""
         orch = orchestrator_setup["orchestrator"]
@@ -1160,7 +1170,9 @@ class TestStreamQueryGates:
                 for e in events
             )
 
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — CWM summarization now inside core.context_manager")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — CWM summarization now inside core.context_manager"
+    )
     async def test_stream_context_window_summarization(self, orchestrator_setup):
         """Test context window summarization in stream_query"""
         orch = orchestrator_setup["orchestrator"]
@@ -1429,7 +1441,9 @@ class TestStreamEventValidation:
             # Should yield error event
             assert any(e.get("type") == "error" for e in events)
 
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — followup generation now inside streaming_core post-stream")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — followup generation now inside streaming_core post-stream"
+    )
     async def test_stream_followup_generation(self, orchestrator_setup):
         """Test follow-up question generation in stream"""
         orch = orchestrator_setup["orchestrator"]

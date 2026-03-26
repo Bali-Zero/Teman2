@@ -22,7 +22,6 @@ import json
 import logging
 from typing import Any
 
-from backend.app.core.config import settings
 from backend.core.cache import cached
 
 logger = logging.getLogger(__name__)

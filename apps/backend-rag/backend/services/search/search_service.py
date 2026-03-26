@@ -646,9 +646,7 @@ class SearchService:
             # No expansion happened — fall through to normal search
             return {}
 
-        logger.info(
-            "Multi-query expansion: '%s' → %d queries", query[:40], len(alt_queries)
-        )
+        logger.info("Multi-query expansion: '%s' → %d queries", query[:40], len(alt_queries))
 
         # Search each alternative (limit=3 per query to keep cost/latency down)
         per_query_limit = max(3, limit)
@@ -723,9 +721,7 @@ class SearchService:
             vector_db,
             chroma_filter,
             tier_values,
-        ) = await self._prepare_search_context(
-            query, user_level, tier_filter, None, apply_filters
-        )
+        ) = await self._prepare_search_context(query, user_level, tier_filter, None, apply_filters)
         if METRICS_AVAILABLE and embedding_start:
             rag_embedding_duration.observe(time.time() - embedding_start)
 
@@ -801,9 +797,7 @@ class SearchService:
                 from backend.core.reranker import ReRanker
 
                 self._reranker = ReRanker()
-                logger.info(
-                    f"🔧 ReRanker (legacy) initialized: enabled={self._reranker.enabled}"
-                )
+                logger.info(f"🔧 ReRanker (legacy) initialized: enabled={self._reranker.enabled}")
         return self._reranker
 
     async def search_with_reranking(

@@ -7,8 +7,8 @@ Supporta:
 - CLI per operazioni base
 - Context-aware editing
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import logging
 import subprocess

@@ -878,26 +878,19 @@ class GoogleDriveService:
                 files_data = files_response.json()
                 files = files_data.get("files", [])
                 file_count = len(
-                    [
-                        f
-                        for f in files
-                        if f.get("mimeType") != "application/vnd.google-apps.folder"
-                    ]
+                    [f for f in files if f.get("mimeType") != "application/vnd.google-apps.folder"]
                 )
 
                 # Calculate total size
                 folder_size = sum(
                     int(f.get("size", 0))
                     for f in files
-                    if f.get("size")
-                    and f.get("mimeType") != "application/vnd.google-apps.folder"
+                    if f.get("size") and f.get("mimeType") != "application/vnd.google-apps.folder"
                 )
 
                 # Get last modified time (most recent file)
                 if files:
-                    modified_times = [
-                        f.get("modifiedTime") for f in files if f.get("modifiedTime")
-                    ]
+                    modified_times = [f.get("modifiedTime") for f in files if f.get("modifiedTime")]
                     last_modified = max(modified_times) if modified_times else None
                 else:
                     last_modified = None
@@ -1002,9 +995,7 @@ class GoogleDriveService:
         if upload_response.status_code not in (200, 204):
             error = (
                 upload_response.json()
-                if upload_response.headers.get("content-type", "").startswith(
-                    "application/json"
-                )
+                if upload_response.headers.get("content-type", "").startswith("application/json")
                 else {}
             )
             logger.error(f"[GDRIVE] Upload file content failed: {error}")
@@ -1014,9 +1005,7 @@ class GoogleDriveService:
 
         # Get final file info
         file_info = metadata_response.json()
-        size_bytes = (
-            int(file_info.get("size", 0)) if file_info.get("size") else len(file_content)
-        )
+        size_bytes = int(file_info.get("size", 0)) if file_info.get("size") else len(file_content)
 
         logger.info(
             f"[GDRIVE] Uploaded file '{file_name}' ({size_bytes} bytes) to folder {folder_id}"

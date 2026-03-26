@@ -67,7 +67,6 @@ export function ZantaraPortalCard() {
             style={{
               background: "rgba(12,12,14,0.85)",
               border: "1px solid rgba(59,130,246,0.25)",
-              boxShadow: "0 0 0 0 rgba(59,130,246,0.5)",
               animation: "lotusPulse 3s ease-in-out infinite",
             }}
           >
@@ -111,26 +110,6 @@ export function ZantaraPortalCard() {
           style={{ color: "var(--bz-text-2)" }}
         />
       </div>
-
-      <style jsx>{`
-        @keyframes lotusPulse {
-          0%,
-          100% {
-            box-shadow: 0 0 0 0 rgba(212, 132, 90, 0.35);
-          }
-          50% {
-            box-shadow: 0 0 0 5px rgba(212, 132, 90, 0);
-          }
-        }
-        @keyframes liquidShift {
-          0% {
-            transform: scale(1) translate(0, 0);
-          }
-          100% {
-            transform: scale(1.06) translate(2%, 1%);
-          }
-        }
-      `}</style>
     </a>
   );
 }

@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import backend.services.rag.agentic.context_manager as _context_manager_module
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span

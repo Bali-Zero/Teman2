@@ -449,9 +449,7 @@ class GitHubPublisher:
 
         if commit_create_response.status_code != 201:
             logger.error(f"Failed to create commit: {commit_create_response.text}")
-            raise GitHubPublisherError(
-                f"Failed to create commit: {commit_create_response.text}"
-            )
+            raise GitHubPublisherError(f"Failed to create commit: {commit_create_response.text}")
 
         new_commit_sha = commit_create_response.json()["sha"]
         logger.debug(f"New commit SHA: {new_commit_sha[:7]}")
@@ -467,9 +465,7 @@ class GitHubPublisher:
 
         if update_ref_response.status_code != 200:
             logger.error(f"Failed to update branch ref: {update_ref_response.text}")
-            raise GitHubPublisherError(
-                f"Failed to update branch ref: {update_ref_response.text}"
-            )
+            raise GitHubPublisherError(f"Failed to update branch ref: {update_ref_response.text}")
 
         elapsed_ms = (time.time() - start_time) * 1000
 

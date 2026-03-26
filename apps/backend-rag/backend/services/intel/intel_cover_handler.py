@@ -43,8 +43,7 @@ class IntelCoverHandler:
                 # Prune old entries
                 cutoff = (datetime.utcnow() - timedelta(days=MAP_MAX_AGE_DAYS)).isoformat()
                 self._notification_map = {
-                    k: v for k, v in data.items()
-                    if v.get("registered_at", "") > cutoff
+                    k: v for k, v in data.items() if v.get("registered_at", "") > cutoff
                 }
                 logger.info(f"Loaded {len(self._notification_map)} notification mappings")
         except Exception as e:
@@ -268,6 +267,7 @@ class IntelCoverHandler:
     async def _notify_owner(self, title: str) -> None:
         """Notify the owner that Damar uploaded a cover image."""
         import os
+
         owner_id = os.environ.get("TELEGRAM_APPROVAL_CHAT_ID", "").split(",")[0].strip()
         if not owner_id:
             return

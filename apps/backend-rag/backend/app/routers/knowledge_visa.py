@@ -267,7 +267,9 @@ class VisaTypeUpdate(BaseModel):
 
 @router.put("/{visa_id}", response_model=VisaTypeResponse)
 async def update_visa_type(
-    visa_id: int, visa: VisaTypeUpdate, pool=Depends(get_db_pool),
+    visa_id: int,
+    visa: VisaTypeUpdate,
+    pool=Depends(get_db_pool),
     admin_user: dict = Depends(get_admin_user),
 ) -> VisaTypeResponse:
     """Update a visa type by ID (ADMIN ONLY)"""
@@ -351,7 +353,8 @@ async def update_visa_type(
 
 @router.post("/", response_model=VisaTypeResponse)
 async def create_visa_type(
-    visa: VisaTypeCreate, pool=Depends(get_db_pool),
+    visa: VisaTypeCreate,
+    pool=Depends(get_db_pool),
     admin_user: dict = Depends(get_admin_user),
 ) -> VisaTypeResponse:
     """Create a new visa type (ADMIN ONLY — requires auth)"""

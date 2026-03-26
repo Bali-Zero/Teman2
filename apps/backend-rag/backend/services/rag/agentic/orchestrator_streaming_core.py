@@ -236,9 +236,7 @@ class OrchestratorStreamingCore:
                 # Launch async NLM query only on cache miss
                 if not nlm_cached_result:
                     nlm_task = asyncio.create_task(
-                        self.core.nlm_enrichment_service.query(
-                            nlm_match["notebook_id"], query
-                        )
+                        self.core.nlm_enrichment_service.query(nlm_match["notebook_id"], query)
                     )
                 # Inform client that NLM is being consulted
                 yield {

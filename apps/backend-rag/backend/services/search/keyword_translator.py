@@ -52,7 +52,10 @@ _TERM_MAP: dict[str, tuple[str, str]] = {
     "nib": ("NIB business identification number", "NIB nomor induk berusaha"),
     "npwp": ("NPWP tax identification number", "NPWP nomor pokok wajib pajak"),
     "imta": ("IMTA foreign worker permit", "IMTA izin mempekerjakan tenaga asing"),
-    "rptka": ("RPTKA foreign worker utilization plan", "RPTKA rencana penggunaan tenaga kerja asing"),
+    "rptka": (
+        "RPTKA foreign worker utilization plan",
+        "RPTKA rencana penggunaan tenaga kerja asing",
+    ),
     "oss": ("OSS online single submission", "OSS perizinan berusaha"),
     "akte pendirian": ("deed of establishment", "akta pendirian"),
     # --- Costs & Pricing ---

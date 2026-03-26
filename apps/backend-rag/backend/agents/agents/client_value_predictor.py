@@ -8,8 +8,8 @@ Refactored to use modular services:
 - NurturingMessageService: Generate personalized messages
 - WhatsAppNotificationService: Send messages via Twilio
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import asyncio
 import json

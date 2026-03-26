@@ -4,8 +4,8 @@
 Comprehensive metrics collection and logging for Test Force agents.
 Tracks coverage, performance, and agent effectiveness.
 """
-from __future__ import annotations
 
+from __future__ import annotations
 
 import json
 import logging
@@ -71,7 +71,7 @@ class SystemMetrics:
     uptime: float = 0.0
 
     @classmethod
-    def collect(cls) -> "SystemMetrics":
+    def collect(cls) -> SystemMetrics:
         """Collect current system metrics"""
         return cls(
             cpu_usage=psutil.cpu_percent(),

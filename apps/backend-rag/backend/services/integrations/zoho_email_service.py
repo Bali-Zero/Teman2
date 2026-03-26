@@ -264,9 +264,7 @@ class ZohoEmailService:
                 f"[Email API] Error: {method} {endpoint} user={user_id} "
                 f"status={response.status_code} error={error_data}"
             )
-            raise ValueError(
-                f"API error: {error_data.get('data', {}).get('errorCode', 'unknown')}"
-            )
+            raise ValueError(f"API error: {error_data.get('data', {}).get('errorCode', 'unknown')}")
 
         logger.debug(f"[Email API] Success: {method} {endpoint} status={response.status_code}")
         return response.json()
@@ -959,9 +957,7 @@ class ZohoEmailService:
         )
 
         if response.status_code != 200:
-            logger.error(
-                f"[Email] Failed to download attachment: status={response.status_code}"
-            )
+            logger.error(f"[Email] Failed to download attachment: status={response.status_code}")
             raise ValueError(f"Failed to download attachment: {response.status_code}")
 
         logger.debug(

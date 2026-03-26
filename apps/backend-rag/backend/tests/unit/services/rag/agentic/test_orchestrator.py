@@ -1320,7 +1320,9 @@ class TestStreamQuery:
             assert any(e["data"].get("status") == "identity" for e in metadata_events)
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — clarification now handled via QueryGates.run_all_gates()")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — clarification now handled via QueryGates.run_all_gates()"
+    )
     async def test_stream_query_clarification_needed(self, mock_db_pool):
         """Test clarification gate in stream - covers lines 966-999"""
         from backend.services.misc.clarification_service import ClarificationService
@@ -1783,7 +1785,9 @@ class TestStreamQuery:
             assert len(error_events) >= 1
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — recall gate removed, queries go through ReAct loop")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — recall gate removed, queries go through ReAct loop"
+    )
     async def test_stream_query_conversation_recall(self, mock_db_pool):
         """Test conversation recall gate - covers lines 1044-1085"""
         with (
@@ -1854,7 +1858,9 @@ class TestStreamQuery:
             assert any(e["data"].get("status") == "recall" for e in metadata_events)
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — CWM summarization now handled inside core.context_manager")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — CWM summarization now handled inside core.context_manager"
+    )
     async def test_stream_query_context_window_summarization(self, mock_db_pool):
         """Test context window summarization - covers lines 897-917"""
         with (
@@ -2118,7 +2124,9 @@ class TestTeamQueryHandling:
     """Tests for team query handling - covers lines 1001-1042"""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — team-query gate removed, queries go through ReAct loop")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — team-query gate removed, queries go through ReAct loop"
+    )
     async def test_stream_query_team_query_detected(self, mock_db_pool):
         """Test team query is detected and routed - covers lines 1003-1040"""
         from unittest.mock import MagicMock
@@ -2367,7 +2375,9 @@ class TestEventValidationErrors:
             assert len(token_events) >= 1
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — error counting now in streaming_manager.process_event_stream()")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — error counting now in streaming_manager.process_event_stream()"
+    )
     async def test_stream_query_max_errors_abort(self, mock_db_pool):
         """Test stream aborts after max errors - covers lines 1316-1322"""
         with (
@@ -2443,7 +2453,9 @@ class TestFollowupGeneration:
     """Tests for follow-up question generation - covers lines 1334-1352"""
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Interface removed in OrchestratorStreamingCore refactor — followup generation now handled inside streaming_core post-stream")
+    @pytest.mark.skip(
+        reason="Interface removed in OrchestratorStreamingCore refactor — followup generation now handled inside streaming_core post-stream"
+    )
     async def test_stream_query_followup_generation_success(self, mock_db_pool):
         """Test follow-up questions are generated - covers lines 1336-1350"""
         with (
