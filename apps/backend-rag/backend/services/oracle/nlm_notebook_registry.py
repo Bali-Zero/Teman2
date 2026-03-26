@@ -109,4 +109,10 @@ def resolve_notebook(query: str) -> dict[str, object] | None:
     primary = data.get("primary_notebook_id")
     active_id = primary if (wants_primary and primary) else data["notebook_id"]
 
-    return {"domain": best_domain, "notebook_id": active_id, **data}
+    return {
+        "domain": best_domain,
+        "notebook_id": active_id,
+        "primary_notebook_id": data.get("primary_notebook_id"),
+        "label": data["label"],
+        "keywords": frozenset(data["keywords"]),
+    }
