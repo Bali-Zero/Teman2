@@ -27,6 +27,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
+
 logger = logging.getLogger(__name__)
 
 CLAIM_ID_PATTERN = re.compile(r"\[([A-Z]{2,3}-\d{3})\]")
