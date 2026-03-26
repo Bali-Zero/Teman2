@@ -1,15 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import {
-  MessageCircle,
-  Clock,
-  AlertCircle,
-  Mail,
-  Phone,
-  User,
-} from "lucide-react";
-import { Client } from "@/lib/api/crm/crm.types";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { MessageCircle, Clock, AlertCircle, Mail, Phone, User, BellOff } from 'lucide-react';
+import { Client } from '@/lib/api/crm/crm.types';
+import { useRouter } from 'next/navigation';
 
 interface ClientCardProps {
   client: Client;
@@ -17,23 +10,26 @@ interface ClientCardProps {
 }
 
 const SENTIMENT_COLORS = {
-  positive: "ring-[var(--neon-emerald)]",
-  neutral: "ring-[var(--neon-amber)]",
-  negative: "ring-[var(--neon-rose)]",
-  mixed: "ring-[var(--neon-purple)]",
-  none: "ring-[var(--glass-rim)]",
+  positive: 'ring-[var(--neon-emerald)]',
+  neutral: 'ring-[var(--neon-amber)]',
+  negative: 'ring-[var(--neon-rose)]',
+  mixed: 'ring-[var(--neon-purple)]',
+  none: 'ring-[var(--glass-rim)]',
 };
 
 const SENTIMENT_BG = {
-  positive: "bg-[rgba(16,185,129,0.1)] text-[var(--neon-emerald)]",
-  neutral: "bg-[rgba(245,158,11,0.1)] text-[var(--neon-amber)]",
-  negative: "bg-[rgba(244,63,94,0.1)] text-[var(--neon-rose)]",
-  mixed: "bg-[rgba(139,92,246,0.1)] text-[var(--neon-purple)]",
-  none: "bg-[rgba(255,255,255,0.05)] text-[var(--tx-tertiary)]",
+  positive: 'bg-[rgba(16,185,129,0.1)] text-[var(--neon-emerald)]',
+  neutral: 'bg-[rgba(245,158,11,0.1)] text-[var(--neon-amber)]',
+  negative: 'bg-[rgba(244,63,94,0.1)] text-[var(--neon-rose)]',
+  mixed: 'bg-[rgba(139,92,246,0.1)] text-[var(--neon-purple)]',
+  none: 'bg-[rgba(255,255,255,0.05)] text-[var(--tx-tertiary)]',
 };
 
-import { getCountryFlag } from "@/lib/utils/nationality-flags";
-import { getTeamMemberAvatar, TEAM_MEMBERS } from "@/app/(workspace)/clients/[id]/components/constants";
+import { getCountryFlag } from '@/lib/utils/nationality-flags';
+import {
+  getTeamMemberAvatar,
+  TEAM_MEMBERS,
+} from '@/app/(workspace)/clients/[id]/components/constants';
 
 export const ClientCard = React.memo(
   ({ client, isDragging }: ClientCardProps) => {
@@ -47,7 +43,7 @@ export const ClientCard = React.memo(
 
     // Determine sentiment aura
     const sentiment = (
-      client.last_sentiment || "none"
+      client.last_sentiment || 'none'
     ).toLowerCase() as keyof typeof SENTIMENT_COLORS;
     const ringColor = SENTIMENT_COLORS[sentiment] || SENTIMENT_COLORS.none;
     const badgeStyle = SENTIMENT_BG[sentiment] || SENTIMENT_BG.none;
@@ -58,18 +54,24 @@ export const ClientCard = React.memo(
     // Passport expiry alert
     const passportAlert = client.passport_expiry
       ? new Date(client.passport_expiry) < new Date()
-        ? "expired"
+        ? 'expired'
         : new Date(client.passport_expiry) < new Date(Date.now() + 180 * 86400000)
-          ? "soon"
+          ? 'soon'
           : null
       : null;
+
+    // Silence streak (days since last contact)
+    const silenceDays =
+      isMounted && client.last_interaction_date
+        ? Math.floor((Date.now() - new Date(client.last_interaction_date).getTime()) / 86400000)
+        : null;
 
     // Assigned team member
     const assignedMember = client.assigned_to
       ? TEAM_MEMBERS.find((m) => m.value === client.assigned_to)
       : null;
     const assignedAvatar = client.assigned_to ? getTeamMemberAvatar(client.assigned_to) : null;
-    const assignedName = assignedMember?.label || client.assigned_to?.split("@")[0] || null;
+    const assignedName = assignedMember?.label || client.assigned_to?.split('@')[0] || null;
 
     return (
       <div className="relative group perspective-1000">
@@ -78,10 +80,10 @@ export const ClientCard = React.memo(
           // layoutId causes expensive layout calculations with many items
           className={`
           relative rounded-[1.125rem] border p-4 cursor-pointer transition-all duration-300 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_10px_20px_-10px_rgba(0,0,0,0.5)] backdrop-blur-xl bg-gradient-to-br from-[rgba(255,255,255,0.03)] to-[rgba(255,255,255,0.01)]
-          ${isDragging ? "opacity-50 scale-95 rotate-3" : "hover:-translate-y-1 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_15px_30px_-10px_rgba(0,0,0,0.6)] hover:bg-[rgba(255,255,255,0.06)]"}
+          ${isDragging ? 'opacity-50 scale-95 rotate-3' : 'hover:-translate-y-1 hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_15px_30px_-10px_rgba(0,0,0,0.6)] hover:bg-[rgba(255,255,255,0.06)]'}
         `}
           style={{
-            borderColor: "var(--glass-rim)",
+            borderColor: 'var(--glass-rim)',
           }}
           onClick={() => router.push(`/clients/${client.id}`)}
         >
@@ -96,7 +98,7 @@ export const ClientCard = React.memo(
                   alt={client.full_name}
                   className="w-full h-full rounded-full object-cover"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
+                    (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
               ) : null}
@@ -107,10 +109,10 @@ export const ClientCard = React.memo(
                   ) : (
                     <span className="text-xs font-bold opacity-80 uppercase">
                       {client.full_name
-                        ?.split(" ")
+                        ?.split(' ')
                         .slice(0, 2)
                         .map((n) => n[0]?.toUpperCase())
-                        .join("") || "?"}
+                        .join('') || '?'}
                     </span>
                   )}
                 </div>
@@ -121,12 +123,12 @@ export const ClientCard = React.memo(
                 className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-[var(--background-secondary)]
               ${
                 {
-                  lead: "bg-[var(--neon-blue)]",
-                  active: "bg-[var(--neon-emerald)]",
-                  completed: "bg-[var(--neon-purple)]",
-                  inactive: "bg-[var(--tx-tertiary)]",
-                  lost: "bg-[var(--neon-rose)]",
-                }[client.status] || "bg-[var(--tx-tertiary)]"
+                  lead: 'bg-[var(--neon-blue)]',
+                  active: 'bg-[var(--neon-emerald)]',
+                  completed: 'bg-[var(--neon-purple)]',
+                  inactive: 'bg-[var(--tx-tertiary)]',
+                  lost: 'bg-[var(--neon-rose)]',
+                }[client.status] || 'bg-[var(--tx-tertiary)]'
               }`}
               />
             </div>
@@ -136,33 +138,37 @@ export const ClientCard = React.memo(
                 {client.full_name}
               </h4>
               <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[var(--tx-secondary)] tracking-wide">
-                <span className="truncate">
-                  {client.nationality || "Unknown"}
-                </span>
+                <span className="truncate">{client.nationality || 'Unknown'}</span>
                 {client.company_name && (
                   <>
                     <span className="opacity-50">•</span>
-                    <span className="truncate max-w-[80px]">
-                      {client.company_name}
-                    </span>
+                    <span className="truncate max-w-[80px]">{client.company_name}</span>
                   </>
                 )}
               </div>
               {/* Passport alert */}
               {passportAlert && (
-                <div className={`mt-1 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${passportAlert === "expired" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                <div
+                  className={`mt-1 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${passportAlert === 'expired' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}
+                >
                   <AlertCircle className="w-2.5 h-2.5" />
-                  {passportAlert === "expired" ? "Passport expired" : "Passport expiring"}
+                  {passportAlert === 'expired' ? 'Passport expired' : 'Passport expiring'}
+                </div>
+              )}
+              {/* Silence badge — only shown client-side after isMounted */}
+              {silenceDays !== null && silenceDays > 14 && (
+                <div
+                  className={`mt-1 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${silenceDays > 30 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}
+                >
+                  <BellOff className="w-2.5 h-2.5" />
+                  Silent {silenceDays}d
                 </div>
               )}
             </div>
 
             {/* Assigned team member avatar */}
             {assignedName && (
-              <div
-                className="shrink-0"
-                title={`Assigned: ${assignedName}`}
-              >
+              <div className="shrink-0" title={`Assigned: ${assignedName}`}>
                 {assignedAvatar ? (
                   <img
                     src={assignedAvatar}
@@ -208,14 +214,12 @@ export const ClientCard = React.memo(
                 <span>
                   {client.last_interaction_date
                     ? isMounted
-                      ? new Date(
-                          client.last_interaction_date,
-                        ).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
+                      ? new Date(client.last_interaction_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
                         })
-                      : "..."
-                    : "Never"}
+                      : '...'
+                    : 'Never'}
                 </span>
               </div>
 
@@ -251,23 +255,25 @@ export const ClientCard = React.memo(
           <div className="bg-black/90 backdrop-blur-md text-white p-3 rounded-lg shadow-xl text-xs space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[var(--tx-secondary)]">Sentiment:</span>
-              <span className="capitalize text-white font-medium">
-                {sentiment}
-              </span>
+              <span className="capitalize text-white font-medium">{sentiment}</span>
             </div>
-            {client.last_interaction_date && isMounted && (() => {
-              const days = Math.floor(
-                (Date.now() - new Date(client.last_interaction_date).getTime()) / 86400000,
-              );
-              return (
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--tx-secondary)]">Silent:</span>
-                  <span className={`font-medium ${days > 30 ? 'text-red-400' : days > 14 ? 'text-yellow-400' : 'text-green-400'}`}>
-                    {days === 0 ? 'Today' : `${days}d ago`}
-                  </span>
-                </div>
-              );
-            })()}
+            {client.last_interaction_date &&
+              isMounted &&
+              (() => {
+                const days = Math.floor(
+                  (Date.now() - new Date(client.last_interaction_date).getTime()) / 86400000
+                );
+                return (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--tx-secondary)]">Silent:</span>
+                    <span
+                      className={`font-medium ${days > 30 ? 'text-red-400' : days > 14 ? 'text-yellow-400' : 'text-green-400'}`}
+                    >
+                      {days === 0 ? 'Today' : `${days}d ago`}
+                    </span>
+                  </div>
+                );
+              })()}
             {passportAlert && (
               <div className="flex items-center justify-between">
                 <span className="text-[var(--tx-secondary)]">Passport:</span>
@@ -289,13 +295,11 @@ export const ClientCard = React.memo(
       prevProps.client.full_name === nextProps.client.full_name &&
       prevProps.client.status === nextProps.client.status &&
       prevProps.client.last_sentiment === nextProps.client.last_sentiment &&
-      prevProps.client.last_interaction_date ===
-        nextProps.client.last_interaction_date &&
-      prevProps.client.last_interaction_summary ===
-        nextProps.client.last_interaction_summary &&
+      prevProps.client.last_interaction_date === nextProps.client.last_interaction_date &&
+      prevProps.client.last_interaction_summary === nextProps.client.last_interaction_summary &&
       prevProps.client.assigned_to === nextProps.client.assigned_to &&
       prevProps.client.passport_expiry === nextProps.client.passport_expiry &&
       prevProps.isDragging === nextProps.isDragging
     );
-  },
+  }
 );
