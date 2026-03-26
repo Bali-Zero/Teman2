@@ -589,7 +589,7 @@ class TestProcessQueryBranches:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -822,7 +822,7 @@ class TestProcessQueryAdvanced:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -883,7 +883,7 @@ class TestProcessQueryAdvanced:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -978,7 +978,7 @@ class TestProcessQueryAdvanced:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1049,7 +1049,7 @@ class TestProcessQueryAdvanced:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1102,7 +1102,7 @@ class TestProcessQueryAdvanced:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1396,7 +1396,7 @@ class TestStreamQuery:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1441,7 +1441,7 @@ class TestStreamQuery:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
                 "needs_summarization": False,
@@ -1517,7 +1517,7 @@ class TestStreamQuery:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1597,7 +1597,7 @@ class TestStreamQuery:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1665,7 +1665,7 @@ class TestStreamQuery:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1735,7 +1735,7 @@ class TestStreamQuery:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -2232,7 +2232,7 @@ class TestTeamQueryHandling:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.detect_team_query") as mock_detect,
             patch(
                 "backend.services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock
@@ -2314,7 +2314,7 @@ class TestEventValidationErrors:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
             patch(
                 "backend.services.rag.agentic.orchestrator_streaming.metrics_collector"
@@ -2395,7 +2395,7 @@ class TestEventValidationErrors:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -2473,7 +2473,7 @@ class TestFollowupGeneration:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -2548,7 +2548,7 @@ class TestFollowupGeneration:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -2620,7 +2620,7 @@ class TestFollowupGeneration:
             patch(
                 "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
             ) as mock_ctx,
-            patch("backend.services.rag.agentic.orchestrator.is_out_of_domain") as mock_ood,
+            patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
