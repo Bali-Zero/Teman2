@@ -265,14 +265,68 @@ export default function VaultPage() {
                         {doc.size}
                       </span>
                     </div>
-                    <p className="text-xs mt-1" style={{ color: 'var(--bz-text-2)' }}>
-                      Uploaded: {formatDate(doc.uploadDate)}
-                    </p>
-                    {doc.expiryDate && (
-                      <p className="text-xs mt-0.5" style={{ color: '#fbbf24' }}>
-                        Expires: {formatDate(doc.expiryDate)}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className="text-xs" style={{ color: 'var(--bz-text-2)' }}>
+                        Uploaded: {formatDate(doc.uploadDate)}
+                      </span>
+                      {(() => {
+                        const ageDays = Math.floor(
+                          (Date.now() - new Date(doc.uploadDate).getTime()) / 86400000
+                        );
+                        if (ageDays < 7) return null;
+                        const label =
+                          ageDays >= 365
+                            ? `${Math.floor(ageDays / 365)}y ago`
+                            : ageDays >= 30
+                              ? `${Math.floor(ageDays / 30)}mo ago`
+                              : `${ageDays}d ago`;
+                        return (
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded-full"
+                            style={{
+                              background: 'rgba(255,255,255,0.04)',
+                              color: 'var(--bz-text-3)',
+                            }}
+                          >
+                            {label}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    {doc.expiryDate &&
+                      (() => {
+                        const daysLeft = Math.ceil(
+                          (new Date(doc.expiryDate).getTime() - Date.now()) / 86400000
+                        );
+                        const isExpired = daysLeft < 0;
+                        const chipColor = isExpired
+                          ? 'bg-red-500/20 text-red-400'
+                          : daysLeft <= 30
+                            ? 'bg-red-500/15 text-red-400'
+                            : daysLeft <= 90
+                              ? 'bg-amber-500/15 text-amber-400'
+                              : 'bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)]';
+                        const chipLabel = isExpired
+                          ? `Expired ${Math.abs(daysLeft)}d ago`
+                          : daysLeft === 0
+                            ? 'Expires today'
+                            : daysLeft <= 365
+                              ? `⏰ ${daysLeft}d left`
+                              : `${Math.floor(daysLeft / 30)}mo left`;
+                        return (
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className="text-xs" style={{ color: 'var(--bz-text-2)' }}>
+                              Expires: {formatDate(doc.expiryDate)}
+                            </span>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${chipColor}`}
+                              title={formatDate(doc.expiryDate)}
+                            >
+                              {chipLabel}
+                            </span>
+                          </div>
+                        );
+                      })()}
                   </div>
                   {doc.downloadUrl && (
                     <Button variant="ghost" size="icon" asChild>
