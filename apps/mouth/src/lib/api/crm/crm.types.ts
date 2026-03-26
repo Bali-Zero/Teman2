@@ -319,6 +319,7 @@ export interface CreateClientParams {
     | "walk_in"
     | "other";
   service_interest?: string[]; // e.g., ['kitas', 'pt_pma', 'tax']
+  avatar_url?: string;
 }
 
 // Common nationalities for dropdown
