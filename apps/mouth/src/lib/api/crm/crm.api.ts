@@ -249,6 +249,7 @@ export class CrmApi {
       status?: string;
       assigned_to?: string;
       nationality?: string;
+      passport_expiring_days?: number;
       limit?: number;
       offset?: number;
     } = {},
@@ -260,6 +261,8 @@ export class CrmApi {
       queryParams.append("assigned_to", params.assigned_to);
     if (params.nationality)
       queryParams.append("nationality", params.nationality);
+    if (params.passport_expiring_days !== undefined)
+      queryParams.append("passport_expiring_days", params.passport_expiring_days.toString());
     if (params.limit) queryParams.append("limit", params.limit.toString());
     if (params.offset) queryParams.append("offset", params.offset.toString());
 

@@ -56,6 +56,7 @@ interface Filters {
   status: string;
   nationality: string;
   assigned_to: string;
+  passport_expiring_days?: number;
 }
 
 const PAGE_SIZE = 50;
@@ -271,6 +272,7 @@ function ClientsListContent() {
       status: filters.status || undefined,
       assigned_to: filters.assigned_to || undefined,
       nationality: filters.nationality || undefined,
+      passport_expiring_days: filters.passport_expiring_days,
       search: debouncedSearch || undefined,
       limit: PAGE_SIZE,
     });
@@ -372,10 +374,10 @@ function ClientsListContent() {
   };
 
   const clearFilters = () => {
-    setFilters({ status: '', nationality: '', assigned_to: '' });
+    setFilters({ status: '', nationality: '', assigned_to: '', passport_expiring_days: undefined });
   };
 
-  const activeFiltersCount = Object.values(filters).filter(Boolean).length;
+  const activeFiltersCount = Object.values(filters).filter((v) => v !== '' && v !== undefined).length;
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -586,7 +588,7 @@ function ClientsListContent() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label
                   className="block text-sm font-medium mb-1.5"
@@ -688,6 +690,34 @@ function ClientsListContent() {
                       {assignee === currentUserEmail ? ' (me)' : ''}
                     </option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1.5"
+                  style={{ color: 'var(--bz-text-2)' }}
+                >
+                  Passport Expiry
+                </label>
+                <select
+                  value={filters.passport_expiring_days === undefined ? '' : String(filters.passport_expiring_days)}
+                  onChange={(e) => setFilters({
+                    ...filters,
+                    passport_expiring_days: e.target.value === '' ? undefined : Number(e.target.value),
+                  })}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none transition-all duration-300"
+                  style={{
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    background: 'rgba(19, 19, 21, 0.5)',
+                    color: 'var(--bz-text-1)',
+                  }}
+                >
+                  <option value="">Any</option>
+                  <option value="0">Already expired</option>
+                  <option value="30">Expiring in 30 days</option>
+                  <option value="90">Expiring in 90 days</option>
+                  <option value="180">Expiring in 180 days</option>
+                  <option value="365">Expiring in 1 year</option>
                 </select>
               </div>
             </div>

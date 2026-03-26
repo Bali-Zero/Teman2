@@ -356,6 +356,12 @@ async def list_clients(
     assigned_to: str | None = Query(None, description="Filter by assigned team member email"),
     search: str | None = Query(None, description="Search by name, email, or phone"),
     nationality: str | None = Query(None, description="Filter by nationality"),
+    passport_expiring_days: int | None = Query(
+        None,
+        ge=0,
+        le=730,
+        description="Filter clients with passport expiring within N days (0=already expired)",
+    ),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Max results to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -436,6 +442,18 @@ async def list_clients(
                 query_parts.append(f" AND c.nationality ILIKE ${param_index}")
                 params.append(f"%{nationality}%")
                 param_index += 1
+
+            if passport_expiring_days is not None:
+                if passport_expiring_days == 0:
+                    # Already expired
+                    query_parts.append(
+                        f" AND c.passport_expiry IS NOT NULL AND c.passport_expiry < CURRENT_DATE"
+                    )
+                else:
+                    query_parts.append(
+                        f" AND c.passport_expiry IS NOT NULL"
+                        f" AND c.passport_expiry <= CURRENT_DATE + INTERVAL '{passport_expiring_days} days'"
+                    )
 
             query_parts.append(
                 f" ORDER BY c.created_at DESC LIMIT ${param_index} OFFSET ${param_index + 1}"
