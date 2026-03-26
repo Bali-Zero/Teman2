@@ -46,7 +46,7 @@ class CircuitBreaker:
         success_threshold: int = 2,
         timeout: float = 60.0,
         name: str = "circuit",
-    ):
+    ) -> None:
         """
         Initialize circuit breaker.
 
