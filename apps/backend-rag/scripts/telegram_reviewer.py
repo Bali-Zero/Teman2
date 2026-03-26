@@ -17,6 +17,7 @@ import sys
 import time
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 POLL_INTERVAL_SEC = 15
 TIMEOUT_SEC = 30 * 60
@@ -37,7 +38,7 @@ def get_updates(token: str, offset: int = 0) -> list[dict]:  # type: ignore[type
     return data.get("result", [])  # type: ignore[no-any-return]
 
 
-def build_review_message(report: object, document_name: str) -> str:
+def build_review_message(report: dict[str, Any] | Any, document_name: str) -> str:
     """Build Telegram review message from a VerificationReport (dataclass or dict)."""
     # Handle both dataclass and dict (e.g. deserialized from JSON)
     if isinstance(report, dict):
@@ -90,12 +91,11 @@ def build_review_message(report: object, document_name: str) -> str:
 def poll_for_decision(token: str, chat_id: str, message: str) -> str:
     """Send message to Telegram, then poll for /approve or /reject.
     Returns 'approved', 'rejected', or 'timeout'."""
-    send_telegram_message(token, chat_id, message)
-
-    offset = 0
+    # Bootstrap offset BEFORE sending so any reply after send is not missed
     updates = get_updates(token, offset=0)
-    if updates:
-        offset = updates[-1]["update_id"] + 1
+    offset = updates[-1]["update_id"] + 1 if updates else 0
+
+    send_telegram_message(token, chat_id, message)
 
     deadline = time.time() + TIMEOUT_SEC
     while time.time() < deadline:

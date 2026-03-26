@@ -89,8 +89,8 @@ async def call_haiku_verifier(
     import anthropic
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    client = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=256,
         messages=[{"role": "user", "content": build_haiku_verification_prompt(claim_text, document_excerpt)}],
