@@ -386,7 +386,9 @@ function ClientsListContent() {
     setSilentFilter(null);
   };
 
-  const activeFiltersCount = Object.values(filters).filter((v) => v !== '' && v !== undefined).length + (silentFilter !== null ? 1 : 0);
+  const activeFiltersCount =
+    Object.values(filters).filter((v) => v !== '' && v !== undefined).length +
+    (silentFilter !== null ? 1 : 0);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -497,57 +499,136 @@ function ClientsListContent() {
         </div>
       </div>
 
+      {/* Revenue Stats Ribbon */}
+      {stats && isMounted && (
+        <div className="flex flex-wrap gap-3 text-xs">
+          {[
+            {
+              label: 'Total Clients',
+              value: stats.totalClients.toLocaleString(),
+              color: 'var(--bz-text-2)',
+              bg: 'rgba(255,255,255,0.04)',
+              border: 'rgba(255,255,255,0.06)',
+            },
+            {
+              label: 'Active Practices',
+              value: stats.activePractices.toLocaleString(),
+              color: '#60a5fa',
+              bg: 'rgba(59,130,246,0.08)',
+              border: 'rgba(59,130,246,0.15)',
+            },
+            {
+              label: 'Outstanding',
+              value: new Intl.NumberFormat('id-ID', {
+                notation: 'compact',
+                currency: 'IDR',
+                style: 'currency',
+                maximumFractionDigits: 1,
+              }).format(stats.revenue.outstanding),
+              color: stats.revenue.outstanding > 0 ? '#fb923c' : '#4ade80',
+              bg:
+                stats.revenue.outstanding > 0
+                  ? 'rgba(249,115,22,0.08)'
+                  : 'rgba(74,222,128,0.08)',
+              border:
+                stats.revenue.outstanding > 0
+                  ? 'rgba(249,115,22,0.15)'
+                  : 'rgba(74,222,128,0.15)',
+            },
+            {
+              label: 'Paid Revenue',
+              value: new Intl.NumberFormat('id-ID', {
+                notation: 'compact',
+                currency: 'IDR',
+                style: 'currency',
+                maximumFractionDigits: 1,
+              }).format(stats.revenue.paid),
+              color: '#4ade80',
+              bg: 'rgba(74,222,128,0.08)',
+              border: 'rgba(74,222,128,0.15)',
+            },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+              style={{ background: s.bg, border: `1px solid ${s.border}` }}
+            >
+              <span style={{ color: 'var(--bz-text-2)' }}>{s.label}</span>
+              <span className="font-semibold tabular-nums" style={{ color: s.color }}>
+                {s.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Health Awareness Bar — computed from loaded clients */}
-      {isMounted && visibleClients.length > 0 && (() => {
-        const now = Date.now();
-        const passportExpiring = visibleClients.filter((c) =>
-          c.passport_expiry &&
-          new Date(c.passport_expiry).getTime() > now &&
-          new Date(c.passport_expiry).getTime() < now + 90 * 86400000
-        ).length;
-        const passportExpired = visibleClients.filter((c) =>
-          c.passport_expiry && new Date(c.passport_expiry).getTime() < now
-        ).length;
-        const silent30 = visibleClients.filter((c) =>
-          !c.last_interaction_date ||
-          (now - new Date(c.last_interaction_date).getTime()) / 86400000 > 30
-        ).length;
-        if (passportExpiring === 0 && passportExpired === 0 && silent30 === 0) return null;
-        return (
-          <div className="flex flex-wrap gap-2 text-xs">
-            {passportExpired > 0 && (
-              <button
-                onClick={() => setFilters((f) => ({ ...f, passport_expiring_days: 0 }))}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
-                style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}
-              >
-                <AlertCircle className="w-3 h-3" />
-                {passportExpired} passport{passportExpired > 1 ? 's' : ''} expired
-              </button>
-            )}
-            {passportExpiring > 0 && (
-              <button
-                onClick={() => setFilters((f) => ({ ...f, passport_expiring_days: 90 }))}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
-                style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.25)' }}
-              >
-                <AlertCircle className="w-3 h-3" />
-                {passportExpiring} expiring in 90d
-              </button>
-            )}
-            {silent30 > 0 && (
-              <button
-                onClick={() => setSilentFilter(silentFilter === 30 ? null : 30)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
-                style={{ background: 'rgba(139,92,246,0.15)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.25)' }}
-              >
-                <AlertCircle className="w-3 h-3" />
-                {silent30} silent 30d+
-              </button>
-            )}
-          </div>
-        );
-      })()}
+      {isMounted &&
+        visibleClients.length > 0 &&
+        (() => {
+          const now = Date.now();
+          const passportExpiring = visibleClients.filter(
+            (c) =>
+              c.passport_expiry &&
+              new Date(c.passport_expiry).getTime() > now &&
+              new Date(c.passport_expiry).getTime() < now + 90 * 86400000
+          ).length;
+          const passportExpired = visibleClients.filter(
+            (c) => c.passport_expiry && new Date(c.passport_expiry).getTime() < now
+          ).length;
+          const silent30 = visibleClients.filter(
+            (c) =>
+              !c.last_interaction_date ||
+              (now - new Date(c.last_interaction_date).getTime()) / 86400000 > 30
+          ).length;
+          if (passportExpiring === 0 && passportExpired === 0 && silent30 === 0) return null;
+          return (
+            <div className="flex flex-wrap gap-2 text-xs">
+              {passportExpired > 0 && (
+                <button
+                  onClick={() => setFilters((f) => ({ ...f, passport_expiring_days: 0 }))}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
+                  style={{
+                    background: 'rgba(239,68,68,0.15)',
+                    color: '#f87171',
+                    border: '1px solid rgba(239,68,68,0.25)',
+                  }}
+                >
+                  <AlertCircle className="w-3 h-3" />
+                  {passportExpired} passport{passportExpired > 1 ? 's' : ''} expired
+                </button>
+              )}
+              {passportExpiring > 0 && (
+                <button
+                  onClick={() => setFilters((f) => ({ ...f, passport_expiring_days: 90 }))}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
+                  style={{
+                    background: 'rgba(245,158,11,0.15)',
+                    color: '#fbbf24',
+                    border: '1px solid rgba(245,158,11,0.25)',
+                  }}
+                >
+                  <AlertCircle className="w-3 h-3" />
+                  {passportExpiring} expiring in 90d
+                </button>
+              )}
+              {silent30 > 0 && (
+                <button
+                  onClick={() => setSilentFilter(silentFilter === 30 ? null : 30)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
+                  style={{
+                    background: 'rgba(139,92,246,0.15)',
+                    color: '#a78bfa',
+                    border: '1px solid rgba(139,92,246,0.25)',
+                  }}
+                >
+                  <AlertCircle className="w-3 h-3" />
+                  {silent30} silent 30d+
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
       {/* Controls Row */}
       <div className="flex flex-col gap-3">
@@ -613,7 +694,8 @@ function ClientsListContent() {
               onClick={() => setSilentFilter(silentFilter === days ? null : days)}
               className="px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
               style={{
-                background: silentFilter === days ? 'rgba(239,68,68,0.2)' : 'rgba(35, 35, 40, 0.45)',
+                background:
+                  silentFilter === days ? 'rgba(239,68,68,0.2)' : 'rgba(35, 35, 40, 0.45)',
                 color: silentFilter === days ? '#f87171' : 'var(--bz-text-2)',
                 border: `1px solid ${silentFilter === days ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.05)'}`,
               }}
@@ -778,11 +860,18 @@ function ClientsListContent() {
                   Passport Expiry
                 </label>
                 <select
-                  value={filters.passport_expiring_days === undefined ? '' : String(filters.passport_expiring_days)}
-                  onChange={(e) => setFilters({
-                    ...filters,
-                    passport_expiring_days: e.target.value === '' ? undefined : Number(e.target.value),
-                  })}
+                  value={
+                    filters.passport_expiring_days === undefined
+                      ? ''
+                      : String(filters.passport_expiring_days)
+                  }
+                  onChange={(e) =>
+                    setFilters({
+                      ...filters,
+                      passport_expiring_days:
+                        e.target.value === '' ? undefined : Number(e.target.value),
+                    })
+                  }
                   className="w-full px-3 py-2 rounded-lg focus:outline-none transition-all duration-300"
                   style={{
                     border: '1px solid rgba(255,255,255,0.05)',
