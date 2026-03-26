@@ -1,46 +1,46 @@
-"use client";
+'use client';
 
-import React from "react";
-import Link from "next/link";
-import { Shield, Newspaper, PenTool, ArrowRight, Zap } from "lucide-react";
+import React from 'react';
+import Link from 'next/link';
+import { Shield, Newspaper, PenTool, ArrowRight, Zap } from 'lucide-react';
 
 const TRINITY = [
   {
-    name: "Visa Oracle",
-    href: "/intelligence/visa-oracle",
+    name: 'Visa Oracle',
+    href: '/intelligence/visa-oracle',
     icon: Shield,
     description:
-      "Review automated visa regulation discoveries and ingest approved items into the knowledge base.",
-    gradient: "from-blue-500/20 via-blue-600/10 to-transparent",
-    glow: "rgba(59,130,246,0.15)",
-    iconColor: "#60a5fa",
-    borderColor: "rgba(59,130,246,0.15)",
-    step: "01",
+      'Review automated visa regulation discoveries and ingest approved items into the knowledge base.',
+    gradient: 'from-blue-500/20 via-blue-600/10 to-transparent',
+    glow: 'rgba(59,130,246,0.15)',
+    iconColor: '#60a5fa',
+    borderColor: 'rgba(59,130,246,0.15)',
+    step: '01',
   },
   {
-    name: "News Room",
-    href: "/intelligence/news-room",
+    name: 'News Room',
+    href: '/intelligence/news-room',
     icon: Newspaper,
     description:
-      "Curate AI-scraped Bali immigration news. Edit, add cover images, and publish to the live site.",
-    gradient: "from-emerald-500/20 via-emerald-600/10 to-transparent",
-    glow: "rgba(16,185,129,0.15)",
-    iconColor: "#34d399",
-    borderColor: "rgba(16,185,129,0.15)",
-    step: "02",
+      'Curate AI-scraped Bali immigration news. Edit, add cover images, and publish to the live site.',
+    gradient: 'from-emerald-500/20 via-emerald-600/10 to-transparent',
+    glow: 'rgba(16,185,129,0.15)',
+    iconColor: '#34d399',
+    borderColor: 'rgba(16,185,129,0.15)',
+    step: '02',
   },
   {
-    name: "Article Composer",
-    href: "/intelligence/article-composer",
+    name: 'Article Composer',
+    href: '/intelligence/article-composer',
     icon: PenTool,
     description:
-      "Transform raw content into polished Bali Zero Executive Briefs with AI-powered enrichment.",
-    gradient: "from-violet-500/20 via-violet-600/10 to-transparent",
-    glow: "rgba(139,92,246,0.15)",
-    iconColor: "#a78bfa",
-    borderColor: "rgba(139,92,246,0.15)",
-    step: "03",
-    badge: "AI",
+      'Transform raw content into polished Bali Zero Executive Briefs with AI-powered enrichment.',
+    gradient: 'from-violet-500/20 via-violet-600/10 to-transparent',
+    glow: 'rgba(139,92,246,0.15)',
+    iconColor: '#a78bfa',
+    borderColor: 'rgba(139,92,246,0.15)',
+    step: '03',
+    badge: 'AI',
   },
 ];
 
@@ -52,9 +52,9 @@ export default function IntelligencePage() {
         <div
           className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4 text-[11px] font-medium"
           style={{
-            background: "rgba(212,132,90,0.1)",
-            border: "1px solid rgba(212,132,90,0.2)",
-            color: "var(--bz-accent)",
+            background: 'rgba(212,132,90,0.1)',
+            border: '1px solid rgba(212,132,90,0.2)',
+            color: 'var(--bz-accent)',
           }}
         >
           <Zap size={10} />
@@ -63,21 +63,20 @@ export default function IntelligencePage() {
         <h1
           className="text-[40px] font-bold tracking-tight leading-none mb-3"
           style={{
-            background:
-              "linear-gradient(135deg, #f0ede8 0%, #d4845a 60%, #e8b48a 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
+            background: 'linear-gradient(135deg, #f0ede8 0%, #d4845a 60%, #e8b48a 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
           }}
         >
           Intelligence Center
         </h1>
         <p
           className="text-[15px] max-w-xl mx-auto leading-relaxed"
-          style={{ color: "var(--bz-text-2)" }}
+          style={{ color: 'var(--bz-text-2)' }}
         >
-          Monitor Indonesian immigration regulations, curate breaking news, and
-          craft expert content — all in one pipeline.
+          Monitor Indonesian immigration regulations, curate breaking news, and craft expert content
+          — all in one pipeline.
         </p>
       </div>
 
@@ -102,8 +101,8 @@ export default function IntelligencePage() {
                 style={{
                   background: `linear-gradient(145deg, ${tool.glow} 0%, rgba(255,255,255,0.02) 100%)`,
                   border: `1px solid ${tool.borderColor}`,
-                  backdropFilter: "blur(24px)",
-                  WebkitBackdropFilter: "blur(24px)",
+                  backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)',
                 }}
               >
                 {/* Subtle gradient overlay */}
@@ -124,9 +123,9 @@ export default function IntelligencePage() {
                   <div
                     className="absolute top-4 left-[4.5rem] px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide"
                     style={{
-                      background: "rgba(212,132,90,0.2)",
-                      color: "var(--bz-accent)",
-                      border: "1px solid rgba(212,132,90,0.3)",
+                      background: 'rgba(212,132,90,0.2)',
+                      color: 'var(--bz-accent)',
+                      border: '1px solid rgba(212,132,90,0.3)',
                     }}
                   >
                     {tool.badge}
@@ -148,13 +147,13 @@ export default function IntelligencePage() {
                 <div className="relative flex-1 flex flex-col">
                   <h3
                     className="text-[17px] font-bold mb-2 transition-colors"
-                    style={{ color: "var(--bz-text-1)" }}
+                    style={{ color: 'var(--bz-text-1)' }}
                   >
                     {tool.name}
                   </h3>
                   <p
                     className="text-[13px] leading-relaxed flex-1"
-                    style={{ color: "var(--bz-text-2)" }}
+                    style={{ color: 'var(--bz-text-2)' }}
                   >
                     {tool.description}
                   </p>
@@ -177,7 +176,7 @@ export default function IntelligencePage() {
               {!isLast && (
                 <div
                   className="flex-shrink-0 w-10 flex items-center justify-center self-center"
-                  style={{ color: "var(--bz-text-3)" }}
+                  style={{ color: 'var(--bz-text-3)' }}
                 >
                   <ArrowRight size={16} className="opacity-40" />
                 </div>
@@ -191,24 +190,24 @@ export default function IntelligencePage() {
       <div
         className="flex items-center justify-between px-5 py-3 rounded-xl"
         style={{
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.06)",
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid rgba(255,255,255,0.06)',
         }}
       >
         <div className="flex items-center gap-2">
           <div
             className="w-[6px] h-[6px] rounded-full animate-pulse"
             style={{
-              background: "var(--bz-green)",
-              boxShadow: "0 0 5px rgba(77,184,122,0.5)",
+              background: 'var(--bz-green)',
+              boxShadow: '0 0 5px rgba(77,184,122,0.5)',
             }}
           />
-          <span className="text-[11.5px]" style={{ color: "var(--bz-text-2)" }}>
+          <span className="text-[11.5px]" style={{ color: 'var(--bz-text-2)' }}>
             Intelligence pipeline active
           </span>
         </div>
-        <span className="text-[11px]" style={{ color: "var(--bz-text-3)" }}>
-          Bali Zero · 527 sources monitored
+        <span className="text-[11px]" style={{ color: 'var(--bz-text-3)' }}>
+          Bali Zero Intelligence Center
         </span>
       </div>
     </div>
