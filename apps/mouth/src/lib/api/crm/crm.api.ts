@@ -246,6 +246,7 @@ export class CrmApi {
   async getClients(
     params: {
       search?: string;
+      status?: string;
       assigned_to?: string;
       limit?: number;
       offset?: number;
@@ -253,6 +254,7 @@ export class CrmApi {
   ): Promise<Client[]> {
     const queryParams = new URLSearchParams();
     if (params.search) queryParams.append("search", params.search);
+    if (params.status) queryParams.append("status", params.status);
     if (params.assigned_to)
       queryParams.append("assigned_to", params.assigned_to);
     if (params.limit) queryParams.append("limit", params.limit.toString());

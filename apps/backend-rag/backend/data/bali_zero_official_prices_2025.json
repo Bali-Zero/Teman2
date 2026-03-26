@@ -44,6 +44,15 @@
         "text": "# C1 Tourism\n**Category**: Single Entry Visas\n**Price**: 2.300.000 IDR\n**Notes**: Single entry, 60 days\n\n---\n\n**Contact**: info@balizero.com\n**WhatsApp**: +62 813 3805 1876\n**Location**: Canggu, Bali, Indonesia"
       }
     },
+    "visa_extensions": {
+      "C1 Tourism Extension": {
+        "price": "1.700.000 IDR",
+        "duration": "30 days",
+        "validity": "",
+        "notes": "Extension of C1 Tourism visa, +30 days",
+        "text": "# C1 Tourism Extension\n**Category**: Visa Extensions\n**Price**: 1.700.000 IDR\n**Duration**: +30 days\n**Notes**: Extension of C1 Tourism visa\n\n---\n\n**Contact**: info@balizero.com\n**WhatsApp**: +62 813 3805 1876\n**Location**: Canggu, Bali, Indonesia"
+      }
+    },
     "multiple_entry_visas": {
       "D12 Business Investigation (1 Year)": {
         "price": "7.500.000 IDR",

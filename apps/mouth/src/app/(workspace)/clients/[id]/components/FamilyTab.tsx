@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   User,
   Users,
@@ -43,28 +43,44 @@ function FamilyMemberUploadButton({
   const [isUploading, setIsUploading] = useState(false);
   const [ocrPolling, setOcrPolling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const ocrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ocrAbortedRef = useRef(false);
+
+  // Cleanup OCR polling timers when component unmounts
+  useEffect(() => {
+    ocrAbortedRef.current = false;
+    return () => {
+      ocrAbortedRef.current = true;
+      if (ocrTimerRef.current) clearTimeout(ocrTimerRef.current);
+    };
+  }, []);
 
   const pollOcrStatus = useCallback(async () => {
     setOcrPolling(true);
     let attempts = 0;
     const poll = async () => {
+      if (ocrAbortedRef.current) return;
       try {
         const status = (await api.request(`/api/crm/clients/${clientId}/ocr-status`)) as {
           pending_ocr: number;
         };
         if (status.pending_ocr === 0 || attempts >= 10) {
-          setOcrPolling(false);
-          await onRefresh();
+          if (!ocrAbortedRef.current) {
+            setOcrPolling(false);
+            await onRefresh();
+          }
           return;
         }
         attempts++;
-        setTimeout(poll, 3000);
+        ocrTimerRef.current = setTimeout(poll, 3000);
       } catch {
-        setOcrPolling(false);
-        await onRefresh();
+        if (!ocrAbortedRef.current) {
+          setOcrPolling(false);
+          await onRefresh();
+        }
       }
     };
-    setTimeout(poll, 2000);
+    ocrTimerRef.current = setTimeout(poll, 2000);
   }, [clientId, onRefresh]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

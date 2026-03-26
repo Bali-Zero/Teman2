@@ -17,7 +17,7 @@ import { fileToBase64 } from '@/lib/utils';
 // ============================================
 // TAX TYPES AND INTERFACES
 // ============================================
-type TaxYear = 2024 | 2025 | 2026;
+type TaxYear = number;
 type TaxSection = 'personal' | 'annual' | 'monthly' | 'lkpm';
 
 interface TaxDocument {
@@ -185,7 +185,7 @@ const FileUploadField = memo(function FileUploadField({
 // TAX TAB COMPONENT
 // ============================================
 export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate: (d: string) => string }) {
-  const [selectedYear, setSelectedYear] = useState<TaxYear>(2025);
+  const [selectedYear, setSelectedYear] = useState<TaxYear>(new Date().getFullYear());
   const [activeSection, setActiveSection] = useState<TaxSection>('personal');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -220,12 +220,12 @@ export function TaxTab({ clientId, formatDate }: { clientId: number; formatDate:
   // Year selector buttons
   const YearSelector = () => (
     <div className="flex items-center gap-2">
-      {[2024, 2025, 2026].map((year) => (
+      {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
         <Button
           key={year}
           variant={selectedYear === year ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setSelectedYear(year as TaxYear)}
+          onClick={() => setSelectedYear(year)}
         >
           {year}
         </Button>

@@ -31,25 +31,25 @@ export function DocumentsTab({
   onRefresh: () => Promise<void>;
 }) {
   const categoryLabels: Record<string, string> = {
-    profile: 'Profile',
-    visas: 'Immigration',
-    company: 'Company',
+    immigration: 'Immigration',
+    pma: 'Company',
     tax: 'Tax',
+    personal: 'Personal',
     family: 'Family',
     other: 'Other',
   };
 
   const categoryIcons: Record<string, React.ElementType> = {
-    profile: User,
-    visas: Globe,
-    company: Building2,
+    immigration: Globe,
+    pma: Building2,
     tax: DollarSign,
+    personal: User,
     family: Users,
     other: FileText,
   };
 
   const sortedCategories = Object.keys(documentsByCategory).sort((a, b) => {
-    const order = ['profile', 'visas', 'company', 'tax', 'family', 'other'];
+    const order = ['immigration', 'pma', 'tax', 'personal', 'family', 'other'];
     return order.indexOf(a) - order.indexOf(b);
   });
 

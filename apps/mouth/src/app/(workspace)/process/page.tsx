@@ -195,10 +195,22 @@ export default function PratichePage() {
     const loadPractices = async () => {
       setIsLoading(true);
       try {
+        // Enforce RBAC: team members see only their assigned practices
+        let assignedTo: string | undefined;
+        try {
+          const user = await api.getProfile();
+          if (user && user.role !== 'admin') {
+            assignedTo = user.email;
+          }
+        } catch {
+          // Profile fetch failure is non-fatal — show all if role unknown
+        }
+
         const data = await api.crm.getPractices({
           limit: 200,
           month: selectedMonth,
           include_history: true,
+          ...(assignedTo ? { assigned_to: assignedTo } : {}),
         });
         setPractices(data);
       } catch (error) {
@@ -623,10 +635,14 @@ export default function PratichePage() {
                   className="w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50"
                 >
                   <option value="">All types</option>
-                  <option value="KITAS">KITAS Work Permit</option>
-                  <option value="VISA">Visa Extension</option>
-                  <option value="PMA">PT PMA Setup</option>
-                  <option value="TAX">Tax Consulting</option>
+                  <option value="kitas">KITAS Work Permit</option>
+                  <option value="extension_kitas">KITAS Extension</option>
+                  <option value="visa">Visa</option>
+                  <option value="extension_visa">Visa Extension</option>
+                  <option value="new_pt">PT PMA Setup</option>
+                  <option value="revision_pt">PT Revision</option>
+                  <option value="tax">Tax Consulting</option>
+                  <option value="accessories">Accessories</option>
                 </select>
               </div>
 
