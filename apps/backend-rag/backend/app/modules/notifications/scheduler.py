@@ -27,7 +27,7 @@ BALI_TZ = "Asia/Makassar"
 class NotificationScheduler:
     """Scheduler for automated notification tasks."""
 
-    def __init__(self, db_pool: asyncpg.Pool | None = None):
+    def __init__(self, db_pool: asyncpg.Pool | None = None) -> None:
         self.scheduler: AsyncIOScheduler | None = None
         self.is_running = False
         self.db_pool = db_pool
