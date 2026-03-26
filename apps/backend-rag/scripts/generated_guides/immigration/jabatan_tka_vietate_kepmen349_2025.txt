@@ -1,0 +1,562 @@
+JABATAN VIETATE AI TKA — KEPMENAKER 349/2019
+POSIZIONI CHE I LAVORATORI STRANIERI NON POSSONO RICOPRIRE IN INDONESIA
+
+Guida normativa verificata | Kepmenaker 349/2019 e PP 34/2021
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+1. BASE NORMATIVA E RATIO LEGIS
+
+Il sistema di regolamentazione del lavoro straniero in Indonesia prevede
+restrizioni esplicite su determinate posizioni lavorative riservate
+esclusivamente ai lavoratori nazionali indonesiani.
+
+Il fondamento normativo primario risiede nel Keputusan Menteri
+Ketenagakerjaan Nomor 349 Tahun 2019 — abbreviato Kepmenaker 349/2019 —
+che elenca in modo tassativo le jabatan (posizioni/qualifiche) precluse
+ai Tenaga Kerja Asing (TKA), ossia ai lavoratori stranieri operanti sul
+territorio della Repubblica d'Indonesia. [IMM-396]
+
+La ratio legis del divieto è duplice. In primo luogo, il legislatore
+indonesiano intende tutelare il mercato del lavoro locale, preservando
+per i cittadini nazionali le posizioni strategiche legate alla gestione
+del personale e delle risorse umane. In secondo luogo, si intende
+garantire che le funzioni di mediazione, consulenza e supervisione del
+lavoro siano svolte da soggetti con piena conoscenza del diritto del
+lavoro indonesiano, dei contratti collettivi nazionali e delle dinamiche
+industriali locali.
+
+Il principio sottostante è che le posizioni di HR (Human Resources) —
+dalla direzione alla supervisione, dalla consulenza all'amministrazione —
+richiedono una comprensione culturale e giuridica del contesto lavorativo
+indonesiano che un lavoratore straniero, per definizione, non può
+garantire appieno con la stessa continuità e legittimazione di un
+cittadino nazionale.
+
+Il quadro generale in cui si inscrive il Kepmenaker 349/2019 è definito
+dal Peraturan Pemerintah Nomor 34 Tahun 2021, conosciuto come PP 34/2021,
+che disciplina in modo organico l'utilizzo dei lavoratori stranieri in
+Indonesia, stabilendo i requisiti, le procedure di autorizzazione,
+le categorie ammesse e quelle escluse. [IMM-399]
+
+Il PP 34/2021 prevede che ogni datore di lavoro intenzionato ad assumere
+un TKA debba preventivamente presentare un Rencana Penggunaan Tenaga
+Kerja Asing (RPTKA) — Piano di Utilizzo di Lavoratori Stranieri — che
+deve essere approvato dal Kementerian Ketenagakerjaan. È in sede di
+valutazione dell'RPTKA che le jabatan vietate vengono verificate e, ove
+riscontrate, che la richiesta viene rigettata.
+
+È fondamentale comprendere che il divieto del Kepmenaker 349/2019
+si applica in modo trasversale, indipendentemente dal settore di
+attività del datore di lavoro. Sia che si tratti di una società di
+consulenza, di una struttura ricettiva turistica, di un'azienda
+manifatturiera o di una startup tecnologica, le 19 jabatan elencate
+restano precluse ai TKA in tutti i comparti economici. [IMM-396]
+
+Diverso è il caso delle jabatan ammesse, per le quali il TKA deve
+dimostrare che la propria qualifica professionale corrisponde alla
+posizione richiesta e che l'attività del datore di lavoro rientra nei
+settori economici consentiti, secondo la classificazione KBLI
+(Klasifikasi Baku Lapangan Usaha Indonesia). [IMM-403]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+2. LISTA COMPLETA DELLE 19 JABATAN VIETATE
+
+Il Kepmenaker 349/2019 elenca esattamente diciannove (19) jabatan
+vietate ai TKA, di cui diciotto (18) con divieto assoluto e una (1)
+con divieto condizionale. [IMM-396] [IMM-397]
+
+Di seguito la lista integrale, con la corrispondente denominazione in
+lingua indonesiana (Bahasa Indonesia), la denominazione in lingua
+inglese, la categoria funzionale e il livello di divieto:
+
+N.  JABATAN (BAHASA)                              JABATAN (ENGLISH)                              CATEGORIA           LIVELLO DIVIETO
+---  -----------------------------------------------  -----------------------------------------------  ------------------  ---------------
+ 1.  Direktur Personalia                              Personnel Director                             Direzione HR        Assoluto
+ 2.  Manajer Hubungan Industrial                      Industrial Relations Manager                   Management HR       Assoluto
+ 3.  Manajer Personalia                               Human Resource Manager                         Management HR       Assoluto
+ 4.  Supervisor Pengembangan Personalia               Personnel Development Supervisor               Supervisione HR     Assoluto
+ 5.  Supervisor Perekrutan Personalia                 Personnel Recruitment Supervisor               Supervisione HR     Assoluto
+ 6.  Supervisor Penempatan Personalia                 Personnel Placement Supervisor                 Supervisione HR     Assoluto
+ 7.  Supervisor Pembinaan Karir Pegawai               Employee Career Development Supervisor         Supervisione HR     Assoluto
+ 8.  Penata Usaha Personalia                          Personnel Administrator                        Amministrazione HR  Assoluto
+ 9.  Kepala Eksekutif Kantor                          Chief Executive Officer (CEO)                  Direzione generale  CONDIZIONALE
+10.  Ahli Pengembangan Personalia dan Karir           Personnel and Career Development Specialist    Specialisti HR      Assoluto
+11.  Spesialis Personalia                             Personnel Specialist                           Specialisti HR      Assoluto
+12.  Penasehat Karir                                  Career Advisor                                 Consulenti HR       Assoluto
+13.  Penasehat Tenaga Kerja                           Job Advisor                                    Consulenti HR       Assoluto
+14.  Pembimbing dan Konseling Jabatan                 Job Counselor                                  Consulenti HR       Assoluto
+15.  Perantara Tenaga Kerja                           Employment Mediator                            Mediazione HR       Assoluto
+16.  Pengadministrasi Pelatihan Pegawai               Employee Training Administrator                Amministrazione HR  Assoluto
+17.  Pewawancara Pegawai                              Job Interviewer                                Selezione HR        Assoluto
+18.  Analis Jabatan                                   Job Analyst                                    Analisi HR          Assoluto
+19.  Penyelenggara Keselamatan Kerja Pegawai          Occupational Safety Specialist                 Sicurezza HR        Assoluto
+
+Nota: La voce n. 9 (Kepala Eksekutif Kantor / CEO) è l'unica jabatan
+soggetta a divieto condizionale. Tutte le restanti 18 jabatan sono
+soggette a divieto assoluto, senza eccezioni. [IMM-397] [IMM-398]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+3. ANALISI PER CATEGORIA FUNZIONALE
+
+
+3.1 Direzione HR — Direktur Personalia (Personnel Director)
+
+La posizione di Direktur Personalia rappresenta il livello apicale
+della funzione HR all'interno di un'organizzazione. Il titolare di
+questa jabatan è responsabile della definizione delle politiche del
+personale, della gestione strategica delle risorse umane e della
+supervisione dell'intero dipartimento HR.
+
+Il divieto assoluto su questa posizione riflette la volontà del
+legislatore di garantire che le decisioni strategiche in materia
+di personale siano adottate da soggetti con piena consapevolezza
+del diritto del lavoro indonesiano e della contrattazione collettiva
+nazionale. [IMM-397]
+
+Il Direktur Personalia rientra nella categoria delle posizioni di
+vertice (C-suite HR) ed è spesso confusa, nella prassi aziendale
+internazionale, con il ruolo di Chief People Officer (CPO) o di
+VP of Human Resources: tali denominazioni internazionali, se
+corrispondenti alle funzioni di Direktur Personalia, restano comunque
+vietate ai TKA indipendentemente dal titolo utilizzato nel contratto
+di lavoro.
+
+
+3.2 Management HR — Manajer Hubungan Industrial e Manajer Personalia
+
+Le due posizioni manageriali vietate sono il Manajer Hubungan Industrial
+(Industrial Relations Manager) e il Manajer Personalia (Human Resource
+Manager). [IMM-397]
+
+Il Manajer Hubungan Industrial gestisce i rapporti tra l'azienda e
+i sindacati, sovrintende alle trattative con le organizzazioni dei
+lavoratori (Serikat Pekerja) e garantisce la conformità ai Perjanjian
+Kerja Bersama (PKB), i contratti collettivi aziendali. La profonda
+conoscenza del sistema sindacale e della giurisprudenza del lavoro
+indonesiano richiesta per questo ruolo rende comprensibile il divieto
+alla sua attribuzione a lavoratori stranieri.
+
+Il Manajer Personalia, equivalente al classico HR Manager della
+terminologia anglosassone, è il responsabile operativo delle funzioni
+di gestione del personale: assunzioni, licenziamenti, promozioni,
+formazione, welfare aziendale e gestione delle controversie interne.
+
+Entrambe le posizioni sono soggette a divieto assoluto in tutti i
+settori. [IMM-397]
+
+
+3.3 Supervisione HR — Quattro posizioni Supervisor
+
+Il Kepmenaker 349/2019 vieta ai TKA quattro diverse posizioni di
+supervisione nell'ambito delle risorse umane: [IMM-397]
+
+a) Supervisor Pengembangan Personalia (Personnel Development Supervisor):
+   responsabile dei programmi di sviluppo professionale dei dipendenti,
+   della pianificazione dei piani di carriera e dell'analisi dei
+   fabbisogni formativi interni.
+
+b) Supervisor Perekrutan Personalia (Personnel Recruitment Supervisor):
+   responsabile del processo di selezione e reclutamento del personale,
+   dalla pubblicazione degli annunci alla valutazione dei candidati
+   fino alla proposta di assunzione.
+
+c) Supervisor Penempatan Personalia (Personnel Placement Supervisor):
+   responsabile della corretta allocazione del personale nelle posizioni
+   organizzative, dell'onboarding e della mobilità interna.
+
+d) Supervisor Pembinaan Karir Pegawai (Employee Career Development
+   Supervisor): responsabile della gestione e dello sviluppo del percorso
+   professionale dei dipendenti, inclusa la pianificazione delle
+   successioni interne.
+
+Il divieto per tutte e quattro le posizioni di supervisione HR è
+assoluto e non ammette deroghe settoriali. [IMM-397]
+
+
+3.4 Amministrazione HR — Penata Usaha Personalia e Pengadministrasi Pelatihan Pegawai
+
+Due posizioni amministrative sono espressamente vietate ai TKA: [IMM-397]
+
+a) Penata Usaha Personalia (Personnel Administrator): responsabile della
+   tenuta dei fascicoli del personale, dell'elaborazione dei contratti
+   di lavoro, della gestione delle pratiche amministrative connesse al
+   rapporto di lavoro (permessi, presenze, benefit) e della conformità
+   documentale alle normative del lavoro indonesiane.
+
+b) Pengadministrasi Pelatihan Pegawai (Employee Training Administrator):
+   responsabile della pianificazione logistica e amministrativa dei
+   programmi di formazione, della registrazione delle presenze ai corsi
+   e del monitoraggio delle ore formative per la reportistica interna
+   e per eventuali obblighi normativi.
+
+Il divieto su queste posizioni, pur trattandosi di ruoli esecutivi e
+non di vertice, è assoluto. Il legislatore ha inteso riservare ai
+cittadini indonesiani anche le funzioni di gestione documentale del
+personale, che implicano il trattamento di dati sensibili e la conoscenza
+delle normative locali in materia di privacy, contratti e obblighi
+contributivi.
+
+
+3.5 Specialisti e Consulenti HR
+
+Il Kepmenaker 349/2019 vieta ai TKA sette posizioni tra specialisti
+e consulenti nell'ambito delle risorse umane e del lavoro: [IMM-397]
+
+a) Ahli Pengembangan Personalia dan Karir (Personnel and Career
+   Development Specialist): esperto di alto livello in materia di
+   sviluppo del personale e pianificazione delle carriere, distinto
+   dal Supervisor per il profilo tecnico-specialistico piuttosto che
+   gestionale.
+
+b) Spesialis Personalia (Personnel Specialist): specialista operativo
+   nelle funzioni HR di carattere tecnico, spesso con focalizzazione
+   su aspetti specifici quali la valutazione delle performance,
+   l'analisi retributiva o la gestione della diversità.
+
+c) Penasehat Karir (Career Advisor): consulente che fornisce orientamento
+   professionale ai dipendenti in merito ai percorsi di carriera
+   disponibili all'interno dell'organizzazione o sul mercato del lavoro.
+
+d) Penasehat Tenaga Kerja (Job Advisor): consulente che offre
+   assistenza ai lavoratori nella ricerca di impiego, nella valutazione
+   delle opportunità professionali e nella negoziazione delle condizioni
+   contrattuali.
+
+e) Pembimbing dan Konseling Jabatan (Job Counselor): professionista
+   che eroga servizi di counseling occupazionale, supportando i
+   lavoratori nella gestione delle difficoltà professionali, nei
+   cambiamenti di ruolo o nella ricollocazione.
+
+f) Perantara Tenaga Kerja (Employment Mediator): soggetto che svolge
+   funzioni di intermediazione tra datori di lavoro e lavoratori,
+   facilitando l'incontro tra domanda e offerta di lavoro o la
+   risoluzione di controversie lavorative in sede stragiudiziale.
+
+g) Pewawancara Pegawai (Job Interviewer): professionista dedicato
+   alla conduzione dei colloqui di selezione. Il divieto su questa
+   posizione è significativo in quanto riflette la volontà del
+   legislatore di garantire che la fase di selezione del personale
+   sia condotta da soggetti che comprendono pienamente il contesto
+   culturale e lavorativo indonesiano.
+
+Tutte e sette le posizioni sopra elencate sono soggette a divieto
+assoluto ai sensi del Kepmenaker 349/2019. [IMM-397]
+
+
+3.6 Posizioni Analitiche e Sicurezza — Analis Jabatan e Penyelenggara Keselamatan Kerja
+
+Le ultime due jabatan vietate in modo assoluto sono: [IMM-397]
+
+a) Analis Jabatan (Job Analyst): professionale specializzato
+   nell'analisi e nella descrizione delle posizioni lavorative
+   (job analysis e job description), nella definizione dei profili
+   di competenza richiesti e nella valutazione delle mansioni ai fini
+   della struttura retributiva.
+
+b) Penyelenggara Keselamatan Kerja Pegawai (Occupational Safety
+   Specialist): responsabile dei programmi di salute e sicurezza
+   sul lavoro (K3 — Keselamatan dan Kesehatan Kerja), della conformità
+   alle normative di sicurezza indonesiane e della formazione del
+   personale in materia di prevenzione degli infortuni.
+
+Il divieto sulla figura dell'Occupational Safety Specialist merita
+una menzione particolare: il diritto della sicurezza sul lavoro in
+Indonesia è regolato da una normativa specifica e articolata
+(Undang-Undang Nomor 1 Tahun 1970 e successive modifiche), che
+richiede una conoscenza approfondita del quadro normativo locale
+e delle procedure di certificazione K3 riconosciute dalle autorità
+indonesiane. La riserva di questa posizione ai cittadini nazionali
+è quindi pienamente coerente con la logica protettiva del sistema.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+4. IL CASO CEO — ANALISI DETTAGLIATA DELLA POSIZIONE CONDIZIONALE
+
+La posizione di Kepala Eksekutif Kantor (Chief Executive Officer, CEO)
+occupa un posto peculiare nell'architettura del Kepmenaker 349/2019:
+è l'unica jabatan soggetta a divieto condizionale, anziché assoluto.
+[IMM-398]
+
+4.1 La natura del divieto condizionale
+
+Il divieto si applica al CEO quando la funzione principale del ruolo
+consiste nella gestione del personale e delle risorse umane. In altri
+termini, se un TKA viene nominato CEO di una società indonesiana ma
+le sue responsabilità effettive — quelle prevalenti nell'esercizio
+quotidiano del ruolo — sono di natura HR (gestione, supervisione,
+direzione del personale), allora la jabatan ricade nel divieto del
+Kepmenaker 349/2019. [IMM-398]
+
+Questa interpretazione è nota come "test funzionale": non rileva
+la denominazione formale della posizione, ma il contenuto sostanziale
+delle funzioni svolte.
+
+4.2 Quando il CEO straniero è ammesso
+
+Il CEO straniero è pienamente ammissibile quando il ruolo ha
+funzione principale di natura commerciale, strategica o operativa:
+
+- Sviluppo del business e relazioni con investitori
+- Definizione e implementazione della strategia aziendale
+- Gestione finanziaria e supervisione del P&L
+- Rappresentanza legale e istituzionale della società
+- Sviluppo di partnership commerciali e negoziazione contrattuale
+- Supervisione delle operazioni produttive o di erogazione del servizio
+
+In questi casi, anche se il CEO supervisiona indirettamente il
+dipartimento HR tramite un Direktur o Manajer Personalia indonesiano,
+la jabatan non ricade nel divieto, poiché la gestione del personale
+non costituisce la funzione principale del ruolo.
+
+4.3 Quando il CEO straniero è vietato
+
+Il CEO straniero è vietato quando si verifica una o più delle seguenti
+condizioni:
+
+- Il ruolo prevede la gestione diretta e quotidiana del personale
+  senza l'intermediazione di un responsabile HR locale
+- Le job description formale e/o l'RPTKA indicano funzioni prevalenti
+  di gestione delle risorse umane
+- La struttura organizzativa non prevede un responsabile HR locale
+  distinto, facendo di fatto coincidere il ruolo CEO con quello
+  di Direktur Personalia o Manajer Personalia
+
+4.4 Raccomandazione pratica per i clienti Bali Zero
+
+La prassi raccomandata da Bali Zero per la strutturazione del ruolo
+CEO straniero è la seguente:
+
+i.  Redigere una job description dettagliata che enfatizzi le funzioni
+    commerciali, strategiche e operative, con esplicita indicazione
+    che la gestione del personale è delegata a un responsabile HR
+    locale.
+
+ii. Garantire la presenza in organigramma di almeno un dipendente
+    indonesiano con responsabilità HR formalmente attribuite
+    (Manajer Personalia o equivalente), eventualmente anche
+    part-time se l'azienda è di piccole dimensioni.
+
+iii. Nell'RPTKA, indicare come funzioni principali del CEO straniero
+     quelle commerciali, finanziarie e strategiche, evitando
+     formulazioni che richiamino la gestione diretta del personale.
+
+iv. Conservare documentazione interna (organigrammi, deleghe,
+    verbali CDA) che dimostri la separazione funzionale tra
+    il ruolo CEO e le funzioni HR. [IMM-398] [IMM-399]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+5. CONSEGUENZE E SANZIONI
+
+5.1 Conseguenze in sede di valutazione dell'RPTKA
+
+Il primo effetto concreto dell'inserimento di una jabatan vietata
+nell'RPTKA è il rigetto dell'istanza da parte del Kementerian
+Ketenagakerjaan. Il rigetto può essere totale (se la jabatan vietata
+è l'unica posizione richiesta) o parziale (se l'RPTKA include
+più posizioni, alcune delle quali ammissibili).
+
+In caso di rigetto, il datore di lavoro è tenuto a riformulare
+l'istanza con una jabatan diversa, compatibile con il profilo
+professionale del TKA e con il settore di attività aziendale.
+Questa operazione richiede di norma un riallineamento del contratto
+di lavoro, della job description e dell'organigramma. [IMM-399]
+
+5.2 Conseguenze per il datore di lavoro
+
+Il datore di lavoro che occupa un TKA in una jabatan vietata senza
+aver ottenuto l'approvazione dell'RPTKA — o che ha ottenuto
+l'approvazione mediante dichiarazioni non veritiere sulla natura
+delle funzioni svolte — è esposto a:
+
+a) Sanzioni amministrative: il Kementerian Ketenagakerjaan può
+   irrogare sanzioni pecuniarie e revocare le autorizzazioni
+   al lavoro già rilasciate per gli altri TKA dell'azienda.
+
+b) Responsabilità penale: ai sensi della Undang-Undang Nomor 13
+   Tahun 2003 (Legge sul Lavoro) e successive modifiche introdotte
+   dalla Undang-Undang Cipta Kerja, l'impiego illegale di TKA
+   in posizioni vietate può configurare illeciti penali a carico
+   dei legali rappresentanti dell'azienda.
+
+c) Revoca del KITAS (Kartu Izin Tinggal Terbatas): il permesso
+   di soggiorno temporaneo del TKA può essere revocato in qualsiasi
+   momento se l'autorità competente accerta l'irregolarità della
+   posizione lavorativa.
+
+d) Blacklisting: in casi gravi o recidivi, il datore di lavoro
+   può essere inserito in liste di esclusione che impediscono
+   future richieste di utilizzo di TKA.
+
+5.3 Conseguenze per il TKA
+
+Il lavoratore straniero che occupa una jabatan vietata è esposto a:
+
+a) Revoca immediata del KITAS e relativo Izin Tinggal: la perdita
+   del permesso di soggiorno comporta l'obbligo di lasciare il
+   territorio indonesiano entro il termine concesso dall'autorità.
+
+b) Deportazione: in caso di accertata violazione delle norme
+   sull'utilizzo dei TKA, l'Imigrasi (Direzione Generale
+   dell'Immigrazione) può disporre la deportazione del lavoratore.
+
+c) Divieto di reingresso: la deportazione comporta nella maggior
+   parte dei casi un divieto di reingresso in Indonesia per un
+   periodo variabile, che può estendersi fino a qualche anno.
+
+d) Responsabilità solidale: in alcune circostanze, il TKA può
+   essere ritenuto corresponsabile delle violazioni commesse
+   dal datore di lavoro, se è dimostrato che era consapevole
+   dell'irregolarità della propria posizione.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+6. NOTE OPERATIVE BALI ZERO
+
+6.1 Procedura di verifica jabatan ante-RPTKA
+
+Prima di procedere alla preparazione di qualsiasi RPTKA, il team
+di Bali Zero esegue una verifica strutturata in tre fasi:
+
+Fase 1 — Analisi della jabatan proposta
+Il consulente analizza la denominazione della posizione proposta
+dal cliente, verificandone la corrispondenza con le 19 jabatan
+vietate del Kepmenaker 349/2019. [IMM-396] In caso di corrispondenza
+letterale, la jabatan viene immediatamente rifiutata e si avvia
+il processo di ridefinizione.
+
+Fase 2 — Analisi funzionale
+Anche in assenza di corrispondenza letterale con le jabatan vietate,
+il consulente analizza il contenuto delle funzioni previste per
+il TKA. Qualora le funzioni siano sostanzialmente riconducibili
+a una delle 19 jabatan vietate, il divieto si applica ugualmente
+indipendentemente dalla denominazione formale utilizzata. [IMM-397]
+Questo è particolarmente rilevante per il caso CEO [IMM-398] e per
+denominazioni anglosassoni come "HR Director", "People Manager",
+"Talent Acquisition Lead", "Recruiter" che possono corrispondere
+a jabatan vietate.
+
+Fase 3 — Verifica di coerenza KBLI
+Una volta individuata una jabatan ammissibile, il consulente verifica
+che essa sia coerente con la qualifica professionale documentata del
+TKA e con il codice KBLI del datore di lavoro. [IMM-403] Una jabatan
+legittima in sé può risultare inammissibile se non corrisponde
+al settore di attività dell'impresa o al profilo professionale del
+lavoratore straniero.
+
+6.2 Errori comuni riscontrati nei clienti
+
+Nel corso dell'attività consulenziale, Bali Zero ha riscontrato
+un insieme di errori ricorrenti commessi dai clienti stranieri
+in fase di strutturazione dell'impiego del TKA:
+
+Errore 1 — Trasposizione acritica di titoli internazionali
+Molte aziende straniere che aprono una sede in Indonesia tentano
+di replicare la struttura organizzativa della casa madre, assegnando
+ai TKA i titoli utilizzati nel paese d'origine (es. "HR Director",
+"Head of People", "Recruitment Manager"). Questi titoli, tradotti
+nella corrispondente terminologia indonesiana, spesso corrispondono
+esattamente alle jabatan vietate.
+
+Errore 2 — Sottovalutazione del ruolo CEO condizionale
+Diversi clienti ritengono che il CEO straniero sia sempre e
+comunque ammissibile in quanto capo dell'azienda. Non considerano
+che se le funzioni effettive del CEO includono la gestione diretta
+del personale senza un responsabile HR locale, la posizione
+ricade nel divieto del Kepmenaker 349/2019. [IMM-398]
+
+Errore 3 — Confusione tra sicurezza informatica e sicurezza
+sul lavoro
+Il titolo di "Safety Officer" o "Health & Safety Manager" viene
+talvolta proposto dai clienti nella convinzione che si tratti
+di una posizione tecnica non legata alle HR. In realtà, la jabatan
+"Penyelenggara Keselamatan Kerja Pegawai" (Occupational Safety
+Specialist), che corrisponde a questi titoli quando riferita ai
+lavoratori, è espressamente vietata ai TKA. [IMM-397]
+
+Errore 4 — Utilizo di job interviewer stranieri nei processi
+di selezione
+Alcune aziende multinazionali ritengono di poter impiegare un TKA
+come intervistatore nei processi di selezione locale, considerandolo
+un ruolo operativo e non strategico. La jabatan "Pewawancara Pegawai"
+(Job Interviewer) è invece espressamente vietata ai sensi del
+Kepmenaker 349/2019. [IMM-397]
+
+Errore 5 — Inserimento di funzioni di job analysis nell'RPTKA
+di un esperto straniero
+Alcuni clienti inseriscono nell'RPTKA di consulenti stranieri
+funzioni di analisi organizzativa e job design, non rendendosi
+conto che tali attività ricadono nella jabatan "Analis Jabatan"
+(Job Analyst), espressamente vietata. [IMM-397]
+
+6.3 Jabatan alternative consigliate
+
+In molti dei casi sopra descritti, è possibile strutturare
+il rapporto di lavoro in modo da valorizzare le competenze del TKA
+senza incorrere nei divieti. Esempi di jabatan alternative
+frequentemente utilizzate da Bali Zero per clienti stranieri:
+
+- Invece di "Direktur Personalia" → "Direktur Operasional" o
+  "Direktur Pengembangan Bisnis" (con funzioni operative o
+  commerciali prevalenti)
+
+- Invece di "Manajer Personalia" → "Manajer Proyek" o
+  "Manajer Pengembangan Organisasi" con delega HR a personale
+  indonesiano
+
+- Invece di "CEO con funzioni HR" → CEO con job description
+  focalizzata su strategi, finanza e commerciale, affiancato
+  da un HR Manager indonesiano
+
+- Invece di "Recruitment Manager" → "Manajer Hubungan Klien"
+  o "Manajer Pengembangan Bisnis" qualora le funzioni reali
+  siano prevalentemente commerciali
+
+Ogni caso va valutato singolarmente: la scelta della jabatan
+alternativa deve essere autentica e riflettere le effettive
+mansioni del TKA, non essere una mera fictio documentale.
+Un RPTKA costruito su una jabatan nominalmente ammissibile
+ma sostanzialmente corrispondente a una jabatan vietata
+espone il datore di lavoro a rischi ancora maggiori in caso
+di ispezione del lavoro. [IMM-399] [IMM-403]
+
+6.4 Aggiornamenti normativi da monitorare
+
+Il Kepmenaker 349/2019 è in vigore dal 2019 e non ha subito
+modifiche sostanziali alla data di produzione del presente documento.
+Tuttavia, il contesto normativo del lavoro straniero in Indonesia
+è soggetto a evoluzione periodica, anche in relazione all'attuazione
+della riforma strutturale introdotta dalla Undang-Undang Cipta Kerja
+(Legge sulla Creazione di Posti di Lavoro) e dai relativi decreti
+attuativi.
+
+Bali Zero monitora costantemente l'evoluzione normativa in materia
+e aggiorna le proprie procedure operative in caso di modifiche
+al Kepmenaker 349/2019 o di nuove circolari ministeriali
+sull'utilizzo dei TKA. I clienti con RPTKA attivi vengono notificati
+tempestivamente in caso di variazioni rilevanti.
+
+Per qualsiasi verifica su una jabatan specifica o per assistenza
+nella strutturazione di un RPTKA, il team di Bali Zero è
+disponibile tramite i canali abituali.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS: IMM-396, IMM-397, IMM-398, IMM-399, IMM-403
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
