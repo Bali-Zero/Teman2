@@ -33,7 +33,7 @@ export function TeamGrid({ locale = "en" }: TeamGridProps) {
               viewport={{ once: true }}
               className="group text-center p-4 rounded-xl border border-white/5 hover:border-[#d4845a]/40 transition-all bg-white/[0.02] hover:bg-white/[0.05]"
             >
-              <div className="w-16 h-16 rounded-full mx-auto mb-3 overflow-hidden bg-[#d4845a]/10 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full mx-auto mb-3 overflow-hidden flex items-center justify-center ring-2 ring-[#d4845a]/20 group-hover:ring-[#d4845a]/50 transition-all">
                 {member.photo ? (
                   <Image
                     src={member.photo}
@@ -43,9 +43,22 @@ export function TeamGrid({ locale = "en" }: TeamGridProps) {
                     className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
-                  <span className="text-[#d4845a] font-bold text-lg font-[family-name:var(--font-spartan)]">
-                    {member.name.slice(0, 2).toUpperCase()}
-                  </span>
+                  <div
+                    className="w-full h-full flex items-center justify-center"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #1a1410 0%, #2a1f14 50%, #1a1410 100%)",
+                    }}
+                  >
+                    <span className="text-[#d4845a] font-bold text-base font-[family-name:var(--font-spartan)] select-none">
+                      {member.name
+                        .split(" ")
+                        .map((w) => w[0])
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase()}
+                    </span>
+                  </div>
                 )}
               </div>
               <p className="font-[family-name:var(--font-spartan)] text-white text-sm font-semibold leading-tight">

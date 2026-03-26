@@ -6,96 +6,6 @@
   "breaker_active_until": null,
   "runs": [
     {
-      "run_id": "2e1bc326",
-      "timestamp": "2026-03-20T11:02:40.527388+00:00",
-      "ruff_code": "DTZ005",
-      "target_file": "backend/app/routers/admin_team_activity.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "721010fb",
-      "timestamp": "2026-03-20T11:04:51.496995+00:00",
-      "ruff_code": "DTZ005",
-      "target_file": "backend/app/routers/crm_clients.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "67d5b1e9",
-      "timestamp": "2026-03-20T11:07:03.718607+00:00",
-      "ruff_code": "DTZ005",
-      "target_file": "backend/app/modules/notifications/router.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "b9a97938",
-      "timestamp": "2026-03-20T11:54:41.736998+00:00",
-      "ruff_code": "DTZ005",
-      "target_file": "backend/app/routers/autonomous_agents.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "e6908f64",
-      "timestamp": "2026-03-20T12:58:20.069473+00:00",
-      "ruff_code": "ANN204",
-      "target_file": "backend/app/core/circuit_breaker.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "18c54768",
-      "timestamp": "2026-03-20T13:02:56.528791+00:00",
-      "ruff_code": "DTZ003",
-      "target_file": "backend/app/routers/crm_practices.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "58657bc7",
-      "timestamp": "2026-03-20T13:06:38.751188+00:00",
-      "ruff_code": "DTZ003",
-      "target_file": "backend/services/rag/evaluation/monitoring.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "27a4b871",
-      "timestamp": "2026-03-20T13:08:23.962217+00:00",
-      "ruff_code": "ANN204",
-      "target_file": "backend/app/core/exceptions.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "0c27a841",
-      "timestamp": "2026-03-20T13:10:21.448874+00:00",
-      "ruff_code": "DTZ005",
-      "target_file": "backend/app/routers/autonomous_agents.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "99851517",
-      "timestamp": "2026-03-20T13:46:12.886177+00:00",
-      "ruff_code": "ANN204",
-      "target_file": "backend/agents/agents/client_value_predictor.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
       "run_id": "45bbf301",
       "timestamp": "2026-03-20T13:47:57.792385+00:00",
       "ruff_code": "ANN204",
@@ -449,6 +359,96 @@
     {
       "run_id": "c03c9eea",
       "timestamp": "2026-03-26T16:49:05.439964+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/app/decorators/auth.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "5c6145b3",
+      "timestamp": "2026-03-26T19:06:03.573062+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/agents/services/google_colab_adapter.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "3c469c65",
+      "timestamp": "2026-03-26T19:08:13.865101+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/agents/services/kg_repository.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "f3d0f17c",
+      "timestamp": "2026-03-26T19:11:12.327939+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/agents/services/llm_adapter.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "f0f6685c",
+      "timestamp": "2026-03-26T19:13:14.996429+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/agents/services/nurturing_message.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "9497fdfb",
+      "timestamp": "2026-03-26T19:16:15.926042+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/agents/services/unified_coverage_collector.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "d2aa1aaa",
+      "timestamp": "2026-03-26T19:19:18.409980+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/agents/services/whatsapp_notification.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "58328428",
+      "timestamp": "2026-03-26T19:21:19.493005+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/agents/services/windsurf_adapter.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "afb1e21d",
+      "timestamp": "2026-03-26T19:23:24.815464+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/app/core/circuit_breaker.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "847c7a56",
+      "timestamp": "2026-03-26T19:26:27.100406+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/app/core/service_health.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "4cdbac3d",
+      "timestamp": "2026-03-26T19:29:40.268907+00:00",
       "ruff_code": "ANN204",
       "target_file": "backend/app/decorators/auth.py",
       "outcome": "success",
