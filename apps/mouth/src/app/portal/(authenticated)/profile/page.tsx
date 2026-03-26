@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 import {
   Loader2,
   User,
@@ -12,18 +12,19 @@ import {
   AlertTriangle,
   AlertCircle,
   CreditCard,
-} from "lucide-react";
-import { api } from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
-import { logger } from "@/lib/logger";
-import type { PortalProfile } from "@/lib/api/portal/portal.types";
+  Lock,
+} from 'lucide-react';
+import { api } from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
+import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
+import type { PortalProfile } from '@/lib/api/portal/portal.types';
 
 // ============================================================================
 // ALERT UTILITIES (same as workspace)
 // ============================================================================
 
-type PassportAlertLevel = "ok" | "warning" | "critical" | "expired";
+type PassportAlertLevel = 'ok' | 'warning' | 'critical' | 'expired';
 
 interface PassportValidityInfo {
   color: string;
@@ -32,49 +33,46 @@ interface PassportValidityInfo {
   monthsUntil: number;
 }
 
-const getPassportValidityColor = (
-  expiryDate: string | undefined,
-): PassportValidityInfo => {
+const getPassportValidityColor = (expiryDate: string | undefined): PassportValidityInfo => {
   if (!expiryDate) {
     return {
-      color: "gray",
-      label: "No expiry",
-      alertLevel: "ok",
+      color: 'gray',
+      label: 'No expiry',
+      alertLevel: 'ok',
       monthsUntil: 999,
     };
   }
 
   const now = new Date();
   const expiry = new Date(expiryDate);
-  const monthsUntilExpiry =
-    (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
+  const monthsUntilExpiry = (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30);
 
   if (monthsUntilExpiry <= 0) {
     return {
-      color: "red",
-      label: "EXPIRED",
-      alertLevel: "expired",
+      color: 'red',
+      label: 'EXPIRED',
+      alertLevel: 'expired',
       monthsUntil: monthsUntilExpiry,
     };
   } else if (monthsUntilExpiry < 9) {
     return {
-      color: "red",
+      color: 'red',
       label: `${Math.floor(monthsUntilExpiry)} months`,
-      alertLevel: "critical",
+      alertLevel: 'critical',
       monthsUntil: monthsUntilExpiry,
     };
   } else if (monthsUntilExpiry < 14) {
     return {
-      color: "yellow",
+      color: 'yellow',
       label: `${Math.floor(monthsUntilExpiry)} months`,
-      alertLevel: "warning",
+      alertLevel: 'warning',
       monthsUntil: monthsUntilExpiry,
     };
   } else {
     return {
-      color: "green",
+      color: 'green',
       label: `${Math.floor(monthsUntilExpiry)} months`,
-      alertLevel: "ok",
+      alertLevel: 'ok',
       monthsUntil: monthsUntilExpiry,
     };
   }
@@ -84,12 +82,10 @@ const isBirthdayToday = (dateOfBirth: string | undefined): boolean => {
   if (!dateOfBirth) return false;
   const today = new Date();
   const dob = new Date(dateOfBirth);
-  return (
-    today.getDate() === dob.getDate() && today.getMonth() === dob.getMonth()
-  );
+  return today.getDate() === dob.getDate() && today.getMonth() === dob.getMonth();
 };
 
-import { formatDate } from "@/lib/utils/format-date";
+import { formatDate } from '@/lib/utils/format-date';
 
 // ============================================================================
 // MAIN COMPONENT
@@ -110,8 +106,8 @@ export default function ProfilePage() {
       const data = await api.portal.getProfile();
       setProfile(data);
     } catch (err) {
-      error("Failed to load profile", "Please try again later");
-      logger.error("Failed to load portal profile", {}, err as Error);
+      error('Failed to load profile', 'Please try again later');
+      logger.error('Failed to load portal profile', {}, err as Error);
     } finally {
       setIsLoading(false);
     }
@@ -120,10 +116,7 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2
-          className="w-8 h-8 animate-spin"
-          style={{ color: "var(--bz-accent-warm)" }}
-        />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--bz-accent-warm)' }} />
       </div>
     );
   }
@@ -139,18 +132,16 @@ export default function ProfilePage() {
       {/* Header */}
       <section>
         <h1 className="text-2xl font-bold tracking-tight">Your Profile</h1>
-        <p style={{ color: "var(--bz-text-2)" }}>
-          View your personal information
-        </p>
+        <p style={{ color: 'var(--bz-text-2)' }}>View your personal information</p>
       </section>
 
       {/* Profile Card */}
       <section
         className="rounded-xl border p-6 space-y-6"
         style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
+          background: 'rgba(30,30,35,0.7)',
+          borderColor: 'rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(24px)',
         }}
       >
         {/* Avatar */}
@@ -158,20 +149,15 @@ export default function ProfilePage() {
           <div className="relative">
             <div
               className={cn(
-                "w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500",
+                'w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500',
                 isBirthday &&
-                  "bg-gradient-to-br from-yellow-300 via-amber-300 to-yellow-400 animate-pulse shadow-[0_0_30px_rgba(255,215,0,0.6)]",
+                  'bg-gradient-to-br from-yellow-300 via-amber-300 to-yellow-400 animate-pulse shadow-[0_0_30px_rgba(255,215,0,0.6)]'
               )}
-              style={
-                !isBirthday ? { background: "rgba(201,169,110,0.15)" } : {}
-              }
+              style={!isBirthday ? { background: 'rgba(201,169,110,0.15)' } : {}}
             >
               <User
-                className={cn(
-                  "w-10 h-10 transition-colors",
-                  isBirthday ? "text-yellow-700" : "",
-                )}
-                style={!isBirthday ? { color: "var(--bz-accent-warm)" } : {}}
+                className={cn('w-10 h-10 transition-colors', isBirthday ? 'text-yellow-700' : '')}
+                style={!isBirthday ? { color: 'var(--bz-accent-warm)' } : {}}
               />
             </div>
             {/* Birthday Badge */}
@@ -184,10 +170,8 @@ export default function ProfilePage() {
             {profile.gender && (
               <div
                 className={cn(
-                  "absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2",
-                  profile.gender === "M"
-                    ? "bg-blue-500 text-white"
-                    : "bg-pink-500 text-white",
+                  'absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2',
+                  profile.gender === 'M' ? 'bg-blue-500 text-white' : 'bg-pink-500 text-white'
                 )}
               >
                 {profile.gender}
@@ -196,18 +180,15 @@ export default function ProfilePage() {
           </div>
           <div className="text-center">
             <h2 className="text-xl font-bold">{profile.fullName}</h2>
-            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
-              Member since{" "}
-              {new Date(profile.memberSince).toLocaleDateString("en-US", {
-                month: "long",
-                year: "numeric",
+            <p className="text-sm" style={{ color: 'var(--bz-text-2)' }}>
+              Member since{' '}
+              {new Date(profile.memberSince).toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
               })}
             </p>
             {isBirthday && (
-              <p
-                className="text-sm font-medium mt-1 animate-pulse"
-                style={{ color: "#fbbf24" }}
-              >
+              <p className="text-sm font-medium mt-1 animate-pulse" style={{ color: '#fbbf24' }}>
                 🎉 Happy Birthday! 🎉
               </p>
             )}
@@ -215,30 +196,17 @@ export default function ProfilePage() {
         </div>
 
         {/* Info Fields */}
-        <div
-          className="space-y-4 pt-4 border-t"
-          style={{ borderColor: "var(--bz-border)" }}
-        >
+        <div className="space-y-4 pt-4 border-t" style={{ borderColor: 'var(--bz-border)' }}>
           <ProfileField icon={Mail} label="Email" value={profile.email} />
 
-          {profile.phone && (
-            <ProfileField icon={Phone} label="Phone" value={profile.phone} />
-          )}
+          {profile.phone && <ProfileField icon={Phone} label="Phone" value={profile.phone} />}
 
           {profile.whatsapp && (
-            <ProfileField
-              icon={Phone}
-              label="WhatsApp"
-              value={profile.whatsapp}
-            />
+            <ProfileField icon={Phone} label="WhatsApp" value={profile.whatsapp} />
           )}
 
           {profile.nationality && (
-            <ProfileField
-              icon={Globe}
-              label="Nationality"
-              value={profile.nationality}
-            />
+            <ProfileField icon={Globe} label="Nationality" value={profile.nationality} />
           )}
 
           {/* Date of Birth with Birthday Glow */}
@@ -248,8 +216,8 @@ export default function ProfilePage() {
               style={
                 isBirthday
                   ? {
-                      background: "rgba(251,191,36,0.15)",
-                      boxShadow: "0 0 20px rgba(255,215,0,0.3)",
+                      background: 'rgba(251,191,36,0.15)',
+                      boxShadow: '0 0 20px rgba(255,215,0,0.3)',
                     }
                   : {}
               }
@@ -258,31 +226,25 @@ export default function ProfilePage() {
                 className="p-2 rounded-md"
                 style={
                   isBirthday
-                    ? { background: "rgba(251,191,36,0.25)" }
-                    : { background: "rgba(255,255,255,0.03)" }
+                    ? { background: 'rgba(251,191,36,0.25)' }
+                    : { background: 'rgba(255,255,255,0.03)' }
                 }
               >
                 <Calendar
-                  className={cn("w-4 h-4", isBirthday && "text-yellow-400")}
-                  style={!isBirthday ? { color: "var(--bz-text-2)" } : {}}
+                  className={cn('w-4 h-4', isBirthday && 'text-yellow-400')}
+                  style={!isBirthday ? { color: 'var(--bz-text-2)' } : {}}
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p
-                  className="text-xs mb-0.5"
-                  style={{ color: "var(--bz-text-2)" }}
-                >
+                <p className="text-xs mb-0.5" style={{ color: 'var(--bz-text-2)' }}>
                   Date of Birth
                 </p>
                 <p
-                  className={cn(
-                    "text-sm font-medium break-words",
-                    isBirthday && "font-bold",
-                  )}
-                  style={isBirthday ? { color: "#fbbf24" } : {}}
+                  className={cn('text-sm font-medium break-words', isBirthday && 'font-bold')}
+                  style={isBirthday ? { color: '#fbbf24' } : {}}
                 >
                   {formatDate(profile.dateOfBirth)}
-                  {isBirthday && " 🎂 (Today!)"}
+                  {isBirthday && ' 🎂 (Today!)'}
                 </p>
               </div>
             </div>
@@ -301,93 +263,84 @@ export default function ProfilePage() {
           {profile.passportExpiry && (
             <div
               className={cn(
-                "flex items-start gap-3 p-3 rounded-lg border",
-                passportValidity.alertLevel === "critical" && "animate-pulse",
+                'flex items-start gap-3 p-3 rounded-lg border',
+                passportValidity.alertLevel === 'critical' && 'animate-pulse'
               )}
               style={{
                 background:
-                  passportValidity.alertLevel === "ok"
-                    ? "rgba(16,185,129,0.06)"
-                    : passportValidity.alertLevel === "warning"
-                      ? "rgba(245,158,11,0.06)"
-                      : "rgba(239,68,68,0.08)",
+                  passportValidity.alertLevel === 'ok'
+                    ? 'rgba(16,185,129,0.06)'
+                    : passportValidity.alertLevel === 'warning'
+                      ? 'rgba(245,158,11,0.06)'
+                      : 'rgba(239,68,68,0.08)',
                 borderColor:
-                  passportValidity.alertLevel === "ok"
-                    ? "rgba(16,185,129,0.25)"
-                    : passportValidity.alertLevel === "warning"
-                      ? "rgba(245,158,11,0.3)"
-                      : "rgba(239,68,68,0.35)",
+                  passportValidity.alertLevel === 'ok'
+                    ? 'rgba(16,185,129,0.25)'
+                    : passportValidity.alertLevel === 'warning'
+                      ? 'rgba(245,158,11,0.3)'
+                      : 'rgba(239,68,68,0.35)',
               }}
             >
               <div
                 className="p-2 rounded-md"
                 style={{
                   background:
-                    passportValidity.alertLevel === "ok"
-                      ? "rgba(16,185,129,0.12)"
-                      : passportValidity.alertLevel === "warning"
-                        ? "rgba(245,158,11,0.12)"
-                        : "rgba(239,68,68,0.15)",
+                    passportValidity.alertLevel === 'ok'
+                      ? 'rgba(16,185,129,0.12)'
+                      : passportValidity.alertLevel === 'warning'
+                        ? 'rgba(245,158,11,0.12)'
+                        : 'rgba(239,68,68,0.15)',
                 }}
               >
-                {passportValidity.alertLevel === "ok" ? (
-                  <Calendar className="w-4 h-4" style={{ color: "#34d399" }} />
+                {passportValidity.alertLevel === 'ok' ? (
+                  <Calendar className="w-4 h-4" style={{ color: '#34d399' }} />
                 ) : (
                   <AlertTriangle
                     className="w-4 h-4"
                     style={{
-                      color:
-                        passportValidity.alertLevel === "warning"
-                          ? "#fbbf24"
-                          : "#f87171",
+                      color: passportValidity.alertLevel === 'warning' ? '#fbbf24' : '#f87171',
                     }}
                   />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p
-                  className="text-xs mb-0.5"
-                  style={{ color: "var(--bz-text-2)" }}
-                >
+                <p className="text-xs mb-0.5" style={{ color: 'var(--bz-text-2)' }}>
                   Passport Expiry
                 </p>
                 <p
                   className="text-sm font-medium break-words"
                   style={{
                     color:
-                      passportValidity.alertLevel === "ok"
-                        ? "#34d399"
-                        : passportValidity.alertLevel === "warning"
-                          ? "#fbbf24"
-                          : "#f87171",
+                      passportValidity.alertLevel === 'ok'
+                        ? '#34d399'
+                        : passportValidity.alertLevel === 'warning'
+                          ? '#fbbf24'
+                          : '#f87171',
                   }}
                 >
                   {formatDate(profile.passportExpiry)}
-                  <span className="ml-2 text-xs">
-                    ({passportValidity.label})
-                  </span>
+                  <span className="ml-2 text-xs">({passportValidity.label})</span>
                 </p>
                 {/* Alert Messages */}
-                {passportValidity.alertLevel === "warning" && (
+                {passportValidity.alertLevel === 'warning' && (
                   <p className="mt-1 text-xs text-yellow-400">
                     <AlertCircle className="w-3 h-3 inline mr-1" />
-                    Your passport expires in less than 14 months. Contact your
-                    embassy to begin renewal process.
+                    Your passport expires in less than 14 months. Contact your embassy to begin
+                    renewal process.
                   </p>
                 )}
-                {passportValidity.alertLevel === "critical" && (
+                {passportValidity.alertLevel === 'critical' && (
                   <p className="mt-1 text-xs text-red-400 font-medium">
                     <AlertCircle className="w-3 h-3 inline mr-1" />
-                    URGENT: Your passport expires in less than 9 months. You may
-                    not be able to travel internationally. Contact your embassy
-                    immediately!
+                    URGENT: Your passport expires in less than 9 months. You may not be able to
+                    travel internationally. Contact your embassy immediately!
                   </p>
                 )}
-                {passportValidity.alertLevel === "expired" && (
+                {passportValidity.alertLevel === 'expired' && (
                   <p className="mt-1 text-xs text-red-400 font-bold">
                     <AlertCircle className="w-3 h-3 inline mr-1" />
-                    Your passport has EXPIRED! Contact your embassy immediately
-                    for emergency renewal.
+                    Your passport has EXPIRED! Contact your embassy immediately for emergency
+                    renewal.
                   </p>
                 )}
               </div>
@@ -395,11 +348,7 @@ export default function ProfilePage() {
           )}
 
           {profile.address && (
-            <ProfileField
-              icon={MapPin}
-              label="Address"
-              value={profile.address}
-            />
+            <ProfileField icon={MapPin} label="Address" value={profile.address} />
           )}
         </div>
       </section>
@@ -408,13 +357,13 @@ export default function ProfilePage() {
       <section
         className="rounded-lg border p-4"
         style={{
-          borderColor: "rgba(201,169,110,0.3)",
-          background: "rgba(201,169,110,0.06)",
+          borderColor: 'rgba(201,169,110,0.3)',
+          background: 'rgba(201,169,110,0.06)',
         }}
       >
-        <p className="text-sm" style={{ color: "var(--bz-accent-warm)" }}>
-          To update your profile information, please contact your account
-          manager or send us a message through the Chat.
+        <p className="text-sm" style={{ color: 'var(--bz-accent-warm)' }}>
+          To update your profile information, please contact your account manager or send us a
+          message through the Chat.
         </p>
       </section>
     </div>
@@ -435,17 +384,23 @@ function ProfileField({
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-start gap-3 group" aria-label={`${label}: ${value} (read-only)`}>
       <div
         className="p-2 rounded-md backdrop-blur-sm shadow-sm"
-        style={{ background: "rgba(255,255,255,0.03)" }}
+        style={{ background: 'rgba(255,255,255,0.03)' }}
       >
-        <Icon className="w-4 h-4" style={{ color: "var(--bz-text-2)" }} />
+        <Icon className="w-4 h-4" style={{ color: 'var(--bz-text-2)' }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs mb-0.5" style={{ color: "var(--bz-text-2)" }}>
-          {label}
-        </p>
+        <div className="flex items-center gap-1">
+          <p className="text-xs mb-0.5" style={{ color: 'var(--bz-text-2)' }}>
+            {label}
+          </p>
+          <Lock
+            className="w-2.5 h-2.5 opacity-0 group-hover:opacity-30 transition-opacity"
+            style={{ color: 'var(--bz-text-3)' }}
+          />
+        </div>
         <p className="text-sm font-medium break-words">{value}</p>
       </div>
     </div>

@@ -289,6 +289,20 @@ export const ClientCard = React.memo(
                 {client.status}
               </span>
 
+              {/* Active practices count */}
+              {(client.active_practices ?? 0) > 0 && (
+                <span
+                  className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold"
+                  style={{
+                    background: 'rgba(99,102,241,0.15)',
+                    color: '#818cf8',
+                  }}
+                  title={`${(client.active_practices ?? 0)} active process${(client.active_practices ?? 0) > 1 ? 'es' : ''}`}
+                >
+                  {(client.active_practices ?? 0)}p
+                </span>
+              )}
+
               {/* Action Buttons (Visible on Hover) */}
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 {client.email && (
@@ -340,6 +354,14 @@ export const ClientCard = React.memo(
                   </div>
                 );
               })()}
+            {(client.active_practices ?? 0) > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--tx-secondary)]">Active:</span>
+                <span className="font-medium text-indigo-300">
+                  {(client.active_practices ?? 0)} process{(client.active_practices ?? 0) > 1 ? 'es' : ''}
+                </span>
+              </div>
+            )}
             {passportAlert && (
               <div className="flex items-center justify-between">
                 <span className="text-[var(--tx-secondary)]">Passport:</span>
@@ -365,6 +387,7 @@ export const ClientCard = React.memo(
       prevProps.client.last_interaction_summary === nextProps.client.last_interaction_summary &&
       prevProps.client.assigned_to === nextProps.client.assigned_to &&
       prevProps.client.passport_expiry === nextProps.client.passport_expiry &&
+      prevProps.client.active_practices === nextProps.client.active_practices &&
       prevProps.isDragging === nextProps.isDragging
     );
   }
