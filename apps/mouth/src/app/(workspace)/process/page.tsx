@@ -157,6 +157,7 @@ export default function PratichePage() {
   } | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const previousFiltersRef = useRef<FilterState>(filters);
 
   // Pagination for large datasets
@@ -231,6 +232,25 @@ export default function PratichePage() {
 
     loadPractices();
   }, [selectedMonth]);
+
+  // Keyboard shortcut: '/' or Cmd+F to focus search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const isEditing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if (e.key === '/' && !isEditing) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+      if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        searchInputRef.current?.blur();
+        setSearchQuery('');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // Track view mode changes
   useEffect(() => {
@@ -676,10 +696,12 @@ export default function PratichePage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--bz-text-2)]" />
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder="Search process by ID, client, type..."
+              placeholder="Search process… (press / to focus)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              title="Press / to focus search, Escape to clear"
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 transition-all"
             />
           </div>
