@@ -1,19 +1,19 @@
 /* =============================================================
-   KBLI Navigator Theme — Claude Night (dark warm gray)
+   KBLI Navigator Theme — God Tier Anthracite
    Used by globals.css and KBLI components
    ============================================================= */
 
 :root {
-  /* Base backgrounds — elegant shiny dark */
-  --kbli-bg-base: #141416;
-  --kbli-bg-elevated: #1c1c1f;
-  --kbli-bg-surface: #232328;
-  --kbli-bg-surface-hover: #2a2a30;
-  --kbli-bg-card: rgba(35, 35, 40, 0.85);
-  --kbli-bg-card-hover: rgba(42, 42, 48, 0.9);
-  --kbli-bg-input: rgba(20, 20, 22, 0.8);
-  --kbli-bg-primary: #141416;
-  --kbli-bg-secondary: #1c1c1f;
+  /* Base backgrounds — God Tier Anthracite */
+  --kbli-bg-base: #1d273b;
+  --kbli-bg-elevated: #243047;
+  --kbli-bg-surface: #2a3655;
+  --kbli-bg-surface-hover: #2f3d5e;
+  --kbli-bg-card: rgba(29, 39, 59, 0.85);
+  --kbli-bg-card-hover: rgba(36, 48, 71, 0.9);
+  --kbli-bg-input: rgba(29, 39, 59, 0.8);
+  --kbli-bg-primary: #1d273b;
+  --kbli-bg-secondary: #243047;
 
   /* Accent — warm terracotta/copper */
   --kbli-accent: #d4845a;
@@ -66,9 +66,12 @@
   --kbli-map-new: #5ec490;
 
   /* Shadows */
-  --kbli-shadow-card: 0 1px 2px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.12), 0 0 0 1px var(--kbli-border);
-  --kbli-shadow-card-hover: 0 4px 12px rgba(0,0,0,0.2), 0 16px 40px rgba(0,0,0,0.15), 0 0 0 1px var(--kbli-border-hover), 0 0 30px rgba(212,132,90,0.04);
-  --kbli-shadow-glow: 0 0 20px rgba(212,132,90,0.15), 0 0 60px rgba(212,132,90,0.05);
+  --kbli-shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--kbli-border);
+  --kbli-shadow-card-hover:
+    0 4px 12px rgba(0, 0, 0, 0.2), 0 16px 40px rgba(0, 0, 0, 0.15),
+    0 0 0 1px var(--kbli-border-hover), 0 0 30px rgba(212, 132, 90, 0.04);
+  --kbli-shadow-glow: 0 0 20px rgba(212, 132, 90, 0.15), 0 0 60px rgba(212, 132, 90, 0.05);
 
   /* Radii */
   --kbli-radius-sm: 6px;
@@ -102,7 +105,7 @@
 }
 
 .kbli-prose ul li::before {
-  content: "";
+  content: '';
   position: absolute;
   left: 12px;
   top: 18px;
