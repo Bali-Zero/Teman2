@@ -76,6 +76,7 @@ export default function CaseDetailPage() {
     payment_status: '',
     quoted_price: '',
     actual_price: '',
+    assigned_to: '',
   });
 
   // Inline notes edit
@@ -276,6 +277,7 @@ export default function CaseDetailPage() {
       payment_status: practice.payment_status || 'unpaid',
       quoted_price: practice.quoted_price?.toString() || '',
       actual_price: practice.actual_price?.toString() || '',
+      assigned_to: practice.assigned_to || '',
     });
     setIsEditModalOpen(true);
   };
@@ -289,7 +291,7 @@ export default function CaseDetailPage() {
     try {
       const user = await api.getProfile();
       const updates: Partial<
-        Pick<Practice, 'status' | 'priority' | 'payment_status' | 'quoted_price' | 'actual_price'>
+        Pick<Practice, 'status' | 'priority' | 'payment_status' | 'quoted_price' | 'actual_price' | 'assigned_to'>
       > = {};
 
       if (editForm.status && editForm.status !== practice.status) updates.status = editForm.status;
@@ -301,6 +303,8 @@ export default function CaseDetailPage() {
         updates.quoted_price = Number(editForm.quoted_price);
       if (editForm.actual_price && Number(editForm.actual_price) !== practice.actual_price)
         updates.actual_price = Number(editForm.actual_price);
+      if (editForm.assigned_to !== (practice.assigned_to || ''))
+        updates.assigned_to = editForm.assigned_to || undefined;
 
       if (Object.keys(updates).length === 0) {
         toast.error('No Changes', 'No fields were modified.');
@@ -1257,6 +1261,24 @@ export default function CaseDetailPage() {
                   placeholder="0.00"
                   step="0.01"
                 />
+              </div>
+
+              {/* Assigned To */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium" style={{ color: 'var(--bz-text-1)' }}>
+                  Assigned To
+                </label>
+                <select
+                  value={editForm.assigned_to}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, assigned_to: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none"
+                  style={{ border: '1px solid var(--bz-border)', background: 'var(--bz-card)', color: 'var(--bz-text-1)' }}
+                >
+                  <option value="">— unassigned —</option>
+                  <option value="zero@balizero.com">Zero</option>
+                  <option value="asya@balizero.com">Asya</option>
+                  <option value="antonellosiano@gmail.com">Antonello</option>
+                </select>
               </div>
             </div>
 
