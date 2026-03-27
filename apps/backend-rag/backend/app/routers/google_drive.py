@@ -141,7 +141,7 @@ async def oauth_callback(
     # Handle system user OAuth (state=system from admin auth endpoint)
     if state == "system":
         import os
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
         import asyncpg
         import httpx
@@ -191,7 +191,7 @@ async def oauth_callback(
                     """,
                     access_token,
                     refresh_token,
-                    datetime.now() + timedelta(seconds=expires_in),
+                    datetime.now(tz=timezone.utc).replace(tzinfo=None) + timedelta(seconds=expires_in),
                 )
             finally:
                 await conn.close()
