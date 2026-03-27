@@ -18,7 +18,7 @@ class APIKeyAuth:
     Designed for immediate testing relief while coordinating with colleague's API Key service
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize API key service with valid keys and permissions from settings"""
         # Load API keys from environment variable (comma-separated)
         api_keys_str = settings.api_keys
