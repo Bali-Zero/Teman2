@@ -27,7 +27,7 @@ interface Session {
 
 export default function SecuritySettingsPage() {
   const router = useRouter();
-  const { error: toastError } = useToast();
+  const { error: toastError, warning } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -75,7 +75,7 @@ export default function SecuritySettingsPage() {
   };
 
   const revokeSession = (_sessionId: string) => {
-    // TODO: API call to revoke session
+    warning('Not yet available', 'Session revocation will be enabled in a future update.');
   };
 
   return (
