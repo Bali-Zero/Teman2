@@ -341,6 +341,14 @@ export default function CaseDetailPage() {
     setIsEditModalOpen(true);
   };
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSaving) setIsEditModalOpen(false);
+    };
+    if (isEditModalOpen) document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isEditModalOpen, isSaving]);
+
   const handleSaveChanges = async () => {
     if (!practice || !caseId) return;
     setIsSaving(true);
