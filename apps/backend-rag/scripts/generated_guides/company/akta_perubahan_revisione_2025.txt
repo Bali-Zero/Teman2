@@ -1,0 +1,238 @@
+AKTA PERUBAHAN — MODIFICA DELLO STATUTO DI UNA PT PMA
+QUANDO E COME MODIFICARE L'ATTO COSTITUTIVO
+GUIDA NORMATIVA 2024-2025
+
+Guida normativa verificata | Basata su UU 40/2007, PP 5/2021
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CHE COS'È L'AKTA PERUBAHAN
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+L'akta perubahan (atto di modifica) è il documento notarile che registra
+qualsiasi variazione agli elementi fondamentali di una PT.
+
+A differenza dell'akta pendirian (atto costitutivo originale),
+l'akta perubahan è un documento separato che si aggiunge alla storia
+societaria senza sostituire l'originale.
+
+Una PT può avere più akta perubahan nel corso della sua vita —
+ogni modifica successiva crea un nuovo atto aggiuntivo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. QUANDO È RICHIESTA UN'AKTA PERUBAHAN
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Qualsiasi modifica a questi elementi richiede un'akta perubahan:
+
+STRUTTURA SOCIETARIA:
+- Cambio di azionisti (vendita quote, nuovi soci, uscita di soci)
+- Modifica percentuale di partecipazione tra soci esistenti
+- Cambio di direktur o komisaris (aggiunta, rimozione, sostituzione)
+
+DATI FONDAMENTALI:
+- Cambio di nome della PT
+- Cambio di sede legale (indirizzo registrato)
+- Cambio dell'oggetto sociale (KBLI — attività svolta)
+
+CAPITALE:
+- Aumento del modal dasar
+- Aumento del modal disetor
+
+Regola pratica: se l'informazione è contenuta nell'akta pendirian
+originale e deve essere cambiata, serve un'akta perubahan.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. DUE TIPI DI MODIFICA — CON E SENZA APPROVAZIONE KEMENKUMHAM
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Non tutte le modifiche richiedono la stessa procedura.
+
+3.1 Modifiche che richiedono APPROVAZIONE FORMALE Kemenkumham [COM-036]
+
+Queste modifiche impattano l'essenza della persona giuridica
+e devono essere approvate dal Kementerian Hukum dan HAM:
+
+- Cambio di denominazione (nome PT)
+- Cambio di sede (da una provincia all'altra o modifica AHU/SK)
+- Cambio dell'oggetto sociale (bidang usaha)
+- Modifica del modal dasar (aumento o riduzione)
+- Cambio della struttura azionaria (nuovi soci, trasferimento quote)
+- Fusione, akuisisi, pemisahan (merger, acquisition, spin-off)
+
+Processo: Notaio → Kemenkumham → Approvazione (14 gg lavorativi) → OSS
+
+3.2 Modifiche che richiedono solo PEMBERITAHUAN (Notifica) a Kemenkumham [COM-036]
+
+Queste modifiche sono meno fondamentali e richiedono solo
+una notifica (non approvazione):
+
+- Cambio di direktur o komisaris
+- Cambio dell'indirizzo all'interno della stessa kota/kabupaten
+- Perubahan Anggaran Dasar lainnya (altre modifiche minori)
+
+Processo: Notaio → Kemenkumham notifica → Ricevuta → OSS
+Tempi: 3-7 giorni (più veloce dell'approvazione)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. PROCEDURA STANDARD DI AKTA PERUBAHAN
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1 — RUPS (Rapat Umum Pemegang Saham):
+Tutti i soci si riuniscono (fisicamente o tramite kuasa) e deliberano
+la modifica. La delibera viene verbalizzata. [COM-035]
+
+Il quorum e le maggioranze richieste dipendono dal tipo di modifica:
+- Modifiche ordinarie: quorum 2/3 + approvazione 2/3 dei voti
+- Modifiche fondamentali (nome, oggetto sociale, capital): quorum più alto
+
+STEP 2 — NOTAIO:
+I soci (o il direktur con procura) si recano dal notaio di Bali
+che redige l'akta perubahan basandosi sulla delibera RUPS.
+
+L'akta perubahan contiene:
+- Riferimento all'akta originale (numero e data)
+- Elementi modificati (solo le parti che cambiano)
+- Dati aggiornati
+- Identità dei comparenti
+
+STEP 3 — KEMENKUMHAM:
+Il notaio trasmette elettronicamente l'akta al Kemenkumham tramite
+il sistema AHU Online.
+- Approvazione formale: entro 14 gg lavorativi
+- Notifica semplice: entro 3-7 gg lavorativi
+
+STEP 4 — AGGIORNAMENTO OSS:
+Dopo la risposta del Kemenkumham, il direktur accede a OSS
+e aggiorna i dati aziendali in linea con le modifiche apportate.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. CASI PRATICI FREQUENTI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 Aggiunta di un nuovo direttore
+
+Scenario: Il cliente WNA vuole aggiungere un co-direttore WNI.
+
+Tipo modifica: Pemberitahuan (notifica)
+Documenti necessari:
+- Verbale RUPS di nomina
+- Identità del nuovo direktur (KTP per WNI, paspor per WNA)
+- Akta perubahan da notaio
+Tempi: 1-2 settimane
+Effetto OSS: aggiornare direktur nel profilo aziendale
+
+5.2 Cambio di sede
+
+Scenario: Il cliente vuole spostare la sede da un Virtual Office
+all'indirizzo del proprio locale fisico.
+
+Tipo modifica: Approvazione (se cambio provincia) / Pemberitahuan (stessa kota)
+Documenti necessari:
+- Bukti kepemilikan atau sewa gedung (contratto affitto o atto proprietà)
+- Foto location
+- Verbale RUPS
+Tempi: 2-4 settimane (con approvazione)
+
+5.3 Aggiunta di un KBLI (nuova attività)
+
+Scenario: Un cliente ha aperto solo come ristorante (56101)
+ma vuole aggiungere anche la gestione di villa (55194).
+
+Tipo modifica: Approvazione (cambio oggetto sociale)
+Documenti necessari:
+- Verbale RUPS
+- Descrizione nuova attività
+Tempi: 2-4 settimane
+Effetto OSS: aggiornare KBLI, potenzialmente nuova licenza/TDUP
+
+5.4 Trasferimento di quote
+
+Scenario: Un socio WNA vuole vendere le proprie quote all'altro socio.
+
+Tipo modifica: Approvazione (cambio struttura azionaria)
+Documenti necessari:
+- Akta jual beli saham (atto di compravendita) separato
+- Akta perubahan con nuova struttura azionaria
+- Verifica che la struttura risultante rispetti i vincoli TERBUKA/TERBATAS
+Tempi: 2-4 settimane
+
+5.5 Conversione PT Lokal → PT PMA (inserimento socio WNA)
+
+Scenario: Una PT Lokal esistente vuole accettare un WNA come socio.
+
+Tipo modifica: Approvazione (cambio struttura azionaria + adeguamento capitale)
+Passaggi specifici:
+- Verifica TERBUKA/TERBATAS del KBLI
+- Aumento modal dasar a Rp 10 miliardi (se inferiore) [COM-008]
+- Versamento nuovo capital disetor
+- Akta perubahan con nuovi soci e capitale
+Tempi: 3-5 settimane
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. COSA NON RICHIEDE AKTA PERUBAHAN
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Non tutte le variazioni richiedono una modifica formale dell'akta:
+
+NON RICHIEDONO AKTA PERUBAHAN:
+- Assunzione di dipendenti (gestita tramite contratti di lavoro)
+- Apertura di nuovi conti bancari
+- Cambio di commercialista o consulente
+- Variazioni minori all'indirizzo (numero civico, nome via)
+- Aggiornamento LKPM trimestrale
+- Cambio di dichiarazione fiscale
+- Rinnovo TDUP o altre licenze periodiche
+
+RICHIEDONO SOLO AGGIORNAMENTO OSS (senza akta):
+- Aggiornamento piano di investimento (RPM) senza modifica del capitale
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TEMPI TIPICI:
+Pemberitahuan: 1-2 settimane
+Approvazione standard: 2-4 settimane
+Approvazione con capitale increase: 3-5 settimane
+
+COSTI:
+Variabile in base al tipo di modifica.
+Consultare il PricingTool per il costo aggiornato dell'akta perubahan.
+Modifiche multiple fatte contestualmente (es. cambio direttore + cambio sede)
+costano meno di due pratiche separate — conviene combinarle se possibile.
+
+NOTAIO:
+Il notaio deve essere nella stessa provincia della sede aziendale.
+Se la PT è a Bali, il notaio deve essere a Bali.
+Bali Zero lavora con notai di fiducia a Bali — il cliente non deve
+cercarne uno autonomamente.
+
+DOCUMENTI IN LINGUA STRANIERA:
+Passaporti, atti societari esteri, procure straniere devono essere
+tradotti in indonesiano da traduttore giurato e, se richiesto, apostillati.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+COM-008, COM-035, COM-036
+
+Base normativa: UU 40/2007 Art. 21 (perubahan anggaran dasar),
+PP 5/2021 (OSS), Peraturan Kemenkumham tentang AHU Online.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

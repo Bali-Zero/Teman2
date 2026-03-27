@@ -1,0 +1,265 @@
+OSS, NIB E LICENZE SETTORIALI — SISTEMA DI REGISTRAZIONE IMPRESE
+GUIDA AL SINGLE SUBMISSION SYSTEM E AL RISK-BASED APPROACH
+INDONESIA 2024-2025
+
+Guida normativa verificata | Basata su PP 5/2021 (OSS), Perpres 49/2021
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. COS'È OSS E PERCHÉ È IMPORTANTE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OSS (Online Single Submission) è la piattaforma digitale centralizzata
+del Governo indonesiano per la registrazione e il licensing delle imprese.
+
+URL ufficiale: https://oss.go.id
+
+Il sistema OSS è stato completamente rinnovato nel 2021 (OSS RBA) con
+l'introduzione del Risk Based Approach (RBA) in base a PP 5/2021.
+Dalla versione RBA, una singola piattaforma gestisce:
+
+- Registrazione dell'impresa (NIB)
+- Licenze per attività commerciale
+- Dichiarazione del piano di investimento
+- Reporting trimestrale LKPM
+- Aggiornamenti e modifiche dell'impresa
+
+PRIMA DI OSS: Il percorso di licenze era frammentato tra dozzine di
+uffici governativi diversi. OSS ha centralizzato e velocizzato
+notevolmente il processo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. IL NIB — NOMOR INDUK BERUSAHA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il NIB (Nomor Induk Berusaha) è il numero identificativo univoco
+dell'impresa rilasciato dal sistema OSS. [COM-014]
+
+COSA SOSTITUISCE IL NIB:
+Il NIB sostituisce e unifica tre documenti precedenti: [COM-013]
+- TDP (Tanda Daftar Perusahaan) — vecchio certificato di registrazione
+- API (Angka Pengenal Importir) — numero identificativo importatore
+- Hak Akses Kepabeanan — accesso ai servizi doganali
+
+Da quando è attivo OSS RBA (2021), il NIB è l'unico documento
+di identità commerciale necessario per qualsiasi azienda in Indonesia.
+
+TEMPI DI RILASCIO:
+Il NIB viene emesso automaticamente dal sistema OSS al completamento
+della registrazione: nessuna approvazione manuale necessaria. [COM-015]
+In pratica: compilazione del modulo + invio = NIB immediato.
+
+VALIDITÀ:
+Il NIB rimane valido finché l'azienda è attiva e rispetta
+i propri obblighi (LKPM per PT PMA, aggiornamenti dati, ecc.).
+La validità è permanente, non soggetta a rinnovo annuale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. IL SISTEMA RBA — RISK BASED APPROACH
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il Risk Based Approach (RBA) classifica ogni attività in 4 livelli
+di rischio che determinano quali licenze sono necessarie. [COM-016]
+
+LIVELLO 1 — RISIKO RENDAH (Rischio Basso)
+─────────────────────────────────────────
+Il solo NIB è sufficiente come autorizzazione a operare. [COM-017]
+Non è richiesta nessuna licenza aggiuntiva.
+
+Esempi di attività a rischio basso:
+- Consulenza aziendale generica (KBLI 70201)
+- Servizi IT / programmazione (KBLI 62010)
+- Traduzioni e interpretariato (KBLI 74300)
+- Artigianato e piccola manifattura non alimentare
+- Commercio all'ingrosso standard
+
+LIVELLO 2 — RISIKO MENENGAH RENDAH (Rischio Medio-Basso)
+──────────────────────────────────────────────────────────
+Richiede NIB + Sertifikat Standar autodichiarato. [COM-018]
+Il Sertifikat Standar viene generato automaticamente da OSS dopo
+la dichiarazione del rispetto degli standard da parte dell'imprenditore.
+Nessuna verifica fisica da parte del governo prima dell'avvio.
+In alcuni casi, un Sertifikat Standar può richiedere verifikasi
+(ispezione successiva all'avvio dell'attività).
+
+Esempi:
+- Ristorante (KBLI 56101)
+- Bar (KBLI 56103)
+- Guest house / pondok wisata (KBLI 55130)
+- Yoga studio / wellness (KBLI 93139)
+- Piccolo commercio al dettaglio
+
+LIVELLO 3 — RISIKO MENENGAH TINGGI (Rischio Medio-Alto)
+─────────────────────────────────────────────────────────
+Richiede NIB + Sertifikat Standar verificato.
+Il Sertifikat Standar deve essere verificato/approvato dall'autorità
+competente (DPMPTSP, Kementerian tematico) prima dell'avvio.
+Tempi: 3-14 giorni per la verifica.
+
+LIVELLO 4 — RISIKO TINGGI (Rischio Alto)
+──────────────────────────────────────────
+Richiede NIB + Izin formale rilasciato dall'autorità competente. [COM-019]
+L'Izin deve essere ottenuto prima di poter operare.
+Il processo richiede documentazione più estesa e verifica governativa.
+
+Esempi di attività ad alto rischio:
+- Clinica medica (KBLI 86102) → Izin Operasional Klinik
+- Laboratorio diagnostico → Izin laboratorium
+- Produzione farmaceutica → Izin BPOM
+- Scuola formale → Izin Pendirian Sekolah
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. TDUP — LICENZA TURISTICA PER BALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Per le attività nel settore turistico a Bali, oltre alle licenze OSS
+standard, è richiesto il TDUP (Tanda Daftar Usaha Pariwisata). [COM-040]
+
+COSA È IL TDUP:
+Il TDUP è il certificato di registrazione come impresa turistica,
+rilasciato dal Dinas Pariwisata della provincia di Bali.
+
+CHI DEVE OTTENERLO:
+- Alberghi, villa, guest house
+- Ristoranti e bar
+- Agenzie di viaggio
+- Attrezzature/servizi turistici
+- Spa e centri benessere legati al turismo
+- Attrazioni e attività turistiche
+
+COME SI OTTIENE:
+Tramite DPMPTSP (Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu)
+o direttamente tramite portale OSS (in molti casi è integrato).
+
+TEMPI: 3-7 giorni dopo presentazione della documentazione.
+
+DOCUMENTAZIONE TIPICA:
+- NIB
+- Akta pendirian + SK Kemenkumham
+- NPWP aziendale
+- Sertifikat standar OSS (se già ottenuto)
+- Deskripsi attività turistica + foto location
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. PROCEDURA COMPLETA PER OTTENERE NIB + LICENZE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITI:
+Prima di accedere a OSS per la registrazione PT PMA, devono essere
+già completati:
+1. Akta Pendirian da notaio
+2. SK Kemenkumham (approvazione come badan hukum)
+3. NPWP aziendale (o richiesta simultanea)
+
+STEP 1 — REGISTRAZIONE OSS:
+Accedere a oss.go.id → Daftar (registrazione) → Pilih Badan Usaha
+→ PT PMA → Inserire dati SK Kemenkumham
+
+STEP 2 — PROFILO AZIENDA:
+Compilare: nome PT, alamat (indirizzo registrato), kode pos,
+deskripsi singkat attività, NIK/Paspor direttore.
+
+STEP 3 — KBLI (Bidang Usaha):
+Inserire il/i codice/i KBLI dell'attività.
+OSS mostrerà automaticamente il livello di rischio (RBA)
+e le licenze necessarie per ogni KBLI.
+
+STEP 4 — RENCANA PENANAMAN MODAL:
+Dichiarare il piano di investimento: [COM-049]
+- Kapasitas produksi/layanan (capacità produttiva/servizi)
+- Total investasi (investimento totale pianificato)
+- Modal asing (quota straniera, coincide con quota WNA)
+- Asal modal asing (paese d'origine del capitale straniero)
+- Proyeksi tenaga kerja (dipendenti pianificati per i prossimi 3 anni)
+
+STEP 5 — VERIFICA E SUBMIT:
+Revisione dei dati inseriti → Submit
+OSS genera immediatamente il NIB (codice di 13 cifre).
+
+STEP 6 — PEMENUHAN PERSYARATAN DASAR:
+Dopo il NIB, OSS guida l'imprenditore nel completare
+i requisiti specifici per ogni KBLI (sertifikat standar, izin).
+Per attività Menengah Rendah: dichiarazione autodichiarata = completata.
+Per attività Tinggi: avviare iter per Izin formale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. MATRICE ESEMPI PRATICI BALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KBLI    Attività                   Rischio RBA        Licenze necessarie
+──────────────────────────────────────────────────────────────────────────
+56101   Ristorante                 Menengah Rendah    NIB + SS + TDUP
+55194   Vila turistica             Menengah Rendah    NIB + SS + TDUP
+93139   Yoga/wellness studio       Rendah             NIB (+ TDUP se turismo)
+62010   Sviluppo software          Rendah             NIB
+70201   Consulenza aziendale       Rendah             NIB
+47630   Negozio accessori          Rendah             NIB
+79120   Agenzia viaggi             Menengah Rendah    NIB + SS + TDUP
+86102   Clinica medica             Tinggi             NIB + Izin Operasional
+85493   Scuola privata/corsi       Menengah Tinggi    NIB + SS verificato
+──────────────────────────────────────────────────────────────────────────
+SS = Sertifikat Standar
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. AGGIORNAMENTO OSS DOPO VARIAZIONI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Alcune variazioni aziendali richiedono aggiornamento del NIB su OSS:
+
+- Cambio di indirizzo sede
+- Aggiunta/rimozione di KBLI (attività)
+- Modifica del piano di investimento
+- Cambio del direktur utama
+- Cambiamento significativo del capitale
+
+L'aggiornamento su OSS non è automatico — deve essere eseguito
+manualmente dal direktur dopo aver completato le modifiche formali
+(akta perubahan + SK Kemenkumham per le modifiche che lo richiedono).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CREDENZIALI OSS:
+Le credenziali OSS (email + password) sono fondamentali.
+Devono essere conservate in modo sicuro dal direktur.
+Senza accesso a OSS, non è possibile presentare LKPM,
+aggiornare i dati aziendali, o ottenere nuove licenze.
+
+KBLI ACCURACY:
+Scegliere il KBLI corretto è critico. Un KBLI errato:
+- Porta a licenze sbagliate
+- Può richiedere re-registrazione su OSS
+- Può creare problemi nella verifica TERBUKA/TERBATAS/TERTUTUP
+
+Bali Zero verifica sempre il KBLI corretto prima di procedere.
+
+LINGUA OSS:
+Il portale OSS è interamente in bahasa Indonesia.
+Il team Bali Zero supporta la compilazione per i clienti WNA.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+COM-013, COM-014, COM-015, COM-016, COM-017, COM-018, COM-019, COM-040, COM-049
+
+Base normativa: PP 5/2021 (OSS RBA), Perpres 49/2021, UU 25/2007 Art. 25.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

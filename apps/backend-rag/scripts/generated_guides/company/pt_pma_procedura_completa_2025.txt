@@ -1,0 +1,280 @@
+PT PMA — PERSEROAN TERBATAS PENANAMAN MODAL ASING
+COSTITUZIONE E GESTIONE DELLA SOCIETÀ A INVESTIMENTO STRANIERO IN INDONESIA
+PROCEDURA COMPLETA 2024-2025
+
+Guida normativa verificata | Aggiornata a UU 40/2007, UU 25/2007, PP 5/2021, Perpres 49/2021
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CHE COS'È UNA PT PMA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La PT PMA (Perseroan Terbatas Penanaman Modal Asing) è una società a
+responsabilità limitata con partecipazione straniera, costituita secondo
+la legge indonesiana UU 40/2007 sulle Società per Azioni.
+
+La PT è una persona giuridica (badan hukum) separata dai suoi azionisti:
+il patrimonio societario è distinto da quello personale dei soci. [COM-001]
+
+La PT PMA è la struttura societaria standard per gli investitori stranieri
+che intendono operare in Indonesia. È l'unico veicolo legale che permette
+agli stranieri di detenere quote societarie in Indonesia.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. REQUISITI FONDAMENTALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1 Fondatori e azionisti
+
+La PT deve essere fondata da almeno 2 persone fisiche o giuridiche. [COM-002]
+Non esiste un limite massimo al numero di azionisti.
+
+Gli azionisti possono essere:
+- Persone fisiche straniere (WNA)
+- Persone giuridiche straniere (aziende estere)
+- Persone fisiche indonesiane (WNI)
+- Misto stranieri + indonesiani
+
+2.2 Capitale sociale
+
+CAPITALE AUTORIZZATO (Modal Dasar):
+Minimo Rp 10.000.000.000 (10 miliardi IDR) per le PT PMA. [COM-008]
+Questo importo è dichiarato nell'atto notarile ma non deve essere
+interamente versato al momento della costituzione.
+
+CAPITALE VERSATO (Modal Disetor):
+Minimo Rp 2.500.000.000 (2,5 miliardi IDR) in contanti reali. [COM-009]
+Deve essere accreditato sul conto bancario della PT.
+Equivale normalmente al 25% del capitale autorizzato. [COM-007]
+
+2.3 Organi societari
+
+DIREKSI (Consiglio di Amministrazione):
+Almeno 1 direktur (direttore). [COM-010]
+Il direttore può essere un cittadino straniero (WNA). [COM-012]
+Almeno un direktur deve risiedere in Indonesia. [COM-043]
+
+DEWAN KOMISARIS (Consiglio di Sorveglianza):
+Almeno 1 komisaris. [COM-011]
+Se tutti i direktur sono stranieri, almeno un komisaris deve
+essere un cittadino indonesiano (WNI). [COM-012]
+
+2.4 Sede legale
+
+La PT deve avere un indirizzo registrato in Indonesia,
+obbligatoriamente in zona commerciale — non residenziale. [COM-042]
+
+Opzioni valide:
+- Ufficio proprio o affittato in zona komersial
+- Virtual Office (indirizzo commerciale fornito da terzi)
+- Co-working space con servizio di domiciliazione
+
+NON valido: villa privata, appartamento, kos-kosan.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. PROCEDURA DI COSTITUZIONE — 6 STEP
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La procedura completa comprende i seguenti step: [COM-050]
+
+STEP 1 — AKTA PENDIRIAN (Atto Costitutivo)
+──────────────────────────────────────────
+Il notaio redige l'atto costitutivo in lingua indonesiana. [COM-003]
+L'akta contiene:
+- Nome e sede della PT
+- Oggetto sociale (bidang usaha) e codici KBLI
+- Struttura del capitale (modal dasar e disetor)
+- Identità di tutti gli azionisti con quote percentuali
+- Organi societari: direktur e komisaris con dati completi
+
+Il nome della PT deve essere unico, preceduto da "PT", e non può
+duplicare nomi di società già esistenti. [COM-041]
+
+STEP 2 — SK KEMENKUMHAM (Approvazione Ministero)
+──────────────────────────────────────────────────
+L'akta viene inoltrata al Kementerian Hukum dan HAM (Kemenkumham)
+per l'approvazione come badan hukum.
+Il Kemenkumham deve emettere la decisione entro 14 giorni lavorativi
+dalla ricezione della domanda completa. [COM-004]
+Dalla data dello SK, la PT è ufficialmente una persona giuridica. [COM-005]
+
+STEP 3 — NPWP AZIENDALE (Codice Fiscale)
+──────────────────────────────────────────
+Il Nomor Pokok Wajib Pajak (NPWP) aziendale viene richiesto al Kantor
+Pajak di competenza territoriale.
+Deve essere ottenuto entro 1 mese dall'inizio dell'attività. [COM-037]
+L'NPWP aziendale è distinto dall'NPWP personale dei direttori/azionisti.
+
+STEP 4 — NIB VIA OSS (Numero Identificativo Impresa)
+─────────────────────────────────────────────────────
+Il Nomor Induk Berusaha (NIB) viene rilasciato tramite la piattaforma
+OSS (Online Single Submission) su oss.go.id. [COM-014]
+Il NIB sostituisce il vecchio TDP (Tanda Daftar Perusahaan),
+API (Angka Pengenal Importir) e hak akses kepabeanan. [COM-013]
+Il NIB viene emesso immediatamente dopo la registrazione completa. [COM-015]
+
+Il piano di investimento (Rencana Penanaman Modal) deve essere dichiarato
+in questa fase, includendo il capitale pianificato e i codici KBLI. [COM-049]
+
+STEP 5 — LICENZE SETTORIALI
+─────────────────────────────
+Il sistema OSS RBA (Risk Based Approach) classifica ogni attività in
+4 livelli di rischio: Rendah, Menengah Rendah, Menengah Tinggi, Tinggi. [COM-016]
+
+- Risiko Rendah → solo NIB (sufficiente come licenza) [COM-017]
+- Menengah Rendah → NIB + Sertifikat Standar autodichiarato [COM-018]
+- Risiko Tinggi → NIB + Izin formale da autorità competente [COM-019]
+
+Esempio: Ristorante (KBLI 56101) → rischio Menengah Rendah → NIB + Sertifikat Standar.
+Esempio: Clinica medica (KBLI 86102) → rischio Tinggi → NIB + Izin Operasional.
+
+Per le attività nel settore turistico a Bali è richiesto il Tanda Daftar
+Usaha Pariwisata (TDUP) dal Dinas Pariwisata Bali. [COM-040]
+
+STEP 6 — APERTURA CONTO BANCARIO
+───────────────────────────────────
+Il conto corrente deve essere aperto esclusivamente a nome della PT. [COM-048]
+Non è ammesso l'uso di conti personali del direttore o degli azionisti.
+I documenti richiesti dalla banca: SK Kemenkumham, NIB, NPWP aziendale,
+akta pendirian, identità dei direttori.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. TIMELINE STANDARD
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Fase                                    Durata stimata
+────────────────────────────────────────────────────────
+Preparazione documenti + notaio         3-5 giorni
+SK Kemenkumham                          5-10 giorni lavorativi
+NPWP aziendale                          1-2 giorni
+NIB via OSS                             1 giorno (automatico)
+Licenze settoriali                      3-14 giorni (dipende dal rischio)
+Apertura conto bancario                 3-7 giorni
+────────────────────────────────────────────────────────
+TOTALE (dall'inizio alla PT operativa)  2-3 settimane
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. OBBLIGHI POST-COSTITUZIONE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 LKPM — Reporting trimestrale investimenti
+
+La PT PMA è obbligata a presentare il LKPM (Laporan Kegiatan Penanaman
+Modal) ogni trimestre tramite il sistema OSS. [COM-020]
+
+Scadenze: entro 7 giorni lavorativi dalla fine di ogni trimestre. [COM-021]
+- Q1 (gen-mar) → entro 7 aprile
+- Q2 (apr-giu) → entro 7 luglio
+- Q3 (lug-set) → entro 7 ottobre
+- Q4 (ott-dic) → entro 7 gennaio
+
+Il mancato rispetto comporta sanzioni amministrative inclusa la
+possibile sospensione del NIB. [COM-022]
+
+5.2 Obblighi fiscali
+
+- SPT Tahunan Badan: dichiarazione annuale redditi entro 30 aprile [COM-039]
+- PKP (registrazione IVA): obbligatoria se fatturato > Rp 4,8 miliardi [COM-038]
+- Contabilità: tenuta del libro contabile (buku besar) [COM-044]
+- Revisione contabile: obbligatoria se asset o fatturato > Rp 50 miliardi [COM-045]
+
+5.3 Bilancio annuale
+
+Il Direksi deve presentare il bilancio all'assemblea degli azionisti
+(RUPS) entro 6 mesi dalla fine dell'esercizio. [COM-044]
+
+5.4 Attività e scadenza
+
+La PT PMA che non avvia le attività entro 5 anni dalla registrazione
+OSS rischia la revoca del NIB. [COM-047]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. MODIFICA DELLO STATUTO (AKTA PERUBAHAN)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Qualsiasi modifica all'atto costitutivo richiede:
+1. Delibera dell'assemblea degli azionisti (RUPS) [COM-035]
+2. Redazione dell'Akta Perubahan da parte di un notaio
+3. Approvazione Kemenkumham (per modifiche a nome, oggetto sociale,
+   modal dasar, o struttura azionaria) [COM-036]
+4. Aggiornamento OSS
+
+Casistiche che richiedono Akta Perubahan:
+- Cambio indirizzo sede
+- Aggiunta/rimozione di direttori o commissari
+- Cambio attività/KBLI
+- Modifica della struttura azionaria
+- Cambio nome PT
+- Aumento del capitale
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. SCIOGLIMENTO DELLA PT
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Lo scioglimento (pembubaran) della PT richiede:
+- Delibera dell'assemblea straordinaria (RUPS Luar Biasa) [COM-046]
+- Approvazione del Kemenkumham
+- Procedura di liquidazione (likuidasi) dei debiti e degli asset
+- Cancellazione da OSS e dal registro Kemenkumham
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COSTO BALI ZERO — PT PMA Setup:
+Il pacchetto PT PMA di Bali Zero è all-inclusive (IDR 20.000.000).
+Include: akta notarile, SK Kemenkumham, NPWP, NIB, consulenza KBLI.
+Per il costo aggiornato consultare sempre il PricingTool.
+
+VIRTUAL OFFICE:
+Se il cliente non ha ancora una sede commerciale propria, è necessario
+aggiungere il Virtual Office (IDR 5.000.000/anno).
+Il Virtual Office Bali Zero fornisce indirizzo in zona komersial + mail.
+
+REQUISITO CAPITAL:
+Il capitale versato Rp 2,5 miliardi deve essere reale — deve transitare
+sul conto bancario della PT e risultare dagli estratti conto.
+Bali Zero non "sistemizza" la documentazione bancaria: il capitale
+deve essere autentico.
+
+TEMPISTICA DIRETTORE STRANIERO:
+Se il direttore straniero è fuori dall'Indonesia al momento della
+costituzione, l'akta può essere firmata via procura notarile (POA).
+La presenza fisica in Indonesia non è sempre necessaria per la firma,
+ma il direttore deve poi risiedere in Indonesia. [COM-043]
+
+KBLI E SETTORI:
+Verificare sempre con il team Bali Zero se il settore è TERBUKA,
+TERBATAS o TERTUTUP prima di avviare la pratica. Alcune attività
+hanno limitazioni sulla quota di proprietà straniera. Vedi guida
+separata: kbli_foreign_ownership_matrix.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+COM-001, COM-002, COM-003, COM-004, COM-005, COM-007, COM-008, COM-009,
+COM-010, COM-011, COM-012, COM-013, COM-014, COM-015, COM-016, COM-017,
+COM-018, COM-019, COM-020, COM-021, COM-022, COM-035, COM-036, COM-037,
+COM-038, COM-039, COM-040, COM-041, COM-042, COM-043, COM-044, COM-045,
+COM-046, COM-047, COM-048, COM-049, COM-050
+
+Nota: per i costi dei servizi Bali Zero consultare sempre il PricingTool.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

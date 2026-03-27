@@ -1,0 +1,230 @@
+PT PMA — FAQ OPERATIVA BALI ZERO
+DOMANDE FREQUENTI DEI CLIENTI CON RISPOSTE VERIFICATE
+2024-2025
+
+Guida operativa interna | Prodotta da Bali Zero / Zantara Intelligence
+Basata su casistica reale clienti + normativa verificata
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE A — IDONEITÀ E ACCESSO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Posso aprire una PT PMA senza avere già un visto di residenza in Indonesia?
+R: Sì. Non è necessario risiedere in Indonesia per COSTITUIRE una PT PMA.
+   L'akta può essere firmata anche tramite procura notarile (POA) se il
+   direttore è all'estero al momento della firma. [COM-043]
+   Tuttavia, almeno un direktur deve risiedere in Indonesia per la
+   gestione operativa dell'azienda.
+
+D: Posso essere l'unico azionista della PT PMA?
+R: No. La PT richiede almeno 2 azionisti (persone fisiche o giuridiche).
+   Soluzione comune: il secondo azionista è un familiare, un partner
+   commerciale, o l'azienda madre nel paese d'origine. [COM-002]
+
+D: Il mio visto turistico (B211A / C1) è sufficiente per aprire una PT PMA?
+R: Per COSTITUIRE la PT PMA, sì. Il processo non richiede un visto
+   specifico. Tuttavia, per GESTIRE e OPERARE l'azienda dall'Indonesia,
+   il direktur straniero necessita di un ITAS (KITAS) lavorativo.
+   Il C1 (B211A) può essere convertito in KITAS tramite alih status.
+
+D: Posso aprire una PT PMA con un KITAS/KITAP già attivo?
+R: Sì, anzi è il percorso ideale. Con KITAS già attivo, il direktur
+   può aprire la PT PMA e poi richiedere il cambio di sponsor KITAS
+   dall'azienda sponsor precedente alla nuova PT PMA.
+
+D: Quanto tempo ho per avviare l'attività dopo aver ottenuto il NIB?
+R: La PT PMA deve avviare le attività entro 5 anni dalla registrazione OSS,
+   altrimenti rischia la revoca del NIB. [COM-047]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE B — STRUTTURA E CAPITALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Devo avere Rp 2,5 miliardi sul conto prima di iniziare la pratica?
+R: Non necessariamente "prima" — ma il capitale deve essere versato
+   sul conto aziendale della PT dopo che la PT è costituita e ha ottenuto
+   il NIB. In pratica: apri il conto aziendale, poi versi il capital.
+   La disponibilità della liquidità deve però essere reale. [COM-009]
+
+D: Posso dichiarare capitale più alto del minimo (es. Rp 5 miliardi)?
+R: Sì. Il modal dasar e il modal disetor possono essere superiori ai
+   minimi di legge. Questo può essere utile per:
+   - Dimostrare solidità finanziaria a partner o banche
+   - Preparare incrementi futuri senza necessità di akta perubahan
+
+D: Posso usare il capitale versato per le spese dell'azienda?
+R: Sì. Il capital versato è working capital a disposizione della PT
+   per le proprie attività. Non è bloccato o vincolato.
+   Deve solo risultare versato alla data di dichiarazione all'LKPM.
+
+D: Il socio WNI ha diritti equivalenti al socio WNA?
+R: Dipende dallo statuto. Nell'akta si definiscono i diritti di voto,
+   i diritti economici (dividendi), e le clausole di exit.
+   Con assistenza legale è possibile strutturare diversi diritti
+   per diverse classi di azioni. Per default, i diritti sono proporzionali
+   alla percentuale di proprietà.
+
+D: Posso avere un socio WNI che detiene le mie quote per conto mio (nominee)?
+R: No. Il cosiddetto "nominee arrangement" è illegale in Indonesia
+   e non è tutelato da nessun contratto privato. [COM-006]
+   Bali Zero non assiste in strutture nominee.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE C — PROCESSO E TEMPI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Quanto tempo ci vuole per aprire una PT PMA con Bali Zero?
+R: Il processo standard richiede 2-3 settimane dall'inizio alla PT
+   operativa con NIB. La fase più lunga è l'SK Kemenkumham (5-10 gg
+   lavorativi). I passi dettagliati sono nella guida procedura completa.
+
+D: Posso essere presente a distanza per la firma dell'akta?
+R: Sì. Se il direktur è all'estero, si può firmare tramite Procura
+   (Surat Kuasa) o Power of Attorney (POA) notarile nel paese di
+   residenza, con apostilla. [COM-043]
+   In alternativa, si può venire fisicamente a Bali per la firma.
+
+D: Il notaio deve essere a Bali o può essere in un'altra città?
+R: Il notaio deve essere nella stessa provincia dove la PT ha sede legale.
+   Se la PT ha sede a Bali, il notaio deve essere a Bali.
+
+D: Cosa succede dopo che ottengo il NIB?
+R: Il NIB è il punto di partenza operativo. Subito dopo:
+   1. Aprire il conto bancario aziendale (3-7 gg)
+   2. Versare il modal disetor sul conto
+   3. Ottenere eventuali licenze settoriali (TDUP, sertifikat standar)
+   4. Iniziare l'attività
+   5. Presentare il primo LKPM al trimestre successivo [COM-020]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE D — OBBLIGHI POST-COSTITUZIONE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Devo presentare l'LKPM anche se non ho ancora avviato l'attività?
+R: Sì. L'LKPM è obbligatorio da quando esiste il NIB, anche se l'azienda
+   è ancora in fase di setup. In quel caso si dichiara "fase di preparazione"
+   con i dati reali (che possono essere prossimi allo zero). [COM-021]
+
+D: Cosa succede se salto un trimestre LKPM?
+R: Prima l'BKPM invia una notifica, poi può sospendere il NIB.
+   Con NIB sospeso, l'azienda non può operare legalmente.
+   L'inadempienza persistente porta alla revoca del NIB. [COM-022]
+   Non esistono proroghe automatiche — se si è in ritardo, presentare
+   comunque il report il prima possibile.
+
+D: Devo fare la dichiarazione fiscale annuale (SPT Tahunan)?
+R: Sì. Ogni PT PMA deve presentare la dichiarazione dei redditi annuale
+   (SPT Tahunan Badan) entro il 30 aprile dell'anno successivo. [COM-039]
+
+D: Quando devo registrarmi come PKP (IVA)?
+R: La registrazione PKP (Pengusaha Kena Pajak) è obbligatoria se
+   il fatturato supera Rp 4,8 miliardi in un anno. [COM-038]
+   Prima di quella soglia è facoltativa (ma può essere conveniente
+   per dedurre l'IVA sugli acquisti).
+
+D: Devo fare un'assemblea annuale degli azionisti?
+R: Sì. Il Direksi deve presentare il bilancio all'assemblea degli azionisti
+   (RUPS) entro 6 mesi dalla chiusura dell'esercizio. [COM-044]
+   L'assemblea va verbalizzata (verbale RUPS).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE E — MODIFICHE E CHIUSURA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Posso cambiare l'attività della PT dopo la costituzione?
+R: Sì, tramite akta perubahan. Il cambio di KBLI richiede:
+   1. RUPS per approvare il cambio di oggetto sociale [COM-035]
+   2. Akta perubahan da notaio
+   3. Approvazione Kemenkumham [COM-036]
+   4. Aggiornamento OSS (nuovo/cambiato KBLI)
+   Questo richiede generalmente 2-4 settimane.
+
+D: Posso vendere le mie quote a qualcun altro?
+R: Sì. Il trasferimento di quote avviene tramite akta jual beli saham
+   (atto di compravendita quote) da notaio, seguita da akta perubahan
+   per aggiornare la struttura azionaria nei libri societari.
+   La struttura risultante deve ancora rispettare i vincoli TERBUKA/
+   TERBATAS (es. non può portare la percentuale WNA sopra il cap). [COM-036]
+
+D: Come si chiude una PT PMA?
+R: Lo scioglimento (pembubaran) richiede:
+   1. RUPS Luar Biasa (assemblea straordinaria) [COM-046]
+   2. Approvazione Kemenkumham
+   3. Procedura di liquidazione dei debiti e degli asset
+   4. Cancellazione da OSS e dal registro Kemenkumham
+   È un processo più lungo rispetto alla costituzione — tipicamente
+   3-6 mesi per completare tutti i passi della liquidazione.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE F — COSTI E PRICING
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Quanto costa aprire una PT PMA con Bali Zero?
+R: Consultare il PricingTool per il costo aggiornato del pacchetto
+   PT PMA. Il pacchetto all-inclusive include: akta notarile,
+   SK Kemenkumham, NPWP, NIB, consulenza KBLI.
+
+D: Ho bisogno di un Virtual Office — quanto costa?
+R: Se il cliente non ha una sede commerciale fisica a Bali, è necessario
+   aggiungere il Virtual Office Bali Zero.
+   Il costo è indicato nel PricingTool (consultare per cifre aggiornate).
+   Il Virtual Office fornisce un indirizzo in zona commerciale (komersial)
+   + servizio mail.
+
+D: Esistono costi governativi (PNBP) aggiuntivi?
+R: Sì, ci sono fees governative per la registrazione al Kemenkumham
+   e per i servizi OSS. Questi sono inclusi nel pacchetto Bali Zero
+   o indicati separatamente nel preventivo — verificare con il team.
+
+D: Se devo modificare l'akta in seguito, quanto costa?
+R: Il costo dell'akta perubahan dipende dal tipo di modifica.
+   Consultare il PricingTool o chiedere al team un preventivo
+   specifico in base alla modifica richiesta.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE G — BANCA E CONTI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Quali banche accettano clienti PT PMA con direttore straniero?
+R: Le banche principali che supportano PT PMA con WNA:
+   - BCA (Bank Central Asia) — la più usata, processo chiaro
+   - BNI (Bank Negara Indonesia) — banca statale, buon supporto WNA
+   - Mandiri — altra grande banca statale con filiali a Bali
+   - CIMB Niaga — banca internazionale, familiare con procedure PMA
+
+D: Posso usare il conto personale per le transazioni aziendali?
+R: No. Le transazioni aziendali devono passare esclusivamente
+   per il conto intestato alla PT. [COM-048]
+   Usare il conto personale del direttore per transazioni aziendali
+   è una violazione contabile e fiscale.
+
+D: La banca richiede che il direttore sia presente fisicamente?
+R: Sì, tipicamente l'apertura del conto richiede la presenza fisica
+   del direktur utama con il passaporto originale.
+   Non è apribile da remoto. La presenza deve avvenire a Bali
+   (alla filiale più vicina alla sede aziendale).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+COM-002, COM-006, COM-009, COM-020, COM-021, COM-022, COM-035, COM-036,
+COM-038, COM-039, COM-043, COM-044, COM-046, COM-047, COM-048
+
+Nota: per i costi dei servizi Bali Zero consultare sempre il PricingTool.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

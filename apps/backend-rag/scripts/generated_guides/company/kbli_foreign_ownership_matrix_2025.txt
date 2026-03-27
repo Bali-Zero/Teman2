@@ -1,0 +1,284 @@
+KBLI E PROPRIETÀ STRANIERA — MATRICE TERBUKA / TERBATAS / TERTUTUP
+GUIDA AGLI INVESTIMENTI STRANIERI PER SETTORE DI ATTIVITÀ IN INDONESIA
+2024-2025
+
+Guida normativa verificata | Basata su Perpres 10/2021 e Perpres 49/2021
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. IL SISTEMA DI CLASSIFICAZIONE DEGLI INVESTIMENTI STRANIERI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In base a Perpres 10/2021 (Lista Investimenti Positivi), ogni attività
+identificata da un codice KBLI ricade in una di tre categorie:
+
+TERBUKA (Aperto):
+Nessuna restrizione sulla percentuale di proprietà straniera.
+Un investitore straniero può detenere il 100% di una PT PMA
+in questi settori. [COM-024]
+
+TERBATAS (Limitato):
+La proprietà straniera è ammessa ma con un limite percentuale massimo.
+La percentuale varia per settore (49%, 67%, 70%, ecc.).
+Il residuo deve essere detenuto da soci indonesiani (WNI). [COM-025]
+
+TERTUTUP (Chiuso):
+L'investimento straniero è completamente vietato.
+Questi settori sono riservati esclusivamente a WNI e imprese statali. [COM-026]
+
+REGOLA FONDAMENTALE:
+La classificazione si applica al KBLI primario dichiarato nella PT PMA.
+Un'azienda con più KBLI deve rispettare le restrizioni di ogni attività
+svolta effettivamente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. SETTORI TERBUKA — ACCESSO STRANIERO AL 100%
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+I settori di seguito sono TERBUKA per investitori stranieri (100%).
+Sono tra i più frequenti per clienti Bali Zero.
+
+RISTORAZIONE E F&B:
+- KBLI 56101 — Restoran (ristorante)          [COM-027]
+- KBLI 56102 — Rumah Makan (trattoria)
+- KBLI 56103 — Bar (bar, cocktail bar)
+- KBLI 56109 — Jasa Makanan Lainnya (altri servizi F&B)
+- KBLI 56211 — Jasa Katering
+
+ALLOGGIO E OSPITALITÀ:
+- KBLI 55110 — Hotel Bintang (hotel con stelle)
+- KBLI 55120 — Hotel Melati (hotel non stellato)
+- KBLI 55130 — Pondok Wisata (guest house, pension)
+- KBLI 55194 — Vila (villa affitto breve)       [COM-028]
+- KBLI 55199 — Akomodasi Lainnya
+- KBLI 55900 — Penyediaan Akomodasi Lainnya
+
+SERVIZI TURISTICI:
+- KBLI 79120 — Jasa Perjalanan Wisata (agenzia viaggi)
+- KBLI 79110 — Agen Perjalanan
+- KBLI 79900 — Jasa Reservasi Lainnya
+- KBLI 93199 — Aktivitas Olahraga Lainnya (surf school, yoga, sport)
+- KBLI 93139 — Pusat Kesehatan dan Kebugaran (fitness, wellness)
+
+COMMERCIO AL DETTAGLIO (>= soglia investimento):
+- KBLI 47191 — Perdagangan Eceran Berbagai Jenis Barang (retail misto)
+- KBLI 47630 — Toko Aksesoris (negozio accessori)
+- KBLI 47762 — Toko Batik dan Kerajinan Tangan
+
+SERVIZI CREATIVI E DIGITALI:
+- KBLI 62010 — Aktivitas Pemrograman Komputer (sviluppo software)
+- KBLI 62020 — Konsultasi Komputer dan Manajemen TI
+- KBLI 62099 — Aktivitas TI Lainnya
+- KBLI 73100 — Periklanan (agenzia pubblicitaria)
+- KBLI 74100 — Aktivitas Desain Khusus
+- KBLI 90001 — Seni Pertunjukan (performing arts)
+
+SERVIZI IMMOBILIARI (limitazioni operative separano proprietà da gestione):
+- KBLI 68200 — Aktivitas Real Estat atas Dasar Balas Jasa
+  (gestione immobili per conto terzi — TERBUKA)
+- KBLI 68110 — Real Estat yang Dimiliki Sendiri
+  (proprietà diretta di immobili — soggetto a restrizioni WNA separate)
+
+ISTRUZIONE:
+- KBLI 85493 — Pendidikan Non-Formal Lainnya
+  (corsi privati, lingue, yoga teacher training — TERBUKA per WNA)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. SETTORI TERBATAS — ACCESSO CON LIMITI PERCENTUALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Questi settori permettono investimento straniero fino alla percentuale
+indicata. La quota rimanente deve essere detenuta da soci WNI. [COM-025]
+
+MAX 49% WNA:
+- KBLI 74200 — Aktivitas Fotografi (fotografia commerciale)
+- KBLI 47120 — Perdagangan Eceran Serbaguna Kecil
+  (piccolo retail — supera soglia investimento)
+- KBLI 96099 — Aktivitas Jasa Perorangan Lainnya
+  (alcuni servizi personali specifici)
+
+MAX 67% WNA:
+- KBLI 86101 — Rumah Sakit Umum (ospedale generale)
+- KBLI 86102 — Rumah Sakit Khusus (clinica specialistica)
+- KBLI 86103 — Klinik Rawat Inap (clinica con degenza)
+- KBLI 47211 — Perdagangan Eceran Farmasi (farmacia)
+
+MAX 70% WNA:
+- KBLI 45101 — Perdagangan Besar Kendaraan (auto concessionaria)
+
+MAX 67% WNA (con partner strategico):
+- KBLI 64110 — Bank Umum (banca commerciale)
+- KBLI 65120 — Asuransi Jiwa (assicurazione vita)
+
+NOTA: Le percentuali esatte variano e possono cambiare con aggiornamenti
+di Perpres. Verificare sempre la versione più recente con il team Bali Zero
+prima di strutturare la partecipazione.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. SETTORI TERTUTUP — VIETATI AGLI STRANIERI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Queste attività sono RISERVATE ESCLUSIVAMENTE a WNI.
+Un WNA non può detenere quote in una PT che svolge queste attività,
+nemmeno tramite PT PMA. [COM-026]
+
+SETTORI VIETATI (esempi):
+- KBLI 01111 — Pertanian Padi (coltivazione riso)
+- KBLI 01119 — Pertanian Serealia Lainnya (altri cereali)
+- KBLI 02100 — Pengelolaan Hutan (gestione foreste)
+- KBLI 47111 — Minimarket (esercizi commerciali < 400m² con limite)
+- KBLI 47112 — Supermarket
+- KBLI 47191 — Toko Serba Ada (department store < soglia)
+- KBLI 52221 — Kepelabuhanan (porto, operazioni portuali)
+- KBLI 84130 — Regulasi Kegiatan Usaha (funzioni regolatorie)
+- KBLI 89000 — Media/broadcasting nazionali (alcune categorie)
+
+SETTORI STRATEGICI (riservati a BUMN/stato):
+- Gestione acqua potabile
+- Produzione armamenti
+- Gestione rifiuti nucleari
+- Servizi doganali
+- Servizi postali universali
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. SETTORI RILEVANTI BALI — ANALISI DETTAGLIATA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 Villa e Affitti Brevi
+
+KBLI 55194 — Vila: TERBUKA (100% WNA ok) [COM-028]
+
+Un WNA può possedere il 100% di una PT PMA che gestisce ville
+in affitto breve a Bali.
+
+ATTENZIONE — PROPRIETÀ FONDIARIA:
+La classificazione TERBUKA si riferisce all'attività commerciale
+(gestione villa) — NON alla proprietà del terreno.
+Gli stranieri non possono possedere tanah hak milik (proprietà piena).
+Le forme di accesso al terreno per WNA sono:
+- Hak Pakai (diritto d'uso, 30+20+30 anni tramite PT PMA o individuale)
+- Hak Guna Bangunan (diritto di costruire, 30+20+30 anni, solo tramite PT)
+- Leasehold contrattuale (affitto lungo termine 25-35 anni)
+
+5.2 Ristoranti e Bar
+
+KBLI 56101 — Restoran: TERBUKA [COM-027]
+KBLI 56103 — Bar: TERBUKA
+
+Un WNA può aprire un ristorante o bar a Bali tramite PT PMA al 100%.
+Licenza aggiuntiva richiesta: TDUP (Tanda Daftar Usaha Pariwisata)
+dal Dinas Pariwisata Bali per attività classificate nel settore turistico.
+
+5.3 Yoga Studio / Wellness / Surf School
+
+KBLI 93139 — Pusat Kesehatan dan Kebugaran: TERBUKA
+KBLI 93199 — Aktivitas Olahraga Lainnya: TERBUKA
+KBLI 85493 — Pendidikan Non-Formal (corsi): TERBUKA
+
+Queste attività sono completamente aperte agli stranieri tramite PT PMA.
+Nota: lo yoga instructor personale (senza studio commerciale) in teoria
+richiederebbe KITAS lavorativo — ma attraverso PT PMA + struttura
+societaria, l'attività è regolarizzabile.
+
+5.4 Retail e Artigianato
+
+KBLI 47630 — Negozio accessori/souvenir: TERBUKA
+KBLI 47762 — Batik e artigianato: TERBUKA
+
+Per il commercio al dettaglio "minore" (kecil) con investimento < soglia
+BKPM (circa Rp 10 miliardi di investimento), ci sono restrizioni aggiuntive.
+Verificare con il team Bali Zero se l'attività supera le soglie.
+
+5.5 Cliniche e Servizi Medici
+
+KBLI 86102 — Klinik: TERBATAS (max 67% WNA)
+KBLI 86904 — Praktik Dokter Mandiri: TERTUTUP per WNA (solo WNI)
+
+Attenzione: un medico straniero non può aprire uno studio medico
+individuale in Indonesia. Può essere direttore di una clinica organizzata
+come PT, ma richiede riconoscimento del titolo + KITAS + kemitraan locale.
+
+5.6 Servizi Professionali
+
+KBLI 69100 — Jasa Hukum: TERTUTUP (riservato avvocati WNI iscritti)
+KBLI 69200 — Akuntan Publik: TERBATAS (max 20% WNA in firma)
+KBLI 74300 — Penerjemahan: TERBUKA
+KBLI 70201 — Konsultasi Bisnis: TERBUKA
+
+5.7 Costruzione e Kontraktor
+
+KBLI 41011 — Konstruksi Gedung: TERBATAS per WNA
+
+La costruzione è un settore con limitazioni significative per i WNA.
+Un WNA può avere una PT PMA nel settore costruzioni, ma con restrizioni
+di capital minimum molto elevato e requisite certificazioni.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. COME VERIFICARE IL PROPRIO KBLI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Strumenti ufficiali:
+1. OSS RBA (oss.go.id) — classificazione per NIB e licenze
+2. BKPM (bkpm.go.id) — verifica accesso investimento straniero
+3. Perpres 10/2021 e suoi aggiornamenti — testo normativo
+
+Regole pratiche:
+- Se il KBLI non è esplicitamente in TERTUTUP o TERBATAS → è TERBUKA
+- La lista TERTUTUP è corta (pochissimi settori strategici)
+- La lista TERBATAS copre settori sensibili (salute, media, finanza)
+- Tutto il resto (la grande maggioranza) è TERBUKA
+
+IMPORTANTE — VERIFICA AGGIORNATA:
+Perpres 10/2021 ha sostituito la "Daftar Negatif Investasi" (DNI)
+con una lista "positiva" (tutto è aperto salvo eccezioni esplicite).
+Questo ha notevolmente liberalizzato il sistema rispetto a prima del 2021.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+VERIFICA OBBLIGATORIA PRIMA DELLA COSTITUZIONE:
+Il team Bali Zero verifica sempre lo status TERBUKA/TERBATAS/TERTUTUP
+del KBLI prima di avviare qualsiasi pratica PT PMA.
+Non procedere mai senza questa verifica.
+
+KBLI MULTIPLI:
+Una PT PMA può avere più KBLI (attività primaria + accessorie).
+Il KBLI primario determina la licenza principale e le restrizioni.
+I KBLI secondari possono avere restrizioni diverse — anche qui verifica.
+
+KBLI E LICENZE:
+La classificazione TERBUKA/TERBATAS/TERTUTUP è separata dal sistema
+di licenze OSS RBA (rischio basso/medio/alto).
+Un KBLI può essere TERBUKA ma richiedere comunque una licenza
+di rischio TINGGI (es. clinica medica).
+
+AGGIORNAMENTI NORMATIVI:
+Perpres 10/2021 è stato integrato da Perpres 49/2021 (capitale minimo)
+e può essere ulteriormente modificato. La Bali Zero verifica sempre
+la versione aggiornata al momento della pratica.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+COM-024, COM-025, COM-026, COM-027, COM-028
+
+Per il riferimento completo alle norme: Perpres 10/2021 (Lista Investimenti),
+Perpres 49/2021 (Capital Requirement PT PMA).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
