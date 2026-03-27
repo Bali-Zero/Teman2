@@ -1,39 +1,27 @@
-import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  AlertCircle,
-  AlertTriangle,
-  Bell,
-  Info,
-  ShieldAlert,
-  X,
-} from "lucide-react";
-import { ComplianceAlert } from "@/types/compliance";
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AlertCircle, AlertTriangle, Bell, Info, ShieldAlert, X } from 'lucide-react';
+import { ComplianceAlert } from '@/types/compliance';
 
 interface ComplianceWidgetProps {
   alerts: ComplianceAlert[];
   onDismiss?: (id: string) => void;
 }
 
-export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({
-  alerts,
-  onDismiss,
-}) => {
+export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({ alerts, onDismiss }) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
   // Filter urgent alerts (warning, urgent, critical)
-  const urgentAlerts = alerts.filter((a) =>
-    ["warning", "urgent", "critical"].includes(a.severity),
-  );
+  const urgentAlerts = alerts.filter((a) => ['warning', 'urgent', 'critical'].includes(a.severity));
   const hasAlerts = urgentAlerts.length > 0;
 
   const getIcon = (severity: string) => {
     switch (severity) {
-      case "critical":
+      case 'critical':
         return <ShieldAlert className="w-4 h-4 text-red-500" />;
-      case "urgent":
+      case 'urgent':
         return <AlertTriangle className="w-4 h-4 text-orange-500" />;
-      case "warning":
+      case 'warning':
         return <AlertCircle className="w-4 h-4 text-yellow-500" />;
       default:
         return <Info className="w-4 h-4 text-blue-500" />;
@@ -42,14 +30,14 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({
 
   const getColor = (severity: string) => {
     switch (severity) {
-      case "critical":
-        return "bg-red-500/10 border-red-500/20 text-red-200";
-      case "urgent":
-        return "bg-orange-500/10 border-orange-500/20 text-orange-200";
-      case "warning":
-        return "bg-yellow-500/10 border-yellow-500/20 text-yellow-200";
+      case 'critical':
+        return 'bg-red-500/10 border-red-500/20 text-red-200';
+      case 'urgent':
+        return 'bg-orange-500/10 border-orange-500/20 text-orange-200';
+      case 'warning':
+        return 'bg-yellow-500/10 border-yellow-500/20 text-yellow-200';
       default:
-        return "bg-blue-500/10 border-blue-500/20 text-blue-200";
+        return 'bg-blue-500/10 border-blue-500/20 text-blue-200';
     }
   };
 
@@ -76,9 +64,7 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({
             className="absolute right-0 top-12 w-64 z-50 rounded-xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden"
           >
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">
-                Compliance Alerts
-              </h3>
+              <h3 className="text-sm font-semibold text-white">Compliance Alerts</h3>
               <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-medium">
                 {urgentAlerts.length} Action Items
               </span>
@@ -110,20 +96,26 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({
 
                   <div>
                     <h4 className="font-semibold text-sm mb-1 line-clamp-1">
-                      {alert.title.replace(
-                        /^(CRITICAL|URGENT|WARNING|INFO): /,
-                        "",
-                      )}
+                      {alert.title.replace(/^(CRITICAL|URGENT|WARNING|INFO): /, '')}
                     </h4>
-                    <p className="text-xs opacity-80 leading-relaxed mb-2">
-                      {alert.message}
-                    </p>
+                    <p className="text-xs opacity-80 leading-relaxed mb-2">{alert.message}</p>
                     <div className="flex items-center gap-2 pt-2 border-t border-white/5">
                       <span className="text-[10px] font-mono opacity-60">
-                        Due: {new Date(alert.deadline).toLocaleDateString()}
+                        Due:{' '}
+                        {new Date(alert.deadline).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
                       </span>
                       <span className="text-[10px] font-mono opacity-60 ml-auto">
-                        {alert.days_until_deadline} days left
+                        {alert.days_until_deadline <= 0
+                          ? `${Math.abs(alert.days_until_deadline)}d overdue`
+                          : alert.days_until_deadline === 0
+                            ? 'today'
+                            : alert.days_until_deadline <= 365
+                              ? `⏰ ${alert.days_until_deadline}d left`
+                              : `${Math.floor(alert.days_until_deadline / 30)}mo left`}
                       </span>
                     </div>
                   </div>
