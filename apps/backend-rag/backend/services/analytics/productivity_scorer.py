@@ -4,7 +4,7 @@ Responsibility: Productivity scoring
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class ProductivityScorerService:
         - Session consistency
         - Work time efficiency
         """
-        cutoff = datetime.now() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         sessions = await self.pool.fetch(
             """
