@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class CRMAuditLogger:
     """Centralized audit logging for CRM operations"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.pool = None
 
     def initialize(self, pool: asyncpg.Pool) -> Any:
