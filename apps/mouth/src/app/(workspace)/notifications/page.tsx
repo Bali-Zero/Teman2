@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, Mail, CheckCircle, XCircle, Clock, RefreshCw, Pause, Search } from 'lucide-react';
+import { Loader2, Mail, CheckCircle, XCircle, Clock, RefreshCw, Pause, Search, Bell } from 'lucide-react';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { useToast } from '@/components/ui/toast';
@@ -283,6 +283,16 @@ export default function NotificationsDashboardPage() {
               </tr>
             </thead>
             <tbody>
+              {filteredAlerts.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    <Bell className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    {searchQuery || filterStatus || filterType
+                      ? 'No notifications match your filters.'
+                      : 'No notifications yet.'}
+                  </td>
+                </tr>
+              )}
               {filteredAlerts.map((alert) => (
                 <React.Fragment key={alert.id}>
                   <tr
