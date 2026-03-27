@@ -306,7 +306,7 @@ export default function AdminPage() {
                           </p>
                           {member.last_action && (
                             <p className="text-xs text-[var(--foreground-muted)]">
-                              Last: {new Date(member.last_action).toLocaleTimeString()}
+                              Last: {new Date(member.last_action).toLocaleTimeString('en-US')}
                             </p>
                           )}
                         </div>
@@ -370,12 +370,12 @@ export default function AdminPage() {
                             </td>
                             <td className="px-4 py-3 text-[var(--foreground)]">
                               {record.clock_in
-                                ? new Date(record.clock_in).toLocaleTimeString()
+                                ? new Date(record.clock_in).toLocaleTimeString('en-US')
                                 : '-'}
                             </td>
                             <td className="px-4 py-3 text-[var(--foreground)]">
                               {record.clock_out
-                                ? new Date(record.clock_out).toLocaleTimeString()
+                                ? new Date(record.clock_out).toLocaleTimeString('en-US')
                                 : '-'}
                             </td>
                             <td className="px-4 py-3 text-right font-medium text-[var(--foreground)]">

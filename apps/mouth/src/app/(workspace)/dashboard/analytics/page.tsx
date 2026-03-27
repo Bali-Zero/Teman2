@@ -302,7 +302,7 @@ export default function AnalyticsDashboard() {
         <div className="flex items-center gap-4">
           {lastRefresh && (
             <span className="text-xs text-[var(--foreground-muted)]">
-              Updated: {lastRefresh.toLocaleTimeString()}
+              Updated: {lastRefresh.toLocaleTimeString('en-US')}
             </span>
           )}
           <button
@@ -605,7 +605,7 @@ export default function AnalyticsDashboard() {
                     >
                       {s.healthy ? '● Healthy' : '● Down'}
                     </span>,
-                    s.last_check ? new Date(s.last_check).toLocaleTimeString() : '-',
+                    s.last_check ? new Date(s.last_check).toLocaleTimeString('en-US') : '-',
                     s.error || '-',
                   ])}
                 />
@@ -1088,7 +1088,7 @@ export default function AnalyticsDashboard() {
                       <div className="flex justify-between text-xs mb-1">
                         <span className="text-[var(--error)]">Rating: {f.rating}/5</span>
                         <span className="text-[var(--foreground-muted)]">
-                          {new Date(f.date).toLocaleDateString()}
+                          {new Date(f.date).toLocaleDateString('en-US')}
                         </span>
                       </div>
                       <p className="text-sm">{f.feedback || 'No comment provided'}</p>
@@ -1117,7 +1117,7 @@ export default function AnalyticsDashboard() {
                         style={{ height: `${(t.rating / 5) * 100}%` }}
                       />
                       <span className="text-[10px] text-[var(--foreground-muted)]">
-                        {new Date(t.date).toLocaleDateString('en', {
+                        {new Date(t.date).toLocaleDateString('en-US', {
                           weekday: 'short',
                         })}
                       </span>
@@ -1231,7 +1231,7 @@ export default function AnalyticsDashboard() {
                     <span key="r" className="text-[var(--error)] truncate max-w-[200px] block">
                       {e.reason}
                     </span>,
-                    new Date(e.time).toLocaleTimeString(),
+                    new Date(e.time).toLocaleTimeString('en-US'),
                   ])}
                 />
               </div>

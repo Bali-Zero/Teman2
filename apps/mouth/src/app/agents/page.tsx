@@ -1,27 +1,20 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
-import { logger } from "@/lib/logger";
-import {
-  ArrowLeft,
-  RefreshCw,
-  Activity,
-  CheckCircle2,
-  AlertCircle,
-  Pause,
-} from "lucide-react";
-import { AgentCard } from "@/components/agents/AgentCard";
-import { SchedulerStatus } from "@/components/agents/SchedulerStatus";
-import { INTERVALS, TIMEOUTS, PAGINATION } from "@/constants";
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
+import { ArrowLeft, RefreshCw, Activity, CheckCircle2, AlertCircle, Pause } from 'lucide-react';
+import { AgentCard } from '@/components/agents/AgentCard';
+import { SchedulerStatus } from '@/components/agents/SchedulerStatus';
+import { INTERVALS, TIMEOUTS, PAGINATION } from '@/constants';
 
 interface AgentStatus {
   name: string;
   description: string;
-  status: "running" | "idle" | "error";
+  status: 'running' | 'idle' | 'error';
   last_run?: string;
   next_run?: string;
   success_rate?: number;
@@ -42,8 +35,7 @@ interface SchedulerStatusData {
 export default function AgentsPage() {
   const router = useRouter();
   const [agents, setAgents] = useState<AgentStatus[]>([]);
-  const [schedulerStatus, setSchedulerStatus] =
-    useState<SchedulerStatusData | null>(null);
+  const [schedulerStatus, setSchedulerStatus] = useState<SchedulerStatusData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
@@ -51,16 +43,14 @@ export default function AgentsPage() {
   const loadAgentsStatus = useCallback(async () => {
     try {
       // Use direct API request since generated client is not available
-      const response = await api.get<{ agents?: AgentStatus[] }>(
-        "/api/autonomous-agents/status",
-      );
+      const response = await api.get<{ agents?: AgentStatus[] }>('/api/autonomous-agents/status');
 
       // Transform backend response to our format
       const agentsData: AgentStatus[] =
         response.agents?.map((agent) => ({
           name: agent.name,
           description: agent.description,
-          status: agent.status || "idle",
+          status: agent.status || 'idle',
           last_run: agent.last_run,
           next_run: agent.next_run,
           success_rate: agent.success_rate,
@@ -73,11 +63,11 @@ export default function AgentsPage() {
       setError(null);
     } catch (err) {
       logger.error(
-        "Failed to load agents status",
-        { component: "AgentsPage", action: "loadAgentsStatus" },
-        err as Error,
+        'Failed to load agents status',
+        { component: 'AgentsPage', action: 'loadAgentsStatus' },
+        err as Error
       );
-      setError("Failed to load agents status. Please try again.");
+      setError('Failed to load agents status. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -87,14 +77,14 @@ export default function AgentsPage() {
     try {
       // Use direct API request since generated client is not available
       const response = await api.get<SchedulerStatusData>(
-        "/api/autonomous-agents/scheduler/status",
+        '/api/autonomous-agents/scheduler/status'
       );
       setSchedulerStatus(response);
     } catch (err) {
       logger.error(
-        "Failed to load scheduler status",
-        { component: "AgentsPage", action: "loadSchedulerStatus" },
-        err as Error,
+        'Failed to load scheduler status',
+        { component: 'AgentsPage', action: 'loadSchedulerStatus' },
+        err as Error
       );
       // Scheduler errors are non-critical, just log them
     }
@@ -102,7 +92,7 @@ export default function AgentsPage() {
 
   useEffect(() => {
     if (!api.isAuthenticated()) {
-      router.push("/login");
+      router.push('/login');
       return;
     }
     loadAgentsStatus();
@@ -128,15 +118,15 @@ export default function AgentsPage() {
         setError(null);
         // Map agent names to API endpoints (using direct API calls)
         const agentEndpoints: Record<string, () => Promise<unknown>> = {
-          "Conversation Quality Trainer": () =>
+          'Conversation Quality Trainer': () =>
             api.post(
-              `/api/autonomous-agents/conversation-trainer/run?days_back=${PAGINATION.TRAINER_DAYS_BACK}`,
+              `/api/autonomous-agents/conversation-trainer/run?days_back=${PAGINATION.TRAINER_DAYS_BACK}`
             ),
-          "Client LTV Predictor": () =>
-            api.post("/api/autonomous-agents/client-value-predictor/run"),
-          "Knowledge Graph Builder": () =>
+          'Client LTV Predictor': () =>
+            api.post('/api/autonomous-agents/client-value-predictor/run'),
+          'Knowledge Graph Builder': () =>
             api.post(
-              `/api/autonomous-agents/knowledge-graph-builder/run?days_back=${PAGINATION.KG_BUILDER_DAYS_BACK}&rebuild=false`,
+              `/api/autonomous-agents/knowledge-graph-builder/run?days_back=${PAGINATION.KG_BUILDER_DAYS_BACK}&rebuild=false`
             ),
         };
 
@@ -150,16 +140,16 @@ export default function AgentsPage() {
         logger.error(
           `Failed to run ${agentName}`,
           {
-            component: "AgentsPage",
-            action: "handleRunAgent",
+            component: 'AgentsPage',
+            action: 'handleRunAgent',
             metadata: { agentName },
           },
-          err as Error,
+          err as Error
         );
         setError(`Failed to run ${agentName}. Please try again.`);
       }
     },
-    [loadAgentsStatus],
+    [loadAgentsStatus]
   );
 
   return (
@@ -171,7 +161,7 @@ export default function AgentsPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push("/chat")}
+              onClick={() => router.push('/chat')}
               className="hover:bg-[var(--background-elevated)]"
               aria-label="Back to chat"
             >
@@ -189,7 +179,7 @@ export default function AgentsPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-[var(--foreground-muted)]">
-              Last updated: {lastUpdate.toLocaleTimeString()}
+              Last updated: {lastUpdate.toLocaleTimeString('en-US')}
             </span>
             <Button
               variant="outline"
@@ -198,9 +188,7 @@ export default function AgentsPage() {
               disabled={isLoading}
               className="gap-2"
             >
-              <RefreshCw
-                className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
@@ -235,28 +223,20 @@ export default function AgentsPage() {
         >
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-            <span className="font-medium text-[var(--foreground)]">
-              System Status: HEALTHY
-            </span>
+            <span className="font-medium text-[var(--foreground)]">System Status: HEALTHY</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-[var(--foreground-muted)]">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500" />
-              <span>
-                {agents.filter((a) => a.status === "running").length} Running
-              </span>
+              <span>{agents.filter((a) => a.status === 'running').length} Running</span>
             </div>
             <div className="flex items-center gap-2">
               <Pause className="w-4 h-4 text-yellow-500" />
-              <span>
-                {agents.filter((a) => a.status === "idle").length} Idle
-              </span>
+              <span>{agents.filter((a) => a.status === 'idle').length} Idle</span>
             </div>
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-red-500" />
-              <span>
-                {agents.filter((a) => a.status === "error").length} Error
-              </span>
+              <span>{agents.filter((a) => a.status === 'error').length} Error</span>
             </div>
           </div>
         </motion.div>
@@ -270,11 +250,7 @@ export default function AgentsPage() {
           </div>
         ) : (
           agents.map((agent) => (
-            <AgentCard
-              key={agent.name}
-              agent={agent}
-              onRun={() => handleRunAgent(agent.name)}
-            />
+            <AgentCard key={agent.name} agent={agent} onRun={() => handleRunAgent(agent.name)} />
           ))
         )}
       </div>

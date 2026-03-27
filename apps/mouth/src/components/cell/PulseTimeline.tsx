@@ -39,7 +39,7 @@ export function PulseTimeline({ pulses }: { pulses: PulsePoint[] }) {
         {sorted.map((p, i) => (
           <div
             key={i}
-            title={`#${p.pulse_number} — ${p.health_status.toUpperCase()} — ${p.response_time_ms}ms — ${new Date(p.created_at).toLocaleTimeString()}`}
+            title={`#${p.pulse_number} — ${p.health_status.toUpperCase()} — ${p.response_time_ms}ms — ${new Date(p.created_at).toLocaleTimeString('en-US')}`}
             style={{
               width: 12,
               height: 20,

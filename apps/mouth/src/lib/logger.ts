@@ -4,15 +4,15 @@
  * Sends errors and warnings to Sentry in production
  */
 
-import * as Sentry from "@sentry/nextjs";
-import { debug, warn, error as logError } from "@/lib/utils/console";
-import type { Metadata } from "./types/common";
+import * as Sentry from '@sentry/nextjs';
+import { debug, warn, error as logError } from '@/lib/utils/console';
+import type { Metadata } from './types/common';
 
 export enum LogLevel {
-  DEBUG = "DEBUG",
-  INFO = "INFO",
-  WARN = "WARN",
-  ERROR = "ERROR",
+  DEBUG = 'DEBUG',
+  INFO = 'INFO',
+  WARN = 'WARN',
+  ERROR = 'ERROR',
 }
 
 export interface LogContext {
@@ -20,7 +20,7 @@ export interface LogContext {
   action?: string;
   user?: string;
   itemId?: string;
-  itemType?: "visa" | "news" | "all";
+  itemType?: 'visa' | 'news' | 'all';
   code?: number | string;
   reason?: string;
   note?: string;
@@ -42,14 +42,14 @@ class Logger {
   private maxHistorySize = 100;
 
   constructor() {
-    this.isDevelopment = process.env.NODE_ENV === "development";
+    this.isDevelopment = process.env.NODE_ENV === 'development';
   }
 
   private createEntry(
     level: LogLevel,
     message: string,
     context: LogContext = {},
-    error?: Error,
+    error?: Error
   ): LogEntry {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
@@ -74,14 +74,14 @@ class Logger {
 
   private formatConsoleOutput(entry: LogEntry): void {
     const { timestamp, level, message, context, error, stack } = entry;
-    const time = new Date(timestamp).toLocaleTimeString();
+    const time = new Date(timestamp).toLocaleTimeString('en-US');
     const emoji = this.getLevelEmoji(level);
 
     const contextStr = Object.keys(context).length
       ? ` [${Object.entries(context)
           .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
-          .join(", ")}]`
-      : "";
+          .join(', ')}]`
+      : '';
 
     const logMessage = `${emoji} ${time} [${level}] ${message}${contextStr}`;
 
@@ -99,10 +99,10 @@ class Logger {
       case LogLevel.ERROR:
         logError(logMessage);
         if (error) {
-          logError("Error details:", error);
+          logError('Error details:', error);
         }
         if (stack) {
-          logError("Stack trace:", stack);
+          logError('Stack trace:', stack);
         }
         break;
     }
@@ -111,13 +111,13 @@ class Logger {
   private getLevelEmoji(level: LogLevel): string {
     switch (level) {
       case LogLevel.DEBUG:
-        return "🔍";
+        return '🔍';
       case LogLevel.INFO:
-        return "ℹ️";
+        return 'ℹ️';
       case LogLevel.WARN:
-        return "⚠️";
+        return '⚠️';
       case LogLevel.ERROR:
-        return "❌";
+        return '❌';
     }
   }
 
@@ -160,7 +160,7 @@ class Logger {
     try {
       // Set context for Sentry
       if (entry.context && Object.keys(entry.context).length > 0) {
-        Sentry.setContext("log_context", {
+        Sentry.setContext('log_context', {
           component: entry.context.component,
           action: entry.context.action,
           user: entry.context.user,
@@ -183,31 +183,28 @@ class Logger {
             timestamp: entry.timestamp,
           },
           tags: {
-            component: entry.context.component || "unknown",
-            action: entry.context.action || "unknown",
+            component: entry.context.component || 'unknown',
+            action: entry.context.action || 'unknown',
           },
         });
-      } else if (
-        entry.level === LogLevel.ERROR ||
-        entry.level === LogLevel.WARN
-      ) {
+      } else if (entry.level === LogLevel.ERROR || entry.level === LogLevel.WARN) {
         // For errors/warnings without exception, use captureMessage
         Sentry.captureMessage(entry.message, {
-          level: entry.level === LogLevel.ERROR ? "error" : "warning",
+          level: entry.level === LogLevel.ERROR ? 'error' : 'warning',
           extra: {
             context: entry.context,
             timestamp: entry.timestamp,
             stack: entry.stack,
           },
           tags: {
-            component: entry.context.component || "unknown",
-            action: entry.context.action || "unknown",
+            component: entry.context.component || 'unknown',
+            action: entry.context.action || 'unknown',
           },
         });
       }
     } catch (sentryError) {
       // Don't let Sentry errors break the application
-      console.error("Failed to send to Sentry:", sentryError);
+      console.error('Failed to send to Sentry:', sentryError);
     }
   }
 
@@ -216,9 +213,9 @@ class Logger {
    */
   private async sendToRemoteLogger(entry: LogEntry): Promise<void> {
     try {
-      if (typeof window === "undefined") return; // Skip on server-side
+      if (typeof window === 'undefined') return; // Skip on server-side
 
-      const logs = localStorage.getItem("error_logs");
+      const logs = localStorage.getItem('error_logs');
       const errorLogs = logs ? JSON.parse(logs) : [];
       errorLogs.push({
         timestamp: entry.timestamp,
@@ -234,9 +231,9 @@ class Logger {
         errorLogs.shift();
       }
 
-      localStorage.setItem("error_logs", JSON.stringify(errorLogs));
+      localStorage.setItem('error_logs', JSON.stringify(errorLogs));
     } catch (e) {
-      console.error("Failed to store error log:", e);
+      console.error('Failed to store error log:', e);
     }
   }
 
@@ -274,9 +271,9 @@ class Logger {
    * Get stored error logs from localStorage
    */
   getStoredLogs(): unknown[] {
-    if (typeof window === "undefined") return [];
+    if (typeof window === 'undefined') return [];
     try {
-      const logs = localStorage.getItem("error_logs");
+      const logs = localStorage.getItem('error_logs');
       return logs ? JSON.parse(logs) : [];
     } catch {
       return [];
@@ -287,35 +284,27 @@ class Logger {
    * Clear stored error logs from localStorage
    */
   clearStoredLogs(): void {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     try {
-      localStorage.removeItem("error_logs");
+      localStorage.removeItem('error_logs');
     } catch {
       // Ignore
     }
   }
 
   // Convenience methods for Intelligence Center specific logging
-  apiCall(
-    endpoint: string,
-    method: string = "GET",
-    context: LogContext = {},
-  ): void {
+  apiCall(endpoint: string, method: string = 'GET', context: LogContext = {}): void {
     this.info(`API Call: ${method} ${endpoint}`, {
       ...context,
-      action: "api_call",
+      action: 'api_call',
       metadata: { endpoint, method },
     });
   }
 
-  apiSuccess(
-    endpoint: string,
-    responseTime: number,
-    context: LogContext = {},
-  ): void {
+  apiSuccess(endpoint: string, responseTime: number, context: LogContext = {}): void {
     this.info(`API Success: ${endpoint}`, {
       ...context,
-      action: "api_success",
+      action: 'api_success',
       metadata: { endpoint, responseTime },
     });
   }
@@ -325,18 +314,18 @@ class Logger {
       `API Error: ${endpoint}`,
       {
         ...context,
-        action: "api_error",
+        action: 'api_error',
         metadata: { endpoint },
       },
-      error,
+      error
     );
   }
 
   userAction(
     action: string,
-    itemType?: "visa" | "news",
+    itemType?: 'visa' | 'news',
     itemId?: string,
-    context: LogContext = {},
+    context: LogContext = {}
   ): void {
     this.info(`User Action: ${action}`, {
       ...context,
@@ -350,7 +339,7 @@ class Logger {
     this.debug(`Component Mounted: ${component}`, {
       ...context,
       component,
-      action: "mount",
+      action: 'mount',
     });
   }
 
@@ -358,7 +347,7 @@ class Logger {
     this.debug(`Component Unmounted: ${component}`, {
       ...context,
       component,
-      action: "unmount",
+      action: 'unmount',
     });
   }
 }

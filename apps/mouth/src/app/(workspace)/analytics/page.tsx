@@ -406,7 +406,7 @@ export default function AnalyticsDashboard() {
 
       if (showToast) {
         toast.success('Analytics refreshed', {
-          description: `Last update: ${new Date().toLocaleTimeString()}`,
+          description: `Last update: ${new Date().toLocaleTimeString('en-US')}`,
         });
       }
     } catch (err) {
@@ -503,7 +503,7 @@ export default function AnalyticsDashboard() {
         <div className="flex items-center gap-3">
           {lastRefresh && (
             <span className="text-xs text-[var(--bz-text-2)]">
-              Updated: {lastRefresh.toLocaleTimeString()}
+              Updated: {lastRefresh.toLocaleTimeString('en-US')}
             </span>
           )}
           <button
@@ -908,7 +908,7 @@ export default function AnalyticsDashboard() {
                         {q.collections_attempted?.join(', ') || '-'}
                       </span>,
                       <span key="t" className="text-xs text-[var(--bz-text-2)]">
-                        {q.last_seen ? new Date(q.last_seen).toLocaleDateString() : '-'}
+                        {q.last_seen ? new Date(q.last_seen).toLocaleDateString('en-US') : '-'}
                       </span>,
                     ])}
                   />
@@ -1127,7 +1127,7 @@ export default function AnalyticsDashboard() {
                     >
                       {s.healthy ? '● Healthy' : '● Down'}
                     </span>,
-                    s.last_check ? new Date(s.last_check).toLocaleTimeString() : '-',
+                    s.last_check ? new Date(s.last_check).toLocaleTimeString('en-US') : '-',
                     s.error || '-',
                   ])}
                 />
@@ -1604,7 +1604,7 @@ export default function AnalyticsDashboard() {
                       <div className="flex justify-between text-xs mb-1">
                         <span className="text-[var(--error)]">Rating: {f.rating}/5</span>
                         <span className="text-[var(--bz-text-2)]">
-                          {new Date(f.date).toLocaleDateString()}
+                          {new Date(f.date).toLocaleDateString('en-US')}
                         </span>
                       </div>
                       <p className="text-sm">{f.feedback || 'No comment provided'}</p>
@@ -1747,7 +1747,7 @@ export default function AnalyticsDashboard() {
                     <span key="r" className="text-[var(--error)] truncate max-w-[200px] block">
                       {e.reason}
                     </span>,
-                    new Date(e.time).toLocaleTimeString(),
+                    new Date(e.time).toLocaleTimeString('en-US'),
                   ])}
                 />
               </div>
