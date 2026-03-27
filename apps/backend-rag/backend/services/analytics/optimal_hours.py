@@ -21,7 +21,7 @@ class OptimalHoursService:
     Responsibility: Identify most productive time windows.
     """
 
-    def __init__(self, db_pool: "asyncpg.Pool"):
+    def __init__(self, db_pool: "asyncpg.Pool") -> None:
         self.pool = db_pool
 
     async def identify_optimal_hours(self, user_email: str | None = None, days: int = 30) -> dict:
