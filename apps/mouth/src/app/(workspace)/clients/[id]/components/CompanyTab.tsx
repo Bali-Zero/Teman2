@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Building2,
   FileText,
@@ -11,12 +11,25 @@ import {
   CheckCircle2,
   Edit2,
   X,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import { fileToBase64 } from '@/lib/utils';
-import type { ClientProfile, ClientDocument, CompanyDocument } from '@/lib/api/crm/crm.types';
+  Shield,
+  Network,
+  Database,
+  Sparkles,
+  Copy,
+  AlertCircle,
+  FolderOpen,
+  ExternalLink,
+  Clock,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { fileToBase64 } from "@/lib/utils";
+import type {
+  ClientProfile,
+  ClientDocument,
+  CompanyDocument,
+} from "@/lib/api/crm/crm.types";
 
 // ============================================
 // COMPANY DOC UPLOAD (internal)
@@ -63,7 +76,9 @@ function CompanyDocUpload({
     const poll = async () => {
       if (ocrAbortedRef.current) return;
       try {
-        const status = (await api.request(`/api/crm/clients/${clientId}/ocr-status`)) as {
+        const status = (await api.request(
+          `/api/crm/clients/${clientId}/ocr-status`,
+        )) as {
           pending_ocr: number;
         };
         if (status.pending_ocr === 0 || attempts >= 10) {
@@ -85,80 +100,94 @@ function CompanyDocUpload({
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "application/pdf",
+    ];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Invalid file type', {
-        description: 'Please upload JPG, PNG, or PDF',
+      toast.error("Invalid file type", {
+        description: "Please upload JPG, PNG, or PDF",
       });
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('File too large', { description: 'Maximum 10MB' });
+      toast.error("File too large", { description: "Maximum 10MB" });
       return;
     }
     setIsUploading(true);
     try {
       const base64 = await fileToBase64(file);
-      const response = (await api.post(`/api/crm/clients/${clientId}/documents/upload`, {
-        file: base64,
-        file_name: file.name,
-        document_type: docType,
-        document_category: 'pma',
-        mime_type: file.type,
-        company_id: companyId,
-      })) as { success: boolean; message?: string };
+      const response = (await api.post(
+        `/api/crm/clients/${clientId}/documents/upload`,
+        {
+          file: base64,
+          file_name: file.name,
+          document_type: docType,
+          document_category: "pma",
+          mime_type: file.type,
+          company_id: companyId,
+        },
+      )) as { success: boolean; message?: string };
       if (response.success) {
         setUploadedFile(file.name);
         toast.success(`${label} uploaded for ${companyName} — OCR in corso...`);
         pollOcrStatus();
       } else {
-        toast.error('Upload failed', { description: response.message });
+        toast.error("Upload failed", { description: response.message });
       }
     } catch (err) {
-      toast.error('Upload failed', { description: (err as Error).message });
+      toast.error("Upload failed", { description: (err as Error).message });
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const hasDoc = existingDoc?.google_drive_file_id || uploadedFile;
 
   const docIcon: Record<string, string> = {
-    akta_pendirian: '\u{1F4DC}',
-    npwp: '\u{1F3DB}\uFE0F',
-    nib: '\u{1F4CB}',
-    company_profile: '\u{1F3E2}',
-    sk_decree: '\u2696\uFE0F',
+    akta_pendirian: "\u{1F4DC}",
+    npwp: "\u{1F3DB}\uFE0F",
+    nib: "\u{1F4CB}",
+    company_profile: "\u{1F3E2}",
+    sk_decree: "\u2696\uFE0F",
   };
 
   return (
     <div
       className={`rounded-xl overflow-hidden transition-all ${
         hasDoc
-          ? 'bg-gradient-to-br from-[var(--bz-base)] to-[var(--bz-surface)] border border-[var(--bz-border)] shadow-sm'
-          : 'border border-dashed border-[var(--bz-border)] hover:border-[var(--bz-accent)]/40 bg-[var(--bz-base)]/50'
+          ? "bg-gradient-to-br from-[var(--bz-base)] to-[var(--bz-surface)] border border-[var(--bz-border)] shadow-sm"
+          : "border border-dashed border-[var(--bz-border)] hover:border-[var(--bz-accent)]/40 bg-[var(--bz-base)]/50"
       }`}
     >
       {/* Top accent bar */}
-      {hasDoc && <div className="h-1 bg-gradient-to-r from-green-500/60 to-emerald-500/30" />}
+      {hasDoc && (
+        <div className="h-1 bg-gradient-to-r from-green-500/60 to-emerald-500/30" />
+      )}
 
       <div className="p-3.5">
         <div className="flex items-start gap-3">
           <div
             className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0 ${
-              hasDoc ? 'bg-green-500/10' : 'bg-[var(--bz-text-2)]/5'
+              hasDoc ? "bg-green-500/10" : "bg-[var(--bz-text-2)]/5"
             }`}
           >
-            {docIcon[docType] || '\u{1F4C4}'}
+            {docIcon[docType] || "\u{1F4C4}"}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-[var(--bz-text-1)]">{label}</span>
+              <span className="text-sm font-semibold text-[var(--bz-text-1)]">
+                {label}
+              </span>
               {hasDoc ? (
                 <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
               ) : (
-                <span className="text-[10px] text-[var(--bz-text-2)]">{hint}</span>
+                <span className="text-[10px] text-[var(--bz-text-2)]">
+                  {hint}
+                </span>
               )}
             </div>
 
@@ -169,7 +198,9 @@ function CompanyDocUpload({
               </p>
             )}
             {uploadedFile && (
-              <p className="text-[11px] text-green-400 mt-0.5 truncate">{uploadedFile}</p>
+              <p className="text-[11px] text-green-400 mt-0.5 truncate">
+                {uploadedFile}
+              </p>
             )}
           </div>
         </div>
@@ -183,7 +214,10 @@ function CompanyDocUpload({
                 size="sm"
                 className="gap-1.5 text-xs h-7 px-2.5 flex-1 hover:bg-[var(--bz-accent)]/10 hover:text-[var(--bz-accent)]"
                 onClick={() => {
-                  window.open(`/api/documents/proxy/${existingDoc.google_drive_file_id}`, '_blank');
+                  window.open(
+                    `/api/documents/proxy/${existingDoc.google_drive_file_id}`,
+                    "_blank",
+                  );
                 }}
               >
                 <Eye className="w-3 h-3" />
@@ -194,7 +228,10 @@ function CompanyDocUpload({
                 size="sm"
                 className="gap-1.5 text-xs h-7 px-2.5 flex-1 hover:bg-blue-500/10 hover:text-blue-400"
                 onClick={() => {
-                  window.open(`/api/documents/proxy/${existingDoc.google_drive_file_id}`, '_blank');
+                  window.open(
+                    `/api/documents/proxy/${existingDoc.google_drive_file_id}`,
+                    "_blank",
+                  );
                 }}
               >
                 <Download className="w-3 h-3" />
@@ -214,7 +251,7 @@ function CompanyDocUpload({
           <Button
             variant="outline"
             size="sm"
-            className={`gap-1.5 text-xs h-7 ${hasDoc ? 'px-2.5' : 'w-full px-3'}`}
+            className={`gap-1.5 text-xs h-7 ${hasDoc ? "px-2.5" : "w-full px-3"}`}
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading || ocrPolling}
           >
@@ -223,7 +260,13 @@ function CompanyDocUpload({
             ) : (
               <Upload className="w-3 h-3" />
             )}
-            {isUploading ? '...' : ocrPolling ? 'OCR...' : hasDoc ? '' : `Upload`}
+            {isUploading
+              ? "..."
+              : ocrPolling
+                ? "OCR..."
+                : hasDoc
+                  ? ""
+                  : `Upload`}
           </Button>
         </div>
       </div>
@@ -266,33 +309,26 @@ function EditCompanyModal({
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({
-    company_name: initialData.company_name || '',
-    company_type: initialData.company_type || 'PT PMA',
-    kbli_code: initialData.kbli_code || '',
-    nib: initialData.nib || '',
-    npwp_company: initialData.npwp_company || '',
-    registered_address: initialData.registered_address || initialData.office_address || '',
-    city: initialData.city || '',
-    province: initialData.province || '',
-    akta_pendirian_no: initialData.akta_pendirian_no || '',
-    akta_pendirian_date: initialData.akta_pendirian_date?.split('T')[0] || '',
-    akta_perubahan_no: initialData.akta_perubahan_no || '',
-    akta_perubahan_date: initialData.akta_perubahan_date?.split('T')[0] || '',
-    sk_menhumkam_no: initialData.sk_menhumkam_no || '',
-    sk_menhumkam_date: initialData.sk_menhumkam_date?.split('T')[0] || '',
-    status: initialData.company_status || 'active',
+    company_name: initialData.company_name || "",
+    company_type: initialData.company_type || "PT PMA",
+    kbli_code: initialData.kbli_code || "",
+    nib: initialData.nib || "",
+    npwp_company: initialData.npwp_company || "",
+    registered_address:
+      initialData.registered_address || initialData.office_address || "",
+    city: initialData.city || "",
+    province: initialData.province || "",
+    akta_pendirian_no: initialData.akta_pendirian_no || "",
+    akta_pendirian_date: initialData.akta_pendirian_date?.split("T")[0] || "",
+    akta_perubahan_no: initialData.akta_perubahan_no || "",
+    akta_perubahan_date: initialData.akta_perubahan_date?.split("T")[0] || "",
+    sk_menhumkam_no: initialData.sk_menhumkam_no || "",
+    sk_menhumkam_date: initialData.sk_menhumkam_date?.split("T")[0] || "",
+    status: initialData.company_status || "active",
   });
 
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isSaving) onClose();
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose, isSaving]);
-
   const inputClass =
-    'w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50';
+    "w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50";
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -300,13 +336,13 @@ function EditCompanyModal({
       // Only send non-empty fields
       const updates: Record<string, string> = {};
       Object.entries(form).forEach(([k, v]) => {
-        if (v !== '') updates[k] = v;
+        if (v !== "") updates[k] = v;
       });
       await api.crm.updateCompany(companyId, updates);
-      toast.success('Company updated');
+      toast.success("Company updated");
       onSave();
     } catch (err) {
-      toast.error('Failed to update company', {
+      toast.error("Failed to update company", {
         description: (err as Error).message,
       });
     } finally {
@@ -319,16 +355,18 @@ function EditCompanyModal({
       <div
         className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
         style={{
-          background: 'var(--bz-card)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: "var(--bz-card)",
+          border: "1px solid rgba(255,255,255,0.08)",
         }}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-4 border-b"
-          style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+          style={{ borderColor: "rgba(255,255,255,0.06)" }}
         >
-          <h2 className="text-lg font-semibold text-[var(--bz-text-1)]">Edit Company</h2>
+          <h2 className="text-lg font-semibold text-[var(--bz-text-1)]">
+            Edit Company
+          </h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-white/10 text-[var(--bz-text-2)] transition-colors"
@@ -348,7 +386,9 @@ function EditCompanyModal({
               <input
                 className={inputClass}
                 value={form.company_name}
-                onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, company_name: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -358,7 +398,9 @@ function EditCompanyModal({
               <select
                 className={inputClass}
                 value={form.company_type}
-                onChange={(e) => setForm((f) => ({ ...f, company_type: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, company_type: e.target.value }))
+                }
               >
                 <option value="PT PMA">PT PMA</option>
                 <option value="PT Perorangan">PT Perorangan</option>
@@ -378,7 +420,9 @@ function EditCompanyModal({
                 className={inputClass}
                 value={form.kbli_code}
                 placeholder="e.g. 56101"
-                onChange={(e) => setForm((f) => ({ ...f, kbli_code: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, kbli_code: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -389,7 +433,9 @@ function EditCompanyModal({
                 className={inputClass}
                 value={form.nib}
                 placeholder="Nomor Induk Berusaha"
-                onChange={(e) => setForm((f) => ({ ...f, nib: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, nib: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -400,7 +446,9 @@ function EditCompanyModal({
                 className={inputClass}
                 value={form.npwp_company}
                 placeholder="NPWP Perusahaan"
-                onChange={(e) => setForm((f) => ({ ...f, npwp_company: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, npwp_company: e.target.value }))
+                }
               />
             </div>
           </div>
@@ -414,7 +462,9 @@ function EditCompanyModal({
               <input
                 className={inputClass}
                 value={form.registered_address}
-                onChange={(e) => setForm((f) => ({ ...f, registered_address: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, registered_address: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -424,7 +474,9 @@ function EditCompanyModal({
               <input
                 className={inputClass}
                 value={form.city}
-                onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, city: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -434,7 +486,9 @@ function EditCompanyModal({
               <input
                 className={inputClass}
                 value={form.province}
-                onChange={(e) => setForm((f) => ({ ...f, province: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, province: e.target.value }))
+                }
               />
             </div>
           </div>
@@ -448,7 +502,9 @@ function EditCompanyModal({
               <input
                 className={inputClass}
                 value={form.akta_pendirian_no}
-                onChange={(e) => setForm((f) => ({ ...f, akta_pendirian_no: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, akta_pendirian_no: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -478,7 +534,9 @@ function EditCompanyModal({
               <input
                 className={inputClass}
                 value={form.akta_perubahan_no}
-                onChange={(e) => setForm((f) => ({ ...f, akta_perubahan_no: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, akta_perubahan_no: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -508,7 +566,9 @@ function EditCompanyModal({
               <input
                 className={inputClass}
                 value={form.sk_menhumkam_no}
-                onChange={(e) => setForm((f) => ({ ...f, sk_menhumkam_no: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, sk_menhumkam_no: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -519,7 +579,9 @@ function EditCompanyModal({
                 type="date"
                 className={inputClass}
                 value={form.sk_menhumkam_date}
-                onChange={(e) => setForm((f) => ({ ...f, sk_menhumkam_date: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, sk_menhumkam_date: e.target.value }))
+                }
               />
             </div>
           </div>
@@ -532,7 +594,9 @@ function EditCompanyModal({
             <select
               className={inputClass}
               value={form.status}
-              onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, status: e.target.value }))
+              }
             >
               <option value="active">Active</option>
               <option value="in_setup">In Setup</option>
@@ -545,7 +609,7 @@ function EditCompanyModal({
         {/* Footer */}
         <div
           className="flex items-center justify-end gap-3 px-6 py-4 border-t"
-          style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+          style={{ borderColor: "rgba(255,255,255,0.06)" }}
         >
           <button
             onClick={onClose}
@@ -578,13 +642,13 @@ export function CompanyTab({
   onRefresh,
 }: {
   clientId: number;
-  client: ClientProfile['client'];
+  client: ClientProfile["client"];
   documents: ClientDocument[];
   formatDate: (d: string) => string;
   onRefresh: () => Promise<void>;
 }) {
   // Company docs from client's documents (category = pma)
-  const pmaDocs = documents.filter((d) => d.document_category === 'pma');
+  const pmaDocs = documents.filter((d) => d.document_category === "pma");
 
   // Company data: try linked companies first, then fallback to search by name
   const [companyData, setCompanyData] = useState<{
@@ -663,7 +727,7 @@ export function CompanyTab({
               role: l.role,
               ownership_percentage: l.ownership_percentage,
               shares_count: l.shares_count,
-            }))
+            })),
           );
           // Load company documents if we have a company_id
           if (co.company_id) {
@@ -671,7 +735,7 @@ export function CompanyTab({
               .getCompanyDocuments(co.company_id)
               .then((docs) => !cancelled && setCompanyDocs(docs))
               .catch((err) => {
-                toast.error('Failed to load company documents', {
+                toast.error("Failed to load company documents", {
                   description: (err as Error).message,
                 });
               });
@@ -710,7 +774,7 @@ export function CompanyTab({
                   role: a.role,
                   ownership_percentage: a.ownership_percentage,
                   shares_count: a.shares_count,
-                }))
+                })),
               );
             }
             // Load company documents
@@ -718,7 +782,7 @@ export function CompanyTab({
               .getCompanyDocuments(found.id)
               .then((docs) => !cancelled && setCompanyDocs(docs))
               .catch((err) => {
-                toast.error('Failed to load company documents', {
+                toast.error("Failed to load company documents", {
                   description: (err as Error).message,
                 });
               });
@@ -729,7 +793,7 @@ export function CompanyTab({
         // Step 3: No company data found — companyData stays null
       } catch (err) {
         if (!cancelled) {
-          toast.error('Failed to load company data', {
+          toast.error("Failed to load company data", {
             description: (err as Error).message,
           });
         }
@@ -771,14 +835,16 @@ export function CompanyTab({
     if (!shares) return null;
     const nom = nominal || 1000000;
     const total = shares * nom;
-    if (total >= 1e12) return `Rp ${(total / 1e12).toFixed(total % 1e12 === 0 ? 0 : 1)}T`;
-    if (total >= 1e9) return `Rp ${(total / 1e9).toFixed(total % 1e9 === 0 ? 0 : 1)}B`;
+    if (total >= 1e12)
+      return `Rp ${(total / 1e12).toFixed(total % 1e12 === 0 ? 0 : 1)}T`;
+    if (total >= 1e9)
+      return `Rp ${(total / 1e9).toFixed(total % 1e9 === 0 ? 0 : 1)}B`;
     if (total >= 1e6) return `Rp ${(total / 1e6).toFixed(0)}M`;
-    return `Rp ${total.toLocaleString('en-US')}`;
+    return `Rp ${total.toLocaleString()}`;
   };
 
-  const companyName = co?.company_name || client.company_name || 'Company';
-  const companyType = co?.company_type || '';
+  const companyName = co?.company_name || client.company_name || "Company";
+  const companyType = co?.company_type || "";
   const capital = formatCapital(co?.shares_count, co?.share_nominal_value);
 
   // Merge client pma docs + company docs for the strip
@@ -811,286 +877,1024 @@ export function CompanyTab({
       : null;
 
   // Address string
-  const addressStr = [co?.registered_address || co?.office_address, co?.city, co?.province]
+  const addressStr = [
+    co?.registered_address || co?.office_address,
+    co?.city,
+    co?.province,
+  ]
     .filter(Boolean)
-    .join(', ');
+    .join(", ");
 
-  return (
-    <div className="space-y-5">
-      {/* COMPANY CARD */}
-      <div
-        className="rounded-xl overflow-hidden"
+  // Age chip helper (from Guardian loop 114)
+  const getAgeChip = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const ageDays = Math.floor(
+      (Date.now() - new Date(dateStr).getTime()) / 86400000,
+    );
+    if (ageDays < 30) return null;
+    const label =
+      ageDays >= 365
+        ? `${Math.floor(ageDays / 365)}y old`
+        : `${Math.floor(ageDays / 30)}mo ago`;
+    return (
+      <span
         style={{
-          border: '1px solid rgba(255,255,255,0.06)',
-          background: 'rgba(32,32,36,0.7)',
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "999px",
+          fontSize: "0.6rem",
+          fontWeight: 600,
+          padding: "0.1rem 0.45rem",
+          color: "rgba(148,163,184,0.9)",
+          letterSpacing: "0.03em",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "0.2rem",
         }}
       >
-        {/* Header band */}
-        <div className="px-6 py-5 bg-gradient-to-r from-purple-500/8 to-blue-500/8">
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center shrink-0">
-              <Building2 className="w-7 h-7 text-purple-400" />
+        <Clock className="w-2.5 h-2.5" />
+        {label}
+      </span>
+    );
+  };
+
+  // Design tokens
+  const crystalCard: React.CSSProperties = {
+    background:
+      "linear-gradient(160deg, rgba(235,240,255,0.03) 0%, rgba(235,240,255,0.005) 100%)",
+    backdropFilter: "blur(48px)",
+    WebkitBackdropFilter: "blur(48px)",
+    borderRadius: "1.25rem",
+    boxShadow:
+      "inset 0 1px 0 0 rgba(255,255,255,0.15), inset 0 0 0 1px rgba(255,255,255,0.04), 0 20px 40px -10px rgba(0,0,0,0.5)",
+  };
+  const pillData: React.CSSProperties = {
+    background: "rgba(255,255,255,0.02)",
+    borderRadius: "0.5rem",
+    padding: "0.75rem 1rem",
+    boxShadow:
+      "inset 0 1px 0 0 rgba(255,255,255,0.06), inset 0 0 0 1px rgba(255,255,255,0.03)",
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* ── HEADER CARD ─────────────────────────────────────────────────── */}
+      <div style={crystalCard} className="p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+          <div className="flex items-center gap-5">
+            {/* Icon container */}
+            <div
+              className="w-14 h-14 rounded-[14px] flex items-center justify-center relative overflow-hidden group shrink-0"
+              style={{
+                background: "rgba(255,255,255,0.02)",
+                boxShadow:
+                  "inset 0 1px 0 0 rgba(255,255,255,0.15), inset 0 0 0 1px rgba(255,255,255,0.05)",
+              }}
+            >
+              <Building2
+                className="w-7 h-7"
+                style={{
+                  color: "#d4845a",
+                  filter: "drop-shadow(0 0 10px rgba(212,132,90,0.5))",
+                }}
+              />
             </div>
-            <div className="flex-1 min-w-0">
+            <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold text-[var(--bz-text-1)] truncate">
+                <h1
+                  className="text-2xl font-bold tracking-tight"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
                   {companyName}
-                </h3>
+                </h1>
                 {co?.company_id && (
                   <button
                     onClick={() => setIsEditingCompany(true)}
-                    className="shrink-0 p-1 rounded hover:bg-white/10 text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] transition-colors"
+                    className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors"
+                    style={{ color: "rgba(148,163,184,0.7)" }}
                     title="Edit company"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
                 {companyType && (
-                  <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400 font-medium">
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.375rem",
+                      padding: "0.25rem 0.6rem",
+                      borderRadius: "999px",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      background: "rgba(52, 211, 153, 0.08)",
+                      border: "1px solid rgba(52, 211, 153, 0.2)",
+                      color: "#34d399",
+                    }}
+                  >
+                    <CheckCircle2 className="w-3 h-3" />
                     {companyType}
                   </span>
                 )}
-                {(co?.company_status || 'active') !== 'dissolved' && (
+                {(co?.company_status || "active") === "active" && (
                   <span
-                    className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      (co?.company_status || 'active') === 'active'
-                        ? 'bg-green-500/20 text-green-400'
-                        : (co?.company_status || '') === 'in_setup'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'bg-gray-500/20 text-gray-400'
-                    }`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.375rem",
+                      padding: "0.25rem 0.6rem",
+                      borderRadius: "999px",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      background: "rgba(52, 211, 153, 0.08)",
+                      border: "1px solid rgba(52, 211, 153, 0.2)",
+                      color: "#34d399",
+                    }}
                   >
-                    {(co?.company_status || 'active').replace(/_/g, ' ')}
+                    Active
+                  </span>
+                )}
+                {co?.company_status === "in_setup" && (
+                  <span
+                    style={{
+                      padding: "0.25rem 0.6rem",
+                      borderRadius: "999px",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      background: "rgba(251,191,36,0.08)",
+                      border: "1px solid rgba(251,191,36,0.2)",
+                      color: "#fbbf24",
+                    }}
+                  >
+                    In Setup
+                  </span>
+                )}
+                {co?.nib && (
+                  <span
+                    className="font-mono"
+                    style={{
+                      fontSize: "0.65rem",
+                      color: "rgba(148,163,184,0.8)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    NIB {co.nib}
+                  </span>
+                )}
+                {co?.kbli_code && (
+                  <span
+                    className="font-mono"
+                    style={{
+                      fontSize: "0.65rem",
+                      color: "#60a5fa",
+                      borderBottom: "1px dashed rgba(96,165,250,0.3)",
+                      paddingBottom: "1px",
+                    }}
+                  >
+                    KBLI {co.kbli_code}
                   </span>
                 )}
                 {foundingYear && (
-                  <span className="text-xs text-[var(--bz-text-2)]">Est. {foundingYear}</span>
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "rgba(100,116,139,0.9)",
+                    }}
+                  >
+                    Est. {foundingYear}
+                  </span>
                 )}
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Info grid */}
-        <div className="px-6 py-4 space-y-4">
-          {/* Row 1: KBLI + NIB + NPWP */}
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
-                KBLI
-              </p>
-              <p className="text-sm text-[var(--bz-text-1)] font-medium font-mono">
-                {co?.kbli_code || '\u2014'}
-              </p>
-              {co?.kbli_description && (
-                <p className="text-xs text-[var(--bz-text-2)] truncate">{co.kbli_description}</p>
+      {/* ── ZANTARA STARLIGHT AI ─────────────────────────────────────────── */}
+      <div
+        style={{
+          ...crystalCard,
+          background:
+            "linear-gradient(160deg, rgba(241,245,249,0.06) 0%, rgba(138,122,103,0.04) 100%)",
+          boxShadow:
+            "inset 0 1px 0 0 rgba(241,245,249,0.12), inset 0 0 0 1px rgba(241,245,249,0.04), 0 20px 40px -10px rgba(0,0,0,0.4)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+        className="p-5 flex gap-4 items-start"
+      >
+        {/* Pearl glow orb */}
+        <div
+          style={{
+            position: "absolute",
+            width: "300px",
+            height: "300px",
+            background:
+              "radial-gradient(circle, rgba(241,245,249,0.12), transparent 65%)",
+            borderRadius: "50%",
+            top: "-100px",
+            right: "-100px",
+            filter: "blur(40px)",
+            mixBlendMode: "screen",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 relative z-10"
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            boxShadow:
+              "inset 0 1px 0 0 rgba(255,255,255,0.25), inset 0 0 0 1px rgba(255,255,255,0.06)",
+          }}
+        >
+          <Sparkles
+            className="w-4 h-4"
+            style={{
+              color: "#f4f4f5",
+              filter: "drop-shadow(0 0 10px rgba(244,244,245,0.8))",
+            }}
+          />
+        </div>
+        <div className="flex-1 relative z-10">
+          <h3
+            className="text-[10px] font-bold uppercase tracking-[0.1em] mb-1.5"
+            style={{
+              background: "linear-gradient(90deg, #f4f4f5, #c9a96e)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            Zantara Intelligence
+          </h3>
+          <p
+            className="text-sm font-light leading-relaxed tracking-wide"
+            style={{ color: "#f1f5f9" }}
+          >
+            {co?.kbli_description ? (
+              <>
+                Operates under{" "}
+                <span className="font-medium" style={{ color: "white" }}>
+                  {co.kbli_description}
+                </span>
+                .{" "}
+              </>
+            ) : null}
+            {addressStr ? (
+              <>
+                Registered in{" "}
+                <span className="font-medium" style={{ color: "white" }}>
+                  {co?.city || co?.province || addressStr}
+                </span>
+                .{" "}
+              </>
+            ) : null}
+            {capital ? (
+              <>
+                Authorized capital{" "}
+                <span
+                  className="font-mono text-xs"
+                  style={{ color: "#c9a96e", fontWeight: 600 }}
+                >
+                  {capital}
+                </span>
+                .{" "}
+              </>
+            ) : null}
+            {associates.length > 0 ? (
+              <>
+                <span style={{ color: "#d4845a", fontWeight: 500 }}>
+                  {associates.length} shareholder
+                  {associates.length > 1 ? "s" : ""}
+                </span>{" "}
+                on record.
+              </>
+            ) : null}
+          </p>
+        </div>
+      </div>
+
+      {/* ── KPI TILES ───────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Status tile */}
+        <div style={{ ...crystalCard, padding: "1.25rem" }}>
+          <h4
+            className="text-[9px] uppercase tracking-widest font-bold mb-2"
+            style={{ color: "rgba(148,163,184,0.8)" }}
+          >
+            Company Status
+          </h4>
+          <p className="text-lg font-medium mb-1" style={{ color: "#f1f5f9" }}>
+            {co?.company_status
+              ? co.company_status.replace(/_/g, " ")
+              : "Active"}
+          </p>
+          <p
+            className="text-[10px] font-mono tracking-wide uppercase flex items-center gap-1"
+            style={{ color: "#34d399" }}
+          >
+            <Shield className="w-3 h-3" /> OSS Verified
+          </p>
+        </div>
+
+        {/* Capital tile */}
+        <div style={{ ...crystalCard, padding: "1.25rem" }}>
+          <h4
+            className="text-[9px] uppercase tracking-widest font-bold mb-2"
+            style={{ color: "rgba(148,163,184,0.8)" }}
+          >
+            Capital
+          </h4>
+          <p
+            className="text-lg font-medium font-mono mb-1"
+            style={{ color: "#f1f5f9" }}
+          >
+            {capital || "—"}
+          </p>
+          {co?.shares_count && (
+            <p
+              className="text-[10px] font-mono tracking-wide uppercase"
+              style={{ color: "rgba(148,163,184,0.6)" }}
+            >
+              {co.shares_count.toLocaleString()} shares
+            </p>
+          )}
+        </div>
+
+        {/* KBLI tile */}
+        <div style={{ ...crystalCard, padding: "1.25rem" }}>
+          <h4
+            className="text-[9px] uppercase tracking-widest font-bold mb-2"
+            style={{ color: "#60a5fa" }}
+          >
+            Sector Focus
+          </h4>
+          <p
+            className="text-lg font-medium font-mono mb-1"
+            style={{ color: "#f1f5f9" }}
+          >
+            {co?.kbli_code || "—"}
+          </p>
+          {co?.kbli_description && (
+            <p
+              className="text-[10px] tracking-wide truncate"
+              style={{ color: "rgba(148,163,184,0.6)" }}
+            >
+              {co.kbli_description}
+            </p>
+          )}
+        </div>
+
+        {/* Docs tile */}
+        <div style={{ ...crystalCard, padding: "1.25rem" }}>
+          <h4
+            className="text-[9px] uppercase tracking-widest font-bold mb-2"
+            style={{ color: "rgba(148,163,184,0.8)" }}
+          >
+            Vault Docs
+          </h4>
+          <p className="text-lg font-medium mb-1" style={{ color: "#f1f5f9" }}>
+            {allDocs.length} Files
+          </p>
+          <p
+            className="text-[10px] font-mono tracking-wide uppercase flex items-center gap-1"
+            style={{ color: "#d4845a" }}
+          >
+            <FolderOpen className="w-3 h-3" /> In Drive
+          </p>
+        </div>
+      </div>
+
+      {/* ── MAIN GRID: Ledger + Vault (LEFT) / Registry (RIGHT) ─────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        {/* LEFT: Capital Ledger + Vault */}
+        <div className="lg:col-span-8 flex flex-col gap-4">
+          {/* Capital & Shareholders Ledger */}
+          <div
+            style={{ ...crystalCard, padding: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="px-6 pt-5 pb-4 flex items-center justify-between">
+              <h2
+                className="text-sm font-semibold uppercase tracking-widest"
+                style={{ color: "rgba(148,163,184,0.8)" }}
+              >
+                Capital &amp; Shareholders Ledger
+              </h2>
+              <Network
+                className="w-4 h-4"
+                style={{ color: "rgba(100,116,139,0.7)" }}
+              />
+            </div>
+
+            {/* Divider */}
+            <div
+              style={{
+                height: "1px",
+                margin: "0 1.5rem 1rem",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 50%, transparent)",
+              }}
+            />
+
+            <div className="px-6 pb-6">
+              {/* Capital aggregate */}
+              {capital && (
+                <div
+                  className="flex flex-col sm:flex-row rounded-xl overflow-hidden"
+                  style={{
+                    background: "rgba(0,0,0,0.3)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    boxShadow: "inset 0 4px 10px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  <div
+                    className="flex-1 p-5 relative"
+                    style={{
+                      borderRight: "1px solid rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: "1px",
+                        background:
+                          "linear-gradient(90deg, transparent, rgba(212,132,90,0.3), transparent)",
+                      }}
+                    />
+                    <p
+                      className="text-[9px] uppercase tracking-widest font-bold mb-1"
+                      style={{ color: "rgba(100,116,139,0.9)" }}
+                    >
+                      Total Paid-in Capital
+                    </p>
+                    <p
+                      className="text-2xl font-bold font-mono tracking-tight"
+                      style={{ color: "white" }}
+                    >
+                      {capital}
+                    </p>
+                  </div>
+                  <div className="flex-1 p-5 grid grid-cols-2 gap-4 items-center">
+                    <div>
+                      <p
+                        className="text-[9px] uppercase tracking-widest mb-1"
+                        style={{ color: "rgba(100,116,139,0.9)" }}
+                      >
+                        Total Shares
+                      </p>
+                      <p
+                        className="text-base font-mono"
+                        style={{ color: "rgba(148,163,184,0.9)" }}
+                      >
+                        {co?.shares_count?.toLocaleString() || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p
+                        className="text-[9px] uppercase tracking-widest mb-1"
+                        style={{ color: "rgba(100,116,139,0.9)" }}
+                      >
+                        Nominal / Sh
+                      </p>
+                      <p
+                        className="text-base font-mono"
+                        style={{ color: "rgba(148,163,184,0.9)" }}
+                      >
+                        {co?.share_nominal_value
+                          ? `Rp ${(co.share_nominal_value / 1e6).toFixed(0)}M`
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
-                NIB
-              </p>
-              <p className="text-sm text-[var(--bz-text-1)] font-mono">{co?.nib || '\u2014'}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
-                NPWP
-              </p>
-              <p className="text-sm text-[var(--bz-text-1)] font-mono">
-                {co?.npwp_company || '\u2014'}
-              </p>
+
+              {/* Shareholders ledger table */}
+              {associates.length > 0 && (
+                <div className="mt-5 w-full">
+                  <div
+                    className="grid grid-cols-12 text-[9px] uppercase tracking-widest font-bold pb-3 px-2"
+                    style={{
+                      color: "rgba(100,116,139,0.9)",
+                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <div className="col-span-5">Shareholder Name</div>
+                    <div className="col-span-3">Role</div>
+                    <div className="col-span-2 text-right">Shares</div>
+                    <div className="col-span-2 text-right">Equity</div>
+                  </div>
+                  {associates.map((a, i) => {
+                    const initials = (a.client_name || client.full_name || "?")
+                      .split(" ")
+                      .slice(0, 2)
+                      .map((w) => w[0])
+                      .join("")
+                      .toUpperCase();
+                    return (
+                      <div
+                        key={i}
+                        className="grid grid-cols-12 py-3 px-2 items-center text-sm"
+                        style={{
+                          borderBottom:
+                            i < associates.length - 1
+                              ? "1px solid rgba(255,255,255,0.05)"
+                              : "none",
+                          transition: "background 0.2s",
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background =
+                            "rgba(255,255,255,0.03)")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = "transparent")
+                        }
+                      >
+                        <div className="col-span-5 flex items-center gap-2.5">
+                          <div
+                            className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0"
+                            style={{
+                              background: "rgba(255,255,255,0.04)",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                              color: "rgba(148,163,184,0.9)",
+                            }}
+                          >
+                            {initials}
+                          </div>
+                          <p
+                            className="font-medium truncate"
+                            style={{ color: "#f1f5f9" }}
+                          >
+                            {a.client_name || client.full_name}
+                          </p>
+                        </div>
+                        <div className="col-span-3">
+                          <span
+                            className="text-[10px] uppercase tracking-wider font-bold"
+                            style={{ color: "#d4845a" }}
+                          >
+                            {a.role || "Shareholder"}
+                          </span>
+                        </div>
+                        <div
+                          className="col-span-2 text-right font-mono text-xs"
+                          style={{ color: "rgba(148,163,184,0.8)" }}
+                        >
+                          {a.shares_count
+                            ? a.shares_count.toLocaleString()
+                            : "—"}
+                        </div>
+                        <div className="col-span-2 flex flex-col items-end gap-1">
+                          <span
+                            className="font-mono text-xs font-bold"
+                            style={{ color: "white" }}
+                          >
+                            {a.ownership_percentage
+                              ? `${a.ownership_percentage}%`
+                              : "—"}
+                          </span>
+                          {a.ownership_percentage && (
+                            <div
+                              className="w-12 h-0.5 rounded-full overflow-hidden"
+                              style={{ background: "rgba(255,255,255,0.08)" }}
+                            >
+                              <div
+                                className="h-full"
+                                style={{
+                                  width: `${a.ownership_percentage}%`,
+                                  background:
+                                    a.ownership_percentage >= 50
+                                      ? "white"
+                                      : "rgba(148,163,184,0.7)",
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {!capital && associates.length === 0 && (
+                <p
+                  className="text-sm py-4"
+                  style={{ color: "rgba(100,116,139,0.7)" }}
+                >
+                  No capital or shareholder data on record.
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Row 2: Address + Capital */}
-          <div className="grid grid-cols-2 gap-4">
-            {addressStr && (
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
-                  Address
+          {/* Company Vault Directory */}
+          <div style={crystalCard} className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                className="text-sm font-semibold uppercase tracking-widest"
+                style={{ color: "rgba(148,163,184,0.8)" }}
+              >
+                Company Vault Directory
+              </h2>
+              <Shield
+                className="w-4 h-4"
+                style={{ color: "rgba(100,116,139,0.7)" }}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {allDocs.length > 0 ? (
+                allDocs.slice(0, 6).map((doc) => (
+                  <a
+                    key={doc.key}
+                    href={doc.url || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 group"
+                    style={pillData}
+                  >
+                    <FileText
+                      className="w-4 h-4 shrink-0 transition-colors"
+                      style={{ color: "rgba(100,116,139,0.7)" }}
+                    />
+                    <div className="flex-1 min-w-0 flex items-center justify-between">
+                      <p
+                        className="text-xs font-mono truncate transition-colors"
+                        style={{ color: "rgba(148,163,184,0.8)" }}
+                      >
+                        {doc.name}
+                      </p>
+                      <div
+                        className="w-1.5 h-1.5 rounded-full shrink-0 ml-2"
+                        style={{ background: "#34d399" }}
+                      />
+                    </div>
+                  </a>
+                ))
+              ) : (
+                <div
+                  className="col-span-2 flex items-center gap-3"
+                  style={{ ...pillData, opacity: 0.5 }}
+                >
+                  <AlertCircle
+                    className="w-4 h-4"
+                    style={{ color: "#f87171" }}
+                  />
+                  <p className="text-xs font-mono" style={{ color: "#f87171" }}>
+                    No documents uploaded yet
+                  </p>
+                </div>
+              )}
+              {allDocs.length > 6 && (
+                <div
+                  className="col-span-2 flex items-center justify-center cursor-pointer"
+                  style={{
+                    ...pillData,
+                    border: "1px dashed rgba(255,255,255,0.15)",
+                    background: "transparent",
+                  }}
+                >
+                  <FolderOpen
+                    className="w-3 h-3 mr-2"
+                    style={{ color: "rgba(148,163,184,0.6)" }}
+                  />
+                  <p
+                    className="text-[10px] font-mono uppercase tracking-widest"
+                    style={{ color: "rgba(148,163,184,0.6)" }}
+                  >
+                    Access {allDocs.length - 6} more files
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: Corporate Registry */}
+        <div className="lg:col-span-4">
+          <div style={crystalCard} className="p-5 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between pb-2">
+              <h2
+                className="text-sm font-semibold uppercase tracking-widest"
+                style={{ color: "rgba(148,163,184,0.8)" }}
+              >
+                Registry Data
+              </h2>
+              <Database
+                className="w-4 h-4"
+                style={{ color: "rgba(100,116,139,0.7)" }}
+              />
+            </div>
+
+            {/* Classification */}
+            <div style={pillData}>
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
+                style={{ color: "rgba(100,116,139,0.9)" }}
+              >
+                Classification
+              </p>
+              <p className="text-sm font-medium" style={{ color: "#f1f5f9" }}>
+                {companyType || "PT PMA"}{" "}
+                <span
+                  className="text-[10px] font-normal ml-1"
+                  style={{ color: "rgba(148,163,184,0.6)" }}
+                >
+                  (Foreign Direct)
+                </span>
+              </p>
+            </div>
+
+            {/* NPWP */}
+            {co?.npwp_company && (
+              <div style={pillData}>
+                <p
+                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
+                  style={{ color: "rgba(100,116,139,0.9)" }}
+                >
+                  NPWP / Tax Number
                 </p>
-                <p className="text-sm text-[var(--bz-text-1)]">{addressStr}</p>
+                <div className="flex justify-between items-center group">
+                  <p className="font-mono text-sm" style={{ color: "#f1f5f9" }}>
+                    {co.npwp_company}
+                  </p>
+                  <button
+                    onClick={() => {
+                      void navigator.clipboard.writeText(co.npwp_company!);
+                      toast.success("Copied");
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Copy
+                      className="w-3 h-3"
+                      style={{ color: "rgba(100,116,139,0.9)" }}
+                    />
+                  </button>
+                </div>
               </div>
             )}
-            {capital && (
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-0.5">
-                  Capital
+
+            {/* NIB */}
+            {co?.nib && (
+              <div style={pillData}>
+                <p
+                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
+                  style={{ color: "rgba(100,116,139,0.9)" }}
+                >
+                  NIB / Business Reg.
                 </p>
-                <p className="text-sm text-[var(--bz-text-1)] font-semibold">{capital}</p>
-                {co?.shares_count && (
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    {co.shares_count.toLocaleString('en-US')} shares
+                <div className="flex justify-between items-center group">
+                  <p className="font-mono text-sm" style={{ color: "#f1f5f9" }}>
+                    {co.nib}
+                  </p>
+                  <button
+                    onClick={() => {
+                      void navigator.clipboard.writeText(co.nib!);
+                      toast.success("Copied");
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Copy
+                      className="w-3 h-3"
+                      style={{ color: "rgba(100,116,139,0.9)" }}
+                    />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Akta Pendirian */}
+            {co?.akta_pendirian_no && (
+              <div style={pillData}>
+                <p
+                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
+                  style={{ color: "rgba(100,116,139,0.9)" }}
+                >
+                  Deed of Est. (Akta)
+                </p>
+                <div className="flex items-center justify-between">
+                  <p
+                    className="text-sm font-medium font-mono"
+                    style={{ color: "#f1f5f9" }}
+                  >
+                    #{co.akta_pendirian_no}
+                    {co.akta_pendirian_date && (
+                      <span
+                        className="text-[10px] mx-1"
+                        style={{ color: "rgba(148,163,184,0.5)" }}
+                      >
+                        |
+                      </span>
+                    )}
+                    {co.akta_pendirian_date &&
+                      formatDate(co.akta_pendirian_date)}
+                  </p>
+                  {getAgeChip(co.akta_pendirian_date)}
+                </div>
+              </div>
+            )}
+
+            {/* Akta Perubahan */}
+            {co?.akta_perubahan_no && (
+              <div style={pillData}>
+                <p
+                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
+                  style={{ color: "rgba(100,116,139,0.9)" }}
+                >
+                  Amendment (Akta Perubahan)
+                </p>
+                <div className="flex items-center justify-between">
+                  <p
+                    className="text-sm font-medium font-mono"
+                    style={{ color: "#f1f5f9" }}
+                  >
+                    #{co.akta_perubahan_no}
+                    {co.akta_perubahan_date && (
+                      <span
+                        className="text-[10px] mx-1"
+                        style={{ color: "rgba(148,163,184,0.5)" }}
+                      >
+                        |
+                      </span>
+                    )}
+                    {co.akta_perubahan_date &&
+                      formatDate(co.akta_perubahan_date)}
+                  </p>
+                  {getAgeChip(co.akta_perubahan_date)}
+                </div>
+              </div>
+            )}
+
+            {/* SK Kemenkumham */}
+            {co?.sk_menhumkam_no && (
+              <div style={pillData}>
+                <p
+                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5 flex justify-between items-center"
+                  style={{ color: "rgba(100,116,139,0.9)" }}
+                >
+                  SK Kemenkumham
+                  <ExternalLink
+                    className="w-3 h-3 cursor-pointer hover:text-white transition-colors"
+                    style={{ color: "rgba(100,116,139,0.7)" }}
+                  />
+                </p>
+                <div className="flex items-center justify-between">
+                  <p
+                    className="text-[11px] font-medium font-mono break-all leading-tight"
+                    style={{ color: "rgba(148,163,184,0.9)" }}
+                  >
+                    {co.sk_menhumkam_no}
+                  </p>
+                  {getAgeChip(co.sk_menhumkam_date)}
+                </div>
+                {co.sk_menhumkam_date && (
+                  <p
+                    className="text-[10px] mt-0.5"
+                    style={{ color: "rgba(100,116,139,0.7)" }}
+                  >
+                    {formatDate(co.sk_menhumkam_date)}
                   </p>
                 )}
               </div>
             )}
-          </div>
 
-          {/* Shareholders */}
-          {associates.length > 0 && (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-2">
-                Shareholders
-              </p>
-              <div className="space-y-1.5">
-                {associates.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <span className="text-[var(--bz-text-1)]">
-                      {a.role || 'Shareholder'} —{' '}
-                      <span className="font-medium">{a.client_name || client.full_name}</span>
-                    </span>
-                    <span className="text-[var(--bz-text-2)]">
-                      {a.ownership_percentage ? `${a.ownership_percentage}%` : ''}
-                      {a.shares_count ? ` · ${a.shares_count.toLocaleString('en-US')} shares` : ''}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Akta & SK */}
-          {(co?.akta_pendirian_no || co?.akta_perubahan_no || co?.sk_menhumkam_no) && (
-            <div className="pt-3 border-t border-[var(--bz-border)]">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                {co?.akta_pendirian_no && (
-                  <div>
-                    <span className="text-[var(--bz-text-2)]">Akta Pendirian</span>
-                    <p className="text-[var(--bz-text-1)] font-mono">No. {co.akta_pendirian_no}</p>
-                    {co.akta_pendirian_date && (
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-[var(--bz-text-2)]">
-                          {formatDate(co.akta_pendirian_date)}
-                        </p>
-                        {(() => {
-                          const ageDays = Math.floor(
-                            (Date.now() - new Date(co.akta_pendirian_date!).getTime()) / 86400000
-                          );
-                          if (ageDays < 30) return null;
-                          const label =
-                            ageDays >= 365
-                              ? `${Math.floor(ageDays / 365)}y old`
-                              : `${Math.floor(ageDays / 30)}mo old`;
-                          return (
-                            <span
-                              className="text-[9px] px-1 py-0.5 rounded tabular-nums"
-                              style={{
-                                background: 'rgba(255,255,255,0.04)',
-                                color: 'var(--bz-text-3)',
-                              }}
-                            >
-                              {label}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {co?.akta_perubahan_no && (
-                  <div>
-                    <span className="text-[var(--bz-text-2)]">Akta Perubahan</span>
-                    <p className="text-[var(--bz-text-1)] font-mono">No. {co.akta_perubahan_no}</p>
-                    {co.akta_perubahan_date && (
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-[var(--bz-text-2)]">
-                          {formatDate(co.akta_perubahan_date)}
-                        </p>
-                        {(() => {
-                          const ageDays = Math.floor(
-                            (Date.now() - new Date(co.akta_perubahan_date!).getTime()) / 86400000
-                          );
-                          if (ageDays < 30) return null;
-                          const label =
-                            ageDays >= 365
-                              ? `${Math.floor(ageDays / 365)}y ago`
-                              : `${Math.floor(ageDays / 30)}mo ago`;
-                          return (
-                            <span
-                              className="text-[9px] px-1 py-0.5 rounded tabular-nums"
-                              style={{
-                                background: 'rgba(255,255,255,0.04)',
-                                color: 'var(--bz-text-3)',
-                              }}
-                            >
-                              {label}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {co?.sk_menhumkam_no && (
-                  <div>
-                    <span className="text-[var(--bz-text-2)]">SK Kemenkumham</span>
-                    <p className="text-[var(--bz-text-1)] font-mono">{co.sk_menhumkam_no}</p>
-                    {co.sk_menhumkam_date && (
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-[var(--bz-text-2)]">
-                          {formatDate(co.sk_menhumkam_date)}
-                        </p>
-                        {(() => {
-                          const ageDays = Math.floor(
-                            (Date.now() - new Date(co.sk_menhumkam_date!).getTime()) / 86400000
-                          );
-                          if (ageDays < 30) return null;
-                          const label =
-                            ageDays >= 365
-                              ? `${Math.floor(ageDays / 365)}y old`
-                              : `${Math.floor(ageDays / 30)}mo old`;
-                          return (
-                            <span
-                              className="text-[9px] px-1 py-0.5 rounded tabular-nums"
-                              style={{
-                                background: 'rgba(255,255,255,0.04)',
-                                color: 'var(--bz-text-3)',
-                              }}
-                            >
-                              {label}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Documents strip */}
-        {allDocs.length > 0 && (
-          <div className="px-6 py-3 border-t border-[var(--bz-border)] bg-[rgba(0,0,0,0.15)]">
-            <div className="flex items-center gap-4">
-              <span className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] shrink-0">
-                Documents
-              </span>
-              <div className="flex items-center gap-2 overflow-x-auto">
-                {allDocs.map((doc) => (
-                  <a
-                    key={doc.key}
-                    href={doc.url || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={doc.name}
-                    className="shrink-0 w-10 h-10 rounded border border-[var(--bz-border)] overflow-hidden bg-[var(--bz-base)] hover:border-[var(--bz-accent)] transition-colors flex items-center justify-center flex-col gap-1"
+            {/* KBLI pill */}
+            {co?.kbli_code && (
+              <div
+                style={{
+                  ...pillData,
+                  background: "rgba(96,165,250,0.03)",
+                  boxShadow:
+                    "inset 0 1px 0 0 rgba(96,165,250,0.08), inset 0 0 0 1px rgba(96,165,250,0.06)",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                <p
+                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
+                  style={{ color: "#60a5fa" }}
+                >
+                  Sector Focus
+                </p>
+                <p
+                  className="text-sm font-medium flex items-center gap-1.5"
+                  style={{ color: "#f1f5f9" }}
+                >
+                  <span
+                    className="font-mono text-xs font-bold px-1.5 py-0.5 rounded"
+                    style={{
+                      background: "rgba(96,165,250,0.2)",
+                      color: "#60a5fa",
+                    }}
                   >
-                    <FileText className="w-4 h-4 text-[var(--bz-text-2)]" />
-                    <span className="text-[8px] text-[var(--bz-text-2)] truncate max-w-[36px] text-center">
-                      {doc.type}
+                    {co.kbli_code}
+                  </span>
+                  {co.kbli_description && (
+                    <span className="text-xs truncate">
+                      {co.kbli_description}
                     </span>
-                  </a>
-                ))}
+                  )}
+                </p>
               </div>
-            </div>
+            )}
+
+            {/* Address */}
+            {addressStr && (
+              <div style={pillData}>
+                <p
+                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
+                  style={{ color: "rgba(100,116,139,0.9)" }}
+                >
+                  Registered Address
+                </p>
+                <p className="text-xs" style={{ color: "#f1f5f9" }}>
+                  {addressStr}
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      {/* ── UPLOAD SECTION ──────────────────────────────────────────────── */}
+      {co?.company_id && (
+        <div style={crystalCard} className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2
+              className="text-sm font-semibold uppercase tracking-widest"
+              style={{ color: "rgba(148,163,184,0.8)" }}
+            >
+              Document Upload
+            </h2>
+            <Upload
+              className="w-4 h-4"
+              style={{ color: "rgba(100,116,139,0.7)" }}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[
+              {
+                docType: "akta_pendirian",
+                label: "Akta Pendirian",
+                hint: "PDF/JPG",
+              },
+              {
+                docType: "sk_decree",
+                label: "SK Kemenkumham",
+                hint: "PDF/JPG",
+              },
+              {
+                docType: "npwp",
+                label: "NPWP Perusahaan",
+                hint: "PDF/JPG",
+              },
+              { docType: "nib", label: "NIB", hint: "PDF/JPG" },
+              {
+                docType: "company_profile",
+                label: "Company Profile",
+                hint: "PDF",
+              },
+            ].map((item) => {
+              const existing =
+                companyDocs.find((d) => d.document_type === item.docType) ||
+                null;
+              return (
+                <CompanyDocUpload
+                  key={item.docType}
+                  clientId={clientId}
+                  companyId={co.company_id!}
+                  companyName={companyName}
+                  docType={item.docType}
+                  label={item.label}
+                  hint={item.hint}
+                  existingDoc={existing}
+                  onUploaded={() => {
+                    setReloadTrigger((t) => t + 1);
+                    void onRefresh();
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Edit Company Modal */}
       {isEditingCompany && co?.company_id && (
