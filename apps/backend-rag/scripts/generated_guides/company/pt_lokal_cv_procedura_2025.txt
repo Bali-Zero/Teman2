@@ -1,0 +1,266 @@
+PT LOKAL, PT PMA E CV — STRUTTURE SOCIETARIE A CONFRONTO
+QUANDO USARE QUALE FORMA GIURIDICA IN INDONESIA
+GUIDA OPERATIVA 2024-2025
+
+Guida normativa verificata | Aggiornata a UU 40/2007, UU 25/2007, KUHD, PP 8/2021
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. PANORAMICA DELLE STRUTTURE DISPONIBILI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In Indonesia esistono tre strutture principali per costituire un'attività:
+
+STRUTTURA          STRANIERI AMMESSI?   BADAN HUKUM?   CAPITALE MIN.
+──────────────────────────────────────────────────────────────────────
+PT Lokal           ❌ NO                ✅ Sì           Rp 50 juta
+PT PMA             ✅ Sì                ✅ Sì           Rp 10 miliardi
+CV                 ❌ NO                ❌ No           Nessuno
+──────────────────────────────────────────────────────────────────────
+
+Un cittadino straniero (WNA) può essere proprietario o socio SOLO
+in una PT PMA. Le altre strutture sono riservate ai soli cittadini
+indonesiani (WNI). [COM-006]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. PT LOKAL — PERSEROAN TERBATAS DOMESTICA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La PT Lokal è la forma societaria standard per imprenditori indonesiani.
+È una persona giuridica (badan hukum) separata dai suoi soci.
+
+2.1 Caratteristiche principali
+
+AZIONISTI:
+Tutti gli azionisti devono essere WNI (persone fisiche) o aziende
+indonesiane. [COM-006]
+Un WNA non può detenere quote, nemmeno indirettamente tramite nominee.
+
+CAPITALE:
+- Capitale autorizzato (modal dasar): minimo Rp 50.000.000 [COM-029]
+- Capitale versato (modal disetor): almeno 25% del modal dasar,
+  quindi minimo Rp 12.500.000 [COM-030]
+- Non esiste un massimo per il capitale
+
+ORGANI SOCIETARI:
+Stesse regole della PT PMA: almeno 1 direktur e 1 komisaris. [COM-010, COM-011]
+Non è richiesto che il direktur risieda in Indonesia (a differenza della PT PMA).
+
+2.2 Procedura di costituzione
+
+La procedura è identica alla PT PMA ma più semplice:
+1. Akta Pendirian da notaio
+2. SK Kemenkumham (approvazione, entro 14 gg lavorativi)
+3. NPWP aziendale
+4. NIB via OSS
+5. Licenze settoriali (se richiesto)
+6. Conto bancario
+
+Tempi tipici: 1-2 settimane (vs 2-3 settimane PT PMA, che richiede
+più documentazione per la componente straniera).
+
+2.3 Limiti della PT Lokal per stranieri
+
+Un WNA non può:
+- Essere azionista di una PT Lokal
+- Essere nominee azionista (pratica illegale in Indonesia) [COM-006]
+- Controllare indirettamente una PT Lokal tramite accordi parasociali
+  che attribuiscono diritti economici a uno straniero
+
+Un WNA PUÒ essere:
+- Direktur o Komisaris di una PT Lokal (ruolo gestionale, non proprietario)
+- Titolare di un rapporto di lavoro con la PT Lokal (con KITAS lavorativo)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. CV — COMMANDITAIRE VENNOOTSCHAP (PERSEKUTUAN KOMANDITER)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La CV (Commanditaire Vennootschap) è una forma di società di persone,
+non una persona giuridica (badan hukum). [COM-032]
+
+3.1 Caratteristiche
+
+NON è badan hukum: il patrimonio sociale non è separato da quello
+personale dei soci. I soci accomandatari (sekutu komplementer)
+rispondono illimitatamente con il proprio patrimonio personale. [COM-033]
+
+SOCI:
+- Sekutu komplementer (soci accomandatari): gestiscono l'impresa,
+  responsabilità illimitata
+- Sekutu komanditer (soci accomandanti): solo capitale, responsabilità
+  limitata alla quota versata
+
+TUTTI i soci devono essere WNI. [COM-006]
+
+CAPITALE: Nessun minimo di legge. [COM-034]
+
+COSTITUZIONE:
+Atto notarile (akta CV) + registrazione al Kemenkumham (solo notifica,
+non approvazione come per la PT). [COM-031]
+Più semplice e veloce rispetto alla PT: 3-7 giorni.
+
+3.2 Quando è adatta la CV
+
+La CV è adatta per:
+- Micro e piccole imprese indonesiane
+- Attività artigianali, commerciali, servizi locali
+- Situazioni dove la semplicità amministrativa conta più della
+  tutela patrimoniale
+
+La CV NON è adatta quando:
+- Ci sono soci stranieri (non ammessi)
+- Il patrimonio personale dei soci è a rischio
+- Si pianifica crescita significativa o finanziamento esterno
+- Si operano settori regolamentati che richiedono PT
+
+3.3 Conversione CV → PT
+
+È possibile convertire una CV in PT tramite una nuova costituzione:
+la CV viene sciolta e i soci fondano una nuova PT. Non esiste una
+procedura di "trasformazione" diretta come in altri ordinamenti.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. CONFRONTO DETTAGLIATO PT LOKAL vs PT PMA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CARATTERISTICA              PT LOKAL              PT PMA
+──────────────────────────────────────────────────────────────────────
+Azionisti WNA               ❌ Vietati             ✅ Ammessi
+Azionisti WNI               ✅ Sì                  ✅ Sì (misto ok)
+Capitale autorizzato min.   Rp 50 juta            Rp 10 miliardi
+Capitale versato min.       Rp 12,5 juta          Rp 2,5 miliardi
+Direttore WNA               ✅ Sì (ma: no ITAS*)  ✅ Sì (ITAS lavorativo)
+Residente in Indonesia req. No (per direktur)     Sì (≥1 direktur) [COM-043]
+Settori aperti              Tutti i non-TERTUTUP  Solo TERBUKA/TERBATAS
+LKPM trimestrale            ❌ No                  ✅ Obbligatorio [COM-020]
+Tempi costituzione          1-2 settimane         2-3 settimane
+Costo Bali Zero             Rp 5-8 juta*          Rp 20 juta (all-in)
+KITAS Investor ammesso      ❌ No                  ✅ Sì (Rp 1 miliardo)
+──────────────────────────────────────────────────────────────────────
+* prezzi indicativi — verificare sempre con PricingTool
+
+4.1 Settori e investimento straniero
+
+La scelta PT Lokal vs PT PMA dipende anche dal settore.
+Le attività classificate come TERTUTUP sono vietate agli investitori stranieri
+e nemmeno la PT PMA può operarvi. [COM-026]
+
+Le attività TERBATAS ammettono investimento straniero ma con limiti
+percentuali (es. max 49%, max 67%). Solo in una PT PMA è possibile
+strutturare queste partecipazioni. [COM-025]
+
+Le attività TERBUKA sono completamente aperte: anche un WNA può detenere
+il 100% delle quote tramite PT PMA. [COM-024]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. DECISIONE PRATICA — QUALE STRUTTURA SCEGLIERE?
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 Sei straniero (WNA)?
+
+→ L'unica opzione legale per possedere quote è la PT PMA.
+Non esistono alternative legali per WNA che vogliono detenere
+proprietà societaria in Indonesia.
+
+5.2 Sei indonesiano (WNI) con piccola attività?
+
+→ CV se l'attività è micro/piccola, rischio personale accettabile,
+  e si vuole semplicità amministrativa.
+→ PT Lokal se si vuole separazione patrimoniale, crescita futura,
+  accesso a banche e contratti istituzionali.
+
+5.3 Sei WNI che vuole un socio straniero in futuro?
+
+→ Costituire direttamente come PT PMA con il WNA come co-fondatore,
+  oppure costituire PT Lokal ora e convertire in PT PMA quando il
+  socio straniero entra (richiede akta perubahan + nuova struttura
+  azionaria + adeguamento capitale).
+
+5.4 Il tuo partner indonesiano vuole fare tutto a suo nome?
+
+→ Attenzione: il cosiddetto "nominee arrangement" (WNA paga tutto
+  ma il WNI detiene le quote per conto suo) è illegale in Indonesia
+  e non tutelato da nessun contratto privato. [COM-006]
+  Bali Zero non assiste in accordi nominee.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. CONVERSIONE PT LOKAL → PT PMA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quando un WNA vuole entrare in una PT Lokal già costituita, è necessario:
+
+PASSO 1 — Verifica settore:
+Controllare che il settore (KBLI) sia TERBUKA o TERBATAS (non TERTUTUP).
+Se TERBATAS: verificare il cap percentuale massimo per WNA.
+
+PASSO 2 — Adeguamento capitale:
+Il capitale autorizzato deve essere portato a minimo Rp 10 miliardi
+e il capitale versato a minimo Rp 2,5 miliardi. [COM-008, COM-009]
+Questo richiede un aumento di capitale (delibera RUPS + akta perubahan).
+
+PASSO 3 — Akta Perubahan:
+Modifica dell'atto costitutivo per:
+- Inserire il nome del socio WNA con la sua quota
+- Adeguare il capitale
+- Eventualmente aggiornare la denominazione (aggiungere "PMA")
+- Adeguare Direksi/Komisaris se necessario [COM-043]
+
+PASSO 4 — Approvazione Kemenkumham:
+La modifica della struttura azionaria richiede approvazione formale
+del Kementerian Hukum dan HAM. [COM-036]
+
+PASSO 5 — Aggiornamento OSS:
+Aggiornare il NIB su OSS con il piano di investimento aggiornato,
+includendo la componente di investimento straniero. [COM-049]
+
+Tempi: 3-5 settimane per la conversione completa.
+Costo Bali Zero: consultare PricingTool (modifica + adeguamento capitale).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BALI ZERO ASSISTE:
+- PT PMA (tutte le fasi, pacchetto all-inclusive)
+- PT Lokal per clienti WNI
+- Conversione PT Lokal → PT PMA
+
+BALI ZERO NON ASSISTE:
+- Strutture nominee (WNI detiene quote per WNA)
+- CV per clienti stranieri
+- Strutture non conformi al diritto indonesiano
+
+KITAS E PT PMA:
+Un WNA direttore di PT PMA ottiene automaticamente la possibilità
+di richiedere un ITAS Direktur (tipo lavorativo). L'azienda deve
+essere operativa e il direttore deve risiedere in Indonesia. [COM-043]
+
+Nota: il KITAS Investor (C1 convertito) è un percorso separato
+che richiede un capital placement di almeno Rp 1 miliardo in una PT PMA.
+Le due cose (KITAS Direttore vs KITAS Investor) non sono la stessa cosa.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+COM-006, COM-010, COM-011, COM-024, COM-025, COM-026, COM-029,
+COM-030, COM-031, COM-032, COM-033, COM-034, COM-036, COM-043,
+COM-049, COM-020
+
+Nota: per i costi dei servizi Bali Zero consultare sempre il PricingTool.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

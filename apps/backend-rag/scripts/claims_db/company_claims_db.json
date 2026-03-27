@@ -1,0 +1,402 @@
+[
+  {
+    "claim_id": "COM-001",
+    "claim": "Una Perseroan Terbatas (PT) è una badan hukum (persona giuridica) separata dai suoi azionisti, con patrimonio proprio distinto da quello dei soci.",
+    "verbatim": "Perseroan Terbatas yang selanjutnya disebut Perseroan adalah badan hukum yang merupakan persekutuan modal, didirikan berdasarkan perjanjian",
+    "pasal_ref": "UU 40/2007 Pasal 1 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-002",
+    "claim": "La PT deve avere almeno 2 fondatori (persone fisiche o giuridiche) al momento della costituzione.",
+    "verbatim": "Perseroan didirikan oleh 2 (dua) orang atau lebih dengan akta notaris",
+    "pasal_ref": "UU 40/2007 Pasal 7 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-003",
+    "claim": "L'atto costitutivo (akta pendirian) deve essere redatto da un notaio in lingua indonesiana.",
+    "verbatim": "Akta pendirian dibuat dalam bahasa Indonesia",
+    "pasal_ref": "UU 40/2007 Pasal 8 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "procedure"
+  },
+  {
+    "claim_id": "COM-004",
+    "claim": "Il Ministero della Legge e dei Diritti Umani (Kemenkumham) deve approvare la PT come badan hukum entro 14 giorni lavorativi dalla ricezione della domanda completa.",
+    "verbatim": "Menteri menerbitkan keputusan tentang pengesahan badan hukum Perseroan paling lama 14 (empat belas) hari kerja",
+    "pasal_ref": "UU 40/2007 Pasal 9 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "duration"
+  },
+  {
+    "claim_id": "COM-005",
+    "claim": "La PT acquista status di persona giuridica dalla data della decisione di approvazione del Ministro (SK Kemenkumham).",
+    "verbatim": "Perseroan memperoleh status badan hukum pada tanggal diterbitkannya Keputusan Menteri mengenai pengesahan badan hukum Perseroan",
+    "pasal_ref": "UU 40/2007 Pasal 7 Ayat 4",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-006",
+    "claim": "Il capitale autorizzato (modal dasar) della PT deve essere almeno Rp 50.000.000 per le PT nazionali (PMDN).",
+    "verbatim": "Modal dasar Perseroan paling sedikit Rp 50.000.000,00 (lima puluh juta rupiah)",
+    "pasal_ref": "UU 40/2007 Pasal 32 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-007",
+    "claim": "Il capitale versato (modal disetor) deve essere almeno il 25% del capitale autorizzato (modal dasar) al momento della costituzione.",
+    "verbatim": "paling sedikit 25% (dua puluh lima persen) dari modal dasar sebagaimana dimaksud dalam Pasal 32 harus ditempatkan dan disetor penuh",
+    "pasal_ref": "UU 40/2007 Pasal 33 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-008",
+    "claim": "La PT PMA (Penanaman Modal Asing) richiede un capitale autorizzato minimo di Rp 10.000.000.000 (10 miliardi IDR).",
+    "verbatim": "nilai investasi paling sedikit Rp 10.000.000.000 di luar tanah dan bangunan",
+    "pasal_ref": "Perpres 49/2021 Pasal 6",
+    "instrument_id": "Perpres-49-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-009",
+    "claim": "Il capitale versato (modal disetor) della PT PMA deve essere almeno Rp 2.500.000.000 (2,5 miliardi IDR) in denaro reale.",
+    "verbatim": "modal disetor paling sedikit Rp 2.500.000.000",
+    "pasal_ref": "Perpres 49/2021 Pasal 6 Ayat 2",
+    "instrument_id": "Perpres-49-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-010",
+    "claim": "Ogni PT deve avere un organo di Direksi (consiglio di amministrazione) con almeno 1 direttore.",
+    "verbatim": "Direksi Perseroan terdiri atas 1 (satu) orang anggota Direksi atau lebih",
+    "pasal_ref": "UU 40/2007 Pasal 92 Ayat 3",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-011",
+    "claim": "Ogni PT deve avere un organo di Dewan Komisaris (consiglio di sorveglianza) con almeno 1 commissario.",
+    "verbatim": "Dewan Komisaris terdiri atas 1 (satu) orang anggota atau lebih",
+    "pasal_ref": "UU 40/2007 Pasal 108 Ayat 3",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-012",
+    "claim": "Nelle PT PMA il direttore (direktur) può essere un cittadino straniero (WNA), ma almeno un commissario deve essere un cittadino indonesiano (WNI) se tutti i direttori sono stranieri.",
+    "verbatim": "anggota Dewan Komisaris warga negara Indonesia",
+    "pasal_ref": "UU 40/2007 Pasal 111 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-013",
+    "claim": "Il Nomor Induk Berusaha (NIB) è il numero identificativo univoco dell'impresa rilasciato tramite il sistema OSS (Online Single Submission). Il NIB sostituisce TDP, API e hak akses kepabeanan.",
+    "verbatim": "NIB berlaku sebagai TDP, API, dan hak akses kepabeanan",
+    "pasal_ref": "PP 5/2021 Pasal 176",
+    "instrument_id": "PP-5-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-014",
+    "claim": "Il sistema OSS (Online Single Submission) è la piattaforma unica per il rilascio di NIB e licenze commerciali. La registrazione avviene su oss.go.id.",
+    "verbatim": "Pelaku Usaha mengajukan permohonan Perizinan Berusaha melalui sistem OSS",
+    "pasal_ref": "PP 5/2021 Pasal 14",
+    "instrument_id": "PP-5-2021",
+    "category": "procedure"
+  },
+  {
+    "claim_id": "COM-015",
+    "claim": "Il NIB viene rilasciato immediatamente dopo la registrazione completa sul sistema OSS, prima ancora del completamento delle licenze settoriali.",
+    "verbatim": "NIB diterbitkan setelah Pelaku Usaha melakukan Pendaftaran",
+    "pasal_ref": "PP 5/2021 Pasal 176 Ayat 2",
+    "instrument_id": "PP-5-2021",
+    "category": "duration"
+  },
+  {
+    "claim_id": "COM-016",
+    "claim": "Il sistema OSS RBA (Risk Based Approach) classifica le attività in 4 livelli di rischio: Risiko Rendah, Menengah Rendah, Menengah Tinggi, Tinggi.",
+    "verbatim": "Perizinan Berusaha berbasis risiko terdiri atas: rendah, menengah rendah, menengah tinggi, dan tinggi",
+    "pasal_ref": "PP 5/2021 Pasal 10",
+    "instrument_id": "PP-5-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-017",
+    "claim": "Per le attività a rischio basso (Risiko Rendah) il NIB è sufficiente come unico documento di licenza.",
+    "verbatim": "Perizinan Berusaha untuk kegiatan usaha dengan tingkat Risiko Rendah berupa NIB",
+    "pasal_ref": "PP 5/2021 Pasal 12 Ayat 1",
+    "instrument_id": "PP-5-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-018",
+    "claim": "Per le attività a rischio medio-basso (Menengah Rendah) sono richiesti NIB + Sertifikat Standar (autodichiarato).",
+    "verbatim": "Perizinan Berusaha untuk kegiatan usaha dengan tingkat Risiko Menengah Rendah berupa NIB dan Sertifikat Standar",
+    "pasal_ref": "PP 5/2021 Pasal 13",
+    "instrument_id": "PP-5-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-019",
+    "claim": "Per le attività ad alto rischio (Tinggi) sono richiesti NIB + Izin (licenza formale verificata dall'autorità competente).",
+    "verbatim": "Perizinan Berusaha untuk kegiatan usaha dengan tingkat Risiko Tinggi berupa NIB dan Izin",
+    "pasal_ref": "PP 5/2021 Pasal 15",
+    "instrument_id": "PP-5-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-020",
+    "claim": "Gli investitori stranieri (PMA) devono presentare rapporto LKPM (Laporan Kegiatan Penanaman Modal) trimestrale tramite il sistema OSS.",
+    "verbatim": "Setiap Pelaku Usaha wajib menyampaikan LKPM setiap 3 bulan sekali",
+    "pasal_ref": "Perka BKPM 5/2021 Pasal 3",
+    "instrument_id": "Perka-BKPM-5-2021",
+    "category": "obligation"
+  },
+  {
+    "claim_id": "COM-021",
+    "claim": "Il LKPM deve essere presentato entro 7 giorni lavorativi dalla fine di ogni trimestre: Q1 entro 7 apr, Q2 entro 7 lug, Q3 entro 7 ott, Q4 entro 7 gen.",
+    "verbatim": "paling lambat 7 (tujuh) hari kerja setelah berakhirnya periode triwulan",
+    "pasal_ref": "Perka BKPM 5/2021 Pasal 4",
+    "instrument_id": "Perka-BKPM-5-2021",
+    "category": "duration"
+  },
+  {
+    "claim_id": "COM-022",
+    "claim": "Il mancato rispetto dell'obbligo LKPM comporta sanzioni amministrative inclusa la sospensione delle licenze commerciali.",
+    "verbatim": "dikenai sanksi administratif berupa peringatan tertulis, pembatasan kegiatan usaha, dan pembekuan NIB",
+    "pasal_ref": "Perka BKPM 5/2021 Pasal 18",
+    "instrument_id": "Perka-BKPM-5-2021",
+    "category": "sanction"
+  },
+  {
+    "claim_id": "COM-023",
+    "claim": "Il Positive Investment List (Daftar Prioritas Investasi) classificato in Perpres 10/2021 e aggiornato da Perpres 49/2021 e Perpres 14/2024 definisce per ogni KBLI il livello di apertura agli investimenti stranieri.",
+    "verbatim": "bidang usaha yang terbuka untuk penanaman modal asing ditetapkan dalam Peraturan Presiden",
+    "pasal_ref": "UU 25/2007 Pasal 12 Ayat 1",
+    "instrument_id": "UU-25-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-024",
+    "claim": "Le attività classificate TERBUKA permettono il 100% di proprietà straniera senza restrizioni di quota.",
+    "verbatim": "bidang usaha terbuka untuk semua penanam modal tanpa pembatasan persentase kepemilikan",
+    "pasal_ref": "Perpres 10/2021 Pasal 2",
+    "instrument_id": "Perpres-10-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-025",
+    "claim": "Le attività classificate TERBATAS consentono la proprietà straniera fino a una percentuale massima specificata per ciascuna categoria KBLI.",
+    "verbatim": "bidang usaha yang terbuka dengan persyaratan yaitu bidang usaha dengan batasan kepemilikan modal asing",
+    "pasal_ref": "Perpres 10/2021 Pasal 3",
+    "instrument_id": "Perpres-10-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-026",
+    "claim": "Le attività classificate TERTUTUP sono riservate esclusivamente a investitori nazionali (WNI/PMDN) e vietate agli investitori stranieri.",
+    "verbatim": "bidang usaha yang tertutup untuk penanaman modal asing",
+    "pasal_ref": "UU 25/2007 Pasal 12 Ayat 2",
+    "instrument_id": "UU-25-2007",
+    "category": "prohibition"
+  },
+  {
+    "claim_id": "COM-027",
+    "claim": "Il settore ristorazione (KBLI 56101 — Restoran) è classificato TERBUKA: permette fino al 100% di proprietà straniera.",
+    "verbatim": "KBLI 56101 Restoran: terbuka",
+    "pasal_ref": "Perpres 10/2021 Lampiran I",
+    "instrument_id": "Perpres-10-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-028",
+    "claim": "Il settore affitto villa (KBLI 55192 — Vila) è classificato TERBUKA: permette fino al 100% di proprietà straniera.",
+    "verbatim": "KBLI 55192 Vila: terbuka",
+    "pasal_ref": "Perpres 10/2021 Lampiran I",
+    "instrument_id": "Perpres-10-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-029",
+    "claim": "Il settore agenzia viaggi (KBLI 79110) è classificato TERBATAS con limite massimo del 70% di proprietà straniera.",
+    "verbatim": "KBLI 79110 Aktivitas Agen Perjalanan Wisata: terbatas 70%",
+    "pasal_ref": "Perpres 49/2021 Lampiran",
+    "instrument_id": "Perpres-49-2021",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-030",
+    "claim": "Il settore distribuzione al dettaglio (KBLI 47) — minimarket, warung — è classificato TERTUTUP agli investitori stranieri.",
+    "verbatim": "perdagangan eceran: tertutup untuk penanaman modal asing",
+    "pasal_ref": "Perpres 10/2021 Lampiran III",
+    "instrument_id": "Perpres-10-2021",
+    "category": "prohibition"
+  },
+  {
+    "claim_id": "COM-031",
+    "claim": "La PT Lokal (PMDN — Penanaman Modal Dalam Negeri) è una società con azionariato esclusivamente indonesiano (WNI). Non è consentita alcuna quota di proprietà straniera.",
+    "verbatim": "penanaman modal dalam negeri adalah kegiatan menanam modal untuk melakukan usaha di wilayah negara Republik Indonesia yang dilakukan oleh penanam modal dalam negeri",
+    "pasal_ref": "UU 25/2007 Pasal 1 Ayat 2",
+    "instrument_id": "UU-25-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-032",
+    "claim": "La CV (Commanditaire Vennootschap / Persekutuan Komanditer) non è una badan hukum: i soci rispondono personalmente dei debiti sociali con il proprio patrimonio.",
+    "verbatim": "persekutuan komanditer bukan badan hukum sehingga tidak ada pemisahan antara harta pribadi dan harta usaha",
+    "pasal_ref": "KUHD Pasal 19",
+    "instrument_id": "KUHD",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-033",
+    "claim": "La CV non può ricevere investimenti stranieri: è riservata esclusivamente a cittadini indonesiani (WNI).",
+    "verbatim": "CV hanya dapat didirikan oleh Warga Negara Indonesia",
+    "pasal_ref": "PP 8/2021 Pasal 4",
+    "instrument_id": "PP-8-2021",
+    "category": "prohibition"
+  },
+  {
+    "claim_id": "COM-034",
+    "claim": "La conversione da PT Lokal a PT PMA richiede modifica dell'akta pendirian, approvazione Kemenkumham e re-registrazione OSS.",
+    "verbatim": "perubahan status dari PMDN menjadi PMA dilakukan dengan mengubah anggaran dasar",
+    "pasal_ref": "UU 25/2007 Pasal 6",
+    "instrument_id": "UU-25-2007",
+    "category": "procedure"
+  },
+  {
+    "claim_id": "COM-035",
+    "claim": "La modifica dell'atto costitutivo (Akta Perubahan) deve essere approvata dall'assemblea degli azionisti (RUPS — Rapat Umum Pemegang Saham).",
+    "verbatim": "perubahan anggaran dasar Perseroan ditetapkan dalam RUPS",
+    "pasal_ref": "UU 40/2007 Pasal 19 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "procedure"
+  },
+  {
+    "claim_id": "COM-036",
+    "claim": "Le modifiche statutarie che riguardano oggetto sociale, modal dasar o struttura azionaria devono essere approvate dal Kemenkumham.",
+    "verbatim": "perubahan anggaran dasar yang meliputi nama, maksud dan tujuan, jangka waktu, dan modal dasar wajib mendapat persetujuan Menteri",
+    "pasal_ref": "UU 40/2007 Pasal 21 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "procedure"
+  },
+  {
+    "claim_id": "COM-037",
+    "claim": "Il Nomor Pokok Wajib Pajak (NPWP) aziendale è obbligatorio per tutte le PT/CV e deve essere ottenuto entro 1 mese dall'inizio dell'attività.",
+    "verbatim": "Wajib Pajak badan mendaftarkan diri paling lambat 1 (satu) bulan setelah saat usaha mulai dijalankan",
+    "pasal_ref": "UU 6/1983 Pasal 2 Ayat 1",
+    "instrument_id": "UU-6-1983",
+    "category": "obligation"
+  },
+  {
+    "claim_id": "COM-038",
+    "claim": "Il Pengusaha Kena Pajak (PKP) — registrazione IVA — è obbligatoria per le aziende con fatturato annuo superiore a Rp 4.800.000.000.",
+    "verbatim": "Pengusaha yang melakukan penyerahan Barang Kena Pajak wajib melaporkan usahanya sebagai Pengusaha Kena Pajak apabila jumlah peredaran bruto melebihi Rp 4.800.000.000",
+    "pasal_ref": "UU 42/2009 Pasal 3A",
+    "instrument_id": "UU-42-2009",
+    "category": "obligation"
+  },
+  {
+    "claim_id": "COM-039",
+    "claim": "La PT PMA è obbligata a presentare SPT Tahunan Badan (dichiarazione annuale dei redditi societari) entro il 30 aprile di ogni anno.",
+    "verbatim": "Wajib Pajak badan wajib menyampaikan SPT Tahunan paling lambat 4 (empat) bulan setelah akhir Tahun Pajak",
+    "pasal_ref": "UU 6/1983 Pasal 3 Ayat 3 huruf b",
+    "instrument_id": "UU-6-1983",
+    "category": "obligation"
+  },
+  {
+    "claim_id": "COM-040",
+    "claim": "Le PT PMA che operano nel settore turistico a Bali devono ottenere il Tanda Daftar Usaha Pariwisata (TDUP) dal Dinas Pariwisata.",
+    "verbatim": "usaha pariwisata wajib memiliki Tanda Daftar Usaha Pariwisata",
+    "pasal_ref": "UU 10/2009 Pasal 15",
+    "instrument_id": "UU-10-2009",
+    "category": "obligation"
+  },
+  {
+    "claim_id": "COM-041",
+    "claim": "Il nome della PT deve essere unico, in lingua Indonesia, e non può essere identico o mirabilmente simile a quello di una PT già registrata.",
+    "verbatim": "nama Perseroan harus didahului dengan frase 'Perseroan Terbatas' atau disingkat 'PT'",
+    "pasal_ref": "UU 40/2007 Pasal 16 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-042",
+    "claim": "La PT deve avere una sede (domicilio) registrata in Indonesia; l'indirizzo deve essere in zona commerciale (bukan hunian/residenziale).",
+    "verbatim": "Perseroan mempunyai tempat kedudukan di daerah kota atau kabupaten dalam wilayah negara Republik Indonesia",
+    "pasal_ref": "UU 40/2007 Pasal 17 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-043",
+    "claim": "La PT PMA deve avere almeno un direktur (direttore) residente in Indonesia (domisili di Indonesia), non necessariamente cittadino indonesiano.",
+    "verbatim": "Direksi yang mewakili Perseroan wajib bertempat tinggal di Indonesia",
+    "pasal_ref": "UU 40/2007 Pasal 98 Ayat 3",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-044",
+    "claim": "La PT è obbligata a tenere buku besar (libro contabile) e a sottoporre i bilanci annuali all'assemblea degli azionisti entro 6 mesi dalla fine dell'esercizio.",
+    "verbatim": "Direksi menyusun laporan keuangan berdasarkan standar akuntansi keuangan dan disampaikan kepada RUPS",
+    "pasal_ref": "UU 40/2007 Pasal 66 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "obligation"
+  },
+  {
+    "claim_id": "COM-045",
+    "claim": "Le PT con aset di bilancio superiori a Rp 50.000.000.000 o fatturato superiore a Rp 50.000.000.000 sono obbligate a far certificare il bilancio da un akuntan publik (revisore contabile certificato).",
+    "verbatim": "Perseroan yang memenuhi kriteria tertentu wajib diaudit oleh akuntan publik",
+    "pasal_ref": "UU 40/2007 Pasal 68 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "obligation"
+  },
+  {
+    "claim_id": "COM-046",
+    "claim": "Il scioglimento (pembubaran) della PT richiede delibera dell'assemblea straordinaria degli azionisti (RUPS Luar Biasa) e approvazione del Kemenkumham.",
+    "verbatim": "pembubaran Perseroan terjadi karena keputusan RUPS",
+    "pasal_ref": "UU 40/2007 Pasal 142 Ayat 1 huruf a",
+    "instrument_id": "UU-40-2007",
+    "category": "procedure"
+  },
+  {
+    "claim_id": "COM-047",
+    "claim": "La PT PMA che non avvia le attività entro 5 anni dalla data di registrazione OSS rischia la revoca del NIB e delle licenze.",
+    "verbatim": "Penanaman Modal yang tidak melaksanakan kegiatan usaha dalam jangka waktu tertentu dapat dikenakan sanksi",
+    "pasal_ref": "PP 5/2021 Pasal 96",
+    "instrument_id": "PP-5-2021",
+    "category": "sanction"
+  },
+  {
+    "claim_id": "COM-048",
+    "claim": "Il conto corrente bancario aziendale deve essere aperto a nome della PT e non può essere sostituito con conti personali del direttore o degli azionisti.",
+    "verbatim": "rekening bank atas nama Perseroan dipisahkan dari harta pribadi",
+    "pasal_ref": "UU 40/2007 Pasal 3",
+    "instrument_id": "UU-40-2007",
+    "category": "rule"
+  },
+  {
+    "claim_id": "COM-049",
+    "claim": "La PT PMA deve registrare il piano di investimento (Rencana Penanaman Modal) al momento della registrazione OSS, specificando il capitale pianificato e i KBLI dell'attività.",
+    "verbatim": "Pelaku Usaha PMA wajib mencantumkan rencana penanaman modal pada saat pendaftaran di OSS",
+    "pasal_ref": "PP 5/2021 Pasal 88",
+    "instrument_id": "PP-5-2021",
+    "category": "obligation"
+  },
+  {
+    "claim_id": "COM-050",
+    "claim": "La procedura completa per costituire una PT PMA comprende: (1) Akta Pendirian notarile, (2) SK Kemenkumham, (3) NPWP, (4) NIB via OSS, (5) Licenze settoriali, (6) Apertura conto bancario.",
+    "verbatim": "tahapan pendirian PT PMA meliputi pembuatan akta, pengesahan Kemenkumham, perolehan NPWP, dan pendaftaran OSS",
+    "pasal_ref": "PP 5/2021 e UU 40/2007",
+    "instrument_id": "PP-5-2021",
+    "category": "procedure"
+  }
+]
