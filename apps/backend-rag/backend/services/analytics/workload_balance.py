@@ -5,7 +5,7 @@ Responsibility: Workload distribution analysis
 
 import logging
 import statistics
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ class WorkloadBalanceService:
         Analyze workload distribution across team.
         Identifies imbalances and suggests redistribution.
         """
-        cutoff = datetime.now() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         sessions = await self.pool.fetch(
             """
