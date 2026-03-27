@@ -141,7 +141,12 @@ export default function RolesPermissionsPage() {
     if (editingRole) {
       setRoles(roles.map((r) => (r.id === editingRole.id ? editingRole : r)));
       setEditingRole(null);
+      toast.success('Role updated', { description: `"${editingRole.name}" has been updated.` });
     } else {
+      if (!newRole.name.trim()) {
+        toast.error('Missing name', { description: 'Please enter a role name.' });
+        return;
+      }
       const role: Role = {
         id: Date.now().toString(),
         ...newRole,
@@ -155,6 +160,7 @@ export default function RolesPermissionsPage() {
         color: '#60A5FA',
         permissions: [],
       });
+      toast.success('Role created', { description: `"${role.name}" has been created.` });
     }
   };
 

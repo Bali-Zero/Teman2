@@ -92,6 +92,7 @@ export default function ApiKeysSettingsPage() {
     setApiKeys([...apiKeys, newKey]);
     setNewKeyName('');
     setShowCreateModal(false);
+    toast.success('API key created', { description: `"${newKey.name}" is ready to use.` });
   };
 
   const maskKey = (key: string) => {
@@ -217,7 +218,11 @@ export default function ApiKeysSettingsPage() {
         <p className="text-sm text-[var(--foreground-muted)] mb-3">
           Need help with the API? Check out our documentation.
         </p>
-        <Button variant="outline" size="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => toast.info('Coming soon', { description: 'API documentation will be available in a future update.' })}
+        >
           View API Documentation
         </Button>
       </div>
