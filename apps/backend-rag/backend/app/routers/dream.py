@@ -4,7 +4,7 @@ Handles AI generation, content scraping, and state persistence for the Dream Roo
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter
@@ -64,7 +64,7 @@ async def save_state(user_id: str, state: dict[str, Any]) -> dict[str, Any]:
     # TODO: Replace with real DB call (e.g. Postgres JSONB or Redis)
     MOCK_DB[user_id] = state
     logger.info(f"Saved state for user {user_id}")
-    return {"success": True, "timestamp": datetime.now().isoformat()}
+    return {"success": True, "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat()}
 
 
 @router.get("/state/{user_id}")
