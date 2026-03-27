@@ -37,7 +37,7 @@ class MetricsPusher:
         token: str,
         push_interval: int = 15,
         service_name: str = "nuzantara-backend",
-    ):
+    ) -> None:
         """
         Initialize the metrics pusher.
 
