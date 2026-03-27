@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React from "react";
-import { MessageCircle, Search, Filter, Check, Send, User } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { TelegramConversation } from "@/lib/api/telegram/telegram.types";
+import React from 'react';
+import { MessageCircle, Search, Filter, Check, Send, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { TelegramConversation } from '@/lib/api/telegram/telegram.types';
 
 interface TelegramListProps {
   conversations: TelegramConversation[];
@@ -35,8 +35,7 @@ export function TelegramList({
     onSearch(localSearch);
   };
 
-  const allSelected =
-    conversations.length > 0 && selectedIds.size === conversations.length;
+  const allSelected = conversations.length > 0 && selectedIds.size === conversations.length;
   const someSelected = selectedIds.size > 0;
 
   // Filter conversations by search query
@@ -59,11 +58,11 @@ export function TelegramList({
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "Just now";
+    if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   return (
@@ -74,10 +73,10 @@ export function TelegramList({
         <button
           onClick={() => onSelectAll(!allSelected)}
           className={cn(
-            "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+            'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
             allSelected
-              ? "bg-[var(--accent)] border-[var(--accent)]"
-              : "border-[var(--border)] hover:border-[var(--accent)]",
+              ? 'bg-[var(--accent)] border-[var(--accent)]'
+              : 'border-[var(--border)] hover:border-[var(--accent)]'
           )}
         >
           {allSelected && <Check className="w-3 h-3 text-white" />}
@@ -120,16 +119,13 @@ export function TelegramList({
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
             <MessageCircle className="w-12 h-12 text-[var(--foreground-muted)] mb-4 opacity-50" />
             <p className="text-sm text-[var(--foreground-muted)]">
-              {localSearch
-                ? "No conversations found"
-                : "No Telegram conversations yet"}
+              {localSearch ? 'No conversations found' : 'No Telegram conversations yet'}
             </p>
           </div>
         ) : (
           <div className="divide-y divide-[var(--border)]">
             {filteredConversations.map((conv) => {
-              const isSelected =
-                String(selectedChatId) === String(conv.chat_id);
+              const isSelected = String(selectedChatId) === String(conv.chat_id);
               const isChecked = selectedIds.has(conv.chat_id);
 
               return (
@@ -137,10 +133,10 @@ export function TelegramList({
                   key={String(conv.chat_id)}
                   onClick={() => onSelectConversation(conv.chat_id)}
                   className={cn(
-                    "flex items-center gap-3 p-3 cursor-pointer transition-colors",
+                    'flex items-center gap-3 p-3 cursor-pointer transition-colors',
                     isSelected
-                      ? "bg-[var(--accent)]/10 border-l-2 border-[var(--accent)]"
-                      : "hover:bg-[var(--background-elevated)]",
+                      ? 'bg-[var(--accent)]/10 border-l-2 border-[var(--accent)]'
+                      : 'hover:bg-[var(--background-elevated)]'
                   )}
                 >
                   {/* Checkbox */}
@@ -150,10 +146,10 @@ export function TelegramList({
                       onToggleSelect(conv.chat_id);
                     }}
                     className={cn(
-                      "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0",
+                      'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0',
                       isChecked
-                        ? "bg-[var(--accent)] border-[var(--accent)]"
-                        : "border-[var(--border)] hover:border-[var(--accent)]",
+                        ? 'bg-[var(--accent)] border-[var(--accent)]'
+                        : 'border-[var(--border)] hover:border-[var(--accent)]'
                     )}
                   >
                     {isChecked && <Check className="w-3 h-3 text-white" />}
@@ -182,7 +178,7 @@ export function TelegramList({
                     </div>
                     <div className="flex items-center gap-2">
                       <p className="text-xs text-[var(--foreground-muted)] truncate flex-1">
-                        {conv.last_message || "No messages"}
+                        {conv.last_message || 'No messages'}
                       </p>
                       {conv.unread_count && conv.unread_count > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs font-semibold flex-shrink-0">
