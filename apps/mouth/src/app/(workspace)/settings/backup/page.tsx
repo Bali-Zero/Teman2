@@ -28,7 +28,7 @@ interface BackupHistory {
 
 export default function BackupExportPage() {
   const router = useRouter();
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, warning } = useToast();
   const [isExporting, setIsExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json');
   const [selectedData, setSelectedData] = useState<string[]>(['clients', 'cases', 'interactions']);
@@ -269,7 +269,7 @@ export default function BackupExportPage() {
             <Clock className="w-5 h-5 text-purple-400" />
             <h2 className="text-lg font-semibold text-[var(--foreground)]">Backup History</h2>
           </div>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => warning('Not yet available', 'Manual backup creation will be enabled in a future update.')}>
             <Upload className="w-4 h-4 mr-2" />
             Create Backup
           </Button>
@@ -326,11 +326,12 @@ export default function BackupExportPage() {
             <p className="text-sm text-[var(--foreground)]">Retention Period</p>
             <p className="text-xs text-[var(--foreground-muted)]">How long to keep backups</p>
           </div>
-          <select className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm">
+          <select
+            defaultValue="30"
+            className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm"
+          >
             <option value="7">7 days</option>
-            <option value="30" selected>
-              30 days
-            </option>
+            <option value="30">30 days</option>
             <option value="90">90 days</option>
             <option value="365">1 year</option>
           </select>
