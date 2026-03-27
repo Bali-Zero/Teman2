@@ -227,7 +227,7 @@ export function VisaCard({
     if (!latestVisa) return;
     toast('Delete visa document? This will mark it as deleted.', {
       action: { label: 'Delete', onClick: () => void doDelete() },
-      cancel: { label: 'Cancel', onClick: () => {} },
+      cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
     });
   };
 

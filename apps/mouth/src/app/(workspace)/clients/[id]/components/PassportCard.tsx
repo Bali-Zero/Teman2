@@ -237,7 +237,7 @@ export function PassportCard({
     if (!passportDoc) return;
     toast('Delete passport document? This will mark it as deleted.', {
       action: { label: 'Delete', onClick: () => void doDelete() },
-      cancel: { label: 'Cancel', onClick: () => {} },
+      cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
     });
   };
 
