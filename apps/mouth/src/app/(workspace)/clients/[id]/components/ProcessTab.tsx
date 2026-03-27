@@ -62,7 +62,9 @@ export function ProcessTab({
     if (filterStatus !== 'all') list = list.filter((p) => p.status === filterStatus);
     if (sortBy === 'priority') {
       const order: Record<string, number> = { urgent: 0, high: 1, medium: 2, normal: 3, low: 4 };
-      list.sort((a, b) => (order[a.priority || 'normal'] ?? 3) - (order[b.priority || 'normal'] ?? 3));
+      list.sort(
+        (a, b) => (order[a.priority || 'normal'] ?? 3) - (order[b.priority || 'normal'] ?? 3)
+      );
     } else if (sortBy === 'expiry') {
       list.sort((a, b) => {
         if (!a.expiry_date) return 1;
@@ -232,31 +234,36 @@ export function ProcessTab({
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.stopPropagation();
                         if (deletingIds.has(practice.id)) return;
-                        if (
-                          !window.confirm(
-                            `Delete process "${practice.practice_type_name}"?\n\nThis will mark the process as cancelled.`
-                          )
-                        )
-                          return;
-                        setDeletingIds((prev) => new Set(prev).add(practice.id));
-                        try {
-                          const user = await api.getProfile();
-                          await api.crm.deletePractice(practice.id, user.email);
-                          toast.success('Process deleted');
-                          onRefresh();
-                        } catch (err) {
-                          toast.error('Error', {
-                            description: (err as Error).message,
-                          });
-                          setDeletingIds((prev) => {
-                            const next = new Set(prev);
-                            next.delete(practice.id);
-                            return next;
-                          });
-                        }
+                        toast(
+                          `Delete process "${practice.practice_type_name}"? This will mark it as cancelled.`,
+                          {
+                            action: {
+                              label: 'Delete',
+                              onClick: async () => {
+                                setDeletingIds((prev) => new Set(prev).add(practice.id));
+                                try {
+                                  const user = await api.getProfile();
+                                  await api.crm.deletePractice(practice.id, user.email);
+                                  toast.success('Process deleted');
+                                  onRefresh();
+                                } catch (err) {
+                                  toast.error('Error', {
+                                    description: (err as Error).message,
+                                  });
+                                  setDeletingIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(practice.id);
+                                    return next;
+                                  });
+                                }
+                              },
+                            },
+                            cancel: { label: 'Cancel', onClick: () => {} },
+                          }
+                        );
                       }}
                       disabled={deletingIds.has(practice.id)}
                       className="p-1 rounded hover:bg-red-500/20 text-[var(--bz-text-2)] hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"

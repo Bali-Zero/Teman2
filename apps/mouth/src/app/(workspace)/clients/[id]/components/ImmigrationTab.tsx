@@ -1,16 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-  Globe,
-  Plus,
-  Calendar,
-  Edit2,
-  Trash2,
-  Download,
-  FileText,
-  RefreshCw,
-} from 'lucide-react';
+import { Globe, Plus, Calendar, Edit2, Trash2, Download, FileText, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -36,16 +27,22 @@ export function ImmigrationTab({
 }) {
   const router = useRouter();
 
-  const handleDelete = async (docId: number, fileName: string) => {
-    if (confirm(`Archive document "${fileName || 'Document'}"?`)) {
-      try {
-        await api.crm.deleteDocument(clientId, docId);
-        toast.success('Document archived');
-        onRefresh();
-      } catch (err) {
-        toast.error('Error', { description: (err as Error).message });
-      }
-    }
+  const handleDelete = (docId: number, fileName: string) => {
+    toast(`Archive document "${fileName || 'Document'}"?`, {
+      action: {
+        label: 'Archive',
+        onClick: async () => {
+          try {
+            await api.crm.deleteDocument(clientId, docId);
+            toast.success('Document archived');
+            onRefresh();
+          } catch (err) {
+            toast.error('Error', { description: (err as Error).message });
+          }
+        },
+      },
+      cancel: { label: 'Cancel', onClick: () => {} },
+    });
   };
 
   // Categorize immigration documents

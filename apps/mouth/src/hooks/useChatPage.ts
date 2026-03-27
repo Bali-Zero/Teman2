@@ -9,6 +9,7 @@ import { useState, useEffect, useRef, useCallback, useOptimistic, useTransition 
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api';
+import { toast as sonnerToast } from 'sonner';
 import { logger } from '@/lib/logger';
 import { chatMetrics } from '@/lib/metrics';
 import { trackEvent } from '@/lib/analytics';
@@ -82,7 +83,7 @@ export interface UseChatPageReturn {
   handleSend: () => Promise<void>;
   handleNewChat: () => void;
   handleConversationClick: (id: number) => Promise<void>;
-  handleDeleteConversation: (id: number, e: React.MouseEvent) => Promise<void>;
+  handleDeleteConversation: (id: number, e: React.MouseEvent) => void;
   handleAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleImageGenSubmit: () => void;
   toggleClock: () => Promise<void>;
@@ -495,27 +496,32 @@ export function useChatPage(): UseChatPageReturn {
 
   // Handle delete conversation
   const handleDeleteConversation = useCallback(
-    async (id: number, e: React.MouseEvent) => {
+    (id: number, e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!window.confirm('Delete this conversation?')) return;
-
-      try {
-        await conversations.deleteConversation(id);
-        // trackEvent now imported at top
-        const userProfile = api.getUserProfile();
-        trackEvent('chat_conversation_deleted', { conversationId: id }, userProfile?.email);
-        if (conversations.currentConversationId === id) handleNewChat();
-      } catch (error) {
-        logger.error(
-          'Failed to delete conversation',
-          {
-            component: 'useChatPage',
-            action: 'handleDeleteConversation',
-            metadata: { conversationId: id },
+      sonnerToast('Delete this conversation?', {
+        action: {
+          label: 'Delete',
+          onClick: async () => {
+            try {
+              await conversations.deleteConversation(id);
+              const userProfile = api.getUserProfile();
+              trackEvent('chat_conversation_deleted', { conversationId: id }, userProfile?.email);
+              if (conversations.currentConversationId === id) handleNewChat();
+            } catch (error) {
+              logger.error(
+                'Failed to delete conversation',
+                {
+                  component: 'useChatPage',
+                  action: 'handleDeleteConversation',
+                  metadata: { conversationId: id },
+                },
+                error instanceof Error ? error : new Error(String(error))
+              );
+            }
           },
-          error instanceof Error ? error : new Error(String(error))
-        );
-      }
+        },
+        cancel: { label: 'Cancel', onClick: () => {} },
+      });
     },
     [conversations, handleNewChat]
   );
