@@ -204,7 +204,7 @@ class PostgreSQLDebugger:
     Provides safe, read-only access to database inspection and debugging.
     """
 
-    def __init__(self, database_url: str | None = None):
+    def __init__(self, database_url: str | None = None) -> None:
         """
         Initialize PostgreSQL debugger.
 
