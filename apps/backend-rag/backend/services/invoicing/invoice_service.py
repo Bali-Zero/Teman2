@@ -440,7 +440,7 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
             await conn.execute(
                 """
                 UPDATE practices
-                SET documents = $1, payment_status = 'pending', updated_at = NOW()
+                SET documents = $1::jsonb, payment_status = 'pending', updated_at = NOW()
                 WHERE id = $2
                 """,
                 json.dumps(documents),
