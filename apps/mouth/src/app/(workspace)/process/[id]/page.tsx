@@ -771,7 +771,7 @@ export default function CaseDetailPage() {
                           label: 'Delete',
                           onClick: () => toast.error('Delete not yet implemented'),
                         },
-                        cancel: { label: 'Cancel', onClick: () => {} },
+                        cancel: { label: 'Cancel', onClick: () => sonnerToast.dismiss() },
                       });
                     }}
                   >

@@ -193,7 +193,7 @@ export function FamilyTab({
           }
         },
       },
-      cancel: { label: 'Cancel', onClick: () => {} },
+      cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
     });
   };
 
