@@ -5,37 +5,30 @@
  * for the ChatPage component.
  */
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useOptimistic,
-  useTransition,
-} from "react";
-import { useRouter } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
-import { api } from "@/lib/api";
-import { logger } from "@/lib/logger";
-import { chatMetrics } from "@/lib/metrics";
-import { trackEvent } from "@/lib/analytics";
-import { saveConversation } from "@/app/chat/actions";
-import { useChatInput } from "./useChatInput";
-import { useChatSidebar } from "./useChatSidebar";
-import { useChatSend } from "./useChatSend";
-import { useConversations } from "./useConversations";
-import { useTeamStatus } from "./useTeamStatus";
-import { useConversationPersistence } from "./useConversationPersistence";
-import type { ChatMessage, Source } from "@/app/chat/actions";
-import type { AgentStep } from "@/types";
+import { useState, useEffect, useRef, useCallback, useOptimistic, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { v4 as uuidv4 } from 'uuid';
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
+import { chatMetrics } from '@/lib/metrics';
+import { trackEvent } from '@/lib/analytics';
+import { saveConversation } from '@/app/chat/actions';
+import { useChatInput } from './useChatInput';
+import { useChatSidebar } from './useChatSidebar';
+import { useChatSend } from './useChatSend';
+import { useConversations } from './useConversations';
+import { useTeamStatus } from './useTeamStatus';
+import { useConversationPersistence } from './useConversationPersistence';
+import type { ChatMessage, Source } from '@/app/chat/actions';
+import type { AgentStep } from '@/types';
 
-import type { SingleConversationResponse } from "@/lib/api/conversations/conversations.types";
+import type { SingleConversationResponse } from '@/lib/api/conversations/conversations.types';
 
 /**
  * Type guard for conversation message from API
  * Uses SingleConversationResponse type from API
  */
-type ApiConversationMessage = SingleConversationResponse["messages"][number] & {
+type ApiConversationMessage = SingleConversationResponse['messages'][number] & {
   id?: string;
   timestamp?: string | Date;
   images?: Array<{ id: string; base64: string; name: string; size: number }>;
@@ -43,14 +36,12 @@ type ApiConversationMessage = SingleConversationResponse["messages"][number] & {
   metadata?: unknown;
 };
 
-function isApiConversationMessage(
-  value: unknown,
-): value is ApiConversationMessage {
-  if (typeof value !== "object" || value === null) {
+function isApiConversationMessage(value: unknown): value is ApiConversationMessage {
+  if (typeof value !== 'object' || value === null) {
     return false;
   }
   const msg = value as Record<string, unknown>;
-  return typeof msg.role === "string" && typeof msg.content === "string";
+  return typeof msg.role === 'string' && typeof msg.content === 'string';
 }
 
 export interface OptimisticMessage extends ChatMessage {
@@ -58,8 +49,7 @@ export interface OptimisticMessage extends ChatMessage {
   isStreaming?: boolean;
 }
 
-const generateId = () =>
-  `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+const generateId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 const generateSessionId = () => `session_${uuidv4()}`;
 
 export interface UseChatPageReturn {
@@ -71,7 +61,7 @@ export interface UseChatPageReturn {
   userName: string;
   userAvatar: string | null;
   showUserMenu: boolean;
-  toast: { message: string; type: "success" | "error" } | null;
+  toast: { message: string; type: 'success' | 'error' } | null;
   isPending: boolean;
   currentStatus: string;
   streamingSteps: Array<AgentStep>;
@@ -96,11 +86,9 @@ export interface UseChatPageReturn {
   handleAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleImageGenSubmit: () => void;
   toggleClock: () => Promise<void>;
-  showToast: (message: string, type: "success" | "error") => void;
+  showToast: (message: string, type: 'success' | 'error') => void;
   setShowUserMenu: (show: boolean) => void;
-  setToast: (
-    toast: { message: string; type: "success" | "error" } | null,
-  ) => void;
+  setToast: (toast: { message: string; type: 'success' | 'error' } | null) => void;
   setImageModalOpen: (open: boolean) => void;
 }
 
@@ -111,11 +99,7 @@ export function useChatPage(): UseChatPageReturn {
   const isMountedRef = useRef(true);
   const isAbortedRef = useRef(false);
 
-  const {
-    sessionId,
-    setSessionId,
-    isLoading: isSessionLoading,
-  } = useConversationPersistence();
+  const { sessionId, setSessionId, isLoading: isSessionLoading } = useConversationPersistence();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [messages, setMessages] = useState<OptimisticMessage[]>([]);
@@ -136,32 +120,28 @@ export function useChatPage(): UseChatPageReturn {
       setIsHistoryLoading(true);
       try {
         const history = await api.getConversationHistory(sessionId);
-        if (
-          history.success &&
-          history.messages.length > 0 &&
-          isMountedRef.current
-        ) {
+        if (history.success && history.messages.length > 0 && isMountedRef.current) {
           setMessages(
             history.messages.map((m) => ({
               id: generateId(),
-              role: m.role as "user" | "assistant",
+              role: m.role as 'user' | 'assistant',
               content: m.content,
               sources: m.sources as Source[] | undefined,
               imageUrl: m.imageUrl,
               timestamp: new Date(),
               isPending: false,
-            })),
+            }))
           );
-          logger.info("Conversation history restored", {
-            component: "useChatPage",
-            action: "loadHistory",
+          logger.info('Conversation history restored', {
+            component: 'useChatPage',
+            action: 'loadHistory',
             metadata: { sessionId, messageCount: history.messages.length },
           });
         }
       } catch (error) {
-        logger.warn("Could not load conversation history", {
-          component: "useChatPage",
-          action: "loadHistory",
+        logger.warn('Could not load conversation history', {
+          component: 'useChatPage',
+          action: 'loadHistory',
           metadata: { sessionId, error: String(error) },
         });
       } finally {
@@ -174,23 +154,20 @@ export function useChatPage(): UseChatPageReturn {
     loadHistory();
   }, [sessionId, isSessionLoading]);
 
-  const [currentStatus, setCurrentStatus] = useState("");
+  const [currentStatus, setCurrentStatus] = useState('');
   const [streamingSteps, setStreamingSteps] = useState<Array<AgentStep>>([]);
-  const [userName, setUserName] = useState<string>("");
+  const [userName, setUserName] = useState<string>('');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
-    type: "success" | "error";
+    type: 'success' | 'error';
   } | null>(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
 
-  const showToast = useCallback(
-    (message: string, type: "success" | "error") => {
-      setToast({ message, type });
-    },
-    [],
-  );
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+  }, []);
 
   // Custom Hooks
   const chatInput = useChatInput();
@@ -219,7 +196,7 @@ export function useChatPage(): UseChatPageReturn {
     sessionId,
     conversationHistory: messages
       .filter((m) => !m.isStreaming)
-      .map((m) => ({ role: m.role, content: m.content || "" })),
+      .map((m) => ({ role: m.role, content: m.content || '' })),
     isMountedRef,
     isAbortedRef,
     onToast: showToast,
@@ -228,8 +205,8 @@ export function useChatPage(): UseChatPageReturn {
         if (prev.length === 0) return prev;
         const newMsgs = [...prev];
         const lastMsg = newMsgs[newMsgs.length - 1];
-        if (lastMsg.role === "assistant") {
-          lastMsg.content = (lastMsg.content || "") + chunk;
+        if (lastMsg.role === 'assistant') {
+          lastMsg.content = (lastMsg.content || '') + chunk;
         }
         return newMsgs;
       });
@@ -240,13 +217,13 @@ export function useChatPage(): UseChatPageReturn {
     onComplete: async (
       fullResponse: string,
       sources: any[],
-      metadata?: ChatMessage["metadata"],
+      metadata?: ChatMessage['metadata']
     ) => {
       setMessages((prev) => {
         if (prev.length === 0) return prev;
         const newMsgs = [...prev];
         const lastMsg = newMsgs[newMsgs.length - 1];
-        if (lastMsg.role === "assistant") {
+        if (lastMsg.role === 'assistant') {
           lastMsg.content = fullResponse;
           lastMsg.sources = sources;
           lastMsg.isStreaming = false;
@@ -259,9 +236,8 @@ export function useChatPage(): UseChatPageReturn {
       try {
         const title =
           messages.length === 0
-            ? chatInput.input.slice(0, 50) +
-              (chatInput.input.length > 50 ? "..." : "")
-            : "Nuova Conversazione";
+            ? chatInput.input.slice(0, 50) + (chatInput.input.length > 50 ? '...' : '')
+            : 'Nuova Conversazione';
 
         // L'API di actions.ts si aspetta un oggetto con title, messages, e options
 
@@ -273,17 +249,17 @@ export function useChatPage(): UseChatPageReturn {
           [
             ...(messages.map((m) => ({
               role: m.role,
-              content: m.content || "",
+              content: m.content || '',
             })) as any),
-            { role: "assistant", content: fullResponse } as any,
-          ] as any,
+            { role: 'assistant', content: fullResponse } as any,
+          ] as any
         );
       } catch (e) {
-        console.error("Save error:", e);
+        logger.error('Save error', {}, e as Error);
       }
     },
     onError: (error: Error) => {
-      logger.error("Chat error", { component: "useChatPage" }, error);
+      logger.error('Chat error', { component: 'useChatPage' }, error);
     },
   });
 
@@ -298,7 +274,7 @@ export function useChatPage(): UseChatPageReturn {
 
     const userMsg: OptimisticMessage = {
       id: `msg_${Date.now()}`,
-      role: "user",
+      role: 'user',
       content: trimmedInput,
       timestamp: new Date(),
       isPending: true,
@@ -314,19 +290,19 @@ export function useChatPage(): UseChatPageReturn {
       ...prev,
       {
         id: `ast_${Date.now()}`,
-        role: "assistant",
-        content: "",
+        role: 'assistant',
+        content: '',
         isStreaming: true,
         timestamp: new Date(),
       },
     ]);
 
-    chatInput.setInput("");
+    chatInput.setInput('');
     chatInput.setAttachedImages([]);
-    chatInput.setImageGenPrompt("");
+    chatInput.setImageGenPrompt('');
 
     setTimeout(() => {
-      const textarea = document.querySelector("textarea");
+      const textarea = document.querySelector('textarea');
       textarea?.focus();
     }, 100);
 
@@ -339,8 +315,7 @@ export function useChatPage(): UseChatPageReturn {
       const storedProfile = api.getUserProfile();
       if (storedProfile && isMountedRef.current) {
         const name =
-          storedProfile.name ||
-          (storedProfile.email ? storedProfile.email.split("@")[0] : "User");
+          storedProfile.name || (storedProfile.email ? storedProfile.email.split('@')[0] : 'User');
         setUserName(name);
         if (storedProfile.avatar) setUserAvatar(storedProfile.avatar);
         return;
@@ -348,24 +323,22 @@ export function useChatPage(): UseChatPageReturn {
       const profile = await api.getProfile();
       if (isMountedRef.current) {
         if (!profile || !profile.email) {
-          setUserName("User");
+          setUserName('User');
           return;
         }
-        const name =
-          profile.name ||
-          (profile.email ? profile.email.split("@")[0] : "User");
+        const name = profile.name || (profile.email ? profile.email.split('@')[0] : 'User');
         setUserName(name);
         if (profile.avatar) setUserAvatar(profile.avatar);
       }
     } catch (error) {
       logger.error(
-        "Failed to load user profile",
-        { component: "useChatPage", action: "loadUserProfile" },
-        error instanceof Error ? error : new Error(String(error)),
+        'Failed to load user profile',
+        { component: 'useChatPage', action: 'loadUserProfile' },
+        error instanceof Error ? error : new Error(String(error))
       );
       // Set default user name on error
       if (isMountedRef.current) {
-        setUserName("User");
+        setUserName('User');
       }
     }
   }, []);
@@ -376,12 +349,12 @@ export function useChatPage(): UseChatPageReturn {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      if (!file.type.startsWith("image/")) {
-        showToast("Please select an image file", "error");
+      if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'error');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        showToast("Image must be less than 5MB", "error");
+        showToast('Image must be less than 5MB', 'error');
         return;
       }
 
@@ -389,19 +362,19 @@ export function useChatPage(): UseChatPageReturn {
       reader.onloadend = () => {
         const base64String = reader.result as string;
         setUserAvatar(base64String);
-        localStorage.setItem("user_avatar", base64String);
-        showToast("Avatar updated", "success");
+        localStorage.setItem('user_avatar', base64String);
+        showToast('Avatar updated', 'success');
       };
-      reader.onerror = () => showToast("Failed to read image file", "error");
+      reader.onerror = () => showToast('Failed to read image file', 'error');
       reader.readAsDataURL(file);
     },
-    [showToast],
+    [showToast]
   );
 
   // Initial data load
   useEffect(() => {
     if (!api.isAuthenticated()) {
-      router.push("/login");
+      router.push('/login');
       return;
     }
 
@@ -417,9 +390,9 @@ export function useChatPage(): UseChatPageReturn {
       } catch (error) {
         if (isMountedRef.current) setIsInitialLoading(false);
         logger.error(
-          "Failed to load initial data",
-          { component: "useChatPage", action: "loadInitialData" },
-          error instanceof Error ? error : new Error(String(error)),
+          'Failed to load initial data',
+          { component: 'useChatPage', action: 'loadInitialData' },
+          error instanceof Error ? error : new Error(String(error))
         );
       }
     };
@@ -429,35 +402,31 @@ export function useChatPage(): UseChatPageReturn {
 
   // Load avatar from localStorage
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedAvatar = localStorage.getItem("user_avatar");
+    if (typeof window !== 'undefined') {
+      const savedAvatar = localStorage.getItem('user_avatar');
       if (savedAvatar && isMountedRef.current) setUserAvatar(savedAvatar);
     }
   }, []);
 
   // Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [displayMessages]);
 
   // Handle new chat
   const handleNewChat = useCallback(() => {
-    logger.info("New chat created", {
-      component: "useChatPage",
-      action: "handleNewChat",
+    logger.info('New chat created', {
+      component: 'useChatPage',
+      action: 'handleNewChat',
       metadata: { previousSessionId: sessionId },
     });
     // trackEvent now imported at top
     const userProfile = api.getUserProfile();
-    trackEvent(
-      "chat_new_conversation",
-      { previousSessionId: sessionId },
-      userProfile?.email,
-    );
+    trackEvent('chat_new_conversation', { previousSessionId: sessionId }, userProfile?.email);
 
     const newSessionId = generateSessionId();
     setMessages([]);
-    setCurrentStatus("");
+    setCurrentStatus('');
     setSessionId(newSessionId);
     conversations.setCurrentConversationId(null);
     sidebar.closeSidebar();
@@ -471,33 +440,29 @@ export function useChatPage(): UseChatPageReturn {
         const conv = await api.getConversation(id);
         if (conv && conv.messages) {
           setMessages(
-            conv.messages
-              .filter(isApiConversationMessage)
-              .map((m): ChatMessage => {
-                const role = (
-                  m.role === "user" || m.role === "assistant"
-                    ? m.role
-                    : "assistant"
-                ) as "user" | "assistant";
-                const timestamp = m.timestamp
-                  ? typeof m.timestamp === "string"
-                    ? new Date(m.timestamp)
-                    : (m.timestamp as Date)
-                  : new Date();
-                const sources: Source[] | undefined = m.sources?.map(
-                  (s: { title?: string; content?: string }) => ({
-                    title: s.title || "",
-                    content: s.content,
-                  }),
-                );
-                return {
-                  id: m.id || generateId(),
-                  role,
-                  content: m.content || "",
-                  timestamp,
-                  sources,
-                };
-              }),
+            conv.messages.filter(isApiConversationMessage).map((m): ChatMessage => {
+              const role = (m.role === 'user' || m.role === 'assistant' ? m.role : 'assistant') as
+                | 'user'
+                | 'assistant';
+              const timestamp = m.timestamp
+                ? typeof m.timestamp === 'string'
+                  ? new Date(m.timestamp)
+                  : (m.timestamp as Date)
+                : new Date();
+              const sources: Source[] | undefined = m.sources?.map(
+                (s: { title?: string; content?: string }) => ({
+                  title: s.title || '',
+                  content: s.content,
+                })
+              );
+              return {
+                id: m.id || generateId(),
+                role,
+                content: m.content || '',
+                timestamp,
+                sources,
+              };
+            })
           );
           if (conv.session_id) setSessionId(conv.session_id);
 
@@ -507,56 +472,52 @@ export function useChatPage(): UseChatPageReturn {
           // trackEvent now imported at top
           const userProfile = api.getUserProfile();
           trackEvent(
-            "chat_conversation_loaded",
+            'chat_conversation_loaded',
             { conversationId: id, messageCount: conv.messages.length },
-            userProfile?.email,
+            userProfile?.email
           );
         }
       } catch (error) {
         logger.error(
-          "Failed to load conversation",
+          'Failed to load conversation',
           {
-            component: "useChatPage",
-            action: "handleConversationClick",
+            component: 'useChatPage',
+            action: 'handleConversationClick',
             metadata: { conversationId: id },
           },
-          error instanceof Error ? error : new Error(String(error)),
+          error instanceof Error ? error : new Error(String(error))
         );
       }
       if (window.innerWidth < 768) sidebar.closeSidebar();
     },
-    [conversations, sidebar],
+    [conversations, sidebar]
   );
 
   // Handle delete conversation
   const handleDeleteConversation = useCallback(
     async (id: number, e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!window.confirm("Delete this conversation?")) return;
+      if (!window.confirm('Delete this conversation?')) return;
 
       try {
         await conversations.deleteConversation(id);
         // trackEvent now imported at top
         const userProfile = api.getUserProfile();
-        trackEvent(
-          "chat_conversation_deleted",
-          { conversationId: id },
-          userProfile?.email,
-        );
+        trackEvent('chat_conversation_deleted', { conversationId: id }, userProfile?.email);
         if (conversations.currentConversationId === id) handleNewChat();
       } catch (error) {
         logger.error(
-          "Failed to delete conversation",
+          'Failed to delete conversation',
           {
-            component: "useChatPage",
-            action: "handleDeleteConversation",
+            component: 'useChatPage',
+            action: 'handleDeleteConversation',
             metadata: { conversationId: id },
           },
-          error instanceof Error ? error : new Error(String(error)),
+          error instanceof Error ? error : new Error(String(error))
         );
       }
     },
-    [conversations, handleNewChat],
+    [conversations, handleNewChat]
   );
 
   // Handle clock toggle
@@ -565,9 +526,9 @@ export function useChatPage(): UseChatPageReturn {
       await teamStatus.toggleClock();
     } catch (error) {
       logger.error(
-        "Clock status toggle failed",
-        { component: "useChatPage", action: "toggleClock" },
-        error instanceof Error ? error : new Error(String(error)),
+        'Clock status toggle failed',
+        { component: 'useChatPage', action: 'toggleClock' },
+        error instanceof Error ? error : new Error(String(error))
       );
     }
   }, [teamStatus]);
@@ -576,18 +537,16 @@ export function useChatPage(): UseChatPageReturn {
   const handleImageGenSubmit = useCallback(() => {
     if (!chatInput.imageGenPrompt.trim()) return;
 
-    logger.info("Image generation modal submitted", {
-      component: "useChatPage",
-      action: "handleImageGenSubmit",
+    logger.info('Image generation modal submitted', {
+      component: 'useChatPage',
+      action: 'handleImageGenSubmit',
       metadata: { promptLength: chatInput.imageGenPrompt.trim().length },
     });
 
-    chatInput.setInput(
-      `Genera un'immagine: ${chatInput.imageGenPrompt.trim()}`,
-    );
-    chatInput.setImageGenPrompt("");
+    chatInput.setInput(`Genera un'immagine: ${chatInput.imageGenPrompt.trim()}`);
+    chatInput.setImageGenPrompt('');
     setTimeout(() => {
-      const textarea = document.querySelector("textarea");
+      const textarea = document.querySelector('textarea');
       textarea?.focus();
     }, 100);
   }, [chatInput]);

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * Error Boundary Component
@@ -6,7 +6,8 @@
  * Catch JavaScript errors anywhere in child component tree
  */
 
-import React, { Component, ReactNode } from "react";
+import React, { Component, ReactNode } from 'react';
+import { logger } from '@/lib/logger';
 
 interface Props {
   children: ReactNode;
@@ -33,11 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
     // Log to error reporting service
     this.props.onError?.(error, errorInfo);
 
-    // Prevent console noise in production
-    if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
-      console.error("ErrorBoundary caught error:", error, errorInfo);
-    }
+    logger.error('ErrorBoundary caught error', { note: errorInfo.componentStack ?? undefined }, error);
   }
 
   render() {
@@ -48,16 +45,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="p-6 rounded-lg bg-red-50 border border-red-200">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">
-            Something went wrong
-          </h2>
-          <p className="text-red-600 text-sm">
-            Please refresh the page or try again later.
-          </p>
-          {process.env.NODE_ENV !== "production" && this.state.error && (
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Something went wrong</h2>
+          <p className="text-red-600 text-sm">Please refresh the page or try again later.</p>
+          {process.env.NODE_ENV !== 'production' && this.state.error && (
             <pre className="mt-4 p-4 bg-red-100 rounded text-xs overflow-auto text-red-900">
               {this.state.error.message}
-              {"\n"}
+              {'\n'}
               {this.state.error.stack}
             </pre>
           )}
