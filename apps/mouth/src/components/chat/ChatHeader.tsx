@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,25 @@ export function ChatHeader({
   onShowToast,
 }: ChatHeaderProps) {
   const router = useRouter();
+
+  // Close user menu on click-outside or Escape
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef?.current && !userMenuRef.current.contains(e.target as Node)) {
+        onToggleUserMenu();
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onToggleUserMenu();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showUserMenu, onToggleUserMenu, userMenuRef]);
 
   const handleLogout = () => {
     toast('Are you sure you want to logout?', {
