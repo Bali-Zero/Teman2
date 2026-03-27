@@ -1,11 +1,11 @@
-"use client";
+'use client';
 // Prime Intelligence 3D Map — Google Maps JS API (v=beta), maps3d library
 // Cache bust: 2026-03-17-1555
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import Script from "next/script";
-import Image from "next/image";
-import { PrimeZantaraChat } from "./PrimeZantaraChat";
-import { logger } from "@/lib/logger";
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import Script from 'next/script';
+import Image from 'next/image';
+import { PrimeZantaraChat } from './PrimeZantaraChat';
+import { logger } from '@/lib/logger';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -35,7 +35,7 @@ interface BuildingCodes {
 }
 
 interface ZoningInfo {
-  status: "found" | "outside_coverage" | "error";
+  status: 'found' | 'outside_coverage' | 'error';
   district?: string;
   subdistrict?: string;
   zone_code?: string;
@@ -78,71 +78,71 @@ interface MapLayers {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const ZONE_COLORS: Record<string, string> = {
-  "K-1": "#E8472A",
-  "K-2": "#E8472A",
-  "K-3": "#E8472A",
-  "C-1": "#F0826E",
-  "C-2": "#F0826E",
-  W: "#FFA5FF",
-  "W-1": "#FFA5FF",
-  "W-2": "#FF85F5",
-  "R-2": "#FF7D00",
-  "R-3": "#FF9D30",
-  "R-4": "#FFB860",
-  "P-1": "#C8C83C",
-  "P-2": "#D4D44A",
-  "P-3": "#C8C83C",
-  "P-4": "#BEB82E",
-  KT: "#A855F7",
-  KPI: "#690000",
-  "SPU-1": "#D4845A",
-  "SPU-2": "#D4845A",
-  "SPU-3": "#D4845A",
-  "SPU-4": "#D4845A",
-  HL: "#224027",
-  "KS-4": "#224027",
-  THR: "#224027",
-  TWA: "#224027",
-  EM: "#2D966E",
-  PS: "#05D7D7",
-  SS: "#05D7D7",
-  SP: "#05D7D7",
-  LS: "#F59E0B",
-  CB: "#B45309",
-  "RTH-2": "#3BA062",
-  "RTH-3": "#3BA062",
-  "RTH-4": "#3BA062",
-  "RTH-5": "#3BA062",
-  "RTH-7": "#6B7280",
-  "RTH-8": "#3BA062",
-  RTNH: "#9CA3AF",
-  BA: "#97DBF2",
-  BJ: "#9CA3AF",
-  TR: "#6B7280",
-  HK: "#9B00FF",
-  "PL-3": "#6B7280",
-  "PL-4": "#6B7280",
-  PTL: "#6B7280",
-  "IK-1": "#507DD2",
+  'K-1': '#E8472A',
+  'K-2': '#E8472A',
+  'K-3': '#E8472A',
+  'C-1': '#F0826E',
+  'C-2': '#F0826E',
+  W: '#FFA5FF',
+  'W-1': '#FFA5FF',
+  'W-2': '#FF85F5',
+  'R-2': '#FF7D00',
+  'R-3': '#FF9D30',
+  'R-4': '#FFB860',
+  'P-1': '#C8C83C',
+  'P-2': '#D4D44A',
+  'P-3': '#C8C83C',
+  'P-4': '#BEB82E',
+  KT: '#A855F7',
+  KPI: '#690000',
+  'SPU-1': '#D4845A',
+  'SPU-2': '#D4845A',
+  'SPU-3': '#D4845A',
+  'SPU-4': '#D4845A',
+  HL: '#224027',
+  'KS-4': '#224027',
+  THR: '#224027',
+  TWA: '#224027',
+  EM: '#2D966E',
+  PS: '#05D7D7',
+  SS: '#05D7D7',
+  SP: '#05D7D7',
+  LS: '#F59E0B',
+  CB: '#B45309',
+  'RTH-2': '#3BA062',
+  'RTH-3': '#3BA062',
+  'RTH-4': '#3BA062',
+  'RTH-5': '#3BA062',
+  'RTH-7': '#6B7280',
+  'RTH-8': '#3BA062',
+  RTNH: '#9CA3AF',
+  BA: '#97DBF2',
+  BJ: '#9CA3AF',
+  TR: '#6B7280',
+  HK: '#9B00FF',
+  'PL-3': '#6B7280',
+  'PL-4': '#6B7280',
+  PTL: '#6B7280',
+  'IK-1': '#507DD2',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "F&B": "bg-orange-500/20 text-orange-300 border-orange-500/30",
-  Hospitality: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  Wellness: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-  Property: "bg-purple-500/20 text-purple-300 border-purple-500/30",
-  Retail: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  Creative: "bg-pink-500/20 text-pink-300 border-pink-500/30",
-  Technology: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
-  Education: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
-  Services: "bg-slate-500/20 text-slate-300 border-slate-500/30",
-  Industry: "bg-amber-500/20 text-amber-300 border-amber-500/30",
-  Finance: "bg-teal-500/20 text-teal-300 border-teal-500/30",
-  Healthcare: "bg-rose-500/20 text-rose-300 border-rose-500/30",
+  'F&B': 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+  Hospitality: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  Wellness: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  Property: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+  Retail: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+  Creative: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
+  Technology: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  Education: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+  Services: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
+  Industry: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  Finance: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
+  Healthcare: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
 };
 
 function formatPrice(pricePerAre: number): string {
-  if (!pricePerAre || pricePerAre === 0) return "—";
+  if (!pricePerAre || pricePerAre === 0) return '—';
   const billions = pricePerAre / 1_000_000_000;
   if (billions >= 1) return `Rp ${billions.toFixed(1)}B / are`;
   const millions = pricePerAre / 1_000_000;
@@ -178,28 +178,23 @@ function AccordionSection({
       >
         <div className="flex items-center gap-2.5">
           <span
-            className={`transition-colors ${open ? "text-[#d4845a]" : "text-slate-500 group-hover:text-slate-400"}`}
+            className={`transition-colors ${open ? 'text-[#d4845a]' : 'text-slate-500 group-hover:text-slate-400'}`}
           >
             {icon}
           </span>
           <span
-            className={`text-sm font-semibold tracking-tight transition-colors ${open ? "text-white" : "text-slate-400 group-hover:text-slate-300"}`}
+            className={`text-sm font-semibold tracking-tight transition-colors ${open ? 'text-white' : 'text-slate-400 group-hover:text-slate-300'}`}
           >
             {title}
           </span>
         </div>
         <svg
-          className={`w-3.5 h-3.5 transition-all duration-200 ${open ? "rotate-180 text-[#d4845a]" : "text-slate-600"}`}
+          className={`w-3.5 h-3.5 transition-all duration-200 ${open ? 'rotate-180 text-[#d4845a]' : 'text-slate-600'}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2.5}
-            d="M19 9l-7 7-7-7"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
       {open && <div className="px-4 pb-4">{children}</div>}
@@ -223,23 +218,19 @@ function LayerToggle({
   disabled?: boolean;
 }) {
   return (
-    <div
-      className={`flex items-center justify-between py-2 ${disabled ? "opacity-40" : ""}`}
-    >
+    <div className={`flex items-center justify-between py-2 ${disabled ? 'opacity-40' : ''}`}>
       <div className="flex items-center gap-2">
         <span className="text-sm">{icon}</span>
         <span className="text-xs text-slate-300">{label}</span>
-        {disabled && (
-          <span className="text-[10px] text-slate-600 ml-1">soon</span>
-        )}
+        {disabled && <span className="text-[10px] text-slate-600 ml-1">soon</span>}
       </div>
       <button
         disabled={disabled}
         onClick={() => !disabled && onChange(!enabled)}
-        className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${enabled ? "bg-[#d4845a]" : "bg-white/10"}`}
+        className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${enabled ? 'bg-[#d4845a]' : 'bg-white/10'}`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${enabled ? "translate-x-4" : "translate-x-0"}`}
+          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${enabled ? 'translate-x-4' : 'translate-x-0'}`}
         />
       </button>
     </div>
@@ -256,14 +247,14 @@ export default function PrimeMap3D() {
   const [selectedPoint, setSelectedPoint] = useState<Coordinate | null>(null);
   const [zoningResult, setZoningResult] = useState<ZoningInfo | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
-  const [kbliSearchQuery, setKbliSearchQuery] = useState("");
+  const [searchValue, setSearchValue] = useState('');
+  const [kbliSearchQuery, setKbliSearchQuery] = useState('');
   const [highlightedZones, setHighlightedZones] = useState<string[]>([]);
   const [isSearchingKbli, setIsSearchingKbli] = useState(false);
   const [streetAddress, setStreetAddress] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [showFilters, setShowFilters] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"data" | "chat">("data");
+  const [sidebarTab, setSidebarTab] = useState<'data' | 'chat'>('data');
   const [layers, setLayers] = useState<MapLayers>({
     zoneColors: true,
     extrusion: false,
@@ -292,26 +283,23 @@ export default function PrimeMap3D() {
     };
     const onUp = () => {
       isResizing.current = false;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }, []);
 
   // ── Close filter panel on outside click ───────────────────────────────────
   useEffect(() => {
     if (!showFilters) return;
     const handler = (e: MouseEvent) => {
-      if (
-        filtersRef.current &&
-        !filtersRef.current.contains(e.target as Node)
-      ) {
+      if (filtersRef.current && !filtersRef.current.contains(e.target as Node)) {
         setShowFilters(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [showFilters]);
 
   // ── Reverse geocode ────────────────────────────────────────────────────────
@@ -320,7 +308,7 @@ export default function PrimeMap3D() {
     if (!key) return;
     try {
       const res = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}`,
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}`
       );
       const data = await res.json();
       if (data.results?.[0]) {
@@ -328,25 +316,19 @@ export default function PrimeMap3D() {
           long_name: string;
           types: string[];
         }>;
-        const route = components.find((c) =>
-          c.types.includes("route"),
-        )?.long_name;
-        const streetNum = components.find((c) =>
-          c.types.includes("street_number"),
-        )?.long_name;
+        const route = components.find((c) => c.types.includes('route'))?.long_name;
+        const streetNum = components.find((c) => c.types.includes('street_number'))?.long_name;
         if (route) {
           setStreetAddress(streetNum ? `${route} ${streetNum}` : route);
         } else {
-          setStreetAddress(
-            data.results[0].formatted_address?.split(",")[0] ?? null,
-          );
+          setStreetAddress(data.results[0].formatted_address?.split(',')[0] ?? null);
         }
       }
     } catch (e) {
       logger.error(
-        "Reverse geocode failed",
+        'Reverse geocode failed',
         { metadata: { lat, lng } },
-        e instanceof Error ? e : new Error(String(e)),
+        e instanceof Error ? e : new Error(String(e))
       );
     }
   }, []);
@@ -356,40 +338,34 @@ export default function PrimeMap3D() {
     async (pos: Coordinate) => {
       setIsAnalyzing(true);
       setZoningResult(null);
-      setSidebarTab("data");
+      setSidebarTab('data');
       setStreetAddress(null);
       try {
         const [zoningRes] = await Promise.all([
-          fetch(`/api/prime/zoning?lat=${pos.lat}&lng=${pos.lng}`).then((r) =>
-            r.json(),
-          ),
+          fetch(`/api/prime/zoning?lat=${pos.lat}&lng=${pos.lng}`).then((r) => r.json()),
           reverseGeocode(pos.lat, pos.lng),
         ]);
         setZoningResult(zoningRes as ZoningInfo);
       } catch (e) {
         logger.error(
-          "Zoning fetch failed",
+          'Zoning fetch failed',
           { metadata: { lat: pos.lat, lng: pos.lng } },
-          e instanceof Error ? e : new Error(String(e)),
+          e instanceof Error ? e : new Error(String(e))
         );
         setZoningResult({
-          status: "error",
-          message: "Could not reach zoning database.",
+          status: 'error',
+          message: 'Could not reach zoning database.',
         });
       } finally {
         setIsAnalyzing(false);
       }
     },
-    [reverseGeocode],
+    [reverseGeocode]
   );
 
   // ── Zone colors layer ──────────────────────────────────────────────────────
   const toggleZoneColors = useCallback(
-    async (
-      enabled: boolean,
-      extrude: boolean = false,
-      highlightCodes: string[] = [],
-    ) => {
+    async (enabled: boolean, extrude: boolean = false, highlightCodes: string[] = []) => {
       const map = map3DElement;
       if (!map) return;
 
@@ -407,37 +383,34 @@ export default function PrimeMap3D() {
 
       try {
         if (!zonesGeoJsonRef.current) {
-          const res = await fetch("/api/prime/zones-geojson");
+          const res = await fetch('/api/prime/zones-geojson');
           zonesGeoJsonRef.current = await res.json();
         }
 
-        const { Polygon3DElement } = await (
-          window as any
-        ).google.maps.importLibrary("maps3d");
+        const { Polygon3DElement } = await (window as any).google.maps.importLibrary('maps3d');
         const features = zonesGeoJsonRef.current?.features ?? [];
 
         for (const feature of features) {
           const geom = feature.geometry;
           const props = feature.properties;
           const zoneCode = props?.zone_code;
-          let color: string = props?.color ?? "#6B7280";
+          let color: string = props?.color ?? '#6B7280';
 
           if (!geom) continue;
 
           // KBLI Highlight logic
-          const isHighlighted =
-            highlightCodes.length > 0 && highlightCodes.includes(zoneCode);
+          const isHighlighted = highlightCodes.length > 0 && highlightCodes.includes(zoneCode);
           if (highlightCodes.length > 0 && !isHighlighted) {
             // Fade out non-matching zones
-            color = "#334155";
+            color = '#334155';
           }
 
           try {
             // Build outer coords from GeoJSON coordinates
             const coords =
-              geom.type === "Polygon"
+              geom.type === 'Polygon'
                 ? geom.coordinates[0]
-                : geom.type === "MultiPolygon"
+                : geom.type === 'MultiPolygon'
                   ? geom.coordinates[0][0]
                   : null;
 
@@ -453,23 +426,23 @@ export default function PrimeMap3D() {
             let altitude = 0;
             if (extrude) {
               altitude =
-                props?.max_height_meters ??
-                (props?.max_floors ? props.max_floors * 3.5 : 5);
+                props?.max_height_meters ?? (props?.max_floors ? props.max_floors * 3.5 : 5);
             }
 
             const poly = new Polygon3DElement({
-              altitudeMode: extrude ? "RELATIVE_TO_GROUND" : "CLAMP_TO_GROUND",
+              altitudeMode: extrude ? 'RELATIVE_TO_GROUND' : 'CLAMP_TO_GROUND',
               fillColor: isHighlighted ? `${color}BB` : `${color}55`, // Higher opacity for highlights
-              strokeColor: isHighlighted ? "#FFFFFF" : `${color}99`,
+              strokeColor: isHighlighted ? '#FFFFFF' : `${color}99`,
               strokeWidth: isHighlighted ? 3 : 1,
               extruded: extrude,
               drawsOccludedSegments: true,
             });
 
             if (extrude) {
-              poly.outerCoordinates = outerCoords.map(
-                (c: Record<string, unknown>) => ({ ...c, altitude }),
-              );
+              poly.outerCoordinates = outerCoords.map((c: Record<string, unknown>) => ({
+                ...c,
+                altitude,
+              }));
             } else {
               poly.outerCoordinates = outerCoords;
             }
@@ -482,17 +455,13 @@ export default function PrimeMap3D() {
         }
 
         logger.info(
-          `[Prime] Zone layer: ${zonePolygonsRef.current.length} polygons drawn (extrude=${extrude})`,
+          `[Prime] Zone layer: ${zonePolygonsRef.current.length} polygons drawn (extrude=${extrude})`
         );
       } catch (e) {
-        logger.error(
-          "Zone colors layer failed",
-          {},
-          e instanceof Error ? e : new Error(String(e)),
-        );
+        logger.error('Zone colors layer failed', {}, e instanceof Error ? e : new Error(String(e)));
       }
     },
-    [map3DElement],
+    [map3DElement]
   );
 
   // ── Layer toggle handler ───────────────────────────────────────────────────
@@ -501,15 +470,11 @@ export default function PrimeMap3D() {
       const nextLayers = { ...layers, [layer]: value };
       setLayers(nextLayers);
 
-      if (layer === "zoneColors" || layer === "extrusion") {
-        toggleZoneColors(
-          nextLayers.zoneColors,
-          nextLayers.extrusion,
-          highlightedZones,
-        );
+      if (layer === 'zoneColors' || layer === 'extrusion') {
+        toggleZoneColors(nextLayers.zoneColors, nextLayers.extrusion, highlightedZones);
       }
     },
-    [layers, toggleZoneColors, highlightedZones],
+    [layers, toggleZoneColors, highlightedZones]
   );
 
   const handleKbliSearch = useCallback(
@@ -523,11 +488,9 @@ export default function PrimeMap3D() {
 
       setIsSearchingKbli(true);
       try {
-        const res = await fetch(
-          `/api/prime/search-kbli?q=${encodeURIComponent(kbliSearchQuery)}`,
-        );
+        const res = await fetch(`/api/prime/search-kbli?q=${encodeURIComponent(kbliSearchQuery)}`);
         const data = await res.json();
-        if (data.status === "success" && data.matching_zone_codes) {
+        if (data.status === 'success' && data.matching_zone_codes) {
           setHighlightedZones(data.matching_zone_codes);
           // Force redraw with highlights
           toggleZoneColors(true, layers.extrusion, data.matching_zone_codes);
@@ -537,16 +500,12 @@ export default function PrimeMap3D() {
           }
         }
       } catch (err) {
-        logger.error(
-          "KBLI search failed",
-          {},
-          err instanceof Error ? err : new Error(String(err)),
-        );
+        logger.error('KBLI search failed', {}, err instanceof Error ? err : new Error(String(err)));
       } finally {
         setIsSearchingKbli(false);
       }
     },
-    [kbliSearchQuery, layers, toggleZoneColors],
+    [kbliSearchQuery, layers, toggleZoneColors]
   );
 
   // ── Init 3D map ────────────────────────────────────────────────────────────
@@ -554,13 +513,7 @@ export default function PrimeMap3D() {
     if (map3DElement && layers.zoneColors) {
       toggleZoneColors(true, layers.extrusion, highlightedZones);
     }
-  }, [
-    map3DElement,
-    toggleZoneColors,
-    layers.extrusion,
-    layers.zoneColors,
-    highlightedZones,
-  ]);
+  }, [map3DElement, toggleZoneColors, layers.extrusion, layers.zoneColors, highlightedZones]);
 
   useEffect(() => {
     if (!isLoaded || !mapContainerRef.current) return;
@@ -569,21 +522,21 @@ export default function PrimeMap3D() {
       try {
         const { Map3DElement, Marker3DInteractiveElement, PinElement } = await (
           window as any
-        ).google.maps.importLibrary("maps3d");
+        ).google.maps.importLibrary('maps3d');
 
         const map = new Map3DElement({
           center: { lat: -8.648, lng: 115.132, altitude: 200 },
           tilt: 65,
           range: 1500,
           heading: 45,
-          mode: "HYBRID",
+          mode: 'HYBRID',
         });
 
         if (!mapContainerRef.current) return;
         mapContainerRef.current.appendChild(map);
         setMap3DElement(map);
 
-        map.addEventListener("gmp-click", async (event: any) => {
+        map.addEventListener('gmp-click', async (event: any) => {
           if (event.position) {
             const newPos = {
               lat: event.position.lat,
@@ -594,13 +547,13 @@ export default function PrimeMap3D() {
             analyzeLocation(newPos);
 
             const pin = new PinElement({
-              background: "#d4845a",
-              glyphColor: "white",
+              background: '#d4845a',
+              glyphColor: 'white',
               scale: 1.4,
             });
             const marker = new Marker3DInteractiveElement({
               position: { lat: newPos.lat, lng: newPos.lng, altitude: 10 },
-              altitudeMode: "RELATIVE_TO_GROUND",
+              altitudeMode: 'RELATIVE_TO_GROUND',
               extruded: true,
             });
             marker.appendChild(pin.element);
@@ -609,9 +562,9 @@ export default function PrimeMap3D() {
         });
       } catch (e) {
         logger.error(
-          "Failed to initialize 3D map",
-          { component: "PrimeMap3D" },
-          e instanceof Error ? e : new Error(String(e)),
+          'Failed to initialize 3D map',
+          { component: 'PrimeMap3D' },
+          e instanceof Error ? e : new Error(String(e))
         );
       }
     };
@@ -625,16 +578,14 @@ export default function PrimeMap3D() {
 
     const initAutocomplete = async () => {
       try {
-        const { Autocomplete } = await (
-          window as any
-        ).google.maps.importLibrary("places");
+        const { Autocomplete } = await (window as any).google.maps.importLibrary('places');
         const autocomplete = new Autocomplete(searchInputRef.current, {
-          componentRestrictions: { country: "id" },
-          fields: ["geometry", "name", "formatted_address"],
-          types: ["geocode", "establishment"],
+          componentRestrictions: { country: 'id' },
+          fields: ['geometry', 'name', 'formatted_address'],
+          types: ['geocode', 'establishment'],
         });
 
-        autocomplete.addListener("place_changed", () => {
+        autocomplete.addListener('place_changed', () => {
           const place = autocomplete.getPlace();
           if (!place.geometry?.location) return;
 
@@ -643,7 +594,7 @@ export default function PrimeMap3D() {
           const newPos = { lat, lng, altitude: 0 };
 
           setSelectedPoint(newPos);
-          setSearchValue(place.name || place.formatted_address || "");
+          setSearchValue(place.name || place.formatted_address || '');
           analyzeLocation(newPos);
 
           setMap3DElement((currentMap: any) => {
@@ -657,9 +608,9 @@ export default function PrimeMap3D() {
         });
       } catch (e) {
         logger.error(
-          "Failed to initialize Places Autocomplete",
-          { component: "PrimeMap3D" },
-          e instanceof Error ? e : new Error(String(e)),
+          'Failed to initialize Places Autocomplete',
+          { component: 'PrimeMap3D' },
+          e instanceof Error ? e : new Error(String(e))
         );
       }
     };
@@ -672,33 +623,17 @@ export default function PrimeMap3D() {
   const isHighRisk = riskScore > 0.7;
   const zoneColor =
     zoningResult?.zone_color_hex ??
-    (zoningResult?.zone_code
-      ? (ZONE_COLORS[zoningResult.zone_code] ?? "#6B7280")
-      : "#6B7280");
+    (zoningResult?.zone_code ? (ZONE_COLORS[zoningResult.zone_code] ?? '#6B7280') : '#6B7280');
 
-  const hasOverlays =
-    zoningResult?.overlays && Object.keys(zoningResult.overlays).length > 0;
-  const hasBusinesses = !!(
-    zoningResult?.businesses && zoningResult.businesses.length > 0
-  );
-  const hasBuildingCodes = !!(
-    zoningResult?.building_codes && !zoningResult.is_restricted
-  );
-  const hasPrice = !!(
-    zoningResult?.avg_price_per_are && zoningResult.avg_price_per_are > 0
-  );
-  const hasIntel = !!(
-    zoningResult?.intel_articles && zoningResult.intel_articles.length > 0
-  );
+  const hasOverlays = zoningResult?.overlays && Object.keys(zoningResult.overlays).length > 0;
+  const hasBusinesses = !!(zoningResult?.businesses && zoningResult.businesses.length > 0);
+  const hasBuildingCodes = !!(zoningResult?.building_codes && !zoningResult.is_restricted);
+  const hasPrice = !!(zoningResult?.avg_price_per_are && zoningResult.avg_price_per_are > 0);
+  const hasIntel = !!(zoningResult?.intel_articles && zoningResult.intel_articles.length > 0);
 
   // ── Icons (inline SVG, no extra dep) ──────────────────────────────────────
   const IconPin = (
-    <svg
-      className="w-3.5 h-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -714,12 +649,7 @@ export default function PrimeMap3D() {
     </svg>
   );
   const IconLayers = (
-    <svg
-      className="w-3.5 h-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -729,12 +659,7 @@ export default function PrimeMap3D() {
     </svg>
   );
   const IconBuilding = (
-    <svg
-      className="w-3.5 h-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -744,12 +669,7 @@ export default function PrimeMap3D() {
     </svg>
   );
   const IconRuler = (
-    <svg
-      className="w-3.5 h-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -759,12 +679,7 @@ export default function PrimeMap3D() {
     </svg>
   );
   const IconAlert = (
-    <svg
-      className="w-3.5 h-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -774,12 +689,7 @@ export default function PrimeMap3D() {
     </svg>
   );
   const IconTrend = (
-    <svg
-      className="w-3.5 h-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -789,12 +699,7 @@ export default function PrimeMap3D() {
     </svg>
   );
   const IconNews = (
-    <svg
-      className="w-3.5 h-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -840,21 +745,21 @@ export default function PrimeMap3D() {
         {zoningResult && (
           <div className="flex border-b border-white/10 flex-shrink-0">
             <button
-              onClick={() => setSidebarTab("data")}
+              onClick={() => setSidebarTab('data')}
               className={`flex-1 py-2 text-xs font-semibold tracking-wide transition-colors ${
-                sidebarTab === "data"
-                  ? "text-white border-b-2 border-[#d4845a]"
-                  : "text-slate-500 hover:text-slate-400"
+                sidebarTab === 'data'
+                  ? 'text-white border-b-2 border-[#d4845a]'
+                  : 'text-slate-500 hover:text-slate-400'
               }`}
             >
               📊 Data
             </button>
             <button
-              onClick={() => setSidebarTab("chat")}
+              onClick={() => setSidebarTab('chat')}
               className={`flex-1 py-2 text-xs font-semibold tracking-wide transition-colors ${
-                sidebarTab === "chat"
-                  ? "text-white border-b-2 border-[#d4845a]"
-                  : "text-slate-500 hover:text-slate-400"
+                sidebarTab === 'chat'
+                  ? 'text-white border-b-2 border-[#d4845a]'
+                  : 'text-slate-500 hover:text-slate-400'
               }`}
             >
               💬 Ask Zantara
@@ -863,15 +768,12 @@ export default function PrimeMap3D() {
         )}
 
         {/* Scrollable content */}
-        {sidebarTab === "data" && (
+        {sidebarTab === 'data' && (
           <div className="flex-1 overflow-y-auto overflow-x-hidden">
             {/* Loading state */}
             {isAnalyzing && (
               <div className="flex items-center gap-3 px-4 py-4 text-[#d4845a]">
-                <svg
-                  className="animate-spin h-4 w-4 flex-shrink-0"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="animate-spin h-4 w-4 flex-shrink-0" viewBox="0 0 24 24">
                   <circle
                     className="opacity-25"
                     cx="12"
@@ -926,7 +828,7 @@ export default function PrimeMap3D() {
             {/* Results */}
             {zoningResult && !isAnalyzing && (
               <>
-                {zoningResult.status === "found" ? (
+                {zoningResult.status === 'found' ? (
                   <div>
                     {/* ── Location ── */}
                     <AccordionSection
@@ -938,12 +840,10 @@ export default function PrimeMap3D() {
                     >
                       <div className="rounded-xl bg-white/5 border border-white/8 p-3 backdrop-blur-sm space-y-1">
                         {streetAddress && (
-                          <div className="text-sm font-semibold text-white">
-                            {streetAddress}
-                          </div>
+                          <div className="text-sm font-semibold text-white">{streetAddress}</div>
                         )}
                         <div
-                          className={`text-xs text-slate-400 ${streetAddress ? "" : "text-sm text-white font-medium"}`}
+                          className={`text-xs text-slate-400 ${streetAddress ? '' : 'text-sm text-white font-medium'}`}
                         >
                           {zoningResult.subdistrict
                             ? `${zoningResult.subdistrict}, ${zoningResult.district}`
@@ -951,8 +851,7 @@ export default function PrimeMap3D() {
                         </div>
                         {selectedPoint && (
                           <div className="text-[10px] text-slate-600 font-mono mt-1">
-                            {selectedPoint.lat.toFixed(6)},{" "}
-                            {selectedPoint.lng.toFixed(6)}
+                            {selectedPoint.lat.toFixed(6)}, {selectedPoint.lng.toFixed(6)}
                           </div>
                         )}
                       </div>
@@ -1000,11 +899,9 @@ export default function PrimeMap3D() {
                         )}
                         <div className="ml-4 mt-2">
                           <span
-                            className={`text-xs px-1.5 py-0.5 rounded font-medium ${isHighRisk ? "bg-red-500/20 text-red-300" : "bg-emerald-500/20 text-emerald-300"}`}
+                            className={`text-xs px-1.5 py-0.5 rounded font-medium ${isHighRisk ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}`}
                           >
-                            {isHighRisk
-                              ? "⚠ High regulatory risk"
-                              : "✓ Normal regulatory risk"}
+                            {isHighRisk ? '⚠ High regulatory risk' : '✓ Normal regulatory risk'}
                           </span>
                         </div>
                       </div>
@@ -1024,8 +921,8 @@ export default function PrimeMap3D() {
                             ⛔ Protected Zone — No Commercial Activity
                           </div>
                           <div className="text-xs text-slate-400 leading-relaxed">
-                            This area is legally protected. No construction or
-                            commercial activity is permitted.
+                            This area is legally protected. No construction or commercial activity
+                            is permitted.
                           </div>
                         </div>
                       ) : (
@@ -1036,13 +933,11 @@ export default function PrimeMap3D() {
                               className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/8 px-3 py-2 backdrop-blur-sm hover:bg-white/8 transition-colors"
                             >
                               <span
-                                className={`text-xs px-1.5 py-0.5 rounded border flex-shrink-0 ${CATEGORY_COLORS[biz.category_en] ?? CATEGORY_COLORS["Services"]}`}
+                                className={`text-xs px-1.5 py-0.5 rounded border flex-shrink-0 ${CATEGORY_COLORS[biz.category_en] ?? CATEGORY_COLORS['Services']}`}
                               >
                                 {biz.category_en}
                               </span>
-                              <span className="text-xs text-white truncate">
-                                {biz.title_en}
-                              </span>
+                              <span className="text-xs text-white truncate">{biz.title_en}</span>
                             </div>
                           ))}
                         </div>
@@ -1062,30 +957,26 @@ export default function PrimeMap3D() {
                             {[
                               {
                                 val: `${zoningResult.building_codes.kdb_pct}%`,
-                                label: "Coverage",
+                                label: 'Coverage',
                               },
                               {
                                 val: zoningResult.building_codes.height_limit.replace(
-                                  " Meter",
-                                  "m",
+                                  ' Meter',
+                                  'm'
                                 ),
-                                label: "Max Height",
+                                label: 'Max Height',
                               },
                               {
                                 val: `${zoningResult.building_codes.kdh_pct}%`,
-                                label: "Green Area",
+                                label: 'Green Area',
                               },
                             ].map(({ val, label }) => (
                               <div
                                 key={label}
                                 className="rounded-lg bg-white/5 border border-white/8 p-2 text-center backdrop-blur-sm"
                               >
-                                <div className="text-white font-semibold text-sm">
-                                  {val}
-                                </div>
-                                <div className="text-slate-500 text-[10px] mt-0.5">
-                                  {label}
-                                </div>
+                                <div className="text-white font-semibold text-sm">{val}</div>
+                                <div className="text-slate-500 text-[10px] mt-0.5">{label}</div>
                               </div>
                             ))}
                           </div>
@@ -1118,8 +1009,7 @@ export default function PrimeMap3D() {
                         )}
                         {zoningResult.overlays?.tsunami && (
                           <div className="text-xs rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 px-3 py-2 backdrop-blur-sm">
-                            🌊 Tsunami Risk Zone —{" "}
-                            {zoningResult.overlays.tsunami}
+                            🌊 Tsunami Risk Zone — {zoningResult.overlays.tsunami}
                           </div>
                         )}
                         {zoningResult.overlays?.heritage && (
@@ -1186,22 +1076,21 @@ export default function PrimeMap3D() {
                       Source: {zoningResult.source}
                     </div>
                   </div>
-                ) : zoningResult.status === "outside_coverage" ? (
+                ) : zoningResult.status === 'outside_coverage' ? (
                   <div className="mx-4 my-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 backdrop-blur-sm">
                     <div className="text-xs text-amber-400 font-semibold mb-1">
                       Outside coverage area
                     </div>
                     <div className="text-xs text-slate-400 leading-relaxed">
-                      This specific spot doesn't have detailed RDTR zoning data
-                      yet. We currently cover most of Badung, Gianyar, Tabanan,
-                      Denpasar, Bangli, Buleleng, Karangasem, and Jembrana.
+                      This specific spot doesn't have detailed RDTR zoning data yet. We currently
+                      cover most of Badung, Gianyar, Tabanan, Denpasar, Bangli, Buleleng,
+                      Karangasem, and Jembrana.
                     </div>
                   </div>
                 ) : (
                   <div className="mx-4 my-4 rounded-xl bg-red-900/20 border border-red-500/20 px-4 py-3 backdrop-blur-sm">
                     <div className="text-xs text-red-400">
-                      {zoningResult.message ??
-                        "Lookup failed. Please try again."}
+                      {zoningResult.message ?? 'Lookup failed. Please try again.'}
                     </div>
                   </div>
                 )}
@@ -1211,7 +1100,7 @@ export default function PrimeMap3D() {
         )}
 
         {/* CHAT TAB */}
-        {sidebarTab === "chat" && (
+        {sidebarTab === 'chat' && (
           <PrimeZantaraChat
             zoningResult={zoningResult}
             selectedPoint={selectedPoint}
@@ -1220,7 +1109,7 @@ export default function PrimeMap3D() {
         )}
 
         {/* CTA — sticky bottom */}
-        {zoningResult?.status === "found" && (
+        {zoningResult?.status === 'found' && (
           <div className="flex-shrink-0 px-4 py-4 border-t border-white/10 bg-black">
             <button className="w-full bg-[#d4845a] hover:bg-[#c27348] text-white font-semibold py-2.5 rounded-xl transition-colors text-sm shadow-lg shadow-[#d4845a]/20">
               Get a Free Business Setup Quote →
@@ -1256,12 +1145,10 @@ export default function PrimeMap3D() {
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key !== "Enter") return;
+                if (e.key !== 'Enter') return;
                 const val = searchValue.trim();
                 // Match: -8.644590, 115.148143 or -8.644590 115.148143
-                const match = val.match(
-                  /^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/,
-                );
+                const match = val.match(/^(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)$/);
                 if (!match) return;
                 const lat = parseFloat(match[1]);
                 const lng = parseFloat(match[2]);
@@ -1368,13 +1255,9 @@ export default function PrimeMap3D() {
                     </span>
                     <button
                       onClick={() => {
-                        setKbliSearchQuery("");
+                        setKbliSearchQuery('');
                         setHighlightedZones([]);
-                        toggleZoneColors(
-                          layers.zoneColors,
-                          layers.extrusion,
-                          [],
-                        );
+                        toggleZoneColors(layers.zoneColors, layers.extrusion, []);
                       }}
                       className="text-[10px] text-slate-500 hover:text-red-400 underline"
                     >
@@ -1391,33 +1274,33 @@ export default function PrimeMap3D() {
                 icon="🎨"
                 label="Zone colors"
                 enabled={layers.zoneColors}
-                onChange={(v) => handleLayerChange("zoneColors", v)}
+                onChange={(v) => handleLayerChange('zoneColors', v)}
               />
               <LayerToggle
                 icon="🏢"
                 label="3D Extrusion"
                 enabled={layers.extrusion}
-                onChange={(v) => handleLayerChange("extrusion", v)}
+                onChange={(v) => handleLayerChange('extrusion', v)}
               />
               <LayerToggle
                 icon="✈️"
                 label="Aviation zones"
                 enabled={layers.kkop}
-                onChange={(v) => handleLayerChange("kkop", v)}
+                onChange={(v) => handleLayerChange('kkop', v)}
                 disabled
               />
               <LayerToggle
                 icon="🕌"
                 label="Temple Buffer"
                 enabled={layers.templeBuffer}
-                onChange={(v) => handleLayerChange("templeBuffer", v)}
+                onChange={(v) => handleLayerChange('templeBuffer', v)}
                 disabled
               />
               <LayerToggle
                 icon="🌊"
                 label="Flood Risk"
                 enabled={layers.floodRisk}
-                onChange={(v) => handleLayerChange("floodRisk", v)}
+                onChange={(v) => handleLayerChange('floodRisk', v)}
                 disabled
               />
             </div>
@@ -1426,15 +1309,11 @@ export default function PrimeMap3D() {
           {/* Filter button */}
           <button
             onClick={() => setShowFilters((s) => !s)}
-            className={`w-10 h-10 rounded-xl backdrop-blur-xl border shadow-lg flex items-center justify-center transition-colors ${showFilters ? "bg-[#d4845a] border-[#d4845a]/60 text-white" : "bg-black/80 border-white/20 text-slate-400 hover:text-white hover:border-white/30"}`}
+            className={`w-10 h-10 rounded-xl backdrop-blur-xl border shadow-lg flex items-center justify-center transition-colors ${showFilters ? 'bg-[#d4845a] border-[#d4845a]/60 text-white' : 'bg-black/80 border-white/20 text-slate-400 hover:text-white hover:border-white/30'}`}
             title="Map layers"
+            aria-label="Toggle map layers"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
