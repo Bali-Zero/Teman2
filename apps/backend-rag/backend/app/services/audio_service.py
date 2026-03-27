@@ -32,7 +32,7 @@ class AudioService:
     STT: OpenAI Whisper (more reliable for transcription)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Short timeout for TTS - fallback to OpenAI quickly if Pollinations is slow
         self.http_client = httpx.AsyncClient(timeout=10.0)
         self.tts_timeout = 5.0  # Fast fallback to OpenAI for TTS
