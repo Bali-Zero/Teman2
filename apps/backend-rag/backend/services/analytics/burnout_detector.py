@@ -6,7 +6,7 @@ Responsibility: Burnout signal detection
 import logging
 import statistics
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ class BurnoutDetectorService:
         - Very long sessions (>10 hours)
         - Inconsistent work patterns
         """
-        cutoff = datetime.now() - timedelta(days=30)
+        cutoff = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(days=30)
 
         if user_email:
             sessions = await self.pool.fetch(
