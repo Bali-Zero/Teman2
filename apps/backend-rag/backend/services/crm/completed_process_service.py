@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 class CompletedProcessService:
     """Handles automation when process is completed."""
 
-    def __init__(self, db_pool: asyncpg.Pool) -> None:
+    def __init__(self, db_pool: asyncpg.Pool):
         self.db_pool = db_pool
         self.zoho_email_service = ZohoEmailService(db_pool)
         self.drive_service = DriveFolderService()
