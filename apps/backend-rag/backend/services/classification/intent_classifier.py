@@ -482,7 +482,7 @@ class IntentClassifier:
     - deep_think: Complex strategy/analysis (Gemini Pro + Reasoning)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize intent classifier with pattern constants"""
         logger.info("🏷️ [IntentClassifier] Initialized (pattern-based, no AI cost)")
 
