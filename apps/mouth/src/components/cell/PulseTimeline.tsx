@@ -10,6 +10,8 @@ interface PulsePoint {
   pulse_number: number;
   health_status: string;
   response_time_ms: number;
+  action_taken?: string | null;
+  error_message?: string | null;
   created_at: string;
 }
 
@@ -39,15 +41,16 @@ export function PulseTimeline({ pulses }: { pulses: PulsePoint[] }) {
         {sorted.map((p, i) => (
           <div
             key={i}
-            title={`#${p.pulse_number} — ${p.health_status.toUpperCase()} — ${p.response_time_ms}ms — ${new Date(p.created_at).toLocaleTimeString()}`}
+            title={`#${p.pulse_number} — ${p.health_status.toUpperCase()} — ${p.response_time_ms}ms${p.action_taken ? ` → ${p.action_taken}` : ""} — ${new Date(p.created_at).toLocaleTimeString()}`}
             style={{
-              width: 12,
+              width: p.action_taken ? 14 : 12,
               height: 20,
               borderRadius: 2,
               background: HEALTH_COLORS[p.health_status] || "#444",
               opacity: 0.8,
               cursor: "pointer",
               transition: "opacity 0.2s",
+              outline: p.action_taken ? "1px solid #fff4" : undefined,
             }}
             onMouseEnter={(e) => {
               (e.target as HTMLElement).style.opacity = "1";
