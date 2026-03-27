@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
-import { X, ExternalLink, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Source } from "@/types";
+import { useEffect } from 'react';
+import { X, ExternalLink, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Source } from '@/types';
 
 export interface ChatSourcesPanelProps {
   sources: Source[];
@@ -10,11 +11,16 @@ export interface ChatSourcesPanelProps {
   onClose: () => void;
 }
 
-export function ChatSourcesPanel({
-  sources,
-  isOpen,
-  onClose,
-}: ChatSourcesPanelProps) {
+export function ChatSourcesPanel({ sources, isOpen, onClose }: ChatSourcesPanelProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   if (!isOpen || sources.length === 0) {
     return null;
   }
@@ -49,7 +55,7 @@ export function ChatSourcesPanel({
               <FileText className="w-4 h-4 text-[var(--accent)] flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-medium text-[var(--foreground)] truncate">
-                  {source.title || "Untitled Source"}
+                  {source.title || 'Untitled Source'}
                 </h4>
                 {source.collection && (
                   <span className="text-[10px] text-[var(--foreground-muted)] uppercase tracking-wider">
