@@ -21,7 +21,7 @@ class WorkloadBalanceService:
     Responsibility: Analyze workload distribution across team.
     """
 
-    def __init__(self, db_pool: "asyncpg.Pool"):
+    def __init__(self, db_pool: "asyncpg.Pool") -> None:
         self.pool = db_pool
 
     async def analyze_workload_balance(self, days: int = 7) -> dict:
