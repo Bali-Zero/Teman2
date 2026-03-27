@@ -370,7 +370,16 @@ export default function NotificationsDashboardPage() {
                           )}
                           {alert.sent_at && (
                             <p className="text-sm text-muted-foreground mt-2">
-                              Sent: {new Date(alert.sent_at).toLocaleString()}
+                              Sent:{' '}
+                              {new Date(alert.sent_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}{' '}
+                              {new Date(alert.sent_at).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
                             </p>
                           )}
                         </div>
