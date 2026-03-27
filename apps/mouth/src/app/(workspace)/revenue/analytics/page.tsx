@@ -507,6 +507,13 @@ export default function RevenueAnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
+                  {recentPayments.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-sm text-muted-foreground">
+                        No recent payments found.
+                      </td>
+                    </tr>
+                  )}
                   {recentPayments.map((payment) => (
                     <tr key={payment.id} className="hover:bg-muted/50">
                       <td className="p-3">{payment.client_name}</td>
