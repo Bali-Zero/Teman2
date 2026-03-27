@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, Plus, Check, X, ArrowLeft, Users, Key, Eye, Edit, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -175,6 +175,14 @@ export default function RolesPermissionsPage() {
   };
 
   const currentPermissions = editingRole ? editingRole.permissions : newRole.permissions;
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowCreateModal(false);
+    };
+    if (showCreateModal) document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showCreateModal]);
 
   return (
     <div className="space-y-6">

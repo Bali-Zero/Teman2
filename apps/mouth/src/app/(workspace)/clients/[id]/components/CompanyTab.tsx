@@ -283,6 +283,14 @@ function EditCompanyModal({
     status: initialData.company_status || 'active',
   });
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSaving) onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose, isSaving]);
+
   const inputClass =
     'w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50';
 
