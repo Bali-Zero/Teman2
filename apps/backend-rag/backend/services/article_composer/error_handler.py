@@ -10,7 +10,7 @@ Best Practices 2026:
 import json
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -74,7 +74,7 @@ class APIError(BaseModel):
             code=code.value if isinstance(code, ErrorCode) else code,
             message=message,
             details=details or {},
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
             request_id=request_id,
         )
 
