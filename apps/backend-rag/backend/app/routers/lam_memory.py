@@ -29,7 +29,7 @@ async def _get_qdrant() -> QdrantClient:
     if _qdrant is None:
         _qdrant = QdrantClient(qdrant_url=settings.qdrant_url, collection_name=COLLECTION)
         try:
-            await _qdrant.get_collection_stats()
+            await _qdrant.get_stats()
             logger.info(f"✅ LAM memory: connected to '{COLLECTION}'")
         except Exception:
             # Collection may not exist yet — create it on first save
@@ -100,7 +100,7 @@ async def save_episode(request: SaveEpisodeRequest) -> SaveEpisodeResponse:
     """Save an episodic memory for the LAM agent."""
     try:
         embedder = _get_embedder()
-        embedding = embedder.generate_single_embedding(request.content)
+        embedding = await embedder.generate_single_embedding(request.content)
 
         episode_id = str(uuid.uuid4())
         timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -115,11 +115,11 @@ async def save_episode(request: SaveEpisodeRequest) -> SaveEpisodeResponse:
         }
 
         db = await _get_qdrant()
-        await db.store_document(
-            doc_id=episode_id,
-            document=request.content,
-            embedding=embedding,
-            metadata=payload,
+        await db.upsert_documents(
+            chunks=[request.content],
+            embeddings=[embedding],
+            metadatas=[payload],
+            ids=[episode_id],
         )
 
         logger.info(f"LAM episode saved: {episode_id} (agent={request.agent})")
@@ -136,7 +136,7 @@ async def recall_similar(request: RecallRequest) -> RecallResponse:
     start = time.time()
     try:
         embedder = _get_embedder()
-        embedding = embedder.generate_single_embedding(request.query)
+        embedding = await embedder.generate_single_embedding(request.query)
 
         db = await _get_qdrant()
         filter_conditions = None
@@ -231,7 +231,7 @@ async def delete_episode(episode_id: str) -> dict[str, str]:
     """Delete a specific episode by ID."""
     try:
         db = await _get_qdrant()
-        await db.delete_document(episode_id)
+        await db.delete([episode_id])
         logger.info(f"LAM episode deleted: {episode_id}")
         return {"status": "deleted", "id": episode_id}
     except Exception as e:

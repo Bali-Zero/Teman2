@@ -141,13 +141,12 @@ class TestCheckFileExists:
         mock_response = MagicMock()
         mock_response.status_code = 200
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get = AsyncMock(return_value=mock_response)
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get = AsyncMock(return_value=mock_response)
 
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             result = await publisher.check_file_exists("path/to/file.mdx")
-            assert result is True
+        assert result is True
 
     @pytest.mark.asyncio
     async def test_check_file_exists_returns_false_on_404(self, publisher):
@@ -155,13 +154,12 @@ class TestCheckFileExists:
         mock_response = MagicMock()
         mock_response.status_code = 404
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get = AsyncMock(return_value=mock_response)
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get = AsyncMock(return_value=mock_response)
 
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             result = await publisher.check_file_exists("path/to/file.mdx")
-            assert result is False
+        assert result is False
 
     @pytest.mark.asyncio
     async def test_check_file_exists_raises_when_not_configured(self):
@@ -182,17 +180,16 @@ class TestCheckFileExists:
         mock_response = MagicMock()
         mock_response.status_code = 200
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get = AsyncMock(return_value=mock_response)
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get = AsyncMock(return_value=mock_response)
 
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             await publisher.check_file_exists("path/to/file.mdx", branch="develop")
 
-            mock_client_instance.get.assert_called_once()
-            call_args = mock_client_instance.get.call_args
-            assert "repos/owner/repo/contents/path/to/file.mdx" in call_args[0][0]
-            assert call_args[1]["params"]["ref"] == "develop"
+        mock_client_instance.get.assert_called_once()
+        call_args = mock_client_instance.get.call_args
+        assert "repos/owner/repo/contents/path/to/file.mdx" in call_args[0][0]
+        assert call_args[1]["params"]["ref"] == "develop"
 
 
 class TestGetFileSha:
@@ -209,11 +206,10 @@ class TestGetFileSha:
         mock_response.status_code = 200
         mock_response.json.return_value = {"sha": "abc123def456"}
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get = AsyncMock(return_value=mock_response)
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get = AsyncMock(return_value=mock_response)
 
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             result = await publisher.get_file_sha("path/to/file.mdx")
             assert result == "abc123def456"
 
@@ -223,11 +219,10 @@ class TestGetFileSha:
         mock_response = MagicMock()
         mock_response.status_code = 404
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get = AsyncMock(return_value=mock_response)
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get = AsyncMock(return_value=mock_response)
 
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             result = await publisher.get_file_sha("path/to/file.mdx")
             assert result is None
 
@@ -267,12 +262,11 @@ class TestUploadFile:
             "commit": {"sha": "commit-sha-123", "html_url": "https://github.com/..."},
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get = AsyncMock(return_value=mock_get_response)
-            mock_client_instance.put = AsyncMock(return_value=mock_put_response)
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get = AsyncMock(return_value=mock_get_response)
+        mock_client_instance.put = AsyncMock(return_value=mock_put_response)
 
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             result = await publisher.upload_file(
                 path="path/to/file.mdx",
                 content="# Hello World",
@@ -298,12 +292,11 @@ class TestUploadFile:
             "commit": {"sha": "commit-sha-456", "html_url": "https://github.com/..."},
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get = AsyncMock(return_value=mock_get_response)
-            mock_client_instance.put = AsyncMock(return_value=mock_put_response)
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get = AsyncMock(return_value=mock_get_response)
+        mock_client_instance.put = AsyncMock(return_value=mock_put_response)
 
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             result = await publisher.upload_file(
                 path="path/to/file.mdx",
                 content="# Updated Content",
@@ -329,12 +322,11 @@ class TestUploadFile:
             "commit": {"sha": "commit-sha", "html_url": "url"},
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get = AsyncMock(return_value=mock_get_response)
-            mock_client_instance.put = AsyncMock(return_value=mock_put_response)
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get = AsyncMock(return_value=mock_get_response)
+        mock_client_instance.put = AsyncMock(return_value=mock_put_response)
 
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             image_bytes = b"\x89PNG\r\n\x1a\n"  # PNG magic bytes
             result = await publisher.upload_file(
                 path="image.png",
@@ -355,12 +347,11 @@ class TestUploadFile:
         mock_put_response.text = "Validation failed"
         mock_put_response.json.return_value = {"message": "Validation failed"}
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get = AsyncMock(return_value=mock_get_response)
-            mock_client_instance.put = AsyncMock(return_value=mock_put_response)
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get = AsyncMock(return_value=mock_get_response)
+        mock_client_instance.put = AsyncMock(return_value=mock_put_response)
 
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             with pytest.raises(GitHubPublisherError, match="Failed to upload file"):
                 await publisher.upload_file(
                     path="file.mdx",
@@ -434,30 +425,28 @@ class TestCreateCommitWithFiles:
     @pytest.mark.asyncio
     async def test_create_commit_with_files_success(self, publisher, mock_git_api_responses):
         """Test successfully creates atomic commit with multiple files."""
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
+        mock_client_instance = AsyncMock()
 
-            # Configure responses for each API call
-            mock_client_instance.get = AsyncMock(
-                side_effect=[
-                    mock_git_api_responses["ref"],
-                    mock_git_api_responses["commit"],
-                ]
-            )
-            mock_client_instance.post = AsyncMock(
-                side_effect=[
-                    mock_git_api_responses["blob"],
-                    mock_git_api_responses["blob"],  # Called twice for 2 files
-                    mock_git_api_responses["tree"],
-                    mock_git_api_responses["create_commit"],
-                ]
-            )
-            mock_client_instance.patch = AsyncMock(
-                return_value=mock_git_api_responses["update_ref"]
-            )
+        # Configure responses for each API call
+        mock_client_instance.get = AsyncMock(
+            side_effect=[
+                mock_git_api_responses["ref"],
+                mock_git_api_responses["commit"],
+            ]
+        )
+        mock_client_instance.post = AsyncMock(
+            side_effect=[
+                mock_git_api_responses["blob"],
+                mock_git_api_responses["blob"],  # Called twice for 2 files
+                mock_git_api_responses["tree"],
+                mock_git_api_responses["create_commit"],
+            ]
+        )
+        mock_client_instance.patch = AsyncMock(
+            return_value=mock_git_api_responses["update_ref"]
+        )
 
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
-
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             files = [
                 {"path": "file1.mdx", "content": "content1"},
                 {"path": "file2.png", "content": b"binary-content"},
@@ -481,11 +470,10 @@ class TestCreateCommitWithFiles:
         mock_response.status_code = 404
         mock_response.text = "Branch not found"
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.get = AsyncMock(return_value=mock_response)
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get = AsyncMock(return_value=mock_response)
 
+        with patch.object(publisher, "_get_client", return_value=mock_client_instance):
             with pytest.raises(GitHubPublisherError, match="Failed to get branch ref"):
                 await publisher.create_commit_with_files(
                     files=[{"path": "file.mdx", "content": "content"}],
