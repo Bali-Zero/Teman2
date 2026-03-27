@@ -16,6 +16,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
@@ -257,7 +258,11 @@ export default function IntegrationsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {integration.status === 'connected' && (
-                    <Button variant="ghost" size="sm">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toast.info('Coming soon', { description: `${integration.name} settings will be available in a future update.` })}
+                    >
                       <Settings className="w-4 h-4" />
                     </Button>
                   )}
@@ -292,7 +297,11 @@ export default function IntegrationsPage() {
         <p className="text-sm text-[var(--foreground-muted)] mb-4">
           Contact us to request new integrations for your workflow
         </p>
-        <Button variant="outline" size="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => toast.info('Contact us', { description: 'Email zero@balizero.com to request a new integration.' })}
+        >
           <ExternalLink className="w-4 h-4 mr-2" />
           Request Integration
         </Button>
@@ -312,7 +321,11 @@ export default function IntegrationsPage() {
                 Triggered when a new client is created
               </p>
             </div>
-            <Button variant="ghost" size="sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toast.info('Coming soon', { description: 'Webhook configuration will be available in a future update.' })}
+            >
               Configure
             </Button>
           </div>
@@ -323,7 +336,11 @@ export default function IntegrationsPage() {
                 Triggered when case status changes
               </p>
             </div>
-            <Button variant="ghost" size="sm">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toast.info('Coming soon', { description: 'Webhook configuration will be available in a future update.' })}
+            >
               Configure
             </Button>
           </div>
