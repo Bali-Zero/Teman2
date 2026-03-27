@@ -47,7 +47,7 @@ class ClientIdentityResolver:
     - Creating new clients when needed
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
 
     async def find_client_by_telegram(self, telegram_chat_id: str) -> int | None:
