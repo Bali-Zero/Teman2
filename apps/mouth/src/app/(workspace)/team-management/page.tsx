@@ -1,12 +1,13 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { Users, Clock, Calendar, UserCircle, Circle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
-import { logger } from "@/lib/logger";
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { Users, Clock, Calendar, UserCircle, Circle } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 // Team member interface
 interface TeamMember {
@@ -22,40 +23,39 @@ interface TeamMember {
 
 // Team photos mapping (email prefix -> photo path)
 const TEAM_PHOTOS: Record<string, string> = {
-  adit: "/static/team/adit.png",
-  krisna: "/static/team/krisna.png",
-  ari: "/static/team/ari.png",
-  "ari.firda": "/static/team/ari.png",
-  dea: "/static/team/dea.png",
-  sahira: "/static/team/sahira.png",
+  adit: '/static/team/adit.png',
+  krisna: '/static/team/krisna.png',
+  ari: '/static/team/ari.png',
+  'ari.firda': '/static/team/ari.png',
+  dea: '/static/team/dea.png',
+  sahira: '/static/team/sahira.png',
 };
 
 // Get photo URL from email
 const getTeamPhoto = (email: string): string | null => {
-  const prefix = email.split("@")[0].toLowerCase();
+  const prefix = email.split('@')[0].toLowerCase();
   return TEAM_PHOTOS[prefix] || null;
 };
 
 // Department mapping by email domain/prefix
 const getDepartment = (email: string): string => {
-  const prefix = email.split("@")[0].toLowerCase();
-  if (["zero", "admin"].includes(prefix)) return "Management";
-  if (["adit", "krisna", "reza", "adi", "dika", "wayan"].includes(prefix))
-    return "Setup Team";
-  if (["veronika", "tax", "accounting"].includes(prefix)) return "Tax Team";
-  if (["consulting", "advisory"].includes(prefix)) return "Advisory";
-  if (["marketing", "social", "content"].includes(prefix)) return "Marketing";
-  return "Operations";
+  const prefix = email.split('@')[0].toLowerCase();
+  if (['zero', 'admin'].includes(prefix)) return 'Management';
+  if (['adit', 'krisna', 'reza', 'adi', 'dika', 'wayan'].includes(prefix)) return 'Setup Team';
+  if (['veronika', 'tax', 'accounting'].includes(prefix)) return 'Tax Team';
+  if (['consulting', 'advisory'].includes(prefix)) return 'Advisory';
+  if (['marketing', 'social', 'content'].includes(prefix)) return 'Marketing';
+  return 'Operations';
 };
 
 // Mock team data for departments
 const teamDepartments = [
-  { name: "Management", members: 2, color: "var(--accent)" },
-  { name: "Setup Team", members: 6, color: "#22c55e" },
-  { name: "Tax Team", members: 4, color: "#3b82f6" },
-  { name: "Advisory", members: 3, color: "#f59e0b" },
-  { name: "Operations", members: 5, color: "#8b5cf6" },
-  { name: "Marketing", members: 3, color: "#ec4899" },
+  { name: 'Management', members: 2, color: 'var(--accent)' },
+  { name: 'Setup Team', members: 6, color: '#22c55e' },
+  { name: 'Tax Team', members: 4, color: '#3b82f6' },
+  { name: 'Advisory', members: 3, color: '#f59e0b' },
+  { name: 'Operations', members: 5, color: '#8b5cf6' },
+  { name: 'Marketing', members: 3, color: '#ec4899' },
 ];
 
 export default function TeamPage() {
@@ -64,6 +64,7 @@ export default function TeamPage() {
   const [onlineCount, setOnlineCount] = useState(0);
   const [totalMembers, setTotalMembers] = useState(23);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [filteredDept, setFilteredDept] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,9 +77,7 @@ export default function TeamPage() {
 
         if (teamStatus && Array.isArray(teamStatus)) {
           setTeamMembers(teamStatus);
-          setOnlineCount(
-            teamStatus.filter((m: TeamMember) => m.is_online).length,
-          );
+          setOnlineCount(teamStatus.filter((m: TeamMember) => m.is_online).length);
           setTotalMembers(teamStatus.length);
         } else {
           // Fallback: try clock status
@@ -88,8 +87,8 @@ export default function TeamPage() {
           }
         }
       } catch (err) {
-        logger.error("Failed to load team stats", {}, err as Error);
-        setError("Failed to load team data");
+        logger.error('Failed to load team stats', {}, err as Error);
+        setError('Failed to load team data');
       } finally {
         setIsLoading(false);
       }
@@ -99,13 +98,13 @@ export default function TeamPage() {
   }, []);
 
   const handleCalendar = () => {
-    // router.push('/team/calendar'); // TODO: Implement calendar page
-    router.push("/team");
+    router.push('/team/analytics');
   };
 
   const handleTimesheet = () => {
-    // router.push('/team/timesheet'); // TODO: Implement timesheet page
-    router.push("/team");
+    toast('Timesheet coming soon', {
+      description: 'The full timesheet view will be available in a future update.',
+    });
   };
 
   return (
@@ -135,32 +134,29 @@ export default function TeamPage() {
         <div
           className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
           style={{
-            background:
-              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+            background: 'linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)',
           }}
         >
           <p className="text-sm text-[var(--foreground-muted)]">Team Members</p>
           <p className="text-2xl font-bold text-[var(--foreground)]">
-            {isLoading ? "-" : totalMembers}
+            {isLoading ? '-' : totalMembers}
           </p>
         </div>
         <div
           className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
           style={{
-            background:
-              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+            background: 'linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)',
           }}
         >
           <p className="text-sm text-[var(--foreground-muted)]">Online Now</p>
           <p className="text-2xl font-bold text-[var(--success)]">
-            {isLoading ? "-" : onlineCount}
+            {isLoading ? '-' : onlineCount}
           </p>
         </div>
         <div
           className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
           style={{
-            background:
-              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+            background: 'linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)',
           }}
         >
           <p className="text-sm text-[var(--foreground-muted)]">On Leave</p>
@@ -169,8 +165,7 @@ export default function TeamPage() {
         <div
           className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md transition-all hover:-translate-y-1 hover:shadow-2xl"
           style={{
-            background:
-              "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+            background: 'linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)',
           }}
         >
           <p className="text-sm text-[var(--foreground-muted)]">Hours Today</p>
@@ -183,30 +178,23 @@ export default function TeamPage() {
         {teamDepartments.map((dept) => (
           <div
             key={dept.name}
-            onClick={() => {
-              // Filter team members by department - can be implemented with real API
-              // TODO: filter by department
-            }}
-            className="p-4 rounded-xl border border-[rgba(255,255,255,0.05)] shadow-xl backdrop-blur-md cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-1"
+            onClick={() => setFilteredDept(filteredDept === dept.name ? null : dept.name)}
+            className={`p-4 rounded-xl border shadow-xl backdrop-blur-md cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-1 ${
+              filteredDept === dept.name
+                ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]'
+                : 'border-[rgba(255,255,255,0.05)]'
+            }`}
             style={{
-              background:
-                "linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)",
+              background: 'linear-gradient(145deg, rgba(35,35,40,0.6) 0%, rgba(25,25,30,0.3) 100%)',
             }}
           >
             <div className="flex items-center gap-3 mb-3">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: dept.color }}
-              />
-              <h3 className="font-medium text-[var(--foreground)]">
-                {dept.name}
-              </h3>
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: dept.color }} />
+              <h3 className="font-medium text-[var(--foreground)]">{dept.name}</h3>
             </div>
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-[var(--foreground-muted)]" />
-              <span className="text-sm text-[var(--foreground-muted)]">
-                {dept.members} members
-              </span>
+              <span className="text-sm text-[var(--foreground-muted)]">{dept.members} members</span>
             </div>
           </div>
         ))}
@@ -216,21 +204,26 @@ export default function TeamPage() {
       <div
         className="rounded-xl border border-[rgba(255,255,255,0.05)] shadow-2xl backdrop-blur-xl"
         style={{
-          background:
-            "linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)",
+          background: 'linear-gradient(145deg, rgba(32,32,36,0.7) 0%, rgba(22,22,26,0.4) 100%)',
         }}
       >
-        <div className="p-4 border-b border-[rgba(255,255,255,0.05)]">
+        <div className="p-4 border-b border-[rgba(255,255,255,0.05)] flex items-center justify-between">
           <h2 className="font-semibold text-[var(--foreground)]">
-            Team Members
+            {filteredDept ? `${filteredDept} Members` : 'Team Members'}
           </h2>
+          {filteredDept && (
+            <button
+              onClick={() => setFilteredDept(null)}
+              className="text-xs text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+            >
+              Clear filter ×
+            </button>
+          )}
         </div>
         {isLoading ? (
           <div className="p-8 text-center">
             <UserCircle className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50 animate-pulse" />
-            <p className="text-sm text-[var(--foreground-muted)]">
-              Loading team members...
-            </p>
+            <p className="text-sm text-[var(--foreground-muted)]">Loading team members...</p>
           </div>
         ) : error ? (
           <div className="p-8 text-center">
@@ -245,7 +238,9 @@ export default function TeamPage() {
           </div>
         ) : (
           <div className="divide-y divide-[var(--border)]">
-            {teamMembers.map((member) => (
+            {teamMembers
+              .filter((m) => !filteredDept || getDepartment(m.email) === filteredDept)
+              .map((member) => (
               <div
                 key={member.user_id}
                 className="p-4 flex items-center justify-between hover:bg-[var(--background-elevated)]/50 transition-colors"
@@ -255,7 +250,7 @@ export default function TeamPage() {
                     {getTeamPhoto(member.email) ? (
                       <Image
                         src={getTeamPhoto(member.email)!}
-                        alt={member.email.split("@")[0]}
+                        alt={member.email.split('@')[0]}
                         width={40}
                         height={40}
                         className="w-10 h-10 rounded-full object-cover"
@@ -266,15 +261,15 @@ export default function TeamPage() {
                     <Circle
                       className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${
                         member.is_online
-                          ? "text-green-500 fill-green-500"
-                          : "text-gray-500 fill-gray-500"
+                          ? 'text-green-500 fill-green-500'
+                          : 'text-gray-500 fill-gray-500'
                       }`}
                     />
                   </div>
                   <div>
                     <p className="font-medium text-[var(--foreground)]">
-                      {member.email.split("@")[0].charAt(0).toUpperCase() +
-                        member.email.split("@")[0].slice(1)}
+                      {member.email.split('@')[0].charAt(0).toUpperCase() +
+                        member.email.split('@')[0].slice(1)}
                     </p>
                     <p className="text-xs text-[var(--foreground-muted)]">
                       {getDepartment(member.email)} • {member.email}
@@ -283,15 +278,13 @@ export default function TeamPage() {
                 </div>
                 <div className="text-right">
                   <p
-                    className={`text-sm font-medium ${member.is_online ? "text-green-500" : "text-[var(--foreground-muted)]"}`}
+                    className={`text-sm font-medium ${member.is_online ? 'text-green-500' : 'text-[var(--foreground-muted)]'}`}
                   >
-                    {member.is_online ? "Online" : "Offline"}
+                    {member.is_online ? 'Online' : 'Offline'}
                   </p>
                   <p className="text-xs text-[var(--foreground-muted)]">
-                    {member.last_action_type === "clock_in"
-                      ? "Clocked in"
-                      : "Clocked out"}{" "}
-                    • {member.last_action}
+                    {member.last_action_type === 'clock_in' ? 'Clocked in' : 'Clocked out'} •{' '}
+                    {member.last_action}
                   </p>
                 </div>
               </div>
@@ -303,8 +296,8 @@ export default function TeamPage() {
       {/* Info Box */}
       <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-8 text-center">
         <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto">
-          Manage the Bali Zero team with attendance, timesheet, leave and
-          permissions. View who is online and hours worked.
+          Manage the Bali Zero team with attendance, timesheet, leave and permissions. View who is
+          online and hours worked.
         </p>
       </div>
     </div>
