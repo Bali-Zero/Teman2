@@ -58,7 +58,7 @@ class EnhancedCRMService:
         }
     )
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
         self.optimizer = CRMQueryOptimizer(db_pool)
         self.auditor = CRMAuditor(db_pool)
