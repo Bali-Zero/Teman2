@@ -164,7 +164,7 @@ export default function RolesPermissionsPage() {
         label: 'Delete',
         onClick: () => setRoles(roles.filter((r) => r.id !== id)),
       },
-      cancel: { label: 'Cancel', onClick: () => {} },
+      cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
     });
   };
 

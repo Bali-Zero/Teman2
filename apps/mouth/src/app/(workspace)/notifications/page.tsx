@@ -105,7 +105,7 @@ export default function NotificationsDashboardPage() {
           }
         },
       },
-      cancel: { label: 'Cancel', onClick: () => {} },
+      cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
     });
   };
 

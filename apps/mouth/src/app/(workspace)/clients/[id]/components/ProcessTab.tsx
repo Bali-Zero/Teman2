@@ -261,7 +261,7 @@ export function ProcessTab({
                                 }
                               },
                             },
-                            cancel: { label: 'Cancel', onClick: () => {} },
+                            cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
                           }
                         );
                       }}

@@ -520,7 +520,7 @@ export function useChatPage(): UseChatPageReturn {
             }
           },
         },
-        cancel: { label: 'Cancel', onClick: () => {} },
+        cancel: { label: 'Cancel', onClick: () => sonnerToast.dismiss() },
       });
     },
     [conversations, handleNewChat]

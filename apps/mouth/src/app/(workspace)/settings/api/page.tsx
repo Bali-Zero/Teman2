@@ -73,7 +73,7 @@ export default function ApiKeysSettingsPage() {
         label: 'Delete',
         onClick: () => setApiKeys(apiKeys.filter((k) => k.id !== id)),
       },
-      cancel: { label: 'Cancel', onClick: () => {} },
+      cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
     });
   };
 

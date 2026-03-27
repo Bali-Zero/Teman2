@@ -252,7 +252,7 @@ export default function VisaOraclePage() {
       `Approve ${selectedItems.size} item(s)? This will ingest them into the Knowledge Base.`,
       {
         action: { label: 'Approve', onClick: () => void doBulkApprove() },
-        cancel: { label: 'Cancel', onClick: () => {} },
+        cancel: { label: 'Cancel', onClick: () => sonnerToast.dismiss() },
       }
     );
   };
@@ -309,7 +309,7 @@ export default function VisaOraclePage() {
     }
     sonnerToast(`Reject ${selectedItems.size} item(s)? They will be archived.`, {
       action: { label: 'Reject', onClick: () => void doBulkReject() },
-      cancel: { label: 'Cancel', onClick: () => {} },
+      cancel: { label: 'Cancel', onClick: () => sonnerToast.dismiss() },
     });
   };
 
