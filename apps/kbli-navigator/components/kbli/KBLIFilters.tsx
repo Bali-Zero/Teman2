@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
 interface KBLIFiltersProps {
   pmaFilter: string | null;
@@ -26,17 +26,22 @@ function Chip({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full border px-3 py-1 text-xs font-medium transition-all backdrop-blur-md",
+        'rounded-full border px-3 py-1 text-xs font-medium transition-all backdrop-blur-md',
         active
-          ? "border-[var(--kbli-accent)] bg-[var(--kbli-accent)]/10 text-[var(--kbli-accent)] shadow-[0_0_12px_rgba(220,38,38,0.2)]"
-          : "border-white/10 bg-white/5 text-[var(--foreground-muted)] hover:bg-white/10 hover:border-white/20 hover:text-[var(--foreground)]",
+          ? 'border-[var(--kbli-accent)] bg-[var(--kbli-accent)]/10 text-[var(--kbli-accent)] shadow-[0_0_12px_rgba(220,38,38,0.2)]'
+          : 'border-white/10 bg-white/5 text-[var(--foreground-muted)] hover:bg-white/10 hover:border-white/20 hover:text-[var(--foreground)]'
       )}
       aria-pressed={active}
     >
       {children}
-      {count !== undefined && <span className="ml-1 opacity-60">{count}</span>}
+      {count !== undefined && (
+        <span className="ml-1 opacity-60" aria-label={`${count} results`}>
+          {count}
+        </span>
+      )}
     </button>
   );
 }
@@ -48,10 +53,17 @@ export function KBLIFilters({
   onTransitionChange,
   counts,
 }: KBLIFiltersProps) {
+  const hasActiveFilters = pmaFilter !== null || transitionFilter !== null;
+
+  const resetAll = () => {
+    onPMAChange(null);
+    onTransitionChange(null);
+  };
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" role="group" aria-label="Filter KBLI codes">
       {/* PMA Status */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Investment filter">
         <span className="w-20 shrink-0 text-xs font-medium text-[var(--foreground-muted)]">
           Investment:
         </span>
@@ -59,24 +71,22 @@ export function KBLIFilters({
           All
         </Chip>
         <Chip
-          active={pmaFilter === "open"}
-          onClick={() => onPMAChange(pmaFilter === "open" ? null : "open")}
+          active={pmaFilter === 'open'}
+          onClick={() => onPMAChange(pmaFilter === 'open' ? null : 'open')}
           count={counts?.pma.open}
         >
           ✅ Open
         </Chip>
         <Chip
-          active={pmaFilter === "restricted"}
-          onClick={() =>
-            onPMAChange(pmaFilter === "restricted" ? null : "restricted")
-          }
+          active={pmaFilter === 'restricted'}
+          onClick={() => onPMAChange(pmaFilter === 'restricted' ? null : 'restricted')}
           count={counts?.pma.restricted}
         >
           ⚠️ Restricted
         </Chip>
         <Chip
-          active={pmaFilter === "closed"}
-          onClick={() => onPMAChange(pmaFilter === "closed" ? null : "closed")}
+          active={pmaFilter === 'closed'}
+          onClick={() => onPMAChange(pmaFilter === 'closed' ? null : 'closed')}
           count={counts?.pma.closed}
         >
           🚫 Closed
@@ -84,34 +94,25 @@ export function KBLIFilters({
       </div>
 
       {/* 2020→2025 Transition */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="2025 status filter">
         <span className="w-20 shrink-0 text-xs font-medium text-[var(--foreground-muted)]">
           2025 Status:
         </span>
-        <Chip
-          active={!transitionFilter}
-          onClick={() => onTransitionChange(null)}
-        >
+        <Chip active={!transitionFilter} onClick={() => onTransitionChange(null)}>
           All
         </Chip>
         <Chip
-          active={transitionFilter === "BPS_ONLY"}
-          onClick={() =>
-            onTransitionChange(
-              transitionFilter === "BPS_ONLY" ? null : "BPS_ONLY",
-            )
-          }
+          active={transitionFilter === 'BPS_ONLY'}
+          onClick={() => onTransitionChange(transitionFilter === 'BPS_ONLY' ? null : 'BPS_ONLY')}
           count={counts?.transition.new}
         >
           🆕 New
         </Chip>
         <Chip
-          active={transitionFilter === "MATCH_CON_AGGREGAZIONE"}
+          active={transitionFilter === 'MATCH_CON_AGGREGAZIONE'}
           onClick={() =>
             onTransitionChange(
-              transitionFilter === "MATCH_CON_AGGREGAZIONE"
-                ? null
-                : "MATCH_CON_AGGREGAZIONE",
+              transitionFilter === 'MATCH_CON_AGGREGAZIONE' ? null : 'MATCH_CON_AGGREGAZIONE'
             )
           }
           count={counts?.transition.merged}
@@ -119,18 +120,28 @@ export function KBLIFilters({
           🔀 Merged
         </Chip>
         <Chip
-          active={transitionFilter === "CODICE_RINUMERATO"}
+          active={transitionFilter === 'CODICE_RINUMERATO'}
           onClick={() =>
             onTransitionChange(
-              transitionFilter === "CODICE_RINUMERATO"
-                ? null
-                : "CODICE_RINUMERATO",
+              transitionFilter === 'CODICE_RINUMERATO' ? null : 'CODICE_RINUMERATO'
             )
           }
           count={counts?.transition.renamed}
         >
           🔄 Renumbered
         </Chip>
+
+        {/* Reset all filters */}
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={resetAll}
+            className="ml-2 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs font-medium text-[var(--foreground-muted)] transition-all hover:bg-white/10 hover:border-white/30 hover:text-white"
+            aria-label="Reset all filters"
+          >
+            ✕ Reset all
+          </button>
+        )}
       </div>
     </div>
   );
