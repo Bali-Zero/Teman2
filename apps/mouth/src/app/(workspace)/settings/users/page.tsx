@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 
@@ -30,6 +31,7 @@ interface TeamMember {
 
 export default function UserManagementPage() {
   const router = useRouter();
+  const { success, error: toastError, warning } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -90,7 +92,10 @@ export default function UserManagementPage() {
   );
 
   const handleAddUser = () => {
-    // In a real app, this would call an API
+    if (!newUser.email.trim() || !newUser.name.trim()) {
+      toastError('Missing fields', 'Please fill in both name and email.');
+      return;
+    }
     const newMember: TeamMember = {
       user_id: Date.now().toString(),
       ...newUser,
@@ -100,6 +105,7 @@ export default function UserManagementPage() {
     setUsers([...users, newMember]);
     setShowAddModal(false);
     setNewUser({ email: '', name: '', role: 'user', team: 'Team' });
+    success('User added', `${newUser.name} has been added to the team.`);
   };
 
   return (
@@ -225,7 +231,12 @@ export default function UserManagementPage() {
                   </td>
                   <td className="p-4 text-sm text-[var(--foreground-muted)]">{user.last_action}</td>
                   <td className="p-4 text-right">
-                    <Button variant="ghost" size="sm" aria-label="User actions">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label="User actions"
+                      onClick={() => warning('Not yet available', 'User action menu will be enabled in a future update.')}
+                    >
                       <MoreVertical className="w-4 h-4" />
                     </Button>
                   </td>
