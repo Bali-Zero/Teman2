@@ -46,7 +46,7 @@ class TeamAnalyticsService:
     REFACTORED: Delegates to specialized sub-services.
     """
 
-    def __init__(self, db_pool: "asyncpg.Pool"):
+    def __init__(self, db_pool: "asyncpg.Pool") -> None:
         self.pool = db_pool
 
         # Initialize sub-services
