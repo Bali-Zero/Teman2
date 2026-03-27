@@ -14,6 +14,9 @@ class CellSettings(BaseSettings):
     backend_health_url: str = "https://nuzantara-rag.fly.dev/health"
     fly_app_name: str = "nuzantara-rag"
 
+    # Fly.io API (for restart/scale effectors)
+    fly_api_token: str = ""  # set FLY_API_TOKEN env var (not CELL_ prefix — shared)
+
     # Database (via fly proxy tunnel)
     database_url: str = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag"
 
