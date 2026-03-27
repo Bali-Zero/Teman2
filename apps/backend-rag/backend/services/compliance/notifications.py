@@ -16,7 +16,7 @@ class ComplianceNotificationService:
     Responsibility: Send alerts via various channels (WhatsApp, Email, etc.).
     """
 
-    def __init__(self, notification_service: Any | None = None):
+    def __init__(self, notification_service: Any | None = None) -> None:
         """
         Initialize notification service.
 
