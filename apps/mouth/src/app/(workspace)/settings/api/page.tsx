@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Key,
   Copy,
@@ -94,6 +94,14 @@ export default function ApiKeysSettingsPage() {
     setShowCreateModal(false);
     toast.success('API key created', { description: `"${newKey.name}" is ready to use.` });
   };
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowCreateModal(false);
+    };
+    if (showCreateModal) document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showCreateModal]);
 
   const maskKey = (key: string) => {
     const prefix = key.substring(0, 8);

@@ -91,6 +91,14 @@ export default function UserManagementPage() {
       u.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAddModal(false);
+    };
+    if (showAddModal) document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showAddModal]);
+
   const handleAddUser = () => {
     if (!newUser.email.trim() || !newUser.name.trim()) {
       toastError('Missing fields', 'Please fill in both name and email.');
