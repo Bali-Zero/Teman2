@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Database,
   Download,
@@ -11,86 +11,81 @@ import {
   FileSpreadsheet,
   AlertTriangle,
   CheckCircle2,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface BackupHistory {
   id: string;
-  type: "full" | "partial";
+  type: 'full' | 'partial';
   date: string;
   size: string;
-  status: "completed" | "failed";
+  status: 'completed' | 'failed';
 }
 
 export default function BackupExportPage() {
   const router = useRouter();
   const [isExporting, setIsExporting] = useState(false);
-  const [exportFormat, setExportFormat] = useState<"json" | "csv">("json");
-  const [selectedData, setSelectedData] = useState<string[]>([
-    "clients",
-    "cases",
-    "interactions",
-  ]);
+  const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json');
+  const [selectedData, setSelectedData] = useState<string[]>(['clients', 'cases', 'interactions']);
 
   const [backupHistory] = useState<BackupHistory[]>([
     {
-      id: "1",
-      type: "full",
-      date: "2024-12-28 14:30",
-      size: "2.4 MB",
-      status: "completed",
+      id: '1',
+      type: 'full',
+      date: '2024-12-28 14:30',
+      size: '2.4 MB',
+      status: 'completed',
     },
     {
-      id: "2",
-      type: "partial",
-      date: "2024-12-27 10:15",
-      size: "1.1 MB",
-      status: "completed",
+      id: '2',
+      type: 'partial',
+      date: '2024-12-27 10:15',
+      size: '1.1 MB',
+      status: 'completed',
     },
     {
-      id: "3",
-      type: "full",
-      date: "2024-12-20 09:00",
-      size: "2.2 MB",
-      status: "completed",
+      id: '3',
+      type: 'full',
+      date: '2024-12-20 09:00',
+      size: '2.2 MB',
+      status: 'completed',
     },
   ]);
 
   const dataOptions = [
     {
-      id: "clients",
-      label: "Clients",
-      description: "All client records and contacts",
+      id: 'clients',
+      label: 'Clients',
+      description: 'All client records and contacts',
     },
     {
-      id: "cases",
-      label: "Cases/Practices",
-      description: "All case records and history",
+      id: 'cases',
+      label: 'Cases/Practices',
+      description: 'All case records and history',
     },
     {
-      id: "interactions",
-      label: "Interactions",
-      description: "Chat logs and WhatsApp messages",
+      id: 'interactions',
+      label: 'Interactions',
+      description: 'Chat logs and WhatsApp messages',
     },
     {
-      id: "knowledge",
-      label: "Knowledge Base",
-      description: "Documents and AI knowledge",
+      id: 'knowledge',
+      label: 'Knowledge Base',
+      description: 'Documents and AI knowledge',
     },
     {
-      id: "team",
-      label: "Team Data",
-      description: "User activity and time tracking",
+      id: 'team',
+      label: 'Team Data',
+      description: 'User activity and time tracking',
     },
-    { id: "settings", label: "Settings", description: "System configuration" },
+    { id: 'settings', label: 'Settings', description: 'System configuration' },
   ];
 
   const toggleDataSelection = (id: string) => {
-    setSelectedData((prev) =>
-      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id],
-    );
+    setSelectedData((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
   };
 
   const handleExport = async () => {
@@ -102,13 +97,13 @@ export default function BackupExportPage() {
       const today = new Date();
       const startDate = new Date(today.getFullYear(), today.getMonth(), 1)
         .toISOString()
-        .split("T")[0];
-      const endDate = today.toISOString().split("T")[0];
+        .split('T')[0];
+      const endDate = today.toISOString().split('T')[0];
 
-      if (selectedData.includes("team")) {
+      if (selectedData.includes('team')) {
         const blob = await api.exportTimesheet(startDate, endDate);
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
+        const a = document.createElement('a');
         a.href = url;
         a.download = `zantara-export-${endDate}.csv`;
         document.body.appendChild(a);
@@ -120,10 +115,10 @@ export default function BackupExportPage() {
       // Simulate export for other data
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      alert("Export completed successfully!");
+      alert('Export completed successfully!');
     } catch (err) {
-      console.error("Export failed:", err);
-      alert("Export failed. Please try again.");
+      logger.error('Export failed', {}, err as Error);
+      alert('Export failed. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -133,11 +128,7 @@ export default function BackupExportPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/settings")}
-        >
+        <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
@@ -158,8 +149,7 @@ export default function BackupExportPage() {
           <div>
             <h3 className="font-medium text-amber-500">Data Export Notice</h3>
             <p className="text-sm text-amber-500/80">
-              Exported data may contain sensitive information. Handle with care
-              and store securely.
+              Exported data may contain sensitive information. Handle with care and store securely.
             </p>
           </div>
         </div>
@@ -168,9 +158,7 @@ export default function BackupExportPage() {
       {/* Export Section */}
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6 space-y-6">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--foreground)] mb-2">
-            Export Data
-          </h2>
+          <h2 className="text-lg font-semibold text-[var(--foreground)] mb-2">Export Data</h2>
           <p className="text-sm text-[var(--foreground-muted)]">
             Select the data you want to export
           </p>
@@ -186,31 +174,27 @@ export default function BackupExportPage() {
                 onClick={() => toggleDataSelection(option.id)}
                 className={`p-3 rounded-lg border-2 text-left transition-all ${
                   isSelected
-                    ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                    : "border-[var(--border)] bg-[var(--background)] hover:border-[var(--border-hover)]"
+                    ? 'border-[var(--accent)] bg-[var(--accent)]/10'
+                    : 'border-[var(--border)] bg-[var(--background)] hover:border-[var(--border-hover)]'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <div
                     className={`w-4 h-4 rounded flex items-center justify-center ${
                       isSelected
-                        ? "bg-[var(--accent)]"
-                        : "bg-[var(--background-secondary)] border border-[var(--border)]"
+                        ? 'bg-[var(--accent)]'
+                        : 'bg-[var(--background-secondary)] border border-[var(--border)]'
                     }`}
                   >
-                    {isSelected && (
-                      <CheckCircle2 className="w-3 h-3 text-white" />
-                    )}
+                    {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
                   </div>
                   <span
-                    className={`font-medium ${isSelected ? "text-[var(--accent)]" : "text-[var(--foreground)]"}`}
+                    className={`font-medium ${isSelected ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'}`}
                   >
                     {option.label}
                   </span>
                 </div>
-                <p className="text-xs text-[var(--foreground-muted)] ml-6">
-                  {option.description}
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)] ml-6">{option.description}</p>
               </button>
             );
           })}
@@ -223,42 +207,38 @@ export default function BackupExportPage() {
           </label>
           <div className="flex gap-3">
             <button
-              onClick={() => setExportFormat("json")}
+              onClick={() => setExportFormat('json')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
-                exportFormat === "json"
-                  ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                  : "border-[var(--border)] bg-[var(--background)]"
+                exportFormat === 'json'
+                  ? 'border-[var(--accent)] bg-[var(--accent)]/10'
+                  : 'border-[var(--border)] bg-[var(--background)]'
               }`}
             >
               <FileJson
-                className={`w-5 h-5 ${exportFormat === "json" ? "text-[var(--accent)]" : "text-[var(--foreground-muted)]"}`}
+                className={`w-5 h-5 ${exportFormat === 'json' ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`}
               />
               <span
                 className={
-                  exportFormat === "json"
-                    ? "text-[var(--accent)]"
-                    : "text-[var(--foreground)]"
+                  exportFormat === 'json' ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'
                 }
               >
                 JSON
               </span>
             </button>
             <button
-              onClick={() => setExportFormat("csv")}
+              onClick={() => setExportFormat('csv')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
-                exportFormat === "csv"
-                  ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                  : "border-[var(--border)] bg-[var(--background)]"
+                exportFormat === 'csv'
+                  ? 'border-[var(--accent)] bg-[var(--accent)]/10'
+                  : 'border-[var(--border)] bg-[var(--background)]'
               }`}
             >
               <FileSpreadsheet
-                className={`w-5 h-5 ${exportFormat === "csv" ? "text-[var(--accent)]" : "text-[var(--foreground-muted)]"}`}
+                className={`w-5 h-5 ${exportFormat === 'csv' ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`}
               />
               <span
                 className={
-                  exportFormat === "csv"
-                    ? "text-[var(--accent)]"
-                    : "text-[var(--foreground)]"
+                  exportFormat === 'csv' ? 'text-[var(--accent)]' : 'text-[var(--foreground)]'
                 }
               >
                 CSV
@@ -275,8 +255,8 @@ export default function BackupExportPage() {
         >
           <Download className="w-4 h-4 mr-2" />
           {isExporting
-            ? "Exporting..."
-            : `Export ${selectedData.length} Data Set${selectedData.length !== 1 ? "s" : ""}`}
+            ? 'Exporting...'
+            : `Export ${selectedData.length} Data Set${selectedData.length !== 1 ? 's' : ''}`}
         </Button>
       </div>
 
@@ -285,9 +265,7 @@ export default function BackupExportPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-purple-400" />
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Backup History
-            </h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Backup History</h2>
           </div>
           <Button variant="outline" size="sm">
             <Upload className="w-4 h-4 mr-2" />
@@ -305,18 +283,14 @@ export default function BackupExportPage() {
                 <Database className="w-5 h-5 text-[var(--foreground-muted)]" />
                 <div>
                   <p className="font-medium text-[var(--foreground)]">
-                    {backup.type === "full" ? "Full Backup" : "Partial Backup"}
+                    {backup.type === 'full' ? 'Full Backup' : 'Partial Backup'}
                   </p>
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    {backup.date}
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">{backup.date}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-sm text-[var(--foreground-muted)]">
-                  {backup.size}
-                </span>
-                {backup.status === "completed" ? (
+                <span className="text-sm text-[var(--foreground-muted)]">{backup.size}</span>
+                {backup.status === 'completed' ? (
                   <CheckCircle2 className="w-4 h-4 text-green-400" />
                 ) : (
                   <AlertTriangle className="w-4 h-4 text-red-400" />
@@ -332,14 +306,10 @@ export default function BackupExportPage() {
 
       {/* Auto Backup Settings */}
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
-        <h3 className="font-semibold text-[var(--foreground)] mb-4">
-          Automatic Backups
-        </h3>
+        <h3 className="font-semibold text-[var(--foreground)] mb-4">Automatic Backups</h3>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm text-[var(--foreground)]">
-              Enable Daily Backups
-            </p>
+            <p className="text-sm text-[var(--foreground)]">Enable Daily Backups</p>
             <p className="text-xs text-[var(--foreground-muted)]">
               Automatically backup data every day at midnight
             </p>
@@ -352,9 +322,7 @@ export default function BackupExportPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-[var(--foreground)]">Retention Period</p>
-            <p className="text-xs text-[var(--foreground-muted)]">
-              How long to keep backups
-            </p>
+            <p className="text-xs text-[var(--foreground-muted)]">How long to keep backups</p>
           </div>
           <select className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm">
             <option value="7">7 days</option>
