@@ -14,6 +14,7 @@ from cell.core.dna_interpreter import DNAInterpreter
 from cell.core.pulse import PulseEngine
 from cell.core.safety import SafetyGate
 from cell.effectors.fly_effector import FlyEffector
+from cell.effectors.logs_effector import LogsEffector
 from cell.effectors.telegram import TelegramAlerter
 from cell.metabolism.tracker import MetabolismTracker
 from cell.sensors.health_sensor import HealthSensor
@@ -75,13 +76,14 @@ async def main() -> None:
         else:
             logger.warning("CELL_TELEGRAM_BOT_TOKEN or CELL_TELEGRAM_CHAT_ID not set — alerts disabled")
 
-        # Fly.io effector — CELL's hands
+        # Fly.io effector — CELL's hands (restart, scale)
         fly_token = os.environ.get("FLY_API_TOKEN", "")
         fly_effector = FlyEffector(app_name=settings.fly_app_name, api_token=fly_token)
+        logs_effector = LogsEffector(app_name=settings.fly_app_name, api_token=fly_token)
         if fly_token:
-            logger.info(f"Fly.io effector initialized for app: {settings.fly_app_name}")
+            logger.info(f"Fly.io effectors initialized for app: {settings.fly_app_name}")
         else:
-            logger.warning("FLY_API_TOKEN not set — restart/scale actions will be no-ops")
+            logger.warning("FLY_API_TOKEN not set — restart/scale/logs actions will be no-ops")
 
         engine = PulseEngine(
             dna_loader=dna_loader,
@@ -93,6 +95,7 @@ async def main() -> None:
             dna_expected_hash=dna_hash,
             alerter=alerter,
             fly_effector=fly_effector,
+            logs_effector=logs_effector,
         )
 
         logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")

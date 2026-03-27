@@ -54,3 +54,23 @@ async def log_pulse(
         )
     except Exception as e:
         logger.error(f"Failed to log pulse to DB: {e}")
+
+
+async def log_alert(
+    level: str,
+    action: str,
+    message: str,
+    health_status: str = "",
+    pulse_number: int = 0,
+) -> None:
+    """Write a silent alert to cell_alerts table (for dashboard + alert_silent action)."""
+    try:
+        pool = await get_pool()
+        await pool.execute(
+            """INSERT INTO cell_alerts (level, action, message, health_status, pulse_number)
+               VALUES ($1, $2, $3, $4, $5)
+               ON CONFLICT DO NOTHING""",
+            level, action, message, health_status, pulse_number,
+        )
+    except Exception as e:
+        logger.error(f"Failed to log alert to DB: {e}")
