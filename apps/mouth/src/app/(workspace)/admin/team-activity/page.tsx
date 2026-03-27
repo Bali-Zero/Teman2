@@ -269,7 +269,7 @@ export default function TeamActivityPage() {
     <div className="min-h-screen bg-[var(--background)]">
       {/* Header */}
       <header className="h-14 border-b border-[var(--border)] flex items-center px-4 gap-4 bg-[var(--background-secondary)]">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/chat')}>
+        <Button variant="ghost" size="icon" onClick={() => router.push('/chat')} aria-label="Back to chat">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <Image src="/assets/logo/logo_zan.png" alt="Zantara" width={32} height={32} />
