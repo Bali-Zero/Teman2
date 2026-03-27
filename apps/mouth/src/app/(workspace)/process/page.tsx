@@ -292,7 +292,7 @@ export default function PratichePage() {
     }
   }, [listPageNumber]);
 
-  // Close menu when clicking outside
+  // Close menu when clicking outside or pressing Escape
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -300,9 +300,19 @@ export default function PratichePage() {
         setMenuPosition(null);
       }
     };
+    const handleEscapeMenu = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && menuPosition) {
+        setSelectedPractice(null);
+        setMenuPosition(null);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    document.addEventListener('keydown', handleEscapeMenu);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeMenu);
+    };
+  }, [menuPosition]);
 
   const handleStatusChange = async (practiceId: number, newStatus: string) => {
     setUpdatingId(practiceId);

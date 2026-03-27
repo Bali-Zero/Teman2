@@ -102,8 +102,15 @@ export default function CaseDetailPage() {
         setShowMoreMenu(false);
       }
     };
+    const escapeHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowMoreMenu(false);
+    };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('keydown', escapeHandler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', escapeHandler);
+    };
   }, [showMoreMenu]);
 
   // Inline price edit
@@ -777,7 +784,11 @@ export default function CaseDetailPage() {
                       sonnerToast('Delete this process? This cannot be undone.', {
                         action: {
                           label: 'Delete',
-                          onClick: () => toast.warning('Not yet available', 'Process deletion will be enabled in a future update.'),
+                          onClick: () =>
+                            toast.warning(
+                              'Not yet available',
+                              'Process deletion will be enabled in a future update.'
+                            ),
                         },
                         cancel: { label: 'Cancel', onClick: () => sonnerToast.dismiss() },
                       });
