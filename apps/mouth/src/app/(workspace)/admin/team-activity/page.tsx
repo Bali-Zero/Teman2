@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
 import {
   Users,
   MessageSquare,
@@ -23,10 +23,10 @@ import {
   BookOpen,
   Eye,
   Layers,
-} from "lucide-react";
-import { logger } from "@/lib/logger";
+} from 'lucide-react';
+import { logger } from '@/lib/logger';
 
-type TabType = "overview" | "messages" | "timesheet" | "crm";
+type TabType = 'overview' | 'messages' | 'timesheet' | 'crm';
 
 interface OverviewStats {
   total_conversations: number;
@@ -88,7 +88,7 @@ interface CrmAction {
 
 export default function TeamActivityPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,27 +102,27 @@ export default function TeamActivityPage() {
   const [messagesTotal, setMessagesTotal] = useState(0);
   const [messagesPage, setMessagesPage] = useState(0);
   const [messageFilters, setMessageFilters] = useState({
-    user_id: "",
-    search: "",
-    role: "",
+    user_id: '',
+    search: '',
+    role: '',
   });
 
   // Timesheet data
   const [timesheet, setTimesheet] = useState<TimesheetRecord[]>([]);
   const [timesheetTotal, setTimesheetTotal] = useState(0);
   const [timesheetPage, setTimesheetPage] = useState(0);
-  const [timesheetFilter, setTimesheetFilter] = useState("");
+  const [timesheetFilter, setTimesheetFilter] = useState('');
 
   // CRM data
   const [crmActions, setCrmActions] = useState<CrmAction[]>([]);
   const [crmTotal, setCrmTotal] = useState(0);
   const [crmPage, setCrmPage] = useState(0);
-  const [crmFilter, setCrmFilter] = useState("");
+  const [crmFilter, setCrmFilter] = useState('');
 
   const LIMIT = 50;
 
   // Start counting from January 5, 2026
-  const START_DATE = "2026-01-05";
+  const START_DATE = '2026-01-05';
 
   const loadOverview = useCallback(async () => {
     try {
@@ -135,9 +135,9 @@ export default function TeamActivityPage() {
       setTeamStats(statsRes.team_stats);
     } catch (err) {
       logger.error(
-        "Failed to load overview:",
+        'Failed to load overview:',
         {},
-        err instanceof Error ? err : new Error(String(err)),
+        err instanceof Error ? err : new Error(String(err))
       );
       throw err;
     }
@@ -156,9 +156,9 @@ export default function TeamActivityPage() {
       setMessagesTotal(res.total);
     } catch (err) {
       logger.error(
-        "Failed to load messages:",
+        'Failed to load messages:',
         {},
-        err instanceof Error ? err : new Error(String(err)),
+        err instanceof Error ? err : new Error(String(err))
       );
     }
   }, [messageFilters, messagesPage]);
@@ -174,9 +174,9 @@ export default function TeamActivityPage() {
       setTimesheetTotal(res.total);
     } catch (err) {
       logger.error(
-        "Failed to load timesheet:",
+        'Failed to load timesheet:',
         {},
-        err instanceof Error ? err : new Error(String(err)),
+        err instanceof Error ? err : new Error(String(err))
       );
     }
   }, [timesheetFilter, timesheetPage]);
@@ -192,9 +192,9 @@ export default function TeamActivityPage() {
       setCrmTotal(res.total);
     } catch (err) {
       logger.error(
-        "Failed to load CRM actions:",
+        'Failed to load CRM actions:',
         {},
-        err instanceof Error ? err : new Error(String(err)),
+        err instanceof Error ? err : new Error(String(err))
       );
     }
   }, [crmFilter, crmPage]);
@@ -205,7 +205,7 @@ export default function TeamActivityPage() {
     try {
       await loadOverview();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load data");
+      setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setIsLoading(false);
     }
@@ -213,26 +213,26 @@ export default function TeamActivityPage() {
 
   useEffect(() => {
     if (!api.isAuthenticated()) {
-      router.push("/login");
+      router.push('/login');
       return;
     }
     if (!api.isAdmin()) {
-      router.push("/chat");
+      router.push('/chat');
       return;
     }
     loadData();
   }, [router, loadData]);
 
   useEffect(() => {
-    if (activeTab === "messages") loadMessages();
+    if (activeTab === 'messages') loadMessages();
   }, [activeTab, loadMessages]);
 
   useEffect(() => {
-    if (activeTab === "timesheet") loadTimesheet();
+    if (activeTab === 'timesheet') loadTimesheet();
   }, [activeTab, loadTimesheet]);
 
   useEffect(() => {
-    if (activeTab === "crm") loadCrmActions();
+    if (activeTab === 'crm') loadCrmActions();
   }, [activeTab, loadCrmActions]);
 
   const handleExportMessages = async () => {
@@ -241,31 +241,27 @@ export default function TeamActivityPage() {
         user_id: messageFilters.user_id || undefined,
       });
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
-      a.download = `messages_export_${new Date().toISOString().split("T")[0]}.csv`;
+      a.download = `messages_export_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      logger.error(
-        "Export failed:",
-        {},
-        err instanceof Error ? err : new Error(String(err)),
-      );
-      setError("Failed to export messages");
+      logger.error('Export failed:', {}, err instanceof Error ? err : new Error(String(err)));
+      setError('Failed to export messages');
     }
   };
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleString("it-IT", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -273,32 +269,14 @@ export default function TeamActivityPage() {
     <div className="min-h-screen bg-[var(--background)]">
       {/* Header */}
       <header className="h-14 border-b border-[var(--border)] flex items-center px-4 gap-4 bg-[var(--background-secondary)]">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.push("/chat")}
-        >
+        <Button variant="ghost" size="icon" onClick={() => router.push('/chat')}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <Image
-          src="/assets/logo/logo_zan.png"
-          alt="Zantara"
-          width={32}
-          height={32}
-        />
-        <span className="font-semibold text-[var(--foreground)]">
-          Team Activity Dashboard
-        </span>
+        <Image src="/assets/logo/logo_zan.png" alt="Zantara" width={32} height={32} />
+        <span className="font-semibold text-[var(--foreground)]">Team Activity Dashboard</span>
         <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadData}
-            disabled={isLoading}
-          >
-            <RefreshCw
-              className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-            />
+          <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -317,7 +295,7 @@ export default function TeamActivityPage() {
           <StatCard
             icon={<MessageSquare className="w-5 h-5 text-blue-500" />}
             label="Total Messages"
-            value={stats.total_messages.toLocaleString()}
+            value={stats.total_messages.toLocaleString('en-US')}
             bgColor="bg-blue-500/10"
           />
           <StatCard
@@ -329,7 +307,7 @@ export default function TeamActivityPage() {
           <StatCard
             icon={<TrendingUp className="w-5 h-5 text-purple-500" />}
             label="Conversations"
-            value={stats.total_conversations.toLocaleString()}
+            value={stats.total_conversations.toLocaleString('en-US')}
             bgColor="bg-purple-500/10"
           />
           <StatCard
@@ -349,13 +327,13 @@ export default function TeamActivityPage() {
               <StatCard
                 icon={<BookOpen className="w-5 h-5 text-amber-500" />}
                 label="Knowledge Nodes"
-                value={stats.total_kg_nodes.toLocaleString()}
+                value={stats.total_kg_nodes.toLocaleString('en-US')}
                 bgColor="bg-amber-500/10"
               />
               <StatCard
                 icon={<Layers className="w-5 h-5 text-orange-500" />}
                 label="Knowledge Edges"
-                value={stats.total_kg_edges?.toLocaleString() || "0"}
+                value={stats.total_kg_edges?.toLocaleString('en-US') || '0'}
                 bgColor="bg-orange-500/10"
               />
             </>
@@ -366,28 +344,16 @@ export default function TeamActivityPage() {
       {/* Tabs */}
       <div className="px-6">
         <div className="flex gap-2 border-b border-[var(--border)] overflow-x-auto">
-          <TabButton
-            active={activeTab === "overview"}
-            onClick={() => setActiveTab("overview")}
-          >
+          <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
             <Users className="w-4 h-4" /> Team Stats
           </TabButton>
-          <TabButton
-            active={activeTab === "messages"}
-            onClick={() => setActiveTab("messages")}
-          >
+          <TabButton active={activeTab === 'messages'} onClick={() => setActiveTab('messages')}>
             <MessageSquare className="w-4 h-4" /> Messages
           </TabButton>
-          <TabButton
-            active={activeTab === "timesheet"}
-            onClick={() => setActiveTab("timesheet")}
-          >
+          <TabButton active={activeTab === 'timesheet'} onClick={() => setActiveTab('timesheet')}>
             <Clock className="w-4 h-4" /> Timesheet
           </TabButton>
-          <TabButton
-            active={activeTab === "crm"}
-            onClick={() => setActiveTab("crm")}
-          >
+          <TabButton active={activeTab === 'crm'} onClick={() => setActiveTab('crm')}>
             <Briefcase className="w-4 h-4" /> CRM Actions
           </TabButton>
         </div>
@@ -402,13 +368,11 @@ export default function TeamActivityPage() {
         ) : (
           <>
             {/* Overview Tab */}
-            {activeTab === "overview" && (
+            {activeTab === 'overview' && (
               <div className="space-y-6">
                 {/* Top Users */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">
-                    Top 10 by Messages (dal 5 gennaio)
-                  </h3>
+                  <h3 className="text-lg font-semibold mb-4">Top 10 by Messages (dal 5 gennaio)</h3>
                   <div className="grid gap-2">
                     {topUsers.map((user, i) => (
                       <div
@@ -418,9 +382,7 @@ export default function TeamActivityPage() {
                         <span className="w-6 text-center font-bold text-[var(--foreground-muted)]">
                           {i + 1}
                         </span>
-                        <span className="flex-1 font-medium">
-                          {user.user_id}
-                        </span>
+                        <span className="flex-1 font-medium">{user.user_id}</span>
                         <span className="text-[var(--accent)] font-semibold">
                           {user.msg_count} msgs
                         </span>
@@ -431,9 +393,7 @@ export default function TeamActivityPage() {
 
                 {/* Team Stats Table */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">
-                    Team Member Stats (dal 5 gennaio)
-                  </h3>
+                  <h3 className="text-lg font-semibold mb-4">Team Member Stats (dal 5 gennaio)</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
@@ -444,64 +404,37 @@ export default function TeamActivityPage() {
                           <th className="px-3 py-2 text-right">Msgs</th>
                           <th className="px-3 py-2 text-right">Days</th>
                           <th className="px-3 py-2 text-right">CRM</th>
-                          <th
-                            className="px-3 py-2 text-right"
-                            title="Emails Sent"
-                          >
-                            <Mail className="w-4 h-4 inline text-blue-400" />{" "}
-                            Sent
+                          <th className="px-3 py-2 text-right" title="Emails Sent">
+                            <Mail className="w-4 h-4 inline text-blue-400" /> Sent
                           </th>
-                          <th
-                            className="px-3 py-2 text-right"
-                            title="Emails Received"
-                          >
-                            <Mail className="w-4 h-4 inline text-green-400" />{" "}
-                            Rcvd
+                          <th className="px-3 py-2 text-right" title="Emails Received">
+                            <Mail className="w-4 h-4 inline text-green-400" /> Rcvd
                           </th>
-                          <th
-                            className="px-3 py-2 text-right"
-                            title="Knowledge Base Views"
-                          >
-                            <Eye className="w-4 h-4 inline text-purple-400" />{" "}
-                            Views
+                          <th className="px-3 py-2 text-right" title="Knowledge Base Views">
+                            <Eye className="w-4 h-4 inline text-purple-400" /> Views
                           </th>
-                          <th
-                            className="px-3 py-2 text-right"
-                            title="Knowledge Base Downloads"
-                          >
-                            <Download className="w-4 h-4 inline text-orange-400" />{" "}
-                            DL
+                          <th className="px-3 py-2 text-right" title="Knowledge Base Downloads">
+                            <Download className="w-4 h-4 inline text-orange-400" /> DL
                           </th>
                           <th className="px-3 py-2 text-left">Last Active</th>
                         </tr>
                       </thead>
                       <tbody>
                         {teamStats.map((member) => (
-                          <tr
-                            key={member.email}
-                            className="border-b border-[var(--border)]/50"
-                          >
+                          <tr key={member.email} className="border-b border-[var(--border)]/50">
                             <td className="px-3 py-2">
-                              <div className="font-medium">
-                                {member.name || "-"}
-                              </div>
+                              <div className="font-medium">{member.name || '-'}</div>
                               <div className="text-xs text-[var(--foreground-muted)]">
                                 {member.email}
                               </div>
                             </td>
-                            <td className="px-3 py-2">{member.role || "-"}</td>
-                            <td className="px-3 py-2 text-right">
-                              {member.conversations}
-                            </td>
+                            <td className="px-3 py-2">{member.role || '-'}</td>
+                            <td className="px-3 py-2 text-right">{member.conversations}</td>
                             <td className="px-3 py-2 text-right font-semibold text-[var(--accent)]">
                               {member.messages}
                             </td>
-                            <td className="px-3 py-2 text-right">
-                              {member.days_worked}
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              {member.crm_actions}
-                            </td>
+                            <td className="px-3 py-2 text-right">{member.days_worked}</td>
+                            <td className="px-3 py-2 text-right">{member.crm_actions}</td>
                             <td className="px-3 py-2 text-right text-blue-400">
                               {member.emails_sent}
                             </td>
@@ -527,7 +460,7 @@ export default function TeamActivityPage() {
             )}
 
             {/* Messages Tab */}
-            {activeTab === "messages" && (
+            {activeTab === 'messages' && (
               <div className="space-y-4">
                 {/* Filters */}
                 <div className="flex flex-wrap gap-3 items-center">
@@ -543,7 +476,7 @@ export default function TeamActivityPage() {
                           search: e.target.value,
                         }))
                       }
-                      onKeyDown={(e) => e.key === "Enter" && loadMessages()}
+                      onKeyDown={(e) => e.key === 'Enter' && loadMessages()}
                       className="flex-1 px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--background)] text-sm"
                     />
                   </div>
@@ -561,9 +494,7 @@ export default function TeamActivityPage() {
                   />
                   <select
                     value={messageFilters.role}
-                    onChange={(e) =>
-                      setMessageFilters((f) => ({ ...f, role: e.target.value }))
-                    }
+                    onChange={(e) => setMessageFilters((f) => ({ ...f, role: e.target.value }))}
                     className="px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--background)] text-sm"
                   >
                     <option value="">All roles</option>
@@ -573,11 +504,7 @@ export default function TeamActivityPage() {
                   <Button size="sm" onClick={loadMessages}>
                     Apply
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleExportMessages}
-                  >
+                  <Button size="sm" variant="outline" onClick={handleExportMessages}>
                     <Download className="w-4 h-4 mr-2" /> Export
                   </Button>
                 </div>
@@ -597,9 +524,9 @@ export default function TeamActivityPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <span
                             className={`text-xs px-2 py-0.5 rounded ${
-                              msg.role === "user"
-                                ? "bg-blue-500/20 text-blue-400"
-                                : "bg-green-500/20 text-green-400"
+                              msg.role === 'user'
+                                ? 'bg-blue-500/20 text-blue-400'
+                                : 'bg-green-500/20 text-green-400'
                             }`}
                           >
                             {msg.role}
@@ -613,7 +540,7 @@ export default function TeamActivityPage() {
                         </div>
                         <p className="text-sm whitespace-pre-wrap">
                           {msg.content?.slice(0, 300)}
-                          {msg.content && msg.content.length > 300 && "..."}
+                          {msg.content && msg.content.length > 300 && '...'}
                         </p>
                       </div>
                     ))
@@ -632,7 +559,7 @@ export default function TeamActivityPage() {
             )}
 
             {/* Timesheet Tab */}
-            {activeTab === "timesheet" && (
+            {activeTab === 'timesheet' && (
               <div className="space-y-4">
                 <div className="flex gap-3 items-center">
                   <input
@@ -640,7 +567,7 @@ export default function TeamActivityPage() {
                     placeholder="Filter by email..."
                     value={timesheetFilter}
                     onChange={(e) => setTimesheetFilter(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && loadTimesheet()}
+                    onKeyDown={(e) => e.key === 'Enter' && loadTimesheet()}
                     className="px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--background)] text-sm w-64"
                   />
                   <Button size="sm" onClick={loadTimesheet}>
@@ -670,27 +597,22 @@ export default function TeamActivityPage() {
                         </tr>
                       ) : (
                         timesheet.map((record) => (
-                          <tr
-                            key={record.id}
-                            className="border-b border-[var(--border)]/50"
-                          >
+                          <tr key={record.id} className="border-b border-[var(--border)]/50">
                             <td className="px-3 py-2">{record.email}</td>
                             <td className="px-3 py-2">
                               <span
                                 className={`px-2 py-0.5 rounded text-xs ${
-                                  record.action_type === "clock_in"
-                                    ? "bg-green-500/20 text-green-400"
-                                    : "bg-red-500/20 text-red-400"
+                                  record.action_type === 'clock_in'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-red-500/20 text-red-400'
                                 }`}
                               >
                                 {record.action_type}
                               </span>
                             </td>
-                            <td className="px-3 py-2">
-                              {formatDate(record.timestamp)}
-                            </td>
+                            <td className="px-3 py-2">{formatDate(record.timestamp)}</td>
                             <td className="px-3 py-2 text-[var(--foreground-muted)]">
-                              {record.notes || "-"}
+                              {record.notes || '-'}
                             </td>
                           </tr>
                         ))
@@ -710,7 +632,7 @@ export default function TeamActivityPage() {
             )}
 
             {/* CRM Actions Tab */}
-            {activeTab === "crm" && (
+            {activeTab === 'crm' && (
               <div className="space-y-4">
                 <div className="flex gap-3 items-center">
                   <input
@@ -718,7 +640,7 @@ export default function TeamActivityPage() {
                     placeholder="Filter by email..."
                     value={crmFilter}
                     onChange={(e) => setCrmFilter(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && loadCrmActions()}
+                    onKeyDown={(e) => e.key === 'Enter' && loadCrmActions()}
                     className="px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--background)] text-sm w-64"
                   />
                   <Button size="sm" onClick={loadCrmActions}>
@@ -749,10 +671,7 @@ export default function TeamActivityPage() {
                         </tr>
                       ) : (
                         crmActions.map((action) => (
-                          <tr
-                            key={action.id}
-                            className="border-b border-[var(--border)]/50"
-                          >
+                          <tr key={action.id} className="border-b border-[var(--border)]/50">
                             <td className="px-3 py-2">{action.performed_by}</td>
                             <td className="px-3 py-2">
                               <span className="px-2 py-0.5 rounded text-xs bg-[var(--accent)]/20 text-[var(--accent)]">
@@ -763,11 +682,9 @@ export default function TeamActivityPage() {
                               {action.entity_type} #{action.entity_id}
                             </td>
                             <td className="px-3 py-2 text-[var(--foreground-muted)]">
-                              {action.description || "-"}
+                              {action.description || '-'}
                             </td>
-                            <td className="px-3 py-2">
-                              {formatDate(action.performed_at)}
-                            </td>
+                            <td className="px-3 py-2">{formatDate(action.performed_at)}</td>
                           </tr>
                         ))
                       )}
@@ -830,8 +747,8 @@ function TabButton({
       onClick={onClick}
       className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
         active
-          ? "border-[var(--accent)] text-[var(--accent)]"
-          : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+          ? 'border-[var(--accent)] text-[var(--accent)]'
+          : 'border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
       }`}
     >
       {children}
@@ -862,23 +779,13 @@ function Pagination({
         Showing {start}-{end} of {total}
       </span>
       <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onPrev}
-          disabled={page === 0}
-        >
+        <Button size="sm" variant="outline" onClick={onPrev} disabled={page === 0}>
           <ChevronLeft className="w-4 h-4" />
         </Button>
         <span className="px-3 py-1 text-sm">
           {page + 1} / {totalPages || 1}
         </span>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onNext}
-          disabled={page >= totalPages - 1}
-        >
+        <Button size="sm" variant="outline" onClick={onNext} disabled={page >= totalPages - 1}>
           <ChevronRight className="w-4 h-4" />
         </Button>
       </div>

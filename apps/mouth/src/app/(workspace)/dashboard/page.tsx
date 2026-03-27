@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React from "react";
-import Link from "next/link";
+import React from 'react';
+import Link from 'next/link';
 import {
   ExternalLink,
   ArrowUpRight,
@@ -10,39 +10,32 @@ import {
   CheckCircle2,
   FileText,
   TrendingUp,
-} from "lucide-react";
-import {
-  LiveActivityFeed,
-  RoleWidget,
-  ZantaraPortalCard,
-} from "@/components/dashboard";
-import { HeroLiveWindow } from "@/components/workspace/HeroLiveWindow";
-import type { PraticaPreview } from "@/components/dashboard/PratichePreview";
-import { DashboardErrorBoundary } from "@/components/ErrorBoundary";
-import { TeamActivityPanel } from "@/components/dashboard/TeamActivityPanel";
-import type {
-  TeamMemberStats,
-  TeamOverview,
-} from "@/components/dashboard/TeamActivityPanel";
-import { useDashboardData } from "@/hooks/useDashboardData";
-import { useRealtime } from "@/lib/realtime";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { normalizeDashboardRole } from "@/lib/dashboard-role";
-import type { LiveActivityEvent } from "@/types/dashboard-role.types";
-import { logger } from "@/lib/logger";
-import { RefreshCw } from "lucide-react";
+} from 'lucide-react';
+import { LiveActivityFeed, RoleWidget, ZantaraPortalCard } from '@/components/dashboard';
+import { HeroLiveWindow } from '@/components/workspace/HeroLiveWindow';
+import type { PraticaPreview } from '@/components/dashboard/PratichePreview';
+import { DashboardErrorBoundary } from '@/components/ErrorBoundary';
+import { TeamActivityPanel } from '@/components/dashboard/TeamActivityPanel';
+import type { TeamMemberStats, TeamOverview } from '@/components/dashboard/TeamActivityPanel';
+import { useDashboardData } from '@/hooks/useDashboardData';
+import { useRealtime } from '@/lib/realtime';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { normalizeDashboardRole } from '@/lib/dashboard-role';
+import type { LiveActivityEvent } from '@/types/dashboard-role.types';
+import { logger } from '@/lib/logger';
+import { RefreshCw } from 'lucide-react';
 
 // ── Category colors ────────────────────────────────────────
 const CATEGORY_COLOR: Record<string, string> = {
-  visas: "#4a8ec4",
-  business: "#5cb88a",
-  taxes: "#b89a40",
-  property: "#9880d8",
-  living: "#d4845a",
-  emerging_trends: "#4ab8c4",
+  visas: '#4a8ec4',
+  business: '#5cb88a',
+  taxes: '#b89a40',
+  property: '#9880d8',
+  living: '#d4845a',
+  emerging_trends: '#4ab8c4',
 };
 function getCategoryColor(cat: string): string {
-  return CATEGORY_COLOR[cat] ?? "#9880d8";
+  return CATEGORY_COLOR[cat] ?? '#9880d8';
 }
 
 interface IntelArticle {
@@ -55,10 +48,10 @@ interface IntelArticle {
 
 function useIntelFeed() {
   return useQuery<IntelArticle[]>({
-    queryKey: ["intel-feed"],
+    queryKey: ['intel-feed'],
     queryFn: async () => {
-      const res = await fetch("/api/blog/articles?limit=8&offset=0");
-      if (!res.ok) throw new Error("Failed to fetch intel");
+      const res = await fetch('/api/blog/articles?limit=8&offset=0');
+      if (!res.ok) throw new Error('Failed to fetch intel');
       const data = await res.json();
       return (data.articles ?? []).slice(0, 8) as IntelArticle[];
     },
@@ -75,13 +68,13 @@ interface TeamStatsResult {
 
 function useTeamStats(enabled: boolean) {
   return useQuery<TeamStatsResult>({
-    queryKey: ["team-stats"],
+    queryKey: ['team-stats'],
     enabled,
     queryFn: async () => {
       const [membersRes, overviewRes, practiceRes] = await Promise.all([
-        fetch("/api/admin/team-activity/team-stats"),
-        fetch("/api/admin/team-activity/overview"),
-        fetch("/api/admin/team-activity/practice-stats"),
+        fetch('/api/admin/team-activity/team-stats'),
+        fetch('/api/admin/team-activity/overview'),
+        fetch('/api/admin/team-activity/practice-stats'),
       ]);
       const membersJson = membersRes.ok ? await membersRes.json() : {};
       const rawMembers: TeamMemberStats[] = Array.isArray(membersJson)
@@ -92,10 +85,7 @@ function useTeamStats(enabled: boolean) {
 
       // Merge practice stats by email
       const practiceJson = practiceRes.ok ? await practiceRes.json() : {};
-      const practiceMap = new Map<
-        string,
-        { completed: number; active: number; revenue: number }
-      >();
+      const practiceMap = new Map<string, { completed: number; active: number; revenue: number }>();
       if (Array.isArray(practiceJson?.practice_stats)) {
         for (const p of practiceJson.practice_stats) {
           practiceMap.set(p.email, {
@@ -117,8 +107,7 @@ function useTeamStats(enabled: boolean) {
       });
 
       const overviewJson = overviewRes.ok ? await overviewRes.json() : null;
-      const overview: TeamOverview | null =
-        overviewJson?.stats ?? overviewJson ?? null;
+      const overview: TeamOverview | null = overviewJson?.stats ?? overviewJson ?? null;
       return { members, overview };
     },
     staleTime: 3 * 60_000,
@@ -128,11 +117,11 @@ function useTeamStats(enabled: boolean) {
 
 // ── Status config for practices ───────────────────────────
 const STATUS_CONFIG = {
-  inquiry: { label: "Inquiry", dot: "#9ca3af" },
-  quotation: { label: "Quotation", dot: "#b89a40" },
-  in_progress: { label: "In Progress", dot: "#4a8ec4" },
-  documents: { label: "Documents", dot: "#b89a40" },
-  completed: { label: "Completed", dot: "#5cb88a" },
+  inquiry: { label: 'Inquiry', dot: '#9ca3af' },
+  quotation: { label: 'Quotation', dot: '#b89a40' },
+  in_progress: { label: 'In Progress', dot: '#4a8ec4' },
+  documents: { label: 'Documents', dot: '#b89a40' },
+  completed: { label: 'Completed', dot: '#5cb88a' },
 } as const;
 
 // ── Formatters ─────────────────────────────────────────────
@@ -168,9 +157,7 @@ function MetricItem({
       >
         {value}
       </span>
-      {sub && (
-        <span className="text-[9px] text-white/35 font-medium">{sub}</span>
-      )}
+      {sub && <span className="text-[9px] text-white/35 font-medium">{sub}</span>}
     </div>
   );
   if (href)
@@ -186,19 +173,15 @@ function MetricItem({
 function PipelineRow({ p }: { p: PraticaPreview }) {
   const cfg = STATUS_CONFIG[p.status];
   const isUrgent =
-    p.daysRemaining !== undefined &&
-    p.daysRemaining <= 3 &&
-    p.status !== "completed";
+    p.daysRemaining !== undefined && p.daysRemaining <= 3 && p.status !== 'completed';
   const isExpired =
-    p.daysRemaining !== undefined &&
-    p.daysRemaining <= 0 &&
-    p.status !== "completed";
+    p.daysRemaining !== undefined && p.daysRemaining <= 0 && p.status !== 'completed';
 
   return (
     <Link
       href={`/process/${p.id}`}
       className="group grid items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors"
-      style={{ gridTemplateColumns: "1fr auto auto" }}
+      style={{ gridTemplateColumns: '1fr auto auto' }}
     >
       {/* Left: client + title */}
       <div className="min-w-0">
@@ -224,14 +207,10 @@ function PipelineRow({ p }: { p: PraticaPreview }) {
       <span
         className="text-[9px] font-semibold tabular-nums whitespace-nowrap flex items-center gap-1"
         style={{
-          color: isExpired
-            ? "#c45c78"
-            : isUrgent
-              ? "#b89a40"
-              : "rgba(255,255,255,0.25)",
+          color: isExpired ? '#c45c78' : isUrgent ? '#b89a40' : 'rgba(255,255,255,0.25)',
         }}
       >
-        {p.status === "completed" ? (
+        {p.status === 'completed' ? (
           <CheckCircle2 size={10} className="opacity-60" />
         ) : isExpired ? (
           <>
@@ -252,11 +231,11 @@ function PipelineRow({ p }: { p: PraticaPreview }) {
 // ── Intel article row ──────────────────────────────────────
 function IntelRow({ article }: { article: IntelArticle }) {
   const color = getCategoryColor(article.category);
-  const catLabel = article.category.replace(/[-_]/g, " ").toUpperCase();
+  const catLabel = article.category.replace(/[-_]/g, ' ').toUpperCase();
   const href = `https://balizero.com/${article.category}/${article.slug}`;
-  const date = new Date(article.publishedAt).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
+  const date = new Date(article.publishedAt).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
   });
 
   return (
@@ -273,15 +252,10 @@ function IntelRow({ article }: { article: IntelArticle }) {
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <span
-            className="text-[8px] font-bold tracking-[.08em]"
-            style={{ color, opacity: 0.9 }}
-          >
+          <span className="text-[8px] font-bold tracking-[.08em]" style={{ color, opacity: 0.9 }}>
             {catLabel}
           </span>
-          <span className="ml-auto text-[8px] text-white/25 flex-shrink-0">
-            {date}
-          </span>
+          <span className="ml-auto text-[8px] text-white/25 flex-shrink-0">{date}</span>
         </div>
         <p className="text-[10px] text-white/60 leading-snug line-clamp-2 group-hover:text-white/80 transition-colors">
           {article.title}
@@ -292,24 +266,12 @@ function IntelRow({ article }: { article: IntelArticle }) {
 }
 
 // ── Section header ─────────────────────────────────────────
-function SectionHeader({
-  label,
-  href,
-  count,
-}: {
-  label: string;
-  href?: string;
-  count?: number;
-}) {
+function SectionHeader({ label, href, count }: { label: string; href?: string; count?: number }) {
   return (
     <div className="flex items-center justify-between px-3 pb-1">
-      <span className="text-[9px] font-bold text-white/25 tracking-[.12em] uppercase">
-        {label}
-      </span>
+      <span className="text-[9px] font-bold text-white/25 tracking-[.12em] uppercase">{label}</span>
       <div className="flex items-center gap-2">
-        {count !== undefined && (
-          <span className="text-[9px] text-white/20">{count}</span>
-        )}
+        {count !== undefined && <span className="text-[9px] text-white/20">{count}</span>}
         {href && (
           <Link
             href={href}
@@ -358,8 +320,8 @@ export default function DashboardPage() {
   const role = normalizeDashboardRole(user?.role, user?.is_admin ?? false);
 
   React.useEffect(() => {
-    const unsubscribe = realtime.subscribe("dashboard_update", () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    const unsubscribe = realtime.subscribe('dashboard_update', () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     });
     return unsubscribe;
   }, [realtime, queryClient]);
@@ -367,9 +329,9 @@ export default function DashboardPage() {
   React.useEffect(() => {
     if (user?.email && !isLoading) {
       realtime.connect(user.email, user.email);
-      logger.info("Dashboard loaded", {
-        component: "DashboardPage",
-        action: "mount",
+      logger.info('Dashboard loaded', {
+        component: 'DashboardPage',
+        action: 'mount',
         user: user.email,
       });
     }
@@ -381,36 +343,36 @@ export default function DashboardPage() {
       (p): LiveActivityEvent => ({
         id: String(p.id),
         type:
-          p.status === "completed"
-            ? "ok"
+          p.status === 'completed'
+            ? 'ok'
             : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? "critical"
-              : p.status === "documents"
-                ? "warning"
-                : "info",
+              ? 'critical'
+              : p.status === 'documents'
+                ? 'warning'
+                : 'info',
         icon:
-          p.status === "completed"
-            ? "✅"
+          p.status === 'completed'
+            ? '✅'
             : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? "🚨"
-              : p.status === "documents"
-                ? "📄"
-                : "📁",
+              ? '🚨'
+              : p.status === 'documents'
+                ? '📄'
+                : '📁',
         text: `${p.client} · ${p.title || p.status}`,
         tag:
-          p.status === "completed"
-            ? "COMPLETED"
+          p.status === 'completed'
+            ? 'COMPLETED'
             : p.daysRemaining !== undefined && p.daysRemaining < 7
-              ? "URGENT"
-              : p.status === "documents"
-                ? "DOCUMENTS"
+              ? 'URGENT'
+              : p.status === 'documents'
+                ? 'DOCUMENTS'
                 : undefined,
-        timestamp: new Date().toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
+        timestamp: new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
         }),
         userId: user?.email,
-      }),
+      })
     );
   }, [practices, user?.email]);
 
@@ -434,9 +396,7 @@ export default function DashboardPage() {
     return (
       <div className="p-4 rounded-xl border border-[#c45c78]/25 bg-[rgba(196,92,120,0.06)]">
         <h3 className="font-semibold text-[#c45c78]">Dashboard Error</h3>
-        <p className="text-sm text-[#c45c78]/70 mt-1">
-          Failed to load dashboard data.
-        </p>
+        <p className="text-sm text-[#c45c78]/70 mt-1">Failed to load dashboard data.</p>
         <button
           onClick={() => refetch()}
           className="mt-3 px-4 py-2 bg-[#c45c78] text-white rounded-lg hover:opacity-90 transition-opacity inline-flex items-center gap-2 text-sm"
@@ -452,69 +412,63 @@ export default function DashboardPage() {
   const statItems = isZero
     ? [
         {
-          label: "Revenue · MTD",
-          value: revenue?.total_revenue
-            ? formatRevenue(revenue.total_revenue)
-            : "—",
-          sub: revenue?.paid_revenue
-            ? `${formatRevenue(revenue.paid_revenue)} incassato`
-            : "—",
-          accent: "#9880d8",
+          label: 'Revenue · MTD',
+          value: revenue?.total_revenue ? formatRevenue(revenue.total_revenue) : '—',
+          sub: revenue?.paid_revenue ? `${formatRevenue(revenue.paid_revenue)} incassato` : '—',
+          accent: '#9880d8',
         },
         {
-          label: "Outstanding",
-          value: revenue?.outstanding_revenue
-            ? formatRevenue(revenue.outstanding_revenue)
-            : "—",
-          sub: "da incassare",
-          accent: "#d4845a",
+          label: 'Outstanding',
+          value: revenue?.outstanding_revenue ? formatRevenue(revenue.outstanding_revenue) : '—',
+          sub: 'da incassare',
+          accent: '#d4845a',
         },
         {
-          label: "Clienti",
-          value: totalClients != null ? totalClients.toLocaleString() : "—",
-          sub: "registrati",
-          accent: "#4a8ec4",
-          href: "/clients",
+          label: 'Clienti',
+          value: totalClients != null ? totalClients.toLocaleString('en-US') : '—',
+          sub: 'registrati',
+          accent: '#4a8ec4',
+          href: '/clients',
         },
         {
-          label: "Processi",
-          value: totalPractices != null ? totalPractices : "—",
+          label: 'Processi',
+          value: totalPractices != null ? totalPractices : '—',
           sub: `${stats.activeCases} attivi · ${stats.criticalDeadlines} critici`,
-          accent: "#5cb88a",
-          href: "/process",
+          accent: '#5cb88a',
+          href: '/process',
         },
         {
-          label: "Fatture",
-          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "✓",
-          sub: stats.pendingInvoices > 0 ? "in attesa" : "tutte pagate",
-          accent: "#b89a40",
+          label: 'Fatture',
+          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : '✓',
+          sub: stats.pendingInvoices > 0 ? 'in attesa' : 'tutte pagate',
+          accent: '#b89a40',
         },
       ]
     : [
         {
-          label: "My Cases",
+          label: 'My Cases',
           value: stats.activeCases,
-          sub: "assigned",
-          accent: "#5cb88a",
-          href: "/process",
+          sub: 'assigned',
+          accent: '#5cb88a',
+          href: '/process',
         },
         {
-          label: "Stalled",
+          label: 'Stalled',
           value: stats.criticalDeadlines,
-          sub: ">14 days",
-          accent: "#c45c78",
+          sub: '>14 days',
+          accent: '#c45c78',
         },
         {
-          label: "Invoices",
-          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "—",
-          sub: "pending",
-          accent: "#b89a40",
+          label: 'Invoices',
+          value: stats.pendingInvoices > 0 ? stats.pendingInvoices : '—',
+          sub: 'pending',
+          accent: '#b89a40',
         },
         {
-          label: "Unread",
+          label: 'Unread',
           value: stats.whatsappUnread + stats.emailUnread,
-          sub: "messages",
-          accent: "#4a8ec4",
+          sub: 'messages',
+          accent: '#4a8ec4',
         },
       ];
 
@@ -532,8 +486,8 @@ export default function DashboardPage() {
           <div
             className="rounded-xl px-6 py-4 flex items-stretch shadow-2xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
             style={{
-              background: "rgba(35, 35, 40, 0.65)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: 'rgba(35, 35, 40, 0.65)',
+              border: '1px solid rgba(255,255,255,0.08)',
             }}
           >
             {statItems.map((s, i) => (
@@ -544,7 +498,7 @@ export default function DashboardPage() {
                 {i < statItems.length - 1 && (
                   <div
                     className="w-px flex-shrink-0 mx-6 self-stretch"
-                    style={{ background: "rgba(255,255,255,0.10)" }}
+                    style={{ background: 'rgba(255,255,255,0.10)' }}
                   />
                 )}
               </React.Fragment>
@@ -557,9 +511,7 @@ export default function DashboardPage() {
               members={
                 isZero
                   ? (teamData?.members ?? [])
-                  : (teamData?.members ?? []).filter(
-                      (m) => m.email === user?.email,
-                    )
+                  : (teamData?.members ?? []).filter((m) => m.email === user?.email)
               }
               overview={isZero ? (teamData?.overview ?? null) : null}
               isLoading={teamLoading || !teamEnabled}
@@ -567,16 +519,13 @@ export default function DashboardPage() {
           )}
 
           {/* ROW 4: Pipeline + Intel + LiveActivity/RoleWidget */}
-          <div
-            className="grid gap-2"
-            style={{ gridTemplateColumns: "1.5fr 1fr 1fr" }}
-          >
+          <div className="grid gap-2" style={{ gridTemplateColumns: '1.5fr 1fr 1fr' }}>
             {/* Pipeline panel */}
             <div
               className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
               style={{
-                background: "rgba(35, 35, 40, 0.65)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: 'rgba(35, 35, 40, 0.65)',
+                border: '1px solid rgba(255,255,255,0.08)',
                 minHeight: 320,
               }}
             >
@@ -584,9 +533,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
                 <div className="flex items-center gap-2">
                   <FileText size={12} className="text-white/30" />
-                  <span className="text-[11px] font-semibold text-white/60">
-                    Process Pipeline
-                  </span>
+                  <span className="text-[11px] font-semibold text-white/60">Process Pipeline</span>
                 </div>
                 <Link
                   href="/process"
@@ -599,7 +546,7 @@ export default function DashboardPage() {
               {/* Column headers */}
               <div
                 className="grid px-3 py-1.5 border-b border-white/[0.04]"
-                style={{ gridTemplateColumns: "1fr auto auto" }}
+                style={{ gridTemplateColumns: '1fr auto auto' }}
               >
                 <span className="text-[8px] font-semibold text-white/20 uppercase tracking-widest">
                   Client
@@ -624,14 +571,12 @@ export default function DashboardPage() {
                       key={p.id}
                       p={{
                         id: p.id,
-                        title: p.title || "Unknown",
-                        client: p.client || "Unknown Client",
+                        title: p.title || 'Unknown',
+                        client: p.client || 'Unknown Client',
                         status: p.status,
                         daysRemaining: p.daysRemaining,
                         completedAt:
-                          p.status === "completed"
-                            ? new Date().toLocaleDateString()
-                            : undefined,
+                          p.status === 'completed' ? new Date().toLocaleDateString() : undefined,
                       }}
                     />
                   ))
@@ -643,8 +588,8 @@ export default function DashboardPage() {
             <div
               className="rounded-xl overflow-hidden flex flex-col shadow-xl backdrop-blur-xl transition-all duration-300 hover:bg-[rgba(35,35,40,0.8)]"
               style={{
-                background: "rgba(35, 35, 40, 0.65)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: 'rgba(35, 35, 40, 0.65)',
+                border: '1px solid rgba(255,255,255,0.08)',
                 minHeight: 320,
               }}
             >
@@ -652,9 +597,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]">
                 <div className="flex items-center gap-2">
                   <TrendingUp size={12} className="text-white/30" />
-                  <span className="text-[11px] font-semibold text-white/60">
-                    Intelligence Feed
-                  </span>
+                  <span className="text-[11px] font-semibold text-white/60">Intelligence Feed</span>
                 </div>
                 <Link
                   href="/intelligence"
@@ -669,19 +612,15 @@ export default function DashboardPage() {
                 {intelLoading && (
                   <div className="flex flex-col gap-1 p-3">
                     {[1, 2, 3, 4, 5].map((i) => (
-                      <div
-                        key={i}
-                        className="h-10 rounded-lg bg-white/[0.03] animate-pulse"
-                      />
+                      <div key={i} className="h-10 rounded-lg bg-white/[0.03] animate-pulse" />
                     ))}
                   </div>
                 )}
-                {!intelLoading &&
-                  (!intelArticles || intelArticles.length === 0) && (
-                    <div className="flex items-center justify-center py-10 text-[11px] text-white/20">
-                      No recent articles
-                    </div>
-                  )}
+                {!intelLoading && (!intelArticles || intelArticles.length === 0) && (
+                  <div className="flex items-center justify-center py-10 text-[11px] text-white/20">
+                    No recent articles
+                  </div>
+                )}
                 {!intelLoading &&
                   intelArticles &&
                   intelArticles.length > 0 &&
@@ -697,7 +636,7 @@ export default function DashboardPage() {
             {/* Right column: LiveActivityFeed + RoleWidget stacked */}
             <div className="flex flex-col gap-2">
               <LiveActivityFeed events={liveEvents} isLoading={isLoading} />
-              <RoleWidget role={role} userId={user?.email ?? ""} />
+              <RoleWidget role={role} userId={user?.email ?? ''} />
             </div>
           </div>
         </div>
