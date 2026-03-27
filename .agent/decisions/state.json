@@ -6,15 +6,6 @@
   "breaker_active_until": null,
   "runs": [
     {
-      "run_id": "3e5dd483",
-      "timestamp": "2026-03-26T22:24:05.256177+00:00",
-      "ruff_code": "ANN204",
-      "target_file": "backend/app/modules/knowledge/service.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
       "run_id": "ef41832d",
       "timestamp": "2026-03-26T22:27:01.697378+00:00",
       "ruff_code": "ANN204",
@@ -451,6 +442,15 @@
       "timestamp": "2026-03-27T08:04:38.317075+00:00",
       "ruff_code": "ANN204",
       "target_file": "backend/services/crm/collaborator_service.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "47438b94",
+      "timestamp": "2026-03-27T08:07:50.379285+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/services/crm/completed_process_service.py",
       "outcome": "success",
       "cost_usd": 0.0,
       "error": ""
