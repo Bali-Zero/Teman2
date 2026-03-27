@@ -297,7 +297,11 @@ export default function BackupExportPage() {
                 ) : (
                   <AlertTriangle className="w-4 h-4 text-red-400" />
                 )}
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => warning('Not yet available', 'Backup download will be enabled in a future update.')}
+                >
                   <Download className="w-4 h-4" />
                 </Button>
               </div>
