@@ -406,24 +406,27 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
         invoice_info: dict,
         triggered_by: str,
     ) -> None:
-        """Update practice with invoice information."""
+        """Update practice with invoice information (dual-write: JSONB + invoices table)."""
         async with self.db_pool.acquire() as conn:
-            # Get existing documents
+            # ── 1. Fetch practice for amount + client_id ──────────────────────
+            practice_row = await conn.fetchrow(
+                "SELECT client_id, quoted_price FROM practices WHERE id = $1",
+                practice_id,
+            )
+
+            # ── 2. JSONB write (backward compat — kept until Sprint 3 cleanup) ─
             existing_docs = await conn.fetchval(
                 "SELECT documents FROM practices WHERE id = $1",
                 practice_id,
             )
 
-            # Merge with new invoice info
-            documents = {}
+            documents: dict = {}
             if existing_docs:
                 if isinstance(existing_docs, str):
                     try:
-                        # Handle double-encoded JSON
                         docs_str = existing_docs.strip()
                         if docs_str:
                             parsed = json.loads(docs_str)
-                            # Handle case where JSON is double-encoded (string inside string)
                             if isinstance(parsed, str):
                                 parsed = json.loads(parsed)
                             documents = parsed if isinstance(parsed, dict) else {}
@@ -434,27 +437,58 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
 
             documents["invoice"] = invoice_info
 
-            # Update practice
             await conn.execute(
                 """
                 UPDATE practices
-                SET
-                    documents = $1,
-                    payment_status = 'pending',
-                    updated_at = NOW()
+                SET documents = $1, payment_status = 'pending', updated_at = NOW()
                 WHERE id = $2
                 """,
                 json.dumps(documents),
                 practice_id,
             )
 
-            # Log to activity_log
+            # ── 3. invoices table write (primary going forward) ───────────────
+            if practice_row:
+                generated_at_raw = invoice_info.get("invoice_generated_at")
+                generated_at = None
+                if generated_at_raw:
+                    try:
+                        generated_at = datetime.fromisoformat(generated_at_raw)
+                    except ValueError:
+                        pass
+
+                await conn.execute(
+                    """
+                    INSERT INTO invoices (
+                        practice_id, client_id, invoice_number, invoice_source,
+                        amount_idr, drive_file_id, drive_web_link,
+                        email_sent_to_client, accounting_notified, generated_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    ON CONFLICT (invoice_number) DO UPDATE SET
+                        drive_file_id        = EXCLUDED.drive_file_id,
+                        drive_web_link       = EXCLUDED.drive_web_link,
+                        email_sent_to_client = EXCLUDED.email_sent_to_client,
+                        accounting_notified  = EXCLUDED.accounting_notified,
+                        updated_at           = NOW()
+                    """,
+                    practice_id,
+                    practice_row["client_id"],
+                    invoice_info.get("invoice_number") or None,
+                    invoice_info.get("source", "local_pdf"),
+                    float(practice_row["quoted_price"] or 0),
+                    invoice_info.get("invoice_drive_id") or None,
+                    invoice_info.get("invoice_drive_link") or None,
+                    bool(invoice_info.get("email_sent", False)),
+                    bool(invoice_info.get("accounting_notified", False)),
+                    generated_at,
+                )
+
+            # ── 4. Activity log ───────────────────────────────────────────────
             await conn.execute(
                 """
                 INSERT INTO activity_log (
                     entity_type, entity_id, action, performed_by, description
-                )
-                VALUES ($1, $2, $3, $4, $5)
+                ) VALUES ($1, $2, $3, $4, $5)
                 """,
                 "practice",
                 practice_id,
