@@ -16,7 +16,7 @@ SECURITY: All endpoints require authentication (added 2025-12-03)
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -741,5 +741,5 @@ async def get_analytics_summary(current_user: dict = Depends(get_current_user)) 
                 "features": ["government_sources", "automatic_updates"],
             },
         },
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
     }
