@@ -5,6 +5,7 @@ import { OrganismView } from "./OrganismView";
 import { VitalSigns } from "./VitalSigns";
 import { MetabolismBar } from "./MetabolismBar";
 import { PulseTimeline } from "./PulseTimeline";
+import { AlertsFeed } from "./AlertsFeed";
 
 export function CellDashboard() {
   const { status, loading, error } = useCellStatus(10000);
@@ -99,6 +100,10 @@ export function CellDashboard() {
       </div>
       <div style={{ marginBottom: 16 }}>
         <PulseTimeline pulses={status?.recent_pulses || []} />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <AlertsFeed alerts={status?.alerts || []} />
       </div>
 
       <div

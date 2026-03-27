@@ -22,7 +22,8 @@ async def get_cell_status(
     async with db_pool.acquire() as conn:
         last = await conn.fetchrow("SELECT * FROM cell_pulse_log ORDER BY created_at DESC LIMIT 1")
         recent = await conn.fetch(
-            """SELECT pulse_number, health_status, response_time_ms, created_at
+            """SELECT pulse_number, health_status, response_time_ms,
+                      action_taken, error_message, created_at
                FROM cell_pulse_log ORDER BY created_at DESC LIMIT 50"""
         )
         cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
@@ -55,3 +56,21 @@ async def get_cell_status(
             "total_pulses": total,
         },
     }
+
+
+@router.get("/alerts")
+async def get_cell_alerts(
+    limit: int = 20,
+    db_pool=Depends(get_database_pool),
+    user=Depends(get_current_user),
+) -> dict[str, Any]:
+    """Get recent CELL alerts (silent + human + read_logs) for dashboard."""
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT id, level, action, message, health_status, pulse_number, created_at
+               FROM cell_alerts
+               ORDER BY created_at DESC
+               LIMIT $1""",
+            limit,
+        )
+    return {"alerts": [dict(r) for r in rows]}
