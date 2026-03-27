@@ -90,6 +90,10 @@ def release_lock(fd: int) -> None:
             os.close(fd)
         except OSError:
             pass
+        try:
+            LOCK_FILE.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 # --- Atomic File Operations ---
