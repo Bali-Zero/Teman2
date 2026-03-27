@@ -149,7 +149,7 @@ Tim Bali Zero
 class BirthdayNotifierService:
     """Service to send personalized birthday emails to clients."""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
         self.email_service = ZohoEmailService(db_pool)
 
