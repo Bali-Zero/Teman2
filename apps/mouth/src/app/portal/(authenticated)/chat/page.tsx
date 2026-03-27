@@ -330,6 +330,7 @@ export default function ChatPage() {
             disabled={!newMessage.trim() || isSending}
             size="icon"
             className="h-12 w-12 rounded-xl"
+            aria-label={isSending ? 'Sending message' : 'Send message'}
           >
             {isSending ? (
               <Loader2 className="w-5 h-5 animate-spin" />
