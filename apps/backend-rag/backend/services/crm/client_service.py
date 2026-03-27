@@ -24,7 +24,7 @@ class ClientService:
     garantendo validazione, gestione della cache e mappatura sicura degli errori.
     """
 
-    def __init__(self, repository: ClientRepository):
+    def __init__(self, repository: ClientRepository) -> None:
         self.repository = repository
 
     async def create_client(
