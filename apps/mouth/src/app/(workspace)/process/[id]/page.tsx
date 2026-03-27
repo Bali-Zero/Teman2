@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
+import { toast as sonnerToast } from 'sonner';
 import { api } from '@/lib/api';
 import type { Practice } from '@/lib/api/crm/crm.types';
 import { casesMetrics } from '@/lib/metrics/cases-metrics';
@@ -685,11 +686,7 @@ export default function CaseDetailPage() {
                   color: '#818cf8',
                   border: '1px solid rgba(99,102,241,0.20)',
                 }}
-                title={
-                  practice.actual_price
-                    ? 'Actual price'
-                    : 'Quoted price (not yet invoiced)'
-                }
+                title={practice.actual_price ? 'Actual price' : 'Quoted price (not yet invoiced)'}
               >
                 <DollarSign className="w-3.5 h-3.5" />
                 {formatCurrency(practice.actual_price ?? practice.quoted_price)}
@@ -729,7 +726,10 @@ export default function CaseDetailPage() {
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[var(--bz-text-1)] hover:bg-[var(--bz-card)] transition-colors"
                       onClick={() => {
                         const phone = practice.client_phone?.replace(/\D/g, '');
-                        window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`, '_blank');
+                        window.open(
+                          `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
+                          '_blank'
+                        );
                         setShowMoreMenu(false);
                       }}
                     >
@@ -765,12 +765,14 @@ export default function CaseDetailPage() {
                   <button
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
                     onClick={() => {
-                      if (confirm('Delete this process? This cannot be undone.')) {
-                        setShowMoreMenu(false);
-                        toast.error('Delete not yet implemented');
-                      } else {
-                        setShowMoreMenu(false);
-                      }
+                      setShowMoreMenu(false);
+                      sonnerToast('Delete this process? This cannot be undone.', {
+                        action: {
+                          label: 'Delete',
+                          onClick: () => toast.error('Delete not yet implemented'),
+                        },
+                        cancel: { label: 'Cancel', onClick: () => {} },
+                      });
                     }}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -1814,9 +1816,7 @@ export default function CaseDetailPage() {
                 <input
                   type="date"
                   value={editForm.start_date}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, start_date: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, start_date: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg focus:outline-none"
                   style={{
                     border: '1px solid var(--bz-border)',

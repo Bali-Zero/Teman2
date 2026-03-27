@@ -5,6 +5,7 @@ import { Loader2, Mail, CheckCircle, XCircle, Clock, RefreshCw, Pause, Search } 
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { useToast } from '@/components/ui/toast';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,18 +89,24 @@ export default function NotificationsDashboardPage() {
     }
   };
 
-  const handlePauseClient = async (clientId: number) => {
-    if (!confirm('Pause notifications for this client for 24 hours?')) return;
-
-    try {
-      await api.crm.request(`/api/admin/notifications/pause-client?client_id=${clientId}`, {
-        method: 'POST',
-      });
-      success('Client paused', 'Notifications paused for 24 hours');
-      loadDashboard();
-    } catch (err) {
-      error('Failed to pause client', 'Please try again');
-    }
+  const handlePauseClient = (clientId: number) => {
+    toast('Pause notifications for this client for 24 hours?', {
+      action: {
+        label: 'Pause',
+        onClick: async () => {
+          try {
+            await api.crm.request(`/api/admin/notifications/pause-client?client_id=${clientId}`, {
+              method: 'POST',
+            });
+            success('Client paused', 'Notifications paused for 24 hours');
+            loadDashboard();
+          } catch (err) {
+            error('Failed to pause client', 'Please try again');
+          }
+        },
+      },
+      cancel: { label: 'Cancel', onClick: () => {} },
+    });
   };
 
   const filteredAlerts = alerts.filter((alert) => {

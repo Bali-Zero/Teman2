@@ -207,13 +207,8 @@ export function VisaCard({
     }
   };
 
-  const handleDelete = async () => {
+  const doDelete = async () => {
     if (!latestVisa) return;
-
-    if (!confirm('Delete visa document? This will mark it as deleted.')) {
-      return;
-    }
-
     setIsDeleting(true);
     try {
       await api.request(`/api/crm/documents/${latestVisa.id}`, {
@@ -226,6 +221,14 @@ export function VisaCard({
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleDelete = () => {
+    if (!latestVisa) return;
+    toast('Delete visa document? This will mark it as deleted.', {
+      action: { label: 'Delete', onClick: () => void doDelete() },
+      cancel: { label: 'Cancel', onClick: () => {} },
+    });
   };
 
   return (

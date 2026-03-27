@@ -217,13 +217,8 @@ export function PassportCard({
     }
   };
 
-  const handleDelete = async () => {
+  const doDelete = async () => {
     if (!passportDoc) return;
-
-    if (!confirm('Delete passport document? This will mark it as deleted.')) {
-      return;
-    }
-
     setIsDeleting(true);
     try {
       await api.request(`/api/crm/documents/${passportDoc.id}`, {
@@ -236,6 +231,14 @@ export function PassportCard({
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleDelete = () => {
+    if (!passportDoc) return;
+    toast('Delete passport document? This will mark it as deleted.', {
+      action: { label: 'Delete', onClick: () => void doDelete() },
+      cancel: { label: 'Cancel', onClick: () => {} },
+    });
   };
 
   return (
