@@ -83,11 +83,83 @@ def load_registry() -> dict:
         return {}
 
 
-def collect_state_files() -> dict:
-    """Read local + Pro state files. Returns {job_id: state_dict}."""
+def _collect_openclaw_states(registry: dict) -> dict:
+    """
+    Bridge OpenClaw cron jobs into the Sentinel state format.
+    Reads ~/.openclaw/cron/jobs.json and maps lastRunAtMs + consecutiveErrors
+    into the {ts, status, last_error} shape that process_job() expects.
+    Only synthesises state for jobs in the registry with type=openclaw.
+    """
+    oc_path = Path.home() / ".openclaw" / "cron" / "jobs.json"
+    try:
+        oc_data = json.loads(oc_path.read_text())
+        oc_jobs = oc_data.get("jobs", [])
+    except Exception:
+        return {}
+
+    # Build lookup by OpenClaw job id AND by name (dashes)
+    oc_by_id: dict = {}
+    oc_by_name: dict = {}
+    for oj in oc_jobs:
+        if oj.get("id"):
+            oc_by_id[oj["id"]] = oj
+        if oj.get("name"):
+            oc_by_name[oj["name"]] = oj
+
+    states = {}
+    for job_id, reg in registry.items():
+        if reg.get("type") != "openclaw":
+            continue
+
+        # Find the matching OpenClaw job
+        oc_id = reg.get("openclaw_id", "")
+        oj = oc_by_id.get(oc_id)
+        if not oj:
+            # Fallback: match by name (registry uses underscores, OpenClaw uses dashes)
+            oj = oc_by_name.get(job_id.replace("_", "-"))
+        if not oj:
+            continue
+
+        state = oj.get("state", {})
+        last_run_ms = state.get("lastRunAtMs", 0) or 0
+        last_run_ts = last_run_ms / 1000  # convert to seconds
+        consecutive_errors = state.get("consecutiveErrors", 0)
+        last_status = state.get("lastRunStatus") or state.get("lastStatus") or "unknown"
+
+        # Map to Sentinel state format
+        if consecutive_errors >= 1:
+            sentinel_status = "failed"
+            error_msg = f"OpenClaw consecutiveErrors={consecutive_errors}, lastStatus={last_status}"
+        elif last_run_ts == 0:
+            # Never run — treat as unknown; staleness check will catch it if overdue
+            sentinel_status = "unknown"
+            error_msg = ""
+        else:
+            sentinel_status = "ok" if last_status == "ok" else "failed"
+            error_msg = f"OpenClaw lastStatus={last_status}" if last_status != "ok" else ""
+
+        states[job_id] = {
+            "job": job_id,
+            "ts": last_run_ts,
+            "status": sentinel_status,
+            "last_error": error_msg,
+            "retry_attempt": 0,
+            "_source": "openclaw_bridge",
+        }
+
+    return states
+
+
+def collect_state_files(registry: Optional[dict] = None) -> dict:
+    """Read local + Pro state files + OpenClaw bridge. Returns {job_id: state_dict}."""
+    if registry is None:
+        registry = load_registry()
     states = {}
 
-    # Local state files
+    # OpenClaw bridge — synthesise state from ~/.openclaw/cron/jobs.json
+    states.update(_collect_openclaw_states(registry))
+
+    # Local state files (override bridge if a .last.json exists)
     for path in glob.glob(os.path.join(STATE_DIR, "*.last.json")):
         try:
             job_id = os.path.basename(path).replace(".last.json", "")
@@ -473,7 +545,7 @@ def run_sentinel() -> None:
     logger.info("=== Sentinel run start ===")
     start = time.time()
     registry = load_registry()
-    states = collect_state_files()
+    states = collect_state_files(registry)
     check_dead_man_switch()
     _force_halfopen_stale_circuits()  # Unblock circuits stuck OPEN > 2h
 

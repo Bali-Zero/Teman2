@@ -24,6 +24,8 @@
         <string>AIzaSyDYeEjpYWCD2KD08Vky3IHJ8gOBrGLaHQo</string>
         <key>REDIS_URL</key>
         <string>redis://localhost:6379/0</string>
+        <key>FLY_API_TOKEN</key>
+        <string>FlyV1 fm2_lJPECAAAAAAACraXxBCOjVeoQe4H7QdmSFKYcFmCwrVodHRwczovL2FwaS5mbHkuaW8vdjGWAJLOABQ62h8Lk7lodHRwczovL2FwaS5mbHkuaW8vYWFhL3YxxDx10ts/GEgqdC2eni5hSQU3MQuWM70y+cspVfMDbaCl/eW0LKByeG8D1V04xZOYtO/kBGDFzO6Bh+9Jf4PETsPQVoa1zQrVQVnOqOH0T8vSFMfQ//TpE9Sq4vOCbf0Tl4Q9mssOFr79XvLFWjxHNLiPc9GMv5wEov6/7QZLxNkXhhKFz+utOaXSlXWDKA2SlAORgc4AswZNHwWRgqdidWlsZGVyH6J3Zx8BxCDzt3tJvxTxL03rzAUwiny+tcPq9uWZbxGXewHbGlNlCA==,fm2_lJPETsPQVoa1zQrVQVnOqOH0T8vSFMfQ//TpE9Sq4vOCbf0Tl4Q9mssOFr79XvLFWjxHNLiPc9GMv5wEov6/7QZLxNkXhhKFz+utOaXSlXWDKMQQ3gHGBimtPDtrDBFpbVIuisO5aHR0cHM6Ly9hcGkuZmx5LmlvL2FhYS92MZgEks5pxczwzo9d0w4XzgATbroKkc4AE266DMQQf2A3v2mthFmjbGjfsSzjOcQgiwAPhg6hcrrJeW+mjjAmXpr6Q1xqJpOLFoOX7zJhs6o=</string>
     </dict>
     <key>RunAtLoad</key>
     <true/>
