@@ -32,7 +32,7 @@ class WeeklyEmailReporter:
     Sends weekly email with team email activity at 4:00 PM Bali time on Sundays.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.pool = db_pool
         self.task: asyncio.Task | None = None
         self.running = False
