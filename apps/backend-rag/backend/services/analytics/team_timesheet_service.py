@@ -33,7 +33,7 @@ class TeamTimesheetService:
     - Admin-only dashboard data
     """
 
-    def __init__(self, db_pool: "asyncpg.Pool"):
+    def __init__(self, db_pool: "asyncpg.Pool") -> None:
         self.pool = db_pool
         self.auto_logout_task: asyncio.Task | None = None
         self.running = False
