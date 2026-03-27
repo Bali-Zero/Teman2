@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Building, Save, ArrowLeft } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Building, Save, ArrowLeft, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
@@ -75,7 +75,8 @@ export default function ProfileSettingsPage() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6 flex items-center gap-3">
+          <Loader2 className="w-5 h-5 animate-spin text-[var(--foreground-muted)]" />
           <p className="text-sm text-[var(--foreground-muted)]">Loading profile...</p>
         </div>
       ) : (
