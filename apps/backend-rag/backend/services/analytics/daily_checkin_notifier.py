@@ -31,7 +31,7 @@ class DailyCheckinNotifier:
     Sends daily email with team check-in status at 10:00 Bali time.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.pool = db_pool
         self.task: asyncio.Task | None = None
         self.running = False
