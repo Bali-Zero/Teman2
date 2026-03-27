@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * PortalErrorBoundary Component
@@ -7,9 +7,10 @@
  * Più user-friendly rispetto a quello del workspace
  */
 
-import React from "react";
-import { AlertTriangle, RefreshCw, Home, MessageCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React from 'react';
+import { logger } from '@/lib/logger';
+import { AlertTriangle, RefreshCw, Home, MessageCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -17,7 +18,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 
 interface Props {
   children: React.ReactNode;
@@ -43,15 +44,11 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error(
-      `Portal Error in ${this.props.section || "unknown"}:`,
-      error,
-      errorInfo,
-    );
+    logger.error(`Portal Error in ${this.props.section || 'unknown'}`, { note: errorInfo.componentStack ?? undefined }, error);
     this.setState({ errorInfo });
 
     // Send to error tracking
-    if (typeof window !== "undefined" && (window as any).Sentry) {
+    if (typeof window !== 'undefined' && (window as any).Sentry) {
       (window as any).Sentry.captureException(error, {
         extra: {
           componentStack: errorInfo.componentStack,
@@ -72,11 +69,11 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
   };
 
   handleGoHome = () => {
-    window.location.href = "/portal";
+    window.location.href = '/portal';
   };
 
   handleContactSupport = () => {
-    window.location.href = "/portal/messages?new=true";
+    window.location.href = '/portal/messages?new=true';
   };
 
   render() {
@@ -99,11 +96,9 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {process.env.NODE_ENV === "development" && this.state.error && (
+              {process.env.NODE_ENV === 'development' && this.state.error && (
                 <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-md text-sm">
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
-                    Technical details:
-                  </p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">Technical details:</p>
                   <p className="text-gray-600 dark:text-gray-400 font-mono text-xs mt-1">
                     {this.state.error.message}
                   </p>
@@ -122,11 +117,7 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
 
             <CardFooter className="flex flex-col gap-2">
               <div className="flex gap-2 w-full">
-                <Button
-                  variant="outline"
-                  onClick={this.handleGoHome}
-                  className="flex-1 gap-2"
-                >
+                <Button variant="outline" onClick={this.handleGoHome} className="flex-1 gap-2">
                   <Home className="w-4 h-4" />
                   Dashboard
                 </Button>
@@ -158,7 +149,7 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
  */
 export function withPortalErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
-  section?: string,
+  section?: string
 ) {
   return function WithPortalErrorBoundaryWrapper(props: P) {
     return (

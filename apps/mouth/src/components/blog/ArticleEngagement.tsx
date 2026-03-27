@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import * as React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart,
   MessageCircle,
@@ -15,9 +15,10 @@ import {
   ChevronDown,
   ChevronUp,
   User,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
+import { logger } from '@/lib/logger';
 
 // Types
 interface Comment {
@@ -54,17 +55,14 @@ function LikeButton({
       onClick={onLike}
       whileTap={{ scale: 0.9 }}
       className={cn(
-        "flex items-center gap-2 px-4 py-2 rounded-full transition-all",
+        'flex items-center gap-2 px-4 py-2 rounded-full transition-all',
         isLiked
-          ? "bg-red-500/20 text-red-400 border border-red-500/30"
-          : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-white/10",
+          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-white/10'
       )}
     >
-      <motion.div
-        animate={isLiked ? { scale: [1, 1.3, 1] } : {}}
-        transition={{ duration: 0.3 }}
-      >
-        <Heart className={cn("w-5 h-5", isLiked && "fill-current")} />
+      <motion.div animate={isLiked ? { scale: [1, 1.3, 1] } : {}} transition={{ duration: 0.3 }}>
+        <Heart className={cn('w-5 h-5', isLiked && 'fill-current')} />
       </motion.div>
       <span className="font-medium">{likes}</span>
     </motion.button>
@@ -87,59 +85,59 @@ function ShareMenu({
 
   const shareOptions = [
     {
-      name: "Twitter / X",
+      name: 'Twitter / X',
       icon: Twitter,
-      color: "hover:bg-sky-500/20 hover:text-sky-400",
+      color: 'hover:bg-sky-500/20 hover:text-sky-400',
       action: () => {
         window.open(
           `https://twitter.com/intent/tweet?text=${encodeURIComponent(articleTitle)}&url=${encodeURIComponent(articleUrl)}`,
-          "_blank",
+          '_blank'
         );
       },
     },
     {
-      name: "LinkedIn",
+      name: 'LinkedIn',
       icon: Linkedin,
-      color: "hover:bg-blue-500/20 hover:text-blue-400",
+      color: 'hover:bg-blue-500/20 hover:text-blue-400',
       action: () => {
         window.open(
           `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(articleUrl)}`,
-          "_blank",
+          '_blank'
         );
       },
     },
     {
-      name: "Facebook",
+      name: 'Facebook',
       icon: Facebook,
-      color: "hover:bg-blue-600/20 hover:text-blue-500",
+      color: 'hover:bg-blue-600/20 hover:text-blue-500',
       action: () => {
         window.open(
           `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleUrl)}`,
-          "_blank",
+          '_blank'
         );
       },
     },
     {
-      name: "WhatsApp",
+      name: 'WhatsApp',
       icon: Send,
-      color: "hover:bg-green-500/20 hover:text-green-400",
+      color: 'hover:bg-green-500/20 hover:text-green-400',
       action: () => {
         window.open(
           `https://wa.me/?text=${encodeURIComponent(`${articleTitle} ${articleUrl}`)}`,
-          "_blank",
+          '_blank'
         );
       },
     },
     {
-      name: "Instagram",
+      name: 'Instagram',
       icon: () => (
         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
         </svg>
       ),
-      color: "hover:bg-pink-500/20 hover:text-pink-400",
+      color: 'hover:bg-pink-500/20 hover:text-pink-400',
       action: () => {
-        window.open("https://instagram.com/balizero0", "_blank");
+        window.open('https://instagram.com/balizero0', '_blank');
       },
     },
   ];
@@ -150,7 +148,7 @@ function ShareMenu({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error("Failed to copy:", error);
+      logger.error('Failed to copy', {}, error as Error);
     }
   };
 
@@ -187,8 +185,8 @@ function ShareMenu({
                   onClose();
                 }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 transition-colors",
-                  option.color,
+                  'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 transition-colors',
+                  option.color
                 )}
               >
                 <option.icon className="w-4 h-4" />
@@ -201,16 +199,14 @@ function ShareMenu({
             <button
               onClick={copyLink}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
+                'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
                 copied
-                  ? "bg-emerald-500/20 text-emerald-400"
-                  : "text-white/70 hover:bg-white/10 hover:text-white",
+                  ? 'bg-emerald-500/20 text-emerald-400'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
               )}
             >
               <Link2 className="w-4 h-4" />
-              <span className="text-sm">
-                {copied ? "Copied!" : "Copy link"}
-              </span>
+              <span className="text-sm">{copied ? 'Copied!' : 'Copy link'}</span>
             </button>
           </motion.div>
         </>
@@ -227,15 +223,15 @@ function CommentForm({
   onSubmit: (content: string, author: string) => void;
   isSubmitting: boolean;
 }) {
-  const [content, setContent] = React.useState("");
-  const [author, setAuthor] = React.useState("");
+  const [content, setContent] = React.useState('');
+  const [author, setAuthor] = React.useState('');
   const [isFocused, setIsFocused] = React.useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (content.trim() && author.trim()) {
       onSubmit(content.trim(), author.trim());
-      setContent("");
+      setContent('');
     }
   };
 
@@ -269,7 +265,7 @@ function CommentForm({
         {(isFocused || content) && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
+            animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="flex justify-end"
           >
@@ -277,13 +273,13 @@ function CommentForm({
               type="submit"
               disabled={!content.trim() || !author.trim() || isSubmitting}
               className={cn(
-                "px-5 py-2 rounded-lg font-medium text-sm transition-all",
+                'px-5 py-2 rounded-lg font-medium text-sm transition-all',
                 content.trim() && author.trim()
-                  ? "bg-[#2251ff] text-white hover:bg-[#1a40cc]"
-                  : "bg-white/10 text-white/30 cursor-not-allowed",
+                  ? 'bg-[#2251ff] text-white hover:bg-[#1a40cc]'
+                  : 'bg-white/10 text-white/30 cursor-not-allowed'
               )}
             >
-              {isSubmitting ? "Posting..." : "Post Comment"}
+              {isSubmitting ? 'Posting...' : 'Post Comment'}
             </button>
           </motion.div>
         )}
@@ -293,13 +289,7 @@ function CommentForm({
 }
 
 // Single Comment Component
-function CommentItem({
-  comment,
-  onLike,
-}: {
-  comment: Comment;
-  onLike: (id: string) => void;
-}) {
+function CommentItem({ comment, onLike }: { comment: Comment; onLike: (id: string) => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -307,11 +297,7 @@ function CommentItem({
       className="flex gap-3"
     >
       {comment.avatar ? (
-        <img
-          src={comment.avatar}
-          alt={comment.author}
-          className="w-10 h-10 rounded-full"
-        />
+        <img src={comment.avatar} alt={comment.author} className="w-10 h-10 rounded-full" />
       ) : (
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2251ff] to-[#4d73ff] flex items-center justify-center flex-shrink-0">
           <span className="text-white font-medium text-sm">
@@ -322,31 +308,23 @@ function CommentItem({
 
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <span className="font-medium text-white text-sm">
-            {comment.author}
-          </span>
+          <span className="font-medium text-white text-sm">{comment.author}</span>
           <span className="text-xs text-white/40">
             {formatDistanceToNow(new Date(comment.createdAt), {
               addSuffix: true,
             })}
           </span>
         </div>
-        <p className="text-white/70 text-sm leading-relaxed">
-          {comment.content}
-        </p>
+        <p className="text-white/70 text-sm leading-relaxed">{comment.content}</p>
 
         <button
           onClick={() => onLike(comment.id)}
           className={cn(
-            "mt-2 flex items-center gap-1 text-xs transition-colors",
-            comment.isLiked
-              ? "text-red-400"
-              : "text-white/40 hover:text-white/60",
+            'mt-2 flex items-center gap-1 text-xs transition-colors',
+            comment.isLiked ? 'text-red-400' : 'text-white/40 hover:text-white/60'
           )}
         >
-          <Heart
-            className={cn("w-3.5 h-3.5", comment.isLiked && "fill-current")}
-          />
+          <Heart className={cn('w-3.5 h-3.5', comment.isLiked && 'fill-current')} />
           <span>{comment.likes}</span>
         </button>
       </div>
@@ -372,9 +350,7 @@ export function ArticleEngagement({
 
   // Load liked status from localStorage
   React.useEffect(() => {
-    const likedArticles = JSON.parse(
-      localStorage.getItem("likedArticles") || "{}",
-    );
+    const likedArticles = JSON.parse(localStorage.getItem('likedArticles') || '{}');
     if (likedArticles[articleId]) {
       setIsLiked(true);
     }
@@ -386,15 +362,13 @@ export function ArticleEngagement({
     setLikes((prev) => (newIsLiked ? prev + 1 : prev - 1));
 
     // Save to localStorage
-    const likedArticles = JSON.parse(
-      localStorage.getItem("likedArticles") || "{}",
-    );
+    const likedArticles = JSON.parse(localStorage.getItem('likedArticles') || '{}');
     if (newIsLiked) {
       likedArticles[articleId] = true;
     } else {
       delete likedArticles[articleId];
     }
-    localStorage.setItem("likedArticles", JSON.stringify(likedArticles));
+    localStorage.setItem('likedArticles', JSON.stringify(likedArticles));
 
     // Feature: Backend integration for article likes - Tracked in backlog
     // Future: fetch(`/api/articles/${articleId}/like`, { method: 'POST' });
@@ -435,13 +409,13 @@ export function ArticleEngagement({
               isLiked: !comment.isLiked,
               likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
             }
-          : comment,
-      ),
+          : comment
+      )
     );
   };
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn('space-y-6', className)}>
       {/* Engagement Bar */}
       <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
         <div className="flex items-center gap-3">
@@ -450,19 +424,15 @@ export function ArticleEngagement({
           <button
             onClick={() => setShowComments(!showComments)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full transition-all border",
+              'flex items-center gap-2 px-4 py-2 rounded-full transition-all border',
               showComments
-                ? "bg-[#2251ff]/20 text-[#2251ff] border-[#2251ff]/30"
-                : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border-white/10",
+                ? 'bg-[#2251ff]/20 text-[#2251ff] border-[#2251ff]/30'
+                : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border-white/10'
             )}
           >
             <MessageCircle className="w-5 h-5" />
             <span className="font-medium">{comments.length}</span>
-            {showComments ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
+            {showComments ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
         </div>
 
@@ -470,10 +440,10 @@ export function ArticleEngagement({
           <button
             onClick={() => setShowShareMenu(!showShareMenu)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full transition-all border",
+              'flex items-center gap-2 px-4 py-2 rounded-full transition-all border',
               showShareMenu
-                ? "bg-[#2251ff]/20 text-[#2251ff] border-[#2251ff]/30"
-                : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border-white/10",
+                ? 'bg-[#2251ff]/20 text-[#2251ff] border-[#2251ff]/30'
+                : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border-white/10'
             )}
           >
             <Share2 className="w-5 h-5" />
@@ -494,7 +464,7 @@ export function ArticleEngagement({
         {showComments && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
+            animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="space-y-6 overflow-hidden"
           >
@@ -503,21 +473,14 @@ export function ArticleEngagement({
               <h3 className="text-lg font-semibold text-white mb-4">
                 Comments ({comments.length})
               </h3>
-              <CommentForm
-                onSubmit={handleCommentSubmit}
-                isSubmitting={isSubmitting}
-              />
+              <CommentForm onSubmit={handleCommentSubmit} isSubmitting={isSubmitting} />
             </div>
 
             {/* Comments List */}
             {comments.length > 0 && (
               <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-6">
                 {comments.map((comment) => (
-                  <CommentItem
-                    key={comment.id}
-                    comment={comment}
-                    onLike={handleCommentLike}
-                  />
+                  <CommentItem key={comment.id} comment={comment} onLike={handleCommentLike} />
                 ))}
               </div>
             )}
@@ -563,8 +526,8 @@ export function FloatingEngagementBar({
       setIsVisible(scrollY > 400);
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
@@ -580,11 +543,11 @@ export function FloatingEngagementBar({
             <button
               onClick={onLike}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors",
-                isLiked ? "text-red-400" : "text-white/60 hover:text-white",
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors',
+                isLiked ? 'text-red-400' : 'text-white/60 hover:text-white'
               )}
             >
-              <Heart className={cn("w-4 h-4", isLiked && "fill-current")} />
+              <Heart className={cn('w-4 h-4', isLiked && 'fill-current')} />
               <span className="text-sm font-medium">{likes}</span>
             </button>
 

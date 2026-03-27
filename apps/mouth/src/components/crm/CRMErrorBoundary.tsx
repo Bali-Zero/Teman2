@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * CRMErrorBoundary Component
@@ -6,9 +6,10 @@
  * Error boundary specifico per sezioni CRM
  */
 
-import React from "react";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React from 'react';
+import { logger } from '@/lib/logger';
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -16,7 +17,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 
 interface Props {
   children: React.ReactNode;
@@ -42,15 +43,11 @@ export class CRMErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error(
-      `CRM Error in ${this.props.section || "unknown"}:`,
-      error,
-      errorInfo,
-    );
+    logger.error(`CRM Error in ${this.props.section || 'unknown'}`, { note: errorInfo.componentStack ?? undefined }, error);
     this.setState({ errorInfo });
 
     // Send to error tracking service
-    if (typeof window !== "undefined" && (window as any).Sentry) {
+    if (typeof window !== 'undefined' && (window as any).Sentry) {
       (window as any).Sentry.captureException(error, {
         extra: {
           componentStack: errorInfo.componentStack,
@@ -70,7 +67,7 @@ export class CRMErrorBoundary extends React.Component<Props, State> {
   };
 
   handleGoHome = () => {
-    window.location.href = "/clients";
+    window.location.href = '/clients';
   };
 
   render() {
@@ -90,25 +87,22 @@ export class CRMErrorBoundary extends React.Component<Props, State> {
               <CardDescription>
                 {this.props.section
                   ? `An error occurred in the ${this.props.section} section.`
-                  : "An unexpected error occurred in the CRM."}
+                  : 'An unexpected error occurred in the CRM.'}
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
               {this.state.error && (
                 <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-md text-sm">
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
-                    Error details:
-                  </p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">Error details:</p>
                   <p className="text-gray-600 dark:text-gray-400 font-mono text-xs mt-1">
                     {this.state.error.message}
                   </p>
-                  {process.env.NODE_ENV === "development" &&
-                    this.state.errorInfo && (
-                      <pre className="mt-2 text-xs text-gray-500 dark:text-gray-500 overflow-auto max-h-32">
-                        {this.state.errorInfo.componentStack}
-                      </pre>
-                    )}
+                  {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
+                    <pre className="mt-2 text-xs text-gray-500 dark:text-gray-500 overflow-auto max-h-32">
+                      {this.state.errorInfo.componentStack}
+                    </pre>
+                  )}
                 </div>
               )}
 
@@ -123,11 +117,7 @@ export class CRMErrorBoundary extends React.Component<Props, State> {
             </CardContent>
 
             <CardFooter className="flex flex-wrap gap-2 justify-center">
-              <Button
-                variant="outline"
-                onClick={this.handleGoHome}
-                className="gap-2"
-              >
+              <Button variant="outline" onClick={this.handleGoHome} className="gap-2">
                 <Home className="w-4 h-4" />
                 Go to Clients
               </Button>
@@ -153,7 +143,7 @@ export class CRMErrorBoundary extends React.Component<Props, State> {
  */
 export function withCRMErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
-  section?: string,
+  section?: string
 ) {
   return function WithCRMErrorBoundaryWrapper(props: P) {
     return (
@@ -168,7 +158,7 @@ export function withCRMErrorBoundary<P extends object>(
  * Fallback component per stati di caricamento/errore
  */
 export function CRMErrorFallback({
-  message = "Unable to load data",
+  message = 'Unable to load data',
   onRetry,
 }: {
   message?: string;
@@ -197,10 +187,7 @@ export function CRMSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="space-y-3">
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"
-        />
+        <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
       ))}
     </div>
   );
