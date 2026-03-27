@@ -200,6 +200,13 @@ export default function UserManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-sm text-[var(--foreground-muted)]">
+                    No users match your search.
+                  </td>
+                </tr>
+              ) : null}
               {filteredUsers.map((user) => (
                 <tr key={user.user_id} className="hover:bg-[var(--background)]/50">
                   <td className="p-4">
