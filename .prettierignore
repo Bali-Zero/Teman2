@@ -56,3 +56,4 @@ apps/mouth/src/lib/api/workspace/lkpm.api.ts
 
 # Session summaries (docs)
 SESSION_SUMMARY_MARCH_2026.md
+apps/cell/.venv/
