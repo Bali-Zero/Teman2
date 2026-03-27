@@ -130,7 +130,13 @@ export function ChatHeader({
           )}
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            aria-label="Notifications"
+            onClick={() => router.push('/notifications')}
+          >
             <Bell className="w-5 h-5" />
           </Button>
 
