@@ -1,7 +1,8 @@
-"use client";
+'use client';
 
-import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useEffect } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   X,
   Plus,
@@ -12,7 +13,7 @@ import {
   Trash2,
   Search,
   Loader2,
-} from "lucide-react";
+} from 'lucide-react';
 
 export interface Conversation {
   id: number;
@@ -50,20 +51,26 @@ export function ChatSidebar({
 }: ChatSidebarProps) {
   const router = useRouter();
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   return (
     <>
       {/* Sidebar Overlay */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 transition-opacity"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={onClose} />
       )}
 
       {/* Sidebar */}
       <aside
         className={`fixed left-0 top-0 h-full w-72 bg-[var(--background)] border-r border-white/5 z-50 transform transition-transform duration-300 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full">
@@ -79,10 +86,7 @@ export function ChatSidebar({
               />
               <span className="font-medium text-white/90">Zantara</span>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-            >
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5 text-gray-400" />
             </button>
           </div>
@@ -100,17 +104,13 @@ export function ChatSidebar({
 
           {/* Chat History */}
           <div className="flex-1 overflow-y-auto px-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
-              Recent Chats
-            </p>
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Recent Chats</p>
             {isLoading ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
               </div>
             ) : conversations.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No conversations yet
-              </p>
+              <p className="text-sm text-gray-500 text-center py-4">No conversations yet</p>
             ) : (
               <div className="space-y-1">
                 {conversations.slice(0, 10).map((conv) => (
@@ -119,15 +119,15 @@ export function ChatSidebar({
                     onClick={() => onConversationClick(conv.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-all duration-200 text-left group cursor-pointer border border-transparent ${
                       currentConversationId === conv.id
-                        ? "sidebar-item-active text-white"
-                        : "text-gray-400"
+                        ? 'sidebar-item-active text-white'
+                        : 'text-gray-400'
                     }`}
                     role="button"
                     tabIndex={0}
                   >
                     <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
                     <span className="text-sm text-gray-400 truncate flex-1">
-                      {conv.title || "Untitled"}
+                      {conv.title || 'Untitled'}
                     </span>
                     <button
                       onClick={(e) => onDeleteConversation(conv.id, e)}
@@ -159,7 +159,7 @@ export function ChatSidebar({
               <span className="text-sm text-gray-400">Help</span>
             </button>
             <button
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.push('/dashboard')}
               className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors text-blue-400"
             >
               <Home className="w-4 h-4" />
