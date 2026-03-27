@@ -1,19 +1,12 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import {
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  Building,
-  Save,
-  ArrowLeft,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
-import type { UserProfile } from "@/types";
+import React, { useState, useEffect } from 'react';
+import { User, Mail, Phone, MapPin, Building, Save, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
+import type { UserProfile } from '@/types';
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
@@ -21,11 +14,11 @@ export default function ProfileSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    location: "",
-    department: "",
+    name: '',
+    email: '',
+    phone: '',
+    location: '',
+    department: '',
   });
 
   useEffect(() => {
@@ -34,14 +27,14 @@ export default function ProfileSettingsPage() {
         const data = await api.getProfile();
         setProfile(data);
         setFormData({
-          name: data.name || "",
-          email: data.email || "",
-          phone: "",
-          location: "",
-          department: data.team || "",
+          name: data.name || '',
+          email: data.email || '',
+          phone: '',
+          location: '',
+          department: data.team || '',
         });
       } catch (err) {
-        console.error("Failed to load profile:", err);
+        logger.error('Failed to load profile', {}, err as Error);
       } finally {
         setIsLoading(false);
       }
@@ -62,11 +55,7 @@ export default function ProfileSettingsPage() {
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/settings")}
-        >
+        <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
@@ -74,25 +63,19 @@ export default function ProfileSettingsPage() {
             <User className="w-6 h-6 text-blue-400" />
             Profile Settings
           </h1>
-          <p className="text-sm text-[var(--foreground-muted)]">
-            Manage your personal information
-          </p>
+          <p className="text-sm text-[var(--foreground-muted)]">Manage your personal information</p>
         </div>
       </div>
 
       {isLoading ? (
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
-          <p className="text-sm text-[var(--foreground-muted)]">
-            Loading profile...
-          </p>
+          <p className="text-sm text-[var(--foreground-muted)]">Loading profile...</p>
         </div>
       ) : (
         <>
           {/* Profile Picture Section */}
           <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6">
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
-              Profile Picture
-            </h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">Profile Picture</h2>
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 rounded-full bg-[var(--background)] flex items-center justify-center border-2 border-[var(--border)]">
                 <User className="w-10 h-10 text-[var(--foreground-muted)]" />
@@ -101,18 +84,14 @@ export default function ProfileSettingsPage() {
                 <Button variant="outline" size="sm">
                   Change Photo
                 </Button>
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  JPG, PNG max 2MB
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">JPG, PNG max 2MB</p>
               </div>
             </div>
           </div>
 
           {/* Personal Information */}
           <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Personal Information
-            </h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Personal Information</h2>
 
             <div className="space-y-4">
               <div>
@@ -123,9 +102,7 @@ export default function ProfileSettingsPage() {
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
               </div>
@@ -154,9 +131,7 @@ export default function ProfileSettingsPage() {
                 <input
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="+62 xxx xxxx xxxx"
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
@@ -170,9 +145,7 @@ export default function ProfileSettingsPage() {
                 <input
                   type="text"
                   value={formData.location}
-                  onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   placeholder="Bali, Indonesia"
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
@@ -201,20 +174,14 @@ export default function ProfileSettingsPage() {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-[var(--foreground-muted)]">User ID</span>
-                <span className="text-[var(--foreground)] font-mono">
-                  {profile?.id || "N/A"}
-                </span>
+                <span className="text-[var(--foreground)] font-mono">{profile?.id || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--foreground-muted)]">Role</span>
-                <span className="text-[var(--foreground)]">
-                  {profile?.role || "N/A"}
-                </span>
+                <span className="text-[var(--foreground)]">{profile?.role || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[var(--foreground-muted)]">
-                  Account Status
-                </span>
+                <span className="text-[var(--foreground-muted)]">Account Status</span>
                 <span className="text-green-500">Active</span>
               </div>
             </div>
@@ -224,7 +191,7 @@ export default function ProfileSettingsPage() {
           <div className="flex justify-end">
             <Button onClick={handleSave} disabled={isSaving}>
               <Save className="w-4 h-4 mr-2" />
-              {isSaving ? "Saving..." : "Save Changes"}
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </>

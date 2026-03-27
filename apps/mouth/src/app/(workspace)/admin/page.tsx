@@ -1,10 +1,11 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import {
   Users,
   Clock,
@@ -15,7 +16,7 @@ import {
   RefreshCw,
   Circle,
   TrendingUp,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface TeamMember {
   user_id: string;
@@ -43,11 +44,11 @@ interface WeeklySummary {
   avg_hours_per_day: number;
 }
 
-type TabType = "overview" | "daily" | "weekly";
+type TabType = 'overview' | 'daily' | 'weekly';
 
 export default function AdminPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,16 +56,14 @@ export default function AdminPage() {
   const [teamStatus, setTeamStatus] = useState<TeamMember[]>([]);
   const [dailyHours, setDailyHours] = useState<DailyHours[]>([]);
   const [weeklySummary, setWeeklySummary] = useState<WeeklySummary[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split("T")[0],
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const loadTeamStatus = useCallback(async () => {
     try {
       const status = await api.getTeamStatus();
       setTeamStatus(status);
     } catch (err) {
-      console.error("Failed to load team status:", err);
+      logger.error('Failed to load team status', {}, err as Error);
     }
   }, []);
 
@@ -73,7 +72,7 @@ export default function AdminPage() {
       const hours = await api.getDailyHours(date);
       setDailyHours(hours);
     } catch (err) {
-      console.error("Failed to load daily hours:", err);
+      logger.error('Failed to load daily hours', {}, err as Error);
     }
   }, []);
 
@@ -82,7 +81,7 @@ export default function AdminPage() {
       const summary = await api.getWeeklySummary();
       setWeeklySummary(summary);
     } catch (err) {
-      console.error("Failed to load weekly summary:", err);
+      logger.error('Failed to load weekly summary', {}, err as Error);
     }
   }, []);
 
@@ -90,13 +89,9 @@ export default function AdminPage() {
     setIsLoading(true);
     setError(null);
     try {
-      await Promise.all([
-        loadTeamStatus(),
-        loadDailyHours(selectedDate),
-        loadWeeklySummary(),
-      ]);
+      await Promise.all([loadTeamStatus(), loadDailyHours(selectedDate), loadWeeklySummary()]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load data");
+      setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {
       setIsLoading(false);
     }
@@ -105,11 +100,11 @@ export default function AdminPage() {
   useEffect(() => {
     // Check auth and admin role
     if (!api.isAuthenticated()) {
-      router.push("/login");
+      router.push('/login');
       return;
     }
     if (!api.isAdmin()) {
-      router.push("/chat");
+      router.push('/chat');
       return;
     }
     loadAllData();
@@ -119,12 +114,12 @@ export default function AdminPage() {
     try {
       const today = new Date();
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      const startDate = startOfMonth.toISOString().split("T")[0];
-      const endDate = today.toISOString().split("T")[0];
+      const startDate = startOfMonth.toISOString().split('T')[0];
+      const endDate = today.toISOString().split('T')[0];
 
       const blob = await api.exportTimesheet(startDate, endDate);
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
       a.download = `timesheet_${startDate}_to_${endDate}.csv`;
       document.body.appendChild(a);
@@ -132,8 +127,8 @@ export default function AdminPage() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Export failed:", err);
-      setError("Failed to export timesheet");
+      logger.error('Export failed', {}, err as Error);
+      setError('Failed to export timesheet');
     }
   };
 
@@ -143,14 +138,8 @@ export default function AdminPage() {
   };
 
   const onlineCount = teamStatus.filter((m) => m.is_online).length;
-  const totalHoursToday = dailyHours.reduce(
-    (sum, h) => sum + h.hours_worked,
-    0,
-  );
-  const totalHoursWeek = weeklySummary.reduce(
-    (sum, s) => sum + s.total_hours,
-    0,
-  );
+  const totalHoursToday = dailyHours.reduce((sum, h) => sum + h.hours_worked, 0);
+  const totalHoursWeek = weeklySummary.reduce((sum, s) => sum + s.total_hours, 0);
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -159,30 +148,16 @@ export default function AdminPage() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => router.push("/chat")}
+          onClick={() => router.push('/chat')}
           aria-label="Back to chat"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <Image
-          src="/assets/logo/logo_zan.png"
-          alt="Zantara"
-          width={32}
-          height={32}
-        />
-        <span className="font-semibold text-[var(--foreground)]">
-          Admin Dashboard
-        </span>
+        <Image src="/assets/logo/logo_zan.png" alt="Zantara" width={32} height={32} />
+        <span className="font-semibold text-[var(--foreground)]">Admin Dashboard</span>
         <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadAllData}
-            disabled={isLoading}
-          >
-            <RefreshCw
-              className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-            />
+          <Button variant="outline" size="sm" onClick={loadAllData} disabled={isLoading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Button variant="outline" size="sm" onClick={handleExport}>
@@ -207,9 +182,7 @@ export default function AdminPage() {
               <Users className="w-5 h-5 text-green-500" />
             </div>
             <div>
-              <p className="text-sm text-[var(--foreground-muted)]">
-                Team Online
-              </p>
+              <p className="text-sm text-[var(--foreground-muted)]">Team Online</p>
               <p className="text-2xl font-bold text-[var(--foreground)]">
                 {onlineCount} / {teamStatus.length}
               </p>
@@ -223,9 +196,7 @@ export default function AdminPage() {
               <Clock className="w-5 h-5 text-blue-500" />
             </div>
             <div>
-              <p className="text-sm text-[var(--foreground-muted)]">
-                Hours Today
-              </p>
+              <p className="text-sm text-[var(--foreground-muted)]">Hours Today</p>
               <p className="text-2xl font-bold text-[var(--foreground)]">
                 {totalHoursToday.toFixed(1)}h
               </p>
@@ -239,9 +210,7 @@ export default function AdminPage() {
               <TrendingUp className="w-5 h-5 text-purple-500" />
             </div>
             <div>
-              <p className="text-sm text-[var(--foreground-muted)]">
-                Hours This Week
-              </p>
+              <p className="text-sm text-[var(--foreground-muted)]">Hours This Week</p>
               <p className="text-2xl font-bold text-[var(--foreground)]">
                 {totalHoursWeek.toFixed(1)}h
               </p>
@@ -254,33 +223,33 @@ export default function AdminPage() {
       <div className="px-6">
         <div className="flex gap-2 border-b border-[var(--border)]">
           <button
-            onClick={() => setActiveTab("overview")}
+            onClick={() => setActiveTab('overview')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "overview"
-                ? "border-[var(--accent)] text-[var(--accent)]"
-                : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+              activeTab === 'overview'
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
             }`}
           >
             <Users className="w-4 h-4 inline mr-2" />
             Team Status
           </button>
           <button
-            onClick={() => setActiveTab("daily")}
+            onClick={() => setActiveTab('daily')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "daily"
-                ? "border-[var(--accent)] text-[var(--accent)]"
-                : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+              activeTab === 'daily'
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
             }`}
           >
             <Clock className="w-4 h-4 inline mr-2" />
             Daily Hours
           </button>
           <button
-            onClick={() => setActiveTab("weekly")}
+            onClick={() => setActiveTab('weekly')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "weekly"
-                ? "border-[var(--accent)] text-[var(--accent)]"
-                : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+              activeTab === 'weekly'
+                ? 'border-[var(--accent)] text-[var(--accent)]'
+                : 'border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
             }`}
           >
             <Calendar className="w-4 h-4 inline mr-2" />
@@ -298,7 +267,7 @@ export default function AdminPage() {
         ) : (
           <>
             {/* Team Status Tab */}
-            {activeTab === "overview" && (
+            {activeTab === 'overview' && (
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-[var(--foreground)]">
                   Team Members ({teamStatus.length})
@@ -317,34 +286,27 @@ export default function AdminPage() {
                         <Circle
                           className={`w-3 h-3 ${
                             member.is_online
-                              ? "fill-green-500 text-green-500"
-                              : "fill-gray-400 text-gray-400"
+                              ? 'fill-green-500 text-green-500'
+                              : 'fill-gray-400 text-gray-400'
                           }`}
                         />
                         <div className="flex-1">
                           <p className="font-medium text-[var(--foreground)]">
-                            {member.email.split("@")[0]}
+                            {member.email.split('@')[0]}
                           </p>
-                          <p className="text-sm text-[var(--foreground-muted)]">
-                            {member.email}
-                          </p>
+                          <p className="text-sm text-[var(--foreground-muted)]">{member.email}</p>
                         </div>
                         <div className="text-right">
                           <p
                             className={`text-sm font-medium ${
-                              member.is_online
-                                ? "text-green-500"
-                                : "text-[var(--foreground-muted)]"
+                              member.is_online ? 'text-green-500' : 'text-[var(--foreground-muted)]'
                             }`}
                           >
-                            {member.is_online ? "Online" : "Offline"}
+                            {member.is_online ? 'Online' : 'Offline'}
                           </p>
                           {member.last_action && (
                             <p className="text-xs text-[var(--foreground-muted)]">
-                              Last:{" "}
-                              {new Date(
-                                member.last_action,
-                              ).toLocaleTimeString()}
+                              Last: {new Date(member.last_action).toLocaleTimeString()}
                             </p>
                           )}
                         </div>
@@ -356,12 +318,10 @@ export default function AdminPage() {
             )}
 
             {/* Daily Hours Tab */}
-            {activeTab === "daily" && (
+            {activeTab === 'daily' && (
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                    Daily Hours
-                  </h2>
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">Daily Hours</h2>
                   <input
                     type="date"
                     value={selectedDate}
@@ -399,13 +359,10 @@ export default function AdminPage() {
                         </tr>
                       ) : (
                         dailyHours.map((record, index) => (
-                          <tr
-                            key={index}
-                            className="border-b border-[var(--border)]"
-                          >
+                          <tr key={index} className="border-b border-[var(--border)]">
                             <td className="px-4 py-3">
                               <p className="font-medium text-[var(--foreground)]">
-                                {record.email.split("@")[0]}
+                                {record.email.split('@')[0]}
                               </p>
                               <p className="text-xs text-[var(--foreground-muted)]">
                                 {record.email}
@@ -414,14 +371,12 @@ export default function AdminPage() {
                             <td className="px-4 py-3 text-[var(--foreground)]">
                               {record.clock_in
                                 ? new Date(record.clock_in).toLocaleTimeString()
-                                : "-"}
+                                : '-'}
                             </td>
                             <td className="px-4 py-3 text-[var(--foreground)]">
                               {record.clock_out
-                                ? new Date(
-                                    record.clock_out,
-                                  ).toLocaleTimeString()
-                                : "-"}
+                                ? new Date(record.clock_out).toLocaleTimeString()
+                                : '-'}
                             </td>
                             <td className="px-4 py-3 text-right font-medium text-[var(--foreground)]">
                               {record.hours_worked.toFixed(2)}h
@@ -436,11 +391,9 @@ export default function AdminPage() {
             )}
 
             {/* Weekly Summary Tab */}
-            {activeTab === "weekly" && (
+            {activeTab === 'weekly' && (
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                  Weekly Summary
-                </h2>
+                <h2 className="text-lg font-semibold text-[var(--foreground)]">Weekly Summary</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -471,13 +424,10 @@ export default function AdminPage() {
                         </tr>
                       ) : (
                         weeklySummary.map((summary, index) => (
-                          <tr
-                            key={index}
-                            className="border-b border-[var(--border)]"
-                          >
+                          <tr key={index} className="border-b border-[var(--border)]">
                             <td className="px-4 py-3">
                               <p className="font-medium text-[var(--foreground)]">
-                                {summary.email.split("@")[0]}
+                                {summary.email.split('@')[0]}
                               </p>
                               <p className="text-xs text-[var(--foreground-muted)]">
                                 {summary.email}
