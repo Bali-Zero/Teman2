@@ -1,0 +1,145 @@
+{
+  "meta": {
+    "nodeId": "ruslana",
+    "nodeName": "Ruslana — Board Member",
+    "federation": "nuzantara-super-openclaw",
+    "masterNode": "pro",
+    "lastTouchedVersion": "2026.3.7"
+  },
+  "env": {
+    "NUZANTARA_BACKEND_URL": "https://nuzantara-rag.fly.dev",
+    "NUZANTARA_API_KEY": "RUSLANA_JWT_PLACEHOLDER",
+    "NODE_ID": "ruslana"
+  },
+  "logging": {
+    "level": "info",
+    "file": {
+      "enabled": true,
+      "path": "~/.openclaw/logs/openclaw.log",
+      "maxSize": "10mb",
+      "maxFiles": 3
+    }
+  },
+  "auth": {
+    "profiles": {
+      "google-gemini-cli:ruslana@balizero.com": {
+        "provider": "google-gemini-cli",
+        "mode": "oauth",
+        "email": "ruslana@balizero.com"
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "google-gemini-cli": {
+        "api": "gemini-cli",
+        "models": [
+          {
+            "id": "gemini-2.5-flash",
+            "name": "Gemini 2.5 Flash"
+          },
+          {
+            "id": "gemini-2.0-flash",
+            "name": "Gemini 2.0 Flash"
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "ttl": "1h"
+      },
+      "compaction": {
+        "mode": "safeguard",
+        "reserveTokensFloor": 64000,
+        "maxHistoryShare": 0.4
+      },
+      "heartbeat": {
+        "every": "1h"
+      },
+      "sandbox": {
+        "mode": "non-main",
+        "prune": {
+          "idleHours": 24,
+          "maxAgeDays": 7
+        }
+      }
+    },
+    "list": [
+      {
+        "id": "board",
+        "default": true,
+        "workspace": "~/.openclaw-ruslana/workspace",
+        "sandbox": {
+          "mode": "off"
+        },
+        "model": {
+          "primary": "google-gemini-cli/gemini-2.5-flash",
+          "fallbacks": ["google-gemini-cli/gemini-2.0-flash"]
+        }
+      }
+    ]
+  },
+  "tools": {
+    "web": {
+      "search": {
+        "enabled": true
+      },
+      "fetch": {
+        "enabled": true
+      }
+    },
+    "loopDetection": {
+      "enabled": true,
+      "globalCircuitBreakerThreshold": 10
+    }
+  },
+  "bindings": [
+    {
+      "agentId": "board",
+      "match": {
+        "channel": "telegram-internal"
+      }
+    }
+  ],
+  "commands": {
+    "native": "auto",
+    "restart": true
+  },
+  "channels": {
+    "telegram": {
+      "enabled": false,
+      "comment": "Ruslana node NON fa polling Telegram — solo Pro gestisce il bot"
+    }
+  },
+  "gateway": {
+    "port": 18791,
+    "mode": "local",
+    "bind": "loopback",
+    "auth": {
+      "token": "GENERATE_ON_INSTALL"
+    }
+  },
+  "skills": {
+    "load": {
+      "extraDirs": ["~/Desktop/nuzantara/apps/nuzantara-mcp/skills"]
+    },
+    "entries": {
+      "claude-mem": {
+        "enabled": true
+      },
+      "lobster": {
+        "enabled": true
+      }
+    }
+  },
+  "plugins": {
+    "allow": ["claude-mem", "lobster", "llm-task"],
+    "slots": {
+      "memory": "claude-mem"
+    }
+  }
+}
