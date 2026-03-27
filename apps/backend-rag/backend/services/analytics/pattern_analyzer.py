@@ -22,7 +22,7 @@ class PatternAnalyzerService:
     Responsibility: Analyze work hour patterns and habits.
     """
 
-    def __init__(self, db_pool: "asyncpg.Pool"):
+    def __init__(self, db_pool: "asyncpg.Pool") -> None:
         self.pool = db_pool
 
     async def analyze_work_patterns(self, user_email: str | None = None, days: int = 30) -> dict:
