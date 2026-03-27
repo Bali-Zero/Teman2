@@ -36,6 +36,7 @@ class PulseEngine:
         dna_interpreter: Any = None,
         dna_expected_hash: str = "",
         alerter: Any = None,
+        fly_effector: Any = None,
     ) -> None:
         self._dna = dna_loader
         self._safety = safety_gate
@@ -45,6 +46,7 @@ class PulseEngine:
         self._interpreter = dna_interpreter
         self._dna_hash = dna_expected_hash
         self._alerter = alerter
+        self._fly = fly_effector
         self._recent_pulses: list[dict] = []
 
     async def single_pulse(self, pulse_number: int = 0) -> PulseResult:
@@ -129,8 +131,26 @@ class PulseEngine:
                             f"(confidence={proposal.confidence:.2f}, tier={proposal.tier_used}, "
                             f"reason={proposal.reason[:60]})"
                         )
+                        # Execute Fly.io actions (restart, scale up/down)
+                        fly_actions = {"restart_service", "scale_up", "scale_down"}
+                        if proposal.action in fly_actions and self._fly:
+                            result = await self._fly.execute(proposal.action)
+                            if result.success:
+                                logger.info(f"FlyEffector OK: {result.detail}")
+                                action_reason = f"{proposal.reason} | executed: {result.detail}"
+                            else:
+                                logger.error(f"FlyEffector FAILED: {result.detail}")
+                                action_reason = f"{proposal.reason} | FAILED: {result.detail}"
+                            # Notify via Telegram on Fly.io actions
+                            if self._alerter:
+                                status_emoji = "✅" if result.success else "❌"
+                                await self._alerter.send(
+                                    f"{status_emoji} *{proposal.action.upper()}*\n"
+                                    f"{result.detail}\n"
+                                    f"Health: {status.value.upper()} | Confidence: {proposal.confidence:.0%}"
+                                )
                         # Execute alert actions via Telegram
-                        if proposal.action in ("alert_human", "alert_silent") and self._alerter:
+                        elif proposal.action in ("alert_human", "alert_silent") and self._alerter:
                             msg = (
                                 f"*Health: {status.value.upper()}*\n"
                                 f"Reason: {proposal.reason[:200]}\n"
