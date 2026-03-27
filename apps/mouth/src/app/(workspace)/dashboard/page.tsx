@@ -576,7 +576,7 @@ export default function DashboardPage() {
                         status: p.status,
                         daysRemaining: p.daysRemaining,
                         completedAt:
-                          p.status === 'completed' ? new Date().toLocaleDateString() : undefined,
+                          p.status === 'completed' ? new Date().toLocaleDateString('en-US') : undefined,
                       }}
                     />
                   ))

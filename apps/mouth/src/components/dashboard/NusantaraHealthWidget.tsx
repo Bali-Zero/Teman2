@@ -237,7 +237,7 @@ export function NusantaraHealthWidget({ className = '' }: NusantaraHealthWidgetP
                 Nusantara System Map
               </h3>
               <p className="text-xs text-white/50">
-                {lastUpdate ? `Updated ${lastUpdate.toLocaleTimeString()}` : 'Live monitoring'}
+                {lastUpdate ? `Updated ${lastUpdate.toLocaleTimeString('en-US')}` : 'Live monitoring'}
               </p>
             </div>
           </div>
