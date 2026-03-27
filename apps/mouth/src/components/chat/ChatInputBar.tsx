@@ -1,17 +1,9 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { UI } from "@/constants";
-import {
-  Send,
-  ImageIcon,
-  Plus,
-  Loader2,
-  Upload,
-  Camera,
-  Mic,
-} from "lucide-react";
-import { ChatRecordingOverlay } from "./ChatRecordingOverlay";
+import { Button } from '@/components/ui/button';
+import { UI } from '@/constants';
+import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic } from 'lucide-react';
+import { ChatRecordingOverlay } from './ChatRecordingOverlay';
 
 export interface ChatInputBarProps {
   input: string;
@@ -63,7 +55,7 @@ export function ChatInputBar({
     }
   };
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (showImagePrompt) {
         onImageGenerate();
@@ -106,6 +98,7 @@ export function ChatInputBar({
               className="h-7 w-7 p-0 rounded-full text-zinc-400 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
               onClick={() => fileInputRef.current?.click()}
               title="Upload File"
+              aria-label="Upload File"
             >
               <Upload className="w-3.5 h-3.5" />
             </Button>
@@ -115,22 +108,18 @@ export function ChatInputBar({
               size="sm"
               className={`h-7 w-7 p-0 rounded-full transition-all duration-200 ${
                 isRecording
-                  ? "bg-red-500 text-white hover:bg-red-600 animate-pulse scale-110"
-                  : "text-zinc-600 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+                  ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse scale-110'
+                  : 'text-zinc-600 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]'
               }`}
               onClick={handleMicClick}
-              title={isRecording ? "Stop Recording" : "Start Recording"}
+              title={isRecording ? 'Stop Recording' : 'Start Recording'}
+              aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
             >
-              <Mic
-                className={`w-3.5 h-3.5 ${isRecording ? "animate-bounce" : ""}`}
-              />
+              <Mic className={`w-3.5 h-3.5 ${isRecording ? 'animate-bounce' : ''}`} />
             </Button>
 
             {/* Recording Overlay */}
-            <ChatRecordingOverlay
-              isRecording={isRecording}
-              recordingTime={recordingTime}
-            />
+            <ChatRecordingOverlay isRecording={isRecording} recordingTime={recordingTime} />
 
             <Button
               variant="ghost"
@@ -150,7 +139,7 @@ export function ChatInputBar({
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowAttachMenu(!showAttachMenu)}
-                className={`rounded-xl ${showAttachMenu ? "text-[var(--accent)] bg-[var(--accent)]/10" : ""}`}
+                className={`rounded-xl ${showAttachMenu ? 'text-[var(--accent)] bg-[var(--accent)]/10' : ''}`}
                 aria-label="Attach file"
               >
                 <Plus className="w-5 h-5" />
@@ -193,23 +182,18 @@ export function ChatInputBar({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={
-                showImagePrompt
-                  ? "Describe your image..."
-                  : "Type your message..."
-              }
+              placeholder={showImagePrompt ? 'Describe your image...' : 'Type your message...'}
               disabled={isLoading}
               rows={1}
               className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 resize-none min-h-[40px] max-h-[120px] py-2 px-3 text-sm text-[#D8D6D0] placeholder:text-zinc-500 font-medium outline-none ring-0"
               style={{
-                height: "auto",
-                overflowY: input.split("\n").length > 3 ? "auto" : "hidden",
+                height: 'auto',
+                overflowY: input.split('\n').length > 3 ? 'auto' : 'hidden',
               }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
-                target.style.height = "auto";
-                target.style.height =
-                  Math.min(target.scrollHeight, UI.MAX_TEXTAREA_HEIGHT) + "px";
+                target.style.height = 'auto';
+                target.style.height = Math.min(target.scrollHeight, UI.MAX_TEXTAREA_HEIGHT) + 'px';
               }}
             />
 
@@ -219,11 +203,7 @@ export function ChatInputBar({
               size="icon"
               className="rounded-full flex-shrink-0 w-10 h-10 glow-button border-0"
               aria-label={
-                isLoading
-                  ? "Sending..."
-                  : showImagePrompt
-                    ? "Generate image"
-                    : "Send message"
+                isLoading ? 'Sending...' : showImagePrompt ? 'Generate image' : 'Send message'
               }
             >
               {isLoading ? (
