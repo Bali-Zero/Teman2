@@ -179,16 +179,22 @@ export function FamilyTab({
   onEditClick: (member: FamilyMember) => void;
   onRefresh: () => Promise<void> | void;
 }) {
-  const handleDelete = async (id: number, name: string) => {
-    if (confirm(`Remove ${name} from family members?`)) {
-      try {
-        await api.crm.deleteFamilyMember(clientId, id);
-        toast.success('Family member removed');
-        await onRefresh();
-      } catch (err) {
-        toast.error('Error', { description: (err as Error).message });
-      }
-    }
+  const handleDelete = (id: number, name: string) => {
+    toast(`Remove ${name} from family members?`, {
+      action: {
+        label: 'Remove',
+        onClick: async () => {
+          try {
+            await api.crm.deleteFamilyMember(clientId, id);
+            toast.success('Family member removed');
+            await onRefresh();
+          } catch (err) {
+            toast.error('Error', { description: (err as Error).message });
+          }
+        },
+      },
+      cancel: { label: 'Cancel', onClick: () => {} },
+    });
   };
 
   // Find documents linked to a family member
