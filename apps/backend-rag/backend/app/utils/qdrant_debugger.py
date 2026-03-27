@@ -46,7 +46,7 @@ class QdrantDebugger:
     Extends the existing debug_qdrant.py script with programmatic access.
     """
 
-    def __init__(self, qdrant_url: str | None = None, api_key: str | None = None):
+    def __init__(self, qdrant_url: str | None = None, api_key: str | None = None) -> None:
         """
         Initialize Qdrant debugger.
 
