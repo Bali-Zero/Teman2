@@ -1,0 +1,224 @@
+LKPM — LAPORAN KEGIATAN PENANAMAN MODAL
+OBBLIGHI DI REPORTING TRIMESTRALE DELLE PT PMA IN INDONESIA
+GUIDA OPERATIVA 2024-2025
+
+Guida normativa verificata | Basata su Perka BKPM 5/2021 e Peraturan BKPM
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CHE COS'È L'LKPM
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+L'LKPM (Laporan Kegiatan Penanaman Modal) è il rapporto trimestrale
+che tutte le aziende con investimento straniero (PT PMA) devono presentare
+all'BKPM (Badan Koordinasi Penanaman Modal) tramite il sistema OSS. [COM-020]
+
+Il report documenta:
+- Lo stato di avanzamento dell'investimento
+- Il capitale effettivamente investito
+- Il numero di dipendenti assunti
+- Lo stato dell'attività (produzione/operativa o ancora in fase di setup)
+- I problemi incontrati (se presenti)
+
+L'LKPM è uno strumento di monitoraggio dello Stato indonesiano
+sugli investimenti stranieri sul territorio nazionale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. CHI DEVE PRESENTARE L'LKPM
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OBBLIGATE:
+- Tutte le PT PMA con NIB attivo [COM-020]
+- PT PMA in fase di costruzione/setup (anche se non ancora operative)
+- PT PMA operative
+- PT PMA temporaneamente inattive (con NIB valido)
+
+NON OBBLIGATE:
+- PT Lokal (solo investimento domestico)
+- CV e altre società di persone
+- Imprese individuali
+
+NOTA: L'obbligo inizia dal primo trimestre successivo al rilascio del NIB.
+Anche se l'azienda non ha ancora avviato attività, il report va presentato
+(con dati a zero per le voci non ancora rilevanti).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. SCADENZE TRIMESTRALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La presentazione deve avvenire entro 7 giorni lavorativi dalla fine
+di ogni trimestre solare. [COM-021]
+
+CALENDARIO LKPM:
+──────────────────────────────────────────────────────────────
+Trimestre   Periodo coperto   Scadenza presentazione
+──────────────────────────────────────────────────────────────
+Q1          Gennaio-Marzo     Entro 7 aprile
+Q2          Aprile-Giugno     Entro 7 luglio
+Q3          Luglio-Settembre  Entro 7 ottobre
+Q4          Ottobre-Dicembre  Entro 7 gennaio (anno successivo)
+──────────────────────────────────────────────────────────────
+
+NOTA SUI GIORNI LAVORATIVI:
+"7 giorni lavorativi" = 7 giorni escludendo sabati, domeniche e
+festività nazionali indonesiane. In pratica, la finestra effettiva
+è di 1-2 settimane dalla fine del trimestre.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. PROCEDURA DI PRESENTAZIONE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La presentazione avviene esclusivamente online tramite il portale OSS:
+URL: https://oss.go.id → Login → Menu LKPM
+
+STEP 1 — Accesso al portale OSS:
+Il direktur (o persona autorizzata) accede con le credenziali
+OSS dell'azienda (le stesse usate per il NIB).
+
+STEP 2 — Compilazione del report:
+Il sistema OSS guida la compilazione con campi strutturati:
+- Informazioni aziendali (pre-compilate automaticamente dal NIB)
+- Periodo di rendicontazione (trimestre)
+- Fase attività: Persiapan (preparazione) / Produksi Komersial
+- Tenaga Kerja Indonesia (TKI): dipendenti WNI per mansione
+- Tenaga Kerja Asing (TKA): dipendenti WNA per mansione
+- Realisasi Investasi: capitale effettivamente investito nel periodo
+  - Modal Tetap (investimenti in immobilizzazioni)
+  - Modal Kerja (capitale circolante)
+- Kendala (ostacoli): problemi che hanno rallentato l'investimento
+
+STEP 3 — Invio e ricevuta:
+Dopo l'invio, il sistema genera una ricevuta digitale (bukti penyampaian).
+Conservare questa ricevuta come prova di adempimento.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. COSA DICHIARARE — DETTAGLIO CAMPI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 Realisasi Investasi (Investimento realizzato)
+
+MODAL TETAP (Investimenti fissi):
+- Tanah (terreno acquistato o locato)
+- Bangunan/Gedung (edificio/struttura)
+- Mesin dan Peralatan (macchinari e attrezzature)
+- Kendaraan (veicoli aziendali)
+- Peralatan Kantor (arredamento e attrezzatura ufficio)
+- Lainnya (altro: software, licenze, capex vario)
+
+MODAL KERJA (Capitale circolante, per 1 bulan/mese):
+- Bahan Baku (materie prime)
+- Upah/Gaji (salari e stipendi)
+- Listrik/Air/Lainnya (utilities e altri costi operativi mensili)
+
+Per una PT PMA appena costituita o ancora in fase di setup,
+molte voci possono essere 0. Questo è normale e accettabile.
+
+5.2 Tenaga Kerja (Dipendenti)
+
+Indicare il numero di dipendenti distinto per:
+- TKI (Warga Negara Indonesia): dipendenti indonesiani per categoria
+  (direksi, manajerial, staf, teknis, lainnya)
+- TKA (Tenaga Kerja Asing): dipendenti stranieri per nazionalità e ruolo
+
+5.3 Fase dell'Investimento
+
+PERSIAPAN: L'azienda è in fase di configurazione (setup), non ancora
+in produzione/erogazione commerciale. Tipico nei primi 6-18 mesi.
+
+PRODUKSI KOMERSIAL: L'azienda sta operando commercialmente,
+generando fatturato dai propri prodotti/servizi.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. SANZIONI PER MANCATA PRESENTAZIONE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il mancato rispetto degli obblighi LKPM comporta sanzioni progressive: [COM-022]
+
+PRIMO STEP — Sospensione del NIB:
+Se il report non viene presentato nei termini, BKPM può sospendere
+il NIB (Nomor Induk Berusaha) dell'azienda.
+Con NIB sospeso, l'azienda non può operare legalmente,
+emettere fatture, o condurre transazioni commerciali ufficiali.
+
+SECONDO STEP — Revoca del NIB:
+In caso di inadempienza persistente (più trimestri non presentati),
+BKPM può procedere alla revoca definitiva del NIB.
+La revoca del NIB equivale alla chiusura formale dell'attività.
+
+TERZO STEP — Blacklisting:
+Nelle situazioni più gravi, i responsabili dell'azienda possono
+essere iscritti in una lista che limita future registrazioni OSS.
+
+SANZIONI MONETARIE:
+Perka BKPM 5/2021 prevede sanzioni amministrative, ma nella pratica
+l'enforcement è principalmente tramite sospensione/revoca NIB.
+
+CONSIGLIO OPERATIVO:
+Presentare anche un LKPM con dati parziali o stime è preferibile
+a non presentarlo. Il sistema OSS permette correzioni posteriori.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. LKPM E RENCANA PENANAMAN MODAL (RPM)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quando la PT PMA ottiene il NIB su OSS, dichiara un piano di investimento
+(Rencana Penanaman Modal / RPM) che include:
+- Il capitale pianificato (e la timeline di versamento)
+- Il numero previsto di dipendenti
+- La fase di avvio dell'attività
+
+L'LKPM trimestrale serve a monitorare il progresso rispetto
+all'RPM dichiarato. Se l'investimento reale si discosta
+significativamente dall'RPM, potrebbe essere necessario aggiornare
+il piano su OSS.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REMINDER TRIMESTRALE:
+Bali Zero ricorda ai propri clienti PT PMA le scadenze LKPM.
+Il cliente rimane responsabile della compilazione e presentazione,
+ma il team Bali Zero può assistere nella compilazione se richiesto.
+
+DATI NECESSARI PER L'LKPM:
+Il direktur deve avere a disposizione:
+- Credenziali OSS (email + password registrate al momento del NIB)
+- Elenco dipendenti WNI e WNA con mansioni
+- Riepilogo spese in conto capitale del trimestre (acquisti di beni)
+- Costi operativi medi mensili (per il campo modal kerja)
+
+PRIMA LKPM (PT APPENA COSTITUITA):
+Per una PT PMA appena operativa con nessun dipendente e attività
+minima, è normale indicare valori modesti o zero nella maggior parte
+dei campi. Il sistema OSS lo accetta — l'importante è presentare.
+
+ACCESSO OSS DIMENTICATO:
+Se le credenziali OSS non sono disponibili, il rekuperare avviene
+tramite il sito oss.go.id (funzione "Lupa Password" o contatto DPMPTSP).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+COM-020, COM-021, COM-022
+
+Base normativa: Perka BKPM 5/2021 (LKPM), PP 5/2021 (OSS), UU 25/2007.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
