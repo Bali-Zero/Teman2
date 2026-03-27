@@ -37,7 +37,7 @@ class ComplianceTrackerService:
     Responsibility: Add, retrieve, and manage compliance items.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize compliance tracker service."""
         # Storage (in production, use database)
         self.compliance_items: dict[str, ComplianceItem] = {}
