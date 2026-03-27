@@ -1,23 +1,24 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { api } from "@/lib/api";
-import { QdrantCollection, QdrantPoint } from "@/lib/api/admin/admin.types";
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import { QdrantCollection, QdrantPoint } from '@/lib/api/admin/admin.types';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { RefreshCw, Layers, Terminal } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { RefreshCw, Layers, Terminal } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { logger } from '@/lib/logger';
 
 export function VectorExplorer() {
   const [collections, setCollections] = useState<QdrantCollection[]>([]);
-  const [selectedCol, setSelectedCol] = useState<string>("");
+  const [selectedCol, setSelectedCol] = useState<string>('');
   const [points, setPoints] = useState<QdrantPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,7 +33,7 @@ export function VectorExplorer() {
         setCollections(data.collections);
       }
     } catch (err) {
-      console.error("Failed to load collections", err);
+      logger.error('Failed to load collections', {}, err as Error);
     }
   };
 
@@ -42,7 +43,7 @@ export function VectorExplorer() {
       const data = await api.getQdrantPoints(collection, 20); // Limit 20
       setPoints(data.points || []);
     } catch (err) {
-      console.error("Failed to load points", err);
+      logger.error('Failed to load points', {}, err as Error);
     } finally {
       setIsLoading(false);
     }
@@ -69,8 +70,7 @@ export function VectorExplorer() {
                 value={c.name}
                 className="focus:bg-zinc-800 focus:text-white cursor-pointer"
               >
-                {c.name}{" "}
-                <span className="text-zinc-500 ml-2">({c.status})</span>
+                {c.name} <span className="text-zinc-500 ml-2">({c.status})</span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -83,7 +83,7 @@ export function VectorExplorer() {
           className="ml-auto"
           disabled={!selectedCol || isLoading}
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
@@ -96,13 +96,9 @@ export function VectorExplorer() {
               className="bg-black/40 border-white/10 p-4 font-mono text-xs overflow-hidden"
             >
               <div className="flex justify-between items-center mb-2 border-b border-white/5 pb-2">
-                <span className="text-purple-400 font-bold">
-                  ID: {point.id}
-                </span>
+                <span className="text-purple-400 font-bold">ID: {point.id}</span>
                 {point.score && (
-                  <span className="text-zinc-500">
-                    Score: {point.score.toFixed(4)}
-                  </span>
+                  <span className="text-zinc-500">Score: {point.score.toFixed(4)}</span>
                 )}
               </div>
               <ScrollArea className="h-[200px]">
@@ -116,8 +112,8 @@ export function VectorExplorer() {
           <div className="col-span-full h-[300px] flex flex-col items-center justify-center border border-white/5 rounded-lg border-dashed text-muted-foreground gap-2">
             <Terminal className="w-8 h-8 opacity-50" />
             {selectedCol
-              ? "No points found in this collection"
-              : "Select a collection to inspect vectors"}
+              ? 'No points found in this collection'
+              : 'Select a collection to inspect vectors'}
           </div>
         )}
       </div>

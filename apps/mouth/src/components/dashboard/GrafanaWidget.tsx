@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   BarChart3,
   ExternalLink,
@@ -11,7 +11,8 @@ import {
   Zap,
   CheckCircle2,
   XCircle,
-} from "lucide-react";
+} from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface GrafanaWidgetProps {
   className?: string;
@@ -34,10 +35,10 @@ interface HealthData {
 }
 
 const GRAFANA_DASHBOARD_URL =
-  "https://zero1987.grafana.net/d/fastapi-observability/zantara-backend-observability?orgId=1&from=now-1h&to=now&refresh=30s";
-const BACKEND_HEALTH_URL = "https://nuzantara-rag.fly.dev/health";
+  'https://zero1987.grafana.net/d/fastapi-observability/zantara-backend-observability?orgId=1&from=now-1h&to=now&refresh=30s';
+const BACKEND_HEALTH_URL = 'https://nuzantara-rag.fly.dev/health';
 
-export function GrafanaWidget({ className = "" }: GrafanaWidgetProps) {
+export function GrafanaWidget({ className = '' }: GrafanaWidgetProps) {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -48,16 +49,16 @@ export function GrafanaWidget({ className = "" }: GrafanaWidgetProps) {
     setError(null);
     try {
       const response = await fetch(BACKEND_HEALTH_URL, {
-        cache: "no-store",
-        mode: "cors",
+        cache: 'no-store',
+        mode: 'cors',
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       setHealth(data);
       setLastUpdated(new Date());
     } catch (err) {
-      console.error("Failed to fetch health:", err);
-      setError("Connection failed");
+      logger.error('Failed to fetch health', {}, err as Error);
+      setError('Connection failed');
       setHealth(null);
     } finally {
       setIsLoading(false);
@@ -70,8 +71,8 @@ export function GrafanaWidget({ className = "" }: GrafanaWidgetProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const isHealthy = health?.status === "healthy";
-  const isDbConnected = health?.database?.status === "connected";
+  const isHealthy = health?.status === 'healthy';
+  const isDbConnected = health?.database?.status === 'connected';
 
   return (
     <div
@@ -80,9 +81,7 @@ export function GrafanaWidget({ className = "" }: GrafanaWidgetProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-3">
-          <div
-            className={`p-3 rounded-xl ${isHealthy ? "bg-green-500/20" : "bg-orange-500/20"}`}
-          >
+          <div className={`p-3 rounded-xl ${isHealthy ? 'bg-green-500/20' : 'bg-orange-500/20'}`}>
             {isHealthy ? (
               <CheckCircle2 className="w-6 h-6 text-green-400" />
             ) : (
@@ -90,11 +89,9 @@ export function GrafanaWidget({ className = "" }: GrafanaWidgetProps) {
             )}
           </div>
           <div>
-            <h3 className="font-semibold text-lg text-[var(--foreground)]">
-              System Health
-            </h3>
+            <h3 className="font-semibold text-lg text-[var(--foreground)]">System Health</h3>
             <p className="text-sm text-[var(--foreground-muted)]">
-              {health?.version || "Backend Status"}
+              {health?.version || 'Backend Status'}
             </p>
           </div>
         </div>
@@ -104,9 +101,7 @@ export function GrafanaWidget({ className = "" }: GrafanaWidgetProps) {
           className="p-2 rounded-lg hover:bg-orange-500/20 transition-colors"
           title="Refresh"
         >
-          <RefreshCw
-            className={`w-5 h-5 text-orange-400 ${isLoading ? "animate-spin" : ""}`}
-          />
+          <RefreshCw className={`w-5 h-5 text-orange-400 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
@@ -116,53 +111,41 @@ export function GrafanaWidget({ className = "" }: GrafanaWidgetProps) {
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4 flex items-center gap-3">
             <XCircle className="w-5 h-5 text-red-400" />
             <div>
-              <p className="text-sm font-medium text-red-400">
-                Connection Error
-              </p>
-              <p className="text-xs text-[var(--foreground-muted)]">
-                Backend unreachable
-              </p>
+              <p className="text-sm font-medium text-red-400">Connection Error</p>
+              <p className="text-xs text-[var(--foreground-muted)]">Backend unreachable</p>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 mb-4">
             {/* Backend Status */}
             <div
-              className={`rounded-lg p-3 ${isHealthy ? "bg-green-500/10" : "bg-[var(--background-secondary)]"}`}
+              className={`rounded-lg p-3 ${isHealthy ? 'bg-green-500/10' : 'bg-[var(--background-secondary)]'}`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <Activity
-                  className={`w-4 h-4 ${isHealthy ? "text-green-400" : "text-red-400"}`}
-                />
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Backend
-                </p>
+                <Activity className={`w-4 h-4 ${isHealthy ? 'text-green-400' : 'text-red-400'}`} />
+                <p className="text-xs text-[var(--foreground-muted)]">Backend</p>
               </div>
               <p
-                className={`text-sm font-semibold ${isHealthy ? "text-green-400" : "text-red-400"}`}
+                className={`text-sm font-semibold ${isHealthy ? 'text-green-400' : 'text-red-400'}`}
               >
-                {isLoading ? "..." : isHealthy ? "Healthy" : "Unhealthy"}
+                {isLoading ? '...' : isHealthy ? 'Healthy' : 'Unhealthy'}
               </p>
             </div>
 
             {/* Qdrant Status */}
             <div
-              className={`rounded-lg p-3 ${isDbConnected ? "bg-blue-500/10" : "bg-[var(--background-secondary)]"}`}
+              className={`rounded-lg p-3 ${isDbConnected ? 'bg-blue-500/10' : 'bg-[var(--background-secondary)]'}`}
             >
               <div className="flex items-center gap-2 mb-1">
                 <Database
-                  className={`w-4 h-4 ${isDbConnected ? "text-blue-400" : "text-red-400"}`}
+                  className={`w-4 h-4 ${isDbConnected ? 'text-blue-400' : 'text-red-400'}`}
                 />
                 <p className="text-xs text-[var(--foreground-muted)]">Qdrant</p>
               </div>
               <p
-                className={`text-sm font-semibold ${isDbConnected ? "text-blue-400" : "text-red-400"}`}
+                className={`text-sm font-semibold ${isDbConnected ? 'text-blue-400' : 'text-red-400'}`}
               >
-                {isLoading
-                  ? "..."
-                  : isDbConnected
-                    ? "Connected"
-                    : "Disconnected"}
+                {isLoading ? '...' : isDbConnected ? 'Connected' : 'Disconnected'}
               </p>
             </div>
 
@@ -170,12 +153,10 @@ export function GrafanaWidget({ className = "" }: GrafanaWidgetProps) {
             <div className="bg-[var(--background-secondary)] rounded-lg p-3">
               <div className="flex items-center gap-2 mb-1">
                 <FileText className="w-4 h-4 text-purple-400" />
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Collections
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Collections</p>
               </div>
               <p className="text-sm font-semibold text-purple-400">
-                {isLoading ? "..." : health?.database?.collections || 0}
+                {isLoading ? '...' : health?.database?.collections || 0}
               </p>
             </div>
 
@@ -183,14 +164,10 @@ export function GrafanaWidget({ className = "" }: GrafanaWidgetProps) {
             <div className="bg-[var(--background-secondary)] rounded-lg p-3">
               <div className="flex items-center gap-2 mb-1">
                 <FileText className="w-4 h-4 text-cyan-400" />
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Documents
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Documents</p>
               </div>
               <p className="text-sm font-semibold text-cyan-400">
-                {isLoading
-                  ? "..."
-                  : health?.database?.total_documents?.toLocaleString() || 0}
+                {isLoading ? '...' : health?.database?.total_documents?.toLocaleString() || 0}
               </p>
             </div>
           </div>
@@ -212,10 +189,8 @@ export function GrafanaWidget({ className = "" }: GrafanaWidgetProps) {
       {/* Footer */}
       <div className="px-5 py-2 bg-orange-500/5 border-t border-orange-500/20">
         <p className="text-xs text-[var(--foreground-muted)] text-center">
-          {lastUpdated
-            ? `Updated ${lastUpdated.toLocaleTimeString()}`
-            : "Loading..."}{" "}
-          • Auto-refresh 30s
+          {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Loading...'} •
+          Auto-refresh 30s
         </p>
       </div>
     </div>
