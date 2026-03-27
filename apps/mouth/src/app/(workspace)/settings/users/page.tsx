@@ -12,6 +12,7 @@ import {
   UserCircle,
   CheckCircle2,
   XCircle,
+  Loader2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -173,7 +174,8 @@ export default function UserManagementPage() {
       {/* Users Table */}
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center">
+          <div className="p-8 flex items-center justify-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-[var(--foreground-muted)]" />
             <p className="text-sm text-[var(--foreground-muted)]">Loading users...</p>
           </div>
         ) : (
