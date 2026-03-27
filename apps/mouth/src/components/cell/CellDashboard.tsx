@@ -1,11 +1,10 @@
-"use client";
+'use client';
 
-import { useCellStatus } from "@/hooks/useCellStatus";
-import { OrganismView } from "./OrganismView";
-import { VitalSigns } from "./VitalSigns";
-import { MetabolismBar } from "./MetabolismBar";
-import { PulseTimeline } from "./PulseTimeline";
-import { AlertsFeed } from "./AlertsFeed";
+import { useCellStatus } from '@/hooks/useCellStatus';
+import { OrganismView } from './OrganismView';
+import { VitalSigns } from './VitalSigns';
+import { MetabolismBar } from './MetabolismBar';
+import { PulseTimeline } from './PulseTimeline';
 
 export function CellDashboard() {
   const { status, loading, error } = useCellStatus(10000);
@@ -14,11 +13,11 @@ export function CellDashboard() {
     return (
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "60vh",
-          color: "#666",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '60vh',
+          color: '#666',
         }}
       >
         Connecting to CELL...
@@ -30,11 +29,11 @@ export function CellDashboard() {
     return (
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "60vh",
-          color: "#ef4444",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '60vh',
+          color: '#ef4444',
         }}
       >
         Cannot reach CELL: {error}
@@ -48,45 +47,43 @@ export function CellDashboard() {
   return (
     <div
       style={{
-        background: "#0a0a0a",
-        minHeight: "100vh",
+        background: '#0a0a0a',
+        minHeight: '100vh',
         padding: 24,
-        color: "#e5e5e5",
+        color: '#e5e5e5',
       }}
     >
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           marginBottom: 24,
           paddingBottom: 16,
-          borderBottom: "1px solid #222",
+          borderBottom: '1px solid #222',
         }}
       >
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
-            🧬 CELL — Essere Perfetto
-          </h1>
-          <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>🧬 CELL — Essere Perfetto</h1>
+          <p style={{ fontSize: 12, color: '#666', margin: '4px 0 0' }}>
             Autonomous Digital Organism
           </p>
         </div>
-        <span style={{ fontSize: 12, color: "#444" }}>v0.1.0</span>
+        <span style={{ fontSize: 12, color: '#444' }}>v0.1.0</span>
       </div>
 
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
           gap: 16,
           marginBottom: 16,
         }}
       >
         <div
           style={{
-            background: "#111",
-            border: "1px solid #222",
+            background: '#111',
+            border: '1px solid #222',
             borderRadius: 8,
           }}
         >
@@ -102,17 +99,11 @@ export function CellDashboard() {
         <PulseTimeline pulses={status?.recent_pulses || []} />
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <AlertsFeed alerts={status?.alerts || []} />
-      </div>
-
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
-      >
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div
           style={{
-            background: "#111",
-            border: "1px solid #222",
+            background: '#111',
+            border: '1px solid #222',
             borderRadius: 8,
             padding: 16,
           }}
@@ -120,9 +111,9 @@ export function CellDashboard() {
           <div
             style={{
               fontSize: 10,
-              color: "#666",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
+              color: '#666',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
               marginBottom: 12,
             }}
           >
@@ -132,24 +123,18 @@ export function CellDashboard() {
             style={{
               fontSize: 13,
               lineHeight: 2,
-              fontFamily: "monospace",
+              fontFamily: 'monospace',
             }}
           >
-            <div>
-              STM: {pulse?.memory_stm_count || 0} observations (Redis)
-            </div>
-            <div>
-              LTM: {pulse?.memory_ltm_count || 0} experiences (Qdrant)
-            </div>
-            <div>
-              Procedures: {pulse?.procedures_count || 0} strategies
-            </div>
+            <div>STM: {pulse?.memory_stm_count || 0} observations (Redis)</div>
+            <div>LTM: {pulse?.memory_ltm_count || 0} experiences (Qdrant)</div>
+            <div>Procedures: {pulse?.procedures_count || 0} strategies</div>
           </div>
         </div>
         <div
           style={{
-            background: "#111",
-            border: "1px solid #222",
+            background: '#111',
+            border: '1px solid #222',
             borderRadius: 8,
             padding: 16,
           }}
@@ -157,24 +142,24 @@ export function CellDashboard() {
           <div
             style={{
               fontSize: 10,
-              color: "#666",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
+              color: '#666',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
               marginBottom: 12,
             }}
           >
             Cells
           </div>
-          <div style={{ fontSize: 13, fontFamily: "monospace" }}>
+          <div style={{ fontSize: 13, fontFamily: 'monospace' }}>
             <div style={{ marginBottom: 8 }}>
               {pulse?.cells_active || 1}/{pulse?.cells_total || 50} active
             </div>
             <div
               style={{
                 fontSize: 12,
-                color: "#888",
-                display: "flex",
-                alignItems: "center",
+                color: '#888',
+                display: 'flex',
+                alignItems: 'center',
                 gap: 6,
               }}
             >
@@ -182,9 +167,9 @@ export function CellDashboard() {
                 style={{
                   width: 6,
                   height: 6,
-                  borderRadius: "50%",
-                  background: "#22c55e",
-                  display: "inline-block",
+                  borderRadius: '50%',
+                  background: '#22c55e',
+                  display: 'inline-block',
                 }}
               />
               pulse_cell: ACTIVE
@@ -197,15 +182,13 @@ export function CellDashboard() {
         <div
           style={{
             marginTop: 16,
-            textAlign: "center",
+            textAlign: 'center',
             fontSize: 11,
-            color: "#444",
+            color: '#444',
           }}
         >
-          24h uptime: {status.uptime_24h.green_percent}% green ·{" "}
-          {status.uptime_24h.yellow_percent}% yellow ·{" "}
-          {status.uptime_24h.red_percent}% red ·{" "}
-          {status.uptime_24h.total_pulses} pulses
+          24h uptime: {status.uptime_24h.green_percent}% green · {status.uptime_24h.yellow_percent}%
+          yellow · {status.uptime_24h.red_percent}% red · {status.uptime_24h.total_pulses} pulses
         </div>
       )}
     </div>
