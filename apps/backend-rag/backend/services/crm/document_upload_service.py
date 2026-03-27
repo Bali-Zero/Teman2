@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 class DocumentUploadService:
     """Service for handling document uploads to Drive."""
 
-    def __init__(self, db_pool: asyncpg.Pool) -> None:
+    def __init__(self, db_pool: asyncpg.Pool):
         self.db_pool = db_pool
         self.drive_service = DriveFolderService()
 
