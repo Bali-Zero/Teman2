@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Moon,
   Sun,
@@ -72,8 +72,9 @@ import {
   Save,
   LucideIcon,
   Maximize2,
-} from "lucide-react";
-import { dreamApi } from "@/lib/api/dream.api";
+} from 'lucide-react';
+import { dreamApi } from '@/lib/api/dream.api';
+import { logger } from '@/lib/logger';
 
 // ============ TYPES ============
 interface ArticleVersion {
@@ -95,7 +96,7 @@ interface Article {
 
 interface Inspiration {
   id: number;
-  type: "color" | "quote" | "prompt";
+  type: 'color' | 'quote' | 'prompt';
   value?: string;
   name?: string;
   source?: string;
@@ -122,7 +123,7 @@ interface CalendarEvent {
   date: string;
   title: string;
   platform: string;
-  status: "draft" | "scheduled";
+  status: 'draft' | 'scheduled';
 }
 
 interface SwipeFile {
@@ -140,7 +141,7 @@ interface QueueItem {
 }
 
 interface StoreState {
-  activeZone: "inspiration" | "composer" | "research" | "social" | "publish";
+  activeZone: 'inspiration' | 'composer' | 'research' | 'social' | 'publish';
   focusMode: boolean;
   ambientSound: string;
   isPlaying: boolean;
@@ -164,9 +165,7 @@ const createStore = <T,>(initialState: T) => {
     getState: () => state,
     setState: (partial: Partial<T> | ((state: T) => Partial<T>)) => {
       state =
-        typeof partial === "function"
-          ? { ...state, ...partial(state) }
-          : { ...state, ...partial };
+        typeof partial === 'function' ? { ...state, ...partial(state) } : { ...state, ...partial };
       listeners.forEach((l) => l(state));
     },
     subscribe: (listener: Listener<T>) => {
@@ -180,7 +179,7 @@ const createStore = <T,>(initialState: T) => {
 
 const useStore = <T, R = T>(
   store: ReturnType<typeof createStore<T>>,
-  selector: (s: T) => R = (s: T) => s as unknown as R,
+  selector: (s: T) => R = (s: T) => s as unknown as R
 ) => {
   const [state, setState] = useState(() => selector(store.getState()));
   useEffect(() => {
@@ -194,9 +193,9 @@ const useStore = <T, R = T>(
 
 // Initialize store with localStorage persistence
 const loadFromStorage = (): StoreState | null => {
-  if (typeof window === "undefined") return null;
+  if (typeof window === 'undefined') return null;
   try {
-    const saved = localStorage.getItem("dreamThinkingRoom");
+    const saved = localStorage.getItem('dreamThinkingRoom');
     return saved ? JSON.parse(saved) : null;
   } catch {
     return null;
@@ -204,9 +203,9 @@ const loadFromStorage = (): StoreState | null => {
 };
 
 const initialState: StoreState = loadFromStorage() || {
-  activeZone: "composer",
+  activeZone: 'composer',
   focusMode: false,
-  ambientSound: "silence",
+  ambientSound: 'silence',
   isPlaying: false,
   articles: [
     {
@@ -214,12 +213,7 @@ const initialState: StoreState = loadFromStorage() || {
       title: "Come l'AI sta trasformando il Content Marketing",
       content:
         "<p>L'intelligenza artificiale sta rivoluzionando il modo in cui creiamo contenuti...</p><p>In questo articolo esploreremo le principali tendenze e come sfruttarle per la tua strategia.</p>",
-      outline: [
-        "Introduzione",
-        "Trend AI nel marketing",
-        "Case studies",
-        "Conclusioni",
-      ],
+      outline: ['Introduzione', 'Trend AI nel marketing', 'Case studies', 'Conclusioni'],
       wordCount: 342,
       seoScore: 78,
       createdAt: new Date().toISOString(),
@@ -228,44 +222,44 @@ const initialState: StoreState = loadFromStorage() || {
   ],
   currentArticleId: 1,
   inspirations: [
-    { id: 1, type: "color", value: "#8b5cf6", name: "Viola brand" },
-    { id: 2, type: "color", value: "#ec4899", name: "Rosa accent" },
+    { id: 1, type: 'color', value: '#8b5cf6', name: 'Viola brand' },
+    { id: 2, type: 'color', value: '#ec4899', name: 'Rosa accent' },
     {
       id: 3,
-      type: "quote",
-      value: "Content is king, but distribution is queen.",
-      source: "Gary Vee",
+      type: 'quote',
+      value: 'Content is king, but distribution is queen.',
+      source: 'Gary Vee',
     },
   ],
   swipeFiles: [],
   socialPosts: {
-    twitter: "",
-    linkedin: "",
+    twitter: '',
+    linkedin: '',
     instagram: [],
-    tiktok: "",
-    newsletter: "",
+    tiktok: '',
+    newsletter: '',
   },
   calendarEvents: [
     {
       id: 1,
-      date: "2026-02-03",
-      title: "Blog: AI Marketing",
-      platform: "blog",
-      status: "draft",
+      date: '2026-02-03',
+      title: 'Blog: AI Marketing',
+      platform: 'blog',
+      status: 'draft',
     },
     {
       id: 2,
-      date: "2026-02-05",
-      title: "Thread Twitter",
-      platform: "twitter",
-      status: "scheduled",
+      date: '2026-02-05',
+      title: 'Thread Twitter',
+      platform: 'twitter',
+      status: 'scheduled',
     },
     {
       id: 3,
-      date: "2026-02-07",
-      title: "LinkedIn Post",
-      platform: "linkedin",
-      status: "scheduled",
+      date: '2026-02-07',
+      title: 'LinkedIn Post',
+      platform: 'linkedin',
+      status: 'scheduled',
     },
   ],
   queue: [],
@@ -277,7 +271,7 @@ const store = createStore<StoreState>(initialState);
 const StoreSubscriber = () => {
   useEffect(() => {
     return store.subscribe((state) => {
-      localStorage.setItem("dreamThinkingRoom", JSON.stringify(state));
+      localStorage.setItem('dreamThinkingRoom', JSON.stringify(state));
     });
   }, []);
   return null;
@@ -304,7 +298,7 @@ const ParticleCanvas = ({ active }: { active: boolean }) => {
   useEffect(() => {
     if (!active || !canvasRef.current) return;
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const resize = () => {
@@ -312,7 +306,7 @@ const ParticleCanvas = ({ active }: { active: boolean }) => {
       canvas.height = canvas.offsetHeight;
     };
     resize();
-    window.addEventListener("resize", resize);
+    window.addEventListener('resize', resize);
 
     // Initialize particles
     particlesRef.current = [];
@@ -349,14 +343,7 @@ const ParticleCanvas = ({ active }: { active: boolean }) => {
         if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
 
         // Draw particle
-        const gradient = ctx.createRadialGradient(
-          p.x,
-          p.y,
-          0,
-          p.x,
-          p.y,
-          p.size,
-        );
+        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
         gradient.addColorStop(0, `rgba(139, 92, 246, ${p.alpha})`);
         gradient.addColorStop(1, `rgba(236, 72, 153, 0)`);
 
@@ -375,12 +362,12 @@ const ParticleCanvas = ({ active }: { active: boolean }) => {
       mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
     // @ts-ignore - native event typing
-    canvas.addEventListener("mousemove", handleMouseMove);
+    canvas.addEventListener('mousemove', handleMouseMove);
 
     return () => {
-      window.removeEventListener("resize", resize);
+      window.removeEventListener('resize', resize);
       // @ts-ignore
-      canvas.removeEventListener("mousemove", handleMouseMove);
+      canvas.removeEventListener('mousemove', handleMouseMove);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, [active]);
@@ -419,9 +406,7 @@ const Confetti = ({ trigger }: { trigger: boolean }) => {
       y: 50,
       vx: (Math.random() - 0.5) * 20,
       vy: -Math.random() * 15 - 5,
-      color: ["#8b5cf6", "#ec4899", "#fbbf24", "#34d399", "#60a5fa"][
-        Math.floor(Math.random() * 5)
-      ],
+      color: ['#8b5cf6', '#ec4899', '#fbbf24', '#34d399', '#60a5fa'][Math.floor(Math.random() * 5)],
       rotation: Math.random() * 360,
     }));
 
@@ -444,8 +429,8 @@ const Confetti = ({ trigger }: { trigger: boolean }) => {
               backgroundColor: p.color,
               transform: `rotate(${p.rotation}deg)`,
               animation: `confetti 3s ease-out forwards`,
-              "--vx": p.vx,
-              "--vy": p.vy,
+              '--vx': p.vx,
+              '--vy': p.vy,
             } as React.CSSProperties
           }
         />
@@ -464,11 +449,11 @@ const TypingText = ({
   speed?: number;
   onComplete?: () => void;
 }) => {
-  const [displayed, setDisplayed] = useState("");
+  const [displayed, setDisplayed] = useState('');
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
-    setDisplayed("");
+    setDisplayed('');
     setIsComplete(false);
     let i = 0;
     const interval = setInterval(() => {
@@ -495,7 +480,7 @@ const TypingText = ({
 // ============ GLASS CARD COMPONENT ============
 const GlassCard = ({
   children,
-  className = "",
+  className = '',
   glow = false,
   onClick,
 }: {
@@ -509,7 +494,7 @@ const GlassCard = ({
     className={`
       relative backdrop-blur-xl bg-white/5
       border border-white/10 rounded-2xl
-      ${glow ? "shadow-lg shadow-violet-500/20" : ""}
+      ${glow ? 'shadow-lg shadow-violet-500/20' : ''}
       transition-all duration-300 hover:bg-white/10 hover:border-white/20
       ${className}
     `}
@@ -520,40 +505,40 @@ const GlassCard = ({
 
 // ============ ZONE NAVIGATION ============
 const zones: {
-  id: StoreState["activeZone"];
+  id: StoreState['activeZone'];
   icon: LucideIcon;
   label: string;
   color: string;
 }[] = [
   {
-    id: "inspiration",
+    id: 'inspiration',
     icon: Moon,
-    label: "Inspiration",
-    color: "from-violet-500 to-indigo-500",
+    label: 'Inspiration',
+    color: 'from-violet-500 to-indigo-500',
   },
   {
-    id: "composer",
+    id: 'composer',
     icon: PenTool,
-    label: "Composer",
-    color: "from-pink-500 to-rose-500",
+    label: 'Composer',
+    color: 'from-pink-500 to-rose-500',
   },
   {
-    id: "research",
+    id: 'research',
     icon: Search,
-    label: "Research",
-    color: "from-cyan-500 to-blue-500",
+    label: 'Research',
+    color: 'from-cyan-500 to-blue-500',
   },
   {
-    id: "social",
+    id: 'social',
     icon: Share2,
-    label: "Social",
-    color: "from-amber-500 to-orange-500",
+    label: 'Social',
+    color: 'from-amber-500 to-orange-500',
   },
   {
-    id: "publish",
+    id: 'publish',
     icon: Calendar,
-    label: "Publish",
-    color: "from-emerald-500 to-teal-500",
+    label: 'Publish',
+    color: 'from-emerald-500 to-teal-500',
   },
 ];
 
@@ -577,14 +562,11 @@ const ZoneNav = () => {
               ${
                 isActive
                   ? `bg-gradient-to-r ${zone.color} shadow-lg`
-                  : "bg-white/5 hover:bg-white/10"
+                  : 'bg-white/5 hover:bg-white/10'
               }
             `}
           >
-            <Icon
-              size={20}
-              className={isActive ? "text-white" : "text-zinc-400"}
-            />
+            <Icon size={20} className={isActive ? 'text-white' : 'text-zinc-400'} />
             <span
               className={`
               absolute left-full ml-3 px-3 py-1.5 rounded-lg text-sm font-medium
@@ -610,10 +592,10 @@ const TopBar = () => {
   const [showSounds, setShowSounds] = useState(false);
 
   const sounds = [
-    { id: "silence", icon: VolumeX, label: "Silenzio" },
-    { id: "lofi", icon: Music, label: "Lo-Fi Beats" },
-    { id: "rain", icon: CloudRain, label: "Pioggia" },
-    { id: "cafe", icon: Coffee, label: "Caffetteria" },
+    { id: 'silence', icon: VolumeX, label: 'Silenzio' },
+    { id: 'lofi', icon: Music, label: 'Lo-Fi Beats' },
+    { id: 'rain', icon: CloudRain, label: 'Pioggia' },
+    { id: 'cafe', icon: Coffee, label: 'Caffetteria' },
   ];
 
   const currentSound = sounds.find((s) => s.id === ambientSound);
@@ -626,7 +608,7 @@ const TopBar = () => {
       flex items-center justify-between
       bg-gradient-to-b from-[#0a0a0f] to-transparent
       transition-opacity duration-500
-      ${focusMode ? "opacity-0 pointer-events-none" : "opacity-100"}
+      ${focusMode ? 'opacity-0 pointer-events-none' : 'opacity-100'}
     `}
     >
       <div className="flex items-center gap-3">
@@ -648,7 +630,7 @@ const TopBar = () => {
           >
             <SoundIcon size={16} className="text-zinc-400" />
             <span className="text-sm text-zinc-400">{currentSound?.label}</span>
-            {isPlaying && ambientSound !== "silence" && (
+            {isPlaying && ambientSound !== 'silence' && (
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             )}
           </button>
@@ -663,13 +645,13 @@ const TopBar = () => {
                     onClick={() => {
                       store.setState({
                         ambientSound: sound.id,
-                        isPlaying: sound.id !== "silence",
+                        isPlaying: sound.id !== 'silence',
                       });
                       setShowSounds(false);
                     }}
                     className={`
                       w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-                      ${ambientSound === sound.id ? "bg-violet-500/20 text-violet-300" : "text-zinc-400 hover:bg-white/5"}
+                      ${ambientSound === sound.id ? 'bg-violet-500/20 text-violet-300' : 'text-zinc-400 hover:bg-white/5'}
                     `}
                   >
                     <Icon size={16} />
@@ -706,65 +688,56 @@ const TopBar = () => {
 };
 
 // ============ COMMAND PALETTE ============
-const CommandPalette = ({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) => {
-  const [query, setQuery] = useState("");
+const CommandPalette = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+  const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const commands = [
     {
-      id: "new-article",
-      label: "Nuovo articolo",
+      id: 'new-article',
+      label: 'Nuovo articolo',
       icon: FileText,
       action: () => {},
     },
     {
-      id: "focus",
-      label: "Toggle Focus Mode",
+      id: 'focus',
+      label: 'Toggle Focus Mode',
       icon: Eye,
-      action: () =>
-        store.setState((s: StoreState) => ({ ...s, focusMode: !s.focusMode })),
+      action: () => store.setState((s: StoreState) => ({ ...s, focusMode: !s.focusMode })),
     },
     {
-      id: "inspiration",
-      label: "Vai a Inspiration",
+      id: 'inspiration',
+      label: 'Vai a Inspiration',
       icon: Moon,
-      action: () => store.setState({ activeZone: "inspiration" }),
+      action: () => store.setState({ activeZone: 'inspiration' }),
     },
     {
-      id: "composer",
-      label: "Vai a Composer",
+      id: 'composer',
+      label: 'Vai a Composer',
       icon: PenTool,
-      action: () => store.setState({ activeZone: "composer" }),
+      action: () => store.setState({ activeZone: 'composer' }),
     },
     {
-      id: "social",
-      label: "Vai a Social",
+      id: 'social',
+      label: 'Vai a Social',
       icon: Share2,
-      action: () => store.setState({ activeZone: "social" }),
+      action: () => store.setState({ activeZone: 'social' }),
     },
     {
-      id: "publish",
-      label: "Vai a Publish",
+      id: 'publish',
+      label: 'Vai a Publish',
       icon: Calendar,
-      action: () => store.setState({ activeZone: "publish" }),
+      action: () => store.setState({ activeZone: 'publish' }),
     },
-    { id: "spark", label: "Random Spark", icon: Zap, action: () => {} },
+    { id: 'spark', label: 'Random Spark', icon: Zap, action: () => {} },
   ];
 
-  const filtered = commands.filter((c) =>
-    c.label.toLowerCase().includes(query.toLowerCase()),
-  );
+  const filtered = commands.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()));
 
   useEffect(() => {
     if (open) {
       inputRef.current?.focus();
-      setQuery("");
+      setQuery('');
     }
   }, [open]);
 
@@ -776,10 +749,7 @@ const CommandPalette = ({
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-lg mx-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="relative w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
         <GlassCard className="overflow-hidden" glow>
           <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
             <Search size={18} className="text-zinc-500" />
@@ -791,9 +761,7 @@ const CommandPalette = ({
               placeholder="Cerca comandi..."
               className="flex-1 bg-transparent text-white placeholder-zinc-500 outline-none"
             />
-            <kbd className="px-2 py-1 text-xs text-zinc-500 bg-white/5 rounded">
-              ESC
-            </kbd>
+            <kbd className="px-2 py-1 text-xs text-zinc-500 bg-white/5 rounded">ESC</kbd>
           </div>
           <div className="max-h-80 overflow-auto p-2">
             {filtered.map((cmd) => {
@@ -807,10 +775,7 @@ const CommandPalette = ({
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-white/10 transition-colors group"
                 >
-                  <Icon
-                    size={18}
-                    className="text-zinc-400 group-hover:text-violet-400"
-                  />
+                  <Icon size={18} className="text-zinc-400 group-hover:text-violet-400" />
                   <span className="text-sm text-zinc-300">{cmd.label}</span>
                 </button>
               );
@@ -831,19 +796,19 @@ const InspirationCorner = () => {
     const sparks: Inspiration[] = [
       {
         id: 101,
-        type: "prompt",
-        content: "Come cambierebbe il tuo settore tra 50 anni?",
+        type: 'prompt',
+        content: 'Come cambierebbe il tuo settore tra 50 anni?',
       },
       {
         id: 102,
-        type: "prompt",
-        content: "Scrivi una lettera al tuo cliente ideale di domani.",
+        type: 'prompt',
+        content: 'Scrivi una lettera al tuo cliente ideale di domani.',
       },
       {
         id: 103,
-        type: "quote",
-        content: "Creativity is intelligence having fun.",
-        author: "Albert Einstein",
+        type: 'quote',
+        content: 'Creativity is intelligence having fun.',
+        author: 'Albert Einstein',
       },
     ];
     setRandomSpark(sparks[Math.floor(Math.random() * sparks.length)]);
@@ -863,12 +828,9 @@ const InspirationCorner = () => {
           </h3>
           <div className="grid grid-cols-3 gap-3">
             {inspirations
-              .filter((i) => i.type === "color")
+              .filter((i) => i.type === 'color')
               .map((color) => (
-                <div
-                  key={color.id}
-                  className="space-y-2 group/color cursor-pointer"
-                >
+                <div key={color.id} className="space-y-2 group/color cursor-pointer">
                   <div
                     className="aspect-square rounded-xl shadow-lg transition-transform hover:scale-105 hover:rotate-3"
                     style={{ backgroundColor: color.value }}
@@ -885,18 +847,13 @@ const InspirationCorner = () => {
         </GlassCard>
 
         {/* Random Spark */}
-        <GlassCard
-          className="p-5 flex flex-col justify-center text-center"
-          glow
-        >
+        <GlassCard className="p-5 flex flex-col justify-center text-center" glow>
           <div className="mb-4 flex justify-center">
             <div className="p-3 rounded-full bg-amber-500/20 text-amber-400 animate-pulse">
               <Zap size={24} />
             </div>
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">
-            Random Spark
-          </h3>
+          <h3 className="text-lg font-semibold text-white mb-2">Random Spark</h3>
           <div className="min-h-[80px] flex items-center justify-center">
             {randomSpark ? (
               <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -904,15 +861,11 @@ const InspirationCorner = () => {
                   "{randomSpark.content}"
                 </p>
                 {randomSpark.author && (
-                  <p className="text-sm text-zinc-500 mt-2">
-                    — {randomSpark.author}
-                  </p>
+                  <p className="text-sm text-zinc-500 mt-2">— {randomSpark.author}</p>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-zinc-500">
-                Clicca per generare una scintilla creativa
-              </p>
+              <p className="text-sm text-zinc-500">Clicca per generare una scintilla creativa</p>
             )}
           </div>
           <button
@@ -931,19 +884,17 @@ const InspirationCorner = () => {
             Trend Radar
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {["AI Generativa", "Micro-Community", "Video Short-form"].map(
-              (trend, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-cyan-500/30 transition-colors cursor-pointer"
-                >
-                  <span className="text-zinc-300">{trend}</span>
-                  <div className="flex items-center gap-1 text-xs text-emerald-400">
-                    <TrendingUp size={12} />+{15 + i * 5}%
-                  </div>
+            {['AI Generativa', 'Micro-Community', 'Video Short-form'].map((trend, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-cyan-500/30 transition-colors cursor-pointer"
+              >
+                <span className="text-zinc-300">{trend}</span>
+                <div className="flex items-center gap-1 text-xs text-emerald-400">
+                  <TrendingUp size={12} />+{15 + i * 5}%
                 </div>
-              ),
-            )}
+              </div>
+            ))}
           </div>
         </GlassCard>
       </div>
@@ -962,7 +913,7 @@ const ArticleComposer = () => {
   const [outline, setOutline] = useState(article.outline);
   const [isAIGenerating, setIsAIGenerating] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(true);
-  const [aiOutput, setAiOutput] = useState("");
+  const [aiOutput, setAiOutput] = useState('');
 
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -974,19 +925,17 @@ const ArticleComposer = () => {
         ...store.getState(),
         articles: store
           .getState()
-          .articles.map((a) =>
-            a.id === currentId ? { ...a, title, content, outline } : a,
-          ),
+          .articles.map((a) => (a.id === currentId ? { ...a, title, content, outline } : a)),
       };
       store.setState(newState);
 
       // Persist to backend
       dreamApi
-        .saveState("current-user", newState)
+        .saveState('current-user', newState)
         .then(() => {
           // Cloud save successful - logged by analytics service
         })
-        .catch((err) => console.error("Save failed", err));
+        .catch((err) => logger.error('Save failed', {}, err as Error));
     }, 2000);
     return () => clearTimeout(timer);
   }, [title, content, outline, currentId]); // Added dependencies to ensure latest state is captured
@@ -995,7 +944,7 @@ const ArticleComposer = () => {
 
   const runAIAction = async (action: string) => {
     setIsAIGenerating(true);
-    setAiOutput("");
+    setAiOutput('');
 
     try {
       // Real API Call
@@ -1008,20 +957,20 @@ const ArticleComposer = () => {
       if (res.success) {
         setAiOutput(res.text);
       } else {
-        setAiOutput("Errore nella generazione. Riprova.");
+        setAiOutput('Errore nella generazione. Riprova.');
       }
     } catch (e) {
-      console.error(e);
-      setAiOutput("Errore di connessione.");
+      logger.error('AI generation failed', {}, e as Error);
+      setAiOutput('Errore di connessione.');
     } finally {
       setIsAIGenerating(false);
     }
   };
 
   const aiActions = [
-    { id: "expand", label: "Espandi concetto", icon: Maximize2 },
-    { id: "rewrite", label: "Riscrivi meglio", icon: RefreshCw },
-    { id: "tone", label: "Cambia tono", icon: Wand2 },
+    { id: 'expand', label: 'Espandi concetto', icon: Maximize2 },
+    { id: 'rewrite', label: 'Riscrivi meglio', icon: RefreshCw },
+    { id: 'tone', label: 'Cambia tono', icon: Wand2 },
   ];
 
   return (
@@ -1060,7 +1009,7 @@ const ArticleComposer = () => {
               </button>
             ) : (
               <div key={i} className="w-px h-6 bg-white/10 mx-1" />
-            ),
+            )
           )}
         </div>
 
@@ -1122,7 +1071,7 @@ const ArticleComposer = () => {
               Outline
             </h3>
             <button
-              onClick={() => setOutline([...outline, "Nuova sezione"])}
+              onClick={() => setOutline([...outline, 'Nuova sezione'])}
               className="p-1 rounded hover:bg-white/10"
             >
               <Plus size={14} className="text-zinc-400" />
@@ -1177,13 +1126,7 @@ const ArticleComposer = () => {
                   strokeLinecap="round"
                 />
                 <defs>
-                  <linearGradient
-                    id="seoGradient"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="0%"
-                  >
+                  <linearGradient id="seoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor="#8b5cf6" />
                     <stop offset="100%" stopColor="#ec4899" />
                   </linearGradient>
@@ -1195,11 +1138,7 @@ const ArticleComposer = () => {
             </div>
             <div className="flex-1">
               <p className="text-sm text-zinc-400">
-                {seoScore >= 80
-                  ? "Ottimo!"
-                  : seoScore >= 50
-                    ? "Buono"
-                    : "Migliorabile"}
+                {seoScore >= 80 ? 'Ottimo!' : seoScore >= 50 ? 'Buono' : 'Migliorabile'}
               </p>
             </div>
           </div>
@@ -1211,7 +1150,7 @@ const ArticleComposer = () => {
 
 // ============ RESEARCH SCRAPER ============
 const ResearchScraper = () => {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [scrapedData, setScrapedData] = useState<{
     title: string;
@@ -1232,30 +1171,30 @@ const ResearchScraper = () => {
         });
       }
     } catch (e) {
-      console.error("Scrape failed", e);
+      logger.error('Scrape failed', {}, e as Error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const competitors = [
-    { name: "HubSpot Blog", url: "hubspot.com", status: "active" },
+    { name: 'HubSpot Blog', url: 'hubspot.com', status: 'active' },
     {
-      name: "Content Marketing Institute",
-      url: "contentmarketinginstitute.com",
-      status: "active",
+      name: 'Content Marketing Institute',
+      url: 'contentmarketinginstitute.com',
+      status: 'active',
     },
-    { name: "Copyblogger", url: "copyblogger.com", status: "paused" },
+    { name: 'Copyblogger', url: 'copyblogger.com', status: 'paused' },
   ];
 
   const contentGaps = [
-    { topic: "AI Video Generation", difficulty: "medium", opportunity: "high" },
+    { topic: 'AI Video Generation', difficulty: 'medium', opportunity: 'high' },
     {
-      topic: "Voice Search Optimization",
-      difficulty: "easy",
-      opportunity: "medium",
+      topic: 'Voice Search Optimization',
+      difficulty: 'easy',
+      opportunity: 'medium',
     },
-    { topic: "Interactive Content", difficulty: "hard", opportunity: "high" },
+    { topic: 'Interactive Content', difficulty: 'hard', opportunity: 'high' },
   ];
 
   return (
@@ -1281,23 +1220,15 @@ const ResearchScraper = () => {
               disabled={isLoading}
               className="px-4 py-2 rounded-xl bg-cyan-500 text-white font-medium hover:bg-cyan-600 transition-colors disabled:opacity-50"
             >
-              {isLoading ? (
-                <RefreshCw size={18} className="animate-spin" />
-              ) : (
-                "Analizza"
-              )}
+              {isLoading ? <RefreshCw size={18} className="animate-spin" /> : 'Analizza'}
             </button>
           </div>
 
           {scrapedData && (
             <div className="space-y-4">
               <div className="p-3 rounded-xl bg-white/5">
-                <h4 className="text-sm font-medium text-white mb-1">
-                  {scrapedData.title}
-                </h4>
-                <p className="text-xs text-zinc-500">
-                  Estratto automaticamente
-                </p>
+                <h4 className="text-sm font-medium text-white mb-1">{scrapedData.title}</h4>
+                <p className="text-xs text-zinc-500">Estratto automaticamente</p>
               </div>
 
               <div>
@@ -1306,14 +1237,8 @@ const ResearchScraper = () => {
                 </h5>
                 <ul className="space-y-1">
                   {scrapedData.keyPoints.map((point, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-2 text-sm text-zinc-300"
-                    >
-                      <ChevronRight
-                        size={14}
-                        className="text-cyan-400 mt-0.5 flex-shrink-0"
-                      />
+                    <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
+                      <ChevronRight size={14} className="text-cyan-400 mt-0.5 flex-shrink-0" />
                       {point}
                     </li>
                   ))}
@@ -1321,20 +1246,11 @@ const ResearchScraper = () => {
               </div>
 
               <div>
-                <h5 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">
-                  Citazioni
-                </h5>
+                <h5 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Citazioni</h5>
                 {scrapedData.quotes.map((quote, i) => (
-                  <div
-                    key={i}
-                    className="p-3 rounded-xl bg-white/5 border-l-2 border-cyan-500"
-                  >
-                    <p className="text-sm text-zinc-300 italic">
-                      "{quote.text}"
-                    </p>
-                    <p className="text-xs text-zinc-500 mt-1">
-                      — {quote.author}
-                    </p>
+                  <div key={i} className="p-3 rounded-xl bg-white/5 border-l-2 border-cyan-500">
+                    <p className="text-sm text-zinc-300 italic">"{quote.text}"</p>
+                    <p className="text-xs text-zinc-500 mt-1">— {quote.author}</p>
                   </div>
                 ))}
               </div>
@@ -1356,12 +1272,9 @@ const ResearchScraper = () => {
 
           <div className="space-y-2">
             {competitors.map((comp, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white/5"
-              >
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
                 <div
-                  className={`w-2 h-2 rounded-full ${comp.status === "active" ? "bg-emerald-400" : "bg-zinc-600"}`}
+                  className={`w-2 h-2 rounded-full ${comp.status === 'active' ? 'bg-emerald-400' : 'bg-zinc-600'}`}
                 />
                 <div className="flex-1">
                   <p className="text-sm text-white">{comp.name}</p>
@@ -1394,11 +1307,11 @@ const ResearchScraper = () => {
                     className={`
                     px-2 py-1 rounded-full
                     ${
-                      gap.difficulty === "easy"
-                        ? "bg-emerald-500/20 text-emerald-400"
-                        : gap.difficulty === "medium"
-                          ? "bg-amber-500/20 text-amber-400"
-                          : "bg-red-500/20 text-red-400"
+                      gap.difficulty === 'easy'
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : gap.difficulty === 'medium'
+                          ? 'bg-amber-500/20 text-amber-400'
+                          : 'bg-red-500/20 text-red-400'
                     }
                   `}
                   >
@@ -1407,7 +1320,7 @@ const ResearchScraper = () => {
                   <span
                     className={`
                     px-2 py-1 rounded-full
-                    ${gap.opportunity === "high" ? "bg-violet-500/20 text-violet-400" : "bg-zinc-500/20 text-zinc-400"}
+                    ${gap.opportunity === 'high' ? 'bg-violet-500/20 text-violet-400' : 'bg-zinc-500/20 text-zinc-400'}
                   `}
                   >
                     Opportunità: {gap.opportunity}
@@ -1428,8 +1341,8 @@ const ResearchScraper = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-white/5">
               <p className="text-zinc-300 italic mb-2">
-                "Content builds relationships. Relationships are built on trust.
-                Trust drives revenue."
+                "Content builds relationships. Relationships are built on trust. Trust drives
+                revenue."
               </p>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-zinc-500">— Andrew Davis</span>
@@ -1457,40 +1370,40 @@ const ResearchScraper = () => {
 
 // ============ SOCIAL TRANSFORMER ============
 const SocialTransformer = () => {
-  const [activeFormat, setActiveFormat] = useState("twitter");
+  const [activeFormat, setActiveFormat] = useState('twitter');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generated, setGenerated] = useState<any>({}); // Using any for mock data structure flexibility
 
   const formats = [
     {
-      id: "twitter",
-      label: "Twitter/X Thread",
+      id: 'twitter',
+      label: 'Twitter/X Thread',
       icon: Twitter,
-      color: "text-sky-400",
+      color: 'text-sky-400',
     },
     {
-      id: "linkedin",
-      label: "LinkedIn Post",
+      id: 'linkedin',
+      label: 'LinkedIn Post',
       icon: Linkedin,
-      color: "text-blue-400",
+      color: 'text-blue-400',
     },
     {
-      id: "instagram",
-      label: "Instagram Carousel",
+      id: 'instagram',
+      label: 'Instagram Carousel',
       icon: Instagram,
-      color: "text-pink-400",
+      color: 'text-pink-400',
     },
     {
-      id: "tiktok",
-      label: "TikTok Script",
+      id: 'tiktok',
+      label: 'TikTok Script',
       icon: Video,
-      color: "text-rose-400",
+      color: 'text-rose-400',
     },
     {
-      id: "newsletter",
-      label: "Newsletter Snippet",
+      id: 'newsletter',
+      label: 'Newsletter Snippet',
       icon: BookOpen,
-      color: "text-emerald-400",
+      color: 'text-emerald-400',
     },
   ];
 
@@ -1498,10 +1411,10 @@ const SocialTransformer = () => {
     twitter: [
       "Thread: L'AI sta cambiando il content marketing. Ecco cosa devi sapere per non restare indietro",
       "1/ Prima di tutto, l'AI non sostituisce la creatività umana. La potenzia.",
-      "2/ Gli strumenti AI permettono di:\n- Analizzare trend in tempo reale\n- Generare varianti di copy\n- Personalizzare contenuti su scala",
+      '2/ Gli strumenti AI permettono di:\n- Analizzare trend in tempo reale\n- Generare varianti di copy\n- Personalizzare contenuti su scala',
       "3/ Ma attenzione: il tocco umano resta fondamentale. L'AI è un assistente, non un sostituto.",
       "4/ Il futuro appartiene a chi sa combinare:\n✨ Creatività umana\n🤖 Potenza dell'AI\n📊 Dati e analytics",
-      "Se questo thread ti è stato utile, seguimi per altri contenuti sul marketing! 🚀",
+      'Se questo thread ti è stato utile, seguimi per altri contenuti sul marketing! 🚀',
     ],
     linkedin:
       "🚀 L'AI nel Content Marketing: Non è il Futuro, è il Presente\n\nHo passato gli ultimi 6 mesi a testare strumenti AI per la creazione di contenuti. Ecco cosa ho imparato:\n\n1️⃣ L'AI accelera, non sostituisce\nGli strumenti AI mi hanno permesso di ridurre del 40% il tempo di produzione, ma la strategia e la creatività restano umane.\n\n2️⃣ La personalizzazione è la chiave\nOggi possiamo creare contenuti personalizzati su scala, qualcosa impensabile solo 2 anni fa.\n\n3️⃣ Il dato guida tutto\nL'AI funziona meglio quando alimentata con dati di qualità. Investire in analytics è fondamentale.\n\n💡 Il mio consiglio: iniziate a sperimentare ora. Chi aspetta, resta indietro.\n\nQual è la vostra esperienza con l'AI nel marketing? Condividete nei commenti! 👇\n\n#ContentMarketing #AI #MarketingDigitale #Innovation",
@@ -1509,31 +1422,31 @@ const SocialTransformer = () => {
       {
         slide: 1,
         content: "L'AI sta cambiando il Content Marketing 🚀",
-        subtitle: "Swipe per scoprire come →",
+        subtitle: 'Swipe per scoprire come →',
       },
       {
         slide: 2,
-        content: "40% in meno di tempo per creare contenuti",
-        subtitle: "Grazie agli strumenti AI",
+        content: '40% in meno di tempo per creare contenuti',
+        subtitle: 'Grazie agli strumenti AI',
       },
       {
         slide: 3,
-        content: "Personalizzazione su scala",
-        subtitle: "Contenuti unici per ogni audience",
+        content: 'Personalizzazione su scala',
+        subtitle: 'Contenuti unici per ogni audience',
       },
       {
         slide: 4,
-        content: "Ma il tocco umano resta fondamentale",
-        subtitle: "AI = Assistente, non sostituto",
+        content: 'Ma il tocco umano resta fondamentale',
+        subtitle: 'AI = Assistente, non sostituto',
       },
       {
         slide: 5,
-        content: "Inizia ora o resta indietro",
-        subtitle: "Salva questo post e seguimi! 💾",
+        content: 'Inizia ora o resta indietro',
+        subtitle: 'Salva questo post e seguimi! 💾',
       },
     ],
     tiktok:
-      "🎬 HOOK (0-3 sec):\n\"L'AI ha cambiato tutto nel marketing. Ecco il segreto che nessuno ti dice.\"\n\n📱 BODY (3-45 sec):\n\"Ok, ascolta. Ho testato tipo 20 tool AI negli ultimi mesi. E sai cosa? Il 90% sono inutili. Ma quel 10%... game changer totale.\n\nPrima ci mettevo 4 ore per un blog post. Ora? Un'ora. Ma - e questo è importante - l'AI non scrive per me. Mi aiuta a scrivere meglio.\n\nIl trucco? Usare l'AI per le parti noiose: ricerca, outline, editing. La creatività? Quella resta tua.\"\n\n🎯 CTA (45-60 sec):\n\"Vuoi sapere quali tool uso? Commenta 'AI' e ti mando la lista. Segui per altri tips sul content marketing!\"",
+      '🎬 HOOK (0-3 sec):\n"L\'AI ha cambiato tutto nel marketing. Ecco il segreto che nessuno ti dice."\n\n📱 BODY (3-45 sec):\n"Ok, ascolta. Ho testato tipo 20 tool AI negli ultimi mesi. E sai cosa? Il 90% sono inutili. Ma quel 10%... game changer totale.\n\nPrima ci mettevo 4 ore per un blog post. Ora? Un\'ora. Ma - e questo è importante - l\'AI non scrive per me. Mi aiuta a scrivere meglio.\n\nIl trucco? Usare l\'AI per le parti noiose: ricerca, outline, editing. La creatività? Quella resta tua."\n\n🎯 CTA (45-60 sec):\n"Vuoi sapere quali tool uso? Commenta \'AI\' e ti mando la lista. Segui per altri tips sul content marketing!"',
     newsletter:
       "📬 **Questa settimana in pillole**\n\nCiao!\n\nL'argomento caldo di questa settimana? L'AI nel content marketing.\n\nSo cosa stai pensando: \"Ancora?\" Ma aspetta, perché questa volta è diverso.\n\nHo passato l'ultimo mese a testare sul campo i nuovi strumenti. Il risultato? Un framework pratico che puoi applicare da subito.\n\n**I 3 insight chiave:**\n\n1. **L'AI accelera, non sostituisce** - Il tempo di produzione può calare del 40%, ma la strategia resta umana.\n\n2. **Qualità dei dati = Qualità dell'output** - Garbage in, garbage out. Prima di usare AI, sistema i tuoi dati.\n\n3. **Inizia piccolo** - Non serve rivoluzionare tutto. Parti da un task specifico e scala da lì.\n\n**La risorsa della settimana:**\n[Link al blog post completo]\n\nA presto,\n[Nome]",
   };
@@ -1548,13 +1461,7 @@ const SocialTransformer = () => {
     try {
       // In a real scenario, we'd call a bulk endpoint.
       // Here we simulate it by calling generate for each
-      const platforms = [
-        "twitter",
-        "linkedin",
-        "instagram",
-        "tiktok",
-        "newsletter",
-      ];
+      const platforms = ['twitter', 'linkedin', 'instagram', 'tiktok', 'newsletter'];
       const results: Record<string, string | string[] | InstagramSlide[]> = {};
 
       await Promise.all(
@@ -1562,19 +1469,19 @@ const SocialTransformer = () => {
           // This is heavy, maybe just do active? No, let's wow the user.
           // Actually, let's just do a specialized prompt for "social-pack"
           const res = await dreamApi.generate({
-            prompt: "Generate social media content for: " + p,
-            mode: "expand", // Reusing mode param for now
-            context: "Social Media Pack",
+            prompt: 'Generate social media content for: ' + p,
+            mode: 'expand', // Reusing mode param for now
+            context: 'Social Media Pack',
           });
           if (res.success)
             results[p] = res.text; // Simple text mapping
-          else results[p] = "Error generating content";
-        }),
+          else results[p] = 'Error generating content';
+        })
       );
 
       setGenerated(results);
     } catch (e) {
-      console.error(e);
+      logger.error('Content generation failed', {}, e as Error);
     } finally {
       setIsGenerating(false);
     }
@@ -1612,18 +1519,14 @@ const SocialTransformer = () => {
                 w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left
                 ${
                   activeFormat === format.id
-                    ? "bg-white/10 border border-white/20"
-                    : "hover:bg-white/5"
+                    ? 'bg-white/10 border border-white/20'
+                    : 'hover:bg-white/5'
                 }
               `}
             >
               <Icon size={18} className={format.color} />
-              <span className="flex-1 text-sm text-zinc-300">
-                {format.label}
-              </span>
-              {hasContent && (
-                <CheckCircle2 size={14} className="text-emerald-400" />
-              )}
+              <span className="flex-1 text-sm text-zinc-300">{format.label}</span>
+              {hasContent && <CheckCircle2 size={14} className="text-emerald-400" />}
             </button>
           );
         })}
@@ -1634,15 +1537,13 @@ const SocialTransformer = () => {
         {!activeContent ? (
           <div className="h-full flex flex-col items-center justify-center text-center">
             <Share2 size={48} className="text-zinc-700 mb-4" />
-            <h3 className="text-xl font-semibold text-zinc-400 mb-2">
-              Trasforma il tuo articolo
-            </h3>
+            <h3 className="text-xl font-semibold text-zinc-400 mb-2">Trasforma il tuo articolo</h3>
             <p className="text-zinc-500 max-w-md">
-              Clicca "Genera Tutti" per trasformare automaticamente il tuo
-              articolo in contenuti ottimizzati per ogni piattaforma.
+              Clicca "Genera Tutti" per trasformare automaticamente il tuo articolo in contenuti
+              ottimizzati per ogni piattaforma.
             </p>
           </div>
-        ) : activeFormat === "twitter" ? (
+        ) : activeFormat === 'twitter' ? (
           <div className="max-w-lg mx-auto space-y-4">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <Twitter size={20} className="text-sky-400" />
@@ -1654,14 +1555,10 @@ const SocialTransformer = () => {
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-pink-500" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-white text-sm">
-                        Tu
-                      </span>
+                      <span className="font-semibold text-white text-sm">Tu</span>
                       <span className="text-zinc-500 text-sm">@tuoaccount</span>
                     </div>
-                    <p className="text-zinc-300 text-sm whitespace-pre-wrap">
-                      {tweet}
-                    </p>
+                    <p className="text-zinc-300 text-sm whitespace-pre-wrap">{tweet}</p>
                     <div className="flex gap-6 mt-3 text-zinc-500">
                       <MessageCircle size={16} />
                       <Repeat2 size={16} />
@@ -1673,7 +1570,7 @@ const SocialTransformer = () => {
               </GlassCard>
             ))}
           </div>
-        ) : activeFormat === "linkedin" ? (
+        ) : activeFormat === 'linkedin' ? (
           <div className="max-w-2xl mx-auto">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <Linkedin size={20} className="text-blue-400" />
@@ -1684,9 +1581,7 @@ const SocialTransformer = () => {
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-pink-500" />
                 <div>
                   <p className="font-semibold text-white">Il Tuo Nome</p>
-                  <p className="text-sm text-zinc-500">
-                    Content Marketing Specialist
-                  </p>
+                  <p className="text-sm text-zinc-500">Content Marketing Specialist</p>
                   <p className="text-xs text-zinc-600">2h • 🌐</p>
                 </div>
               </div>
@@ -1695,7 +1590,7 @@ const SocialTransformer = () => {
               </p>
             </GlassCard>
           </div>
-        ) : activeFormat === "instagram" ? (
+        ) : activeFormat === 'instagram' ? (
           <div className="max-w-4xl mx-auto">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <Instagram size={20} className="text-pink-400" />
@@ -1707,18 +1602,14 @@ const SocialTransformer = () => {
                   key={i}
                   className="aspect-square p-4 flex flex-col items-center justify-center text-center"
                 >
-                  <span className="text-xs text-zinc-500 mb-2">
-                    Slide {slide.slide}
-                  </span>
-                  <p className="text-white font-semibold text-sm mb-2">
-                    {slide.content}
-                  </p>
+                  <span className="text-xs text-zinc-500 mb-2">Slide {slide.slide}</span>
+                  <p className="text-white font-semibold text-sm mb-2">{slide.content}</p>
                   <p className="text-xs text-zinc-400">{slide.subtitle}</p>
                 </GlassCard>
               ))}
             </div>
           </div>
-        ) : activeFormat === "tiktok" ? (
+        ) : activeFormat === 'tiktok' ? (
           <div className="max-w-2xl mx-auto">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <Video size={20} className="text-rose-400" />
@@ -1756,13 +1647,13 @@ const PublishHub = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const days = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
-  const currentMonth = "Febbraio 2026";
+  const days = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+  const currentMonth = 'Febbraio 2026';
 
   // Generate calendar days
   const calendarDays = Array.from({ length: 28 }, (_, i) => {
     const day = i + 1;
-    const dateStr = `2026-02-${String(day).padStart(2, "0")}`;
+    const dateStr = `2026-02-${String(day).padStart(2, '0')}`;
     const events = calendarEvents.filter((e) => e.date === dateStr);
     return { day, date: dateStr, events };
   });
@@ -1777,23 +1668,23 @@ const PublishHub = () => {
   const queue = [
     {
       id: 1,
-      title: "Thread AI Marketing",
-      platform: "twitter",
-      scheduledFor: "14:00",
+      title: 'Thread AI Marketing',
+      platform: 'twitter',
+      scheduledFor: '14:00',
     },
     {
       id: 2,
-      title: "Post LinkedIn",
-      platform: "linkedin",
-      scheduledFor: "16:30",
+      title: 'Post LinkedIn',
+      platform: 'linkedin',
+      scheduledFor: '16:30',
     },
   ];
 
   const platforms = [
-    { name: "Twitter/X", connected: true, followers: "12.4K" },
-    { name: "LinkedIn", connected: true, followers: "8.2K" },
-    { name: "Instagram", connected: false, followers: "-" },
-    { name: "Newsletter", connected: true, subscribers: "3.1K" },
+    { name: 'Twitter/X', connected: true, followers: '12.4K' },
+    { name: 'LinkedIn', connected: true, followers: '8.2K' },
+    { name: 'Instagram', connected: false, followers: '-' },
+    { name: 'Newsletter', connected: true, subscribers: '3.1K' },
   ];
 
   const handlePublish = () => {
@@ -1840,12 +1731,12 @@ const PublishHub = () => {
                 onClick={() => setSelectedDate(date)}
                 className={`
                   aspect-square rounded-xl p-2 cursor-pointer transition-all
-                  ${isToday ? "bg-violet-500/20 border border-violet-500/50" : "hover:bg-white/5"}
-                  ${selectedDate === date ? "ring-2 ring-violet-500" : ""}
+                  ${isToday ? 'bg-violet-500/20 border border-violet-500/50' : 'hover:bg-white/5'}
+                  ${selectedDate === date ? 'ring-2 ring-violet-500' : ''}
                 `}
               >
                 <span
-                  className={`text-sm ${isToday ? "text-violet-300 font-semibold" : "text-zinc-400"}`}
+                  className={`text-sm ${isToday ? 'text-violet-300 font-semibold' : 'text-zinc-400'}`}
                 >
                   {day}
                 </span>
@@ -1858,13 +1749,11 @@ const PublishHub = () => {
                           key={i}
                           className={`
                           flex items-center gap-1 px-1.5 py-0.5 rounded text-xs
-                          ${event.status === "scheduled" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}
+                          ${event.status === 'scheduled' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}
                         `}
                         >
                           <Icon size={10} />
-                          <span className="truncate">
-                            {event.title.slice(0, 8)}
-                          </span>
+                          <span className="truncate">{event.title.slice(0, 8)}</span>
                         </div>
                       );
                     })}
@@ -1889,16 +1778,11 @@ const PublishHub = () => {
             {queue.map((item) => {
               const Icon = platformIcons[item.platform] || FileText;
               return (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-white/5"
-                >
+                <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
                   <Icon size={16} className="text-zinc-400" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">{item.title}</p>
-                    <p className="text-xs text-zinc-500">
-                      Oggi alle {item.scheduledFor}
-                    </p>
+                    <p className="text-xs text-zinc-500">Oggi alle {item.scheduledFor}</p>
                   </div>
                   <button
                     onClick={handlePublish}
@@ -1921,12 +1805,9 @@ const PublishHub = () => {
 
           <div className="space-y-2">
             {platforms.map((platform, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 p-3 rounded-xl bg-white/5"
-              >
+              <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
                 <div
-                  className={`w-2 h-2 rounded-full ${platform.connected ? "bg-emerald-400" : "bg-zinc-600"}`}
+                  className={`w-2 h-2 rounded-full ${platform.connected ? 'bg-emerald-400' : 'bg-zinc-600'}`}
                 />
                 <div className="flex-1">
                   <p className="text-sm text-white">{platform.name}</p>
@@ -1958,9 +1839,7 @@ const PublishHub = () => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-zinc-400">Engagement</span>
-              <span className="text-sm text-emerald-400 font-medium">
-                +12.4%
-              </span>
+              <span className="text-sm text-emerald-400 font-medium">+12.4%</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-zinc-400">Click</span>
@@ -1997,32 +1876,31 @@ export default function DreamThinkingRoom() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setCommandPaletteOpen(true);
       }
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         setCommandPaletteOpen(false);
-        if (focusMode)
-          store.setState((s: StoreState) => ({ ...s, focusMode: false }));
+        if (focusMode) store.setState((s: StoreState) => ({ ...s, focusMode: false }));
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode]);
 
   const renderZone = () => {
     switch (activeZone) {
-      case "inspiration":
+      case 'inspiration':
         return <InspirationCorner />;
-      case "composer":
+      case 'composer':
         return <ArticleComposer />;
-      case "research":
+      case 'research':
         return <ResearchScraper />;
-      case "social":
+      case 'social':
         return <SocialTransformer />;
-      case "publish":
+      case 'publish':
         return <PublishHub />;
       default:
         return <ArticleComposer />;
@@ -2044,23 +1922,19 @@ export default function DreamThinkingRoom() {
       <main
         className={`
         h-screen pt-20 transition-all duration-500
-        ${focusMode ? "pl-0" : "pl-20"}
+        ${focusMode ? 'pl-0' : 'pl-20'}
       `}
       >
         {renderZone()}
       </main>
 
-      <CommandPalette
-        open={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-      />
+      <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
 
       {/* Focus mode exit hint */}
       {focusMode && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/10 backdrop-blur text-sm text-zinc-400 animate-pulse">
-          Premi{" "}
-          <kbd className="px-1.5 py-0.5 bg-white/10 rounded mx-1">ESC</kbd> per
-          uscire dal Focus Mode
+          Premi <kbd className="px-1.5 py-0.5 bg-white/10 rounded mx-1">ESC</kbd> per uscire dal
+          Focus Mode
         </div>
       )}
 
