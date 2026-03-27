@@ -161,12 +161,12 @@ class NotebookLMCacheService:
             key = self.cache_prefix + self._hash_question(question, notebook_id)
 
             # Build cache entry
-            from datetime import datetime
+            from datetime import datetime, timezone
 
             cache_entry = {
                 "question": question,
                 "answer": answer,
-                "cached_at": datetime.utcnow().isoformat() + "Z",
+                "cached_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat() + "Z",
                 "source": "cache",
                 "metadata": metadata or {},
             }
