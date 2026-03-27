@@ -712,7 +712,13 @@ export default function NewsRoomPage() {
                   className="flex items-center gap-4 text-sm mt-2"
                   style={{ color: 'var(--bz-text-2)' }}
                 >
-                  <span>{new Date(previewItem.detected_at).toLocaleDateString()}</span>
+                  <span>
+                    {new Date(previewItem.detected_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
                   <span>•</span>
                   <span>{(previewItem as any).source_name || previewItem.source}</span>
                   <span>•</span>

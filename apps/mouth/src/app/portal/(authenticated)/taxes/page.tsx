@@ -138,9 +138,13 @@ export default function TaxesPage() {
                 const chipLabel =
                   daysLeft <= 0
                     ? `${Math.abs(daysLeft)}d overdue`
-                    : daysLeft === 1
-                      ? 'tomorrow'
-                      : `${daysLeft}d left`;
+                    : daysLeft === 0
+                      ? 'today'
+                      : daysLeft === 1
+                        ? 'tomorrow'
+                        : daysLeft <= 365
+                          ? `⏰ ${daysLeft}d left`
+                          : `${Math.floor(daysLeft / 30)}mo left`;
                 return (
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <p className="text-lg font-bold">
@@ -401,7 +405,13 @@ function ObligationCard({
                     ? 'bg-amber-500/10 text-amber-400'
                     : undefined;
             const chipLabel =
-              daysLeft <= 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`;
+              daysLeft <= 0
+                ? `${Math.abs(daysLeft)}d overdue`
+                : daysLeft === 0
+                  ? 'today'
+                  : daysLeft <= 365
+                    ? `⏰ ${daysLeft}d left`
+                    : `${Math.floor(daysLeft / 30)}mo left`;
             return chipColor ? (
               <span className={`ml-1 px-1.5 py-0.5 rounded-full font-semibold ${chipColor}`}>
                 {chipLabel}
