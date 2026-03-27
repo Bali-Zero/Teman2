@@ -38,7 +38,7 @@ class AuditAction(str, Enum):
 class CRMAuditor:
     """Sistema audit per CRM."""
 
-    def __init__(self, db_pool: asyncpg.Pool, buffer_size: int = 100):
+    def __init__(self, db_pool: asyncpg.Pool, buffer_size: int = 100) -> None:
         self.db_pool = db_pool
         self._buffer: list[dict] = []
         self._buffer_size = buffer_size
