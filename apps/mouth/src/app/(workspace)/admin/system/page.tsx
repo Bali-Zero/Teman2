@@ -90,7 +90,7 @@ export default function SystemDashboardPage() {
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-xs text-green-500/60">LAST UPDATE</p>
-            <p className="text-sm font-bold text-green-500">{lastUpdated.toLocaleTimeString()}</p>
+            <p className="text-sm font-bold text-green-500">{lastUpdated.toLocaleTimeString('en-US')}</p>
           </div>
           <Button
             variant="outline"

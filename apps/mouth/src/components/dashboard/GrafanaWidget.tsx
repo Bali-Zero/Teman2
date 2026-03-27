@@ -189,7 +189,7 @@ export function GrafanaWidget({ className = '' }: GrafanaWidgetProps) {
       {/* Footer */}
       <div className="px-5 py-2 bg-orange-500/5 border-t border-orange-500/20">
         <p className="text-xs text-[var(--foreground-muted)] text-center">
-          {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Loading...'} •
+          {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString('en-US')}` : 'Loading...'} •
           Auto-refresh 30s
         </p>
       </div>

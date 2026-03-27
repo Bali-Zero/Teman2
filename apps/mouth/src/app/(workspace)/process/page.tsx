@@ -1199,7 +1199,9 @@ export default function PratichePage() {
                                     </p>
                                   </div>
                                 ) : (
-                                  <span className="text-[9px] text-[var(--bz-text-2)] opacity-50 italic">Unassigned</span>
+                                  <span className="text-[9px] text-[var(--bz-text-2)] opacity-50 italic">
+                                    Unassigned
+                                  </span>
                                 )}
                                 <div className="flex items-center gap-1.5">
                                   {practice.actual_price || practice.quoted_price ? (
@@ -1490,9 +1492,7 @@ export default function PratichePage() {
                           ) : (
                             <ArrowDown className="w-4 h-4" />
                           ))}
-                        {sortField !== 'priority' && (
-                          <ArrowUpDown className="w-4 h-4 opacity-30" />
-                        )}
+                        {sortField !== 'priority' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                       </div>
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)]">
@@ -1563,7 +1563,12 @@ export default function PratichePage() {
                             </span>
                           </div>
                         ) : (
-                          <span className="text-[var(--bz-text-2)] text-xs italic opacity-60" title="No team member assigned">Unassigned</span>
+                          <span
+                            className="text-[var(--bz-text-2)] text-xs italic opacity-60"
+                            title="No team member assigned"
+                          >
+                            Unassigned
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -1600,7 +1605,9 @@ export default function PratichePage() {
                             ↑ high
                           </span>
                         ) : (
-                          <span className="text-[var(--bz-text-2)] text-xs" title="Normal priority">—</span>
+                          <span className="text-[var(--bz-text-2)] text-xs" title="Normal priority">
+                            —
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
@@ -1618,7 +1625,9 @@ export default function PratichePage() {
                             {practice.payment_status}
                           </span>
                         ) : (
-                          <span className="text-[var(--bz-text-2)] text-xs" title="Payment not set">—</span>
+                          <span className="text-[var(--bz-text-2)] text-xs" title="Payment not set">
+                            —
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-right">
@@ -1669,7 +1678,7 @@ export default function PratichePage() {
                                         ? '#fbbf24'
                                         : 'var(--bz-text-2)',
                                 }}
-                                title={`Last updated: ${new Date(practice.updated_at).toLocaleDateString()}`}
+                                title={`Last updated: ${new Date(practice.updated_at).toLocaleDateString('en-US')}`}
                               >
                                 {label}
                               </span>
@@ -1810,7 +1819,9 @@ export default function PratichePage() {
               <div>
                 <p className="text-xs font-semibold text-[var(--bz-text-1)]">Update Status</p>
                 <p className="text-[10px] text-[var(--bz-text-2)]">
-                  {selectedPractice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Process'} #{selectedPractice.id}
+                  {selectedPractice.practice_type_code?.toUpperCase().replace(/_/g, ' ') ||
+                    'Process'}{' '}
+                  #{selectedPractice.id}
                 </p>
               </div>
               <button
@@ -1909,13 +1920,30 @@ export default function PratichePage() {
             <div className="flex gap-1">
               {(
                 [
-                  { value: 'normal', label: 'Normal', color: '#9ca3af', active: 'rgba(156,163,175,0.25)', border: 'rgba(156,163,175,0.4)' },
-                  { value: 'high', label: 'High', color: '#fb923c', active: 'rgba(249,115,22,0.25)', border: 'rgba(249,115,22,0.4)' },
-                  { value: 'urgent', label: 'Urgent', color: '#f87171', active: 'rgba(239,68,68,0.25)', border: 'rgba(239,68,68,0.4)' },
+                  {
+                    value: 'normal',
+                    label: 'Normal',
+                    color: '#9ca3af',
+                    active: 'rgba(156,163,175,0.25)',
+                    border: 'rgba(156,163,175,0.4)',
+                  },
+                  {
+                    value: 'high',
+                    label: 'High',
+                    color: '#fb923c',
+                    active: 'rgba(249,115,22,0.25)',
+                    border: 'rgba(249,115,22,0.4)',
+                  },
+                  {
+                    value: 'urgent',
+                    label: 'Urgent',
+                    color: '#f87171',
+                    active: 'rgba(239,68,68,0.25)',
+                    border: 'rgba(239,68,68,0.4)',
+                  },
                 ] as const
               ).map((p) => {
-                const isCurrent =
-                  (selectedPractice.priority || 'normal') === p.value;
+                const isCurrent = (selectedPractice.priority || 'normal') === p.value;
                 return (
                   <button
                     key={p.value}
@@ -1925,7 +1953,9 @@ export default function PratichePage() {
                     style={{
                       background: isCurrent ? p.active : 'rgba(255,255,255,0.05)',
                       color: isCurrent ? p.color : 'var(--bz-text-2)',
-                      border: isCurrent ? `1px solid ${p.border}` : '1px solid rgba(255,255,255,0.06)',
+                      border: isCurrent
+                        ? `1px solid ${p.border}`
+                        : '1px solid rgba(255,255,255,0.06)',
                     }}
                   >
                     {p.label}
