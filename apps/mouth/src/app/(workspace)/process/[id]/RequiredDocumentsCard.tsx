@@ -401,7 +401,7 @@ export function RequiredDocumentsCard({ practiceId }: RequiredDocumentsCardProps
                       variant="ghost"
                       className="h-8 w-8"
                       onClick={() => setReviewDoc(doc)}
-                      title="Review document"
+                      aria-label="Review document"
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
@@ -412,6 +412,7 @@ export function RequiredDocumentsCard({ practiceId }: RequiredDocumentsCardProps
                     className="h-8 w-8 text-destructive hover:text-destructive"
                     onClick={() => handleDelete(doc.id)}
                     disabled={processingId === doc.id}
+                    aria-label="Delete document"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

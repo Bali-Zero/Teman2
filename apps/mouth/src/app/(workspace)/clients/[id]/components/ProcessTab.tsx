@@ -230,6 +230,7 @@ export function ProcessTab({
                       }}
                       className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
                       title="View process"
+                      aria-label="View process"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
@@ -268,6 +269,7 @@ export function ProcessTab({
                       disabled={deletingIds.has(practice.id)}
                       className="p-1 rounded hover:bg-red-500/20 text-[var(--bz-text-2)] hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Delete process"
+                      aria-label="Delete process"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
