@@ -1,17 +1,10 @@
-"use client";
+'use client';
 
-import React from "react";
-import {
-  MessageCircle,
-  Search,
-  Filter,
-  Check,
-  Phone,
-  User,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useDebounce } from "@/lib/hooks/optimized";
-import type { WhatsAppConversation } from "@/lib/api/whatsapp/whatsapp.types";
+import React from 'react';
+import { MessageCircle, Search, Filter, Check, Phone, User } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useDebounce } from '@/lib/hooks/optimized';
+import type { WhatsAppConversation } from '@/lib/api/whatsapp/whatsapp.types';
 
 interface WhatsAppListProps {
   conversations: WhatsAppConversation[];
@@ -48,8 +41,7 @@ export function WhatsAppList({
     onSearch(localSearch);
   };
 
-  const allSelected =
-    conversations.length > 0 && selectedIds.size === conversations.length;
+  const allSelected = conversations.length > 0 && selectedIds.size === conversations.length;
   const someSelected = selectedIds.size > 0;
 
   // Filter conversations by search query
@@ -65,8 +57,8 @@ export function WhatsAppList({
 
   const formatPhone = (phone: string): string => {
     // Format Indonesian phone numbers
-    if (phone.startsWith("+62")) {
-      return phone.replace("+62", "0");
+    if (phone.startsWith('+62')) {
+      return phone.replace('+62', '0');
     }
     return phone;
   };
@@ -79,11 +71,11 @@ export function WhatsAppList({
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "Just now";
+    if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   return (
@@ -94,10 +86,10 @@ export function WhatsAppList({
         <button
           onClick={() => onSelectAll(!allSelected)}
           className={cn(
-            "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+            'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
             allSelected
-              ? "bg-[var(--accent)] border-[var(--accent)]"
-              : "border-[var(--border)] hover:border-[var(--accent)]",
+              ? 'bg-[var(--accent)] border-[var(--accent)]'
+              : 'border-[var(--border)] hover:border-[var(--accent)]'
           )}
         >
           {allSelected && <Check className="w-3 h-3 text-white" />}
@@ -140,9 +132,7 @@ export function WhatsAppList({
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
             <MessageCircle className="w-12 h-12 text-[var(--foreground-muted)] mb-4 opacity-50" />
             <p className="text-sm text-[var(--foreground-muted)]">
-              {localSearch
-                ? "No conversations found"
-                : "No WhatsApp conversations yet"}
+              {localSearch ? 'No conversations found' : 'No WhatsApp conversations yet'}
             </p>
           </div>
         ) : (
@@ -156,10 +146,10 @@ export function WhatsAppList({
                   key={conv.phone}
                   onClick={() => onSelectConversation(conv.phone)}
                   className={cn(
-                    "flex items-center gap-3 p-3 cursor-pointer transition-colors",
+                    'flex items-center gap-3 p-3 cursor-pointer transition-colors',
                     isSelected
-                      ? "bg-[var(--accent)]/10 border-l-2 border-[var(--accent)]"
-                      : "hover:bg-[var(--background-elevated)]",
+                      ? 'bg-[var(--accent)]/10 border-l-2 border-[var(--accent)]'
+                      : 'hover:bg-[var(--background-elevated)]'
                   )}
                 >
                   {/* Checkbox */}
@@ -169,10 +159,10 @@ export function WhatsAppList({
                       onToggleSelect(conv.phone);
                     }}
                     className={cn(
-                      "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0",
+                      'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0',
                       isChecked
-                        ? "bg-[var(--accent)] border-[var(--accent)]"
-                        : "border-[var(--border)] hover:border-[var(--accent)]",
+                        ? 'bg-[var(--accent)] border-[var(--accent)]'
+                        : 'border-[var(--border)] hover:border-[var(--accent)]'
                     )}
                   >
                     {isChecked && <Check className="w-3 h-3 text-white" />}
@@ -199,7 +189,7 @@ export function WhatsAppList({
                     </div>
                     <div className="flex items-center gap-2">
                       <p className="text-xs text-[var(--foreground-muted)] truncate flex-1">
-                        {conv.last_message || "No messages"}
+                        {conv.last_message || 'No messages'}
                       </p>
                       {conv.unread_count && conv.unread_count > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-green-500 text-white text-xs font-semibold flex-shrink-0">
