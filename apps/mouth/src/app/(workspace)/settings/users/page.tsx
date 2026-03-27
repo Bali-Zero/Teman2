@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   Plus,
@@ -12,10 +12,11 @@ import {
   UserCircle,
   CheckCircle2,
   XCircle,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 interface TeamMember {
   user_id: string;
@@ -29,15 +30,15 @@ interface TeamMember {
 
 export default function UserManagementPage() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [users, setUsers] = useState<TeamMember[]>([]);
   const [newUser, setNewUser] = useState({
-    email: "",
-    name: "",
-    role: "user",
-    team: "Team",
+    email: '',
+    name: '',
+    role: 'user',
+    team: 'Team',
   });
 
   useEffect(() => {
@@ -47,32 +48,32 @@ export default function UserManagementPage() {
         setUsers(
           teamStatus.map((u) => ({
             ...u,
-            name: u.email.split("@")[0],
-            role: u.email === "zero@balizero.com" ? "admin" : "user",
-            team: "Team",
-          })),
+            name: u.email.split('@')[0],
+            role: u.email === 'zero@balizero.com' ? 'admin' : 'user',
+            team: 'Team',
+          }))
         );
       } catch (err) {
-        console.error("Failed to load users:", err);
+        logger.error('Failed to load users', {}, err as Error);
         // Fallback mock data
         setUsers([
           {
-            user_id: "1",
-            email: "zero@balizero.com",
-            name: "Zero",
-            role: "admin",
-            team: "Team",
+            user_id: '1',
+            email: 'zero@balizero.com',
+            name: 'Zero',
+            role: 'admin',
+            team: 'Team',
             is_online: true,
-            last_action: "now",
+            last_action: 'now',
           },
           {
-            user_id: "2",
-            email: "staff@balizero.com",
-            name: "Staff",
-            role: "user",
-            team: "Team",
+            user_id: '2',
+            email: 'staff@balizero.com',
+            name: 'Staff',
+            role: 'user',
+            team: 'Team',
             is_online: false,
-            last_action: "2h ago",
+            last_action: '2h ago',
           },
         ]);
       } finally {
@@ -85,7 +86,7 @@ export default function UserManagementPage() {
   const filteredUsers = users.filter(
     (u) =>
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      u.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddUser = () => {
@@ -94,11 +95,11 @@ export default function UserManagementPage() {
       user_id: Date.now().toString(),
       ...newUser,
       is_online: false,
-      last_action: "Never",
+      last_action: 'Never',
     };
     setUsers([...users, newMember]);
     setShowAddModal(false);
-    setNewUser({ email: "", name: "", role: "user", team: "Team" });
+    setNewUser({ email: '', name: '', role: 'user', team: 'Team' });
   };
 
   return (
@@ -106,11 +107,7 @@ export default function UserManagementPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/settings")}
-          >
+          <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
@@ -118,9 +115,7 @@ export default function UserManagementPage() {
               <Users className="w-6 h-6 text-blue-400" />
               User Management
             </h1>
-            <p className="text-sm text-[var(--foreground-muted)]">
-              Add, modify or remove users
-            </p>
+            <p className="text-sm text-[var(--foreground-muted)]">Add, modify or remove users</p>
           </div>
         </div>
         <Button onClick={() => setShowAddModal(true)}>
@@ -145,9 +140,7 @@ export default function UserManagementPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Total Users</p>
-          <p className="text-2xl font-bold text-[var(--foreground)]">
-            {users.length}
-          </p>
+          <p className="text-2xl font-bold text-[var(--foreground)]">{users.length}</p>
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Online Now</p>
@@ -158,7 +151,7 @@ export default function UserManagementPage() {
         <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] p-4">
           <p className="text-sm text-[var(--foreground-muted)]">Admins</p>
           <p className="text-2xl font-bold text-purple-400">
-            {users.filter((u) => u.role === "admin").length}
+            {users.filter((u) => u.role === 'admin').length}
           </p>
         </div>
       </div>
@@ -167,9 +160,7 @@ export default function UserManagementPage() {
       <div className="rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center">
-            <p className="text-sm text-[var(--foreground-muted)]">
-              Loading users...
-            </p>
+            <p className="text-sm text-[var(--foreground-muted)]">Loading users...</p>
           </div>
         ) : (
           <table className="w-full">
@@ -194,31 +185,24 @@ export default function UserManagementPage() {
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
               {filteredUsers.map((user) => (
-                <tr
-                  key={user.user_id}
-                  className="hover:bg-[var(--background)]/50"
-                >
+                <tr key={user.user_id} className="hover:bg-[var(--background)]/50">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-[var(--background)] flex items-center justify-center">
                         <UserCircle className="w-6 h-6 text-[var(--foreground-muted)]" />
                       </div>
                       <div>
-                        <p className="font-medium text-[var(--foreground)]">
-                          {user.name}
-                        </p>
-                        <p className="text-sm text-[var(--foreground-muted)]">
-                          {user.email}
-                        </p>
+                        <p className="font-medium text-[var(--foreground)]">{user.name}</p>
+                        <p className="text-sm text-[var(--foreground-muted)]">{user.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="p-4">
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                        user.role === "admin"
-                          ? "bg-purple-500/20 text-purple-400"
-                          : "bg-blue-500/20 text-blue-400"
+                        user.role === 'admin'
+                          ? 'bg-purple-500/20 text-purple-400'
+                          : 'bg-blue-500/20 text-blue-400'
                       }`}
                     >
                       <Shield className="w-3 h-3" />
@@ -228,9 +212,7 @@ export default function UserManagementPage() {
                   <td className="p-4">
                     <span
                       className={`inline-flex items-center gap-1 text-sm ${
-                        user.is_online
-                          ? "text-green-400"
-                          : "text-[var(--foreground-muted)]"
+                        user.is_online ? 'text-green-400' : 'text-[var(--foreground-muted)]'
                       }`}
                     >
                       {user.is_online ? (
@@ -238,12 +220,10 @@ export default function UserManagementPage() {
                       ) : (
                         <XCircle className="w-4 h-4" />
                       )}
-                      {user.is_online ? "Online" : "Offline"}
+                      {user.is_online ? 'Online' : 'Offline'}
                     </span>
                   </td>
-                  <td className="p-4 text-sm text-[var(--foreground-muted)]">
-                    {user.last_action}
-                  </td>
+                  <td className="p-4 text-sm text-[var(--foreground-muted)]">{user.last_action}</td>
                   <td className="p-4 text-right">
                     <Button variant="ghost" size="sm" aria-label="User actions">
                       <MoreVertical className="w-4 h-4" />
@@ -260,9 +240,7 @@ export default function UserManagementPage() {
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-6 w-full max-w-md">
-            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
-              Add New User
-            </h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">Add New User</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
@@ -271,9 +249,7 @@ export default function UserManagementPage() {
                 <input
                   type="text"
                   value={newUser.name}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, name: e.target.value })
-                  }
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                   placeholder="Full name"
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
@@ -286,9 +262,7 @@ export default function UserManagementPage() {
                 <input
                   type="email"
                   value={newUser.email}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, email: e.target.value })
-                  }
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                   placeholder="email@example.com"
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
@@ -299,9 +273,7 @@ export default function UserManagementPage() {
                 </label>
                 <select
                   value={newUser.role}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, role: e.target.value })
-                  }
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 >
                   <option value="user">User</option>
