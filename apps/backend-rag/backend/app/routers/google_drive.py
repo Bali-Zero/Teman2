@@ -191,7 +191,8 @@ async def oauth_callback(
                     """,
                     access_token,
                     refresh_token,
-                    datetime.now(tz=timezone.utc).replace(tzinfo=None) + timedelta(seconds=expires_in),
+                    datetime.now(tz=timezone.utc).replace(tzinfo=None)
+                    + timedelta(seconds=expires_in),
                 )
             finally:
                 await conn.close()
