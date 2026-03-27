@@ -326,9 +326,9 @@ async def chat_stream_post(
 
     if not session_id:
         import uuid
-        from datetime import datetime
+        from datetime import datetime, timezone
 
-        session_id = f"session-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8]}"
+        session_id = f"session-{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8]}"
         logger.info(f"🆕 Generated new session_id: {session_id}")
 
     if (
