@@ -50,7 +50,7 @@ class AICRMExtractor:
     Extracts: client info, practice intent, sentiment, urgency, action items
     """
 
-    def __init__(self, ai_client=None):
+    def __init__(self, ai_client=None) -> None:
         """Initialize with ZANTARA AI client"""
         try:
             self.client = ai_client if ai_client else ZantaraAIClient()
