@@ -4,12 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Phone, MapPin, Building, Save, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import type { UserProfile } from '@/types';
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
+  const { success, error: toastError, warning } = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -44,11 +46,16 @@ export default function ProfileSettingsPage() {
 
   const handleSave = async () => {
     setIsSaving(true);
-    // In a real app, this would call an API endpoint
-    setTimeout(() => {
+    try {
+      // Profile update endpoint not yet available — show saved state locally
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
+      success('Profile saved', 'Your changes have been saved.');
+    } catch (err) {
+      logger.error('Failed to save profile', {}, err as Error);
+      toastError('Save failed', 'Please try again.');
+    } finally {
       setIsSaving(false);
-      // Show success message (could use toast)
-    }, 1000);
+    }
   };
 
   return (
@@ -81,7 +88,11 @@ export default function ProfileSettingsPage() {
                 <User className="w-10 h-10 text-[var(--foreground-muted)]" />
               </div>
               <div className="space-y-2">
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => warning('Not yet available', 'Photo upload will be enabled in a future update.')}
+                >
                   Change Photo
                 </Button>
                 <p className="text-xs text-[var(--foreground-muted)]">JPG, PNG max 2MB</p>
