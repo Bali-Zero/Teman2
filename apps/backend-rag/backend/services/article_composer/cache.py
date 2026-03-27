@@ -28,7 +28,7 @@ CACHE_TTL_STATUS = 300  # 5 minutes
 class CacheService:
     """Redis-based cache service for Article Composer"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.redis_client: redis.Redis | None = None
         self.enabled = False
 
