@@ -29,7 +29,7 @@ class SquadOrchestrator:
     It holds the 'Arsenal' of multi-agent commands.
     """
 
-    def __init__(self, llm: ChatAnthropic | None = None):
+    def __init__(self, llm: ChatAnthropic | None = None) -> None:
         """
         Initialize the Orchestrator.
         Preferably uses Codex-sonnet-4-6 (Sonnet 3.5 update) for orchestration reasoning.
