@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { Search, X } from 'lucide-react';
 
 interface KBLISearchProps {
   navigateOnSubmit?: boolean;
@@ -15,7 +15,7 @@ export function KBLISearch({
   navigateOnSubmit = true,
   placeholder = "Search by code, name, or activity — e.g. 'restaurant', '56101', 'villa rental'",
   autoFocus = false,
-  initialQuery = "",
+  initialQuery = '',
 }: KBLISearchProps) {
   const [query, setQuery] = useState(initialQuery);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -29,8 +29,13 @@ export function KBLISearch({
         router.push(`/kbli/search?q=${encodeURIComponent(trimmed)}`);
       }
     },
-    [navigateOnSubmit, router],
+    [navigateOnSubmit, router]
   );
+
+  const handleClear = useCallback(() => {
+    setQuery('');
+    inputRef.current?.focus();
+  }, []);
 
   return (
     <div className="relative w-full">
@@ -45,7 +50,8 @@ export function KBLISearch({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && query.trim()) handleSearch(query);
+            if (e.key === 'Enter' && query.trim()) handleSearch(query);
+            if (e.key === 'Escape') handleClear();
           }}
           placeholder={placeholder}
           autoFocus={autoFocus}
@@ -58,9 +64,10 @@ export function KBLISearch({
         />
         {query && (
           <button
-            onClick={() => setQuery("")}
+            onClick={handleClear}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
             aria-label="Clear search"
+            type="button"
           >
             <X className="h-4 w-4" />
           </button>
