@@ -475,7 +475,7 @@ function TimelineItem({ entry, isLast }: { entry: TimelineEntry; isLast: boolean
               year: 'numeric',
             })}
           >
-            {new Date(entry.occurredAt).toLocaleDateString(undefined, {
+            {new Date(entry.occurredAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric',
@@ -493,7 +493,7 @@ function TimelineItem({ entry, isLast }: { entry: TimelineEntry; isLast: boolean
             if (diff > 0)
               return (
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-semibold">
-                  In {diff}d
+                  ⏰ In {diff}d
                 </span>
               );
             const abs = Math.abs(diff);

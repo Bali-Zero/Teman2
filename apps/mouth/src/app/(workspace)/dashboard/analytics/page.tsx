@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { api } from "@/lib/api";
-import type { AllAnalytics } from "@/lib/api/analytics/analytics.types";
+import React, { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
+import type { AllAnalytics } from '@/lib/api/analytics/analytics.types';
 import {
   BarChart3,
   Brain,
@@ -28,8 +28,8 @@ import {
   Search,
   Cpu,
   MemoryStick,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Helper to format large numbers
 const formatNumber = (n: number): string => {
@@ -50,9 +50,9 @@ const formatDuration = (seconds: number): string => {
 
 // Helper to format IDR
 const formatIDR = (amount: number): string => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
@@ -64,30 +64,30 @@ function StatCard({
   value,
   subtitle,
   icon: Icon,
-  variant = "default",
+  variant = 'default',
   onClick,
 }: {
   title: string;
   value: string | number;
   subtitle?: string;
   icon: React.ElementType;
-  variant?: "default" | "success" | "warning" | "danger";
+  variant?: 'default' | 'success' | 'warning' | 'danger';
   onClick?: () => void;
 }) {
   const variants = {
-    default: "text-[var(--foreground)]",
-    success: "text-[var(--success)]",
-    warning: "text-[var(--warning)]",
-    danger: "text-[var(--error)]",
+    default: 'text-[var(--foreground)]',
+    success: 'text-[var(--success)]',
+    warning: 'text-[var(--warning)]',
+    danger: 'text-[var(--error)]',
   };
 
   return (
     <div
       onClick={onClick}
       className={cn(
-        "p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]",
+        'p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]',
         onClick &&
-          "cursor-pointer hover:border-[var(--accent)] hover:bg-[var(--background-elevated)] transition-all",
+          'cursor-pointer hover:border-[var(--accent)] hover:bg-[var(--background-elevated)] transition-all'
       )}
     >
       <div className="flex items-center gap-3 mb-2">
@@ -96,12 +96,8 @@ function StatCard({
         </div>
         <span className="text-sm text-[var(--foreground-muted)]">{title}</span>
       </div>
-      <p className={cn("text-2xl font-bold", variants[variant])}>{value}</p>
-      {subtitle && (
-        <p className="text-xs text-[var(--foreground-muted)] mt-1">
-          {subtitle}
-        </p>
-      )}
+      <p className={cn('text-2xl font-bold', variants[variant])}>{value}</p>
+      {subtitle && <p className="text-xs text-[var(--foreground-muted)] mt-1">{subtitle}</p>}
     </div>
   );
 }
@@ -111,21 +107,21 @@ function ProgressBar({
   value,
   max = 100,
   label,
-  color = "accent",
+  color = 'accent',
   showValue = true,
 }: {
   value: number;
   max?: number;
   label?: string;
-  color?: "accent" | "success" | "warning" | "danger";
+  color?: 'accent' | 'success' | 'warning' | 'danger';
   showValue?: boolean;
 }) {
   const percent = Math.min((value / max) * 100, 100);
   const colors = {
-    accent: "bg-[var(--accent)]",
-    success: "bg-[var(--success)]",
-    warning: "bg-[var(--warning)]",
-    danger: "bg-[var(--error)]",
+    accent: 'bg-[var(--accent)]',
+    success: 'bg-[var(--success)]',
+    warning: 'bg-[var(--warning)]',
+    danger: 'bg-[var(--error)]',
   };
 
   return (
@@ -138,7 +134,7 @@ function ProgressBar({
       )}
       <div className="h-2 rounded-full bg-[var(--background-elevated)]">
         <div
-          className={cn("h-full rounded-full transition-all", colors[color])}
+          className={cn('h-full rounded-full transition-all', colors[color])}
           style={{ width: `${percent}%` }}
         />
       </div>
@@ -165,8 +161,8 @@ function ExpandableSection({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden transition-all",
-        isExpanded && "lg:col-span-2 ring-2 ring-[var(--accent)]",
+        'rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden transition-all',
+        isExpanded && 'lg:col-span-2 ring-2 ring-[var(--accent)]'
       )}
     >
       <div
@@ -179,7 +175,7 @@ function ExpandableSection({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-[var(--foreground-muted)]">
-            {isExpanded ? "Click to collapse" : "Click for details"}
+            {isExpanded ? 'Click to collapse' : 'Click for details'}
           </span>
           {isExpanded ? (
             <ChevronUp className="w-4 h-4 text-[var(--foreground-muted)]" />
@@ -250,7 +246,7 @@ export default function AnalyticsDashboard() {
       setData(analytics);
       setLastRefresh(new Date());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load analytics");
+      setError(err instanceof Error ? err.message : 'Failed to load analytics');
     } finally {
       setIsLoading(false);
     }
@@ -283,10 +279,7 @@ export default function AnalyticsDashboard() {
         <div className="flex flex-col items-center gap-4 p-6 rounded-xl border border-[var(--error)]/20 bg-[var(--error)]/5">
           <AlertTriangle className="w-8 h-8 text-[var(--error)]" />
           <p className="text-[var(--foreground)]">{error}</p>
-          <button
-            onClick={loadData}
-            className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white"
-          >
+          <button onClick={loadData} className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white">
             Retry
           </button>
         </div>
@@ -301,9 +294,7 @@ export default function AnalyticsDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">
-            System Analytics
-          </h1>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">System Analytics</h1>
           <p className="text-sm text-[var(--foreground-muted)]">
             Click on any section to see full details
           </p>
@@ -318,11 +309,11 @@ export default function AnalyticsDashboard() {
             onClick={loadData}
             disabled={isLoading}
             className={cn(
-              "p-2 rounded-lg border border-[var(--border)] hover:bg-[var(--background-elevated)]",
-              isLoading && "opacity-50",
+              'p-2 rounded-lg border border-[var(--border)] hover:bg-[var(--background-elevated)]',
+              isLoading && 'opacity-50'
             )}
           >
-            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+            <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
           </button>
         </div>
       </div>
@@ -334,30 +325,28 @@ export default function AnalyticsDashboard() {
           value={data.overview.conversations_today}
           subtitle={`${data.overview.conversations_week} this week`}
           icon={MessageSquare}
-          onClick={() => toggleSection("rag")}
+          onClick={() => toggleSection('rag')}
         />
         <StatCard
           title="Active Users"
           value={data.overview.users_active}
           icon={Users}
-          onClick={() => toggleSection("team")}
+          onClick={() => toggleSection('team')}
         />
         <StatCard
           title="System Uptime"
           value={formatDuration(data.overview.uptime_seconds)}
           icon={Clock}
-          onClick={() => toggleSection("system")}
+          onClick={() => toggleSection('system')}
         />
         <StatCard
           title="Services Health"
           value={`${data.overview.services_healthy}/${data.overview.services_total}`}
           variant={
-            data.overview.services_healthy === data.overview.services_total
-              ? "success"
-              : "warning"
+            data.overview.services_healthy === data.overview.services_total ? 'success' : 'warning'
           }
           icon={Activity}
-          onClick={() => toggleSection("system")}
+          onClick={() => toggleSection('system')}
         />
       </div>
 
@@ -367,22 +356,16 @@ export default function AnalyticsDashboard() {
         <ExpandableSection
           title="RAG Pipeline"
           icon={Brain}
-          isExpanded={expandedSection === "rag"}
-          onToggle={() => toggleSection("rag")}
+          isExpanded={expandedSection === 'rag'}
+          onToggle={() => toggleSection('rag')}
           summary={
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Avg Latency
-                </p>
-                <p className="text-lg font-bold">
-                  {data.rag.avg_latency_ms.toFixed(0)}ms
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Avg Latency</p>
+                <p className="text-lg font-bold">{data.rag.avg_latency_ms.toFixed(0)}ms</p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Queries Today
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Queries Today</p>
                 <p className="text-lg font-bold">{data.rag.queries_today}</p>
               </div>
             </div>
@@ -397,34 +380,20 @@ export default function AnalyticsDashboard() {
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Embedding
-                  </p>
-                  <p className="text-xl font-bold">
-                    {data.rag.embedding_latency_ms.toFixed(0)}ms
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Embedding</p>
+                  <p className="text-xl font-bold">{data.rag.embedding_latency_ms.toFixed(0)}ms</p>
                 </div>
                 <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Search
-                  </p>
-                  <p className="text-xl font-bold">
-                    {data.rag.search_latency_ms.toFixed(0)}ms
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Search</p>
+                  <p className="text-xl font-bold">{data.rag.search_latency_ms.toFixed(0)}ms</p>
                 </div>
                 <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Rerank
-                  </p>
-                  <p className="text-xl font-bold">
-                    {data.rag.rerank_latency_ms.toFixed(0)}ms
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Rerank</p>
+                  <p className="text-xl font-bold">{data.rag.rerank_latency_ms.toFixed(0)}ms</p>
                 </div>
                 <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
                   <p className="text-xs text-[var(--foreground-muted)]">LLM</p>
-                  <p className="text-xl font-bold">
-                    {data.rag.llm_latency_ms.toFixed(0)}ms
-                  </p>
+                  <p className="text-xl font-bold">{data.rag.llm_latency_ms.toFixed(0)}ms</p>
                 </div>
               </div>
             </div>
@@ -436,15 +405,13 @@ export default function AnalyticsDashboard() {
                 <ProgressBar
                   value={data.rag.cache_hit_rate * 100}
                   label="Cache Hit Rate"
-                  color={data.rag.cache_hit_rate > 0.5 ? "success" : "warning"}
+                  color={data.rag.cache_hit_rate > 0.5 ? 'success' : 'warning'}
                 />
                 <div className="mt-3">
                   <ProgressBar
                     value={data.rag.early_exit_rate * 100}
                     label="Early Exit Rate"
-                    color={
-                      data.rag.early_exit_rate > 0.3 ? "success" : "accent"
-                    }
+                    color={data.rag.early_exit_rate > 0.3 ? 'success' : 'accent'}
                   />
                 </div>
               </div>
@@ -452,28 +419,16 @@ export default function AnalyticsDashboard() {
                 <h4 className="text-sm font-medium mb-3">Usage Stats</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--foreground-muted)]">
-                      Queries Today
-                    </span>
-                    <span className="font-medium">
-                      {data.rag.queries_today}
-                    </span>
+                    <span className="text-[var(--foreground-muted)]">Queries Today</span>
+                    <span className="font-medium">{data.rag.queries_today}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--foreground-muted)]">
-                      Tokens Used
-                    </span>
-                    <span className="font-medium">
-                      {formatNumber(data.rag.token_usage_today)}
-                    </span>
+                    <span className="text-[var(--foreground-muted)]">Tokens Used</span>
+                    <span className="font-medium">{formatNumber(data.rag.token_usage_today)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--foreground-muted)]">
-                      Avg Latency
-                    </span>
-                    <span className="font-medium">
-                      {data.rag.avg_latency_ms.toFixed(0)}ms
-                    </span>
+                    <span className="text-[var(--foreground-muted)]">Avg Latency</span>
+                    <span className="font-medium">{data.rag.avg_latency_ms.toFixed(0)}ms</span>
                   </div>
                 </div>
               </div>
@@ -487,7 +442,7 @@ export default function AnalyticsDashboard() {
                   Top Queries
                 </h4>
                 <DataTable
-                  headers={["Query", "Count"]}
+                  headers={['Query', 'Count']}
                   rows={data.rag.top_queries.map((q) => [
                     <span key="q" className="truncate max-w-[300px] block">
                       {q.query}
@@ -506,19 +461,19 @@ export default function AnalyticsDashboard() {
         <ExpandableSection
           title="System Health"
           icon={Server}
-          isExpanded={expandedSection === "system"}
-          onToggle={() => toggleSection("system")}
+          isExpanded={expandedSection === 'system'}
+          onToggle={() => toggleSection('system')}
           summary={
             <div className="grid grid-cols-2 gap-3">
               <ProgressBar
                 value={data.system.cpu_percent}
                 label="CPU Usage"
-                color={data.system.cpu_percent > 80 ? "danger" : "accent"}
+                color={data.system.cpu_percent > 80 ? 'danger' : 'accent'}
               />
               <ProgressBar
                 value={data.system.memory_percent}
                 label="Memory Usage"
-                color={data.system.memory_percent > 80 ? "danger" : "accent"}
+                color={data.system.memory_percent > 80 ? 'danger' : 'accent'}
               />
             </div>
           }
@@ -537,10 +492,10 @@ export default function AnalyticsDashboard() {
                     label="CPU"
                     color={
                       data.system.cpu_percent > 80
-                        ? "danger"
+                        ? 'danger'
                         : data.system.cpu_percent > 60
-                          ? "warning"
-                          : "success"
+                          ? 'warning'
+                          : 'success'
                     }
                   />
                 </div>
@@ -550,28 +505,22 @@ export default function AnalyticsDashboard() {
                     label="Memory"
                     color={
                       data.system.memory_percent > 80
-                        ? "danger"
+                        ? 'danger'
                         : data.system.memory_percent > 60
-                          ? "warning"
-                          : "success"
+                          ? 'warning'
+                          : 'success'
                     }
                   />
                 </div>
                 <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Memory Used
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Memory Used</p>
                   <p className="text-xl font-bold">
                     {(data.system.memory_mb / 1024).toFixed(1)} GB
                   </p>
                 </div>
                 <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Requests/min
-                  </p>
-                  <p className="text-xl font-bold">
-                    {data.system.requests_per_minute.toFixed(1)}
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Requests/min</p>
+                  <p className="text-xl font-bold">{data.system.requests_per_minute.toFixed(1)}</p>
                 </div>
               </div>
             </div>
@@ -612,29 +561,23 @@ export default function AnalyticsDashboard() {
               </h4>
               <div className="grid grid-cols-3 gap-4">
                 <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Active
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Active</p>
                   <p className="text-xl font-bold text-[var(--accent)]">
                     {data.system.db_connections_active}
                   </p>
                 </div>
                 <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
                   <p className="text-xs text-[var(--foreground-muted)]">Idle</p>
-                  <p className="text-xl font-bold">
-                    {data.system.db_connections_idle}
-                  </p>
+                  <p className="text-xl font-bold">{data.system.db_connections_idle}</p>
                 </div>
                 <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Error Rate
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Error Rate</p>
                   <p
                     className={cn(
-                      "text-xl font-bold",
+                      'text-xl font-bold',
                       data.system.error_rate_percent > 5
-                        ? "text-[var(--error)]"
-                        : "text-[var(--success)]",
+                        ? 'text-[var(--error)]'
+                        : 'text-[var(--success)]'
                     )}
                   >
                     {data.system.error_rate_percent.toFixed(2)}%
@@ -648,24 +591,22 @@ export default function AnalyticsDashboard() {
               <div>
                 <h4 className="text-sm font-medium mb-3">Services Status</h4>
                 <DataTable
-                  headers={["Service", "Status", "Last Check", "Error"]}
+                  headers={['Service', 'Status', 'Last Check', 'Error']}
                   rows={data.system.services.map((s) => [
                     s.name,
                     <span
                       key="s"
                       className={cn(
-                        "px-2 py-1 rounded-full text-xs",
+                        'px-2 py-1 rounded-full text-xs',
                         s.healthy
-                          ? "bg-[var(--success)]/10 text-[var(--success)]"
-                          : "bg-[var(--error)]/10 text-[var(--error)]",
+                          ? 'bg-[var(--success)]/10 text-[var(--success)]'
+                          : 'bg-[var(--error)]/10 text-[var(--error)]'
                       )}
                     >
-                      {s.healthy ? "● Healthy" : "● Down"}
+                      {s.healthy ? '● Healthy' : '● Down'}
                     </span>,
-                    s.last_check
-                      ? new Date(s.last_check).toLocaleTimeString()
-                      : "-",
-                    s.error || "-",
+                    s.last_check ? new Date(s.last_check).toLocaleTimeString() : '-',
+                    s.error || '-',
                   ])}
                 />
               </div>
@@ -677,25 +618,17 @@ export default function AnalyticsDashboard() {
         <ExpandableSection
           title="Vector Database (Qdrant)"
           icon={Database}
-          isExpanded={expandedSection === "qdrant"}
-          onToggle={() => toggleSection("qdrant")}
+          isExpanded={expandedSection === 'qdrant'}
+          onToggle={() => toggleSection('qdrant')}
           summary={
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Total Documents
-                </p>
-                <p className="text-lg font-bold">
-                  {formatNumber(data.qdrant.total_documents)}
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Total Documents</p>
+                <p className="text-lg font-bold">{formatNumber(data.qdrant.total_documents)}</p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Collections
-                </p>
-                <p className="text-lg font-bold">
-                  {data.qdrant.collections.length}
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Collections</p>
+                <p className="text-lg font-bold">{data.qdrant.collections.length}</p>
               </div>
             </div>
           }
@@ -710,28 +643,18 @@ export default function AnalyticsDashboard() {
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Avg Search Latency
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Avg Search Latency</p>
                 <p className="text-2xl font-bold">
                   {data.qdrant.search_latency_avg_ms.toFixed(0)}ms
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Searches Today
-                </p>
-                <p className="text-2xl font-bold">
-                  {data.qdrant.search_operations_today}
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Searches Today</p>
+                <p className="text-2xl font-bold">{data.qdrant.search_operations_today}</p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Upserts Today
-                </p>
-                <p className="text-2xl font-bold">
-                  {data.qdrant.upsert_operations_today}
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Upserts Today</p>
+                <p className="text-2xl font-bold">{data.qdrant.upsert_operations_today}</p>
               </div>
             </div>
 
@@ -739,7 +662,7 @@ export default function AnalyticsDashboard() {
             <div>
               <h4 className="text-sm font-medium mb-3">Collections</h4>
               <DataTable
-                headers={["Collection", "Documents", "Status"]}
+                headers={['Collection', 'Documents', 'Status']}
                 rows={data.qdrant.collections.map((c) => [
                   c.name,
                   <span key="d" className="font-medium">
@@ -748,10 +671,10 @@ export default function AnalyticsDashboard() {
                   <span
                     key="s"
                     className={cn(
-                      "px-2 py-1 rounded-full text-xs",
-                      c.status === "green"
-                        ? "bg-[var(--success)]/10 text-[var(--success)]"
-                        : "bg-[var(--warning)]/10 text-[var(--warning)]",
+                      'px-2 py-1 rounded-full text-xs',
+                      c.status === 'green'
+                        ? 'bg-[var(--success)]/10 text-[var(--success)]'
+                        : 'bg-[var(--warning)]/10 text-[var(--warning)]'
                     )}
                   >
                     {c.status}
@@ -778,26 +701,20 @@ export default function AnalyticsDashboard() {
         <ExpandableSection
           title="CRM Analytics"
           icon={UserCog}
-          isExpanded={expandedSection === "crm"}
-          onToggle={() => toggleSection("crm")}
+          isExpanded={expandedSection === 'crm'}
+          onToggle={() => toggleSection('crm')}
           summary={
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Clients
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Clients</p>
                 <p className="text-lg font-bold">{data.crm.clients_total}</p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
                 <p className="text-xs text-[var(--foreground-muted)]">Active</p>
-                <p className="text-lg font-bold text-[var(--success)]">
-                  {data.crm.clients_active}
-                </p>
+                <p className="text-lg font-bold text-[var(--success)]">{data.crm.clients_active}</p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Practices
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Practices</p>
                 <p className="text-lg font-bold">{data.crm.practices_total}</p>
               </div>
             </div>
@@ -824,20 +741,12 @@ export default function AnalyticsDashboard() {
                   </p>
                 </div>
                 <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Docs Pending
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {data.crm.documents_pending}
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Docs Pending</p>
+                  <p className="text-2xl font-bold">{data.crm.documents_pending}</p>
                 </div>
                 <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Practices
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {data.crm.practices_total}
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Practices</p>
+                  <p className="text-2xl font-bold">{data.crm.practices_total}</p>
                 </div>
               </div>
             </div>
@@ -847,19 +756,17 @@ export default function AnalyticsDashboard() {
               <div>
                 <h4 className="text-sm font-medium mb-3">Clients by Status</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {Object.entries(data.crm.clients_by_status).map(
-                    ([status, count]) => (
-                      <div
-                        key={status}
-                        className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center"
-                      >
-                        <p className="text-xs text-[var(--foreground-muted)] capitalize">
-                          {status.replace(/_/g, " ")}
-                        </p>
-                        <p className="text-lg font-bold">{count}</p>
-                      </div>
-                    ),
-                  )}
+                  {Object.entries(data.crm.clients_by_status).map(([status, count]) => (
+                    <div
+                      key={status}
+                      className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center"
+                    >
+                      <p className="text-xs text-[var(--foreground-muted)] capitalize">
+                        {status.replace(/_/g, ' ')}
+                      </p>
+                      <p className="text-lg font-bold">{count}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -886,12 +793,8 @@ export default function AnalyticsDashboard() {
               </div>
               <div className="mt-3 p-3 rounded-lg bg-[var(--background-elevated)]/50">
                 <div className="flex justify-between text-sm">
-                  <span className="text-[var(--foreground-muted)]">
-                    Total Quoted
-                  </span>
-                  <span className="font-medium">
-                    {formatIDR(data.crm.revenue_quoted)}
-                  </span>
+                  <span className="text-[var(--foreground-muted)]">Total Quoted</span>
+                  <span className="font-medium">{formatIDR(data.crm.revenue_quoted)}</span>
                 </div>
               </div>
             </div>
@@ -905,26 +808,26 @@ export default function AnalyticsDashboard() {
               <div className="grid grid-cols-3 gap-4">
                 <div
                   className={cn(
-                    "p-4 rounded-lg text-center",
+                    'p-4 rounded-lg text-center',
                     data.crm.renewals_30_days > 0
-                      ? "bg-[var(--error)]/10"
-                      : "bg-[var(--background-elevated)]/50",
+                      ? 'bg-[var(--error)]/10'
+                      : 'bg-[var(--background-elevated)]/50'
                   )}
                 >
                   <p
                     className={cn(
-                      "text-xs",
+                      'text-xs',
                       data.crm.renewals_30_days > 0
-                        ? "text-[var(--error)]"
-                        : "text-[var(--foreground-muted)]",
+                        ? 'text-[var(--error)]'
+                        : 'text-[var(--foreground-muted)]'
                     )}
                   >
                     Next 30 Days
                   </p>
                   <p
                     className={cn(
-                      "text-2xl font-bold",
-                      data.crm.renewals_30_days > 0 && "text-[var(--error)]",
+                      'text-2xl font-bold',
+                      data.crm.renewals_30_days > 0 && 'text-[var(--error)]'
                     )}
                   >
                     {data.crm.renewals_30_days}
@@ -932,38 +835,34 @@ export default function AnalyticsDashboard() {
                 </div>
                 <div
                   className={cn(
-                    "p-4 rounded-lg text-center",
+                    'p-4 rounded-lg text-center',
                     data.crm.renewals_60_days > 0
-                      ? "bg-[var(--warning)]/10"
-                      : "bg-[var(--background-elevated)]/50",
+                      ? 'bg-[var(--warning)]/10'
+                      : 'bg-[var(--background-elevated)]/50'
                   )}
                 >
                   <p
                     className={cn(
-                      "text-xs",
+                      'text-xs',
                       data.crm.renewals_60_days > 0
-                        ? "text-[var(--warning)]"
-                        : "text-[var(--foreground-muted)]",
+                        ? 'text-[var(--warning)]'
+                        : 'text-[var(--foreground-muted)]'
                     )}
                   >
                     Next 60 Days
                   </p>
                   <p
                     className={cn(
-                      "text-2xl font-bold",
-                      data.crm.renewals_60_days > 0 && "text-[var(--warning)]",
+                      'text-2xl font-bold',
+                      data.crm.renewals_60_days > 0 && 'text-[var(--warning)]'
                     )}
                   >
                     {data.crm.renewals_60_days}
                   </p>
                 </div>
                 <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                  <p className="text-xs text-[var(--foreground-muted)]">
-                    Next 90 Days
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {data.crm.renewals_90_days}
-                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">Next 90 Days</p>
+                  <p className="text-2xl font-bold">{data.crm.renewals_90_days}</p>
                 </div>
               </div>
             </div>
@@ -976,19 +875,17 @@ export default function AnalyticsDashboard() {
                   Practices by Status
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {Object.entries(data.crm.practices_by_status).map(
-                    ([status, count]) => (
-                      <div
-                        key={status}
-                        className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center"
-                      >
-                        <p className="text-xs text-[var(--foreground-muted)] capitalize">
-                          {status.replace(/_/g, " ")}
-                        </p>
-                        <p className="text-lg font-bold">{count}</p>
-                      </div>
-                    ),
-                  )}
+                  {Object.entries(data.crm.practices_by_status).map(([status, count]) => (
+                    <div
+                      key={status}
+                      className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center"
+                    >
+                      <p className="text-xs text-[var(--foreground-muted)] capitalize">
+                        {status.replace(/_/g, ' ')}
+                      </p>
+                      <p className="text-lg font-bold">{count}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -999,25 +896,17 @@ export default function AnalyticsDashboard() {
         <ExpandableSection
           title="Team Productivity"
           icon={Users}
-          isExpanded={expandedSection === "team"}
-          onToggle={() => toggleSection("team")}
+          isExpanded={expandedSection === 'team'}
+          onToggle={() => toggleSection('team')}
           summary={
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Hours Today
-                </p>
-                <p className="text-lg font-bold">
-                  {data.team.hours_today.toFixed(1)}h
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Hours Today</p>
+                <p className="text-lg font-bold">{data.team.hours_today.toFixed(1)}h</p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Hours This Week
-                </p>
-                <p className="text-lg font-bold">
-                  {data.team.hours_week.toFixed(1)}h
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Hours This Week</p>
+                <p className="text-lg font-bold">{data.team.hours_week.toFixed(1)}h</p>
               </div>
             </div>
           }
@@ -1032,12 +921,8 @@ export default function AnalyticsDashboard() {
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Hours This Week
-                </p>
-                <p className="text-2xl font-bold">
-                  {data.team.hours_week.toFixed(1)}h
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Hours This Week</p>
+                <p className="text-2xl font-bold">{data.team.hours_week.toFixed(1)}h</p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--success)]/10 text-center">
                 <p className="text-xs text-[var(--success)]">Active Sessions</p>
@@ -1056,19 +941,15 @@ export default function AnalyticsDashboard() {
             {/* Conversations by Agent */}
             {Object.keys(data.team.conversations_by_agent).length > 0 && (
               <div>
-                <h4 className="text-sm font-medium mb-3">
-                  Conversations by Agent
-                </h4>
+                <h4 className="text-sm font-medium mb-3">Conversations by Agent</h4>
                 <DataTable
-                  headers={["Agent", "Conversations"]}
-                  rows={Object.entries(data.team.conversations_by_agent).map(
-                    ([agent, count]) => [
-                      agent,
-                      <span key="c" className="font-medium">
-                        {count}
-                      </span>,
-                    ],
-                  )}
+                  headers={['Agent', 'Conversations']}
+                  rows={Object.entries(data.team.conversations_by_agent).map(([agent, count]) => [
+                    agent,
+                    <span key="c" className="font-medium">
+                      {count}
+                    </span>,
+                  ])}
                 />
               </div>
             )}
@@ -1076,27 +957,17 @@ export default function AnalyticsDashboard() {
             {/* Productivity Scores */}
             {Object.keys(data.team.productivity_scores).length > 0 && (
               <div>
-                <h4 className="text-sm font-medium mb-3">
-                  Productivity Scores
-                </h4>
+                <h4 className="text-sm font-medium mb-3">Productivity Scores</h4>
                 <div className="space-y-3">
-                  {Object.entries(data.team.productivity_scores).map(
-                    ([agent, score]) => (
-                      <div key={agent}>
-                        <ProgressBar
-                          value={score * 100}
-                          label={agent}
-                          color={
-                            score > 0.7
-                              ? "success"
-                              : score > 0.5
-                                ? "warning"
-                                : "danger"
-                          }
-                        />
-                      </div>
-                    ),
-                  )}
+                  {Object.entries(data.team.productivity_scores).map(([agent, score]) => (
+                    <div key={agent}>
+                      <ProgressBar
+                        value={score * 100}
+                        label={agent}
+                        color={score > 0.7 ? 'success' : score > 0.5 ? 'warning' : 'danger'}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -1107,23 +978,19 @@ export default function AnalyticsDashboard() {
         <ExpandableSection
           title="Quality & Feedback"
           icon={TrendingUp}
-          isExpanded={expandedSection === "feedback"}
-          onToggle={() => toggleSection("feedback")}
+          isExpanded={expandedSection === 'feedback'}
+          onToggle={() => toggleSection('feedback')}
           summary={
             <div className="grid grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Avg Rating
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Avg Rating</p>
                 <p className="text-lg font-bold text-[var(--success)]">
                   {data.feedback.avg_rating.toFixed(1)}/5
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--background-elevated)]/50 text-center">
                 <p className="text-xs text-[var(--foreground-muted)]">Total</p>
-                <p className="text-lg font-bold">
-                  {data.feedback.total_ratings}
-                </p>
+                <p className="text-lg font-bold">{data.feedback.total_ratings}</p>
               </div>
               <div className="p-3 rounded-lg bg-[var(--error)]/10 text-center">
                 <p className="text-xs text-[var(--error)]">Negative</p>
@@ -1145,12 +1012,8 @@ export default function AnalyticsDashboard() {
                 <p className="text-xs text-[var(--success)]">out of 5</p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Total Ratings
-                </p>
-                <p className="text-2xl font-bold">
-                  {data.feedback.total_ratings}
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Total Ratings</p>
+                <p className="text-2xl font-bold">{data.feedback.total_ratings}</p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--error)]/10 text-center">
                 <p className="text-xs text-[var(--error)]">Negative Feedback</p>
@@ -1159,15 +1022,11 @@ export default function AnalyticsDashboard() {
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Satisfaction Rate
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Satisfaction Rate</p>
                 <p className="text-2xl font-bold">
                   {data.feedback.total_ratings > 0
                     ? (
-                        (1 -
-                          data.feedback.negative_feedback_count /
-                            data.feedback.total_ratings) *
+                        (1 - data.feedback.negative_feedback_count / data.feedback.total_ratings) *
                         100
                       ).toFixed(0)
                     : 0}
@@ -1181,26 +1040,23 @@ export default function AnalyticsDashboard() {
               <h4 className="text-sm font-medium mb-3">Rating Distribution</h4>
               <div className="space-y-2">
                 {[5, 4, 3, 2, 1].map((rating) => {
-                  const count =
-                    data.feedback.rating_distribution[rating.toString()] || 0;
+                  const count = data.feedback.rating_distribution[rating.toString()] || 0;
                   const percent =
                     data.feedback.total_ratings > 0
                       ? (count / data.feedback.total_ratings) * 100
                       : 0;
                   return (
                     <div key={rating} className="flex items-center gap-3">
-                      <span className="w-8 text-sm font-medium">
-                        {rating} ⭐
-                      </span>
+                      <span className="w-8 text-sm font-medium">{rating} ⭐</span>
                       <div className="flex-1 h-4 rounded-full bg-[var(--background-elevated)]">
                         <div
                           className={cn(
-                            "h-full rounded-full transition-all",
+                            'h-full rounded-full transition-all',
                             rating >= 4
-                              ? "bg-[var(--success)]"
+                              ? 'bg-[var(--success)]'
                               : rating === 3
-                                ? "bg-[var(--warning)]"
-                                : "bg-[var(--error)]",
+                                ? 'bg-[var(--warning)]'
+                                : 'bg-[var(--error)]'
                           )}
                           style={{ width: `${percent}%` }}
                         />
@@ -1230,16 +1086,12 @@ export default function AnalyticsDashboard() {
                       className="p-3 rounded-lg bg-[var(--error)]/5 border border-[var(--error)]/20"
                     >
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-[var(--error)]">
-                          Rating: {f.rating}/5
-                        </span>
+                        <span className="text-[var(--error)]">Rating: {f.rating}/5</span>
                         <span className="text-[var(--foreground-muted)]">
                           {new Date(f.date).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-sm">
-                        {f.feedback || "No comment provided"}
-                      </p>
+                      <p className="text-sm">{f.feedback || 'No comment provided'}</p>
                     </div>
                   ))}
                 </div>
@@ -1249,29 +1101,24 @@ export default function AnalyticsDashboard() {
             {/* Quality Trend */}
             {data.feedback.quality_trend.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium mb-3">
-                  Quality Trend (Last 7 Days)
-                </h4>
+                <h4 className="text-sm font-medium mb-3">Quality Trend (Last 7 Days)</h4>
                 <div className="flex items-end gap-2 h-24">
                   {data.feedback.quality_trend.map((t, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 flex flex-col items-center gap-1"
-                    >
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
                       <div
                         className={cn(
-                          "w-full rounded-t",
+                          'w-full rounded-t',
                           t.rating >= 4
-                            ? "bg-[var(--success)]"
+                            ? 'bg-[var(--success)]'
                             : t.rating >= 3
-                              ? "bg-[var(--warning)]"
-                              : "bg-[var(--error)]",
+                              ? 'bg-[var(--warning)]'
+                              : 'bg-[var(--error)]'
                         )}
                         style={{ height: `${(t.rating / 5) * 100}%` }}
                       />
                       <span className="text-[10px] text-[var(--foreground-muted)]">
-                        {new Date(t.date).toLocaleDateString("en", {
-                          weekday: "short",
+                        {new Date(t.date).toLocaleDateString('en', {
+                          weekday: 'short',
                         })}
                       </span>
                     </div>
@@ -1286,8 +1133,8 @@ export default function AnalyticsDashboard() {
         <ExpandableSection
           title="Alerts & Errors"
           icon={AlertTriangle}
-          isExpanded={expandedSection === "alerts"}
-          onToggle={() => toggleSection("alerts")}
+          isExpanded={expandedSection === 'alerts'}
+          onToggle={() => toggleSection('alerts')}
           summary={
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg bg-[var(--error)]/10">
@@ -1309,9 +1156,7 @@ export default function AnalyticsDashboard() {
             {/* Overview Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 rounded-lg bg-[var(--error)]/10 text-center">
-                <p className="text-xs text-[var(--error)]">
-                  Auth Failures Today
-                </p>
+                <p className="text-xs text-[var(--error)]">Auth Failures Today</p>
                 <p className="text-2xl font-bold text-[var(--error)]">
                   {data.alerts.auth_failures_today}
                 </p>
@@ -1323,20 +1168,12 @@ export default function AnalyticsDashboard() {
                 </p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Errors Today
-                </p>
-                <p className="text-2xl font-bold">
-                  {data.alerts.error_count_today}
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Errors Today</p>
+                <p className="text-2xl font-bold">{data.alerts.error_count_today}</p>
               </div>
               <div className="p-4 rounded-lg bg-[var(--background-elevated)]/50 text-center">
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  Slow Queries
-                </p>
-                <p className="text-2xl font-bold">
-                  {data.alerts.slow_queries.length}
-                </p>
+                <p className="text-xs text-[var(--foreground-muted)]">Slow Queries</p>
+                <p className="text-2xl font-bold">{data.alerts.slow_queries.length}</p>
               </div>
             </div>
 
@@ -1352,32 +1189,30 @@ export default function AnalyticsDashboard() {
                     <div
                       key={i}
                       className={cn(
-                        "p-3 rounded-lg border",
-                        a.severity === "critical"
-                          ? "bg-[var(--error)]/10 border-[var(--error)]/30"
-                          : a.severity === "warning"
-                            ? "bg-[var(--warning)]/10 border-[var(--warning)]/30"
-                            : "bg-[var(--background-elevated)] border-[var(--border)]",
+                        'p-3 rounded-lg border',
+                        a.severity === 'critical'
+                          ? 'bg-[var(--error)]/10 border-[var(--error)]/30'
+                          : a.severity === 'warning'
+                            ? 'bg-[var(--warning)]/10 border-[var(--warning)]/30'
+                            : 'bg-[var(--background-elevated)] border-[var(--border)]'
                       )}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{a.service}</span>
                         <span
                           className={cn(
-                            "px-2 py-0.5 rounded-full text-xs",
-                            a.severity === "critical"
-                              ? "bg-[var(--error)]/20 text-[var(--error)]"
-                              : a.severity === "warning"
-                                ? "bg-[var(--warning)]/20 text-[var(--warning)]"
-                                : "bg-[var(--background-elevated)] text-[var(--foreground-muted)]",
+                            'px-2 py-0.5 rounded-full text-xs',
+                            a.severity === 'critical'
+                              ? 'bg-[var(--error)]/20 text-[var(--error)]'
+                              : a.severity === 'warning'
+                                ? 'bg-[var(--warning)]/20 text-[var(--warning)]'
+                                : 'bg-[var(--background-elevated)] text-[var(--foreground-muted)]'
                           )}
                         >
                           {a.severity}
                         </span>
                       </div>
-                      <p className="text-sm mt-1 text-[var(--foreground-muted)]">
-                        {a.message}
-                      </p>
+                      <p className="text-sm mt-1 text-[var(--foreground-muted)]">{a.message}</p>
                     </div>
                   ))}
                 </div>
@@ -1389,14 +1224,11 @@ export default function AnalyticsDashboard() {
               <div>
                 <h4 className="text-sm font-medium mb-3">Recent Errors</h4>
                 <DataTable
-                  headers={["Action", "User", "Reason", "Time"]}
+                  headers={['Action', 'User', 'Reason', 'Time']}
                   rows={data.alerts.recent_errors.map((e) => [
                     e.action,
                     e.email,
-                    <span
-                      key="r"
-                      className="text-[var(--error)] truncate max-w-[200px] block"
-                    >
+                    <span key="r" className="text-[var(--error)] truncate max-w-[200px] block">
                       {e.reason}
                     </span>,
                     new Date(e.time).toLocaleTimeString(),
@@ -1410,7 +1242,7 @@ export default function AnalyticsDashboard() {
               <div>
                 <h4 className="text-sm font-medium mb-3">Slow Queries</h4>
                 <DataTable
-                  headers={["Query", "Duration"]}
+                  headers={['Query', 'Duration']}
                   rows={data.alerts.slow_queries.map((q) => [
                     <span key="q" className="truncate max-w-[400px] block">
                       {q.query}
@@ -1428,8 +1260,17 @@ export default function AnalyticsDashboard() {
 
       {/* Footer */}
       <div className="text-center text-xs text-[var(--foreground-muted)] py-4">
-        Generated at {new Date(data.generated_at).toLocaleString()} •
-        Auto-refreshes every 60s
+        Generated at{' '}
+        {new Date(data.generated_at).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        })}{' '}
+        {new Date(data.generated_at).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}{' '}
+        • Auto-refreshes every 60s
       </div>
     </div>
   );
