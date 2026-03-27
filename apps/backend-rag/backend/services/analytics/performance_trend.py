@@ -5,7 +5,7 @@ Responsibility: Performance trend analysis
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ class PerformanceTrendService:
         Analyze performance trends over time.
         Returns week-by-week trend data.
         """
-        cutoff = datetime.now() - timedelta(weeks=weeks)
+        cutoff = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(weeks=weeks)
 
         sessions = await self.pool.fetch(
             """
