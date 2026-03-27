@@ -25,7 +25,7 @@ class ConnectionManager:
     Manages active WebSocket connections.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Map user_id -> List[WebSocket]
         self.active_connections: dict[str, list[WebSocket]] = {}
         self.lock = asyncio.Lock()
