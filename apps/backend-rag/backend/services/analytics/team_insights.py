@@ -5,7 +5,7 @@ Responsibility: Team collaboration insights
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -34,7 +34,7 @@ class TeamInsightsService:
         - Team health score
         - Key metrics
         """
-        cutoff = datetime.now() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         # Get all team sessions
         sessions = await self.pool.fetch(
