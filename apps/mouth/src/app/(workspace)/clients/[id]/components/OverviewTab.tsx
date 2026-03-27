@@ -159,6 +159,7 @@ export function OverviewTab({
                         onClick={() => copyToClipboard(client.email!, 'email')}
                         className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
                         title="Copy email"
+                        aria-label="Copy email"
                       >
                         {copiedField === 'email' ? (
                           <Check className="w-3 h-3 text-green-400" />
@@ -186,6 +187,7 @@ export function OverviewTab({
                         onClick={() => copyToClipboard(client.phone!, 'phone')}
                         className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
                         title="Copy phone"
+                        aria-label="Copy phone"
                       >
                         {copiedField === 'phone' ? (
                           <Check className="w-3 h-3 text-green-400" />
@@ -240,6 +242,7 @@ export function OverviewTab({
                             onClick={() => copyToClipboard(client.passport_number!, 'passport')}
                             className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
                             title="Copy passport number"
+                            aria-label="Copy passport number"
                           >
                             {copiedField === 'passport' ? (
                               <Check className="w-3 h-3 text-green-400" />
@@ -684,6 +687,7 @@ export function OverviewTab({
                   onClick={() => router.push(`/process/new?client_id=${clientId}`)}
                   className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)] hover:text-[var(--bz-accent)] transition-colors"
                   title="New process"
+                  aria-label="New process"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
