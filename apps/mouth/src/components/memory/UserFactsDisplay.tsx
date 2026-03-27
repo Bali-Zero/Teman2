@@ -31,10 +31,7 @@ export function UserFactsDisplay({
 
   const handleAdd = async () => {
     if (!newFact.trim() || !onAddFact) return;
-    if (facts.length >= maxFacts) {
-      alert(`Maximum ${maxFacts} facts allowed`);
-      return;
-    }
+    if (facts.length >= maxFacts) return; // guarded by UI (Add form hidden at max)
 
     setIsAdding(true);
     try {

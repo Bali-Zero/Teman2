@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
+import { useToast } from '@/components/ui/toast';
 
 interface BackupHistory {
   id: string;
@@ -27,6 +28,7 @@ interface BackupHistory {
 
 export default function BackupExportPage() {
   const router = useRouter();
+  const { success, error: toastError } = useToast();
   const [isExporting, setIsExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json');
   const [selectedData, setSelectedData] = useState<string[]>(['clients', 'cases', 'interactions']);
@@ -115,10 +117,10 @@ export default function BackupExportPage() {
       // Simulate export for other data
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      alert('Export completed successfully!');
+      success('Export completed', 'Your data has been downloaded successfully.');
     } catch (err) {
       logger.error('Export failed', {}, err as Error);
-      alert('Export failed. Please try again.');
+      toastError('Export failed', 'Please try again.');
     } finally {
       setIsExporting(false);
     }

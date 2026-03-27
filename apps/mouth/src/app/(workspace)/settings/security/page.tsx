@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
   Shield,
   Key,
@@ -11,9 +11,10 @@ import {
   Save,
   AlertTriangle,
   CheckCircle2,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 
 interface Session {
   id: string;
@@ -26,41 +27,42 @@ interface Session {
 
 export default function SecuritySettingsPage() {
   const router = useRouter();
+  const { error: toastError } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
-    currentPin: "",
-    newPin: "",
-    confirmPin: "",
+    currentPin: '',
+    newPin: '',
+    confirmPin: '',
   });
 
   const [sessions] = useState<Session[]>([
     {
-      id: "1",
-      device: "MacBook Pro",
-      browser: "Chrome 120",
-      location: "Bali, Indonesia",
-      lastActive: "Now",
+      id: '1',
+      device: 'MacBook Pro',
+      browser: 'Chrome 120',
+      location: 'Bali, Indonesia',
+      lastActive: 'Now',
       isCurrent: true,
     },
     {
-      id: "2",
-      device: "iPhone 14",
-      browser: "Safari Mobile",
-      location: "Bali, Indonesia",
-      lastActive: "2 hours ago",
+      id: '2',
+      device: 'iPhone 14',
+      browser: 'Safari Mobile',
+      location: 'Bali, Indonesia',
+      lastActive: '2 hours ago',
       isCurrent: false,
     },
   ]);
 
   const handleChangePassword = async () => {
     if (passwordForm.newPin !== passwordForm.confirmPin) {
-      alert("PINs do not match");
+      toastError('PINs do not match', 'Please make sure both PIN fields match.');
       return;
     }
     if (passwordForm.newPin.length !== 6) {
-      alert("PIN must be 6 digits");
+      toastError('Invalid PIN', 'PIN must be exactly 6 digits.');
       return;
     }
     setIsSaving(true);
@@ -68,24 +70,19 @@ export default function SecuritySettingsPage() {
     setTimeout(() => {
       setIsSaving(false);
       setShowPasswordForm(false);
-      setPasswordForm({ currentPin: "", newPin: "", confirmPin: "" });
+      setPasswordForm({ currentPin: '', newPin: '', confirmPin: '' });
     }, 1000);
   };
 
-  const revokeSession = (sessionId: string) => {
-    // API call to revoke session
-    // console.log('Revoking session:', sessionId);
+  const revokeSession = (_sessionId: string) => {
+    // TODO: API call to revoke session
   };
 
   return (
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/settings")}
-        >
+        <Button variant="ghost" size="sm" onClick={() => router.push('/settings')}>
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
@@ -93,9 +90,7 @@ export default function SecuritySettingsPage() {
             <Shield className="w-6 h-6 text-green-400" />
             Security Settings
           </h1>
-          <p className="text-sm text-[var(--foreground-muted)]">
-            Manage your account security
-          </p>
+          <p className="text-sm text-[var(--foreground-muted)]">Manage your account security</p>
         </div>
       </div>
 
@@ -105,9 +100,7 @@ export default function SecuritySettingsPage() {
           <div className="flex items-center gap-3">
             <Key className="w-5 h-5 text-amber-400" />
             <div>
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                PIN Code
-              </h2>
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">PIN Code</h2>
               <p className="text-sm text-[var(--foreground-muted)]">
                 Change your 6-digit login PIN
               </p>
@@ -133,7 +126,7 @@ export default function SecuritySettingsPage() {
                 onChange={(e) =>
                   setPasswordForm({
                     ...passwordForm,
-                    currentPin: e.target.value.replace(/\D/g, ""),
+                    currentPin: e.target.value.replace(/\D/g, ''),
                   })
                 }
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -151,7 +144,7 @@ export default function SecuritySettingsPage() {
                 onChange={(e) =>
                   setPasswordForm({
                     ...passwordForm,
-                    newPin: e.target.value.replace(/\D/g, ""),
+                    newPin: e.target.value.replace(/\D/g, ''),
                   })
                 }
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -169,7 +162,7 @@ export default function SecuritySettingsPage() {
                 onChange={(e) =>
                   setPasswordForm({
                     ...passwordForm,
-                    confirmPin: e.target.value.replace(/\D/g, ""),
+                    confirmPin: e.target.value.replace(/\D/g, ''),
                   })
                 }
                 className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -179,12 +172,9 @@ export default function SecuritySettingsPage() {
             <div className="flex gap-2">
               <Button onClick={handleChangePassword} disabled={isSaving}>
                 <Save className="w-4 h-4 mr-2" />
-                {isSaving ? "Saving..." : "Update PIN"}
+                {isSaving ? 'Saving...' : 'Update PIN'}
               </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setShowPasswordForm(false)}
-              >
+              <Button variant="ghost" onClick={() => setShowPasswordForm(false)}>
                 Cancel
               </Button>
             </div>
@@ -241,9 +231,7 @@ export default function SecuritySettingsPage() {
         <div className="flex items-center gap-3 mb-4">
           <Monitor className="w-5 h-5 text-cyan-400" />
           <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Active Sessions
-            </h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Active Sessions</h2>
             <p className="text-sm text-[var(--foreground-muted)]">
               Manage devices logged into your account
             </p>
@@ -262,9 +250,7 @@ export default function SecuritySettingsPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-[var(--foreground)]">
-                      {session.device}
-                    </span>
+                    <span className="font-medium text-[var(--foreground)]">{session.device}</span>
                     {session.isCurrent && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
                         Current
@@ -301,8 +287,7 @@ export default function SecuritySettingsPage() {
       <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-6 text-center">
         <Shield className="w-10 h-10 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
         <p className="text-sm text-[var(--foreground-muted)]">
-          Your account security is important. Enable 2FA and regularly review
-          your active sessions.
+          Your account security is important. Enable 2FA and regularly review your active sessions.
         </p>
       </div>
     </div>
