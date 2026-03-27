@@ -85,7 +85,7 @@ class CollaboratorService:
     continue to work.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         if not DATA_PATH.exists():
             raise FileNotFoundError(f"Team data file not found: {DATA_PATH}")
 
