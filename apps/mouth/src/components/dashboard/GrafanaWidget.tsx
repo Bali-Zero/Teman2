@@ -167,7 +167,7 @@ export function GrafanaWidget({ className = '' }: GrafanaWidgetProps) {
                 <p className="text-xs text-[var(--foreground-muted)]">Documents</p>
               </div>
               <p className="text-sm font-semibold text-cyan-400">
-                {isLoading ? '...' : health?.database?.total_documents?.toLocaleString() || 0}
+                {isLoading ? '...' : health?.database?.total_documents?.toLocaleString('en-US') || 0}
               </p>
             </div>
           </div>

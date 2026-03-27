@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { format } from "date-fns";
-import { MDXRemoteSerializeResult } from "next-mdx-remote";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { MDXContent } from "@/components/blog/MDXContent";
-import { logger } from "@/lib/logger";
+import * as React from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { format } from 'date-fns';
+import { MDXRemoteSerializeResult } from 'next-mdx-remote';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { MDXContent } from '@/components/blog/MDXContent';
+import { logger } from '@/lib/logger';
 import {
   Clock,
   Eye,
@@ -19,7 +19,7 @@ import {
   ChevronLeft,
   Sparkles,
   User,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   CategoryBadge,
   TableOfContents,
@@ -28,10 +28,10 @@ import {
   ArticleCard,
   NewsletterSidebar,
   ArticleEngagement,
-} from "@/components/blog";
+} from '@/components/blog';
 // JSON-LD schemas are now injected in <head> by root layout for better SEO
-import { cn } from "@/lib/utils";
-import type { Article, ArticleListItem } from "@/lib/blog/types";
+import { cn } from '@/lib/utils';
+import type { Article, ArticleListItem } from '@/lib/blog/types';
 
 // Extended article type with serialized MDX
 interface ArticleWithMDX extends Article {
@@ -39,10 +39,7 @@ interface ArticleWithMDX extends Article {
 }
 
 /** Serialized article from server (dates are ISO strings, not Date objects) */
-type SerializedArticle = Omit<
-  ArticleWithMDX,
-  "createdAt" | "updatedAt" | "publishedAt"
-> & {
+type SerializedArticle = Omit<ArticleWithMDX, 'createdAt' | 'updatedAt' | 'publishedAt'> & {
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
@@ -57,55 +54,41 @@ interface ArticleClientProps {
 
 // Strip JSX components from content for markdown fallback
 function stripJsxComponents(content: string): string {
-  let stripped = content.replace(/<[A-Z][a-zA-Z]*\s*[^>]*\/>/g, "");
-  stripped = stripped.replace(
-    /<[A-Z][a-zA-Z]*[^>]*>[\s\S]*?<\/[A-Z][a-zA-Z]*>/g,
-    "",
-  );
-  stripped = stripped.replace(/<[A-Z][a-zA-Z]*\s*\n[\s\S]*?\/>/gm, "");
-  stripped = stripped.replace(
-    /<[A-Z][a-zA-Z]*\s*\n[\s\S]*?>[\s\S]*?<\/[A-Z][a-zA-Z]*>/gm,
-    "",
-  );
-  stripped = stripped.replace(/\n{3,}/g, "\n\n");
+  let stripped = content.replace(/<[A-Z][a-zA-Z]*\s*[^>]*\/>/g, '');
+  stripped = stripped.replace(/<[A-Z][a-zA-Z]*[^>]*>[\s\S]*?<\/[A-Z][a-zA-Z]*>/g, '');
+  stripped = stripped.replace(/<[A-Z][a-zA-Z]*\s*\n[\s\S]*?\/>/gm, '');
+  stripped = stripped.replace(/<[A-Z][a-zA-Z]*\s*\n[\s\S]*?>[\s\S]*?<\/[A-Z][a-zA-Z]*>/gm, '');
+  stripped = stripped.replace(/\n{3,}/g, '\n\n');
   return stripped.trim();
 }
 
-export function ArticleClient({
-  category,
-  slug,
-  initialArticle,
-}: ArticleClientProps) {
+export function ArticleClient({ category, slug, initialArticle }: ArticleClientProps) {
   const [article, setArticle] = React.useState<ArticleWithMDX | null>(() => {
     if (!initialArticle) return null;
     return {
       ...initialArticle,
       createdAt: new Date(initialArticle.createdAt),
       updatedAt: new Date(initialArticle.updatedAt),
-      publishedAt: initialArticle.publishedAt
-        ? new Date(initialArticle.publishedAt)
-        : undefined,
+      publishedAt: initialArticle.publishedAt ? new Date(initialArticle.publishedAt) : undefined,
     } as ArticleWithMDX;
   });
-  const [relatedArticles, setRelatedArticles] = React.useState<
-    ArticleListItem[]
-  >([]);
+  const [relatedArticles, setRelatedArticles] = React.useState<ArticleListItem[]>([]);
   const [loading, setLoading] = React.useState(!initialArticle);
   const [copied, setCopied] = React.useState(false);
 
   // Reserved workspace paths - redirect to workspace if accessed
   const RESERVED_PATHS = [
-    "cases",
-    "clients",
-    "dashboard",
-    "documents",
-    "knowledge",
-    "team",
-    "analytics",
-    "intelligence",
-    "whatsapp",
-    "email",
-    "chat",
+    'cases',
+    'clients',
+    'dashboard',
+    'documents',
+    'knowledge',
+    'team',
+    'analytics',
+    'intelligence',
+    'whatsapp',
+    'email',
+    'chat',
   ];
 
   React.useEffect(() => {
@@ -129,9 +112,9 @@ export function ArticleClient({
         }
       } catch (err) {
         logger.error(
-          "Failed to fetch article:",
+          'Failed to fetch article:',
           {},
-          err instanceof Error ? err : new Error(String(err)),
+          err instanceof Error ? err : new Error(String(err))
         );
       } finally {
         setLoading(false);
@@ -148,23 +131,19 @@ export function ArticleClient({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      logger.error(
-        "Failed to copy:",
-        {},
-        err instanceof Error ? err : new Error(String(err)),
-      );
+      logger.error('Failed to copy:', {}, err instanceof Error ? err : new Error(String(err)));
     }
   };
 
   // Share functions
   const shareOnTwitter = () => {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(article?.title || "")}&url=${encodeURIComponent(window.location.href)}`;
-    window.open(url, "_blank");
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(article?.title || '')}&url=${encodeURIComponent(window.location.href)}`;
+    window.open(url, '_blank');
   };
 
   const shareOnLinkedIn = () => {
     const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`;
-    window.open(url, "_blank");
+    window.open(url, '_blank');
   };
 
   if (loading) {
@@ -188,13 +167,8 @@ export function ArticleClient({
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">
-            Article not found
-          </h1>
-          <Link
-            href="/insights"
-            className="text-[#2251ff] hover:text-[#4d73ff]"
-          >
+          <h1 className="text-2xl font-bold text-white mb-4">Article not found</h1>
+          <Link href="/insights" className="text-[#2251ff] hover:text-[#4d73ff]">
             Back to Insights
           </Link>
         </div>
@@ -236,9 +210,7 @@ export function ArticleClient({
               </span>
             )}
             {article.reviewedBy && (
-              <span className="text-xs text-white/50">
-                Verified by {article.reviewedBy}
-              </span>
+              <span className="text-xs text-white/50">Verified by {article.reviewedBy}</span>
             )}
           </div>
 
@@ -284,10 +256,7 @@ export function ArticleClient({
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {format(
-                  new Date(article.publishedAt || article.createdAt),
-                  "MMM d, yyyy",
-                )}
+                {format(new Date(article.publishedAt || article.createdAt), 'MMM d, yyyy')}
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
@@ -295,7 +264,7 @@ export function ArticleClient({
               </span>
               <span className="flex items-center gap-1">
                 <Eye className="w-4 h-4" />
-                {article.viewCount.toLocaleString()}
+                {article.viewCount.toLocaleString('en-US')}
               </span>
             </div>
           </div>
@@ -325,7 +294,7 @@ export function ArticleClient({
               {/* Article content with 30% larger text (prose-xl = 1.25rem vs prose-lg = 1.125rem) */}
               <div
                 className="prose prose-invert prose-xl max-w-none"
-                style={{ fontSize: "1.3rem", lineHeight: "1.8" }}
+                style={{ fontSize: '1.3rem', lineHeight: '1.8' }}
               >
                 {article.mdxSource ? (
                   <MDXContent source={article.mdxSource} />
@@ -340,12 +309,12 @@ export function ArticleClient({
                       ),
                       h2: ({ children }) => {
                         const id =
-                          typeof children === "string"
+                          typeof children === 'string'
                             ? children
                                 .toLowerCase()
-                                .replace(/[^a-z0-9\s-]/g, "")
-                                .replace(/\s+/g, "-")
-                            : "";
+                                .replace(/[^a-z0-9\s-]/g, '')
+                                .replace(/\s+/g, '-')
+                            : '';
                         return (
                           <h2
                             id={id}
@@ -357,12 +326,12 @@ export function ArticleClient({
                       },
                       h3: ({ children }) => {
                         const id =
-                          typeof children === "string"
+                          typeof children === 'string'
                             ? children
                                 .toLowerCase()
-                                .replace(/[^a-z0-9\s-]/g, "")
-                                .replace(/\s+/g, "-")
-                            : "";
+                                .replace(/[^a-z0-9\s-]/g, '')
+                                .replace(/\s+/g, '-')
+                            : '';
                         return (
                           <h3
                             id={id}
@@ -373,9 +342,7 @@ export function ArticleClient({
                         );
                       },
                       p: ({ children }) => (
-                        <p className="text-white/80 leading-relaxed mb-5 text-xl">
-                          {children}
-                        </p>
+                        <p className="text-white/80 leading-relaxed mb-5 text-xl">{children}</p>
                       ),
                       ul: ({ children }) => (
                         <ul className="list-disc list-outside ml-6 mb-5 space-y-3 text-white/80 text-xl">
@@ -388,9 +355,7 @@ export function ArticleClient({
                         </ol>
                       ),
                       li: ({ children }) => (
-                        <li className="leading-relaxed pl-2 text-xl">
-                          {children}
-                        </li>
+                        <li className="leading-relaxed pl-2 text-xl">{children}</li>
                       ),
                       a: ({ href, children }) => (
                         <a
@@ -407,9 +372,7 @@ export function ArticleClient({
                       ),
                       code: ({ children, className }) =>
                         className ? (
-                          <code className="font-mono text-base">
-                            {children}
-                          </code>
+                          <code className="font-mono text-base">{children}</code>
                         ) : (
                           <code className="px-1.5 py-0.5 bg-white/10 rounded text-[#ff6b6b] font-mono text-base">
                             {children}
@@ -426,9 +389,7 @@ export function ArticleClient({
                         </div>
                       ),
                       thead: ({ children }) => (
-                        <thead className="bg-white/5 border-b border-white/10">
-                          {children}
-                        </thead>
+                        <thead className="bg-white/5 border-b border-white/10">{children}</thead>
                       ),
                       th: ({ children }) => (
                         <th className="px-4 py-3 text-sm font-semibold uppercase tracking-wider text-white/60">
@@ -436,14 +397,10 @@ export function ArticleClient({
                         </th>
                       ),
                       td: ({ children }) => (
-                        <td className="px-4 py-3 text-white/80 text-lg">
-                          {children}
-                        </td>
+                        <td className="px-4 py-3 text-white/80 text-lg">{children}</td>
                       ),
                       strong: ({ children }) => (
-                        <strong className="font-semibold text-white">
-                          {children}
-                        </strong>
+                        <strong className="font-semibold text-white">{children}</strong>
                       ),
                       hr: () => <hr className="my-8 border-white/10" />,
                     }}
@@ -490,16 +447,10 @@ export function ArticleClient({
                     </div>
                   )}
                   <div>
-                    <p className="font-medium text-white">
-                      {article.author.name}
-                    </p>
-                    <p className="text-sm text-white/60 mb-2">
-                      {article.author.role}
-                    </p>
+                    <p className="font-medium text-white">{article.author.name}</p>
+                    <p className="text-sm text-white/60 mb-2">{article.author.role}</p>
                     {article.author.bio && (
-                      <p className="text-sm text-white/50">
-                        {article.author.bio}
-                      </p>
+                      <p className="text-sm text-white/50">{article.author.bio}</p>
                     )}
                   </div>
                 </div>
@@ -511,7 +462,7 @@ export function ArticleClient({
                   articleId={article.id}
                   articleTitle={article.title}
                   articleUrl={
-                    typeof window !== "undefined"
+                    typeof window !== 'undefined'
                       ? window.location.href
                       : `https://balizero.com/${article.category}/${article.slug}`
                   }

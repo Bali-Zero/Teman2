@@ -766,7 +766,7 @@ export function CompanyTab({
     if (total >= 1e12) return `Rp ${(total / 1e12).toFixed(total % 1e12 === 0 ? 0 : 1)}T`;
     if (total >= 1e9) return `Rp ${(total / 1e9).toFixed(total % 1e9 === 0 ? 0 : 1)}B`;
     if (total >= 1e6) return `Rp ${(total / 1e6).toFixed(0)}M`;
-    return `Rp ${total.toLocaleString()}`;
+    return `Rp ${total.toLocaleString('en-US')}`;
   };
 
   const companyName = co?.company_name || client.company_name || 'Company';
@@ -914,7 +914,7 @@ export function CompanyTab({
                 <p className="text-sm text-[var(--bz-text-1)] font-semibold">{capital}</p>
                 {co?.shares_count && (
                   <p className="text-xs text-[var(--bz-text-2)]">
-                    {co.shares_count.toLocaleString()} shares
+                    {co.shares_count.toLocaleString('en-US')} shares
                   </p>
                 )}
               </div>
@@ -936,7 +936,7 @@ export function CompanyTab({
                     </span>
                     <span className="text-[var(--bz-text-2)]">
                       {a.ownership_percentage ? `${a.ownership_percentage}%` : ''}
-                      {a.shares_count ? ` · ${a.shares_count.toLocaleString()} shares` : ''}
+                      {a.shares_count ? ` · ${a.shares_count.toLocaleString('en-US')} shares` : ''}
                     </span>
                   </div>
                 ))}
