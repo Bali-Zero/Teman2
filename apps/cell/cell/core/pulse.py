@@ -37,6 +37,7 @@ class PulseEngine:
         dna_expected_hash: str = "",
         alerter: Any = None,
         fly_effector: Any = None,
+        logs_effector: Any = None,
     ) -> None:
         self._dna = dna_loader
         self._safety = safety_gate
@@ -47,6 +48,7 @@ class PulseEngine:
         self._dna_hash = dna_expected_hash
         self._alerter = alerter
         self._fly = fly_effector
+        self._logs = logs_effector
         self._recent_pulses: list[dict] = []
 
     async def single_pulse(self, pulse_number: int = 0) -> PulseResult:
@@ -149,14 +151,48 @@ class PulseEngine:
                                     f"{result.detail}\n"
                                     f"Health: {status.value.upper()} | Confidence: {proposal.confidence:.0%}"
                                 )
-                        # Execute alert actions via Telegram
-                        elif proposal.action in ("alert_human", "alert_silent") and self._alerter:
+                        # Execute read_logs — fetch Fly.io logs, store summary to DB
+                        elif proposal.action == "read_logs" and self._logs:
+                            logs_result = await self._logs.read_logs(limit=50)
+                            if logs_result.success:
+                                logger.info(f"LogsEffector: {logs_result.detail}")
+                                action_reason = f"{proposal.reason} | {logs_result.summary}"
+                            else:
+                                logger.warning(f"LogsEffector failed: {logs_result.detail}")
+                                action_reason = f"{proposal.reason} | logs unavailable: {logs_result.detail}"
+                            # Write to cell_alerts for dashboard visibility
+                            await cell_db.log_alert(
+                                level="info",
+                                action="read_logs",
+                                message=logs_result.summary or logs_result.detail,
+                                health_status=status.value,
+                                pulse_number=pulse_number,
+                            )
+                        # Execute alert_silent — write to cell_alerts (no Telegram)
+                        elif proposal.action == "alert_silent":
+                            await cell_db.log_alert(
+                                level="warn",
+                                action="alert_silent",
+                                message=proposal.reason[:500],
+                                health_status=status.value,
+                                pulse_number=pulse_number,
+                            )
+                            logger.info(f"alert_silent written to DB: {proposal.reason[:80]}")
+                        # Execute alert_human — Telegram + DB
+                        elif proposal.action == "alert_human" and self._alerter:
                             msg = (
                                 f"*Health: {status.value.upper()}*\n"
                                 f"Reason: {proposal.reason[:200]}\n"
                                 f"Confidence: {proposal.confidence:.0%} | Tier: {proposal.tier_used}"
                             )
                             await self._alerter.send(msg)
+                            await cell_db.log_alert(
+                                level="critical",
+                                action="alert_human",
+                                message=proposal.reason[:500],
+                                health_status=status.value,
+                                pulse_number=pulse_number,
+                            )
                     else:
                         logger.info(
                             f"THINK → BLOCKED: {proposal.action} — {validation.reason} "

@@ -475,7 +475,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   } catch (error) {
-    console.error('KBLI fetch failed:', error);
+    console.error("KBLI fetch failed:", error);
     return null;
   }
 }
