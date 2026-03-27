@@ -22,7 +22,7 @@ class BurnoutDetectorService:
     Responsibility: Detect early warning signs of burnout.
     """
 
-    def __init__(self, db_pool: "asyncpg.Pool"):
+    def __init__(self, db_pool: "asyncpg.Pool") -> None:
         self.pool = db_pool
 
     async def detect_burnout_signals(self, user_email: str | None = None) -> list[dict]:
