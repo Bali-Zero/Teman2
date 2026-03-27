@@ -769,7 +769,7 @@ export default function CaseDetailPage() {
                       sonnerToast('Delete this process? This cannot be undone.', {
                         action: {
                           label: 'Delete',
-                          onClick: () => toast.error('Delete not yet implemented'),
+                          onClick: () => toast.warning('Not yet available', 'Process deletion will be enabled in a future update.'),
                         },
                         cancel: { label: 'Cancel', onClick: () => sonnerToast.dismiss() },
                       });
