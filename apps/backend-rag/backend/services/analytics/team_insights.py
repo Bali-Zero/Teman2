@@ -21,7 +21,7 @@ class TeamInsightsService:
     Responsibility: Generate comprehensive team collaboration insights.
     """
 
-    def __init__(self, db_pool: "asyncpg.Pool"):
+    def __init__(self, db_pool: "asyncpg.Pool") -> None:
         self.pool = db_pool
 
     async def generate_team_insights(self, days: int = 7) -> dict:
