@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { api } from "@/lib/api";
-import { logger } from "@/lib/logger";
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 
 export interface CellPulse {
   pulse_number: number;
-  health_status: "green" | "yellow" | "red";
+  health_status: 'green' | 'yellow' | 'red';
   response_time_ms: number;
   dna_intact: boolean;
   budget_spent: number;
@@ -22,7 +22,7 @@ export interface CellPulse {
 
 export interface CellAlert {
   id: string;
-  level: "info" | "warn" | "critical";
+  level: 'info' | 'warn' | 'critical';
   action: string;
   message: string;
   created_at: string;
@@ -33,7 +33,7 @@ export interface CellStatus {
   last_pulse: CellPulse | null;
   recent_pulses: Pick<
     CellPulse,
-    "pulse_number" | "health_status" | "response_time_ms" | "created_at"
+    'pulse_number' | 'health_status' | 'response_time_ms' | 'created_at'
   >[];
   uptime_24h: {
     green_percent: number;
@@ -52,12 +52,12 @@ export function useCellStatus(pollIntervalMs: number = 10000) {
   const fetchStatus = useCallback(async () => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || "https://nuzantara-rag.fly.dev"}/api/cell/status`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://nuzantara-rag.fly.dev'}/api/cell/status`,
         {
           headers: {
             Authorization: `Bearer ${api.getToken()}`,
           },
-        },
+        }
       );
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -66,12 +66,8 @@ export function useCellStatus(pollIntervalMs: number = 10000) {
       setStatus(data);
       setError(null);
     } catch (err) {
-      logger.error(
-        "Failed to fetch CELL status",
-        {},
-        err instanceof Error ? err : undefined,
-      );
-      setError(err instanceof Error ? err.message : "Unknown error");
+      logger.error('Failed to fetch CELL status', {}, err instanceof Error ? err : undefined);
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }

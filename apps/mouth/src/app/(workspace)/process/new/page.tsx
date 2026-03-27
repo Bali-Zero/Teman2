@@ -152,15 +152,22 @@ export default function NewPracticePage() {
     return () => clearTimeout(debounce);
   }, [clientSearch]);
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click or Escape
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowClientDropdown(false);
       }
     };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowClientDropdown(false);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -505,9 +512,27 @@ export default function NewPracticePage() {
             <div className="flex gap-2">
               {(
                 [
-                  { value: 'normal', label: 'Normal', color: 'text-zinc-400', activeBg: 'bg-zinc-500/20', activeBorder: 'border-zinc-500/40' },
-                  { value: 'high', label: '↑ High', color: 'text-orange-400', activeBg: 'bg-orange-500/20', activeBorder: 'border-orange-500/40' },
-                  { value: 'urgent', label: '🔥 Urgent', color: 'text-red-400', activeBg: 'bg-red-500/20', activeBorder: 'border-red-500/40' },
+                  {
+                    value: 'normal',
+                    label: 'Normal',
+                    color: 'text-zinc-400',
+                    activeBg: 'bg-zinc-500/20',
+                    activeBorder: 'border-zinc-500/40',
+                  },
+                  {
+                    value: 'high',
+                    label: '↑ High',
+                    color: 'text-orange-400',
+                    activeBg: 'bg-orange-500/20',
+                    activeBorder: 'border-orange-500/40',
+                  },
+                  {
+                    value: 'urgent',
+                    label: '🔥 Urgent',
+                    color: 'text-red-400',
+                    activeBg: 'bg-red-500/20',
+                    activeBorder: 'border-red-500/40',
+                  },
                 ] as const
               ).map((p) => (
                 <button
