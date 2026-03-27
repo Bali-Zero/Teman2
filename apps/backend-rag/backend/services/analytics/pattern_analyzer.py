@@ -6,7 +6,7 @@ Responsibility: Work pattern analysis
 import logging
 import statistics
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ class PatternAnalyzerService:
         - Work day patterns (weekday vs weekend)
         - Consistency score
         """
-        cutoff = datetime.now() - timedelta(days=days)
+        cutoff = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(days=days)
 
         # Get sessions
         if user_email:
