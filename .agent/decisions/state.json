@@ -6,15 +6,6 @@
   "breaker_active_until": null,
   "runs": [
     {
-      "run_id": "ef41832d",
-      "timestamp": "2026-03-26T22:27:01.697378+00:00",
-      "ruff_code": "ANN204",
-      "target_file": "backend/app/modules/notifications/scheduler.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
       "run_id": "67970ec6",
       "timestamp": "2026-03-26T22:30:00.580034+00:00",
       "ruff_code": "DTZ005",
@@ -451,6 +442,15 @@
       "timestamp": "2026-03-27T08:07:50.379285+00:00",
       "ruff_code": "ANN204",
       "target_file": "backend/services/crm/completed_process_service.py",
+      "outcome": "success",
+      "cost_usd": 0.0,
+      "error": ""
+    },
+    {
+      "run_id": "42672d92",
+      "timestamp": "2026-03-27T08:10:18.621048+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "backend/services/crm/document_upload_service.py",
       "outcome": "success",
       "cost_usd": 0.0,
       "error": ""
