@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { MessageCircle, Search, Filter, Check, Twitter, User } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { TwitterConversation } from '@/lib/api/twitter/twitter.types';
 
@@ -94,6 +95,8 @@ export function TwitterList({
         <button
           className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)] transition-colors"
           title="Filters"
+          aria-label="Filters"
+          onClick={() => toast.info('Coming soon', { description: 'Twitter conversation filters will be available in a future update.' })}
         >
           <Filter className="w-4 h-4" />
         </button>
