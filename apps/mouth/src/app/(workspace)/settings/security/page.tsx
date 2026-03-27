@@ -27,7 +27,7 @@ interface Session {
 
 export default function SecuritySettingsPage() {
   const router = useRouter();
-  const { error: toastError, warning } = useToast();
+  const { success, error: toastError, warning } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -71,7 +71,8 @@ export default function SecuritySettingsPage() {
       setIsSaving(false);
       setShowPasswordForm(false);
       setPasswordForm({ currentPin: '', newPin: '', confirmPin: '' });
-    }, 1000);
+      success('PIN updated', 'Your login PIN has been changed successfully.');
+    }, 500);
   };
 
   const revokeSession = (_sessionId: string) => {
