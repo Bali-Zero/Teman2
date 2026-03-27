@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useCallback, useState } from "react";
-import { logger } from "@/lib/logger";
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { logger } from '@/lib/logger';
 
 type WorkerMessage = {
   type: string;
@@ -27,8 +27,8 @@ export function useWebWorker() {
 
   useEffect(() => {
     // Create worker only in browser
-    if (typeof window !== "undefined") {
-      workerRef.current = new Worker("/workers/data-processor.js");
+    if (typeof window !== 'undefined') {
+      workerRef.current = new Worker('/workers/data-processor.js');
       setIsReady(true);
 
       workerRef.current.onmessage = (event: MessageEvent<WorkerResponse>) => {
@@ -37,7 +37,7 @@ export function useWebWorker() {
 
         if (resolver) {
           if (error) {
-            logger.error("Worker error", { note: String(error) });
+            logger.error('Worker error', { note: String(error) });
           } else {
             resolver(result);
           }
@@ -46,7 +46,7 @@ export function useWebWorker() {
       };
 
       workerRef.current.onerror = (error) => {
-        logger.error("Worker error", { note: error.message });
+        logger.error('Worker error', { note: error.message });
       };
 
       return () => {
@@ -55,64 +55,57 @@ export function useWebWorker() {
     }
   }, []);
 
-  const sendMessage = useCallback(
-    <T>(type: string, data: unknown): Promise<T> => {
-      return new Promise((resolve) => {
-        if (!workerRef.current) {
-          // Fallback to main thread if worker not available
-          resolve(data as T);
-          return;
-        }
+  const sendMessage = useCallback(<T>(type: string, data: unknown): Promise<T> => {
+    return new Promise((resolve) => {
+      if (!workerRef.current) {
+        // Fallback to main thread if worker not available
+        resolve(data as T);
+        return;
+      }
 
-        const id = `${type}-${Date.now()}-${Math.random()}`;
-        pendingRef.current.set(id, resolve as (data: unknown) => void);
+      const id = `${type}-${Date.now()}-${Math.random()}`;
+      pendingRef.current.set(id, resolve as (data: unknown) => void);
 
-        workerRef.current.postMessage({
-          type,
-          data,
-          id,
-        });
+      workerRef.current.postMessage({
+        type,
+        data,
+        id,
       });
-    },
-    [],
-  );
+    });
+  }, []);
 
   const sortArticles = useCallback(
     <T extends { publishedAt: string }>(articles: T[]): Promise<T[]> => {
-      return sendMessage<T[]>("SORT_ARTICLES", articles);
+      return sendMessage<T[]>('SORT_ARTICLES', articles);
     },
-    [sendMessage],
+    [sendMessage]
   );
 
   const filterArticles = useCallback(
-    <T>(
-      articles: T[],
-      query: string,
-      filters?: { category?: string },
-    ): Promise<T[]> => {
-      return sendMessage<T[]>("FILTER_ARTICLES", {
+    <T>(articles: T[], query: string, filters?: { category?: string }): Promise<T[]> => {
+      return sendMessage<T[]>('FILTER_ARTICLES', {
         articles,
         query,
         filters,
       });
     },
-    [sendMessage],
+    [sendMessage]
   );
 
   const processConversations = useCallback(
     <T>(conversations: T[], page: number, pageSize: number): Promise<T[]> => {
-      return sendMessage<T[]>("PROCESS_CONVERSATIONS", {
+      return sendMessage<T[]>('PROCESS_CONVERSATIONS', {
         conversations,
         page,
         pageSize,
       });
     },
-    [sendMessage],
+    [sendMessage]
   );
 
   const calculateStats = useCallback(
     (
-      numbers: number[],
+      numbers: number[]
     ): Promise<{
       count: number;
       sum: number;
@@ -120,9 +113,9 @@ export function useWebWorker() {
       min: number;
       max: number;
     }> => {
-      return sendMessage("CALCULATE_STATS", numbers);
+      return sendMessage('CALCULATE_STATS', numbers);
     },
-    [sendMessage],
+    [sendMessage]
   );
 
   return {
