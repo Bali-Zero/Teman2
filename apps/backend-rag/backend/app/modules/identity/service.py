@@ -215,9 +215,8 @@ class IdentityService:
         }
 
         # Generate token with same secret and algorithm as Node.js
-        token = jwt.encode(payload, self.jwt_secret, algorithm=self.jwt_algorithm)
+        return jwt.encode(payload, self.jwt_secret, algorithm=self.jwt_algorithm)
 
-        return token
 
     def get_permissions_for_role(self, role: str) -> list[str]:
         """

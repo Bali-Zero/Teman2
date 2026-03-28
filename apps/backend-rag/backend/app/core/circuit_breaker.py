@@ -162,8 +162,7 @@ class CircuitBreaker:
                     f"Circuit breaker '{self.name}' OPEN, using fallback for {operation_name}"
                 )
                 try:
-                    result = await fallback()
-                    return result
+                    return await fallback()
                 except Exception as e:
                     logger.error(f"Fallback also failed: {e}")
                     raise

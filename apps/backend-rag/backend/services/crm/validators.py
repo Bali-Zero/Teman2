@@ -31,8 +31,7 @@ class ClientValidator(BaseModel):
         if len(v) < 2:
             raise ValueError("Name must be at least 2 characters")
         # Remove multiple spaces
-        v = re.sub(r"\s+", " ", v)
-        return v
+        return re.sub(r"\s+", " ", v)
 
     @field_validator("phone", "whatsapp")
     @classmethod
@@ -133,8 +132,7 @@ def sanitize_input(value: str | None, max_length: int = 255) -> str | None:
     if len(value) > max_length:
         value = value[:max_length]
     # Remove control characters
-    value = re.sub(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]", "", value)
-    return value
+    return re.sub(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]", "", value)
 
 
 def validate_uuid(uuid: str) -> bool:

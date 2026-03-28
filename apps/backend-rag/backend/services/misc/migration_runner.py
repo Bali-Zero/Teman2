@@ -217,9 +217,8 @@ class MigrationRunner:
             applied = await self.get_applied_migrations()
 
         # Filter to pending only
-        pending = [(num, all_migrations[num]) for num in ordered_numbers if num not in applied]
+        return [(num, all_migrations[num]) for num in ordered_numbers if num not in applied]
 
-        return pending
 
     async def apply_all(self, dry_run: bool = False, stop_on_error: bool = True) -> dict[str, Any]:
         """

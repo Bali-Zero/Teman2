@@ -266,7 +266,7 @@ async def backfill_existing_data():
                     client["created_by"],
                     json.dumps(dict(client)),
                     json.dumps({"created": True}),
-                    json.dumps({"migration": True, "backfilled": datetime.now().isoformat()}),
+                    json.dumps({"migration": True, "backfilled": datetime.now(tz=timezone.utc).isoformat()}),
                     client["created_at"],
                 )
 
@@ -298,7 +298,7 @@ async def backfill_existing_data():
 async def run_crm_migration():
     """Run complete CRM migration"""
 
-    migration_start = datetime.now()
+    migration_start = datetime.now(tz=timezone.utc)
 
     try:
         logger.info("🚀 [CRM MIGRATION] Starting CRM audit logging migration...")
@@ -315,7 +315,7 @@ async def run_crm_migration():
         # Step 4: Backfill existing data
         await backfill_existing_data()
 
-        migration_duration = (datetime.now() - migration_start).total_seconds()
+        migration_duration = (datetime.now(tz=timezone.utc) - migration_start).total_seconds()
 
         logger.info(
             f"🎉 [CRM MIGRATION] Migration completed successfully in {migration_duration:.2f}s"
@@ -324,18 +324,18 @@ async def run_crm_migration():
         return {
             "success": True,
             "migration_time": migration_duration,
-            "completed_at": datetime.now().isoformat(),
+            "completed_at": datetime.now(tz=timezone.utc).isoformat(),
         }
 
     except Exception as e:
-        migration_duration = (datetime.now() - migration_start).total_seconds()
+        migration_duration = (datetime.now(tz=timezone.utc) - migration_start).total_seconds()
         logger.error(f"❌ [CRM MIGRATION] Migration failed after {migration_duration:.2f}s: {e}")
 
         return {
             "success": False,
             "error": str(e),
             "migration_time": migration_duration,
-            "failed_at": datetime.now().isoformat(),
+            "failed_at": datetime.now(tz=timezone.utc).isoformat(),
         }
 
 

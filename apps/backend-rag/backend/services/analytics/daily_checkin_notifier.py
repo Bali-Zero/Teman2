@@ -178,7 +178,7 @@ class DailyCheckinNotifier:
             </tr>
             """
 
-        html = f"""
+        return f"""
         <!DOCTYPE html>
         <html>
         <head>
@@ -244,7 +244,6 @@ class DailyCheckinNotifier:
         </body>
         </html>
         """
-        return html
 
     async def _send_daily_report(self) -> None:
         """Send the daily check-in report email."""

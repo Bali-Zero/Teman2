@@ -371,11 +371,10 @@ async def get_client_drive_folder_structure(
     drive_service = GoogleDriveService(pool)
 
     try:
-        structure = await drive_service.get_folder_structure(
+        return await drive_service.get_folder_structure(
             user_id=GoogleDriveService.SYSTEM_USER_ID,
             root_folder_id=client["google_drive_folder_id"],
         )
-        return structure
     except Exception as e:
         logger.error(f"[CRM] Failed to get folder structure for client {client_id}: {e}")
         raise HTTPException(
@@ -635,11 +634,10 @@ async def get_client_drive_folder_stats(
     drive_service = GoogleDriveService(pool)
 
     try:
-        stats = await drive_service.get_folder_stats(
+        return await drive_service.get_folder_stats(
             user_id=GoogleDriveService.SYSTEM_USER_ID,
             root_folder_id=client["google_drive_folder_id"],
         )
-        return stats
     except Exception as e:
         logger.error(f"[CRM] Failed to get folder stats for client {client_id}: {e}")
         raise HTTPException(

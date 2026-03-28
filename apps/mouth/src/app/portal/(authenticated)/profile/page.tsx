@@ -115,8 +115,39 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--bz-accent-warm)' }} />
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <section>
+          <div
+            className="h-7 w-32 rounded animate-pulse"
+            style={{ background: 'var(--bz-border)' }}
+          />
+          <div
+            className="h-4 w-52 rounded mt-2 animate-pulse"
+            style={{ background: 'var(--bz-border)', opacity: 0.5 }}
+          />
+        </section>
+        <div
+          className="rounded-xl border p-6 space-y-4 animate-pulse"
+          style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+        >
+          <div className="flex items-center gap-4">
+            <div
+              className="w-16 h-16 rounded-full"
+              style={{ background: 'var(--bz-border)' }}
+            />
+            <div className="space-y-2 flex-1">
+              <div className="h-5 w-40 rounded" style={{ background: 'var(--bz-border)' }} />
+              <div className="h-4 w-56 rounded" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+            </div>
+          </div>
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-12 rounded"
+              style={{ background: 'var(--bz-border)', opacity: 0.4 }}
+            />
+          ))}
+        </div>
       </div>
     );
   }
