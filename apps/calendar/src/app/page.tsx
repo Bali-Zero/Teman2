@@ -525,7 +525,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Right Sidebar - Event Details */}
-          <div className="w-80 border-l border-white/5 bg-[#1A1D24]/50 flex flex-col overflow-hidden">
+          <aside aria-label="Dettagli evento" className="w-80 border-l border-white/5 bg-[#1A1D24]/50 flex flex-col overflow-hidden">
             {showCreateForm ? (
               <div className="flex-1 overflow-auto p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -779,7 +779,7 @@ export default function CalendarPage() {
                 )}
               </div>
             )}
-          </div>
+          </aside>
         </div>
       </div>
 
