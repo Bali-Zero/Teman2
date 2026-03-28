@@ -4,10 +4,10 @@
 # Previous: HTTPX 0.28+ MIGRATION (2025-12-29)
 
 # Core Framework
-fastapi>=0.128.0  # Upgraded for starlette 0.50+ compatibility
+fastapi>=0.135.2  # Upgraded for starlette 0.50+ compatibility
 uvicorn[standard]>=0.40.0  # Upgraded for async improvements
 sentry-sdk[fastapi]>=2.0.0  # Error monitoring
-pydantic>=2.12.0  # Compatible with MCP 1.25+, google-genai 1.56+
+pydantic>=2.12.5  # Compatible with MCP 1.25+, google-genai 1.56+
 pydantic-settings>=2.5.2  # Compatible with pydantic 2.12+
 python-multipart>=0.0.22  # Security fix: arbitrary file write (CVE-2024-47874)
 
