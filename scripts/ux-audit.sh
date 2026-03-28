@@ -54,12 +54,12 @@ if [ "$TSX_COUNT" -gt 0 ]; then
     [ -z "$line" ] && continue
     file=$(echo "$line" | cut -d: -f1)
     lineno=$(echo "$line" | cut -d: -f2)
-    # Check next 3 lines for onClick
-    has_click=$(sed -n "$((lineno)),$(($lineno+3))p" "$file" 2>/dev/null | grep -c "onClick" || true)
-    if [ "$has_click" -eq 0 ]; then
+    # Check next 8 lines for onClick, onSubmit, type="submit", href, or asChild
+    has_action=$(sed -n "$((lineno)),$(($lineno+8))p" "$file" 2>/dev/null | grep -c "onClick\|onSubmit\|type=\"submit\"\|href=\|asChild" || true)
+    if [ "$has_action" -eq 0 ]; then
       add_issue "HIGH" "dead-button" "$file:$lineno" "Button without onClick handler"
     fi
-  done < <(grep -rn "^[[:space:]]*<button$\|^[[:space:]]*<Button$" "$TARGET" --include="*.tsx" 2>/dev/null | grep -v "node_modules\|\.test\.\|__tests__\|type=\"submit")
+  done < <(grep -rn "^[[:space:]]*<button$\|^[[:space:]]*<Button$" "$TARGET" --include="*.tsx" 2>/dev/null | grep -v "node_modules\|\.test\.\|__tests__\|type=\"submit\"\|onClick\|href")
 
   # 3. Overlays/modals missing Escape key handler
   while IFS= read -r file; do
@@ -105,7 +105,7 @@ if [ "$TSX_COUNT" -gt 0 ]; then
     [ -z "$line" ] && continue
     file=$(echo "$line" | cut -d: -f1)
     lineno=$(echo "$line" | cut -d: -f2)
-    has_label=$(sed -n "$((lineno > 5 ? lineno-5 : 1)),$((lineno+5))p" "$file" 2>/dev/null | grep -c "aria-label\|htmlFor\|id=" || true)
+    has_label=$(sed -n "$((lineno > 8 ? lineno-8 : 1)),$((lineno+8))p" "$file" 2>/dev/null | grep -c "aria-label\|htmlFor\|id=\|<label" || true)
     if [ "$has_label" -eq 0 ]; then
       add_issue "MEDIUM" "input-no-label" "$file:$lineno" "Input without aria-label or associated label"
     fi
