@@ -105,9 +105,8 @@ class BirthplaceEnrichmentService:
             if response.status_code == 200:
                 data = response.json()
                 return data.get("response", "")
-            else:
-                logger.error(f"Ollama returned status {response.status_code}")
-                return None
+            logger.error(f"Ollama returned status {response.status_code}")
+            return None
         except httpx.TimeoutException:
             logger.error("Ollama request timed out")
             return None

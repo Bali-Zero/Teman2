@@ -40,7 +40,7 @@ class TelegramChannelConfig:
     max_messages_per_second: int = 30
     max_messages_per_minute: int = 20  # To same chat
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration."""
         if not self.bot_token:
             raise ValueError("bot_token is required")

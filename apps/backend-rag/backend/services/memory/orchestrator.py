@@ -196,7 +196,7 @@ class MemoryOrchestrator:
             await self._alert_critical_failure(critical_failures)
 
             raise RuntimeError(f"MemoryOrchestrator initialization failed: {critical_failures}")
-        elif non_critical_failures:
+        if non_critical_failures:
             self._status = MemoryServiceStatus.DEGRADED
             self._is_initialized = True
             self._degraded_mode_allowed = True

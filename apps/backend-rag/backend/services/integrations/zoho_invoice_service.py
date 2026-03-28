@@ -114,8 +114,7 @@ class ZohoInvoiceService:
 
         if accept_json:
             return response.json()
-        else:
-            return response.content
+        return response.content
 
     async def get_or_create_customer(
         self,

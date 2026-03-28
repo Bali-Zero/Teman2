@@ -220,17 +220,16 @@ class SendGridProvider(EmailProvider):
                         extra={"to": to_email, "subject": subject},
                     )
                     return True
-                else:
-                    error_text = await response.text()
-                    logger.error(
-                        "SendGrid API error",
-                        extra={
-                            "status": response.status,
-                            "error": error_text,
-                            "to": to_email,
-                        },
-                    )
-                    return False
+                error_text = await response.text()
+                logger.error(
+                    "SendGrid API error",
+                    extra={
+                        "status": response.status,
+                        "error": error_text,
+                        "to": to_email,
+                    },
+                )
+                return False
         except Exception as e:
             logger.error("Failed to send email via SendGrid", exc_info=e)
             return False
@@ -249,13 +248,12 @@ class NotificationService:
 
         if provider_type == "smtp":
             return SMTPProvider()
-        elif provider_type == "sendgrid":
+        if provider_type == "sendgrid":
             return SendGridProvider()
-        else:
-            # Auto-detect: use SMTP if SMTP_USER is set, otherwise SendGrid
-            if os.getenv("SMTP_USER") and os.getenv("SMTP_PASSWORD"):
-                return SMTPProvider()
-            return SendGridProvider()
+        # Auto-detect: use SMTP if SMTP_USER is set, otherwise SendGrid
+        if os.getenv("SMTP_USER") and os.getenv("SMTP_PASSWORD"):
+            return SMTPProvider()
+        return SendGridProvider()
 
     async def process_alert(self, alert: ClientAlert, client_email: str) -> NotificationResult:
         """
@@ -293,13 +291,12 @@ class NotificationService:
             if success:
                 await self._update_alert_status(alert, AlertStatus.SENT)
                 return NotificationResult(success=True, alert_id=alert.id)
-            else:
-                await self._update_alert_status(alert, AlertStatus.FAILED, "Email provider failed")
-                return NotificationResult(
-                    success=False,
-                    alert_id=alert.id,
-                    error_message="Failed to send email",
-                )
+            await self._update_alert_status(alert, AlertStatus.FAILED, "Email provider failed")
+            return NotificationResult(
+                success=False,
+                alert_id=alert.id,
+                error_message="Failed to send email",
+            )
 
         except Exception as e:
             logger.error(f"Failed to process alert {alert.id}", exc_info=e)

@@ -275,10 +275,9 @@ class LLMGateway:
         """Get model name for given tier."""
         if tier == TIER_PRO:
             return self.model_name_pro
-        elif tier in (TIER_LITE, TIER_FALLBACK):
+        if tier in (TIER_LITE, TIER_FALLBACK):
             return self.model_name_fallback
-        else:
-            return self.model_name_flash
+        return self.model_name_flash
 
     async def send_message(
         self,

@@ -174,10 +174,9 @@ def get_time_of_day() -> str:
 
     if 5 <= hour_wita < 12:
         return "morning"
-    elif 12 <= hour_wita < 17:
+    if 12 <= hour_wita < 17:
         return "afternoon"
-    else:
-        return "evening"
+    return "evening"
 
 
 def infer_client_type(profile: dict[str, Any]) -> str:

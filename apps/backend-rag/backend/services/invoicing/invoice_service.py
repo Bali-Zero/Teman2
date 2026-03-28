@@ -270,8 +270,7 @@ For support: support@balizero.com | WhatsApp: +62 859 0436 9574
                 if success:
                     logger.info(f"Invoice email sent to {client_email} via SMTP")
                     return True
-                else:
-                    raise Exception("SMTP send failed")
+                raise Exception("SMTP send failed")
             except Exception as smtp_error:
                 logger.error(f"Both Zoho and SMTP failed: {smtp_error}")
                 raise
@@ -362,8 +361,7 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
                 if success:
                     logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} via SMTP")
                     return True
-                else:
-                    raise Exception("SMTP send failed")
+                raise Exception("SMTP send failed")
             except Exception as smtp_error:
                 logger.error(f"Both Zoho and SMTP failed: {smtp_error}")
                 raise

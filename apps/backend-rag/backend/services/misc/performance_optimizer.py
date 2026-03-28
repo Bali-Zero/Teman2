@@ -135,10 +135,9 @@ class AsyncLRUCache:
                 # Check TTL
                 if time.time() - self.timestamps[key] < self.ttl:
                     return self.cache[key]
-                else:
-                    # Expired
-                    del self.cache[key]
-                    del self.timestamps[key]
+                # Expired
+                del self.cache[key]
+                del self.timestamps[key]
             return None
 
     async def set(self, key: str, value: Any) -> None:
@@ -190,9 +189,8 @@ class ConnectionPool:
                     )
                     self.created_connections += 1
                     return client
-                else:
-                    # Wait for available connection
-                    return await self.connections.get()
+                # Wait for available connection
+                return await self.connections.get()
 
     async def return_connection(self, connection) -> None:
         """Return connection to pool"""

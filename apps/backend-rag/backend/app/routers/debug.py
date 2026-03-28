@@ -947,7 +947,7 @@ async def execute_postgres_query(
     except ValueError as e:
         # Query validation failed
         logger.warning(f"Query validation failed: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Query execution failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e

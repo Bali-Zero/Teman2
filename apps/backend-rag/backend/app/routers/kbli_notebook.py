@@ -1071,29 +1071,28 @@ async def chat_kbli(
                                 f"✅ Direct lookup from kbli_documents: {code} ({len(row['content'])} chars)"
                             )
                             break
-                        else:
-                            # Fallback to kg_nodes for backward compatibility
-                            entity_id = f"kbli:{code}"
-                            kg_row = await conn.fetchrow(
-                                "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_id = $1",
-                                entity_id,
+                        # Fallback to kg_nodes for backward compatibility
+                        entity_id = f"kbli:{code}"
+                        kg_row = await conn.fetchrow(
+                            "SELECT entity_id, name, description, properties FROM kg_nodes WHERE entity_id = $1",
+                            entity_id,
+                        )
+                        if kg_row:
+                            props = (
+                                json.loads(kg_row["properties"])
+                                if isinstance(kg_row["properties"], str)
+                                else kg_row["properties"]
                             )
-                            if kg_row:
-                                props = (
-                                    json.loads(kg_row["properties"])
-                                    if isinstance(kg_row["properties"], str)
-                                    else kg_row["properties"]
-                                )
-                                direct_kbli_match = KBLISearchResult(
-                                    code=code,
-                                    title=kg_row["name"],
-                                    description=kg_row["description"][:200] + "...",
-                                    score=1.0,
-                                    pma_status=props.get("pma_status", "Verify at OSS"),
-                                    risk_category=props.get("kategori_risiko", "Verify at OSS"),
-                                )
-                                logger.info(f"⚠️ Direct lookup fallback to kg_nodes: {code}")
-                                break
+                            direct_kbli_match = KBLISearchResult(
+                                code=code,
+                                title=kg_row["name"],
+                                description=kg_row["description"][:200] + "...",
+                                score=1.0,
+                                pma_status=props.get("pma_status", "Verify at OSS"),
+                                risk_category=props.get("kategori_risiko", "Verify at OSS"),
+                            )
+                            logger.info(f"⚠️ Direct lookup fallback to kg_nodes: {code}")
+                            break
                 except Exception as lookup_err:
                     logger.warning(f"Direct lookup failed for {code}: {lookup_err}")
 

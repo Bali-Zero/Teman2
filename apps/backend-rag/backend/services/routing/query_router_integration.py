@@ -174,12 +174,11 @@ class QueryRouterIntegration:
                 "is_multi_domain": is_multi_domain,
                 "active_domains": active_domains,
             }
-        else:
-            collection_name = self.router.route(query)
-            logger.info(f"🧭 [Routing] Collection: {collection_name}")
-            return {
-                "collection_name": collection_name,
-                "collections": [collection_name],
-                "confidence": 1.0,
-                "is_pricing": False,
-            }
+        collection_name = self.router.route(query)
+        logger.info(f"🧭 [Routing] Collection: {collection_name}")
+        return {
+            "collection_name": collection_name,
+            "collections": [collection_name],
+            "confidence": 1.0,
+            "is_pricing": False,
+        }

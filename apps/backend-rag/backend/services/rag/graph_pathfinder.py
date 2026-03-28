@@ -142,7 +142,6 @@ class GraphPathfinder:
                 return await self.get_workflow_by_id("nexus:wf:pt_perorangan")
 
             # 🌏 INTERNATIONAL PATH (Foreigner)
-            else:
-                return await self.get_workflow_by_id("nexus:wf:pt_pma")
+            return await self.get_workflow_by_id("nexus:wf:pt_pma")
 
         return None

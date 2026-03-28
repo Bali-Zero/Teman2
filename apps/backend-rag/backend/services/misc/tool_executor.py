@@ -240,7 +240,7 @@ class ToolExecutor:
                 return {"success": True, "result": payload}
 
             # Check if this is an MCP tool
-            elif self.mcp_client and self.mcp_client.is_mcp_tool(tool_name):
+            if self.mcp_client and self.mcp_client.is_mcp_tool(tool_name):
                 logger.info(f"🔌 [MCP/Prefetch] Executing: {tool_name}")
 
                 result = await self.mcp_client.execute_tool(tool_name=tool_name, params=tool_input)
@@ -254,16 +254,15 @@ class ToolExecutor:
                 logger.info(f"✅ [MCP/Prefetch] {tool_name} executed successfully")
                 return {"success": True, "result": payload}
 
-            else:
-                # Tool not found - return error with available tools
-                available = sorted(self.zantara_tool_names)
-                if self.mcp_client:
-                    available.extend(sorted(self.mcp_client.available_tools.keys()))
-                error_message = (
-                    f"Tool '{tool_name}' not available. Available tools: {', '.join(available)}"
-                )
-                logger.warning(f"⚠️ [Prefetch] Tool not found: {tool_name}")
-                return {"success": False, "error": error_message}
+            # Tool not found - return error with available tools
+            available = sorted(self.zantara_tool_names)
+            if self.mcp_client:
+                available.extend(sorted(self.mcp_client.available_tools.keys()))
+            error_message = (
+                f"Tool '{tool_name}' not available. Available tools: {', '.join(available)}"
+            )
+            logger.warning(f"⚠️ [Prefetch] Tool not found: {tool_name}")
+            return {"success": False, "error": error_message}
 
         except Exception as e:
             logger.error(f"❌ [Prefetch] Tool execution failed for {tool_name}: {e}")

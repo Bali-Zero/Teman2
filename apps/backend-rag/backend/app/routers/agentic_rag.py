@@ -464,9 +464,8 @@ async def get_conversation_history_for_agentic(
                     messages = json.loads(messages)
                 logger.info(f"📚 Retrieved {len(messages)} messages from conversation history")
                 return messages
-            else:
-                logger.debug("📚 No conversation history found")
-                return []
+            logger.debug("📚 No conversation history found")
+            return []
 
     except Exception as e:
         logger.warning(f"⚠️ Failed to retrieve conversation history: {e}")

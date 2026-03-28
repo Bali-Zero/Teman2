@@ -580,12 +580,11 @@ class KnowledgeGraphBuilder:
                 },
                 indent=2,
             )
-        elif format == "cypher":
+        if format == "cypher":
             return self._export_cypher()
-        elif format == "graphml":
+        if format == "graphml":
             return self._export_graphml()
-        else:
-            raise NotImplementedError(f"Format {format} not implemented")
+        raise NotImplementedError(f"Format {format} not implemented")
 
     def _export_cypher(self) -> str:
         """Generate Cypher queries"""

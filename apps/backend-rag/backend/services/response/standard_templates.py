@@ -30,7 +30,7 @@ def get_visa_template(language: str = "en") -> str:
 #### ⚠️ Note Importanti
 [Eventuali restrizioni, divieti o consigli strategici]
 """
-    elif language == "id":
+    if language == "id":
         return f"""
 ### 📋 Detail Visa: [NAMA_VISA] (Kode: [KODE])
 
@@ -49,8 +49,8 @@ def get_visa_template(language: str = "en") -> str:
 #### ⚠️ Catatan Penting
 [Batasan, larangan, atau saran strategis]
 """
-    else:  # Default English
-        return f"""
+    # Default English
+    return f"""
 ### 📋 Visa Snapshot: [VISA_NAME] (Code: [CODE])
 
 | Feature | Detail |
@@ -92,7 +92,7 @@ def get_tax_template(language: str = "en") -> str:
 #### 💡 Consiglio Strategico
 [Consiglio su deduzioni, conformità o pianificazione]
 """
-    elif language == "id":
+    if language == "id":
         return """
 ### 💰 Ringkasan Pajak: [JENIS_PAJAK]
 
@@ -110,8 +110,8 @@ def get_tax_template(language: str = "en") -> str:
 #### 💡 Saran Strategis
 [Saran tentang pengurangan, kepatuhan, atau perencanaan]
 """
-    else:  # Default English
-        return """
+    # Default English
+    return """
 ### 💰 Tax Summary: [TAX_TYPE]
 
 | Item | Detail |
@@ -154,7 +154,7 @@ def get_company_setup_template(language: str = "en") -> str:
 #### ⚠️ Punto Critico
 [Il rischio o l'attenzione principale per questo tipo di azienda]
 """
-    elif language == "id":
+    if language == "id":
         return """
 ### 🏢 Pendirian Perusahaan: [TIPE_PERUSAHAAN] (cth. PT PMA)
 
@@ -174,8 +174,8 @@ def get_company_setup_template(language: str = "en") -> str:
 #### ⚠️ Poin Kritis
 [Risiko atau perhatian utama untuk jenis perusahaan ini]
 """
-    else:  # Default English
-        return """
+    # Default English
+    return """
 ### 🏢 Company Setup: [COMPANY_TYPE] (e.g., PT PMA)
 
 | Parameter | Detail |

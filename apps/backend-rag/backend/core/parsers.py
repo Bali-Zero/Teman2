@@ -60,7 +60,7 @@ async def extract_text_from_pdf_async(file_path: str, use_ocr: bool = False) -> 
                 if ocr_text and ocr_text.strip():
                     logger.info(f"OCR extraction successful: {len(ocr_text)} characters")
                     return ocr_text
-                elif not full_text.strip():
+                if not full_text.strip():
                     raise DocumentParseError(
                         f"No text extracted from PDF (even with OCR/Vision): {file_path}"
                     )
@@ -123,7 +123,7 @@ def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
                 if ocr_text and ocr_text.strip():
                     logger.info(f"OCR extraction successful: {len(ocr_text)} characters")
                     return ocr_text
-                elif not full_text.strip():
+                if not full_text.strip():
                     # Last resort: try vision model (skip if already in async context)
                     logger.info("OCR failed, trying vision model as last resort...")
                     try:
@@ -229,9 +229,8 @@ If the page is blank or contains no text, return an empty string."""
                 f"✅ Gemini Vision OCR successful: {len(full_text)} characters from {len(text_parts)} pages"
             )
             return full_text
-        else:
-            logger.warning("No text extracted from any page")
-            return ""
+        logger.warning("No text extracted from any page")
+        return ""
 
     except Exception as e:
         logger.error(f"Vision OCR extraction failed: {e}")
@@ -438,18 +437,17 @@ def auto_detect_and_parse(file_path: str, use_ocr: bool = False) -> str:
 
     if file_ext == ".pdf":
         return extract_text_from_pdf(file_path, use_ocr=use_ocr)
-    elif file_ext == ".docx":
+    if file_ext == ".docx":
         return extract_text_from_docx(file_path)
-    elif file_ext == ".epub":
+    if file_ext == ".epub":
         return extract_text_from_epub(file_path)
-    elif file_ext == ".txt":
+    if file_ext == ".txt":
         return extract_text_from_txt(file_path)
-    elif file_ext == ".md":
+    if file_ext == ".md":
         return extract_text_from_txt(file_path)  # Markdown is plain text
-    else:
-        raise DocumentParseError(
-            f"Unsupported file type: {file_ext}. Supported formats: .pdf, .docx, .epub, .txt, .md"
-        )
+    raise DocumentParseError(
+        f"Unsupported file type: {file_ext}. Supported formats: .pdf, .docx, .epub, .txt, .md"
+    )
 
 
 def get_document_info(file_path: str) -> dict:

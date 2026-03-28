@@ -437,9 +437,8 @@ class PluginExecutor:
             time_since_failure = time.time() - breaker["last_failure_time"]
             if time_since_failure < CIRCUIT_BREAKER_COOLDOWN_SECONDS:
                 return True
-            else:
-                # Reset after cooldown
-                del self._circuit_breakers[plugin_name]
+            # Reset after cooldown
+            del self._circuit_breakers[plugin_name]
 
         return False
 

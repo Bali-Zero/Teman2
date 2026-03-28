@@ -388,18 +388,17 @@ class FollowupService:
                     },
                 )
                 return followups[:4]  # Max 4
-            else:
-                followup_ai_generation_total.labels(status="parse_failure").inc()
-                logger.warning(
-                    "⚠️ [Followups] Failed to parse AI follow-ups, using fallback",
-                    extra={
-                        "component": "FollowupService",
-                        "action": "generate_dynamic_followups_parse_failure",
-                        "language": language,
-                        "response_text": text[:200],  # First 200 chars for debugging
-                    },
-                )
-                return self.get_topic_based_followups(query, response or "", "business", language)
+            followup_ai_generation_total.labels(status="parse_failure").inc()
+            logger.warning(
+                "⚠️ [Followups] Failed to parse AI follow-ups, using fallback",
+                extra={
+                    "component": "FollowupService",
+                    "action": "generate_dynamic_followups_parse_failure",
+                    "language": language,
+                    "response_text": text[:200],  # First 200 chars for debugging
+                },
+            )
+            return self.get_topic_based_followups(query, response or "", "business", language)
 
         except Exception as e:
             total_duration = time.time() - start_time
@@ -509,7 +508,7 @@ CRITICAL: All questions MUST be in {language.upper()} language."""
             return "immigration"
 
         # Tax keywords
-        elif any(
+        if any(
             keyword in query_lower
             for keyword in [
                 "tax",
@@ -526,7 +525,7 @@ CRITICAL: All questions MUST be in {language.upper()} language."""
             return "tax"
 
         # Technical/code keywords
-        elif any(
+        if any(
             keyword in query_lower
             for keyword in [
                 "code",
@@ -542,7 +541,7 @@ CRITICAL: All questions MUST be in {language.upper()} language."""
             return "technical"
 
         # Casual keywords
-        elif any(
+        if any(
             keyword in query_lower
             for keyword in [
                 "hello",
@@ -559,8 +558,7 @@ CRITICAL: All questions MUST be in {language.upper()} language."""
             return "casual"
 
         # Default to business
-        else:
-            return "business"
+        return "business"
 
     def detect_language_from_query(self, query: str) -> str:
         """

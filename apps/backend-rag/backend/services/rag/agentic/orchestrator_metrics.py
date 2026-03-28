@@ -130,8 +130,7 @@ class OrchestratorMetricsManager:
         """
         if hasattr(state, "sources") and state.sources:
             return state.sources
-        else:
-            return [s.action.result for s in state.steps if s.action and s.action.result]
+        return [s.action.result for s in state.steps if s.action and s.action.result]
 
     def calculate_context_used(self, state: AgentState) -> int:
         """

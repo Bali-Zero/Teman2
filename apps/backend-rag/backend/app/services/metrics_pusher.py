@@ -265,11 +265,10 @@ class MetricsPusher:
                 if response.status_code in (200, 204):
                     logger.debug(f"Pushed {len(metrics)} metrics to Grafana Cloud")
                     return True
-                else:
-                    logger.warning(
-                        f"Failed to push metrics: {response.status_code} - {response.text[:200]}"
-                    )
-                    return False
+                logger.warning(
+                    f"Failed to push metrics: {response.status_code} - {response.text[:200]}"
+                )
+                return False
 
         except Exception as e:
             logger.error(f"Error pushing metrics: {e}")

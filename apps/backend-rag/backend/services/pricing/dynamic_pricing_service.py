@@ -311,8 +311,7 @@ class DynamicPricingService:
         """
         if format == "markdown":
             return self._format_markdown_report(pricing_result)
-        else:
-            return self._format_text_report(pricing_result)
+        return self._format_text_report(pricing_result)
 
     def _format_text_report(self, pr: PricingResult) -> str:
         """Generate plain text pricing report"""
