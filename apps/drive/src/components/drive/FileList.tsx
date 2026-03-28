@@ -216,7 +216,7 @@ export function FileList({
               </span>
 
               {/* Actions - Minimal */}
-              <div className="flex w-8 items-center justify-end opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+              <div className="flex w-8 items-center justify-end opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
