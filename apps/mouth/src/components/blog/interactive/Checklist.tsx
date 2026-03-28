@@ -166,6 +166,7 @@ export function Checklist({
                 onClick={handlePrint}
                 className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
                 title="Print checklist"
+                aria-label="Print checklist"
               >
                 <Printer className="w-4 h-4" />
               </button>
@@ -189,6 +190,7 @@ export function Checklist({
               onClick={reset}
               className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
               title="Reset checklist"
+              aria-label="Reset checklist"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
