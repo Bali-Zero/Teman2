@@ -464,7 +464,13 @@ function PassportCard({
 
         {/* Upload Button (if no passport) */}
         {!hasPassport && (
-          <Button variant="outline" className="w-full gap-2">
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => {
+              window.location.href = '/portal/vault';
+            }}
+          >
             <Upload className="w-4 h-4" />
             Upload Passport
           </Button>
@@ -824,7 +830,13 @@ function ElectronicVisaCard() {
           </p>
         </div>
 
-        <Button variant="outline" className="w-full gap-2">
+        <Button
+          variant="outline"
+          className="w-full gap-2"
+          onClick={() => {
+            window.location.href = '/portal/vault';
+          }}
+        >
           <Upload className="w-4 h-4" />
           Download E-Visa
         </Button>
