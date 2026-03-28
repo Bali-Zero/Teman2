@@ -64,7 +64,7 @@ class CitationService:
         if not sources_available:
             return ""
 
-        instructions = """
+        return """
 ## Citation Guidelines
 
 When using information from provided sources, include inline citations:
@@ -82,7 +82,6 @@ Sources:
 [1] Immigration Regulations - Ministry of Law and Human Rights
 [2] Investment Requirements - BKPM Official Guidelines
 """
-        return instructions
 
     def extract_sources_from_rag(self, rag_results: list[dict]) -> list[dict[str, Any]]:
         """

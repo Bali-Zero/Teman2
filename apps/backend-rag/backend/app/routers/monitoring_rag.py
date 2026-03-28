@@ -182,8 +182,7 @@ async def get_retrieval_quality(
     """
     try:
         logger.info(f"Retrieving quality metrics for time_range={time_range}")
-        data = await monitor.get_dashboard_data(time_range)
-        return data
+        return await monitor.get_dashboard_data(time_range)
 
     except Exception as e:
         logger.error(f"Failed to retrieve quality metrics: {e}")
@@ -259,8 +258,7 @@ async def get_abstain_statistics(
     """
     try:
         logger.info(f"Retrieving abstain statistics for days={days}")
-        stats = await monitor.get_abstain_statistics(days)
-        return stats
+        return await monitor.get_abstain_statistics(days)
 
     except Exception as e:
         logger.error(f"Failed to retrieve abstain statistics: {e}")
@@ -296,8 +294,7 @@ async def get_latency_percentiles(
     """
     try:
         logger.info(f"Retrieving latency percentiles for days={days}")
-        stats = await monitor.get_latency_percentiles(days)
-        return stats
+        return await monitor.get_latency_percentiles(days)
 
     except Exception as e:
         logger.error(f"Failed to retrieve latency statistics: {e}")

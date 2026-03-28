@@ -1040,9 +1040,8 @@ async def get_ab_test_dashboard(
     """
     ab_manager = get_ab_test_manager()
 
-    dashboard = await ab_manager.get_dashboard_data()
+    return await ab_manager.get_dashboard_data()
 
-    return dashboard
 
 
 @router.get("/ab-test/experiments")

@@ -56,7 +56,7 @@ def secure_subprocess_run(
     logger.debug(f"Executing command: {command if isinstance(command, str) else ' '.join(command)}")
 
     try:
-        result = subprocess.run(
+        return subprocess.run(
             command,
             shell=shell,
             cwd=cwd,
@@ -66,7 +66,6 @@ def secure_subprocess_run(
             text=True,
             **kwargs,
         )
-        return result
     except subprocess.TimeoutExpired:
         logger.error(f"Command timed out after {timeout}s: {command}")
         raise
