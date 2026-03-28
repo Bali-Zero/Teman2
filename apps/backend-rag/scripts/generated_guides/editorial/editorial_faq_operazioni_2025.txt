@@ -1,0 +1,674 @@
+FAQ OPERAZIONI EDITORIALI — BALI ZERO
+Domande e Risposte per il Team di Contenuto
+2024-2025
+
+Guida operativa interna | Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Questo documento risponde alle domande operative più frequenti del team
+editoriale di Bali Zero. È organizzato in cinque sezioni tematiche.
+Ogni risposta è definitiva e operativa: rappresenta la policy ufficiale
+adottata da Bali Zero / Zantara Intelligence per la produzione di contenuti.
+
+Destinatari: Zero (fondatore), Damar (team member), agenti AI (Zantara, Claude Code)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEZIONE A — PRODUZIONE CONTENUTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q1. Chi approva ogni articolo prima della pubblicazione?
+
+R: Zero (il fondatore) approva obbligatoriamente tutti gli articoli di
+carattere legale, fiscale, normativo o che citano prezzi, procedure
+ufficiali, o regolamenti indonesiani. Questa regola non ha eccezioni:
+nessun articolo su visti, PT PMA, PPh, PPN, OSS, NIK, NIB, KBLI
+può essere pubblicato senza il click di approvazione esplicita di Zero.
+
+Per articoli di mercato generale, lifestyle balneare, cultura balinese,
+o contenuti che non citano normative specifiche: Damar può approvare
+in autonomia dopo un periodo di collaborazione continuativa di almeno
+3 mesi, durante il quale avrà ricevuto formazione sufficiente per
+riconoscere i confini tra contenuto lifestyle e contenuto legale/fiscale.
+
+In caso di dubbio sulla categoria di un articolo: sempre escalare a Zero.
+Meglio attendere un'approvazione in più che pubblicare un errore normativo.
+
+Claim: EDT-076
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q2. L'AI può pubblicare direttamente senza revisione umana?
+
+R: No. Mai. Senza eccezioni.
+
+Zantara AI (e qualsiasi agente AI del sistema Bali Zero) è autorizzata a:
+  ✓ Produrre bozze complete di articoli
+  ✓ Suggerire titoli, meta description, tag SEO
+  ✓ Verificare coerenza interna del contenuto
+  ✓ Ottimizzare per AI citation (GEO/AEO)
+  ✓ Programmare l'email di distribuzione (in stato "bozza" su Brevo)
+
+Zantara AI NON è autorizzata a:
+  ✗ Premere il pulsante "Pubblica" sulla dashboard kita.balizero.com
+  ✗ Inviare email newsletter senza conferma umana esplicita
+  ✗ Modificare articoli già pubblicati senza approvazione
+  ✗ Cambiare lo stato di un articolo da "bozza" a "pubblicato" autonomamente
+
+Il motivo è semplice: l'AI può allucinare dettagli normativi, citare
+aliquote obsolete, o travisare procedure. Un errore pubblicato a 5.000+
+clienti e prospect ha costi di reputazione enormi. La supervisione umana
+è l'unico gate di qualità che garantisce la fiducia del pubblico.
+
+Implementazione tecnica: il pulsante "Pubblica" nella dashboard
+require un token JWT dell'utente umano (non è accessibile via API
+interna agli agenti AI in modalità autonoma).
+
+Claim: EDT-077
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q3. Quanto tempo ci vuole per produrre un articolo long-form?
+
+R: Il processo editoriale completo per un articolo long-form (1.500-2.500
+parole) si articola in tre fasi con i seguenti tempi standard:
+
+  FASE 1 — AI Draft (Zantara Intelligence Pipeline)
+    Tempo: 15-30 minuti
+    Output: bozza completa con struttura, contenuto, fonti citate inline,
+    meta description, suggerimento immagine di copertina, tag SEO proposti.
+    Tool: compose_article via MCP nuzantara-mcp
+
+  FASE 2 — Revisione Umana
+    Tempo: 1-2 ore (dipende dalla complessità normativa)
+    Responsabile: Damar (prima lettura) + Zero (approvazione finale)
+    Attività: verifica fonti, controllo aliquote/date, tono di voce,
+    aggiunta di esempi pratici dalla vita reale, eliminazione di eventuali
+    imprecisioni AI.
+
+  FASE 3 — Pubblicazione
+    Tempo: 30 minuti
+    Attività: upload immagine copertina (ottimizzata per web), configurazione
+    meta SEO, assegnazione categoria/tag, preview finale su staging,
+    click su "Pubblica", verifica URL live, condivisione su canali.
+
+  TOTALE STIMATO: 2-3 ore per articolo completo (dall'idea alla pubblicazione)
+
+  Nota: per articoli di breaking news normativa (Alert), il processo è
+  compresso: AI draft 15 min → revisione Zero 20 min → pubblicazione 10 min
+  → totale circa 45 minuti dall'alert alla pubblicazione.
+
+Claim: EDT-078
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q4. Come gestiamo gli articoli obsoleti?
+
+R: Gli articoli su normative indonesiane invecchiano rapidamente. La policy
+di manutenzione degli articoli pubblicati è la seguente:
+
+  REVIEW AUTOMATICA: ogni articolo entra in review automatica 12 mesi dopo
+  la pubblicazione. L'Intel pipeline Zantara verifica se le normative
+  citate nell'articolo sono state aggiornate nel frattempo.
+
+  SE LA NORMATIVA È CAMBIATA (opzioni in ordine di preferenza):
+    Opzione A (preferita): aggiornare l'articolo in-place mantenendo l'URL,
+    aggiungere nota "[AGGIORNATO MM/YYYY: descrizione modifica]" in cima
+    al corpo dell'articolo, aggiornare la data di "ultima revisione".
+
+    Opzione B (se il cambiamento è radicale): aggiungere banner di avviso
+    prominente in cima all'articolo con testo standard:
+    "⚠️ ATTENZIONE: questa guida si riferisce alla normativa in vigore al
+    [anno di pubblicazione]. Le informazioni potrebbero non essere aggiornate.
+    Verifica gli aggiornamenti con il nostro team o consulta le fonti ufficiali."
+
+  SE LA NORMATIVA NON È CAMBIATA: aggiornare solo la data di "ultima verifica"
+  nell'articolo. Nessuna modifica al contenuto necessaria.
+
+  MAI cancellare un articolo silenziosamente: gli URL SEO accumulano autorità
+  nel tempo. La cancellazione distrugge valore SEO costruito. Se un argomento
+  è irrimediabilmente obsoleto: redirect 301 verso l'articolo aggiornato.
+
+Claim: EDT-079
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEZIONE B — FONTI E VERIFICHE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q5. Qual è la gerarchia delle fonti per i contenuti legali?
+
+R: Per tutti i contenuti che citano normative indonesiane, la gerarchia
+delle fonti è tassativa e deve essere rispettata in ordine:
+
+  LIVELLO 1 — FONTE PRIMARIA (obbligatoria per ogni claim legale)
+    Testo di legge originale in lingua indonesiana:
+    • UU (Undang-Undang) — leggi parlamentari
+    • PP (Peraturan Pemerintah) — decreti governativi
+    • PMK (Peraturan Menteri Keuangan) — regolamenti Ministero Finanze
+    • Permenaker (Peraturan Menteri Ketenagakerjaan) — regolamenti lavoro
+    • SE (Surat Edaran) DJP — circolari Direzione Generale Imposte
+    Ogni claim legale DEVE riportare la fonte primaria inline nel testo.
+
+  LIVELLO 2 — SINTESI VERIFICATA INTERNA
+    NotebookLM Bali Zero (notebook NB-7 Editorial + NB-3 Tax + NB-2 Immigration)
+    con documenti verificati caricati dal team. Utile per sintesi e
+    contestualizzazione, ma la fonte primaria deve sempre essere verificata.
+
+  LIVELLO 3 — SITI UFFICIALI (per procedure aggiornate e moduli)
+    • pajak.go.id — procedure fiscali, formulir DJP
+    • oss.go.id — OSS/NIB procedures, KBLI lookup ufficiale
+    • imigrasi.go.id — procedure visti, persyaratan dokumen
+    • kemenkumham.go.id — registrazione PT, akta notarile
+    • bkpm.go.id / investindonesia.go.id — investimenti esteri, PT PMA
+
+  LIVELLO 4 — NOTIZIE RECENTI (non-normative, solo per context)
+    Gemini search grounded (ai-dispatch.sh search) — per notizie di
+    applicazione delle norme, casi pratici recenti, statement ministeriali.
+    NON usare per claim legali primari.
+
+  VIETATO COME FONTE PRIMARIA:
+    ✗ Wikipedia (qualsiasi lingua)
+    ✗ Blog generici, forum expat, gruppi Facebook
+    ✗ Social media (anche account ufficiali — non hanno valore normativo)
+    ✗ Fonti secondarie non verificate (articoli di stampa non specializzata)
+    ✗ Output AI senza citazione fonte primaria verificabile
+
+Claim: EDT-080
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q6. Come citiamo le fonti negli articoli?
+
+R: Il sistema di citazione di Bali Zero è progettato per due obiettivi
+simultanei: (1) trasparenza verso il lettore, (2) ottimizzazione per
+le AI citation (GEO/AEO — Google AI Overviews e altri motori AI).
+
+FORMATO STANDARD CITAZIONE INLINE:
+  [Fonte: UU 7/2021 Pasal 3] inserito immediatamente dopo il claim nel
+  corpo del testo, non in nota a piè di pagina.
+
+Esempi pratici:
+  "L'aliquota PPh Badan per società con omzet < IDR 50 miliardi è il 22%
+  con riduzione del 50% sulla parte imponibile fino a IDR 4,8 miliardi
+  [Fonte: UU 36/2008 s.o. PMK-168/PMK.010/2022 Pasal 31E]."
+
+  "La procedura di registrazione PT PMA richiede investimento minimo
+  IDR 10 miliardi [Fonte: PP 5/2021 tentang Penyelenggaraan Perizinan
+  Berusaha Berbasis Risiko]."
+
+PERCHÉ INLINE E NON A PIÈ DI PAGINA:
+  I modelli AI (ChatGPT, Perplexity, Gemini) citano fonti che hanno
+  la referenza vicina al claim. Le note a piè di pagina vengono spesso
+  ignorate nei processi di estrazione AI. Citazione inline = massima
+  probabilità di essere citati come fonte autorevole.
+
+CITAZIONI MULTIPLE:
+  Se un claim è supportato da più fonti: [Fonte: UU 40/2007 Pasal 33;
+  PP 29/2016]. Separare con punto e virgola.
+
+Claim: EDT-081
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q7. Cosa facciamo se troviamo informazioni contrastanti tra due fonti ufficiali?
+
+R: Le contraddizioni tra fonti ufficiali indonesiane sono più comuni di
+quanto si pensi: il sistema normativo indonesiano è stratificato, con
+leggi generali, decreti attuativi, circolari interpretative e prassi
+amministrativa che non sempre sono coerenti tra loro.
+
+PROCEDURA IN CASO DI CONTRADDIZIONE:
+  1. SEGNALA IMMEDIATAMENTE A ZERO con screenshot/link di entrambe le fonti
+  2. Non pubblicare l'articolo finché la contraddizione non è risolta
+  3. Per la pubblicazione: usa la fonte PIÙ RECENTE come prevalente
+     (principio lex posterior derogat priori)
+  4. In ogni caso includi obbligatoriamente la nota:
+     "Normativa in evoluzione — si consiglia di verificare l'interpretazione
+     più aggiornata con un konsultan pajak o legale autorizzato."
+
+FONTI PARTICOLARMENTE PROBLEMATICHE:
+  • SE DJP vs testo PMK: la SE è interpretazione amministrativa, non
+    ha forza di legge primaria. In caso di conflitto, prevale la PMK.
+  • OSS.go.id vs normativa BKPM: OSS viene aggiornato con ritardo rispetto
+    alla normativa. Se i due divergono, segnala e usa la normativa.
+  • Traduzione EN vs testo ID: sempre prevalente il testo in bahasa Indonesia.
+
+In presenza di incertezza genuina, è preferibile non pubblicare piuttosto
+che pubblicare con un'interpretazione sbagliata.
+
+Claim: EDT-082
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEZIONE C — DISTRIBUZIONE E PROMOZIONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q8. Dove pubblichiamo gli articoli?
+
+R: Ogni articolo prodotto da Bali Zero è distribuito su quattro canali
+in ordine di priorità:
+
+  CANALE 1 — Blog balizero.com (priorità SEO principale)
+    URL canonico: balizero.com/blog/[slug-articolo]
+    Questo è il target primario SEO. Tutto il traffico organico converge qui.
+    Gli altri canali linkano sempre a questo URL come fonte originale.
+    Formato: articolo completo, ottimizzato per SEO + AI citation (GEO).
+
+  CANALE 2 — Intel feed kita.balizero.com (per clienti in dashboard)
+    Visibile nella dashboard workspace dei clienti attivi.
+    Formato: sommario 2-3 righe + link a balizero.com per l'articolo completo.
+    Funzione: aggiornamento real-time per i clienti sul loro stato normativo.
+    Pubblicazione: automatica tramite Intel pipeline (publish_intel MCP tool).
+
+  CANALE 3 — Newsletter Brevo (per subscriber list)
+    Distribuzione via email agli iscritti segmentati (vedi guida newsletter).
+    Formato: estratto 150-200 parole + CTA "Leggi l'articolo completo →"
+    Timing: integrato nel Weekly Digest o come Alert standalone se urgente.
+
+  CANALE 4 — Telegram canale @BaliZeroIT (community italiana)
+    Per contenuti in italiano di interesse per la community expat italiana.
+    Formato: 2-3 frasi + link. NON ripubblicazione integrale del testo.
+    Moderazione: canale gestito da Zantara AI con supervisione Zero.
+
+Claim: EDT-083
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q9. Condividiamo su social media?
+
+R: La strategia social di Bali Zero è selettiva per mantenere alta la
+qualità dei contenuti e non disperdere risorse su canali a basso ROI.
+
+  LINKEDIN (pagina aziendale Bali Zero) — ATTIVO
+    Canale principale per contenuti long-form e authority building.
+    Cosa pubblicare: articoli analitici su business in Indonesia, case study
+    (con consenso), aggiornamenti normativi con commento editoriale.
+    Frequenza: 2-3 post/settimana.
+    Formato: testo LinkedIn nativo (non link puri) + link in primo commento.
+
+  INSTAGRAM (@balizero o @balizero.id) — ATTIVO (lifestyle focus)
+    Solo contenuti visual: foto di Bali, celebrazioni con clienti (con consenso),
+    infografiche semplici, quote ispiranti sul business in Indonesia.
+    NON pubblicare su Instagram contenuti complessi come guide fiscali.
+    Frequenza: 3-5 post/settimana (Reels quando possibile).
+
+  X / TWITTER — NON ATTIVO (temporaneamente)
+    Account attualmente non operativo (CRC authentication failure sul backend).
+    Non condividere manualmente su X finché il canale non è ripristinato.
+    Stima ripristino: da definire.
+
+  FACEBOOK — NON ATTIVO
+    Non è presente una strategia Facebook approvata.
+    Non lanciare Facebook Ads senza budget esplicito approvato da Zero.
+
+  TIKTOK, YOUTUBE, PINTEREST — NON IN SCOPE (2025)
+    Potenziale futuro ma non nella roadmap 2025. Non avviare attività
+    su questi canali senza esplicita approvazione strategica.
+
+Claim: EDT-084
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q10. Come misuriamo il successo di un articolo?
+
+R: Il successo di un articolo si misura su quattro dimensioni, in ordine
+di importanza per il business:
+
+  METRICA 1 — Traffico organico (dopo 30 giorni)
+    Tool: Google Analytics 4 (property ID 505466833, stream G-S3H2M6VXWT)
+    Target: > 200 sessioni organiche nel primo mese per articoli long-form
+    Dimensione critica: source/medium = organic/google (non social o direct)
+
+  METRICA 2 — Engagement qualitativo
+    Indicatore: tempo medio sulla pagina > 3 minuti (segnale di lettura reale)
+    Indicatore: scroll depth > 60% (contenuto letto fino in fondo)
+    Indicatore: pagine per sessione > 1.5 (lettore esplora altri contenuti)
+
+  METRICA 3 — Lead generation (entro 7 giorni dalla pubblicazione)
+    Quanti form submission provengono da visitatori che hanno letto l'articolo?
+    Tracking: UTM su tutti i CTA nell'articolo + Google Analytics goal tracking
+    Target: almeno 1 lead qualificato per articolo long-form nel primo mese
+
+  METRICA 4 — AI Citation (test manuale)
+    Verifica mensile: query target su ChatGPT, Perplexity, Google AI Overview
+    Esempio: "Come aprire una PT PMA in Indonesia" → Bali Zero citato?
+    Questo è il KPI GEO/AEO più rilevante per la strategia long-term.
+
+  Report mensile: Zero riceve dashboard Google Analytics filtrata per
+  articoli del mese, con evidenza dei top performer e degli articoli
+  sotto-performanti (candidati a refresh o revisione SEO).
+
+Claim: EDT-085
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEZIONE D — REVISIONE NORMATIVA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q11. Come sappiamo quando una legge cambia?
+
+R: Il sistema di monitoraggio normativo di Bali Zero è multi-livello e
+combina automazione AI con vigilanza umana:
+
+  LIVELLO 1 — Intel Pipeline Automatica (Zantara AI)
+    Gira ogni notte (03:00 WITA, Pro OpenClaw) e scansiona:
+    • Sito ufficiale DJP (Direktorat Jenderal Pajak) — nuove PMK, SE
+    • Sito BKPM/BKPM/DPMPTSP — aggiornamenti investimenti esteri
+    • Kemenkumham.go.id — nuovi PP, perubahan UU
+    • OSS.go.id — aggiornamenti KBLI, perizinan
+    Quando rileva un nuovo documento normativo: notifica automatica
+    via Telegram a Zero con summary Gemini del contenuto.
+
+  LIVELLO 2 — Canali Telegram Ufficiali (Zero)
+    Zero è iscritto ai canali Telegram ufficiali di:
+    • @pajak_id (DJP ufficiale)
+    • @kemenkumham_ri (Kemenkumham)
+    • @bkpm_id (BKPM/Investasi)
+    Questi canali pubblicano circolari e news in tempo reale.
+    Zero riceve notifiche push — può segnalare urgenze fuori dalla
+    finestra del cron notturno.
+
+  LIVELLO 3 — Monitoring Damar (Imigrasi + OSS)
+    Damar monitora manualmente:
+    • @ditjenimigrasiri (Imigrasi ufficiale)
+    • Newsletter OSS per aggiornamenti perizinan
+    Segnala a Zero via WhatsApp o Telegram team.
+
+  RISULTATO: copertura completa 24/7. Tempi di rilevamento tipici
+  < 12 ore per cambiamenti significativi, < 24 ore per cambiamenti minori.
+
+Claim: EDT-086
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q12. Quanto velocemente dobbiamo reagire a un cambiamento normativo?
+
+R: La velocità di risposta dipende dalla criticità del cambiamento.
+Il sistema di classificazione urgenza ha tre livelli:
+
+  LIVELLO CRITICO — risposta entro 24 ore
+    Definizione: impatto immediato e obbligatorio su clienti attivi.
+    Esempi:
+    • Nuova aliquota PPh o PPN
+    • Nuova procedura obbligatoria per rinnovo visto (con scadenza imminente)
+    • Sospensione di un tipo di visto
+    • Obbligo nuovo di reporting fiscale entro breve termine
+    Azione: Alert normativo inviato entro 24h + articolo balizero.com entro 48h
+    Notifica: Telegram immediata a tutti i clienti impattati (via backend)
+
+  LIVELLO IMPORTANTE — risposta entro 1 settimana
+    Definizione: nuovi requisiti documentali, modifiche procedurali senza
+    scadenza imminente, aggiornamenti KBLI, variazioni tariffe governative.
+    Esempi:
+    • Nuovi documenti richiesti per OSS
+    • Modifica soglie investimento KBLI
+    • Aggiornamento lista settori restricted/open per PT PMA
+    Azione: articolo aggiornato o nuovo entro 7 giorni + digest settimanale
+
+  LIVELLO MINORE — aggiornamento al prossimo ciclo trimestrale
+    Definizione: clarificazioni interpretative, modifiche amministrative
+    minori, aggiornamenti di form senza cambiamento sostanziale.
+    Azione: nota aggiuntiva nell'articolo esistente alla prossima review
+
+Claim: EDT-087
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q13. Chi è responsabile del monitoraggio delle leggi?
+
+R: Il monitoraggio normativo è una responsabilità condivisa distribuita
+per dominio di competenza:
+
+  ZERO (fondatore) — DJP + BKPM
+    Monitora le normative fiscali (DJP: PMK, SE DJP, perubahan UU PPh/PPN)
+    e quelle sugli investimenti esteri (BKPM: Perka BKPM, DNI updates).
+    Zero è il punto di decisione finale su tutte le questioni fiscali.
+    Tool: canali Telegram ufficiali DJP e BKPM + Intel pipeline alert
+
+  DAMAR (team member) — Imigrasi + OSS
+    Monitora le normative sull'immigrazione (Ditjen Imigrasi: Permenkumham,
+    aggiornamenti KITAS/KITAP/Visa on Arrival) e quelle sui permessi usaha
+    (OSS: aggiornamenti perizinan, NIB, KBLI).
+    Tool: canali Telegram Imigrasi + newsletter OSS + report settimanale a Zero
+
+  ZANTARA AI — Intel pipeline automatica
+    Scansione notturna di tutti i siti ufficiali.
+    Non prende decisioni su urgenza o impatto — classifica e notifica.
+    Output: notifica Telegram con summary + link fonte + proposta classificazione
+    urgenza (CRITICO/IMPORTANTE/MINORE). La classificazione finale è di Zero.
+
+  PARTNER KONSULTAN PAJAK — Tax complessa
+    Per normative di Transfer Pricing, PE (Permanent Establishment),
+    e questioni fiscali internazionali: Bali Zero ha partner konsultan pajak
+    certificati che revisionano articoli ad alta complessità prima della
+    pubblicazione.
+
+Claim: EDT-088
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEZIONE E — QUALITÀ E COMPLIANCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q14. Come evitiamo di pubblicare informazioni errate?
+
+R: Il sistema di quality assurance editoriale di Bali Zero è costruito
+su quattro gate indipendenti, ciascuno dei quali può bloccare la pubblicazione:
+
+  GATE 1 — Citazione obbligatoria fonte primaria
+    Ogni claim normativo deve avere [Fonte: UU/PP/PMK xx/xxxx] inline.
+    Un articolo senza citazioni adeguate NON viene approvato.
+    Responsabilità: Zantara AI in fase di draft + Damar in review.
+
+  GATE 2 — Verifica NotebookLM interna
+    NotebookLM con guide Bali Zero verificate (NB-7 + NB-3 + NB-2) viene
+    interrogato per ogni claim critico: "Questo è coerente con le guide
+    verificate?" Se NotebookLM identifica contraddizioni → blocco e segnalazione.
+
+  GATE 3 — Disclaimer obbligatorio su tutti gli articoli legali/fiscali
+    OGNI articolo su visti, PT PMA/PMDN, tasse, proprietà DEVE contenere
+    il disclaimer standard in cima al corpo dell'articolo:
+    "Le informazioni contenute in questo articolo hanno scopo informativo
+    generale e non costituiscono consulenza legale o fiscale. Per la tua
+    situazione specifica, consulta un professionista autorizzato."
+
+  GATE 4 — Revisione partner konsultan pajak (per articoli ad alta complessità)
+    Articoli su: Transfer Pricing, CFC rules, PPh 26 (dividendi esteri),
+    Permanent Establishment, Tax Treaty applicazioni specifiche.
+    Review da konsultan pajak partner prima della pubblicazione.
+    Stima: 24-48 ore per review.
+
+Claim: EDT-089
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q15. Cosa succede se viene pubblicato un articolo con errori?
+
+R: Gli errori negli articoli pubblicati devono essere corretti in modo
+trasparente, rapido e sistematico. La policy "correction-forward" di
+Bali Zero è la seguente:
+
+  PASSO 1 — Rilevamento errore
+    Chiunque nel team (Zero, Damar, AI) rilevi un errore lo segnala
+    immediatamente via Telegram team con: URL articolo + descrizione errore
+    + fonte corretta. MAI ignorare o procrastinare.
+
+  PASSO 2 — Correzione immediata (entro 2 ore se possibile)
+    Correggere il testo sbagliato nell'articolo.
+    Aggiungere OBBLIGATORIAMENTE in cima al body dell'articolo la nota:
+    "📌 Aggiornato il [data]: [descrizione sintetica della correzione].
+    Grazie a [nome/fonte] per la segnalazione." (se la segnalazione viene
+    da un lettore esterno — mai menzionare il nome senza consenso)
+
+  PASSO 3 — MAI cancellare silenziosamente
+    Non rimuovere l'errore senza lasciare traccia. La nota di aggiornamento
+    deve rimanere visibile. La trasparenza costruisce fiducia.
+
+  PASSO 4 — Comunicazione ai subscriber (per errori gravi)
+    Se l'errore è grave (prezzi sbagliati, procedura errata, aliquota errata):
+    inviare email di correzione ai subscriber che hanno ricevuto l'articolo
+    nella newsletter. Oggetto: "Correzione importante: [titolo articolo]"
+    Contenuto: ammissione dell'errore + informazione corretta + link articolo aggiornato.
+
+  DEFINIZIONE DI "ERRORE GRAVE":
+    • Prezzi Bali Zero sbagliati (NON dovrebbero mai essere citati — vedi Q17)
+    • Procedura obbligatoria indicata erroneamente (può causare danno al cliente)
+    • Scadenza o aliquota fiscale errata
+    • Informazione su visto che potrebbe portare a status illegale
+
+Claim: EDT-090
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q16. Possiamo citare i prezzi dei nostri servizi negli articoli?
+
+R: No. È una regola assoluta: MAI citare prezzi fissi dei servizi Bali Zero
+in nessun articolo, guida, newsletter, o contenuto pubblicato.
+
+PERCHÉ QUESTA REGOLA ESISTE:
+  • I prezzi cambiano con la normativa, i costi operativi, le pratiche
+    del governo indonesiano. Un prezzo scritto in un articolo diventa
+    obsoleto e crea aspettative contrattuali problematiche.
+  • Un prezzo pubblicato su Google viene indicizzato e può comparire
+    in snippet per mesi o anni dopo che è cambiato.
+  • I prezzi dipendono dalla complessità specifica del caso del cliente —
+    una cifra generica è quasi sempre fuorviante.
+
+COSA FARE INVECE:
+  • CTA: "Contatta il nostro team per un preventivo personalizzato"
+  • CTA: "Richiedi una consulenza gratuita — valutiamo il tuo caso"
+  • Link: sempre al PricingTool o al form di contatto
+
+UNICA ECCEZIONE CONSENTITA:
+  Articoli che citano COSTI GENERALI DI MERCATO (non Bali Zero):
+  • "Il costo minimo di registrazione governativa per una PT PMA è
+    approssimativamente IDR X secondo le tariffe PNBP vigenti [Fonte: PP xx/xxxx]"
+  • "Le spese notarili standard in Indonesia variano tra IDR Y e IDR Z"
+  In questi casi: citare le fonti ufficiali, non Bali Zero, e sempre
+  aggiungere nota "i costi variano — contattaci per un preventivo".
+
+Claim: EDT-090 (estensione)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q17. Come gestiamo i contenuti in più lingue?
+
+R: Bali Zero produce contenuti in tre lingue con logiche diverse:
+
+  BAHASA INDONESIA: contenuti tecnico-normativi destinati a partner
+  locali, professionisti indonesiani, contenuti per Google Indonesia.
+  Tono: formale e professionale.
+
+  INGLESE: contenuti principali per expat internazionali, SEO globale,
+  Google english-language search. Tono: accessibile ma autorevole.
+  Lingua primaria del blog balizero.com.
+
+  ITALIANO: contenuti per community italiana a Bali, newsletter
+  @BaliZeroIT, alcune guide specifiche per expat italiani
+  (convenzione fiscale Italia-Indonesia, regole IVIE, dichiarazione
+  dei redditi italiana per residenti Indonesia).
+  Tono: friendly e diretto.
+
+REGOLA LINGUA: MAI tradurre automaticamente senza revisione umana.
+Le traduzioni AI (anche Gemini, anche DeepL) devono essere revisionate
+da un madrelingua prima della pubblicazione. Errori di traduzione
+in contesti normativi sono particolarmente rischiosi.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q18. Come gestiamo le richieste di guest post o collaborazioni esterne?
+
+R: Bali Zero accetta collaborazioni editoriali esterne in modo selettivo.
+Criteri di valutazione:
+
+  ACCETTATO: partner professionali con credenziali verificabili
+  (avvocato indonesiano iscritto PERADI, konsultan pajak con nomor izin,
+  agente immobiliare berlisensi, notaris Indonesia).
+  Processo: proposta → review Zero → co-authorship (nome guest + nome Bali Zero)
+  → stesso processo di approvazione degli articoli interni.
+
+  NON ACCETTATO: blogger generici, influencer senza expertise specifica,
+  competitor camuffati, contenuti con scopo promozionale non dichiarato.
+
+  NOTA: tutto il contenuto pubblicato su balizero.com, anche se scritto
+  da un guest, porta la responsabilità editoriale di Bali Zero.
+  Zero approva sempre l'articolo finale prima della pubblicazione.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q19. Come proteggiamo le informazioni riservate dei clienti nei case study?
+
+R: I case study sono uno dei contenuti più efficaci (alta trust, alta
+conversione), ma richiedono gestione attenta della privacy:
+
+  REGOLA FONDAMENTALE: SEMPRE ottenere consenso scritto esplicito
+  del cliente prima di pubblicare qualsiasi case study.
+  Form di consenso: firmato + datato + specificare uso consentito.
+
+  SE IL CLIENTE NON VUOLE ESSERE NOMINATO:
+    → Anonimizzare: "[Imprenditore italiano, settore F&B, 42 anni]"
+    → Verificare che i dettagli anonimizzati non consentano identificazione
+    → Proporre al cliente di approvare la versione anonimizzata
+
+  SE IL CLIENTE ACCONSENTE ALLA CITAZIONE:
+    → Solo nome di battesimo (mai cognome) o nome azienda se PA
+    → Verificare che le informazioni aziendali siano pubblicamente note
+    → Inviare bozza al cliente per review finale prima della pubblicazione
+
+  MAI: citare dati finanziari specifici del cliente, ammontari investiti,
+  informazioni su pratiche pendenti, problemi legali o fiscali passati.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Q20. Esiste un processo per l'ideazione di nuovi articoli?
+
+R: Sì. Il processo di ideazione segue tre canali:
+
+  CANALE 1 — Intelligence-driven (da Intel Pipeline)
+    Zantara AI rileva argomenti trending (query frequenti su WhatsApp/Telegram,
+    normative citate di frequente, gap nel coverage attuale del blog).
+    Output: lista settimanale di "content gap opportunities" presentata
+    a Zero ogni lunedì con priorità e stima traffico potenziale.
+
+  CANALE 2 — Client-driven (da CRM e Telegram)
+    Le domande frequenti dei clienti (whatsapp, telegram, consulenze) sono
+    una miniera di idee per articoli utili. Zantara AI aggrega le domande
+    ricorrenti e propone articoli che rispondano in modo definitivo.
+    Pattern: se 3+ clienti fanno la stessa domanda → articolo.
+
+  CANALE 3 — Editorial judgment (Zero e Damar)
+    Zero e Damar aggiungono idee basate su: trend mercato, conversazioni
+    con partner, cambiamenti normativi imminenti, eventi di settore.
+    Queste idee entrano direttamente nel calendario editoriale.
+
+  TOOL: Google Sheets "Editorial Calendar Bali Zero 2025" — tab "Idea Backlog"
+  dove tutte le idee vengono raccolte con: proponente, data, priorità,
+  stima keyword volume, stato (backlog/in produzione/pubblicato).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM IDS UTILIZZATI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  EDT-076 — Approvazione articoli: Zero per legale/fiscale, Damar dopo 3 mesi
+  EDT-077 — AI può bozzare ma non pubblicare autonomamente — gate umano obbligatorio
+  EDT-078 — Tempi produzione: AI 15-30 min, revisione 1-2h, pubblicazione 30 min
+  EDT-079 — Articoli obsoleti: review 12 mesi, aggiornamento o banner avviso
+  EDT-080 — Gerarchia fonti legali: UU/PP/PMK → NLM interno → siti ufficiali → Gemini
+  EDT-081 — Citazioni inline: formato [Fonte: UU x/xxxx Pasal x] per AI citation
+  EDT-082 — Contraddizioni fonti: segnala a Zero, usa più recente, disclaimer normativa
+  EDT-083 — Canali pubblicazione: blog (SEO) → intel feed → newsletter → Telegram
+  EDT-084 — Social media: LinkedIn (long-form) + Instagram (visual) — no X/Twitter attivo
+  EDT-085 — Metriche successo: organic traffic, engagement, lead gen, AI citation
+  EDT-086 — Monitoraggio leggi: Intel pipeline + canali Telegram ufficiali + Damar
+  EDT-087 — Velocità risposta: CRITICO 24h, IMPORTANTE 1 settimana, MINORE trimestrale
+  EDT-088 — Responsabilità monitoraggio: Zero (DJP+BKPM), Damar (Imigrasi+OSS), AI (pipeline)
+  EDT-089 — Quality gates: citazione fonti + NLM verifica + disclaimer + konsultan review
+  EDT-090 — Correzione errori: immediata + nota trasparente + email subscriber per errori gravi
+            Prezzi nei contenuti: MAI prezzi Bali Zero — solo costi di mercato con fonti ufficiali
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

@@ -1,0 +1,432 @@
+STRATEGIA NEWSLETTER E COINVOLGIMENTO SUBSCRIBER
+Guida Operativa — Email Marketing & Audience Engagement
+2024-2025
+
+Guida operativa interna | Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 1 — SCOPO DELLA NEWSLETTER BALI ZERO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La newsletter di Bali Zero svolge due funzioni distinte e complementari:
+
+1. INFORMAZIONE REGOLATORIA
+   Tenere clienti esistenti e potenziali aggiornati su ogni cambiamento normativo
+   rilevante per le loro attività in Indonesia — visti, aziende, tasse, proprietà.
+   L'Indonesia è un mercato in rapida evoluzione: leggi fiscali, requisiti OSS,
+   procedure KITAS cambiano con frequenza. Il vantaggio competitivo di Bali Zero
+   è essere sempre un passo avanti rispetto alle fonti generiche.
+
+2. NURTURING VERSO L'ACQUISTO
+   Guidare i lead (prospect) lungo il funnel commerciale attraverso contenuti
+   educativi, prove sociali (success story), e offerte di consulenza. Un prospect
+   che riceve 5-7 tocchi qualificati di valore ha una probabilità di conversione
+   significativamente più alta rispetto a un contatto freddo.
+
+Claim: EDT-061
+Principio chiave: ogni email deve rispondere alla domanda implicita del lettore
+"Cosa cambia per ME?" oppure "Come posso guadagnare/risparmiare grazie a questo?"
+
+
+SEZIONE 2 — SEGMENTAZIONE SUBSCRIBER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La lista subscriber è suddivisa in tre macro-segmenti con logiche di contenuto
+e frequenza di invio diverse.
+
+── SEGMENTO 1: CLIENTI ATTIVI ──────────────────────────────────────────────
+
+Definizione: contatti con almeno una pratica attiva o completata negli ultimi
+24 mesi nel sistema CRM di Bali Zero.
+
+Sotto-segmenti operativi:
+  • PT PMA owners — aggiornamenti su regolamenti BKPM, OSS, KITAS direttore
+  • PT PMDN owners — aggiornamenti su OSS, NIB, perpanjangan izin usaha
+  • Titolari di visto (KITAS/KITAP) — scadenze, procedure rinnovo, perubahan aturan
+  • Clienti tax compliance — deadline PPh, PPN, PKP
+
+Contenuto prioritario:
+  → Compliance alert specifici per tipo di pratica
+  → Aggiornamenti di stato pratiche in corso (via CRM integration)
+  → Notifiche scadenze imminenti (30, 14, 7 giorni prima)
+  → Novità normative che impattano direttamente la loro configurazione legale
+
+Frequenza consigliata: alert quando necessario + digest settimanale filtrato per tipo
+
+Claim: EDT-062
+
+── SEGMENTO 2: PROSPECT ─────────────────────────────────────────────────────
+
+Definizione: contatti che hanno compilato un lead form (website, landing page,
+consulenza gratuita) ma NON hanno ancora acquistato un servizio Bali Zero.
+
+Caratteristiche tipiche:
+  • Espat o imprenditori in fase di valutazione ("sto pensando di aprire una PT")
+  • Nomadi digitali alla ricerca del visto giusto
+  • Investitori che valutano acquisto proprietà in Bali
+
+Contenuto prioritario:
+  → Success story di clienti simili (con consenso; nomi anonimizzati se richiesto)
+  → ROI concreto dell'investimento in Indonesia ("la tua PT in 30 giorni")
+  → Guide pratiche "come funziona" (senza spoilerare tutto — CTA a consulenza)
+  → Confronto regimi fiscali (Indonesia vs altre destinazioni expat)
+  → Risposte alle obiezioni comuni ("è complicato", "costa troppo", "ci vuole troppo")
+
+Frequenza consigliata: sequenza onboarding (vedi Sezione 4) + digest mensile
+
+Claim: EDT-063
+
+── SEGMENTO 3: COMMUNITY ────────────────────────────────────────────────────
+
+Definizione: iscritti con interesse generico per vita/investimenti a Bali,
+senza intenzione d'acquisto immediata. Tipicamente: follower social, lettori
+del blog, partecipanti a eventi.
+
+Contenuto prioritario:
+  → Market intelligence generale (tendenze immobiliare Bali, turismo, economia)
+  → Lifestyle content (vivere a Bali, comunità expat, stagioni, food & culture)
+  → Report macro-economici Indonesia accessibili (non tecnici)
+  → Inviti a webinar, eventi, open day consulenza
+
+Frequenza consigliata: mensile (deep-dive) + breaking news quando eccezionale
+
+Nota: il segmento Community è il vivaio dei futuri Prospect. Monitorare
+i segnali di upgrade (apertura email consecutive, click su CTA di servizio).
+
+Claim: EDT-064
+
+
+SEZIONE 3 — TIPOLOGIE DI EMAIL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+── TIPO 1: ALERT NORMATIVO (Triggered) ──────────────────────────────────────
+
+Oggetto standard: "Cambiamento normativo urgente: [Titolo Regolamento]"
+Esempi reali:
+  "Cambiamento normativo urgente: Nuove aliquote PPh 21 da aprile 2025"
+  "Cambiamento normativo urgente: Requisiti NIB aggiornati per PT PMA"
+
+Caratteristiche:
+  • Invio entro 24 ore dalla pubblicazione del regolamento
+  • Lunghezza massima: 300 parole (lettura mobile in 90 secondi)
+  • Struttura: [Cosa cambia] → [Chi è impattato] → [Cosa fare ora]
+  • CTA singola e univoca: "Leggi l'analisi completa →" (link all'articolo)
+  • Nessuna immagine decorativa — testo puro per velocità di caricamento
+  • Footer con disclaimer legale obbligatorio
+
+Trigger operativo: Intel pipeline Zantara rileva nuovo regolamento → notifica
+Telegram a Zero → Zero approva invio → Brevo send entro 24h
+
+Segmenti ricevono: Clienti Attivi (priorità) + Prospect (se rilevante per funnel)
+
+Claim: EDT-065
+
+── TIPO 2: WEEKLY DIGEST (Programmato) ──────────────────────────────────────
+
+Oggetto standard: "Bali Zero Intelligence — Settimana del [Data]"
+Invio: ogni venerdì mattina, ore 08:00 WITA (01:00 UTC)
+
+Struttura:
+  1. Titolo editoriale breve (1 riga, scritto da Zero)
+  2. Top 3-5 intelligence items della settimana:
+     → Numero progressivo + titolo + sommario 2 righe + link "Leggi →"
+  3. "Questa settimana in numeri" — 2-3 stat interessanti (opzionale)
+  4. CTA finale — in rotazione: consulenza gratuita / nuova guida / webinar
+
+Curato da: Zero (selezione manuale degli item). Zantara AI prepara la bozza
+con i 10 migliori item dell'intel feed; Zero sceglie i top 3-5 e aggiunge
+il commento editoriale personale.
+
+Segmenti ricevono: tutti e tre i segmenti (contenuto personalizzato per tag)
+
+Claim: EDT-066
+
+── TIPO 3: MONTHLY DEEP-DIVE (Programmato) ───────────────────────────────────
+
+Invio: prima settimana del mese, martedì ore 09:00 WITA
+
+Calendario temi in rotazione quadrimestrale:
+  MESE 1 → Visti e Immigrazione (KITAS, KITAP, Investor Visa B211A)
+  MESE 2 → Apertura Società (PT PMA, PT PMDN, CV, Representative Office)
+  MESE 3 → Compliance Fiscale (PPh, PPN, PKP, Transfer Pricing)
+  MESE 4 → Proprietà & Investimenti (Hak Pakai, Nominee, ROI calcoli)
+  (ciclo riparte)
+
+Caratteristiche:
+  • Lunghezza: 1.000-1.500 parole (lettura completa: 5-7 minuti)
+  • Struttura: Introduzione contesto → Analisi approfondita → Esempi pratici →
+    Tabella comparativa (quando applicabile) → FAQ 3-5 domande → CTA consulenza
+  • Immagini: 1-2 immagini contestuali ottimizzate (max 200KB ciascuna)
+  • Versione web: sempre disponibile su balizero.com/newsletter-archive/
+  • Lead time: 3 settimane dall'assegnazione del tema alla pubblicazione
+
+Segmenti ricevono: Clienti Attivi (tema correlato pratica) + Community (tutti)
+Prospect: ricevono solo il mese corrispondente al loro interesse dichiarato
+
+Claim: EDT-067
+
+── TIPO 4: SEQUENZA ONBOARDING (Drip automatico) ─────────────────────────────
+
+Attivata da: primo opt-in via form (website, evento, consulenza gratuita)
+Durata: 5 email in 14 giorni
+Provider: Brevo automation workflow
+
+EMAIL 1 — Benvenuto (Giorno 0, invio immediato post-iscrizione)
+  Oggetto: "Benvenuto in Bali Zero — il tuo hub per l'Indonesia"
+  Contenuto: chi siamo, cosa troverai in questa newsletter, come contattarci
+  CTA: "Scopri i nostri servizi →" (link a balizero.com/servizi)
+
+EMAIL 2 — Chi siamo davvero (Giorno 2)
+  Oggetto: "Come aiutiamo 5.000+ clienti a fare business in Indonesia"
+  Contenuto: storia di Bali Zero, valori, differenziatori chiave vs competitor
+  CTA: "Leggi la nostra storia →" (link About page)
+
+EMAIL 3 — Success story cliente (Giorno 5)
+  Oggetto: "[NOME CLIENTE ANONIMIZZATO] ha aperto la sua PT PMA in 28 giorni"
+  Contenuto: storia concreta di un cliente, sfide affrontate, risultato ottenuto
+  CTA: "Vuoi un risultato simile? Prenota una call gratuita →"
+
+EMAIL 4 — Risorsa gratuita (Giorno 9)
+  Oggetto: "Download gratuito: Guida Completa Visti Indonesia 2025"
+  Contenuto: introduzione alla guida, cosa contiene, perché è utile
+  CTA: "Scarica la guida →" (lead magnet PDF, gated o non-gated)
+
+EMAIL 5 — Invito a consulenza (Giorno 14)
+  Oggetto: "Un'ultima cosa: 30 minuti con noi potrebbero cambiarti la vita"
+  Contenuto: offerta consulenza gratuita, cosa aspettarsi, nessun obbligo
+  CTA: "Prenota ora — gratis →" (Calendly o form)
+
+Claim: EDT-068
+
+
+SEZIONE 4 — KPI E METRICHE DI PERFORMANCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Target KPI per tipo di email:
+
+┌─────────────────────┬──────────────┬─────────────┬─────────────────────┐
+│ Tipo Email          │ Open Rate    │ CTR         │ Unsubscribe Rate    │
+├─────────────────────┼──────────────┼─────────────┼─────────────────────┤
+│ Alert Normativo     │ > 45%        │ > 8%        │ < 0.3%              │
+│ Weekly Digest       │ > 35%        │ > 5%        │ < 0.5%              │
+│ Monthly Deep-Dive   │ > 30%        │ > 6%        │ < 0.4%              │
+│ Onboarding Email    │ > 50%        │ > 10%       │ < 0.2%              │
+└─────────────────────┴──────────────┴─────────────┴─────────────────────┘
+
+Benchmark di mercato (industria B2B professional services):
+  • Open rate medio: ~20%
+  • CTR medio: ~2-3%
+I target Bali Zero sono volutamente ambiziosi: contenuto ad alta rilevanza
+per audience qualificata giustifica performance superiori alla media.
+
+Metriche secondarie da monitorare:
+  • Conversion rate (form submission entro 7 giorni dalla email)
+  • Revenue attribuita per campagna (tracking UTM su tutti i link)
+  • List growth rate mensile (obiettivo: +5% net mensile)
+  • Forwarding rate (indicatore di contenuto "da condividere")
+
+Dashboard Brevo: aggiornata in tempo reale. Report mensile condiviso con Zero.
+
+Claim: EDT-069
+
+
+SEZIONE 5 — CONFIGURAZIONE TECNICA E DELIVERABILITY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mittente ufficiale: zantara@balizero.com
+Nome mittente: Zantara — Bali Zero Intelligence
+Provider: Brevo (ex Sendinblue) — piano Business
+Integrazione backend: /api/notifications/send-email (X-API-Key: REDACTED-ROTATED-KEY)
+
+Autenticazione email configurata:
+  • SPF: record TXT su balizero.com — include Brevo servers
+  • DKIM: chiave a 2048 bit — firma digitale su tutte le email
+  • DMARC: policy "quarantine" — riduce rischio spoofing
+  • Custom domain per tracking link: email.balizero.com (CNAME configurato)
+
+Invio da IP dedicato (Brevo Business): reputazione indipendente dal pool condiviso.
+Warming IP: completato. Reputazione attuale: eccellente (score > 95/100).
+
+Test pre-invio obbligatori:
+  1. Test render su Gmail, Outlook, Apple Mail, mobile iOS e Android
+  2. Spam score check (SpamAssassin score target: < 2.0)
+  3. Link check (tutti i link attivi e tracciati con UTM)
+  4. Testo alternativo su tutte le immagini (accessibilità + inbox testo)
+
+Claim: EDT-070
+
+
+SEZIONE 6 — COMPLIANCE LEGALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Bali Zero serve un'audience internazionale. Le normative applicabili sono:
+
+GDPR (UE/EEA):
+  • Opt-in esplicito obbligatorio — nessuna spunta pre-selezionata
+  • Dati trattati solo per finalità dichiarate al momento dell'iscrizione
+  • Diritto all'oblio: cancellazione completa entro 30 giorni da richiesta
+  • Data Processing Agreement con Brevo in essere (DPA firmato)
+  • Base legale: consenso esplicito (Art. 6.1.a GDPR)
+
+CAN-SPAM (USA):
+  • Indirizzo fisico del mittente in ogni email (Bali Zero office address)
+  • Unsubscribe link funzionante in ogni email
+  • Oggetto email non ingannevole
+  • Onorare unsubscribe entro 10 giorni (Bali Zero: unsubscribe istantaneo)
+
+Permenkominfo 20/2016 (Indonesia):
+  • Consent esplicito per comunicazioni elettroniche commerciali
+  • Identità mittente sempre visibile
+  • Meccanismo di opt-out presente
+
+Regola operativa: SEMPRE opt-in attivo prima di qualsiasi invio.
+MAI aggiungere manualmente contatti alla lista senza consenso documentato.
+MAI acquistare liste email da terze parti.
+
+Claim: EDT-071
+
+
+SEZIONE 7 — GESTIONE DISISCRIZIONI E PULIZIA LISTA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GESTIONE UNSUBSCRIBE:
+  • Link unsubscribe presente in OGNI email (footer obbligatorio)
+  • Unsubscribe: istantaneo (entro 5 minuti dall'azione)
+  • Dopo unsubscribe: zero comunicazioni marketing per 30 giorni
+  • Dato unsubscribe mantenuto per 30 giorni per finalità analytics, poi eliminato
+  • Eccezione: email transazionali di servizio (fatture, aggiornamenti pratica)
+    possono essere inviate anche a contatti unsubscribed se cliente attivo CRM
+
+Soft bounce: dopo 3 bounce consecutivi → contatto spostato in "email invalida"
+Hard bounce: rimozione immediata dalla lista attiva
+
+PULIZIA TRIMESTRALE LISTA (ogni 3 mesi):
+  1. Identifica contatti con 0 aperture negli ultimi 6 mesi (segmento "freddo")
+  2. Invia sequenza di re-engagement: 2 email in 7 giorni
+     Email 1 — "Sei ancora con noi? Aggiorna le tue preferenze"
+     Email 2 — "Ultima chance — poi ci salutiamo (ma resti il benvenuto)"
+  3. Se nessuna apertura dopo sequenza → rimozione dalla lista attiva
+  4. Contatto mantenuto in DB con flag "unengaged" per 12 mesi poi eliminato
+
+Benefici pulizia lista:
+  • Deliverability migliore (lista pulita = reputazione mittente più alta)
+  • Costi Brevo ridotti (pricing per volume contatti attivi)
+  • KPI più accurati (open rate non gonfiato da zombie accounts)
+
+Claim: EDT-072
+
+
+SEZIONE 8 — A/B TESTING E OTTIMIZZAZIONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Protocollo A/B testing per Weekly Digest e Monthly Deep-Dive:
+
+SPLIT TESTING OGGETTO EMAIL:
+  • Dimensione test: 20% della lista (10% per variante A, 10% per variante B)
+  • Variabile testata: SOLO un elemento per volta (tipicamente oggetto email)
+  • Finestra di misurazione: 4 ore dopo l'invio iniziale
+  • Winner: variante con open rate più alto
+  • Invio winner: al restante 80% della lista
+
+Esempi di varianti oggetto da testare:
+  A: "Nuove regole PPh 21: cosa cambia per te nel 2025"
+  B: "⚠️ PPh 21 aggiornato — guida pratica con esempi numerici"
+  (testare emoji vs no emoji, domanda vs statement, urgenza vs curiosità)
+
+Elementi testabili oltre all'oggetto:
+  • Preview text (snippet visibile nell'inbox prima dell'apertura)
+  • Ora di invio (08:00 vs 10:00 vs 17:00 WITA)
+  • Lunghezza del preheader
+  • Posizione del CTA principale (sopra vs sotto il fold)
+
+Log dei test: tutti i risultati A/B documentati in Google Sheets
+"Newsletter A/B Log" (tab dedicata nel calendario editoriale).
+
+Claim: EDT-073
+
+
+SEZIONE 9 — CALENDARIO EDITORIALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Strumento: Google Sheets "Editorial Calendar Bali Zero 2025"
+Accesso: Zero + Damar + Zantara AI (read via MCP)
+
+Struttura del calendario:
+  • Vista mensile con tutti gli invii programmati
+  • Colonne: Data Invio | Tipo Email | Tema | Stato | Segmento | Note
+
+Lead time per tipo di email:
+  • Alert normativo: 24 ore (dalla notizia alla inbox)
+  • Weekly Digest: bozza lunedì, approvazione Zero mercoledì, invio venerdì
+  • Monthly Deep-Dive: assegnazione tema → 3 settimane → review → invio
+  • Sequenza onboarding: una volta configurata, automatica via Brevo workflow
+
+Processo produzione Monthly Deep-Dive:
+  T-21: assegnazione tema e outline (Zero)
+  T-14: bozza AI completa (Zantara intelligence pipeline)
+  T-10: revisione contenuto e fonti (Damar)
+  T-7:  approvazione editoriale finale (Zero)
+  T-3:  setup Brevo (template, segmenti, UTM tracking)
+  T-0:  invio + monitoring aperture prime 2 ore
+
+Festività indonesiane da considerare per timing invii:
+  Non inviare il giorno di: Lebaran (Idul Fitri), Natale, Capodanno,
+  Hari Kemerdekaan (17 agosto), Nyepi (giorno del silenzio Bali — zero digitale)
+
+Claim: EDT-074
+
+
+SEZIONE 10 — INTEGRAZIONE CON SISTEMA CRM E BACKEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il sistema newsletter è integrato con il backend Bali Zero (Fly.io FastAPI):
+
+Flussi dati automatici:
+  • Nuovo subscriber → API /api/newsletter/subscribe → Brevo list sync
+  • Nuovo cliente CRM → automatic upgrade da Prospect a Cliente Attivo
+  • Scadenza pratica imminente → triggered alert email personalizzata
+  • Completamento pratica → auto-invio email di congratulazioni + cross-sell
+
+Endpoint rilevanti backend:
+  POST /api/notifications/send-email — invio singolo (transazionale)
+  POST /api/newsletter/subscribe — opt-in nuovo subscriber
+  PATCH /api/newsletter/preferences — aggiornamento preferenze subscriber
+  DELETE /api/newsletter/unsubscribe — unsubscribe istantaneo
+
+Sincronizzazione Brevo:
+  • Lista principale: "Bali Zero Master List"
+  • Segmenti dinamici: Clienti Attivi | Prospect | Community (basati su tag CRM)
+  • Tag automatici da CRM: tipo_pratica, lingua_preferita, data_iscrizione, pt_type
+  • Webhook Brevo → backend: notifica aperture/click → aggiornamento profilo CRM
+
+MCP Tool disponibile: mcp__nuzantara-mcp__send_email e
+mcp__nuzantara-mcp__list_subscribers per operazioni newsletter da Claude Code.
+
+Claim: EDT-075
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM IDS UTILIZZATI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  EDT-061 — Scopo newsletter: informazione regolatoria + nurturing commerciale
+  EDT-062 — Segmento Clienti Attivi: caratteristiche, sotto-segmenti, contenuto
+  EDT-063 — Segmento Prospect: caratteristiche, contenuto prioritario, frequenza
+  EDT-064 — Segmento Community: definizione, contenuto, segnali di upgrade
+  EDT-065 — Tipo email ALERT: struttura, trigger, max 300 parole, CTA singola
+  EDT-066 — Tipo email WEEKLY DIGEST: struttura, curatore Zero, invio venerdì
+  EDT-067 — Tipo email MONTHLY DEEP-DIVE: 1000-1500 parole, ciclo temi, lead time
+  EDT-068 — Sequenza ONBOARDING: 5 email in 14 giorni, struttura per email
+  EDT-069 — KPI target: open rate >35%, CTR >5%, unsubscribe <0.5%
+  EDT-070 — Deliverability: SPF/DKIM/DMARC, IP dedicato Brevo, test pre-invio
+  EDT-071 — Compliance: GDPR, CAN-SPAM, Permenkominfo — opt-in obbligatorio
+  EDT-072 — List hygiene: unsubscribe istantaneo, pulizia trimestrale, re-engagement
+  EDT-073 — A/B testing: split 20%, finestra 4h, winner al restante 80%
+  EDT-074 — Calendario editoriale: Google Sheets, lead time per tipo, festività
+  EDT-075 — Integrazione CRM/backend: endpoint, Brevo sync, tag automatici, MCP
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

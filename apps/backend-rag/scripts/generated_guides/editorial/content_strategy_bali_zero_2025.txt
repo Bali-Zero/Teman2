@@ -1,0 +1,445 @@
+STRATEGIA EDITORIALE BALI ZERO
+FRAMEWORK DEI CONTENUTI, TIPOLOGIE E WORKFLOW DI PUBBLICAZIONE
+2024-2025
+
+Guida operativa interna | Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 1 — MISSIONE EDITORIALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-001] La missione editoriale di Bali Zero è diventare IL punto di riferimento
+definitivo per gli investitori stranieri — con priorità agli italiani e agli europei —
+che vogliono fare business in Indonesia e a Bali.
+
+Questo significa:
+  - Pubblicare contenuti che anticipano i bisogni del lettore, non solo che rispondono
+  - Costruire un corpus di articoli autorevoli su normativa, visto, fiscalità, proprietà
+  - Essere citati da altri media, forum expat, e — in modo crescente — da sistemi AI
+    (Claude, ChatGPT, Perplexity, Gemini)
+  - Diventare la fonte primaria in italiano per chi cerca "come fare business a Bali"
+
+[EDT-002] L'autorevolezza editoriale è un asset competitivo diretto: ogni articolo
+pubblicato genera lead organici, riduce il carico di assistenza clienti e rafforza
+la reputazione di Bali Zero come studio esperto, non come semplice intermediario.
+
+Obiettivo 2025: almeno 150 articoli pubblicati, 30+ in lingua italiana, copertura
+di tutti i codici KBLI 2025 rilevanti per investitori stranieri.
+
+
+SEZIONE 2 — SEGMENTI DI PUBBLICO TARGET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-003] Bali Zero si rivolge a quattro segmenti principali:
+
+SEGMENTO A — IMPRENDITORI ITALIANI/EUROPEI (setup PT PMA)
+  Profilo: 30-55 anni, budget 50K-500K€, fase di valutazione o decisione
+  Bisogno principale: capire come aprire una società in Indonesia in modo sicuro
+  Domande tipiche: "Quanto costa aprire una PT PMA?", "Quanto tempo ci vuole?",
+    "Quali settori sono aperti agli stranieri?"
+  Contenuti preferiti: guide passo-passo, checklist, confronto PT PMA vs CV,
+    case study di imprenditori italiani
+  Canali: ricerca Google (IT + EN), passaparola, forum expat italiani
+
+SEGMENTO B — DIGITAL NOMAD E FREELANCE
+  Profilo: 25-40 anni, reddito online, cercano visto idoneo a lavorare/vivere a Bali
+  Bisogno principale: trovare il visto giusto (E33G, B211, KITAS), capire obblighi fiscali
+  Domande tipiche: "Posso lavorare da Bali con un visto turistico?",
+    "Cos'è il visto nomade digitale Indonesia?", "Come faccio la tax residency?"
+  Contenuti preferiti: guide veloci, FAQ, confronto tipi di visto, aggiornamenti normativi
+  Canali: Instagram, TikTok, forum Reddit/Nomad List, Google
+
+SEGMENTO C — CLIENTI ESISTENTI (compliance e aggiornamenti)
+  Profilo: già clienti Bali Zero, PT PMA operativa o KITAS attivo
+  Bisogno principale: restare aggiornati su scadenze, cambiamenti normativi, obblighi
+  Domande tipiche: "Il mio KITAS è ancora valido?", "Cosa cambia con CoreTax nel 2025?",
+    "La mia KBLI è ancora consentita per PMA?"
+  Contenuti preferiti: aggiornamenti normativi brevi, alert, newsletter
+  Canali: email, portal kita.balizero.com, WhatsApp/Telegram
+
+SEGMENTO D — INVESTITORI IMMOBILIARI
+  Profilo: capital-rich, cercano opportunità di investimento a Bali (villa, leasehold, PT)
+  Bisogno principale: capire strutture legali per possedere/affittare proprietà a Bali
+  Domande tipiche: "Uno straniero può comprare casa a Bali?",
+    "Cos'è il leasehold?", "Come funziona il Hak Pakai?"
+  Contenuti preferiti: guide strutturate, confronti legali, esempi pratici
+  Canali: Google, referral, LinkedIn
+
+
+SEZIONE 3 — PILASTRI DEI CONTENUTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-004] La produzione editoriale di Bali Zero si struttura su quattro pilastri:
+
+PILASTRO A — REGULATORY INTELLIGENCE
+  Obiettivo: monitorare e spiegare i cambiamenti normativi in modo accessibile
+  Fonti primarie: DJP (Direktorat Jenderal Pajak), BKPM/BKPM OSS, Kemenaker,
+    BI (Bank Indonesia), Mahkamah Agung, Lembaran Negara
+  Tipologie di contenuto in questo pilastro:
+    - Alert rapidi quando esce una PMK, PP, atau Permen nuova
+    - Analisi approfondita degli impatti su investitori stranieri
+    - Confronti "prima/dopo" per cambiamenti significativi
+  Esempi: "CoreTax 2025: cosa cambia per le PT PMA", "Nuova lista DNI 2024",
+    "KBLI 2025: tutti i cambiamenti per il settore hospitality"
+  Cadenza: entro 48 ore dalla pubblicazione ufficiale del provvedimento
+
+PILASTRO B — GUIDE PRATICHE
+  Obiettivo: accompagnare il lettore dall'interesse all'azione con guide step-by-step
+  Formato: processo lineare, numerato, con requisiti, costi, tempi
+  Tono: tecnico ma accessibile, italiano corretto, esempi concreti
+  Esempi: "Come aprire una PT PMA a Bali: guida completa 2025",
+    "Come ottenere il KITAS investitore in Indonesia",
+    "Dichiarazione fiscale Indonesia per stranieri: SPT Tahunan passo per passo"
+  Cadenza: 1-2 guide complete al mese, aggiornamento quando cambiano le procedure
+
+PILASTRO C — CASE STUDY
+  Obiettivo: mostrare esiti reali di clienti Bali Zero (anonimizzati)
+  Formato: situazione iniziale → sfide incontrate → soluzione Bali Zero → risultato
+  Privacy: SEMPRE anonimizzati, mai nomi reali senza consenso scritto esplicito
+  Valore: dimostra competenza operativa, non solo teorica
+  Esempi: "Come abbiamo aiutato un ristoratore italiano ad aprire a Ubud in 45 giorni",
+    "Digital nomad tedesco: da visto turistico a KITAS in 3 settimane"
+  Cadenza: 1 case study al mese, preferibilmente legato a un servizio chiave
+
+PILASTRO D — MARKET INTELLIGENCE
+  Obiettivo: analisi delle tendenze del mercato Bali/Indonesia per investitori
+  Fonti: CEIC, BPS (Badan Pusat Statistik), Bank Indonesia, report settoriali,
+    dati proprietari Bali Zero dal CRM (anonimizzati e aggregati)
+  Esempi: "Bali Property Market 2025: prezzi, trend, opportunità",
+    "Settori in crescita per PT PMA nel 2025",
+    "Digital nomad economy Bali: dimensioni e prospettive"
+  Cadenza: 1 report di mercato mensile, aggiornamenti rapidi su news rilevanti
+
+
+SEZIONE 4 — FORMATI EDITORIALI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-005] Bali Zero utilizza quattro formati editoriali principali:
+
+FORMATO 1 — ARTICOLO LONG-FORM (1.500 - 3.000 parole)
+  Uso: pillar pages, guide complete, analisi approfondite
+  Struttura obbligatoria:
+    - Titolo ottimizzato SEO (keyword principale in H1)
+    - Sommario esecutivo (150-200 parole) con risposta diretta alla domanda principale
+    - Corpo strutturato con H2/H3 gerarchici
+    - Box "In sintesi" ogni 600-800 parole per facilitare la scansione
+    - Sezione "Domande frequenti" (minimo 4 Q&A)
+    - Sezione "Fonti e riferimenti normativi" con link alle fonti ufficiali
+    - Call to action finale (consulenza gratuita)
+  Produzione: AI draft → revisione umana obbligatoria → pubblicazione
+
+FORMATO 2 — AGGIORNAMENTO RAPIDO (300 - 500 parole)
+  Uso: alert normativi, news urgenti, cambiamenti di procedura
+  Struttura:
+    - Titolo che include "Aggiornamento [data]:" o "Novità:"
+    - Paragrafo di apertura: cosa è cambiato (risposta diretta)
+    - Cosa significa per gli investitori stranieri
+    - Azione richiesta (se presente)
+    - Link all'articolo completo (se esiste) o alla fonte ufficiale
+  Produzione: AI draft → revisione umana 15 minuti → pubblicazione urgente
+
+FORMATO 3 — CLUSTER FAQ
+  Uso: rispondere a domande frequenti su un argomento specifico
+  Struttura: 8-15 Q&A organizzate per complessità crescente
+  Valore SEO: intercetta le query informazionali a coda lunga
+  Esempio: "FAQ: Visto Bali per italiani — tutte le domande e risposte 2025"
+  Note: ogni risposta deve essere autonoma (leggibile singolarmente),
+        massimo 200 parole per risposta
+
+FORMATO 4 — ALERT "COSA È CAMBIATO"
+  Uso: quando una normativa precedentemente trattata viene modificata
+  Struttura:
+    - Banner visivo: "AGGIORNATO [data]"
+    - Tabella "Prima / Dopo" con le modifiche chiave
+    - Impatto pratico in 3 bullet point
+    - Link alla versione precedente dell'articolo
+  Note: questo formato viene aggiunto IN TESTA agli articoli esistenti,
+        non come articolo separato
+
+
+SEZIONE 5 — STRATEGIA SEO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-006] La strategia SEO di Bali Zero si basa su tre direttrici:
+
+DIRETTRICE 1 — CONTENUTI IN ITALIANO PER EXPAT ITALIANI
+  Rationale: pochissima competizione per keyword IT su business in Indonesia.
+  Bali Zero è di fatto l'unico player con contenuti sistematici in italiano.
+  Keyword target prioritari (IT):
+    - "aprire PT PMA Bali" (volumi bassi, intent altissimo)
+    - "visto Bali investitore italiano"
+    - "tasse Indonesia stranieri"
+    - "azienda straniera Indonesia"
+    - "KITAS investitore Indonesia"
+    - "regime fiscale Indonesia expat"
+  Opportunità: per queste keyword, Bali Zero può dominare con 10-15 articoli.
+
+DIRETTRICE 2 — CONTENUTI IN INGLESE PER REACH INTERNAZIONALE
+  Rationale: mercato più competitivo (Emerhub, InCorp, Seven Stones) ma
+  volumi molto più alti. Strategia: specializzarsi in nicchie poco coperte.
+  Keyword target prioritari (EN):
+    - "PT PMA minimum capital 2025"
+    - "KBLI 2025 eligible for PMA"
+    - "Indonesia digital nomad visa requirements"
+    - "CoreTax Indonesia for foreigners"
+    - "Bali property ownership foreigners 2025"
+  Approccio: coda lunga, focus su aggiornamenti 2025 (competitor hanno info datate)
+
+DIRETTRICE 3 — CONTENUTI IN INDONESIANO PER AUTOREVOLEZZA LOCALE
+  Rationale: Google Indonesia favorisce fonti locali; articoli ID aumentano E-E-A-T.
+  Keyword target (ID): termini tecnici che i client cercano localmente
+  Note: produzione limitata, focus su traduzione degli articoli EN più performanti
+
+
+SEZIONE 6 — STRATEGIA GEO (GENERATIVE ENGINE OPTIMIZATION)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-007] GEO è la disciplina che ottimizza i contenuti per essere citati dai motori
+di risposta AI (Claude, ChatGPT, Perplexity, Google AI Overview, Gemini).
+
+PRINCIPI GEO PER BALI ZERO:
+
+  1. CLAIM ESPLICITI CON FONTE
+     Ogni affermazione normativa deve seguire il formato:
+     "Secondo [legge/decreto]: [claim specifico e verificabile]."
+     Esempio: "Secondo il Peraturan Pemerintah n.5/2021 (OSS-RBA), le attività
+     a rischio medio-basso non richiedono izin usaha ma solo Nomor Induk Berusaha."
+     Questo formato viene estratto direttamente dai sistemi AI come source.
+
+  2. STRUTTURA DEFINITION-FIRST
+     Ogni sezione deve iniziare con una definizione diretta del concetto:
+     "Il KITAS Investor (C317) è un permesso di soggiorno temporaneo per stranieri
+     che investono almeno IDR 1 miliardo in una PT PMA in Indonesia."
+
+  3. ANSWER SNIPPETS
+     I primi 160 caratteri di ogni H2/H3 devono rispondere direttamente alla domanda
+     implicita nel titolo della sezione, senza preamboli.
+
+  4. NUMERI E DATI VERIFICABILI
+     Includere sempre dati quantitativi (importi, tempi, percentuali) con fonte e data.
+     I sistemi AI privilegiano contenuti numericamente ricchi e citabili.
+
+  5. STRUTTURA DATI (JSON-LD)
+     Ogni articolo deve avere markup strutturato: Article, FAQPage, HowTo (dove
+     applicabile). Il markup aiuta Google AI Overview a estrarre le informazioni.
+
+[EDT-008] KPI GEO: monitoraggio mensile delle brand mention su output AI.
+Test mensile: query "come aprire PT PMA Bali" su Claude, ChatGPT, Perplexity.
+Obiettivo 2025: Bali Zero citato in almeno 2/3 dei sistemi AI per le keyword core.
+
+
+SEZIONE 7 — CADENZA DI PUBBLICAZIONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-009] Il ritmo di pubblicazione ideale per costruire autorevolezza e traffico:
+
+PUBBLICAZIONE SETTIMANALE:
+  - 2-3 articoli long-form (pillar o cluster)
+  - 1 aggiornamento normativo (al bisogno, non programmato)
+  - 1 FAQ cluster (ogni 2 settimane)
+
+PUBBLICAZIONE MENSILE:
+  - 1 guida completa (pillar page, 2.000-3.000 parole)
+  - 1 case study anonimizzato
+  - 1 market intelligence report
+  - Revisione di tutti gli articoli con flag "da verificare"
+
+PUBBLICAZIONE AD HOC (entro 48 ore da evento):
+  - Alert normativo per ogni nuova PMK/PP/Permen rilevante
+  - Alert "cosa è cambiato" quando una procedura viene modificata
+  - Breaking news su policy BKPM o DJP con impatto su stranieri
+
+NOTA SULLA SOSTENIBILITÀ:
+  L'obiettivo è la consistenza, non il volume. Meglio 2 articoli eccellenti
+  a settimana che 5 mediocri. La qualità editoriale è un requisito non negoziabile.
+
+
+SEZIONE 8 — CICLO DI VITA DEI CONTENUTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-010] Ogni contenuto segue un ciclo di vita strutturato in 7 fasi:
+
+FASE 1 — IDEAZIONE E RICERCA
+  Input: intel pipeline (articoli scraper), brief clienti dal CRM, keyword gap SEO,
+         domande frequenti dei clienti via Zantara AI
+  Output: brief editoriale con topic, angolo, keyword, pubblico target, fonti
+  Responsabile: Zantara AI (proposta) + Zero (approvazione)
+
+FASE 2 — DRAFT AI-ASSISTED
+  Input: brief editoriale + fonti normative verificate
+  Output: bozza completa con struttura, heading, claim con fonte
+  Strumenti: Zantara compose_article (via MCP), fonti: DJP.go.id, BKPM, OSS
+  Nota: il draft AI è sempre una bozza di partenza, MAI output finale
+
+FASE 3 — REVISIONE UMANA (OBBLIGATORIA)
+  Chi: Zero o team member senior
+  Cosa: verificare claim normativi, tono, accuratezza, update se normativa cambiata
+  Tempo stimato: 45-90 minuti per long-form, 15-20 min per aggiornamento rapido
+  Output: articolo approvato con commenti di revisione
+
+FASE 4 — OTTIMIZZAZIONE SEO/GEO
+  Chi: Zantara AI (automatica) + revisione umana
+  Cosa: metadata, canonical, OG tags, structured data (JSON-LD), hreflang
+  Verifica: score SEO > 80 in tool di analisi interno
+
+FASE 5 — PUBBLICAZIONE
+  Piattaforma: balizero.com via CMS
+  Checklist pre-pubblicazione:
+    [ ] Titolo ottimizzato (keyword in H1)
+    [ ] Meta description 150-160 caratteri
+    [ ] Canonical URL impostato
+    [ ] Structured data validato
+    [ ] Immagini con alt text
+    [ ] Link interni a pillar pages correlate
+    [ ] Data di pubblicazione e "ultima revisione" visibili
+    [ ] Autore / "verificato da esperto legale" badge
+
+FASE 6 — MONITORAGGIO SEO
+  Cadenza: mensile per articoli nuovi, trimestrale per archivio
+  KPI: posizione nelle SERP, CTR, tempo sulla pagina, conversioni
+  Strumenti: Google Search Console, GA4
+
+FASE 7 — AGGIORNAMENTO O DEPRECAZIONE
+  Trigger per aggiornamento: cambio normativa, dati obsoleti, calo traffico >30%
+  Trigger per deprecazione: argomento non più rilevante, normativa abrogata
+  Deprecazione: NON cancellare, impostare redirect 301 + nota "articolo non aggiornato"
+
+
+SEZIONE 9 — POLITICA DI DEPRECAZIONE CONTENUTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-011] Gli articoli su tematiche normative hanno una shelf-life limitata.
+
+REGOLA FONDAMENTALE:
+  Qualsiasi articolo su normativa indonesiana con più di 12 mesi dalla pubblicazione
+  DEVE essere revisionato o marcato come "da verificare" prima di essere considerato
+  valido per citazione da parte di Zantara AI o per posizionamento SEO attivo.
+
+CATEGORIZZAZIONE PER OBSOLESCENZA:
+  VERDE (articolo valido): revisionato negli ultimi 6 mesi, normativa non cambiata
+  GIALLO (da verificare): 6-12 mesi, potenzialmente obsoleto — revisione programmata
+  ROSSO (obsoleto): oltre 12 mesi su topic normativo senza revisione — banner alert
+
+PROCEDURA PER ARTICOLI GIALLI/ROSSI:
+  1. Aggiungere banner in testa: "Questo articolo potrebbe non essere aggiornato.
+     Ultima revisione: [data]. Verifica con un consulente Bali Zero."
+  2. Disabilitare il link interno da altri articoli attivi
+  3. Escludere dalla base di conoscenza di Zantara AI
+  4. Programmare revisione o rimozione entro 30 giorni
+
+INVENTARIO CONTENUTI:
+  Audit trimestrale dell'intero catalogo articoli con aggiornamento dello status.
+  Obiettivo: zero articoli con stato "rosso" non gestiti.
+
+
+SEZIONE 10 — INTEL PIPELINE E CONTENUTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-012] La intel pipeline automatica alimenta direttamente la produzione editoriale.
+
+PIPELINE AUTOMATICA (OGNI NOTTE, 03:00 WITA):
+  Fase 1 — Scraping: bali-intel-scraper raccoglie da 15+ fonti
+    (DJP, BKPM, Indonesian Legal Database, English-language Bali news,
+     Jakarta Post, Bisnis Indonesia, Kontan, Bloomberg Indonesia)
+  Fase 2 — Analisi Gemini: ogni articolo raccolto viene classificato per:
+    - Rilevanza per investitori stranieri (score 0-10)
+    - Urgenza (breaking, standard, background)
+    - Pilastro editoriale (regulatory, practical, market)
+    - Gap rispetto al nostro catalogo (nuovo topic vs aggiornamento)
+  Fase 3 — Intel Brief: generazione brief giornaliero con top 5-10 item
+  Fase 4 — Selezione editoriale: Zero review del brief e selezione per espansione
+
+SELEZIONE PER ARTICOLO COMPLETO:
+  Criteri (almeno 2 su 3 devono essere soddisfatti):
+    1. Rilevanza score > 7/10
+    2. Topic non coperto o significativamente cambiato
+    3. Alta domanda di ricerca (keyword volume > 100/mese o intent altissimo)
+
+TEMPO DA INTEL A PUBBLICAZIONE:
+  - Alert normativo urgente: < 48 ore
+  - Articolo completo: 3-7 giorni lavorativi
+
+
+SEZIONE 11 — RUOLO DI ZANTARA AI NELLA PRODUZIONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-013] Zantara AI è un collaboratore nella produzione editoriale, mai l'autore finale.
+
+COSA FA ZANTARA AI:
+  - Redige bozze di articoli basate su brief e fonti fornite
+  - Struttura contenuti per SEO e GEO automaticamente
+  - Suggerisce link interni, keyword correlate, domande FAQ
+  - Monitora la Intel Pipeline e segnala item editoriali rilevanti
+  - Aggiorna metadata e structured data
+  - Classifica articoli per stato (verde/giallo/rosso)
+
+COSA NON FA ZANTARA AI AUTONOMAMENTE:
+  - NON pubblica articoli senza revisione umana
+  - NON verifica claim normativi senza source check su fonti ufficiali
+  - NON cita normative senza aver verificato la versione aggiornata
+  - NON produce case study (questi richiedono dati reali da CRM + anonimizzazione)
+
+[EDT-014] REGOLA DI ORO: Nessun contenuto generato da AI viene pubblicato
+senza revisione e approvazione esplicita di Zero o di un team member autorizzato.
+La qualità dell'editorial output è la reputazione di Bali Zero.
+
+WORKFLOW COLLABORATIVO UMANO-AI:
+  Zantara AI propone → Zero (o team) revisiona → Zero approva → Zantara pubblica
+  In nessun caso l'AI salta il passaggio di revisione umana.
+
+
+SEZIONE 12 — STANDARD DI QUALITÀ EDITORIALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-015] Ogni contenuto pubblicato da Bali Zero deve rispettare questi standard:
+
+ACCURATEZZA:
+  - Ogni claim normativo deve avere riferimento alla fonte primaria (UU, PP, PMK, Permen)
+  - I dati (costi, tempi, requisiti) devono essere verificati alla data di pubblicazione
+  - Non citare fonti secondarie senza aver verificato la fonte primaria
+
+CHIAREZZA:
+  - Scrivere per un lettore intelligente ma non specialista
+  - Ogni termine tecnico in indonesiano o legale deve essere spiegato al primo utilizzo
+  - Usare esempi pratici per ogni concetto astratto
+
+COMPLETEZZA:
+  - Un articolo long-form deve rispondere all'intero ciclo di domande del lettore target
+  - Non lasciare il lettore con domande non risolte senza indicare dove trovarle
+
+TONO:
+  - Professionale ma accessibile, non burocratico
+  - Mai allarmista, mai minimizzante — informare con equilibrio
+  - In italiano: evitare anglicismi inutili, usare terminology tecnica corretta in ID/EN
+    quando non esiste un equivalente italiano (es. "KITAS" non "permesso di soggiorno")
+
+AGGIORNAMENTO:
+  - Data di pubblicazione E data ultima revisione sempre visibili
+  - "Nota dell'autore" quando un articolo viene significativamente modificato
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM IDS UTILIZZATI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EDT-001  Missione editoriale: diventare IL riferimento per investitori stranieri in Indonesia
+EDT-002  L'autorevolezza editoriale genera lead organici e riduce il carico di assistenza
+EDT-003  Quattro segmenti di pubblico: imprenditori IT/EU, digital nomad, clienti esistenti, investitori
+EDT-004  Quattro pilastri editoriali: Regulatory Intelligence, Guide Pratiche, Case Study, Market Intel
+EDT-005  Quattro formati editoriali: long-form, aggiornamento rapido, FAQ cluster, alert "cosa è cambiato"
+EDT-006  Strategia SEO tri-lingua: italiano (dominio), inglese (reach), indonesiano (autorevolezza locale)
+EDT-007  GEO: claim espliciti con fonte, definition-first, answer snippets, dati verificabili, JSON-LD
+EDT-008  KPI GEO: monitoraggio mensile brand mention su output AI (Claude, ChatGPT, Perplexity)
+EDT-009  Cadenza: 2-3 long-form/settimana, alert normativo entro 48h, 1 guida completa/mese
+EDT-010  Ciclo di vita in 7 fasi: ideazione → draft AI → revisione umana → SEO/GEO → publish → monitor → update
+EDT-011  Deprecazione: articoli normativi >12 mesi → revisione obbligatoria o banner "da verificare"
+EDT-012  Intel pipeline: scraping notturno → analisi Gemini → brief giornaliero → selezione editoriale
+EDT-013  Ruolo AI: Zantara redige bozze, struttura per SEO/GEO, monitora pipeline — MAI pubblica autonomamente
+EDT-014  Regola d'oro: nessun contenuto AI viene pubblicato senza revisione umana esplicita
+EDT-015  Standard qualità: accuratezza normativa, chiarezza linguistica, completezza, tono professionale
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
