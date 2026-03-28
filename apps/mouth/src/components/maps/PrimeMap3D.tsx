@@ -1149,7 +1149,7 @@ export default function PrimeMap3D() {
             <input
               ref={searchInputRef}
               type="text"
-              aria-label="Search location by coordinates"
+              aria-label="Search location by address or coordinates"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               onKeyDown={(e) => {
@@ -1174,7 +1174,6 @@ export default function PrimeMap3D() {
                 });
               }}
               placeholder="Search location or -8.644, 115.148…"
-              aria-label="Search location by address or coordinates"
               className="w-full pl-9 pr-4 py-2.5 bg-black/85 backdrop-blur-xl text-white placeholder-slate-500 rounded-xl border border-white/15 shadow-2xl focus:outline-none focus:border-[#d4845a]/60 text-sm"
             />
           </div>

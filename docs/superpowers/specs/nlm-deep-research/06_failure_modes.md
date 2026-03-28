@@ -33,6 +33,26 @@
 >
 > **Alternative:** If `nlm` CLI is unavailable, use direct HTTP to the MCP server
 > (`mcp__notebooklm-mcp__*` tools) via the MCP stdio protocol.
+>
+> ### Pydantic Validation Boundaries (NB-1 condition C3 — modified per Gemini/Codex/DeepSeek review)
+>
+> **Original NB-1 proposal:** Pydantic on all `notebook_query` calls.
+> **Adopted solution:** Pydantic on structured output boundaries, NOT on NLM prose responses.
+>
+> `notebook_query` returns **natural language prose** — validating prose with Pydantic is meaningless.
+> The structured data in this pipeline comes from OUR LLM (claim extraction), not from NLM.
+>
+> **Where Pydantic models MUST be implemented** (`apps/evaluator/nlm_deep_research/models.py`):
+>
+> | Model            | Validates                                       | Where used                       |
+> | ---------------- | ----------------------------------------------- | -------------------------------- |
+> | `ClaimRecord`    | 25+ fields from canonical claim schema (Step 3) | Claim extraction LLM output      |
+> | `HandoffPackage` | Scraper handoff JSON (Step 5 canonical schema)  | Before writing `latest.json`     |
+> | `PipelineState`  | Pipeline state file structure                   | Load/save `pipeline_state.json`  |
+> | `SourceEntry`    | Source registry entries (SVS, stage, metadata)  | Load/save `source_registry.json` |
+>
+> **On validation failure:** Retry claim extraction with simplified prompt. If still fails,
+> extract partial claims with `category: UNCLASSIFIED_SIGNAL`. Never skip — log and degrade.
 
 ---
 
@@ -716,7 +736,7 @@ def evaluate_preflight(checks: list[PreflightCheck]) -> tuple[bool, str]:
 | `state_file_valid`     | REQUIRED  | Auto-recover from Friday snapshot or build default. If recovery fails: ABORT           |
 | `registry_file_valid`  | REQUIRED  | Auto-recover from NLM API `source_list`. If NLM unreachable: ABORT                     |
 | `nlm_api_reachable`    | REQUIRED  | Retry 1x after 5 min wait. If still fails: ABORT, alert Telegram                       |
-| `nlm_auth_valid`       | REQUIRED  | ABORT. Requires `nlm login` (manual or OpenClaw cron re-auth)                          |
+| `nlm_auth_valid`       | REQUIRED  | ABORT. Requires `nlm login` (manual). See **Auth Watchdog** below                      |
 | `budget_remaining`     | REQUIRED  | SKIP today. Resume Monday (budget resets weekly)                                       |
 | `backoff_clear`        | REQUIRED  | SKIP today. Backoff auto-expires after 48h                                             |
 | `source_count_sane`    | IMPORTANT | Continue but log anomaly. 0 sources = first run (expected). >100 = INV-1 will catch it |
@@ -725,6 +745,47 @@ def evaluate_preflight(checks: list[PreflightCheck]) -> tuple[bool, str]:
 | `handoff_dir_writable` | IMPORTANT | Continue. Scraper will run in IGNORE mode (no degradation)                             |
 | `claims_file_size`     | ADVISORY  | Log warning. Continue. Rotation is a maintenance task                                  |
 | `dedup_guard`          | REQUIRED  | SKIP. Already ran today. Prevents launchd double-fire waste                            |
+
+### 3.3 Auth Watchdog (NB-1 condition C2 — modified per Gemini/Codex/DeepSeek review)
+
+> **Original NB-1 proposal:** Daily cookie warmup at 23:30 WITA.
+> **Adopted solution:** Weekly watchdog (modeled on `scripts/drive_token_watchdog.py`).
+>
+> **Rationale:** Google NLM cookies last 13+ months (verified: `SID` expires April 2027).
+> Daily warmup = 365 checks/year for ~18 events/year. Overkill.
+> An auth bridge already exists at `apps/federation/nlm_auth_bridge.py` (`ensure_nlm_auth()`).
+
+**Implementation:**
+
+```python
+# scripts/nlm_auth_watchdog.py — runs every 6h via System Doctor cron
+# Modeled on drive_token_watchdog.py
+
+import json
+from pathlib import Path
+from datetime import datetime, timezone
+
+METADATA = Path.home() / ".notebooklm-mcp-cli/profiles/default/metadata.json"
+WARN_DAYS = 5    # WARNING if last_validated > 5 days ago
+CRITICAL_DAYS = 10  # CRITICAL if last_validated > 10 days ago
+
+def check_nlm_auth_freshness() -> tuple[str, int]:
+    """Returns (severity, days_since_validated)."""
+    if not METADATA.exists():
+        return "CRITICAL", -1
+    meta = json.loads(METADATA.read_text())
+    last = datetime.fromisoformat(meta.get("last_validated", "2020-01-01"))
+    days = (datetime.now(timezone.utc) - last).days
+    if days >= CRITICAL_DAYS:
+        return "CRITICAL", days
+    if days >= WARN_DAYS:
+        return "WARNING", days
+    return "OK", days
+```
+
+**Schedule:** Every 6h (matching Drive watchdog), integrated into System Doctor cron.
+**Alert:** Telegram WARNING at 5 days, CRITICAL at 10 days.
+**Fallback:** CHECK 4 at 01:00 WITA remains the hard gate — pipeline aborts if auth dead.
 
 ---
 

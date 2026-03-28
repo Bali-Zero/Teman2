@@ -1,0 +1,1132 @@
+{
+  "schema_version": 1,
+  "notebook_id": "NB-2",
+  "last_updated": "2026-03-28T17:00:00+08:00",
+  "summary": {
+    "total_tracked": 42,
+    "active": 42,
+    "quarantine": 0,
+    "archived": 0
+  },
+  "domain_denylist": [
+    "tripadvisor.com",
+    "expat.com/forum",
+    "kaskus.co.id",
+    "nomadicmatt.com",
+    "reddit.com",
+    "quora.com",
+    "medium.com/@",
+    "youtube.com",
+    "tiktok.com",
+    "pinterest.com",
+    "booking.com",
+    "agoda.com",
+    "skyscanner.com",
+    "lonelyplanet.com",
+    "thepointsguy.com",
+    "balizero.com"
+  ],
+  "sources": {
+    "84333773-5563-488f-9169-0fec5e067500": {
+      "nlm_source_id": "84333773-5563-488f-9169-0fec5e067500",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "alih_status_offshore_autogate_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_reviewed": null,
+        "last_confirmed_valid": null
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "alih status offshore autogate guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "13b705f1-95a0-4a04-872c-bfa223ac8125": {
+      "nlm_source_id": "13b705f1-95a0-4a04-872c-bfa223ac8125",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "cekal_deportazione_sanzioni_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "cekal deportazione sanzioni guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "c5e5b5c0-14f4-45a8-84fa-e735dc517680": {
+      "nlm_source_id": "c5e5b5c0-14f4-45a8-84fa-e735dc517680",
+      "stage": "ACTIVE",
+      "category": "reference",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "claims_db_immigration.txt",
+      "url": null,
+      "language": "en",
+      "tier": 3,
+      "tier_label": "T3_ENFORCEMENT",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "claims db immigration",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "e4443084-1d72-4fc7-8dc4-93faf414a2a2": {
+      "nlm_source_id": "e4443084-1d72-4fc7-8dc4-93faf414a2a2",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "garante_penjamin_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "garante penjamin guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "60025a37-f8cb-4aeb-a8e2-634f8661d61b": {
+      "nlm_source_id": "60025a37-f8cb-4aeb-a8e2-634f8661d61b",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "REGULATION",
+      "title": "PP No. 31 Tahun 2013",
+      "url": "https://peraturan.bpk.go.id/Details/202339/pp-no-31-tahun-2013",
+      "language": "id",
+      "tier": 0,
+      "tier_label": "T0_NATIONAL_LAW",
+      "dates": {
+        "published": "2013-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "pp no 31 tahun 2013",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": true,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "0e1fd3f8-2e7d-47eb-9cfb-e69d2e48b934": {
+      "nlm_source_id": "0e1fd3f8-2e7d-47eb-9cfb-e69d2e48b934",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "LAW",
+      "title": "UU No. 6 Tahun 2011 (Keimigrasian)",
+      "url": "https://peraturan.bpk.go.id/Details/209517/uu-no-6-tahun-2011",
+      "language": "id",
+      "tier": 0,
+      "tier_label": "T0_NATIONAL_LAW",
+      "dates": {
+        "published": "2011-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "uu no 6 tahun 2011 keimigrasian",
+        "known_duplicates": ["7625b0cd-37ab-40d2-a560-6adc6303327d"]
+      },
+      "flags": {
+        "pinned": true,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "452d8a6f-2867-4adc-aa27-c993ad8907fa": {
+      "nlm_source_id": "452d8a6f-2867-4adc-aa27-c993ad8907fa",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "REGULATION",
+      "title": "PP No. 48 Tahun 2021",
+      "url": "https://peraturan.bpk.go.id/Details/228726/pp-no-48-tahun-2021",
+      "language": "id",
+      "tier": 0,
+      "tier_label": "T0_NATIONAL_LAW",
+      "dates": {
+        "published": "2021-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "pp no 48 tahun 2021",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": true,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "076cde21-8d1b-4880-be2b-bb65f0c201b5": {
+      "nlm_source_id": "076cde21-8d1b-4880-be2b-bb65f0c201b5",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "imk_itk_itb_itp_documenti_soggiorno_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "imk itk itb itp documenti soggiorno guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "a1f41caa-cd15-4b17-8951-26c0606783e2": {
+      "nlm_source_id": "a1f41caa-cd15-4b17-8951-26c0606783e2",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "izin_kerja_tka_procedura_completa_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "izin kerja tka procedura completa 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "9fbfd84a-b059-4a9d-8b8e-add475c51066": {
+      "nlm_source_id": "9fbfd84a-b059-4a9d-8b8e-add475c51066",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "jabatan_tka_kepmen228_settori_ammessi_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 1,
+      "tier_label": "T1_NATIONAL_IMPLEMENTATION",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "jabatan tka kepmen228 settori ammessi 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "2e37838b-b0d0-48d6-9cd2-f8aabf8b36b2": {
+      "nlm_source_id": "2e37838b-b0d0-48d6-9cd2-f8aabf8b36b2",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "jabatan_tka_vietate_kepmen349_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 1,
+      "tier_label": "T1_NATIONAL_IMPLEMENTATION",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "jabatan tka vietate kepmen349 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "7f8b680d-8c56-45ee-8a76-f75b15b5e7c8": {
+      "nlm_source_id": "7f8b680d-8c56-45ee-8a76-f75b15b5e7c8",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "kitap_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "kitap guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "723bfcd6-a1e5-4b3e-a8bf-aec92473027d": {
+      "nlm_source_id": "723bfcd6-a1e5-4b3e-a8bf-aec92473027d",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "kitas_e23_tka_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "kitas e23 tka guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "de1cf757-938b-46d3-b01e-78f16439729a": {
+      "nlm_source_id": "de1cf757-938b-46d3-b01e-78f16439729a",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "kitas_e28b_e28c_golden_visa_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "kitas e28b e28c golden visa guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "22430d7c-6eb3-41fc-87f9-3501bee77ec2": {
+      "nlm_source_id": "22430d7c-6eb3-41fc-87f9-3501bee77ec2",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "kitas_e31_famiglia_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "kitas e31 famiglia guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "e1d5d12e-fa99-44f7-bf50-9a45906435b7": {
+      "nlm_source_id": "e1d5d12e-fa99-44f7-bf50-9a45906435b7",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "kitas_e33e_silver_hair_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "kitas e33e silver hair guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "ca46be22-6afd-4ce1-9d62-50b27b003a96": {
+      "nlm_source_id": "ca46be22-6afd-4ce1-9d62-50b27b003a96",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "kitas_e33f_pensionati_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "kitas e33f pensionati guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "09d6e396-bb18-467e-ab71-ae89bfe44177": {
+      "nlm_source_id": "09d6e396-bb18-467e-ab71-ae89bfe44177",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "kitas_e33g_remote_work_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "kitas e33g remote work guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "9defb039-7442-485d-a478-81a94ce5c0b0": {
+      "nlm_source_id": "9defb039-7442-485d-a478-81a94ce5c0b0",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "kitas_religioso_second_home_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "kitas religioso second home guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "27394849-1ebd-4125-be6e-51fa05bffa35": {
+      "nlm_source_id": "27394849-1ebd-4125-be6e-51fa05bffa35",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "merp_rientro_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "merp rientro guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "7be0b5e0-9a36-4f1b-b0ee-631f2e84e1d0": {
+      "nlm_source_id": "7be0b5e0-9a36-4f1b-b0ee-631f2e84e1d0",
+      "stage": "ACTIVE",
+      "category": "reference",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "nb2_faq_clienti.txt",
+      "url": null,
+      "language": "en",
+      "tier": 3,
+      "tier_label": "T3_ENFORCEMENT",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 faq clienti",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "147e332b-7d12-400e-b222-8c587efa7ef9": {
+      "nlm_source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+      "stage": "ACTIVE",
+      "category": "reference",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "nb2_golden_visa.txt",
+      "url": null,
+      "language": "en",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 golden visa",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "8abf1fe6-c884-4bc2-aa7d-6fd509c5ec54": {
+      "nlm_source_id": "8abf1fe6-c884-4bc2-aa7d-6fd509c5ec54",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "nb2_immigration_circulars.txt",
+      "url": null,
+      "language": "id",
+      "tier": 1,
+      "tier_label": "T1_NATIONAL_IMPLEMENTATION",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 immigration circulars",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "8ec5dd2a-c3eb-4da5-a54a-565ef9133aed": {
+      "nlm_source_id": "8ec5dd2a-c3eb-4da5-a54a-565ef9133aed",
+      "stage": "ACTIVE",
+      "category": "reference",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "nb2_pricing_immigration.txt",
+      "url": null,
+      "language": "en",
+      "tier": 3,
+      "tier_label": "T3_ENFORCEMENT",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 pricing immigration",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "bd2cd5d2-1d7f-4d86-b479-a994366aa655": {
+      "nlm_source_id": "bd2cd5d2-1d7f-4d86-b479-a994366aa655",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "nb2_tka_rptka_guide.txt",
+      "url": null,
+      "language": "en",
+      "tier": 1,
+      "tier_label": "T1_NATIONAL_IMPLEMENTATION",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 tka rptka guide",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "d14f6c39-c4c3-48dc-8b6c-275a6c8245ce": {
+      "nlm_source_id": "d14f6c39-c4c3-48dc-8b6c-275a6c8245ce",
+      "stage": "ACTIVE",
+      "category": "reference",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "nb2_visa_procedures_guide.txt",
+      "url": null,
+      "language": "en",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 visa procedures guide",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "2d2ec0af-708e-4554-bba0-9041c164100a": {
+      "nlm_source_id": "2d2ec0af-708e-4554-bba0-9041c164100a",
+      "stage": "ACTIVE",
+      "category": "reference",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "nb2_visa_types_final.txt",
+      "url": null,
+      "language": "en",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 visa types final",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "57f48604-aab9-454c-a116-e8555d0d15b8": {
+      "nlm_source_id": "57f48604-aab9-454c-a116-e8555d0d15b8",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "nb_kitas_renewal.txt",
+      "url": null,
+      "language": "en",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb kitas renewal",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "3ca8cf9b-5c06-4082-9da4-68ba2c71513f": {
+      "nlm_source_id": "3ca8cf9b-5c06-4082-9da4-68ba2c71513f",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "passaporto_dinas_servizio_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "passaporto dinas servizio guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "1d4342d2-1904-4c9a-aaf0-3cba257729de": {
+      "nlm_source_id": "1d4342d2-1904-4c9a-aaf0-3cba257729de",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "passaporto_indonesiano_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "passaporto indonesiano guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "db80b1c3-05e7-4190-a5f3-f8b9b4cb9f6e": {
+      "nlm_source_id": "db80b1c3-05e7-4190-a5f3-f8b9b4cb9f6e",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "rptka_dkp_tka_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 1,
+      "tier_label": "T1_NATIONAL_IMPLEMENTATION",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "rptka dkp tka guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "cb8944ce-5ba1-4af5-abce-2ce96653a0ed": {
+      "nlm_source_id": "cb8944ce-5ba1-4af5-abce-2ce96653a0ed",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "visto_c12_c18_c22_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "visto c12 c18 c22 guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "a0c84a55-5da0-44b7-8ad6-891ad348502e": {
+      "nlm_source_id": "a0c84a55-5da0-44b7-8ad6-891ad348502e",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "visto_c1_turismo_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "visto c1 turismo guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "94d592d1-8a90-4ef4-b4ef-1891601484dc": {
+      "nlm_source_id": "94d592d1-8a90-4ef4-b4ef-1891601484dc",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "visto_c2_c7_c8_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "visto c2 c7 c8 guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "0c22e859-00d2-4dc9-a3bf-e894dbca98a8": {
+      "nlm_source_id": "0c22e859-00d2-4dc9-a3bf-e894dbca98a8",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "visto_d2_d12_multiplo_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "visto d2 d12 multiplo guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "a2f008e2-e555-4a3a-aed5-2cea33736a6a": {
+      "nlm_source_id": "a2f008e2-e555-4a3a-aed5-2cea33736a6a",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "visto_diplomatico_dinas_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "visto diplomatico dinas guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "d76e6c78-7925-47b8-a545-c6ec37b9fb9b": {
+      "nlm_source_id": "d76e6c78-7925-47b8-a545-c6ec37b9fb9b",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "visto_e28a_investitore_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "visto e28a investitore guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "b92d7ec7-f5f1-49fa-9be8-b926ecd2d258": {
+      "nlm_source_id": "b92d7ec7-f5f1-49fa-9be8-b926ecd2d258",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "KNOWLEDGE_DOC",
+      "title": "visto_voa_b1b2b3b4_guida_2025.txt",
+      "url": null,
+      "language": "id",
+      "tier": 2,
+      "tier_label": "T2_REGIONAL",
+      "dates": {
+        "published": "2025-01-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00"
+      },
+      "scores": { "svs_total": null, "svs_classification": null },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "visto voa b1b2b3b4 guida 2025",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": false,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    }
+  },
+  "master_documents": {
+    "MD-1": {
+      "nlm_source_id": "bc98c989-6808-49fc-8816-ad20d2d531df",
+      "title": "[NB2-MD] Change Log - Initialized 2026-03-28",
+      "last_updated": "2026-03-28T17:00:00+08:00",
+      "entry_count": 0,
+      "word_count": 200,
+      "version": 1
+    },
+    "MD-2": {
+      "nlm_source_id": "dc11bcf9-7fdd-4554-92ca-ebdf6979de71",
+      "title": "[NB2-MD] Operations Status - Initialized 2026-03-28",
+      "last_updated": "2026-03-28T17:00:00+08:00",
+      "word_count": 250,
+      "version": 1
+    },
+    "MD-3": {
+      "nlm_source_id": "6d336e6b-de51-4da0-84be-07a772e3c6b0",
+      "title": "[NB2-MD] Cross-Domain Impacts - Initialized 2026-03-28",
+      "last_updated": "2026-03-28T17:00:00+08:00",
+      "active_impacts": 0,
+      "word_count": 230,
+      "version": 1
+    },
+    "MD-4": {
+      "nlm_source_id": "bda28a80-c622-42fb-a407-d6de498c5ee3",
+      "title": "[NB2-MD] Open Questions - Initialized 2026-03-28",
+      "last_updated": "2026-03-28T17:00:00+08:00",
+      "open_count": 0,
+      "resolved_this_week": 0,
+      "word_count": 200,
+      "version": 1
+    }
+  },
+  "archive_index": {}
+}
