@@ -63,7 +63,11 @@ export function KBLIFilters({
   return (
     <div className="space-y-3" role="group" aria-label="Filter KBLI codes">
       {/* PMA Status */}
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Investment filter">
+      <div
+        className="flex flex-wrap items-center gap-2"
+        role="group"
+        aria-label="Investment filter"
+      >
         <span className="w-20 shrink-0 text-xs font-medium text-[var(--foreground-muted)]">
           Investment:
         </span>
@@ -94,7 +98,11 @@ export function KBLIFilters({
       </div>
 
       {/* 2020→2025 Transition */}
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="2025 status filter">
+      <div
+        className="flex flex-wrap items-center gap-2"
+        role="group"
+        aria-label="2025 status filter"
+      >
         <span className="w-20 shrink-0 text-xs font-medium text-[var(--foreground-muted)]">
           2025 Status:
         </span>

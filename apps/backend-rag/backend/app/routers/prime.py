@@ -18,7 +18,7 @@ import asyncpg
 import httpx
 from fastapi import APIRouter, Query
 
-from backend.core.embeddings import create_embeddings_generator
+from backend.core.embeddings import EmbeddingsGenerator, create_embeddings_generator
 from backend.services.rag.hybrid_search import HybridSearchService
 
 logger = logging.getLogger(__name__)
@@ -695,7 +695,7 @@ _INTEL_COLLECTION = "balizero_news"
 _embedder = None
 
 
-def _get_embedder():
+def _get_embedder() -> EmbeddingsGenerator:
     global _embedder
     if _embedder is None:
         _embedder = create_embeddings_generator(api_key=os.environ.get("OPENAI_API_KEY"))

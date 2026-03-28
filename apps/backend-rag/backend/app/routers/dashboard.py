@@ -7,6 +7,7 @@ risk zones, analytics logging, aggregate stats, and unified investment analysis.
 
 import contextlib
 import logging
+import os
 from typing import Any
 from urllib.parse import urlencode
 
@@ -520,7 +521,7 @@ BATARA_HEADERS = {
     "Origin": "https://app.batara.badungkab.go.id",
     "User-Agent": "Mozilla/5.0",
 }
-ROI_CALCULATOR_URL = "http://localhost:8001/calculator"
+ROI_CALCULATOR_URL = os.getenv("ROI_CALCULATOR_URL", "http://localhost:8001/calculator")
 
 # ── GISTARU RDTR Interaktif (ATR/BPN national) — fallback for non-Badung ──
 GISTARU_PROXY = "https://gistaru-proxy.atrbpn.go.id/proxy.ashx?"

@@ -97,7 +97,7 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
             ollama_prompt = f"{prompt} Return JSON only, null for missing fields."
             async with _httpx.AsyncClient(timeout=120.0) as _client:
                 resp = await _client.post(
-                    "http://localhost:11434/api/chat",
+                    f"{settings.ollama_url}/api/chat",
                     json={
                         "model": _OLLAMA_VISION_MODEL,
                         "messages": [
