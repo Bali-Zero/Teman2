@@ -209,13 +209,13 @@ class TestOpenRouterClient:
             "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         }
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = AsyncMock()
-            mock_response_obj = MagicMock()
-            mock_response_obj.json.return_value = mock_response
-            mock_client.post = AsyncMock(return_value=mock_response_obj)
-            MockClient.return_value.__aenter__.return_value = mock_client
+        mock_http = AsyncMock()
+        mock_response_obj = MagicMock()
+        mock_response_obj.json.return_value = mock_response
+        mock_response_obj.raise_for_status = MagicMock()
+        mock_http.post = AsyncMock(return_value=mock_response_obj)
 
+        with patch.object(client, '_get_client', return_value=mock_http):
             result = await client.complete([{"role": "user", "content": "Hi"}])
 
             assert result.content == "Hello!"
@@ -231,13 +231,13 @@ class TestOpenRouterClient:
             "usage": {},
         }
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = AsyncMock()
-            mock_response_obj = MagicMock()
-            mock_response_obj.json.return_value = mock_response
-            mock_client.post = AsyncMock(return_value=mock_response_obj)
-            MockClient.return_value.__aenter__.return_value = mock_client
+        mock_http = AsyncMock()
+        mock_response_obj = MagicMock()
+        mock_response_obj.json.return_value = mock_response
+        mock_response_obj.raise_for_status = MagicMock()
+        mock_http.post = AsyncMock(return_value=mock_response_obj)
 
+        with patch.object(client, '_get_client', return_value=mock_http):
             result = await client.complete(
                 [{"role": "user", "content": "Hi"}],
                 model_id="meta-llama/llama-3.3-70b-instruct:free",
@@ -256,13 +256,13 @@ class TestOpenRouterClient:
 
         tools = [{"type": "function", "function": {"name": "test"}}]
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = AsyncMock()
-            mock_response_obj = MagicMock()
-            mock_response_obj.json.return_value = mock_response
-            mock_client.post = AsyncMock(return_value=mock_response_obj)
-            MockClient.return_value.__aenter__.return_value = mock_client
+        mock_http = AsyncMock()
+        mock_response_obj = MagicMock()
+        mock_response_obj.json.return_value = mock_response
+        mock_response_obj.raise_for_status = MagicMock()
+        mock_http.post = AsyncMock(return_value=mock_response_obj)
 
+        with patch.object(client, '_get_client', return_value=mock_http):
             result = await client.complete([{"role": "user", "content": "Hi"}], tools=tools)
 
             assert result.content == "Tool response"
@@ -276,13 +276,13 @@ class TestOpenRouterClient:
             "usage": {},
         }
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = AsyncMock()
-            mock_response_obj = MagicMock()
-            mock_response_obj.json.return_value = mock_response
-            mock_client.post = AsyncMock(return_value=mock_response_obj)
-            MockClient.return_value.__aenter__.return_value = mock_client
+        mock_http = AsyncMock()
+        mock_response_obj = MagicMock()
+        mock_response_obj.json.return_value = mock_response
+        mock_response_obj.raise_for_status = MagicMock()
+        mock_http.post = AsyncMock(return_value=mock_response_obj)
 
+        with patch.object(client, '_get_client', return_value=mock_http):
             result = await client.complete(
                 [{"role": "user", "content": "Hi"}], temperature=0.5, max_tokens=8192, top_p=0.9
             )
@@ -298,13 +298,13 @@ class TestOpenRouterClient:
             "usage": {},
         }
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = AsyncMock()
-            mock_response_obj = MagicMock()
-            mock_response_obj.json.return_value = mock_response
-            mock_client.post = AsyncMock(return_value=mock_response_obj)
-            MockClient.return_value.__aenter__.return_value = mock_client
+        mock_http = AsyncMock()
+        mock_response_obj = MagicMock()
+        mock_response_obj.json.return_value = mock_response
+        mock_response_obj.raise_for_status = MagicMock()
+        mock_http.post = AsyncMock(return_value=mock_response_obj)
 
+        with patch.object(client, '_get_client', return_value=mock_http):
             result = await client.complete([{"role": "user", "content": "Hi"}])
 
             assert result.model_used == "unknown/model"
@@ -327,24 +327,18 @@ class TestOpenRouterClient:
             yield "data: " + json.dumps({"choices": [{"delta": {"content": " World"}}]})
             yield "data: [DONE]"
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = MagicMock()
-            mock_response = MagicMock()
-            mock_response.raise_for_status = MagicMock()
-            mock_response.aiter_lines = mock_stream
+        mock_http = MagicMock()
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.aiter_lines = mock_stream
 
-            mock_stream_cm = MagicMock()
-            mock_stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
-            mock_stream_cm.__aexit__ = AsyncMock(return_value=None)
+        mock_stream_cm = MagicMock()
+        mock_stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_stream_cm.__aexit__ = AsyncMock(return_value=None)
 
-            mock_client.stream = MagicMock(return_value=mock_stream_cm)
+        mock_http.stream = MagicMock(return_value=mock_stream_cm)
 
-            mock_client_cm = MagicMock()
-            mock_client_cm.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client_cm.__aexit__ = AsyncMock(return_value=None)
-
-            MockClient.return_value = mock_client_cm
-
+        with patch.object(client, '_get_client', return_value=mock_http):
             chunks = []
             async for chunk in client.complete_stream([{"role": "user", "content": "Hi"}]):
                 chunks.append(chunk)
@@ -360,24 +354,18 @@ class TestOpenRouterClient:
             yield "data: " + json.dumps({"choices": [{"delta": {"content": "Test"}}]})
             yield "data: [DONE]"
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = MagicMock()
-            mock_response = MagicMock()
-            mock_response.raise_for_status = MagicMock()
-            mock_response.aiter_lines = mock_stream
+        mock_http = MagicMock()
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.aiter_lines = mock_stream
 
-            mock_stream_cm = MagicMock()
-            mock_stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
-            mock_stream_cm.__aexit__ = AsyncMock(return_value=None)
+        mock_stream_cm = MagicMock()
+        mock_stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_stream_cm.__aexit__ = AsyncMock(return_value=None)
 
-            mock_client.stream = MagicMock(return_value=mock_stream_cm)
+        mock_http.stream = MagicMock(return_value=mock_stream_cm)
 
-            mock_client_cm = MagicMock()
-            mock_client_cm.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client_cm.__aexit__ = AsyncMock(return_value=None)
-
-            MockClient.return_value = mock_client_cm
-
+        with patch.object(client, '_get_client', return_value=mock_http):
             chunks = []
             async for chunk in client.complete_stream(
                 [{"role": "user", "content": "Hi"}], model_id="specific-model"
@@ -395,24 +383,18 @@ class TestOpenRouterClient:
             yield "data: " + json.dumps({"choices": [{"delta": {"content": "Valid"}}]})
             yield "data: [DONE]"
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = MagicMock()
-            mock_response = MagicMock()
-            mock_response.raise_for_status = MagicMock()
-            mock_response.aiter_lines = mock_stream
+        mock_http = MagicMock()
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.aiter_lines = mock_stream
 
-            mock_stream_cm = MagicMock()
-            mock_stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
-            mock_stream_cm.__aexit__ = AsyncMock(return_value=None)
+        mock_stream_cm = MagicMock()
+        mock_stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_stream_cm.__aexit__ = AsyncMock(return_value=None)
 
-            mock_client.stream = MagicMock(return_value=mock_stream_cm)
+        mock_http.stream = MagicMock(return_value=mock_stream_cm)
 
-            mock_client_cm = MagicMock()
-            mock_client_cm.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client_cm.__aexit__ = AsyncMock(return_value=None)
-
-            MockClient.return_value = mock_client_cm
-
+        with patch.object(client, '_get_client', return_value=mock_http):
             chunks = []
             async for chunk in client.complete_stream([{"role": "user", "content": "Hi"}]):
                 chunks.append(chunk)
@@ -429,24 +411,18 @@ class TestOpenRouterClient:
             yield "data: " + json.dumps({"choices": [{"delta": {"content": "Hello"}}]})
             yield "data: [DONE]"
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = MagicMock()
-            mock_response = MagicMock()
-            mock_response.raise_for_status = MagicMock()
-            mock_response.aiter_lines = mock_stream
+        mock_http = MagicMock()
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.aiter_lines = mock_stream
 
-            mock_stream_cm = MagicMock()
-            mock_stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
-            mock_stream_cm.__aexit__ = AsyncMock(return_value=None)
+        mock_stream_cm = MagicMock()
+        mock_stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_stream_cm.__aexit__ = AsyncMock(return_value=None)
 
-            mock_client.stream = MagicMock(return_value=mock_stream_cm)
+        mock_http.stream = MagicMock(return_value=mock_stream_cm)
 
-            mock_client_cm = MagicMock()
-            mock_client_cm.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client_cm.__aexit__ = AsyncMock(return_value=None)
-
-            MockClient.return_value = mock_client_cm
-
+        with patch.object(client, '_get_client', return_value=mock_http):
             chunks = []
             async for chunk in client.complete_stream([{"role": "user", "content": "Hi"}]):
                 chunks.append(chunk)
@@ -460,11 +436,10 @@ class TestOpenRouterClient:
         mock_response.status_code = 200
         mock_response.json.return_value = {"credits": 10.0}
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = AsyncMock()
-            mock_client.get = AsyncMock(return_value=mock_response)
-            MockClient.return_value.__aenter__.return_value = mock_client
+        mock_http = AsyncMock()
+        mock_http.get = AsyncMock(return_value=mock_response)
 
+        with patch.object(client, '_get_client', return_value=mock_http):
             result = await client.check_credits()
 
             assert result["credits"] == 10.0
@@ -483,11 +458,10 @@ class TestOpenRouterClient:
         mock_response = MagicMock()
         mock_response.status_code = 401
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client = AsyncMock()
-            mock_client.get = AsyncMock(return_value=mock_response)
-            MockClient.return_value.__aenter__.return_value = mock_client
+        mock_http = AsyncMock()
+        mock_http.get = AsyncMock(return_value=mock_response)
 
+        with patch.object(client, '_get_client', return_value=mock_http):
             result = await client.check_credits()
 
             assert "error" in result
