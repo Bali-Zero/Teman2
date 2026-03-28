@@ -1315,6 +1315,20 @@ export function CompanyTab({
           borderLeft: "3px solid rgba(212,132,90,0.35)",
         }}
       >
+        {/* Eyebrow + status strip */}
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p
+              className="text-[9px] uppercase tracking-widest font-bold mb-0.5"
+              style={{ color: "rgba(100,116,139,0.6)" }}
+            >
+              Registration
+            </p>
+            <h2 className="text-sm font-semibold" style={{ color: "#f1f5f9" }}>
+              Company Identity
+            </h2>
+          </div>
+        </div>
         {/* Row 1: status strip */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           {/* Status badge */}
@@ -1558,15 +1572,23 @@ export function CompanyTab({
             className="overflow-hidden"
           >
             <div className="px-6 pt-5 pb-4 flex items-center justify-between">
-              <h2
-                className="text-sm font-semibold uppercase tracking-widest"
-                style={{ color: "rgba(148,163,184,0.8)" }}
-              >
-                Capital &amp; Shareholders Ledger
-              </h2>
+              <div>
+                <p
+                  className="text-[9px] uppercase tracking-widest font-bold mb-0.5"
+                  style={{ color: "rgba(100,116,139,0.6)" }}
+                >
+                  Ownership
+                </p>
+                <h2
+                  className="text-sm font-semibold"
+                  style={{ color: "#f1f5f9" }}
+                >
+                  Capital &amp; Shareholders
+                </h2>
+              </div>
               <Network
-                className="w-4 h-4"
-                style={{ color: "rgba(100,116,139,0.7)" }}
+                className="w-3.5 h-3.5"
+                style={{ color: "rgba(100,116,139,0.5)" }}
               />
             </div>
 
@@ -1656,106 +1678,107 @@ export function CompanyTab({
                 </div>
               )}
 
-              {/* Shareholders ledger table */}
+              {/* Shareholders — editorial people cards */}
               {associates.length > 0 && (
-                <div className="mt-5 w-full">
-                  <div
-                    className="grid grid-cols-12 text-[9px] uppercase tracking-widest font-bold pb-3 px-2"
-                    style={{
-                      color: "rgba(100,116,139,0.9)",
-                      borderBottom: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    <div className="col-span-5">Shareholder Name</div>
-                    <div className="col-span-3">Role</div>
-                    <div className="col-span-2 text-right">Shares</div>
-                    <div className="col-span-2 text-right">Equity</div>
-                  </div>
+                <div className="mt-5 flex flex-col gap-2">
                   {associates.map((a, i) => {
-                    const initials = (a.client_name || client.full_name || "?")
+                    const name = a.client_name || client.full_name || "?";
+                    const initials = name
                       .split(" ")
                       .slice(0, 2)
-                      .map((w) => w[0])
+                      .map((w: string) => w[0])
                       .join("")
                       .toUpperCase();
+                    const role = (a.role || "Shareholder").toLowerCase();
+                    const isDirector =
+                      role.includes("director") || role.includes("direktur");
+                    const isCommissioner =
+                      role.includes("commissioner") ||
+                      role.includes("komisaris");
+                    const avatarColor = isDirector
+                      ? {
+                          bg: "rgba(212,132,90,0.15)",
+                          border: "rgba(212,132,90,0.35)",
+                          text: "#d4845a",
+                        }
+                      : isCommissioner
+                        ? {
+                            bg: "rgba(139,156,247,0.15)",
+                            border: "rgba(139,156,247,0.35)",
+                            text: "#8b9cf7",
+                          }
+                        : {
+                            bg: "rgba(255,255,255,0.04)",
+                            border: "rgba(255,255,255,0.12)",
+                            text: "rgba(148,163,184,0.9)",
+                          };
+                    const roleColor = isDirector
+                      ? "#d4845a"
+                      : isCommissioner
+                        ? "#8b9cf7"
+                        : "rgba(148,163,184,0.8)";
                     return (
                       <div
                         key={i}
-                        className="grid grid-cols-12 py-3 px-2 items-center text-sm"
+                        className="flex items-center gap-3 px-3 py-3 rounded-xl"
                         style={{
-                          borderBottom:
-                            i < associates.length - 1
-                              ? "1px solid rgba(255,255,255,0.05)"
-                              : "none",
+                          background: "rgba(255,255,255,0.02)",
+                          border: "1px solid rgba(255,255,255,0.05)",
+                          boxShadow: "inset 0 1px 0 0 rgba(255,255,255,0.04)",
                           transition: "background 0.2s",
                         }}
                         onMouseEnter={(e) =>
                           (e.currentTarget.style.background =
-                            "rgba(255,255,255,0.03)")
+                            "rgba(255,255,255,0.04)")
                         }
                         onMouseLeave={(e) =>
-                          (e.currentTarget.style.background = "transparent")
+                          (e.currentTarget.style.background =
+                            "rgba(255,255,255,0.02)")
                         }
                       >
-                        <div className="col-span-5 flex items-center gap-2.5">
-                          <div
-                            className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0"
-                            style={{
-                              background: "rgba(255,255,255,0.04)",
-                              border: "1px solid rgba(255,255,255,0.08)",
-                              color: "rgba(148,163,184,0.9)",
-                            }}
-                          >
-                            {initials}
-                          </div>
+                        {/* Avatar */}
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-bold shrink-0"
+                          style={{
+                            background: avatarColor.bg,
+                            border: `1px solid ${avatarColor.border}`,
+                            color: avatarColor.text,
+                          }}
+                        >
+                          {initials}
+                        </div>
+                        {/* Name + role */}
+                        <div className="flex-1 min-w-0">
                           <p
-                            className="font-medium truncate"
+                            className="text-sm font-medium truncate"
                             style={{ color: "#f1f5f9" }}
                           >
-                            {a.client_name || client.full_name}
+                            {name}
                           </p>
-                        </div>
-                        <div className="col-span-3">
-                          <span
-                            className="text-[10px] uppercase tracking-wider font-bold"
-                            style={{ color: "#d4845a" }}
+                          <p
+                            className="text-[10px] uppercase tracking-wider font-semibold mt-0.5"
+                            style={{ color: roleColor }}
                           >
                             {a.role || "Shareholder"}
-                          </span>
+                          </p>
                         </div>
-                        <div
-                          className="col-span-2 text-right font-mono text-xs"
-                          style={{ color: "rgba(148,163,184,0.8)" }}
-                        >
-                          {a.shares_count
-                            ? a.shares_count.toLocaleString()
-                            : "—"}
-                        </div>
-                        <div className="col-span-2 flex flex-col items-end gap-1">
-                          <span
-                            className="font-mono text-xs font-bold"
+                        {/* Equity */}
+                        <div className="text-right shrink-0">
+                          <p
+                            className="font-mono text-sm font-bold"
                             style={{ color: "white" }}
                           >
                             {a.ownership_percentage
                               ? `${a.ownership_percentage}%`
                               : "—"}
-                          </span>
-                          {a.ownership_percentage && (
-                            <div
-                              className="w-12 h-0.5 rounded-full overflow-hidden"
-                              style={{ background: "rgba(255,255,255,0.08)" }}
+                          </p>
+                          {a.shares_count && (
+                            <p
+                              className="font-mono text-[10px] mt-0.5"
+                              style={{ color: "rgba(100,116,139,0.8)" }}
                             >
-                              <div
-                                className="h-full"
-                                style={{
-                                  width: `${a.ownership_percentage}%`,
-                                  background:
-                                    a.ownership_percentage >= 50
-                                      ? "white"
-                                      : "rgba(148,163,184,0.7)",
-                                }}
-                              />
-                            </div>
+                              {a.shares_count.toLocaleString()} sh
+                            </p>
                           )}
                         </div>
                       </div>
@@ -1778,15 +1801,23 @@ export function CompanyTab({
           {/* Company Vault Directory */}
           <div style={crystalCard} className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2
-                className="text-sm font-semibold uppercase tracking-widest"
-                style={{ color: "rgba(148,163,184,0.8)" }}
-              >
-                Company Vault Directory
-              </h2>
+              <div>
+                <p
+                  className="text-[9px] uppercase tracking-widest font-bold mb-0.5"
+                  style={{ color: "rgba(100,116,139,0.6)" }}
+                >
+                  Documents
+                </p>
+                <h2
+                  className="text-sm font-semibold"
+                  style={{ color: "#f1f5f9" }}
+                >
+                  Company Vault
+                </h2>
+              </div>
               <Shield
-                className="w-4 h-4"
-                style={{ color: "rgba(100,116,139,0.7)" }}
+                className="w-3.5 h-3.5"
+                style={{ color: "rgba(100,116,139,0.5)" }}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1859,245 +1890,281 @@ export function CompanyTab({
 
         {/* RIGHT: Corporate Registry */}
         <div className="lg:col-span-4">
-          <div style={crystalCard} className="p-5 flex flex-col gap-2.5">
-            <div className="flex items-center justify-between pb-2">
-              <h2
-                className="text-sm font-semibold uppercase tracking-widest"
-                style={{ color: "rgba(148,163,184,0.8)" }}
-              >
-                Registry Data
-              </h2>
-              <Database
-                className="w-4 h-4"
-                style={{ color: "rgba(100,116,139,0.7)" }}
-              />
-            </div>
-
-            {/* Classification */}
-            <div style={pillData}>
+          <div
+            style={{ ...crystalCard, padding: 0 }}
+            className="overflow-hidden"
+          >
+            {/* Header */}
+            <div className="px-5 pt-5 pb-4">
               <p
-                className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
-                style={{ color: "rgba(100,116,139,0.9)" }}
+                className="text-[9px] uppercase tracking-widest font-bold mb-0.5"
+                style={{ color: "rgba(100,116,139,0.7)" }}
               >
-                Classification
+                Corporate
               </p>
-              <p className="text-sm font-medium" style={{ color: "#f1f5f9" }}>
-                {companyType || "PT PMA"}{" "}
-                <span
-                  className="text-[10px] font-normal ml-1"
-                  style={{ color: "rgba(148,163,184,0.6)" }}
-                >
-                  (Foreign Direct)
-                </span>
-              </p>
-            </div>
-
-            {/* NPWP */}
-            {co?.npwp_company && (
-              <div style={pillData}>
-                <p
-                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
-                  style={{ color: "rgba(100,116,139,0.9)" }}
-                >
-                  NPWP / Tax Number
-                </p>
-                <div className="flex justify-between items-center group">
-                  <p className="font-mono text-sm" style={{ color: "#f1f5f9" }}>
-                    {co.npwp_company}
-                  </p>
-                  <button
-                    onClick={() => {
-                      void navigator.clipboard.writeText(co.npwp_company!);
-                      toast.success("Copied");
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Copy
-                      className="w-3 h-3"
-                      style={{ color: "rgba(100,116,139,0.9)" }}
-                    />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* NIB */}
-            {co?.nib && (
-              <div style={pillData}>
-                <p
-                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
-                  style={{ color: "rgba(100,116,139,0.9)" }}
-                >
-                  NIB / Business Reg.
-                </p>
-                <div className="flex justify-between items-center group">
-                  <p className="font-mono text-sm" style={{ color: "#f1f5f9" }}>
-                    {co.nib}
-                  </p>
-                  <button
-                    onClick={() => {
-                      void navigator.clipboard.writeText(co.nib!);
-                      toast.success("Copied");
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Copy
-                      className="w-3 h-3"
-                      style={{ color: "rgba(100,116,139,0.9)" }}
-                    />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Akta Pendirian */}
-            {effectivePendirianNo && (
-              <div style={pillData}>
-                <p
-                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
-                  style={{ color: "rgba(100,116,139,0.9)" }}
-                >
-                  Deed of Est. (Akta)
-                </p>
-                <div className="flex items-center justify-between">
-                  <p
-                    className="text-sm font-medium font-mono"
-                    style={{ color: "#f1f5f9" }}
-                  >
-                    #{effectivePendirianNo}
-                    {effectivePendirianDate && (
-                      <span
-                        className="text-[10px] mx-1"
-                        style={{ color: "rgba(148,163,184,0.5)" }}
-                      >
-                        |
-                      </span>
-                    )}
-                    {effectivePendirianDate &&
-                      formatDate(effectivePendirianDate)}
-                  </p>
-                  {getAgeChip(effectivePendirianDate)}
-                </div>
-              </div>
-            )}
-
-            {/* Akta Perubahan */}
-            {co?.akta_perubahan_no && (
-              <div style={pillData}>
-                <p
-                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
-                  style={{ color: "rgba(100,116,139,0.9)" }}
-                >
-                  Amendment (Akta Perubahan)
-                </p>
-                <div className="flex items-center justify-between">
-                  <p
-                    className="text-sm font-medium font-mono"
-                    style={{ color: "#f1f5f9" }}
-                  >
-                    #{co.akta_perubahan_no}
-                    {co.akta_perubahan_date && (
-                      <span
-                        className="text-[10px] mx-1"
-                        style={{ color: "rgba(148,163,184,0.5)" }}
-                      >
-                        |
-                      </span>
-                    )}
-                    {co.akta_perubahan_date &&
-                      formatDate(co.akta_perubahan_date)}
-                  </p>
-                  {getAgeChip(co.akta_perubahan_date)}
-                </div>
-              </div>
-            )}
-
-            {/* SK Kemenkumham */}
-            {co?.sk_menhumkam_no && (
-              <div style={pillData}>
-                <p
-                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5 flex justify-between items-center"
-                  style={{ color: "rgba(100,116,139,0.9)" }}
-                >
-                  SK Kemenkumham
-                  <ExternalLink
-                    className="w-3 h-3 cursor-pointer hover:text-white transition-colors"
-                    style={{ color: "rgba(100,116,139,0.7)" }}
-                  />
-                </p>
-                <div className="flex items-center justify-between">
-                  <p
-                    className="text-[11px] font-medium font-mono break-all leading-tight"
-                    style={{ color: "rgba(148,163,184,0.9)" }}
-                  >
-                    {co.sk_menhumkam_no}
-                  </p>
-                  {getAgeChip(co.sk_menhumkam_date)}
-                </div>
-                {co.sk_menhumkam_date && (
-                  <p
-                    className="text-[10px] mt-0.5"
-                    style={{ color: "rgba(100,116,139,0.7)" }}
-                  >
-                    {formatDate(co.sk_menhumkam_date)}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* KBLI pill */}
-            {co?.kbli_code && (
-              <div
-                style={{
-                  ...pillData,
-                  background: "rgba(96,165,250,0.03)",
-                  boxShadow:
-                    "inset 0 1px 0 0 rgba(96,165,250,0.08), inset 0 0 0 1px rgba(96,165,250,0.06)",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-              >
-                <p
-                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
-                  style={{ color: "#60a5fa" }}
-                >
-                  Sector Focus
-                </p>
-                <p
-                  className="text-sm font-medium flex items-center gap-1.5"
+              <div className="flex items-center justify-between">
+                <h2
+                  className="text-sm font-semibold"
                   style={{ color: "#f1f5f9" }}
                 >
-                  <span
-                    className="font-mono text-xs font-bold px-1.5 py-0.5 rounded"
-                    style={{
-                      background: "rgba(96,165,250,0.2)",
-                      color: "#60a5fa",
-                    }}
-                  >
-                    {co.kbli_code}
-                  </span>
-                  {co.kbli_description && (
-                    <span className="text-xs truncate">
-                      {co.kbli_description}
-                    </span>
-                  )}
-                </p>
+                  Registry Data
+                </h2>
+                <Database
+                  className="w-3.5 h-3.5"
+                  style={{ color: "rgba(100,116,139,0.5)" }}
+                />
               </div>
-            )}
+            </div>
 
-            {/* Address */}
-            {addressStr && (
-              <div style={pillData}>
-                <p
-                  className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
-                  style={{ color: "rgba(100,116,139,0.9)" }}
+            {/* Divider */}
+            <div
+              style={{
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 50%, transparent)",
+              }}
+            />
+
+            {/* Identifiers block */}
+            <div className="px-5 py-4 flex flex-col gap-3">
+              {/* Classification */}
+              <div className="flex items-center justify-between">
+                <span
+                  className="text-[10px] uppercase tracking-widest font-bold"
+                  style={{ color: "rgba(100,116,139,0.7)" }}
                 >
-                  Registered Address
-                </p>
-                <p className="text-xs" style={{ color: "#f1f5f9" }}>
-                  {addressStr}
-                </p>
+                  Type
+                </span>
+                <span
+                  className="text-xs font-medium"
+                  style={{ color: "#f1f5f9" }}
+                >
+                  {companyType || "PT PMA"}
+                </span>
               </div>
+
+              {/* KBLI */}
+              {co?.kbli_code && (
+                <div className="flex items-start justify-between gap-2">
+                  <span
+                    className="text-[10px] uppercase tracking-widest font-bold shrink-0"
+                    style={{ color: "#60a5fa" }}
+                  >
+                    KBLI
+                  </span>
+                  <div className="text-right">
+                    <span
+                      className="font-mono text-xs font-bold px-1.5 py-0.5 rounded"
+                      style={{
+                        background: "rgba(96,165,250,0.12)",
+                        color: "#60a5fa",
+                      }}
+                    >
+                      {co.kbli_code}
+                    </span>
+                    {co.kbli_description && (
+                      <p
+                        className="text-[10px] mt-1 leading-tight text-right"
+                        style={{ color: "rgba(148,163,184,0.6)" }}
+                      >
+                        {co.kbli_description.length > 40
+                          ? co.kbli_description.slice(0, 40) + "…"
+                          : co.kbli_description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* NPWP */}
+              {co?.npwp_company && (
+                <div className="flex items-center justify-between group">
+                  <span
+                    className="text-[10px] uppercase tracking-widest font-bold"
+                    style={{ color: "rgba(100,116,139,0.7)" }}
+                  >
+                    NPWP
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="font-mono text-xs"
+                      style={{ color: "#f1f5f9" }}
+                    >
+                      {co.npwp_company}
+                    </span>
+                    <button
+                      onClick={() => {
+                        void navigator.clipboard.writeText(co.npwp_company!);
+                        toast.success("Copied");
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Copy
+                        className="w-2.5 h-2.5"
+                        style={{ color: "rgba(100,116,139,0.9)" }}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* NIB */}
+              {co?.nib && (
+                <div className="flex items-center justify-between group">
+                  <span
+                    className="text-[10px] uppercase tracking-widest font-bold"
+                    style={{ color: "rgba(100,116,139,0.7)" }}
+                  >
+                    NIB
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="font-mono text-xs"
+                      style={{ color: "#f1f5f9" }}
+                    >
+                      {co.nib}
+                    </span>
+                    <button
+                      onClick={() => {
+                        void navigator.clipboard.writeText(co.nib!);
+                        toast.success("Copied");
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Copy
+                        className="w-2.5 h-2.5"
+                        style={{ color: "rgba(100,116,139,0.9)" }}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Address */}
+              {addressStr && (
+                <div className="flex items-start justify-between gap-2">
+                  <span
+                    className="text-[10px] uppercase tracking-widest font-bold shrink-0"
+                    style={{ color: "rgba(100,116,139,0.7)" }}
+                  >
+                    Address
+                  </span>
+                  <p
+                    className="text-[11px] text-right leading-relaxed"
+                    style={{ color: "rgba(148,163,184,0.8)" }}
+                  >
+                    {addressStr}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Legal Timeline */}
+            {(effectivePendirianNo ||
+              co?.akta_perubahan_no ||
+              co?.sk_menhumkam_no) && (
+              <>
+                <div
+                  style={{
+                    height: "1px",
+                    background:
+                      "linear-gradient(90deg, transparent, rgba(255,255,255,0.07) 50%, transparent)",
+                  }}
+                />
+                <div className="px-5 py-4">
+                  <p
+                    className="text-[9px] uppercase tracking-widest font-bold mb-4"
+                    style={{ color: "rgba(100,116,139,0.7)" }}
+                  >
+                    Legal Timeline
+                  </p>
+                  <div className="flex flex-col gap-0">
+                    {[
+                      effectivePendirianNo && {
+                        step: 1,
+                        label: "Deed of Est.",
+                        value: `#${effectivePendirianNo}`,
+                        date: effectivePendirianDate,
+                        color: "#d4845a",
+                      },
+                      co?.akta_perubahan_no && {
+                        step: 2,
+                        label: "Amendment",
+                        value: `#${co.akta_perubahan_no}`,
+                        date: co.akta_perubahan_date,
+                        color: "#8b9cf7",
+                      },
+                      co?.sk_menhumkam_no && {
+                        step: 3,
+                        label: "SK Kemenkumham",
+                        value: co.sk_menhumkam_no,
+                        date: co.sk_menhumkam_date,
+                        color: "#5ec490",
+                      },
+                    ]
+                      .filter(Boolean)
+                      .map((item, idx, arr) => {
+                        if (!item) return null;
+                        const isLast = idx === arr.length - 1;
+                        return (
+                          <div key={item.step} className="flex gap-3">
+                            {/* Timeline spine */}
+                            <div
+                              className="flex flex-col items-center shrink-0"
+                              style={{ width: "20px" }}
+                            >
+                              <div
+                                className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                                style={{
+                                  background: `${item.color}22`,
+                                  border: `1px solid ${item.color}55`,
+                                  color: item.color,
+                                }}
+                              >
+                                {item.step}
+                              </div>
+                              {!isLast && (
+                                <div
+                                  className="flex-1 w-px my-1"
+                                  style={{
+                                    background: "rgba(255,255,255,0.07)",
+                                    minHeight: "16px",
+                                  }}
+                                />
+                              )}
+                            </div>
+                            {/* Content */}
+                            <div className="pb-4 flex-1 min-w-0">
+                              <p
+                                className="text-[9px] uppercase tracking-widest font-bold mb-0.5"
+                                style={{ color: "rgba(100,116,139,0.7)" }}
+                              >
+                                {item.label}
+                              </p>
+                              <p
+                                className="font-mono text-xs font-medium truncate"
+                                style={{ color: "#f1f5f9" }}
+                              >
+                                {item.value}
+                              </p>
+                              {item.date && (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <p
+                                    className="text-[10px]"
+                                    style={{ color: "rgba(100,116,139,0.7)" }}
+                                  >
+                                    {formatDate(item.date)}
+                                  </p>
+                                  {getAgeChip(item.date)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -2107,15 +2174,23 @@ export function CompanyTab({
       {co?.company_id && (
         <div style={crystalCard} className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2
-              className="text-sm font-semibold uppercase tracking-widest"
-              style={{ color: "rgba(148,163,184,0.8)" }}
-            >
-              Document Upload
-            </h2>
+            <div>
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold mb-0.5"
+                style={{ color: "rgba(100,116,139,0.6)" }}
+              >
+                Vault
+              </p>
+              <h2
+                className="text-sm font-semibold"
+                style={{ color: "#f1f5f9" }}
+              >
+                Upload Documents
+              </h2>
+            </div>
             <Upload
-              className="w-4 h-4"
-              style={{ color: "rgba(100,116,139,0.7)" }}
+              className="w-3.5 h-3.5"
+              style={{ color: "rgba(100,116,139,0.5)" }}
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -165,6 +165,7 @@ def main() -> None:
     ap.add_argument("--output",    required=True,  help="Output dir (es. output/canva/)")
     ap.add_argument("--master",    required=True,  help="Master dir (es. output/master/)")
     ap.add_argument("--design-id", default=DEFAULT_DESIGN_ID)
+    ap.add_argument("--page",      type=int, default=0, help="Pagina iniziale (default: 0)")
     ap.add_argument("--dry-run",   action="store_true",
                     help="Mostra operazioni senza scrivere file")
     args = ap.parse_args()
