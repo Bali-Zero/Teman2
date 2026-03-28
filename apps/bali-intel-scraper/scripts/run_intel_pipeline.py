@@ -53,8 +53,8 @@ PIPELINE_STEPS = [
     '3_enrichment',      # Claude deep enrichment — 1400-2000 word articles per dossier
     '5_seo',             # Gemini SEO optimization
     '6_approval',        # Telegram notification + review file
-    '7_publishing',
-    '8_images'           # Cover images: ComfyUI/Flux local (fallback: Pollinations.ai)
+    '8_images',          # Cover images: Fireworks.ai Flux.1 Dev (fallback: Pollinations.ai) — only T1/featured
+    '7_publishing',      # Publish with cover image already in payload
 ]
 
 class IntelPipeline:
@@ -1056,8 +1056,8 @@ IMPORTANT:
             return None
 
     def step_images(self) -> bool:
-        """Step 8: Generate cover images via ComfyUI/Flux (local, no browser needed).
-        Only processes articles that were actually published (have _published_item_id)."""
+        """Step 8: Generate cover images via Fireworks.ai Flux.1 Dev (fallback: Pollinations.ai).
+        Runs BEFORE publishing — only for T1/featured articles to avoid wasting API credits."""
         self.log('Generating images...')
 
         if self.config.get('skip_images'):
@@ -1065,14 +1065,19 @@ IMPORTANT:
             self.update_step_status('8_images', 'skipped', {'reason': 'config'})
             return True
 
-        # Only generate for articles that were actually published
-        published = [a for a in self.state.get('articles', []) if a.get('_published_item_id') and a.get('enrichment')]
+        # Only generate for T1 or featured articles (not all enriched)
+        # These are the articles that will actually be highlighted on balizero.com
+        all_enriched = [a for a in self.state.get('articles', []) if a.get('enrichment')]
+        published = [a for a in all_enriched if a.get('tier') == 'T1' or a.get('featured')]
         if not published:
-            self.log('No published articles for image generation', 'WARN')
-            self.update_step_status('8_images', 'skipped', {'reason': 'no_published_articles'})
+            # Fallback: if no T1/featured, take top-scored articles (up to 5)
+            published = sorted(all_enriched, key=lambda a: a.get('quality_score', 0), reverse=True)[:5]
+        if not published:
+            self.log('No articles for image generation', 'WARN')
+            self.update_step_status('8_images', 'skipped', {'reason': 'no_articles'})
             return True
 
-        self.log(f'Generating images for {len(published)} published articles')
+        self.log(f'Generating images for {len(published)} T1/featured articles (of {len(all_enriched)} enriched)')
 
         # Prefer ComfyUI/Flux (local, no browser, always works)
         script = self.script_dir / 'comfyui_image_generator.py'
