@@ -54,7 +54,7 @@ class LRUCache:
         max_size: int = DEFAULT_MAX_MEMORY_CACHE_SIZE,
         maxsize: int | None = None,  # Alias for max_size (for compatibility)
         default_ttl: int = DEFAULT_CACHE_TTL,
-    ):
+    ) -> None:
         """
         Initialize LRU cache.
 
