@@ -105,7 +105,7 @@ async def require_admin(
 
     except Exception as e:
         logger.error(f"Error checking admin role: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.post("/mappings", status_code=201)
@@ -232,7 +232,7 @@ async def list_all_mappings(
 
     except Exception as e:
         logger.error(f"Error listing mappings: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.get("/lookup/phone/{phone}")

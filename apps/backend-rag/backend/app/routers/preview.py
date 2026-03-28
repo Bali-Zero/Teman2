@@ -128,7 +128,7 @@ async def get_preview(article_id: str) -> HTMLResponse:
                 return HTMLResponse(content=html_content, status_code=200)
             except Exception as e:
                 logger.error(f"Error reading preview {article_id}: {e}")
-                raise HTTPException(status_code=500, detail="Error reading preview")
+                raise HTTPException(status_code=500, detail="Error reading preview") from e
 
     logger.warning(f"Preview not found: {article_id}")
     raise HTTPException(status_code=404, detail=f"Preview not found. Article ID: {article_id}")
