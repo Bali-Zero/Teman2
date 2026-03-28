@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React from "react";
+import React from 'react';
 import {
   Inbox,
   Send,
@@ -11,9 +11,9 @@ import {
   Plus,
   RefreshCw,
   LogOut,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { EmailFolder } from "@/lib/email.types";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { EmailFolder } from '@/lib/email.types';
 
 const FOLDER_ICONS: Record<string, React.ElementType> = {
   inbox: Inbox,
@@ -46,12 +46,11 @@ export function FolderSidebar({
   connectedEmail,
 }: FolderSidebarProps) {
   const sortedFolders = React.useMemo(() => {
-    const order = ["inbox", "sent", "drafts", "spam", "trash"];
+    const order = ['inbox', 'sent', 'drafts', 'spam', 'trash'];
     return [...folders].sort((a, b) => {
       const aOrder = order.indexOf(a.folder_type);
       const bOrder = order.indexOf(b.folder_type);
-      if (aOrder === -1 && bOrder === -1)
-        return a.folder_name.localeCompare(b.folder_name);
+      if (aOrder === -1 && bOrder === -1) return a.folder_name.localeCompare(b.folder_name);
       if (aOrder === -1) return 1;
       if (bOrder === -1) return -1;
       return aOrder - bOrder;
@@ -65,9 +64,9 @@ export function FolderSidebar({
         <button
           onClick={onCompose}
           className={cn(
-            "w-full py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2",
-            "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white",
-            "shadow-lg shadow-[var(--accent)]/20",
+            'w-full py-2.5 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2',
+            'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white',
+            'shadow-lg shadow-[var(--accent)]/20'
           )}
         >
           <Plus className="w-4 h-4" />
@@ -95,20 +94,20 @@ export function FolderSidebar({
                     key={folder.folder_id}
                     onClick={() => onSelectFolder(folder.folder_id)}
                     className={cn(
-                      "w-full px-3 py-2 rounded-lg text-sm transition-all",
-                      "flex items-center justify-between gap-2",
+                      'w-full px-3 py-2 rounded-lg text-sm transition-all',
+                      'flex items-center justify-between gap-2',
                       isSelected
-                        ? "bg-[var(--accent)]/10 text-[var(--accent)] font-semibold"
+                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'
                         : hasUnread
-                          ? "text-[var(--foreground)] font-semibold hover:bg-[var(--background-elevated)]"
-                          : "text-[var(--foreground-muted)] font-medium hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)]",
+                          ? 'text-[var(--foreground)] font-semibold hover:bg-[var(--background-elevated)]'
+                          : 'text-[var(--foreground-muted)] font-medium hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)]'
                     )}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <Icon
                         className={cn(
-                          "w-4 h-4 flex-shrink-0",
-                          hasUnread && !isSelected && "text-[var(--accent)]",
+                          'w-4 h-4 flex-shrink-0',
+                          hasUnread && !isSelected && 'text-[var(--accent)]'
                         )}
                       />
                       <span className="truncate">{folder.folder_name}</span>
@@ -116,11 +115,11 @@ export function FolderSidebar({
                     {hasUnread && (
                       <span
                         className={cn(
-                          "text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center",
-                          "bg-[var(--accent)] text-white",
+                          'text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center',
+                          'bg-[var(--accent)] text-white'
                         )}
                       >
-                        {folder.unread_count > 99 ? "99+" : folder.unread_count}
+                        {folder.unread_count > 99 ? '99+' : folder.unread_count}
                       </span>
                     )}
                   </button>
@@ -141,6 +140,7 @@ export function FolderSidebar({
             onClick={onRefresh}
             className="flex-1 p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)] transition-colors"
             title="Refresh"
+            aria-label="Aggiorna lista email"
           >
             <RefreshCw className="w-4 h-4 mx-auto" />
           </button>
@@ -148,6 +148,7 @@ export function FolderSidebar({
             onClick={onDisconnect}
             className="flex-1 p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors"
             title="Disconnect"
+            aria-label="Disconnetti account Zoho Mail"
           >
             <LogOut className="w-4 h-4 mx-auto" />
           </button>
