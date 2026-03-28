@@ -190,21 +190,22 @@ All 7 steps are now designed. The full pipeline specification covers:
 
 **VERDICT: GREEN — GO FOR PRODUCTION**
 
-| Phase | Result |
-|-------|--------|
-| 0. Environment Setup | ✅ PASS |
-| 1. First L1 Query | ✅ PASS |
-| 2. L2 Comparative | ✅ PASS |
-| 3. Triage + SVS | ✅ PASS |
+| Phase                   | Result  |
+| ----------------------- | ------- |
+| 0. Environment Setup    | ✅ PASS |
+| 1. First L1 Query       | ✅ PASS |
+| 2. L2 Comparative       | ✅ PASS |
+| 3. Triage + SVS         | ✅ PASS |
 | 4. L2 Cross-Query Dedup | ✅ PASS |
-| 5. Source Lifecycle | ✅ PASS |
-| 6. Handoff Package | ✅ PASS |
-| 7. Failure/Recovery | ✅ PASS |
-| **Score** | **8/8** |
+| 5. Source Lifecycle     | ✅ PASS |
+| 6. Handoff Package      | ✅ PASS |
+| 7. Failure/Recovery     | ✅ PASS |
+| **Score**               | **8/8** |
 
 **Hard-blockers: 0/7** (NLM API, state files, VERIFIED claims, PROVISIONAL claims, INV-1, INV-3, INV-5 all pass)
 
 **Production conditions:**
+
 1. Reclassify ~15 canonical guides → working (Day 1)
 2. Weekly nlm auth check (CHECK 4)
 3. First production run: **Monday 2026-03-31 at 01:10 WITA**, Cluster A
@@ -218,12 +219,12 @@ All 7 steps are now designed. The full pipeline specification covers:
 
 **4 failure/recovery tests executed (all simulated, no destructive actions):**
 
-| Test | Scenario | Result |
-|------|----------|--------|
-| 1 | State corruption (truncated JSON) → detect + recover to DEGRADED_L1 | ✅ PASS |
-| 2 | CB-NLM: CLOSED→OPEN (3 failures)→HALF_OPEN (4h timeout)→CLOSED (success) + cascade to CB-SOURCE at 5d | ✅ PASS |
-| 3 | Capacity overflow (70 ACTIVE) → block import → emergency prune lowest SVS non-pinned → 69 | ✅ PASS |
-| 4 | INV-4 feedback loop: balizero.com + subdomains REJECTED, govt/news ALLOWED, handoff clean | ✅ PASS |
+| Test | Scenario                                                                                              | Result  |
+| ---- | ----------------------------------------------------------------------------------------------------- | ------- |
+| 1    | State corruption (truncated JSON) → detect + recover to DEGRADED_L1                                   | ✅ PASS |
+| 2    | CB-NLM: CLOSED→OPEN (3 failures)→HALF_OPEN (4h timeout)→CLOSED (success) + cascade to CB-SOURCE at 5d | ✅ PASS |
+| 3    | Capacity overflow (70 ACTIVE) → block import → emergency prune lowest SVS non-pinned → 69             | ✅ PASS |
+| 4    | INV-4 feedback loop: balizero.com + subdomains REJECTED, govt/news ALLOWED, handoff clean             | ✅ PASS |
 
 **Verdict: PASS — all failure/recovery mechanisms verified.**
 
@@ -240,13 +241,13 @@ All 7 steps are now designed. The full pipeline specification covers:
 
 **Top 5 handoff findings:**
 
-| Claim | Confidence | TRS |
-|-------|-----------|-----|
-| PP 34/2021 IMTA abolished, RPTKA = authorization | VERIFIED 0.82 | highest |
-| DKP-TKA billing code 3-day expiry | VERIFIED 0.80 | high |
-| Full process 3-6mo → 4-10wk | VERIFIED 0.78 | high |
-| DKP-TKA USD 100/mo/position prepaid | VERIFIED 0.76 | high |
-| SE 3/836 One Sponsor Policy | PROVISIONAL 0.55 | medium |
+| Claim                                            | Confidence       | TRS     |
+| ------------------------------------------------ | ---------------- | ------- |
+| PP 34/2021 IMTA abolished, RPTKA = authorization | VERIFIED 0.82    | highest |
+| DKP-TKA billing code 3-day expiry                | VERIFIED 0.80    | high    |
+| Full process 3-6mo → 4-10wk                      | VERIFIED 0.78    | high    |
+| DKP-TKA USD 100/mo/position prepaid              | VERIFIED 0.76    | high    |
+| SE 3/836 One Sponsor Policy                      | PROVISIONAL 0.55 | medium  |
 
 **Verdict: PASS — handoff package valid, schema correct, non-empty, fresh.**
 
