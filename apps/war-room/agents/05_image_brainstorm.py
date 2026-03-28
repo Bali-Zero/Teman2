@@ -35,6 +35,8 @@ FIREWORKS_URL = "https://api.fireworks.ai/inference/v1/workflows/accounts/firewo
 
 TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
 TIGRIS_BUCKET = "nuzantara-warroom-images"
+# Public URLs must use subdomain format (path-style returns 403 on public buckets)
+TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
 
 
 def upload_to_tigris(file_path: Path, key: str) -> str:
@@ -97,7 +99,7 @@ def upload_to_tigris(file_path: Path, key: str) -> str:
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
             if resp.status in (200, 204):
-                url = f"{TIGRIS_ENDPOINT}/{TIGRIS_BUCKET}/{key}"
+                url = f"{TIGRIS_PUBLIC_BASE}/{key}"
                 print(f"   ✅ Tigris upload OK: {url}", file=sys.stderr)
                 return url
     except Exception as e:
