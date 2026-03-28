@@ -116,7 +116,7 @@ class ClientCreate(BaseModel):
             return v
         try:
             dob = datetime.strptime(v, "%Y-%m-%d").date()
-            today = date.today()
+            today = datetime.now(tz=timezone.utc).date()
             age = (today - dob).days // 365
             if age < 18:
                 raise ValueError(
@@ -196,7 +196,7 @@ class ClientUpdate(BaseModel):
             return v
         try:
             dob = datetime.strptime(v, "%Y-%m-%d").date()
-            today = date.today()
+            today = datetime.now(tz=timezone.utc).date()
             age = (today - dob).days // 365
             if age < 18:
                 raise ValueError(
@@ -1016,8 +1016,7 @@ async def get_crm_metrics_summary(
         if not user_email:
             raise HTTPException(status_code=401, detail="Authentication required")
 
-        summary = await metrics_collector.get_metrics_summary()
-        return summary
+        return await metrics_collector.get_metrics_summary()
 
     except HTTPException:
         raise

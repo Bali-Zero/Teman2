@@ -257,7 +257,7 @@ class WeeklyEmailReporter:
             </div>
             """
 
-        html = f"""
+        return f"""
         <!DOCTYPE html>
         <html>
         <head>
@@ -325,7 +325,6 @@ class WeeklyEmailReporter:
         </body>
         </html>
         """
-        return html
 
     async def _send_weekly_report(self) -> None:
         """Send the weekly email activity report."""

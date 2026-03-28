@@ -97,8 +97,7 @@ def _format_as_numbered_list(text: str, language: str) -> str:
 
     if len(actionable_sentences) >= 2:
         # Format as numbered list
-        formatted = "\n".join([f"{i + 1}. {s.strip()}" for i, s in enumerate(actionable_sentences)])
-        return formatted
+        return "\n".join([f"{i + 1}. {s.strip()}" for i, s in enumerate(actionable_sentences)])
 
     return text
 

@@ -188,8 +188,7 @@ class OrchestratorContextManager:
                 session_id=None,
             )
             # Merge enriched data into existing context, preserving pre-loaded fields
-            merged = {**enriched, **{k: v for k, v in user_context.items() if v is not None}}
-            return merged
+            return {**enriched, **{k: v for k, v in user_context.items() if v is not None}}
         except Exception as e:
             logger.warning(f"⚠️ [Context] enrich_user_context failed: {e}")
             return user_context

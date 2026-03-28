@@ -27,9 +27,8 @@ def calculate_text_fingerprint(text: str) -> str:
     normalized = re.sub(r"\s+", " ", text.lower().strip())
 
     # SHA256 hash, take first 16 chars
-    fingerprint = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
 
-    return fingerprint
 
 
 def detect_placeholders(text: str) -> bool:

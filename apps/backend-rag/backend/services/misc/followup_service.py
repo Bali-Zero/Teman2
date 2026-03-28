@@ -430,7 +430,7 @@ class FollowupService:
 
         # CRITICAL: Generate follow-ups in the SAME language as the user's query
         # Use the detected language parameter explicitly in the prompt
-        prompt = f"""Analyze this conversation and generate 3-4 likely follow-up questions.
+        return f"""Analyze this conversation and generate 3-4 likely follow-up questions.
 {"[SPECULATIVE MODE] The AI answer is currently being generated. Predict the most relevant next questions based on the USER QUERY." if speculative_mode else ""}
 
 IMPORTANT: Generate the questions in the SAME LANGUAGE as the user's original question.
@@ -459,7 +459,6 @@ Format as a numbered list:
 Keep questions concise (max 10 words each).
 CRITICAL: All questions MUST be in {language.upper()} language."""
 
-        return prompt
 
     def _parse_followup_list(self, text: str) -> list[str]:
         """

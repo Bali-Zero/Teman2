@@ -304,8 +304,7 @@ Extract entities and relations now:"""
             content = response.content[0].text
 
             # Parse JSON from response
-            entities = self._parse_entities_response(content)
-            return entities
+            return self._parse_entities_response(content)
 
         except Exception as e:
             logger.error(f"Entity extraction failed: {e}")
@@ -338,8 +337,7 @@ Extract entities and relations now:"""
             )
 
             content = response.content[0].text
-            relations = self._parse_relations_response(content)
-            return relations
+            return self._parse_relations_response(content)
 
         except Exception as e:
             logger.error(f"Relation extraction failed: {e}")

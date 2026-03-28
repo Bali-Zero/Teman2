@@ -1,6 +1,6 @@
 """Visa records service for Portal."""
 
-from datetime import date
+from datetime import datetime, timezone
 
 import structlog
 from asyncpg import Pool
@@ -54,7 +54,7 @@ class VisaService:
         status = "active"
 
         if active_visa.expiry_date:
-            days_until = (active_visa.expiry_date - date.today()).days
+            days_until = (active_visa.expiry_date - datetime.now(tz=timezone.utc).date()).days
             if days_until <= 0:
                 status = "expired"
             elif days_until <= 30:

@@ -41,7 +41,7 @@ class PoliticsIngestionService:
                 f"- {p.get('party_id', '')} ({p.get('from', '?')}→{p.get('to', '?')})"
                 for p in parties
             ]
-            text = (
+            return (
                 f"Tokoh: {name}\n"
                 f"Lahir: {dob} | {pob}\n"
                 f"Keanggotaan partai:\n"
@@ -49,7 +49,6 @@ class PoliticsIngestionService:
                 + "\n"
                 "Jabatan:\n" + ("\n".join(office_lines) if office_lines else "- tidak ada")
             )
-            return text
 
         if t == "party":
             name = record.get("name", "")
@@ -59,13 +58,12 @@ class PoliticsIngestionService:
                 f"- {leader.get('person_id', '')} ({leader.get('from', '?')}→{leader.get('to', '?')})"
                 for leader in leaders
             ]
-            text = (
+            return (
                 f"Partai: {name} ({record.get('abbrev', '')})\n"
                 f"Berdiri: {record.get('founded', '')} | Bubaran: {record.get('dissolved', '')}\n"
                 f"Ideologi: {ideol or 'tidak ada'}\n"
                 f"Pimpinan:\n" + ("\n".join(leader_lines) if leader_lines else "- tidak ada")
             )
-            return text
 
         if t == "election":
             text = (
