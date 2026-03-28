@@ -153,7 +153,7 @@ async def oauth_callback(
         redirect_uri = settings.google_drive_redirect_uri
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(
                     "https://oauth2.googleapis.com/token",
                     data={
@@ -275,7 +275,7 @@ async def get_system_status(
             # Make a test API call to get user info
             import httpx
 
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(
                     "https://www.googleapis.com/drive/v3/about",
                     params={"fields": "user(emailAddress,displayName)"},
