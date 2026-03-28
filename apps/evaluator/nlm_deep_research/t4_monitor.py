@@ -16,7 +16,10 @@ import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Literal, Optional
+from typing import TYPE_CHECKING, Literal, Optional
+
+if TYPE_CHECKING:
+    from apps.evaluator.nlm_deep_research.t4_state import T4State
 
 
 logger = logging.getLogger(__name__)
@@ -318,3 +321,66 @@ class T4RelevanceFilter:
             return FilterResult.ADMIT if score >= 0.5 else FilterResult.REJECT
 
         return FilterResult.REJECT
+
+
+# ---------------------------------------------------------------------------
+# Circuit Breaker CB_T4 (standalone — does NOT cascade to CB_NLM)
+# ---------------------------------------------------------------------------
+
+
+class T4CircuitBreaker:
+    """Standalone circuit breaker for T4 monitor.
+
+    Thresholds:
+        failure_threshold = 3 consecutive failures → OPEN
+        recovery_timeout  = 30 minutes → HALF_OPEN probe
+        DOMChangedError   → immediate OPEN
+
+    Does NOT cascade to CB_NLM or CB_SOURCE (independent failure domain).
+    """
+
+    def is_open(self, state: "T4State") -> bool:
+        """Return True if CB is currently OPEN (blocking requests)."""
+        if state.cb_status == "OPEN":
+            self.maybe_transition(state)
+            return state.cb_status == "OPEN"
+        return False
+
+    def maybe_transition(self, state: "T4State") -> None:
+        """Transition OPEN → HALF_OPEN if recovery timeout has elapsed."""
+        if state.cb_status != "OPEN":
+            return
+        if state.cb_last_failure is None:
+            state.cb_status = "HALF_OPEN"
+            return
+        elapsed = (
+            datetime.now(timezone.utc) - state.cb_last_failure
+        ).total_seconds() / 60
+        if elapsed >= CB_T4_RECOVERY_MINUTES:
+            state.cb_status = "HALF_OPEN"
+            logger.info("CB_T4 → HALF_OPEN after %.0f min", elapsed)
+
+    def record_failure(self, state: "T4State") -> None:
+        """Increment failure counter; open CB after threshold."""
+        state.cb_failure_count += 1
+        state.cb_last_failure = datetime.now(timezone.utc)
+        if state.cb_status == "HALF_OPEN":
+            state.cb_status = "OPEN"
+            logger.warning("CB_T4 HALF_OPEN probe failed → back to OPEN")
+        elif state.cb_failure_count >= CB_T4_FAILURE_THRESHOLD:
+            state.cb_status = "OPEN"
+            logger.warning(
+                "CB_T4 OPEN after %d failures", state.cb_failure_count
+            )
+
+    def record_success(self, state: "T4State") -> None:
+        """Reset failure counter and close CB."""
+        state.cb_failure_count = 0
+        state.cb_status = "CLOSED"
+
+    def open_immediately(self, state: "T4State", reason: str = "") -> None:
+        """Force CB OPEN (e.g., DOMChangedError)."""
+        state.cb_status = "OPEN"
+        state.cb_failure_count = CB_T4_FAILURE_THRESHOLD
+        state.cb_last_failure = datetime.now(timezone.utc)
+        logger.error("CB_T4 forced OPEN: %s", reason)
