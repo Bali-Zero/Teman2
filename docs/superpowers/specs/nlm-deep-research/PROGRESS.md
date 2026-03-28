@@ -1,6 +1,6 @@
 # NLM Deep Research Pipeline — Brainstorm Progress
 
-> Last updated: 2026-03-28
+> Last updated: 2026-03-28 (Step 7 complete — ALL STEPS DONE)
 > Session: brainstorm with Gemini + Codex GPT-5.4 + DeepSeek R1
 
 ## Target
@@ -48,53 +48,151 @@ Then replicate pattern across all 10 notebooks.
 - 4-stage cross-reference: NB-2 internal → scraper archive → govt portals → local sources
 - Local monitoring: Ngurah Rai IG daily, Pemprov Bali 2-3x/week, 5 local news outlets
 
-### Step 4: Source Management ✅ → `04_source_management.md`
+### Step 4: Source Management ✅ → `04_source_management.md` (synthesis) + `04b_source_management_codex.md`
 
-- Source staleness formula: 8 type-specific exponential decay functions (law=infinite, news=15d half-life)
-- Source Value Score (SVS): 5-factor weighted formula + bonuses (tier+claims+freshness+citations+uniqueness)
-- Dedup: claim-level Szymkiewicz-Simpson overlap, 4 threshold tiers (0.90/0.70/0.40)
-- Capacity model: steady-state ~55-70 with active trim, 600-limit hit in ~13w if dedup fails
-- Budget: 15-20 canonical + 30-40 working + 5-8 master + 5 reserved
-- Notebook Health Score (NHS): 5-factor composite, alert at <0.45
-- Consolidation: N>=4 same-topic + cooled + ILM<0.05 information loss gate
-- 4 Master Documents: Changelog, Operations, CrossDomain, OpenQuestions
-- Complete lifecycle state machine: DISCOVERED→QUARANTINE→TRIAGE→ACTIVE→[CONSOLIDATE|ARCHIVE|DELETE]
-- Week-by-week Month 1 projection with KPIs and pass/fail criteria
+**Unified Synthesis (04 — Claude Opus 4.6 architect, integrating DeepSeek R1 + Codex + Gemini):**
 
-## Remaining Steps
+- 6-stage lifecycle: INGEST → QUARANTINE → TRIAGE → ACTIVE → CONSOLIDATE → ARCHIVE
+- Source Value Score (SVS): 5-factor formula (tier+claims+freshness+citations+uniqueness) + bonuses
+- Type-specific staleness decay: LAW_IN_FORCE=infinite, NEWS=15d half-life, REGULATION=90d
+- 4 source categories: Canonical(15-25), Working(25-35), Master Digest(4-8), Reference(3-6)
+- 70 ACTIVE cap with capacity triggers at 56(soft)/63(hard)/70(cap)
+- 4 Master Documents as NLM **sources** (not notes) for query inclusion: Change Log, Ops Status, Cross-Domain, Open Questions
+- 4-level dedup: URL match → title similarity → content fingerprint → claim overlap (Szymkiewicz-Simpson)
+- Information Loss Metric (ILM <0.05) as hard gate on consolidation
+- Notebook Health Score (NHS): 5-factor composite, Telegram weekly report
+- External state: `nlm_nb2_sources.json` + `nlm_nb2_claims.jsonl` (append-only)
+- Full source metadata schema with SVS, claims, dedup fingerprints, flags
+- Capacity model: steady-state ~55-70, 600-limit safe (~100 max per NB)
+- Implementation: 12 phases, ~34h, critical path P1→P2→P4→P6→P11 (15h MVP)
 
-### Step 5: Intel Scraper Integration — NEXT
+**Codex GPT-5.4 (04b — operational discipline, preserved as reference):**
 
-- NLM upstream, scraper independent but enriched
-- Handoff package format (scraper_input.json)
-- Cross-validation protocol
-- War Room topic selection flow
+- 14 lifecycle transitions with SLAs, pre-import filter pseudocode, emergency pruning
+- Master Document markdown templates, versioning, domain denylist
+- Open Questions hard rules: max 15 open, 30d auto-close
 
-### Step 6: Failure Modes
+**Key synthesis decisions:**
 
-- Source bloat, old-as-new, hallucination, feedback loop, rate limits
-- Detection + handling for each
-- Circuit breaker design
+- Master Docs = NLM sources (Opus/Gemini) NOT notes (Codex) — sources contribute to notebook_query synthesis
+- Consolidation trigger = N>=4 AND cooled AND ILM<0.05 (DeepSeek formula + Codex conditions)
+- Active capacity management required (DeepSeek: passive decay alone stabilizes at ~120, too high)
 
-### Step 7: Testing Protocol
+### Step 5: Intel Scraper Integration ✅ → `05_scraper_integration.md` (synthesis) + `05b_*_codex.md` + `05b_*_deepseek.md`
 
-- 8-phase controlled test on NB-2
-- Baseline inventory → first query → verify → second query → lifecycle trial → scraper comparison
-- Success metrics: novelty >30%, verification accuracy >85%, manual intervention <5%
+**Unified Synthesis (05 — Claude Opus 4.6 architect, integrating Gemini + Codex + DeepSeek R1):**
+
+- Handoff package JSON schema v1: versioned dated files + `latest.json` symlink, atomic writes
+- Topic Relevance Score (TRS): 5-factor formula filters what enters handoff (>=0.65 threshold, max 5 topics)
+- 3 integration modes: IGNORE (no file), ENRICH (low confidence), PRIORITIZE (>=0.75 verified)
+- `NLMEnricher` adapter: 1 new file, ~18 lines changed in scraper, triple error boundary, only additive
+- Cross-validation: CONVERGENCE (logarithmic boost B(n)=0.30\*ln(1+n)/ln(6)), NLM-ONLY (decay), SCRAPER-ONLY (novel signal)
+- Contradiction penalty: P(m) = min(0.40, 0.15\*m) proportional to current confidence
+- Feedback loop prevention: provenance tagging, domain exclusions, `balizero.com` blocked, detection function
+- War Room: NLM topics auto-selected if HIGH+confidence>=0.75, Gemini fallback, manual override
+- Integration Value Added (IVA): target 0.35-0.55 at steady state (Month 6)
+- 8 primary KPIs: conversion rate, cross-val confirmation, handoff freshness, adoption, false positive, IVA
+- 7 failure scenarios → all degrade gracefully to existing behavior (zero regression)
+- Testing: 15 unit tests, regression test (identical output without handoff), loop detection
+- Implementation: 3 files modified + 1 new, 5-phase plan (5 days)
+- ROI: ~$230/month net positive from Month 2
+
+**Key synthesis decisions:**
+
+- File-based handoff (not API/DB) — zero coupling, debuggable, atomic, audit trail
+- Logarithmic boost (DeepSeek) over linear (Gemini) — natural diminishing returns, cap at 0.95
+- Adapter pattern (Codex) over inline code (Gemini) — production safety, testable
+- Schema evolution: additive only, 30-day dual-write for breaking changes
+
+### Step 6: Failure Modes ✅ → `06_failure_modes.md` (synthesis) + `06b_failure_modes_gemini.md`
+
+**Unified Synthesis (06 — Claude Opus 4.6 architect, integrating Codex + Gemini + DeepSeek R1):**
+
+- 10 critical invariants with enforcement code (Codex): ACTIVE<=70, ILM<0.05, no balizero.com, etc.
+- 30 failure modes in 4 categories (Gemini): Data Quality(8), System(10), Integration(8), Operational(8)
+- Risk scoring formula (DeepSeek): Risk = P _ I _ (1 + D/24), top 5: old-as-new, hallucination, MD staleness, bloat, cluster skew
+- 3 independent circuit breakers (Gemini): CB-NLM (auto-close), CB-SOURCE (manual close), CB-INTEGRATION (auto-close)
+- Cascading rules: CB-NLM >5d → CB-SOURCE, CB-SOURCE >7d → CB-INTEGRATION
+- 5 cascading failure analyses including worst-case 4-level feedback loop cascade
+- 12-point pre-flight checklist at 01:00 WITA (Codex)
+- State corruption recovery for all 4 state files from Friday snapshots
+- MTTR targets: automated <5min, manual <2h, full restart <30min
+- 4 degradation levels: NOMINAL → DEGRADED_L1 → DEGRADED_L2 → HALTED
+- Idempotency: dedup guard, task_id persistence, atomic writes
+- Monday morning monitoring checklist (7 sections)
+- Structured audit trail (JSONL, 8 categories)
+
+**Key synthesis decisions:**
+
+- Codex invariants (Sections 1-9) as primary actionable structure
+- Gemini taxonomy (30 modes) and cascading analysis as reference catalog
+- DeepSeek risk scoring to prioritize which failures to address first
+- Cardinal rule: at any degradation level, scraper/War Room operate identically to pre-NLM behavior
+
+### Step 7: Testing Protocol ✅ → `07_testing_protocol.md` (architect) + `07b_testing_protocol_deepseek.md` (metrics)
+
+**Claude Opus 4.6 (architect — 07):**
+
+- 8-phase controlled test protocol (Phase 0-7) + Go/No-Go assessment (Phase 8)
+- Phase 0: Environment setup — NB-2 creation, 20 canonical seed sources, 4 Master Documents, state file initialization
+- Phase 1: First L1 monitoring query on Cluster A, import-quarantine-metadata verification
+- Phase 2: Triage decision tree — tier assignment, 4-level dedup, SVS calculation
+- Phase 3: Claim extraction — atomic claims, 10-category taxonomy, confidence scoring, hard gate enforcement
+- Phase 4: L2 comparative query with Phase 1 context injection, cross-query dedup, corroboration
+- Phase 5: Source lifecycle — manual consolidation trigger, ILM < 0.05 gate, Master Document update, archive
+- Phase 6: Handoff package — TRS scoring, mode selection (IGNORE/ENRICH/PRIORITIZE), NLMEnricher adapter, schema validation
+- Phase 7: Failure/recovery — state corruption recovery, circuit breaker (CB-NLM), capacity overflow + emergency prune, INV-4 feedback loop enforcement
+- Go/No-Go: GREEN (all 8 pass) / YELLOW (6-7 pass) / RED (<=5 pass). 7 hard-blocker conditions
+- Estimated: 45-80 min, ~15 NLM API calls, printable execution checklist
+- Includes: production transition plan (10-step post-GREEN deployment)
+
+**DeepSeek R1 (metrics — 07b):**
+
+- Baseline measurement protocol: NB-2 snapshot, scraper 30d SQL, War Room history
+- Per-phase quantified acceptance criteria: numeric targets + hard fail thresholds for all 8 phases
+- Month 1 weekly KPI table: 11 metrics tracked W1→W4 with trend requirements
+- 4 statistical tests: (A) Welch's t-test for scraper quality, (B) Chi-square/Fisher for War Room adoption, (C) Wilson CI calibration per confidence band, (D) Spearman + MAE for SVS vs human
+- Go/No-Go decision framework: Week 2 (CONTINUE/ADJUST/ABORT) + Week 4 (PROMOTE/EXTEND/REDESIGN) with exact criteria and data package templates
+- Cost model: ~$51/month total, ROI 292-919% (pessimistic-expected), break-even at 3 enriched articles
+- Post-production monitoring: 8 alert thresholds with demotion ladder (NOMINAL→DEGRADED_L1→L2→HALTED)
+- Metric-to-Step traceability: every numeric target traced to its origin in Steps 1-6
+- Key insight: "Claim verification accuracy >= 85% by Week 4" is the single most important metric — everything else is downstream
+
+## Pipeline Design COMPLETE
+
+All 7 steps are now designed. The full pipeline specification covers:
+
+| Step | Document                           | Scope                                                    |
+| ---- | ---------------------------------- | -------------------------------------------------------- |
+| 1    | `01_query_design.md`               | 20 templates, 5 clusters, dual-language                  |
+| 2    | `02_sequencing.md`                 | 01:00-02:20 WITA, 2 queries/day, weekly rotation         |
+| 3    | `03_quality_verification.md`       | 7-tier sources, confidence scoring, claim extraction     |
+| 4    | `04_source_management.md`          | 70 ACTIVE cap, 6-stage lifecycle, SVS, NHS               |
+| 5    | `05_scraper_integration.md`        | File-based handoff, TRS, NLMEnricher adapter             |
+| 6    | `06_failure_modes.md`              | 30 failure modes, 10 invariants, 3 circuit breakers      |
+| 7    | `07_testing_protocol.md`           | 8-phase test, Go/No-Go, production transition            |
+| 7b   | `07b_testing_protocol_deepseek.md` | Baselines, KPIs, statistical tests, cost model, go/no-go |
+
+**Next action:** Execute Phase 0 of the testing protocol.
 
 ## Documents
 
 ```
 docs/superpowers/specs/nlm-deep-research/
-├── 00_mega_synthesis.md      # High-level overview from round 1
-├── 01_query_design.md        # Step 1 complete
-├── 02_sequencing.md          # Step 2 complete
-├── 03_quality_verification.md # Step 3 complete
-├── PROGRESS.md               # This file
-├── 04_source_management.md   # Step 4 complete
-├── 05_scraper_integration.md # Step 5 (pending)
-├── 06_failure_modes.md       # Step 6 (pending)
-└── 07_testing_protocol.md    # Step 7 (pending)
+├── 00_mega_synthesis.md                 # High-level overview from round 1
+├── 01_query_design.md                   # Step 1 — Query design (20 templates, 5 clusters)
+├── 02_sequencing.md                     # Step 2 — Sequencing (01:00-02:20 WITA)
+├── 03_quality_verification.md           # Step 3 — Quality verification (7-tier, confidence)
+├── 04_source_management.md              # Step 4 — UNIFIED SYNTHESIS (Opus architect)
+├── 04b_source_management_codex.md       # Step 4 — Codex raw perspective (reference)
+├── 05_scraper_integration.md            # Step 5 — UNIFIED SYNTHESIS (Opus architect)
+├── 05b_scraper_integration_codex.md     # Step 5 — Codex (contracts + discipline)
+├── 05b_scraper_integration_deepseek.md  # Step 5 — DeepSeek R1 (formulas + KPIs)
+├── 06_failure_modes.md                  # Step 6 — UNIFIED SYNTHESIS (Opus architect)
+├── 06b_failure_modes_gemini.md          # Step 6 — Gemini (taxonomy + circuit breakers)
+├── 07_testing_protocol.md               # Step 7 — Opus (8-phase operational protocol)
+├── 07b_testing_protocol_deepseek.md    # Step 7 — DeepSeek R1 (metrics, stats, go/no-go)
+└── PROGRESS.md                          # This file
 ```
 
 ## Method
