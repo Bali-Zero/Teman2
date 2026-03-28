@@ -207,18 +207,14 @@ export default function PratichePage() {
     const loadPractices = async () => {
       setIsLoading(true);
       try {
-        // Enforce RBAC: team members see only their assigned practices
-        let assignedTo: string | undefined;
-        const user = await api.getProfile();
-        if (user && user.role !== 'admin') {
-          assignedTo = user.email;
-        }
-
+        // RBAC is enforced server-side (can_view_all_practices in crm_utils.py).
+        // Non-admin users automatically see only their assigned practices.
+        // Do NOT filter client-side — roles like "Founder" are admin on backend
+        // but would be incorrectly filtered here.
         const data = await api.crm.getPractices({
           limit: 200,
           month: selectedMonth,
           include_history: true,
-          ...(assignedTo ? { assigned_to: assignedTo } : {}),
         });
         setPractices(data);
       } catch (error) {
