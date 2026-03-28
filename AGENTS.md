@@ -35,6 +35,16 @@ If the peer is unreachable or out of sync, **warn the user immediately**.
 **SSH between machines:** `ssh air` (from Pro) / `ssh pro` (from Air) — uses mDNS, works on any WiFi.
 See `docs/PRO_AIR_CONNECTION.md` for full details.
 
+### Git Sync Architecture (updated 2026-03-28)
+
+Both machines work on `main` branch only. Sync is **automatic** via husky post-commit hooks:
+
+- **Pro commits** → Air auto-pulls (`git pull pro main --ff-only`)
+- **Air commits** → Air auto-pushes to Pro (`git push pro main`)
+- **GitHub** is updated by Pro only via `git push origin main`
+
+**Never** create an `air` branch. **Never** push from Air to `origin`. Log: `~/.openclaw/logs/git-sync.log`.
+
 ---
 
 ## 1. Project Overview
@@ -459,7 +469,7 @@ fly deploy --strategy rolling
 
 ---
 
-**Last Updated:** 2026-03-01
+**Last Updated:** 2026-03-28
 **Maintained by:** Bali Zero AI Team
 
 ---

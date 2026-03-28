@@ -1,7 +1,7 @@
 # GEMINI.md — Nuzantara Project Context
 
 > Questo file viene caricato automaticamente da Gemini CLI all'avvio nel workspace.
-> Fonte canonica: `docs/AI_ONBOARDING.md` | Aggiornato: 2026-02-16
+> Fonte canonica: `GEMINI.md` (project root) | Aggiornato: 2026-03-28
 
 ---
 
@@ -26,6 +26,13 @@
 | Embedding | **`text-embedding-3-small` (1536 dims) — MAI CAMBIARE** |
 | Deploy | Fly.io (backend `nuzantara-rag`) + Vercel (frontend) |
 | KG | LangGraph — 56.113 nodi, 161.173 archi |
+
+### Git Sync Architecture (updated 2026-03-28)
+
+Entrambe le macchine (Pro e Air) lavorano su `main`. Sync automatico via husky post-commit:
+- **Pro commit** → Air riceve pull automatico
+- **Air commit** → Air fa push a Pro
+- **GitHub** aggiornato solo da Pro. MAI fare push da Air su `origin`.
 
 ---
 

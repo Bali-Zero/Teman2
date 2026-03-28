@@ -1,6 +1,6 @@
 # Pro <-> Air Connection Guide
 
-**Last Updated:** 2026-03-13
+**Last Updated:** 2026-03-28
 
 ## Machines
 
@@ -113,45 +113,59 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub air   # from Pro
 ssh-copy-id -i ~/.ssh/id_ed25519.pub pro   # from Air
 ```
 
-## nz-connect — One-Command Sync
+## Automatic Git Sync (updated 2026-03-28)
 
-`nz-connect` is a bilateral sync script that works from either machine. It detects which machine it's running on, checks SSH to the peer, and synchronizes git repos automatically.
+Both machines work on `main` directly. Sync is fully automatic via husky post-commit hooks — zero manual intervention required.
 
-```bash
-# From either machine — just run:
-nz-connect
+### Topology
+
+```
+Pro (nuzantara)          Air (antonellosiano)
+────────────────         ──────────────────────
+git remote: air ──────→  (bare receive via SSH)
+git remote: origin       git remote: pro ──────→ Pro
+                         git remote: origin
 ```
 
-**What it does:**
+### Pro commits → Air syncs automatically
 
-1. Identifies Pro or Air automatically
-2. Verifies SSH peer is reachable (mDNS)
-3. Compares local, peer, and origin commit hashes
-4. Pushes/pulls as needed (with auto-stash if dirty)
-5. Auto-resolves data file conflicts (`bali-intel-scraper/data/`, `published_articles.json`) using `--theirs`
-6. Reports final sync status with colors
+`.husky/post-commit` on Pro:
 
-**Setup:** The alias is in both `.zshrc` files, pointing to `scripts/nz-connect.sh` in the repo.
+```bash
+# After any commit on main, Air pulls from Pro
+ssh air "cd ~/Projects/nuzantara && git stash -q; git pull pro main --ff-only; git stash pop -q || true"
+```
 
-| Machine | Repo path                                    | Alias        |
-| ------- | -------------------------------------------- | ------------ |
-| Pro     | `~/Desktop/nuzantara/scripts/nz-connect.sh`  | `nz-connect` |
-| Air     | `~/Projects/nuzantara/scripts/nz-connect.sh` | `nz-connect` |
+### Air commits → Pro syncs automatically
 
-**Backward compat:** `nz-sync` on Air maps to `nz-connect`.
+`.husky/post-commit` on Air:
 
-> **Important:** All SSH aliases now use mDNS hostnames from `~/.ssh/config` (`ssh pro`, `ssh air`). No hardcoded IPs. If DHCP changes the IP, everything still works.
+```bash
+# After any commit on main, push to Pro
+git push pro main
+```
 
-## Syncthing
+Pro accepts pushes via `receive.denyCurrentBranch=updateInstead`.
 
-Bidirectional sync is configured between the machines:
+### Manual sync (if needed)
 
-- **Pro:** `~/Desktop/nuzantara` → **Air:** `~/Desktop/projects/nuzantara`
-- Syncs: `~/.claude/`, `~/.config/`
-- Excludes: `node_modules`, `build`, `cache`, `logs` (via `.stignore`)
-- Code changes: via **Git push/pull**, NOT Syncthing
+```bash
+# From Pro — pull what Air pushed
+git fetch air && git merge air/main --ff-only
+
+# From Air — pull what Pro committed
+git pull pro main --ff-only
+```
+
+### Log
+
+Both machines log sync activity to `~/.openclaw/logs/git-sync.log`.
+
+### Working tree conflicts
+
+Air's `.husky/post-commit` uses `git stash/pop` automatically around the pull. If Air has uncommitted changes, they are stashed, the pull happens, then unstashed. If Pro has uncommitted changes when Air pushes, the push will be rejected — stash first: `git stash && git push air main:main`.
 
 ## Architecture
 
-- **Pro (48GB):** Active development, Claude Code, heavy tasks
+- **Pro (48GB):** Active development, Claude Code, heavy tasks, GitHub push
 - **Air (16GB):** Server H24 — Ollama, Qdrant, PostgreSQL, Backend RAG, OpenClaw gateway, Telegram bot

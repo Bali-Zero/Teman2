@@ -1,6 +1,6 @@
 # NLM Deep Research Pipeline — Brainstorm Progress
 
-> Last updated: 2026-03-28 (Phase 4 complete — 5 of 8 live phases done)
+> Last updated: 2026-03-28 (Phase 5 complete — 6 of 8 live phases done)
 > Session: brainstorm with Gemini + Codex GPT-5.4 + DeepSeek R1
 
 ## Target
@@ -186,7 +186,31 @@ All 7 steps are now designed. The full pipeline specification covers:
 | 7    | `07_testing_protocol.md`           | 8-phase test, Go/No-Go, production transition            |
 | 7b   | `07b_testing_protocol_deepseek.md` | Baselines, KPIs, statistical tests, cost model, go/no-go |
 
-**Next action:** Phase 5 (Source lifecycle) → Phase 6 (Handoff) → Phase 7 (Failure/recovery) → Phase 8 (Go/No-Go).
+**Next action:** Phase 6 (Handoff) → Phase 7 (Failure/recovery) → Phase 8 (Go/No-Go).
+
+## Phase 5: Source Lifecycle ✅ COMPLETE (2026-03-28 19:25)
+
+**QUARANTINE:** 0 sources — all 44 are ACTIVE ✅
+
+**Consolidation triggers:** None warranted. All 8 claim categories checked:
+
+- No category meets ALL conditions (N≥4 sources + unique≥6 + topic_age≥14d + no recent adds)
+- Expected: all claims extracted today, topic_age=0d. Consolidation kicks in Week 2+.
+
+**Category budgets:**
+
+| Category      | Count | Budget | Status                                |
+| ------------- | ----- | ------ | ------------------------------------- |
+| canonical     | 34    | 15-25  | ⚠️ ABOVE MAX — needs reclassification |
+| working       | 0     | 25-35  | ⚠️ BELOW MIN — same issue             |
+| master_digest | 4     | 4-8    | ✅ OK                                 |
+| reference     | 6     | 3-6    | ✅ OK                                 |
+
+**Production action needed:** ~15 guide sources (`*_guida_2025.txt`) should be reclassified from `canonical` to `working`. These are curated internal docs, not laws/regulations. Laws (UU, PP, Permen) stay canonical. This is a Day 1 production task, not a test blocker.
+
+**Auto-archive:** 0 candidates. All sources SVS ≥ 0.25 or fresh (t_effective < 14d).
+
+**Verdict: PASS — lifecycle mechanics verified. Category reclassification flagged for production.**
 
 ## Phase 4: L2 Cross-Query Dedup ✅ COMPLETE (2026-03-28 19:15)
 
@@ -270,7 +294,7 @@ Top 5 by SVS: `jabatan_tka_kepmen228` (0.624 VALUABLE), `kitas_e23_tka` (0.587),
 
 ## Session Summary (2026-03-28 17:00-19:00)
 
-**Completed:** Phase 0 + Phase 1 + P1 actions + Phase 2 + Phase 3 + Phase 4
+**Completed:** Phase 0 + Phase 1 + P1 actions + Phase 2 + Phase 3 + Phase 4 + Phase 5
 **Claims:** 19 in `apps/evaluator/nlm_nb2_claims.jsonl` (9 VERIFIED, 7 PROVISIONAL, 1 LOW, 2 enforcement_divergence)
 **NB-2 sources:** 44 (38 seed + 4 MDs + 2 UU 63/2024)
 **NHS:** 0.801 (EXCELLENT), up from 0.668 baseline
