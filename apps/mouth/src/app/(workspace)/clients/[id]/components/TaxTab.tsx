@@ -470,6 +470,7 @@ export function TaxTab({
         <div className="lg:col-span-2 space-y-4">
           <TaxCard
             title="Personal Tax"
+            aria-label="Personal Tax"
             subtitle="Individual SPT Tahunan"
             deadline={deadlines.personalTax}
             icon={User}
@@ -481,6 +482,7 @@ export function TaxTab({
 
           <TaxCard
             title="Annual Company Tax"
+            aria-label="Annual Company Tax"
             subtitle="Corporate SPT Tahunan Badan"
             deadline={deadlines.annualCompany}
             icon={Building2}
@@ -492,6 +494,7 @@ export function TaxTab({
 
           <TaxCard
             title="Monthly Reports"
+            aria-label="Monthly Reports"
             subtitle="PPH 21, 23, PPN, PPH 25"
             deadline={new Date(selectedYear, 11, 20)} // Dec 20 as example
             icon={Calendar}

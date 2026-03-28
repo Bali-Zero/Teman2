@@ -127,6 +127,7 @@ export function ChatInputBar({
               className="h-7 w-7 p-0 rounded-full text-zinc-400 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
               onClick={() => setShowImagePrompt(!showImagePrompt)}
               title="Generate/Analyze Image"
+              aria-label="Generate/Analyze Image"
             >
               <Camera className="w-3.5 h-3.5" />
             </Button>

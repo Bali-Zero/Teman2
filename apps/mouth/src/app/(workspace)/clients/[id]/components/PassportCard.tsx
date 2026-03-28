@@ -287,6 +287,7 @@ export function PassportCard({
               onClick={handleDownload}
               className="w-full block relative group cursor-pointer"
               title="Click to download passport"
+              aria-label="Download passport"
             >
               <div className="aspect-[3/2] rounded-lg overflow-hidden border-2 border-dashed border-[var(--bz-border)] bg-[var(--bz-base)]">
                 {passportIsPdf ? (
@@ -579,6 +580,7 @@ export function PassportCard({
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/jpg,image/png,application/pdf"
+              aria-label="Upload passport"
               onChange={handleFileUpload}
               className="hidden"
             />

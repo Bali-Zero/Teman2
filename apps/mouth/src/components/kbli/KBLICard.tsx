@@ -45,6 +45,7 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
               <span
                 className="text-xs text-[var(--kbli-accent)]"
                 title="Curated content available"
+                aria-label="Curated content available"
               >
                 ★
               </span>

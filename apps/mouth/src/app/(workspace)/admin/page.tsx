@@ -326,6 +326,7 @@ export default function AdminPage() {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => handleDateChange(e.target.value)}
+                    aria-label="Select date"
                     className="px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm"
                   />
                 </div>

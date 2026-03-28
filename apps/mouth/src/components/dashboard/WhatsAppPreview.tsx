@@ -159,6 +159,7 @@ export function WhatsAppPreview({
                   onClick={(e) => handleDelete(e, msg.id)}
                   className="absolute right-2 top-2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-[var(--foreground-muted)] hover:text-red-500 transition-all"
                   title="Delete"
+                  aria-label="Delete message"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

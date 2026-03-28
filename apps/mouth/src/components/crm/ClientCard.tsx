@@ -153,7 +153,7 @@ export const ClientCard = React.memo(
                   {client.full_name}
                 </h4>
                 {client.client_type === 'company' && (
-                  <span title="Company">
+                  <span title="Company" aria-label="Company">
                     <Building2 className="w-3 h-3 shrink-0 text-[var(--tx-tertiary)]" />
                   </span>
                 )}
@@ -357,6 +357,7 @@ export const ClientCard = React.memo(
                   }}
                   className="p-1.5 rounded-md hover:bg-[rgba(99,102,241,0.20)] hover:text-[#818cf8] transition-colors"
                   title="New process for this client"
+                  aria-label="New process for this client"
                 >
                   <Plus className="w-3 h-3" />
                 </button>

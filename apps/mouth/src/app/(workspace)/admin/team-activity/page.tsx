@@ -404,16 +404,16 @@ export default function TeamActivityPage() {
                           <th className="px-3 py-2 text-right">Msgs</th>
                           <th className="px-3 py-2 text-right">Days</th>
                           <th className="px-3 py-2 text-right">CRM</th>
-                          <th className="px-3 py-2 text-right" title="Emails Sent">
+                          <th className="px-3 py-2 text-right" title="Emails Sent" aria-label="Emails Sent">
                             <Mail className="w-4 h-4 inline text-blue-400" /> Sent
                           </th>
-                          <th className="px-3 py-2 text-right" title="Emails Received">
+                          <th className="px-3 py-2 text-right" title="Emails Received" aria-label="Emails Received">
                             <Mail className="w-4 h-4 inline text-green-400" /> Rcvd
                           </th>
-                          <th className="px-3 py-2 text-right" title="Knowledge Base Views">
+                          <th className="px-3 py-2 text-right" title="Knowledge Base Views" aria-label="Knowledge Base Views">
                             <Eye className="w-4 h-4 inline text-purple-400" /> Views
                           </th>
-                          <th className="px-3 py-2 text-right" title="Knowledge Base Downloads">
+                          <th className="px-3 py-2 text-right" title="Knowledge Base Downloads" aria-label="Knowledge Base Downloads">
                             <Download className="w-4 h-4 inline text-orange-400" /> DL
                           </th>
                           <th className="px-3 py-2 text-left">Last Active</th>
@@ -469,6 +469,7 @@ export default function TeamActivityPage() {
                     <input
                       type="text"
                       placeholder="Search messages..."
+                      aria-label="Search messages"
                       value={messageFilters.search}
                       onChange={(e) =>
                         setMessageFilters((f) => ({
@@ -483,6 +484,7 @@ export default function TeamActivityPage() {
                   <input
                     type="text"
                     placeholder="Filter by user..."
+                    aria-label="Filter by user"
                     value={messageFilters.user_id}
                     onChange={(e) =>
                       setMessageFilters((f) => ({
@@ -565,6 +567,7 @@ export default function TeamActivityPage() {
                   <input
                     type="text"
                     placeholder="Filter by email..."
+                    aria-label="Filter by email"
                     value={timesheetFilter}
                     onChange={(e) => setTimesheetFilter(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && loadTimesheet()}
@@ -638,6 +641,7 @@ export default function TeamActivityPage() {
                   <input
                     type="text"
                     placeholder="Filter by email..."
+                    aria-label="Filter CRM actions by email"
                     value={crmFilter}
                     onChange={(e) => setCrmFilter(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && loadCrmActions()}

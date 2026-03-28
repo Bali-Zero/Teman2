@@ -70,6 +70,7 @@ export function EditDocumentModal({
   return (
     <Modal
       title="Edit Document"
+      aria-label="Edit Document"
       onClose={onClose}
       isSaving={isSaving}
       onSave={handleSubmit}
