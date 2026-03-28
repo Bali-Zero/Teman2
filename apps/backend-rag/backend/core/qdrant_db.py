@@ -272,7 +272,7 @@ class QdrantClient:
             logger.debug(f"✅ Created Qdrant HTTP client with connection pool: {self.qdrant_url}")
         return self._http_client
 
-    async def close(self):
+    async def close(self) -> None:
         """
         Close HTTP client and connection pool.
 

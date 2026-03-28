@@ -98,7 +98,7 @@ class BackendSelfHealingAgent:
 
         logger.info(f"Initializing agent for service: {service_name}")
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the agent"""
         logger.info("🚀 Starting self-healing agent...")
 
@@ -120,7 +120,7 @@ class BackendSelfHealingAgent:
         # Start monitoring loop
         await self.monitoring_loop()
 
-    async def monitoring_loop(self):
+    async def monitoring_loop(self) -> None:
         """Main monitoring loop"""
         while True:
             try:
@@ -299,7 +299,7 @@ class BackendSelfHealingAgent:
 
         return issues
 
-    async def attempt_auto_fix(self, issues: list[dict]):
+    async def attempt_auto_fix(self, issues: list[dict]) -> None:
         """Attempt to auto-fix detected issues"""
         for issue in issues:
             logger.info(f"🔧 Attempting auto-fix for: {issue['type']}")
@@ -410,7 +410,7 @@ class BackendSelfHealingAgent:
 
         return False
 
-    async def report_to_orchestrator(self, event: dict):
+    async def report_to_orchestrator(self, event: dict) -> None:
         """Report event to Central Orchestrator"""
         try:
             payload = {

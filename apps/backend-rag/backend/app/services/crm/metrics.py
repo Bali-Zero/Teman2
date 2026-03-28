@@ -471,7 +471,7 @@ def track_application_processing(
 
 
 # Scheduled task to update metrics
-async def schedule_metrics_updates():
+async def schedule_metrics_updates() -> None:
     """Schedule regular metrics updates"""
     while True:
         try:

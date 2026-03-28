@@ -69,7 +69,7 @@ class EmbeddingCache:
             self._misses += 1
             return None
 
-    async def set(self, texts: list[str], embeddings: list[list[float]]):
+    async def set(self, texts: list[str], embeddings: list[list[float]]) -> None:
         """Store embeddings in cache."""
         async with self._lock:
             if len(self._cache) >= self._max_size:
@@ -90,7 +90,7 @@ class EmbeddingCache:
             "max_size": self._max_size,
         }
 
-    async def clear(self):
+    async def clear(self) -> None:
         """Clear all cached embeddings."""
         async with self._lock:
             self._cache.clear()
@@ -147,7 +147,7 @@ class EmbeddingsGenerator:
             # Default to sentence-transformers (local, no API key needed)
             self._init_sentence_transformers(model)
 
-    def _init_openai(self, api_key: str | None = None, model: str | None = None):
+    def _init_openai(self, api_key: str | None = None, model: str | None = None) -> None:
         """Initialize OpenAI embeddings provider"""
         from openai import AsyncOpenAI
 
@@ -177,7 +177,7 @@ class EmbeddingsGenerator:
             f"🔌 [EmbeddingsGenerator] Initialized with OpenAI (Async): {self.model} ({self.dimensions} dims)",
         )
 
-    def _init_sentence_transformers(self, model: str | None = None):
+    def _init_sentence_transformers(self, model: str | None = None) -> None:
         """Initialize Sentence Transformers local embeddings provider"""
         self.model = (
             model
@@ -286,7 +286,7 @@ class EmbeddingsGenerator:
         """Get embedding cache statistics."""
         return _global_embedding_cache.get_stats()
 
-    async def clear_cache(self):
+    async def clear_cache(self) -> None:
         """Clear the embedding cache."""
         await _global_embedding_cache.clear()
 
