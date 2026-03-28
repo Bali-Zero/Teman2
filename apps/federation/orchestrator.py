@@ -114,6 +114,62 @@ SERVICE_COMMANDS = {
 }
 
 
+# ═══════════════════════════════════════════════════════
+# Preflight SDD — Trigger detection + audit logging
+# ═══════════════════════════════════════════════════════
+
+# Objective triggers — no judgment required.
+# Lower-level triggers also match if higher-level is not present.
+PREFLIGHT_TRIGGERS: dict[str, list[str]] = {
+    "l3": [
+        "architettura", "architecture", "auth ", "billing", "rag pipeline",
+        "sistema critico", "critical system", "payment", "security", "sicurezza",
+        "completamente nuovo", "rethink", "riprogetta",
+    ],
+    "l2": [
+        "refactor", "migration", "alembic", "kbli", "visa", "normativa",
+        "deploy", "dependencies.py", "service_initializer", "app_factory",
+        "pre-deploy", "fly.io", "monorepo", "3+ app", "tre app", "più app",
+        "schema change", "schema cambia", "database schema",
+    ],
+    "l1": [
+        "new feature", "nuova feature", "aggiungi", "add endpoint",
+        "new component", "nuovo componente", "nuovo router", "new router",
+        "implementa", "implement", "crea ", "create ",
+    ],
+}
+
+
+def detect_preflight_level(task: str) -> str | None:
+    """Detect if a task requires preflight and at which level (l1/l2/l3).
+
+    Returns None if no preflight needed (trivial task).
+    Checks L3 first (highest priority), then L2, then L1.
+    """
+    task_lower = task.lower()
+    for level in ("l3", "l2", "l1"):
+        for trigger in PREFLIGHT_TRIGGERS[level]:
+            if trigger in task_lower:
+                return level
+    return None
+
+
+def log_preflight_bypass(task: str, reason: str, user: str = "unknown") -> None:
+    """Log any preflight bypass to the append-only audit trail."""
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "type": "preflight_bypass",
+        "task": task[:200],
+        "reason": reason,
+        "user": user,
+        "machine": os.uname().nodename,
+    }
+    with open(AUDIT_FILE, "a") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    logger.warning("Preflight bypass logged: task=%s reason=%s", task[:60], reason)
+
+
 async def classify_task(task: str) -> dict[str, Any]:
     """Classify the task using Qwen 3.5:9b (local, $0).
 
@@ -452,6 +508,31 @@ async def run_federation(
     print(f"\n  Federation Orchestrator v3.1 — 3-tier ({total} capabilities)")
     print(f"  Task: {task[:100]}")
     print()
+
+    # 0. PREFLIGHT CHECK — auto-detect if spec is needed first
+    skip_preflight = os.environ.get("SKIP_PREFLIGHT", "").lower() in ("1", "true", "yes")
+    if not skip_preflight:
+        preflight_level = detect_preflight_level(task)
+        if preflight_level:
+            print(f"  ⚡ Preflight SDD triggered: level={preflight_level.upper()}")
+            print(f"  Running preflight-{preflight_level} before implementation...")
+            print(f"  (Set SKIP_PREFLIGHT=1 to bypass — will be logged in audit.jsonl)\n")
+            if interactive:
+                confirm = input(f"  Run preflight-{preflight_level}? [Y/n]: ").strip().lower()
+                if confirm == "n":
+                    reason = input("  Bypass reason (required for audit): ").strip() or "no reason given"
+                    log_preflight_bypass(task, reason)
+                    print("  Preflight bypassed — logged in audit.jsonl. Proceeding to standard dispatch.")
+                else:
+                    from apps.federation.workflows import execute_workflow
+                    return str((await execute_workflow(f"preflight-{preflight_level}", task, interactive=interactive)).get("output_file", ""))
+            else:
+                # Non-interactive: auto-run preflight
+                from apps.federation.workflows import execute_workflow
+                return str((await execute_workflow(f"preflight-{preflight_level}", task, interactive=False)).get("output_file", ""))
+    elif skip_preflight:
+        reason = os.environ.get("SKIP_PREFLIGHT_REASON", "SKIP_PREFLIGHT env var set")
+        log_preflight_bypass(task, reason)
 
     # 1. CLASSIFY
     print("  [1/5] Classifying task (Qwen 3.5:9b)...")
