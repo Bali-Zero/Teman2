@@ -255,7 +255,7 @@ class TestMaintainerAgent:
         repo_path: Path = Path("apps/backend-rag"),
         tests_dir: Path = Path("tests"),
         llm_provider: str = "local",
-    ):
+    ) -> None:
         self.repo_path = repo_path
         self.tests_dir = tests_dir
         self.llm_provider = llm_provider

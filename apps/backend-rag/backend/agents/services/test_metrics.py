@@ -127,7 +127,7 @@ class TestMetricsCollector:
     - Export capabilities
     """
 
-    def __init__(self, metrics_dir: Path = Path("metrics")):
+    def __init__(self, metrics_dir: Path = Path("metrics")) -> None:
         self.metrics_dir = metrics_dir
         self.metrics_dir.mkdir(exist_ok=True)
 
