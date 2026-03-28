@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from apps.evaluator.nlm_deep_research.t4_monitor import Article, T4Fetcher
+from apps.evaluator.nlm_deep_research.t4_monitor import Article, Post, T4Fetcher
 
 
 RSS_SAMPLE = """<?xml version="1.0" encoding="UTF-8"?>
@@ -102,3 +102,118 @@ class TestT4FetcherRSS:
             articles[0].url.encode()
         ).hexdigest()[:16]
         assert articles[0].article_id == expected_id
+
+
+WEBSITE_SAMPLE = """<html><body>
+  <article>
+    <h2><a href="/berita/timpora-bali">Timpora Bali 2026</a></h2>
+    <p>Deportasi overstay wna.</p>
+  </article>
+  <article>
+    <h2><a href="https://example.com/berita/kitas-rule">Aturan KITAS Baru</a></h2>
+    <p>Peraturan imigrasi terbaru.</p>
+  </article>
+</body></html>"""
+
+TWITTER_RESPONSE_USER = {"data": {"id": "12345678", "name": "Ditjen Imigrasi"}}
+TWITTER_RESPONSE_TWEETS = {
+    "data": [
+        {"id": "99999", "text": "Timpora razia WNA overstay.", "created_at": "2026-03-28T10:00:00Z"},
+        {"id": "99998", "text": "Deportasi WN Korea.", "created_at": "2026-03-27T08:00:00Z"},
+    ]
+}
+
+
+class TestT4FetcherWebsite:
+    @pytest.mark.asyncio
+    async def test_fetch_website_returns_articles(self):
+        fetcher = T4Fetcher()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = WEBSITE_SAMPLE
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            articles = await fetcher.fetch_website(
+                "https://ditjenimigrasi.go.id/berita/",
+                source_handle="ditjen_imigrasi",
+            )
+
+        assert len(articles) == 2
+        assert all(isinstance(a, Article) for a in articles)
+        assert articles[0].platform == "website"
+        # Relative URL should be resolved to absolute
+        assert articles[0].url.startswith("https://ditjenimigrasi.go.id")
+
+    @pytest.mark.asyncio
+    async def test_fetch_website_http_error_returns_empty(self):
+        fetcher = T4Fetcher()
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.get = AsyncMock(side_effect=httpx.ConnectError("timeout"))
+            mock_client_cls.return_value = mock_client
+
+            articles = await fetcher.fetch_website(
+                "https://bad.example.com/berita/",
+                source_handle="bad",
+            )
+
+        assert articles == []
+
+
+class TestT4FetcherTwitter:
+    @pytest.mark.asyncio
+    async def test_fetch_twitter_returns_posts(self):
+        fetcher = T4Fetcher()
+
+        async def _mock_get(url: str, **kwargs):
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status = MagicMock()
+            if "users/by/username" in url:
+                mock_resp.json = MagicMock(return_value=TWITTER_RESPONSE_USER)
+            else:
+                mock_resp.json = MagicMock(return_value=TWITTER_RESPONSE_TWEETS)
+            return mock_resp
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.get = _mock_get
+            mock_client_cls.return_value = mock_client
+
+            posts = await fetcher.fetch_twitter(
+                "@ditjen_imigrasi",
+                bearer_token="test_bearer",
+            )
+
+        assert len(posts) == 2
+        assert all(isinstance(p, Post) for p in posts)
+        assert posts[0].post_id == "99999"
+        assert posts[0].platform == "twitter"
+        assert posts[0].timestamp is not None
+
+    @pytest.mark.asyncio
+    async def test_fetch_twitter_error_returns_empty(self):
+        fetcher = T4Fetcher()
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.get = AsyncMock(side_effect=httpx.ConnectError("timeout"))
+            mock_client_cls.return_value = mock_client
+
+            posts = await fetcher.fetch_twitter(
+                "@bad_handle",
+                bearer_token="test_bearer",
+            )
+
+        assert posts == []
