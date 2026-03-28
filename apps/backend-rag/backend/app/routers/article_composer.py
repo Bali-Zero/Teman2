@@ -657,6 +657,21 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
         article, "primary_question", f"What does {article.headline} mean for expats in Bali?",
     )
 
+    # Sanitize YAML string values — strip newlines, escape quotes, truncate
+    def yaml_safe(text: str, max_len: int = 300) -> str:
+        s = str(text).replace("\n", " ").replace("\r", " ").replace('"', '\\"').strip()
+        if len(s) > max_len:
+            s = s[:max_len].rsplit(" ", 1)[0] + "..."
+        return s
+
+    safe_headline = yaml_safe(article.headline, 200)
+    safe_excerpt = yaml_safe(article.ai_summary, 280)
+    safe_seo_desc = yaml_safe(article.ai_summary, 155)
+    safe_seo_title = yaml_safe(article.headline, 60)
+    safe_answer = yaml_safe(answer_snippet, 300)
+    safe_question = yaml_safe(primary_question, 150)
+    safe_source = yaml_safe(article.source, 100)
+
     # Entity mentions from enrichment
     entity_mentions_yaml = ""
     entities = getattr(article, "entity_mentions", [])
@@ -669,28 +684,28 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
         entity_mentions_yaml = "  entityMentions:\n" + "\n".join(entity_lines)
 
     return f'''---
-title: "{article.headline}"
+title: "{safe_headline}"
 slug: "{slug}"
-excerpt: "{article.ai_summary}"
+excerpt: "{safe_excerpt}"
 coverImage: "{cover_img}"
-coverImageAlt: "{article.headline}"
+coverImageAlt: "{safe_headline}"
 category: "{category_slug}"
 tags: [{tags_str}]
 publishedAt: "{datetime.now(timezone.utc).strftime("%Y-%m-%d")}"
 author:
-  name: "{article.source}"
+  name: "{safe_source}"
   avatar: /static/zantara-avatar.png
 trending: {str(article.priority == "high").lower()}
 featured: false
 readingTime: {reading_time}
 difficulty: "intermediate"
-seoTitle: "{article.headline}"
-seoDescription: "{article.ai_summary}"
+seoTitle: "{safe_seo_title}"
+seoDescription: "{safe_seo_desc}"
 aiGenerated: true
 aiConfidenceScore: {ai_confidence}
 aiOptimization:
-  answerSnippet: "{answer_snippet}"
-  primaryQuestion: "{primary_question}"
+  answerSnippet: "{safe_answer}"
+  primaryQuestion: "{safe_question}"
 {entity_mentions_yaml}
 ---
 
