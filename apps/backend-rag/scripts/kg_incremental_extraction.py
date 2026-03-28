@@ -24,6 +24,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import sys
 import time
 from functools import wraps
@@ -72,6 +73,69 @@ except ImportError:
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+ALLOWED_ENTITY_TYPES = {
+    "undang_undang",
+    "peraturan_pemerintah",
+    "permen",
+    "perpres",
+    "perda",
+    "pasal",
+    "kbli",
+    "pt_pma",
+    "pt_pmdn",
+    "kitas",
+    "kitap",
+    "vitas",
+    "rptka",
+    "imta",
+    "ppn",
+    "pph_21",
+    "pph_23",
+    "npwp",
+    "nib",
+    "oss",
+    "izin_usaha",
+    "biaya",
+    "jangka_waktu",
+    "dokumen",
+    "sanksi",
+}
+
+GENERIC_ENTITY_NAMES = {
+    "asas saling menguntungkan",
+    "bukti permohonan",
+    "data orang asing",
+    "data permohonan visa",
+    "histori layanan keimigrasian",
+    "kantor penjamin",
+    "kepentingan administrasi",
+    "kewarganegaraan orang asing",
+    "nama orang asing",
+    "pekerjaan orang asing",
+    "pemeriksaan kelengkapan persyaratan",
+    "penerbitan visa",
+    "tempat/tanggal lahir orang asing",
+    "tugas pemerintahan",
+}
+
+LEGAL_REFERENCE_PATTERNS = {
+    "undang_undang": re.compile(
+        r"(?i)(?:uu|undang-?undang)\s*(?:no\.?|nomor)?\s*(\d+)\s*(?:tahun)?\s*(\d{4})"
+    ),
+    "peraturan_pemerintah": re.compile(
+        r"(?i)(?:pp|peraturan pemerintah)\s*(?:no\.?|nomor)?\s*(\d+)\s*(?:tahun)?\s*(\d{4})"
+    ),
+    "permen": re.compile(
+        r"(?i)(?:permen(?:kumham|keu|aker)?|peraturan menteri(?: hukum dan hak asasi manusia)?)\s*(?:no\.?|nomor)?\s*(\d+)\s*(?:tahun)?\s*(\d{4})"
+    ),
+    "perpres": re.compile(
+        r"(?i)(?:perpres|peraturan presiden)\s*(?:no\.?|nomor)?\s*(\d+)\s*(?:tahun)?\s*(\d{4})"
+    ),
+    "perda": re.compile(
+        r"(?i)(?:perda|peraturan daerah)\s*(?:no\.?|nomor)?\s*(\d+)\s*(?:tahun)?\s*(\d{4})"
+    ),
+}
 
 # Gemini extraction prompt
 EXTRACTION_PROMPT = """You are a Knowledge Graph Extractor for Indonesian business/legal documents.
@@ -166,6 +230,69 @@ class KGIncrementalExtractor:
         if self.provider == "openai":
             return self.openai is not None
         return self.gemini is not None and getattr(self.gemini, "is_available", True)
+
+    @staticmethod
+    def _slugify(value: str) -> str:
+        """Build a stable slug for entity IDs."""
+        normalized = re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
+        return re.sub(r"_+", "_", normalized)
+
+    def _normalize_legal_reference(self, entity_type: str, name: str) -> str | None:
+        """Normalize legal references into a stable canonical display name."""
+        pattern = LEGAL_REFERENCE_PATTERNS.get(entity_type)
+        if not pattern:
+            return name.strip()
+
+        match = pattern.search(name)
+        if not match:
+            return None
+
+        number, year = match.groups()
+        if len(year) != 4 or int(year) < 1945:
+            return None
+
+        prefixes = {
+            "undang_undang": "UU",
+            "peraturan_pemerintah": "PP",
+            "permen": "Permen",
+            "perpres": "Perpres",
+            "perda": "Perda",
+        }
+        return f"{prefixes[entity_type]} No {int(number)} Tahun {year}"
+
+    def _normalize_entity(self, entity: dict) -> dict | None:
+        """Apply lightweight quality filters and canonicalization before persistence."""
+        entity_type = str(entity.get("type", "")).strip().lower()
+        if entity_type not in ALLOWED_ENTITY_TYPES:
+            return None
+
+        raw_name = " ".join(str(entity.get("name", "")).split()).strip(" .,:;")
+        if not raw_name:
+            return None
+
+        normalized_name = raw_name
+        if entity_type in LEGAL_REFERENCE_PATTERNS:
+            normalized_name = self._normalize_legal_reference(entity_type, raw_name)
+            if not normalized_name:
+                return None
+
+        lower_name = normalized_name.lower()
+        if lower_name in GENERIC_ENTITY_NAMES:
+            return None
+
+        if entity_type == "dokumen" and len(normalized_name.split()) <= 2:
+            generic_document_tokens = {"dokumen", "surat", "keterangan", "bukti", "data"}
+            if lower_name in generic_document_tokens:
+                return None
+
+        description = " ".join(str(entity.get("description", "")).split())
+        canonical_id = f"{entity_type}_{self._slugify(normalized_name)}"
+        return {
+            "id": canonical_id,
+            "type": entity_type,
+            "name": normalized_name,
+            "description": description,
+        }
 
     def _qdrant_request(self, method: str, endpoint: str, json_data: dict = None) -> dict:
         """Make HTTP request to Qdrant API with retries."""
@@ -262,25 +389,23 @@ class KGIncrementalExtractor:
         self, collection_name: str, document_id: str = None, limit: int = None
     ) -> list[dict]:
         """
-        Fetch chunks from Qdrant collection using native filters.
+        Fetch chunks from Qdrant collection.
+
+        Note:
+            `legal_unified_2026` runs with Qdrant strict mode enabled and does not
+            expose a payload index for `document_id`, so server-side scroll filters
+            on that field return HTTP 400. We therefore scroll normally and apply
+            the `document_id` filter client-side.
         """
         chunks = []
         batch_size = 100
         next_offset = None
-
-        # Build native filter if document_id provided
-        filter_data = None
-        if document_id:
-            filter_data = {"must": [{"key": "document_id", "match": {"value": document_id}}]}
 
         while True:
             # Build scroll request
             scroll_data = {"limit": batch_size, "with_payload": True, "with_vectors": False}
             if next_offset is not None:
                 scroll_data["offset"] = next_offset
-
-            if filter_data:
-                scroll_data["filter"] = filter_data
 
             result = self._qdrant_request(
                 "POST", f"/collections/{collection_name}/points/scroll", scroll_data
@@ -296,6 +421,11 @@ class KGIncrementalExtractor:
                 chunk_id = str(point.get("id", ""))
                 payload = point.get("payload", {})
                 text = payload.get("text", "") or payload.get("content", "")
+                metadata = payload.get("metadata", {})
+
+                if document_id and metadata.get("document_id") != document_id:
+                    continue
+
                 if text:
                     chunks.append(
                         {
@@ -553,24 +683,56 @@ class KGIncrementalExtractor:
         entities = result.get("entities", [])
         relationships = result.get("relationships", [])
 
-        # Collect valid entity IDs as we save them
-        valid_entity_ids = set()
+        entity_id_map: dict[str, str] = {}
+        normalized_entities: list[dict] = []
+        seen_entity_ids: set[str] = set()
 
-        # Save entities first
         for entity in entities:
-            entity_id = entity.get("id", "").lower().replace(" ", "_")
-            if entity_id:
-                await self.save_entity(entity, chunk_id, collection)
-                valid_entity_ids.add(entity_id)
-                self.stats["entities_extracted"] += 1
+            raw_entity_id = self._slugify(str(entity.get("id", "")))
+            normalized_entity = self._normalize_entity(entity)
+            if not normalized_entity:
+                continue
 
-        # Save relationships (FK constraint will handle invalid refs)
+            canonical_entity_id = normalized_entity["id"]
+            if raw_entity_id:
+                entity_id_map[raw_entity_id] = canonical_entity_id
+
+            if canonical_entity_id in seen_entity_ids:
+                continue
+
+            normalized_entities.append(normalized_entity)
+            seen_entity_ids.add(canonical_entity_id)
+
+        for entity in normalized_entities:
+            await self.save_entity(entity, chunk_id, collection)
+            self.stats["entities_extracted"] += 1
+
+        seen_relationship_ids: set[str] = set()
         for rel in relationships:
-            if await self.save_relationship(rel, chunk_id, collection):
+            source_key = self._slugify(str(rel.get("source", "")))
+            target_key = self._slugify(str(rel.get("target", "")))
+            rel_type = str(rel.get("type", "RELATED_TO")).upper()
+            source_id = entity_id_map.get(source_key)
+            target_id = entity_id_map.get(target_key)
+
+            if not source_id or not target_id or source_id == target_id:
+                continue
+
+            relationship_id = f"{source_id}_{rel_type}_{target_id}"
+            if relationship_id in seen_relationship_ids:
+                continue
+
+            normalized_relationship = {
+                "source": source_id,
+                "target": target_id,
+                "type": rel_type,
+            }
+            if await self.save_relationship(normalized_relationship, chunk_id, collection):
+                seen_relationship_ids.add(relationship_id)
                 self.stats["relationships_extracted"] += 1
 
         self.stats["chunks_processed"] += 1
-        return len(entities) + len(relationships)
+        return len(normalized_entities) + len(seen_relationship_ids)
 
     async def run(self, collections: list = None, limit: int = None, dry_run: bool = False):
         """Run incremental extraction."""
