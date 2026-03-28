@@ -566,3 +566,6 @@ scripts/canva/output/
 
 # NLM handoff files
 apps/evaluator/handoff/
+.windsurf/
+apps/mouth/public/kbli-navigator/images/base64_data.txt
+apps/mouth/public/llms-full.txt
