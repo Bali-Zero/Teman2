@@ -1232,6 +1232,84 @@ async def publish_staging_item(
                         },
                     )
 
+            # Priority 3: Generate on-demand via Fireworks.ai Flux.1 Dev
+            # Triggered at approval time — only for articles without a pre-generated cover
+            if not cover_image_base64:
+                fireworks_key = os.environ.get("FIREWORKS_API_KEY", "")
+                if fireworks_key:
+                    try:
+                        import urllib.error
+                        import urllib.parse
+                        import urllib.request
+
+                        # Build editorial prompt (inline — no scraper dependency)
+                        _headline = title
+                        _category = category
+                        _summary = data.get("content", "")[:500]
+                        _prompt = (
+                            f"Cinematic editorial photograph for a news article titled '{_headline}'. "
+                            f"Category: {_category}. "
+                            f"Scene: {_summary[:200] if _summary else 'Indonesian business and lifestyle in Bali'}. "
+                            "Shot on ARRI Alexa Mini LF 35mm lens, teal and amber color grading, "
+                            "golden hour light, hyper-realistic, film grain, no text, no watermarks, "
+                            "purely visual scene."
+                        )
+                        _negative = (
+                            "text, watermark, logo, signature, caption, illustration, cartoon, "
+                            "anime, flat design, 3D render, CGI, neon colors, cyberpunk, "
+                            "smiling businesspeople, handshake, stock photo, blurry, low quality"
+                        )
+                        _fw_url = (
+                            "https://api.fireworks.ai/inference/v1/workflows/"
+                            "accounts/fireworks/models/flux-1-dev-fp8/text_to_image"
+                        )
+                        _payload = json.dumps({
+                            "prompt": _prompt,
+                            "negative_prompt": _negative,
+                            "width": 1344,
+                            "height": 768,
+                            "steps": 28,
+                            "cfg_scale": 3.5,
+                        }).encode()
+                        _req = urllib.request.Request(
+                            _fw_url,
+                            data=_payload,
+                            headers={
+                                "Content-Type": "application/json",
+                                "Authorization": f"Bearer {fireworks_key}",
+                            },
+                        )
+                        _resp = await asyncio.to_thread(
+                            urllib.request.urlopen, _req, None, 60  # 60s timeout
+                        )
+                        _img_bytes = await asyncio.to_thread(_resp.read)
+                        if len(_img_bytes) > 5000:
+                            cover_image_base64 = base64.b64encode(_img_bytes).decode("utf-8")
+                            cover_image_filename = f"{item_id}_cover.png"
+                            logger.info(
+                                "✅ Cover image generated via Fireworks.ai Flux.1 Dev",
+                                extra={
+                                    "type": type,
+                                    "item_id": item_id,
+                                    "size_bytes": len(_img_bytes),
+                                },
+                            )
+                        else:
+                            logger.warning(
+                                "Fireworks image response too small — skipping",
+                                extra={"type": type, "item_id": item_id},
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            f"Cover image generation via Fireworks failed (non-blocking): {e}",
+                            extra={"type": type, "item_id": item_id},
+                        )
+                else:
+                    logger.info(
+                        "FIREWORKS_API_KEY not set — publishing without cover image",
+                        extra={"type": type, "item_id": item_id},
+                    )
+
             # Create publish request
             publish_request = PublishRequest(
                 article=enriched_article,
