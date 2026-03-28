@@ -84,7 +84,7 @@ def require_admin(current_user: dict) -> None:
 @router.get("/dashboard", response_model=DashboardData)
 async def get_dashboard(
     current_user: dict = Depends(get_current_user),
-):
+) -> DashboardData:
     """
     Get notification dashboard data.
     Admin only.
@@ -385,7 +385,7 @@ async def get_stats(
 async def retry_failed_alerts(
     request: RetryRequest,
     current_user: dict = Depends(get_current_user),
-):
+) -> RetryResponse:
     """
     Retry failed alerts.
     Admin only.

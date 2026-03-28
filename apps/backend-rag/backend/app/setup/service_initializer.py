@@ -291,7 +291,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 pass
 
             # Create asyncpg pool for team timesheet service
-            async def init_db_connection(conn):
+            async def init_db_connection(conn) -> None:
                 await conn.set_type_codec(
                     "jsonb",
                     encoder=json.dumps,
@@ -473,7 +473,7 @@ def _is_transient_error(error: Exception) -> bool:
     return any(pattern in error_msg for pattern in transient_patterns)
 
 
-async def _database_health_check_loop(db_pool: asyncpg.Pool):
+async def _database_health_check_loop(db_pool: asyncpg.Pool) -> None:
     """Periodic health check for database pool with automatic stale connection recovery."""
     check_interval = 15  # seconds (fast recovery for Fly.io cold starts)
     from backend.app.core.service_health import ServiceStatus, service_registry

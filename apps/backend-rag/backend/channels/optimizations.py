@@ -85,7 +85,7 @@ class ChannelRateLimiter:
 
         return True
 
-    def _cleanup_old_counts(self, channel_id: str, now: float):
+    def _cleanup_old_counts(self, channel_id: str, now: float) -> None:
         """Remove counts older than time windows."""
         # Remove minute-old counts
         minute_ago = now - 60
@@ -156,11 +156,11 @@ class ChannelMetrics:
         self.latencies: dict[str, list[float]] = defaultdict(list)
         self.max_latency_samples = 1000  # Keep last 1000 samples
 
-    def record_message_received(self, channel: str):
+    def record_message_received(self, channel: str) -> None:
         """Record incoming message."""
         self.counters[f"{channel}.messages_received"] += 1
 
-    def record_message_sent(self, channel: str, latency_ms: float):
+    def record_message_sent(self, channel: str, latency_ms: float) -> None:
         """Record outgoing message with latency."""
         self.counters[f"{channel}.messages_sent"] += 1
         self.latencies[channel].append(latency_ms)
@@ -169,7 +169,7 @@ class ChannelMetrics:
         if len(self.latencies[channel]) > self.max_latency_samples:
             self.latencies[channel] = self.latencies[channel][-self.max_latency_samples :]
 
-    def record_error(self, channel: str, error_type: str):
+    def record_error(self, channel: str, error_type: str) -> None:
         """Record error."""
         self.counters[f"{channel}.errors.{error_type}"] += 1
 
@@ -222,7 +222,7 @@ class ConnectionPool:
 
             return self.clients[channel]
 
-    async def close_all(self):
+    async def close_all(self) -> None:
         """Close all HTTP clients."""
         async with self._lock:
             for channel, client in self.clients.items():
@@ -238,7 +238,7 @@ channel_metrics: ChannelMetrics | None = None
 connection_pool: ConnectionPool | None = None
 
 
-def initialize_optimizations():
+def initialize_optimizations() -> None:
     """Initialize global optimization instances."""
     global rate_limiter, message_deduplicator, channel_metrics, connection_pool
 
