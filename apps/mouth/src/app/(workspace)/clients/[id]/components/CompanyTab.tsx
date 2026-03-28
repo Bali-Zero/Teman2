@@ -322,10 +322,11 @@ export function CompanyTab({
 
   if (!companyData && !hasCompanyName && !hasAnyDoc) {
     return (
-      <div className="rounded-xl border border-dashed border-[var(--kbli-border)] bg-[var(--kbli-bg-base)]/50 p-12 text-center">
-        <Building2 className="w-12 h-12 mx-auto text-[var(--kbli-text-muted)] mb-3 opacity-50" />
-        <p className="text-[var(--kbli-text-secondary)]">
-          No company information
+      <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center space-y-2">
+        <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-40" />
+        <p className="text-sm font-medium text-[var(--bz-text-1)]">No company linked</p>
+        <p className="text-xs text-[var(--bz-text-2)] max-w-xs mx-auto">
+          This client has no associated company. Upload a PMA document or link a company from the database to get started.
         </p>
       </div>
     );

@@ -24,10 +24,14 @@ export function TimelineTab({
   interactions,
   formatDate,
   formatTime,
+  clientCreatedAt,
+  clientFirstContact,
 }: {
   interactions: Interaction[];
   formatDate: (d: string) => string;
   formatTime: (d: string) => string;
+  clientCreatedAt?: string;
+  clientFirstContact?: string;
 }) {
   const [filterType, setFilterType] = useState<string>('all');
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
@@ -64,9 +68,26 @@ export function TimelineTab({
 
   if (interactions.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl">
-        <Clock className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
-        <p className="text-[var(--bz-text-2)]">No activity yet</p>
+      <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-10 text-center shadow-xl space-y-3">
+        <Clock className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-2 opacity-40" />
+        <p className="text-sm font-medium text-[var(--bz-text-1)]">No interactions recorded yet</p>
+        <p className="text-xs text-[var(--bz-text-2)] opacity-70">
+          Interactions from WhatsApp, Telegram, email, calls, and notes will appear here.
+        </p>
+        {(clientCreatedAt || clientFirstContact) && (
+          <div className="mt-4 flex flex-col items-center gap-2 text-xs text-[var(--bz-text-2)]">
+            {clientCreatedAt && (
+              <span>
+                Client added: <span className="text-[var(--bz-text-1)]">{formatDate(clientCreatedAt)}</span>
+              </span>
+            )}
+            {clientFirstContact && (
+              <span>
+                First contact: <span className="text-[var(--bz-text-1)]">{formatDate(clientFirstContact)}</span>
+              </span>
+            )}
+          </div>
+        )}
       </div>
     );
   }

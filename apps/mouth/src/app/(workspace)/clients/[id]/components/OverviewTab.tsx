@@ -656,6 +656,11 @@ export function OverviewTab({
                 <p className="text-xs text-[var(--bz-text-2)] mt-1 opacity-60">
                   Interactions from WhatsApp, Email, Telegram and other channels will appear here
                 </p>
+                {client.last_interaction_date && (
+                  <p className="text-xs text-[var(--bz-text-2)] mt-2 opacity-50">
+                    Last known contact: {formatDate(client.last_interaction_date)}
+                  </p>
+                )}
               </div>
             )}
           </div>

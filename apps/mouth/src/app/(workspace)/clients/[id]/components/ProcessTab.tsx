@@ -173,9 +173,18 @@ export function ProcessTab({
       )}
 
       {practices.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl">
-          <FolderOpen className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-50" />
-          <p className="text-[var(--bz-text-2)]">No process yet</p>
+        <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl space-y-2">
+          <FolderOpen className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-40" />
+          <p className="text-sm font-medium text-[var(--bz-text-1)]">No services yet</p>
+          <p className="text-xs text-[var(--bz-text-2)] opacity-70 max-w-xs mx-auto">
+            Add a visa, company setup, tax, or other service to track progress and payments.
+          </p>
+          <div className="pt-2">
+            <Button size="sm" className="gap-2" onClick={() => router.push(`/process/new?client_id=${clientId}`)}>
+              <Plus className="w-3.5 h-3.5" />
+              Add first service
+            </Button>
+          </div>
         </div>
       ) : sortedPractices.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-8 text-center">
