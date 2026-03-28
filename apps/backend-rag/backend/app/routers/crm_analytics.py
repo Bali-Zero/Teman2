@@ -11,7 +11,7 @@ Provides comprehensive analytics for client management:
 Refactored: 2026-02-19
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg

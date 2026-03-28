@@ -4,7 +4,7 @@ Gestisce memoria collettiva intelligente (work + personal) con workflow condizio
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, TypedDict
 

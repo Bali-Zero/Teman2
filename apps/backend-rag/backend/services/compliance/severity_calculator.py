@@ -4,7 +4,7 @@ Responsibility: Calculate alert severity
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 logger = logging.getLogger(__name__)

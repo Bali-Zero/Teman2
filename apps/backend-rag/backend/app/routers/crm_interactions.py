@@ -5,7 +5,7 @@ Endpoints for logging and retrieving team-client interactions
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg

@@ -5,7 +5,7 @@ Tracks all state changes with user attribution and timestamps
 
 import functools
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock
 
