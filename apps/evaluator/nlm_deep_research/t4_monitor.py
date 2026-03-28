@@ -18,6 +18,7 @@ import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Optional
 
 if TYPE_CHECKING:
@@ -614,7 +615,7 @@ class T4Monitor:
     def __init__(
         self,
         *,
-        state_path: Optional["Path"] = None,
+        state_path: Optional[Path] = None,
         dry_run: bool = False,
         notebook_id: str = NB2_ID,
     ) -> None:
@@ -691,7 +692,12 @@ class T4Monitor:
             if state.is_seen(article.article_id):
                 result.skipped_dedup += 1
                 continue
-            ingested = await self._maybe_ingest(article)
+            try:
+                ingested = await self._maybe_ingest(article, state=state)
+            except Exception:
+                logger.exception("Unexpected error ingesting %s", article.article_id)
+                result.errors += 1
+                continue
             if ingested:
                 result.ingested += 1
                 result.filtered_admit += 1
@@ -712,9 +718,20 @@ class T4Monitor:
         )
         return result
 
-    async def _maybe_ingest(self, article: Article) -> bool:
-        """Filter → SVS → budget check → ingest. Returns True if ingested."""
-        state = self._persistence.load()
+    async def _maybe_ingest(
+        self,
+        article: Article,
+        *,
+        state: Optional[Any] = None,
+    ) -> bool:
+        """Filter → SVS → budget check → ingest. Returns True if ingested.
+
+        *state* — caller's in-memory T4State; if None, loads fresh from disk.
+        Callers inside ``run()`` must pass their state object so dedup/budget
+        mutations accumulated within the same cycle are not lost.
+        """
+        if state is None:
+            state = self._persistence.load()
 
         # Dedup
         if state.is_seen(article.article_id):

@@ -8,7 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from apps.evaluator.nlm_deep_research.t4_monitor import Article, Post, T4Fetcher
+from apps.evaluator.nlm_deep_research.t4_monitor import Article, Post, T4Fetcher, T4Monitor
+from apps.evaluator.nlm_deep_research.t4_state import T4State, T4StatePersistence
 
 
 RSS_SAMPLE = """<?xml version="1.0" encoding="UTF-8"?>
@@ -217,10 +218,6 @@ class TestT4FetcherTwitter:
             )
 
         assert posts == []
-
-
-from apps.evaluator.nlm_deep_research.t4_monitor import T4Monitor
-from apps.evaluator.nlm_deep_research.t4_state import T4State, T4StatePersistence
 
 
 class TestT4MonitorIngest:
