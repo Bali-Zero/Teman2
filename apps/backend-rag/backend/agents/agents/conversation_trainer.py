@@ -33,20 +33,20 @@ except ImportError:
     # Fallback if secure_subprocess not available
     import subprocess
 
-    def safe_git_checkout_new(branch, cwd=None):
+    def safe_git_checkout_new(branch: str, cwd: str | None = None) -> subprocess.CompletedProcess:  # type: ignore[type-arg]
         return subprocess.run(
             ["git", "checkout", "-b", branch], cwd=cwd, check=True, capture_output=True,
         )
 
-    def safe_git_checkout(branch, cwd=None):
+    def safe_git_checkout(branch: str, cwd: str | None = None) -> subprocess.CompletedProcess:  # type: ignore[type-arg]
         return subprocess.run(
             ["git", "checkout", branch], cwd=cwd, check=False, capture_output=True,
         )
 
-    def safe_git_add(files, cwd=None):
+    def safe_git_add(files: list, cwd: str | None = None) -> subprocess.CompletedProcess:  # type: ignore[type-arg]
         return subprocess.run(["git", "add"] + files, cwd=cwd, check=True, timeout=10.0)
 
-    def safe_git_commit(message, cwd=None):
+    def safe_git_commit(message: str, cwd: str | None = None) -> subprocess.CompletedProcess:  # type: ignore[type-arg]
         return subprocess.run(["git", "commit", "-m", message], cwd=cwd, check=True, timeout=10.0)
 
 
@@ -345,7 +345,7 @@ See `{prompt_file}` for updated system prompt.
 
 
 # Cron job entry (add to backend-ts cron)
-async def run_conversation_trainer(days_back: int = 7):
+async def run_conversation_trainer(days_back: int = 7) -> None:
     """Weekly conversation analysis and prompt improvement"""
     try:
         # Get db_pool from backend.app.state

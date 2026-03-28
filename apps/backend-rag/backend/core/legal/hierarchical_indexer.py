@@ -333,7 +333,7 @@ class HierarchicalIndexer:
             if not res.get("success"):
                 raise RuntimeError(f"Qdrant dense upsert failed: {res.get('error')}")
 
-    async def _upsert_parent_documents(self, parent_docs: list[dict]):
+    async def _upsert_parent_documents(self, parent_docs: list[dict]) -> None:
         """
         Salva documenti parent (BAB completi) in PostgreSQL.
         Non-blocking: se fallisce, logga warning ma non solleva eccezione.
@@ -421,6 +421,6 @@ class HierarchicalIndexer:
         else:
             logger.info(f"✅ Upserted {len(parent_docs)} parent documents to PostgreSQL")
 
-    async def close(self):
+    async def close(self) -> None:
         if self.db_pool:
             await self.db_pool.close()

@@ -80,7 +80,7 @@ class KnowledgeGraphBuilder:
         """Get database pool"""
         return self.db_pool
 
-    async def init_graph_schema(self):
+    async def init_graph_schema(self) -> None:
         """Create knowledge graph tables"""
         await self.schema_service.init_schema()
 
@@ -166,7 +166,7 @@ class KnowledgeGraphBuilder:
             source_id, target_id, rel_type, strength, evidence, source_ref, conn,
         )
 
-    async def process_conversation(self, conversation_id: str):
+    async def process_conversation(self, conversation_id: str) -> None:
         """Extract entities and relationships from a conversation"""
         if not conversation_id:
             logger.warning("process_conversation called with empty conversation_id")
@@ -278,7 +278,7 @@ class KnowledgeGraphBuilder:
                 f"Unexpected error processing conversation {conversation_id}: {e}", exc_info=True,
             )
 
-    async def build_graph_from_all_conversations(self, days_back: int = 30):
+    async def build_graph_from_all_conversations(self, days_back: int = 30) -> None:
         """Process all recent conversations"""
         if days_back < 1 or days_back > 365:
             logger.warning(f"Invalid days_back value: {days_back}, using default 30")

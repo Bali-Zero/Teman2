@@ -67,7 +67,7 @@ class CircuitBreaker:
         self.last_failure_time: float | None = None
         self.last_state_change_time = time.time()
 
-    def _transition_to_open(self):
+    def _transition_to_open(self) -> None:
         """Transition circuit to OPEN state."""
         if self.state != CircuitState.OPEN:
             logger.warning(
@@ -78,7 +78,7 @@ class CircuitBreaker:
             self.last_state_change_time = time.time()
             self.success_count = 0
 
-    def _transition_to_half_open(self):
+    def _transition_to_half_open(self) -> None:
         """Transition circuit to HALF_OPEN state."""
         if self.state != CircuitState.HALF_OPEN:
             logger.info(f"🟡 Circuit breaker '{self.name}' HALF_OPEN - testing recovery")
@@ -87,7 +87,7 @@ class CircuitBreaker:
             self.success_count = 0
             self.failure_count = 0
 
-    def _transition_to_closed(self):
+    def _transition_to_closed(self) -> None:
         """Transition circuit to CLOSED state."""
         if self.state != CircuitState.CLOSED:
             logger.info(
@@ -98,7 +98,7 @@ class CircuitBreaker:
             self.failure_count = 0
             self.success_count = 0
 
-    def _check_timeout(self):
+    def _check_timeout(self) -> None:
         """Check if timeout period has elapsed for OPEN -> HALF_OPEN transition."""
         if self.state == CircuitState.OPEN and self.last_failure_time:
             elapsed = time.time() - self.last_failure_time

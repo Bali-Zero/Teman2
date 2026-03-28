@@ -331,7 +331,7 @@ def cached(
 
     def decorator(func: Callable) -> Any:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs) -> Any:
             # Generate cache key
             cache_key = cache_inst._generate_key(prefix, *args, **kwargs)
 
@@ -358,7 +358,7 @@ def cached(
     return decorator
 
 
-async def invalidate_cache(pattern: str = "zantara:*", cache_service: CacheService | None = None):
+async def invalidate_cache(pattern: str = "zantara:*", cache_service: CacheService | None = None) -> int:
     """
     Invalidate cache entries matching pattern
 
@@ -375,7 +375,7 @@ async def invalidate_cache(pattern: str = "zantara:*", cache_service: CacheServi
     return count
 
 
-async def invalidate_namespace(namespace: str, cache_service: CacheService | None = None):
+async def invalidate_namespace(namespace: str, cache_service: CacheService | None = None) -> int:
     """
     Invalidate all cache entries in a namespace.
 
@@ -419,7 +419,7 @@ def cached_query(
 
     def decorator(func: Callable) -> Any:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs) -> Any:
             cache_key = cache_inst._generate_key(namespace, *args, **kwargs)
 
             cached_value = await cache_inst.get(cache_key)

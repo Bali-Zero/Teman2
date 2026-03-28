@@ -397,14 +397,14 @@ class PluginExecutor:
         input_hash = hashlib.sha256(input_str.encode()).hexdigest()
         return f"plugin:{plugin_name}:{input_hash}"
 
-    async def _record_success(self, plugin_name: str, execution_time: float):
+    async def _record_success(self, plugin_name: str, execution_time: float) -> None:
         """Record successful execution"""
         self._metrics[plugin_name]["calls"] += 1
         self._metrics[plugin_name]["successes"] += 1
         self._metrics[plugin_name]["total_time"] += execution_time
         self._metrics[plugin_name]["last_success"] = time.time()
 
-    async def _record_failure(self, plugin_name: str, error: str):
+    async def _record_failure(self, plugin_name: str, error: str) -> None:
         """Record failed execution"""
         self._metrics[plugin_name]["calls"] += 1
         self._metrics[plugin_name]["failures"] += 1
@@ -480,7 +480,7 @@ class PluginExecutor:
         """
         return {name: self.get_metrics(name) for name in self._metrics}
 
-    async def warm_plugins(self, plugin_names: list[str]):
+    async def warm_plugins(self, plugin_names: list[str]) -> None:
         """
         Warm up plugins by calling on_load
 

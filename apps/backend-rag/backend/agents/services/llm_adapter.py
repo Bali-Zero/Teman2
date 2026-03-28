@@ -64,7 +64,7 @@ class CircuitBreakerState:
     last_failure_time: float = 0.0
     opened_at: float = 0.0
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset circuit breaker to closed state"""
         self.state = CircuitState.CLOSED
         self.failure_count = 0
@@ -260,7 +260,7 @@ class LLMAdapter:
         # CLOSED or HALF_OPEN - allow request
         return True
 
-    def _record_circuit_breaker_success(self):
+    def _record_circuit_breaker_success(self) -> None:
         """Record successful request for circuit breaker"""
         if self.circuit_breaker.state == CircuitState.HALF_OPEN:
             self.circuit_breaker.success_count += 1
@@ -272,7 +272,7 @@ class LLMAdapter:
             if self.circuit_breaker.failure_count > 0:
                 self.circuit_breaker.failure_count = max(0, self.circuit_breaker.failure_count - 1)
 
-    def _record_circuit_breaker_failure(self, error_type: ErrorType):
+    def _record_circuit_breaker_failure(self, error_type: ErrorType) -> None:
         """Record failed request for circuit breaker"""
         # Only count transient errors for circuit breaker
         if error_type == ErrorType.TRANSIENT:
@@ -432,7 +432,7 @@ class LLMAdapter:
             response_time=time.time() - start_time,
         )
 
-    async def _ensure_ollama_available(self):
+    async def _ensure_ollama_available(self) -> None:
         """Ensure Ollama is running - try to start it if needed"""
         if not self.auto_start_ollama:
             return
@@ -561,7 +561,7 @@ class LLMAdapter:
         content = f"{request.prompt}:{request.max_tokens}:{request.temperature}"
         return hashlib.md5(content.encode()).hexdigest()
 
-    def _cache_response(self, key: str, response: LLMResponse):
+    def _cache_response(self, key: str, response: LLMResponse) -> None:
         """Cache response with LRU eviction"""
         if len(self.cache) >= self.cache_size:
             # Remove oldest entry (simple LRU)
@@ -570,7 +570,7 @@ class LLMAdapter:
 
         self.cache[key] = response
 
-    async def _check_rate_limit(self):
+    async def _check_rate_limit(self) -> None:
         """Simple rate limiting"""
         current_time = time.time()
 
@@ -610,7 +610,7 @@ class LLMAdapter:
             "permanent_errors": self.metrics.permanent_errors,
         }
 
-    def reset_metrics(self):
+    def reset_metrics(self) -> None:
         """Reset all metrics"""
         self.metrics = LLMMetrics()
         self.request_count = 0
@@ -643,7 +643,7 @@ class LLMAdapter:
 
         return health
 
-    async def close(self):
+    async def close(self) -> None:
         """Cleanup resources"""
         await self.client.aclose()
         logger.info("🧠 LLM Adapter closed")
@@ -670,7 +670,7 @@ def get_llm_adapter() -> LLMAdapter:
     return _llm_adapter
 
 
-async def close_llm_adapter():
+async def close_llm_adapter() -> None:
     """Close singleton LLM adapter"""
     global _llm_adapter
     if _llm_adapter:

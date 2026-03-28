@@ -64,7 +64,7 @@ async def list_companies(
     limit: int = Query(50, ge=1, le=100),
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> list[dict[str, Any]]:
     """List all companies with optional filters"""
     query = "SELECT * FROM companies WHERE 1=1"
     params = []
@@ -106,7 +106,7 @@ async def create_company(
     data: dict,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """Create a new company"""
     user_email = current_user.get("email", "system")
 
@@ -151,7 +151,7 @@ async def get_company_by_name_early(
     name: str = Query(..., description="Company name to search for"),
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any] | None:
     """Find a company by name (ILIKE match) — must be before /{company_id} route"""
     async with db.acquire() as conn:
         row = await conn.fetchrow(
@@ -200,7 +200,7 @@ async def get_client_companies_early(
     client_id: int,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> list[dict[str, Any]]:
     """Get all companies linked to a client — must be before /{company_id} route"""
     async with db.acquire() as conn:
         rows = await conn.fetch(
@@ -240,7 +240,7 @@ async def get_company(
     company_id: int,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """Get company details with associates"""
     async with db.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM companies WHERE id = $1", company_id)
@@ -332,7 +332,7 @@ async def update_company(
     data: dict,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """Update company details"""
     user_email = current_user.get("email", "system")
 
@@ -394,7 +394,7 @@ async def delete_company(
     company_id: int,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """Delete a company"""
     async with db.acquire() as conn:
         result = await conn.execute("DELETE FROM companies WHERE id = $1", company_id)
@@ -413,7 +413,7 @@ async def get_company_clients(
     company_id: int,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> list[dict[str, Any]]:
     """Get all clients associated with a company"""
     async with db.acquire() as conn:
         # Verify company exists
@@ -455,7 +455,7 @@ async def link_client_to_company(
     data: dict,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """Link a client to a company with a specific role"""
     async with db.acquire() as conn:
         # Verify company exists
@@ -502,7 +502,7 @@ async def unlink_client_from_company(
     client_id: int,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """Remove link between client and company"""
     async with db.acquire() as conn:
         result = await conn.execute(
@@ -526,7 +526,7 @@ async def get_company_documents(
     doc_type: str | None = Query(None, description="Filter by document type"),
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> list[dict[str, Any]]:
     """Get documents for a company"""
     async with db.acquire() as conn:
         query = """
@@ -581,7 +581,7 @@ async def create_company_document(
     data: dict,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """Add a document to a company"""
     user_email = current_user.get("email", "system")
 
@@ -631,7 +631,7 @@ async def delete_company_document(
     doc_id: int,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """Delete a company document"""
     async with db.acquire() as conn:
         result = await conn.execute(
@@ -652,7 +652,7 @@ async def get_company_tax_record(
     company_id: int,
     db: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
-):
+) -> dict[str, Any]:
     """Get tax record for a company"""
     async with db.acquire() as conn:
         row = await conn.fetchrow(

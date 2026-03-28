@@ -32,7 +32,7 @@ def require_auth(auth_type: str = "any", permissions: list = None) -> Any:
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(request: Request, *args, **kwargs):
+        async def wrapper(request: Request, *args, **kwargs) -> Any:
             # Check if user context exists in request state (injected by middleware)
             if not hasattr(request.state, "user") or not request.state.user:
                 logger.warning(f"Authentication required for {request.url.path}")
@@ -91,7 +91,7 @@ def public_endpoint(func: Callable) -> Callable:
     """
 
     @wraps(func)
-    async def wrapper(request: Request, *args, **kwargs):
+    async def wrapper(request: Request, *args, **kwargs) -> Any:
         logger.debug(f"Public endpoint accessed: {request.url.path}")
         return await func(request, *args, **kwargs)
 
@@ -105,7 +105,7 @@ def optional_auth(func: Callable) -> Callable:
     """
 
     @wraps(func)
-    async def wrapper(request: Request, *args, **kwargs):
+    async def wrapper(request: Request, *args, **kwargs) -> Any:
         user_context = getattr(request.state, "user", None)
         auth_method = getattr(user_context, "auth_method", None) if user_context else "public"
 
@@ -130,7 +130,7 @@ def role_required(allowed_roles: list) -> Any:
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        async def wrapper(request: Request, *args, **kwargs):
+        async def wrapper(request: Request, *args, **kwargs) -> Any:
             if not hasattr(request.state, "user") or not request.state.user:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required",
@@ -189,7 +189,7 @@ class AuthException(Exception):
         super().__init__(detail)
 
 
-async def handle_auth_error(request: Request, exc: Exception):
+async def handle_auth_error(request: Request, exc: Exception) -> None:
     """
     Global exception handler for authentication errors
     """

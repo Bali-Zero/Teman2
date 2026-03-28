@@ -34,7 +34,7 @@ class NotificationScheduler:
         self._daily_check_lock = asyncio.Lock()
         self._send_lock = asyncio.Lock()
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the scheduler."""
         if self.is_running:
             logger.warning("Scheduler already running")
@@ -68,14 +68,14 @@ class NotificationScheduler:
             extra={"timezone": BALI_TZ, "scheduled_jobs": len(self.scheduler.get_jobs())},
         )
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the scheduler."""
         if self.scheduler:
             self.scheduler.shutdown()
             self.is_running = False
             logger.info("Notification scheduler stopped")
 
-    async def _daily_check(self):
+    async def _daily_check(self) -> None:
         """Run daily expiry check. Uses lock to prevent concurrent execution."""
         if self._daily_check_lock.locked():
             logger.warning("Daily check already running, skipping")
@@ -149,7 +149,7 @@ class NotificationScheduler:
             except Exception as e:
                 logger.error("Daily check failed", exc_info=e)
 
-    async def _send_pending_alerts(self):
+    async def _send_pending_alerts(self) -> None:
         """Send all pending alerts. Uses lock to prevent concurrent execution."""
         if self._send_lock.locked():
             logger.debug("Send pending already running, skipping")
@@ -209,7 +209,7 @@ async def init_scheduler(db_pool: asyncpg.Pool | None = None) -> NotificationSch
         return _scheduler
 
 
-async def stop_scheduler():
+async def stop_scheduler() -> None:
     """Stop the global scheduler."""
     global _scheduler
     if _scheduler:
