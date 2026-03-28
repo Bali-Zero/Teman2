@@ -59,10 +59,10 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
           <p className="mt-0.5 text-sm text-[var(--foreground-muted)]">{code.titleId}</p>
         </div>
 
-        {/* Arrow */}
+        {/* Arrow — decorative, hidden from screen readers */}
         <span
-          className="mt-1 shrink-0 text-[var(--foreground-muted)]
-                     transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--kbli-accent)]"
+          aria-hidden="true"
+          className="mt-1 shrink-0 text-[var(--foreground-muted)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--kbli-accent)]"
         >
           →
         </span>
