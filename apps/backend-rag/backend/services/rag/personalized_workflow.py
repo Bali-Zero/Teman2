@@ -75,7 +75,7 @@ async def personalize_workflow(
             # Rule: Auto-complete 'submit_passport' if passport_number is present
             if step_id == "submit_passport" and user_data.get("passport_number"):
                 step["status"] = "completed"
-                step["completed_at"] = datetime.now().isoformat()
+                step["completed_at"] = datetime.now(tz=timezone.utc).isoformat()
 
             # Rule: Check Retirement Eligibility (Step: retirement_check)
             if step_id == "retirement_check" and user_data.get("date_of_birth"):
@@ -105,7 +105,7 @@ async def personalize_workflow(
         personalized_workflow = base_workflow.copy()
         personalized_workflow["steps"] = personalized_steps
         personalized_workflow["is_personalized"] = True
-        personalized_workflow["personalized_at"] = datetime.now().isoformat()
+        personalized_workflow["personalized_at"] = datetime.now(tz=timezone.utc).isoformat()
 
         logger.info(f"✅ Workflow '{base_workflow.get('name')}' personalized for {user_email}")
         return personalized_workflow

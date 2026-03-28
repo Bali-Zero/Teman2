@@ -164,7 +164,7 @@ class IntelApprovalService:
 
         source = item_data.get("source_name", item_data.get("source", "Unknown"))
         source_url = item_data.get("source_url", item_data.get("url", ""))
-        detected_at = item_data.get("detected_at", datetime.now().strftime("%Y-%m-%d %H:%M"))
+        detected_at = item_data.get("detected_at", datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M"))
 
         emoji_map = {"visa": "🛂", "news": "📰"}
         emoji = emoji_map.get(intel_type, "📋")
@@ -251,7 +251,7 @@ class IntelApprovalService:
             "intel_type": intel_type,
             "status": "voting",
             "votes": {"approve": [], "reject": []},
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(tz=timezone.utc).isoformat(),
             "item_data": item_data,
             "enriched_data": enriched_data,
             "image_path": image_path,

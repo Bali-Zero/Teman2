@@ -189,7 +189,7 @@ async def create_interaction(
                 # Use to_jsonb for asyncpg JSONB compatibility (handles Decimal, datetime, UUID)
                 to_jsonb(interaction.extracted_entities),
                 to_jsonb(interaction.action_items),
-                datetime.now(),
+                datetime.now(tz=timezone.utc),
             )
 
             if not row:
@@ -631,7 +631,7 @@ async def create_interaction_from_conversation(
                     client_email.split("@")[0],  # Use email prefix as temp name
                     client_email,
                     "prospect",
-                    datetime.now(),
+                    datetime.now(tz=timezone.utc),
                     team_member,
                 )
                 if new_client_row:
@@ -687,7 +687,7 @@ async def create_interaction_from_conversation(
                 full_content,
                 team_member,
                 "inbound",
-                datetime.now(),
+                datetime.now(tz=timezone.utc),
             )
 
             if not interaction_row:

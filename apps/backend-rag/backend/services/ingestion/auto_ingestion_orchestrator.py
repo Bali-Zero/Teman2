@@ -214,7 +214,7 @@ class AutoIngestionOrchestrator:
         Returns:
             List of sources due for scraping
         """
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         due_sources = []
 
         for source in self.sources.values():
@@ -269,7 +269,7 @@ class AutoIngestionOrchestrator:
                     title=item.get("title", ""),
                     content=item.get("content", ""),
                     url=item.get("url", source.url),
-                    scraped_at=datetime.now().isoformat(),
+                    scraped_at=datetime.now(tz=timezone.utc).isoformat(),
                     metadata=item.get("metadata", {}),
                 )
                 scraped_items.append(content)
@@ -278,7 +278,7 @@ class AutoIngestionOrchestrator:
             raise  # Re-raise exception instead of returning empty list
 
         # Update last scraped
-        source.last_scraped = datetime.now().isoformat()
+        source.last_scraped = datetime.now(tz=timezone.utc).isoformat()
 
         logger.info(f"   Scraped {len(scraped_items)} items")
         return scraped_items
@@ -454,12 +454,12 @@ Answer with YES or NO and a brief reason."""
             raise ValueError(f"Unknown source: {source_id}")
 
         # Create job
-        job_id = f"job_{source_id}_{int(datetime.now().timestamp())}"
+        job_id = f"job_{source_id}_{int(datetime.now(tz=timezone.utc).timestamp())}"
         job = IngestionJob(
             job_id=job_id,
             source_id=source_id,
             status=IngestionStatus.PENDING,
-            started_at=datetime.now().isoformat(),
+            started_at=datetime.now(tz=timezone.utc).isoformat(),
         )
 
         self.jobs[job_id] = job
@@ -486,11 +486,11 @@ Answer with YES or NO and a brief reason."""
 
             # Complete
             job.status = IngestionStatus.COMPLETED
-            job.completed_at = datetime.now().isoformat()
+            job.completed_at = datetime.now(tz=timezone.utc).isoformat()
 
             self.orchestrator_stats["successful_jobs"] += 1
             self.orchestrator_stats["total_items_ingested"] += ingested_count
-            self.orchestrator_stats["last_run"] = datetime.now().isoformat()
+            self.orchestrator_stats["last_run"] = datetime.now(tz=timezone.utc).isoformat()
 
             logger.info(
                 f"✅ Job completed: {job_id} - "
@@ -502,7 +502,7 @@ Answer with YES or NO and a brief reason."""
         except Exception as e:
             job.status = IngestionStatus.FAILED
             job.error = str(e)
-            job.completed_at = datetime.now().isoformat()
+            job.completed_at = datetime.now(tz=timezone.utc).isoformat()
 
             self.orchestrator_stats["failed_jobs"] += 1
 

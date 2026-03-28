@@ -492,7 +492,7 @@ class ProactiveComplianceMonitor:
                     "days_until": days_until,
                     "severity": severity.value,
                     "status": "active",
-                    "created_at": datetime.now().isoformat(),
+                    "created_at": datetime.now(tz=timezone.utc).isoformat(),
                 }
                 alerts.append(alert)
 

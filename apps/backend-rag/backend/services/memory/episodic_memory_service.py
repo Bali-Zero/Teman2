@@ -172,7 +172,7 @@ class EpisodicMemoryService:
             if year < 100:
                 year += 2000
         else:
-            year = datetime.now().year
+            year = datetime.now(tz=timezone.utc).year
 
         try:
             return datetime(year, month, day, 12, 0, 0, tzinfo=timezone.utc)

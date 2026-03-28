@@ -333,7 +333,7 @@ This is a mock answer. Real generation requires LLMGateway to be initialized.
                 "generation": mock_answer.strip(),
                 "execution_path": execution_path,
                 "step_count": state.get("step_count", 0) + 1,
-                "timestamp": datetime.now(),
+                "timestamp": datetime.now(tz=timezone.utc),
             }
 
         # Real LLM generation
@@ -388,7 +388,7 @@ Your answer:"""
             "generation": response_text.strip(),
             "execution_path": execution_path,
             "step_count": state.get("step_count", 0) + 1,
-            "timestamp": datetime.now(),
+            "timestamp": datetime.now(tz=timezone.utc),
         }
 
     except Exception as e:
@@ -408,7 +408,7 @@ Your answer:"""
             "errors": errors,
             "execution_path": execution_path,
             "step_count": state.get("step_count", 0) + 1,
-            "timestamp": datetime.now(),
+            "timestamp": datetime.now(tz=timezone.utc),
         }
 
 
@@ -513,7 +513,7 @@ async def invoke_rag_workflow(question: str, metadata: dict[str, Any] = None) ->
         "metadata": metadata or {},
         "step_count": 0,
         "execution_path": [],
-        "timestamp": datetime.now(),
+        "timestamp": datetime.now(tz=timezone.utc),
     }
 
     try:

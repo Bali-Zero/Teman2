@@ -227,14 +227,14 @@ class ZohoInvoiceService:
         )
 
         # Calculate due date (7 days from now)
-        due_date = (datetime.now()).strftime("%Y-%m-%d")
-        due_date_obj = datetime.now()
+        due_date = (datetime.now(tz=timezone.utc)).strftime("%Y-%m-%d")
+        due_date_obj = datetime.now(tz=timezone.utc)
         due_date = due_date_obj.strftime("%Y-%m-%d")
 
         invoice_data = {
             "customer_id": customer_id,
             "line_items": line_items,
-            "date": datetime.now().strftime("%Y-%m-%d"),
+            "date": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
             "due_date": due_date,
             "reference_number": str(practice_data.get("id", "")),
             "notes": "Thank you for choosing Zantara Indonesia. Payment is due within 7 days.",

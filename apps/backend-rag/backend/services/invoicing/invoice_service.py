@@ -162,7 +162,7 @@ class InvoiceAutomationService:
             # Step 6: Update practice with invoice details
             invoice_info = {
                 "invoice_number": invoice_number,
-                "invoice_generated_at": datetime.now().isoformat(),
+                "invoice_generated_at": datetime.now(tz=timezone.utc).isoformat(),
                 "invoice_drive_id": drive_file_id,
                 "invoice_drive_link": drive_web_link,
                 "email_sent": email_sent,

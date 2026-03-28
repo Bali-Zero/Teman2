@@ -75,7 +75,7 @@ class JourneyBuilderService:
 
         # Calculate estimated completion
         total_days = sum(s.estimated_duration_days for s in steps)
-        estimated_completion = (datetime.now() + timedelta(days=total_days)).isoformat()
+        estimated_completion = (datetime.now(tz=timezone.utc) + timedelta(days=total_days)).isoformat()
 
         journey = ClientJourney(
             journey_id=journey_id,
@@ -141,7 +141,7 @@ class JourneyBuilderService:
 
         # Calculate estimated completion
         total_days = sum(s.estimated_duration_days for s in journey_steps)
-        estimated_completion = (datetime.now() + timedelta(days=total_days)).isoformat()
+        estimated_completion = (datetime.now(tz=timezone.utc) + timedelta(days=total_days)).isoformat()
 
         journey = ClientJourney(
             journey_id=journey_id,

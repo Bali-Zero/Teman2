@@ -68,11 +68,12 @@ export default function ChatPage() {
       setOffset((prev) => prev + PAGE_SIZE);
       setHasMore(data.messages.length === PAGE_SIZE);
     } catch (err) {
+      error('Failed to load earlier messages', 'Please try again');
       logger.error('Failed to load earlier messages', {}, err as Error);
     } finally {
       setIsLoadingMore(false);
     }
-  }, [offset]);
+  }, [offset, error]);
 
   // Mark visible messages as read
   const markVisibleMessagesAsRead = useCallback(async () => {

@@ -151,7 +151,7 @@ async def invoke_agent(
             {
                 "user_email": current_user.get("email"),
                 "user_id": current_user.get("id"),
-                "request_timestamp": datetime.now().isoformat(),
+                "request_timestamp": datetime.now(tz=timezone.utc).isoformat(),
             }
         )
 
@@ -175,7 +175,7 @@ async def invoke_agent(
             generation=final_state.get("generation", "No generation produced"),
             execution_path=final_state.get("execution_path", []),
             step_count=final_state.get("step_count", 0),
-            timestamp=final_state.get("timestamp", datetime.now()),
+            timestamp=final_state.get("timestamp", datetime.now(tz=timezone.utc)),
             metadata=request.metadata,
             errors=errors,
         )
@@ -221,7 +221,7 @@ async def agent_health() -> AgentHealthResponse:
             return AgentHealthResponse(
                 status="unhealthy",
                 graph_loaded=False,
-                timestamp=datetime.now(),
+                timestamp=datetime.now(tz=timezone.utc),
                 message="LangGraph workflow failed to load",
             )
 
@@ -229,7 +229,7 @@ async def agent_health() -> AgentHealthResponse:
         return AgentHealthResponse(
             status="healthy",
             graph_loaded=True,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(tz=timezone.utc),
             message="Agent system is operational",
         )
 
@@ -238,7 +238,7 @@ async def agent_health() -> AgentHealthResponse:
         return AgentHealthResponse(
             status="unhealthy",
             graph_loaded=False,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(tz=timezone.utc),
             message=f"Import error: {str(e)}",
         )
 
@@ -247,6 +247,6 @@ async def agent_health() -> AgentHealthResponse:
         return AgentHealthResponse(
             status="degraded",
             graph_loaded=False,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(tz=timezone.utc),
             message=f"Error: {str(e)}",
         )

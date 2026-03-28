@@ -1770,7 +1770,7 @@ class PortalService:
                 return result
 
             # Add timestamp to filename to avoid collisions
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
             drive_file_name = f"{timestamp}_{file_name}"
 
             # Upload file with retry logic
@@ -1838,7 +1838,7 @@ class PortalService:
             from backend.app.core.config import settings
 
             # Create folder structure
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
             safe_client_name = "".join(
                 c for c in client_name if c.isalnum() or c in (" ", "_")
             ).rstrip()[:30]

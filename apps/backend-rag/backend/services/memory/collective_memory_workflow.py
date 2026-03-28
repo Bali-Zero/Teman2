@@ -223,7 +223,7 @@ async def update_team_relationships(state: CollectiveMemoryState) -> CollectiveM
                     "relationship_type": (
                         "friendship" if category == MemoryCategory.RELATIONSHIP else "social"
                     ),
-                    "last_interaction": datetime.now().isoformat(),
+                    "last_interaction": datetime.now(tz=timezone.utc).isoformat(),
                 }
                 state["relationships_to_update"].append(relationship)
 

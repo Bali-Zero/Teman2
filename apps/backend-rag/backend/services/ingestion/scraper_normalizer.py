@@ -309,7 +309,7 @@ class ScraperDataNormalizer:
             "quality_score": quality_score,
             "content_hash": content_hash,
             "data_type": "news_article",
-            "normalized_at": datetime.now().isoformat(),
+            "normalized_at": datetime.now(tz=timezone.utc).isoformat(),
             "scraper_id": raw_data.get("scraper_id", ""),
             "confidence_score": raw_data.get("confidence_score", 0.0),
         }
@@ -359,7 +359,7 @@ class ScraperDataNormalizer:
             "scraped_at": scraped_at,
             "content_hash": content_hash,
             "data_type": "visa_info",
-            "normalized_at": datetime.now().isoformat(),
+            "normalized_at": datetime.now(tz=timezone.utc).isoformat(),
             "scraper_type": raw_data.get("scraper_type", "unknown"),
             "data_quality": raw_data.get("data_quality", "unknown"),
         }
@@ -419,10 +419,10 @@ class ScraperDataNormalizer:
                     continue
 
             # If all fails, return current time
-            return datetime.now().isoformat()
+            return datetime.now(tz=timezone.utc).isoformat()
 
         except Exception:
-            return datetime.now().isoformat()
+            return datetime.now(tz=timezone.utc).isoformat()
 
     def _normalize_tags(self, tags) -> list[str]:
         """Normalize tags to consistent format"""

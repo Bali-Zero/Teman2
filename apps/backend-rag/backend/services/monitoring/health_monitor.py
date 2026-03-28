@@ -265,7 +265,7 @@ class HealthMonitor:
     ) -> None:
         """Send resource alert with cooldown to avoid spam."""
         last = self._resource_alert_cooldown.get(resource)
-        if last and datetime.now() - last < self.alert_cooldown:
+        if last and datetime.now(tz=timezone.utc) - last < self.alert_cooldown:
             return
 
         await self.alert_service.send_resource_alert(
@@ -274,7 +274,7 @@ class HealthMonitor:
             threshold=threshold,
             unit=unit,
         )
-        self._resource_alert_cooldown[resource] = datetime.now()
+        self._resource_alert_cooldown[resource] = datetime.now(tz=timezone.utc)
 
     def _update_resource_metrics(
         self, rss_mb: float, mem_percent: float, cpu_percent: float
@@ -295,7 +295,7 @@ class HealthMonitor:
     async def _send_downtime_alert(self, service_name: str) -> None:
         """Send alert when service goes down"""
         last_alert = self.last_alert_time.get(f"down_{service_name}")
-        if last_alert and datetime.now() - last_alert < self.alert_cooldown:
+        if last_alert and datetime.now(tz=timezone.utc) - last_alert < self.alert_cooldown:
             return
 
         await self.alert_service.send_alert(
@@ -304,12 +304,12 @@ class HealthMonitor:
             level=AlertLevel.CRITICAL,
             metadata={
                 "service": service_name,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                 "action": "immediate_investigation_required",
             },
         )
 
-        self.last_alert_time[f"down_{service_name}"] = datetime.now()
+        self.last_alert_time[f"down_{service_name}"] = datetime.now(tz=timezone.utc)
         logger.error(f"🚨 ALERT SENT: {service_name} is DOWN")
 
     async def _send_recovery_alert(self, service_name: str) -> None:
@@ -320,7 +320,7 @@ class HealthMonitor:
             level=AlertLevel.INFO,
             metadata={
                 "service": service_name,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                 "action": "monitoring_continue",
             },
         )

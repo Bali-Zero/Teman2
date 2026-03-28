@@ -39,12 +39,12 @@ class StepManagerService:
             return False
 
         step.status = StepStatus.IN_PROGRESS
-        step.started_at = datetime.now().isoformat()
+        step.started_at = datetime.now(tz=timezone.utc).isoformat()
 
         # Update journey status if needed
         if journey.status == JourneyStatus.NOT_STARTED:
             journey.status = JourneyStatus.IN_PROGRESS
-            journey.started_at = datetime.now().isoformat()
+            journey.started_at = datetime.now(tz=timezone.utc).isoformat()
 
         logger.info(f"▶️ Started step: {step_id} - {step.title}")
         return True
@@ -72,7 +72,7 @@ class StepManagerService:
             return False
 
         step.status = StepStatus.COMPLETED
-        step.completed_at = datetime.now().isoformat()
+        step.completed_at = datetime.now(tz=timezone.utc).isoformat()
 
         if notes:
             step.notes.extend(notes)
@@ -130,6 +130,6 @@ class StepManagerService:
 
         if completed_steps == total_steps:
             journey.status = JourneyStatus.COMPLETED
-            journey.completed_at = datetime.now().isoformat()
-            journey.actual_completion = datetime.now().isoformat()
+            journey.completed_at = datetime.now(tz=timezone.utc).isoformat()
+            journey.actual_completion = datetime.now(tz=timezone.utc).isoformat()
             logger.info(f"🎉 Journey {journey.journey_id} completed!")
