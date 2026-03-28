@@ -684,6 +684,26 @@ print(f'Query: {query}')
         json_output "sandbox" "$duration" "$output" "$ec"
         ;;
 
+    # PREFLIGHT SDD: Thin wrapper → delegates to Python federation workflows
+    # Usage: ai-dispatch.sh preflight "task description"           # L2 default
+    #        ai-dispatch.sh preflight-l1 "task semplice"           # L1 quick scan
+    #        ai-dispatch.sh preflight-l2 "task medium"             # L2 full (default)
+    #        ai-dispatch.sh preflight-l3 "task critico"            # L3 deep + sandbox
+    preflight|preflight-l1|preflight-l2|preflight-l3)
+        TASK="${PROMPT:-$2}"
+        [ -z "$TASK" ] && { err "Usage: $0 preflight[-l1|-l2|-l3] \"task description\""; exit 1; }
+        # Determine level (strip 'preflight' prefix and leading dash)
+        RAW_CMD="${COMMAND#preflight}"
+        LEVEL="${RAW_CMD#-}"
+        [ -z "$LEVEL" ] && LEVEL="l2"  # default to L2
+        info "Preflight SDD — level ${LEVEL^^} starting for: ${TASK:0:80}"
+        start=$(date +%s)
+        python3 -m apps.federation.workflows run "preflight-${LEVEL}" "$TASK"
+        ec=$?
+        duration=$(( $(date +%s) - start ))
+        audit_log "preflight-${LEVEL}" "$(echo "$TASK" | shasum -a 256 | cut -d' ' -f1)" "$duration" "$ec"
+        ;;
+
     # REDTEAM: Gemini critiques solution pre-deploy (no cache — must be fresh)
     redteam)
         [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh redteam \"solution description\""; exit 1; }
@@ -1098,6 +1118,19 @@ PIPELINES — Scheduled/triggered workflows (NOT dispatchable):
   war-room          manual (Claude Code)  Instagram carousel creation
   seo-guardian      manual (evaluator)    AI SEO coverage monitoring
   nlm-daily-refresh 04:30 WITA (Pro)      NB-1 codebase bundle refresh
+
+PREFLIGHT SDD — Mandatory pre-implementation spec (auto-triggered by orchestrator):
+┌─────────────────────────────────────────────────────────────────────┐
+│   preflight      "task"    L2 default (45 min): explore+search→NLM │
+│   preflight-l1   "task"    L1 quick (10-15 min): explore→reasoning │
+│   preflight-l2   "task"    L2 full (45 min): +NLM gate + redteam   │
+│   preflight-l3   "task"    L3 deep (90 min): +sandbox + HITL        │
+│                                                                     │
+│   Triggers L1: new feature, 3+ files across apps                   │
+│   Triggers L2: refactor, migration, KBLI/visa, pre-deploy          │
+│   Triggers L3: architecture, auth, RAG pipeline, billing           │
+│   Bypass: SKIP_PREFLIGHT=1 (logged in audit.jsonl)                 │
+└─────────────────────────────────────────────────────────────────────┘
 
 COMBO & PARALLEL:
   analyze-then-fix   "prompt"     Gemini analyzes → Codex fixes

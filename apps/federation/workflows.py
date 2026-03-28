@@ -200,6 +200,165 @@ register(Workflow(
 ))
 
 
+# --- 6. Preflight L1 — Quick Scan ---
+register(Workflow(
+    id="preflight-l1",
+    name="Preflight L1 — Quick Scan",
+    description="Pre-implementation: explore + reasoning → spec (10-15 min). "
+                "Trigger: nuova feature, task tocca 3+ file in app diverse.",
+    steps=[
+        WorkflowStep(
+            name="explore",
+            agent="gemini-explore",
+            prompt_template="Mappa il codebase Nuzantara per il seguente task: {task}. "
+                "Identifica: file rilevanti, pattern esistenti, dipendenze critiche, "
+                "codice simile già presente. Focus su apps/backend-rag/, apps/mouth/, "
+                "apps/federation/. Usa tutto il context window disponibile.",
+        ),
+        WorkflowStep(
+            name="reasoning",
+            agent="deepseek-reasoning",
+            prompt_template="Proponi 2-3 approcci concreti per implementare: {task}. "
+                "Contesto codebase da Gemini: {prev_explore}. "
+                "Per ogni approccio: trade-off, rischi, compatibilità con pattern esistenti, "
+                "stima complessità. Raccomanda l'approccio migliore con motivazione.",
+            depends_on=["explore"],
+        ),
+    ],
+))
+
+# --- 7. Preflight L2 — Full ---
+register(Workflow(
+    id="preflight-l2",
+    name="Preflight L2 — Full Preflight",
+    description="Pre-implementation: explore+search (parallel) → NLM validation → "
+                "reasoning → redteam → spec (45 min). "
+                "Trigger: refactor 3+ app, Alembic migration, KBLI/visa, pre-deploy.",
+    steps=[
+        WorkflowStep(
+            name="explore",
+            agent="gemini-explore",
+            prompt_template="Mappa il codebase Nuzantara per: {task}. "
+                "Identifica file rilevanti, pattern esistenti, dipendenze critiche, "
+                "import chain, service boundaries. Focus su apps/backend-rag/, "
+                "apps/mouth/, apps/federation/. Usa 1M context.",
+        ),
+        WorkflowStep(
+            name="search",
+            agent="gemini-search",
+            prompt_template="Cerca best practice e pattern aggiornati (2025-2026) per: {task}. "
+                "Se il task riguarda normativa indonesiana, KBLI 2025, o visti: "
+                "cerca fonti ufficiali. Se riguarda Fly.io/Vercel/FastAPI/Next.js: "
+                "cerca pattern recenti e gotcha noti.",
+        ),
+        WorkflowStep(
+            name="nlm-validate",
+            agent="claude-code",
+            prompt_template="Valida architetturalmente il task usando NB-1 (Nuzantara Codebase). "
+                "Esegui: ./scripts/ai-dispatch.sh oracolo-nb f6ecd115 "
+                "\"Valida approccio per: {task}. Contesto: {prev_explore}\". "
+                "Riporta: citazioni rilevanti, conflitti architetturali trovati, "
+                "file chiave identificati da NB-1. "
+                "Se NLM non disponibile (timeout/auth): scrivi "
+                "'NLM_UNAVAILABLE' e continua con le info di explore+search.",
+            depends_on=["explore", "search"],
+        ),
+        WorkflowStep(
+            name="reasoning",
+            agent="deepseek-reasoning",
+            prompt_template="Proponi 2-3 approcci per: {task}. "
+                "Codebase (Gemini): {prev_explore}. "
+                "Ricerca (Gemini): {prev_search}. "
+                "Validazione NLM: {prev_nlm-validate}. "
+                "Per ogni approccio: trade-off, rischi, compatibilità architetturale. "
+                "Raccomanda l'approccio ottimale considerando i finding NLM.",
+            depends_on=["nlm-validate"],
+        ),
+        WorkflowStep(
+            name="redteam",
+            agent="claude-review",
+            prompt_template="Red team dell'approccio proposto per: {task}. "
+                "Analisi DeepSeek: {prev_reasoning}. "
+                "NLM findings: {prev_nlm-validate}. "
+                "Verifica: vulnerabilità sicurezza, breaking changes, "
+                "performance regressions, data integrity risks, "
+                "conflitti con architettura Federation v3.1. "
+                "Elenca i rischi in ordine di priorità.",
+            depends_on=["reasoning"],
+        ),
+    ],
+))
+
+# --- 8. Preflight L3 — Deep ---
+register(Workflow(
+    id="preflight-l3",
+    name="Preflight L3 — Deep Preflight",
+    description="Pre-implementation: L2 completo + sandbox prototype + seconda NLM + HITL (90 min). "
+                "Trigger: nuova architettura, feature critica produzione (auth, RAG, billing).",
+    steps=[
+        WorkflowStep(
+            name="explore",
+            agent="gemini-explore",
+            prompt_template="Analisi approfondita del codebase per: {task}. "
+                "Mappa tutte le dipendenze, import chain, service boundaries, "
+                "test coverage esistente. Focus totale su file che verranno modificati.",
+        ),
+        WorkflowStep(
+            name="search",
+            agent="gemini-search",
+            prompt_template="Ricerca approfondita best practice per: {task}. "
+                "Includi: pattern architetturali, casi d'uso simili in produzione, "
+                "failure modes noti, security considerations.",
+        ),
+        WorkflowStep(
+            name="nlm-validate",
+            agent="claude-code",
+            prompt_template="Prima validazione NLM NB-1 per: {task}. "
+                "Esegui: ./scripts/ai-dispatch.sh oracolo-nb f6ecd115 "
+                "\"Analisi architetturale per: {task}. Explore: {prev_explore}\". "
+                "Riporta citazioni, conflitti, file chiave.",
+            depends_on=["explore", "search"],
+        ),
+        WorkflowStep(
+            name="reasoning",
+            agent="deepseek-reasoning",
+            prompt_template="Analisi approfondita per: {task}. "
+                "Codebase: {prev_explore}. Search: {prev_search}. "
+                "NLM: {prev_nlm-validate}. "
+                "Proponi approccio dettagliato con pseudocodice per i componenti critici.",
+            depends_on=["nlm-validate"],
+        ),
+        WorkflowStep(
+            name="redteam",
+            agent="claude-review",
+            prompt_template="Red team approfondito per: {task}. "
+                "Proposta: {prev_reasoning}. NLM: {prev_nlm-validate}. "
+                "Simula attacco: trova il modo peggiore in cui questa implementazione "
+                "può fallire in produzione.",
+            depends_on=["reasoning"],
+        ),
+        WorkflowStep(
+            name="sandbox-proto",
+            agent="codex-sandbox",
+            prompt_template="Prototipa in sandbox isolato: {task}. "
+                "Approccio approvato: {prev_reasoning}. "
+                "REGOLE: NON toccare database reale, NON modificare file produzione. "
+                "Implementa solo il componente principale e verifica che compili/passi test base.",
+            depends_on=["redteam"],
+        ),
+        WorkflowStep(
+            name="nlm-validate-proto",
+            agent="claude-code",
+            prompt_template="Seconda validazione NLM sul prototipo per: {task}. "
+                "Esegui: ./scripts/ai-dispatch.sh oracolo-nb f6ecd115 "
+                "\"Valida prototipo: {prev_sandbox-proto}\". "
+                "Verifica coerenza con architettura in NB-1.",
+            depends_on=["sandbox-proto"],
+        ),
+    ],
+))
+
+
 # ═══════════════════════════════════════════════════════
 # Workflow Executor
 # ═══════════════════════════════════════════════════════

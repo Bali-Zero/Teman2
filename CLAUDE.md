@@ -156,6 +156,44 @@ L'orchestratore classifica il task (Haiku), lancia i dispatch necessari (Gemini 
 
 **Task semplici** (fix un bug, aggiorna un componente): procedi direttamente senza orchestratore.
 
+### Preflight SDD Rule (OBBLIGATORIO — aggiunto 2026-03-28)
+
+Prima di implementare qualsiasi task non triviale, eseguire il preflight.
+L'orchestratore lo triggera automaticamente; puoi anche lanciarlo manualmente.
+
+| Trigger (oggettivo, non discrezionale)                            | Livello |
+| ----------------------------------------------------------------- | ------- |
+| Task tocca 3+ file in app diverse                                 | L1      |
+| Nuova feature (non esiste nel codebase)                           | L1      |
+| Modifica a `dependencies.py` / `service_initializer.py`           | L2      |
+| Refactor 3+ app, Alembic migration, KBLI/visa, pre-deploy         | L2      |
+| Nuova architettura, feature critica produzione (auth/billing/RAG) | L3      |
+
+**Esecuzione manuale:**
+
+```bash
+./scripts/ai-dispatch.sh preflight "descrizione task"      # L2 default (45 min)
+./scripts/ai-dispatch.sh preflight-l1 "task semplice"     # L1 quick (10 min)
+./scripts/ai-dispatch.sh preflight-l3 "task critico"      # L3 deep (90 min)
+```
+
+**Pipeline L2 (il caso più comune):**
+
+```
+gemini-explore ─┐
+                ├→ NLM NB-1 (validation gate) → deepseek-reasoning → claude-review → spec
+gemini-search  ─┘
+```
+
+**Regola NLM:** NLM è un SERVICE (tassonomia v3.1), non un agente. È il gate di
+validazione chiamato DOPO explore+search, PRIMA di reasoning. Se NLM non disponibile:
+log in `audit.jsonl` + fallback `gemini-search` — il preflight NON si blocca.
+
+**Escape hatch:** `SKIP_PREFLIGHT=1` disponibile per fix urgenti, MA logga automaticamente
+in `ai-dispatch-output/audit.jsonl` con motivo. Non bypassare senza ragione documentata.
+
+**Output:** Spec in `docs/superpowers/specs/YYYY-MM-DD-<slug>-preflight.md`
+
 ### Escalations (leggere a inizio sessione)
 
 Controlla `shared/escalations.json` — se ci sono pending, gestiscili prima di altro lavoro.
