@@ -118,7 +118,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {/* Dropdown */}
             <div
               className="absolute right-0 top-full mt-1 w-48 bg-[var(--background-elevated)] border border-[var(--border)] rounded-xl shadow-2xl
-              opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50 p-2"
+              opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-150 z-50 p-2"
             >
               {[
                 {

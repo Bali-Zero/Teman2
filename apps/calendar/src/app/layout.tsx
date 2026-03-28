@@ -172,7 +172,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             visibility: hidden;
             transition: opacity 150ms, visibility 150ms;
           }
-          .relative.group:hover .app-switcher-dropdown {
+          .relative.group:hover .app-switcher-dropdown,
+          .relative.group:focus-within .app-switcher-dropdown {
             opacity: 1;
             visibility: visible;
           }

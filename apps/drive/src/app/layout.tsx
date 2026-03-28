@@ -186,7 +186,8 @@ function AppShell({ children }: { children: ReactNode }) {
           visibility: hidden;
           transition: opacity 150ms, visibility 150ms;
         }
-        .drive-app-switcher:hover .drive-switcher-dropdown {
+        .drive-app-switcher:hover .drive-switcher-dropdown,
+        .drive-app-switcher:focus-within .drive-switcher-dropdown {
           opacity: 1;
           visibility: visible;
         }
