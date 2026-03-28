@@ -10,6 +10,21 @@
 
 set -euo pipefail
 
+# ── Lock file (previeni doppia istanza) ─────────────────────
+LOCK_FILE="/tmp/warroom_pipeline.lock"
+if [[ -f "$LOCK_FILE" ]]; then
+  LOCK_PID=$(cat "$LOCK_FILE" 2>/dev/null || echo "?")
+  if kill -0 "$LOCK_PID" 2>/dev/null; then
+    echo "⚠️  Pipeline già in esecuzione (PID $LOCK_PID) — uscita." >&2
+    exit 1
+  else
+    echo "ℹ️  Lock stale rimosso (PID $LOCK_PID morto)" >&2
+    rm -f "$LOCK_FILE"
+  fi
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT INT TERM
+
 # ── Args ────────────────────────────────────────────────────
 [[ -n "${1:-}" && "${1:0:2}" != "--" ]] && TOPIC="$1" || TOPIC=""
 DRY_RUN=false
@@ -112,7 +127,7 @@ print(json.dumps(intel, ensure_ascii=False, indent=2))
       mkdir -p "$OUTPUT/strategy"
 
       run_phase "topic_selector" 240 \
-        $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/00_topic_selector.py" \
+        "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/00_topic_selector.py" \
         --intel  "$INTEL_LATEST" \
         --output "$SELECTED_TOPIC_FILE" \
         2>>"$LOG_FILE" 1>>"$LOG_FILE"
@@ -159,7 +174,7 @@ log "━━━ FASE 1: RESEARCH (ChatGPT + Exa + Gemini parallelo) (T+00:00) ━
 if ! $DRY_RUN; then
   # Launch all 3 researchers in parallel
   run_phase "chatgpt_researcher" 600 \
-    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/01_chatgpt_researcher.py" \
+    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/01_chatgpt_researcher.py" \
     --topic "$TOPIC" \
     --output "$OUTPUT/raw/chatgpt_dump.json" \
     --sentiment-output "$OUTPUT/raw/social_dump.json" \
@@ -167,14 +182,14 @@ if ! $DRY_RUN; then
   CHATGPT_PID=$!
 
   run_phase "exa_researcher" 300 \
-    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/09_exa_researcher.py" \
+    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/09_exa_researcher.py" \
     --topic "$TOPIC" \
     --output "$OUTPUT/raw/exa_dump.json" \
     &
   EXA_PID=$!
 
   run_phase "gemini_researcher" 240 \
-    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/02_gemini_researcher.py" \
+    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/02_gemini_researcher.py" \
     --topic "$TOPIC" \
     --output "$OUTPUT/raw/gemini_dump.json" \
     &
@@ -243,8 +258,9 @@ merged = {
 print(json.dumps(merged, ensure_ascii=False, indent=2))
 " > "$OUTPUT/raw/merged_dump.json" 2>/dev/null || echo '{"facts":[],"topics":[]}' > "$OUTPUT/raw/merged_dump.json"
 
-MERGED_COUNT=$(python3 -c "import json; print(len(json.load(open('$OUTPUT/raw/merged_dump.json')).get('facts',[])))" 2>/dev/null || echo "?")
+MERGED_COUNT=$(python3 -c "import json; print(len(json.load(open('$OUTPUT/raw/merged_dump.json')).get('facts',[])))" 2>/dev/null || echo "0")
 log "   ✅ Merged → $MERGED_COUNT facts totali"
+[[ "$MERGED_COUNT" == "0" ]] && die "ZERO facts raccolti — tutti i researcher falliti. Verifica le API keys."
 
 # ── FASE 1.5: Qwen3.5 Pre-processor ─────────────────────────
 log ""
@@ -252,7 +268,7 @@ log "━━━ FASE 1.5: QWEN3.5 PRE-PROCESSOR (locale) ━━━"
 if ! $DRY_RUN; then
   [[ ! -f "$OUTPUT/raw/social_dump.json" ]] && echo '{"data":[]}' > "$OUTPUT/raw/social_dump.json"
   run_phase "qwen_preprocessor" 300 \
-    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/015_qwen_preprocessor.py" \
+    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/015_qwen_preprocessor.py" \
     --sentiment "$OUTPUT/raw/social_dump.json" \
     --research "$OUTPUT/raw/merged_dump.json" \
     --output "$OUTPUT/raw/processed_dump.json" \
@@ -276,7 +292,7 @@ log "🧠 Gemini strategist — generazione 3 concept..."
 if ! $DRY_RUN; then
   # Fallback: se Gemini fallisce usa Ollama qwen3.5
   if ! run_phase "gemini_strategist" 600 \
-    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/03_gemini_strategist.py" \
+    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/03_gemini_strategist.py" \
     --dump   "$OUTPUT/raw/processed_dump.json" \
     --topic  "$TOPIC" \
     --output "$OUTPUT/strategy/gemini_concepts.json"; then
@@ -303,7 +319,7 @@ fi
 log "🎬 Claude director — copy + JSON slides..."
 if ! $DRY_RUN; then
   run_phase "claude_director" 600 \
-    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/04_claude_director.py" \
+    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/04_claude_director.py" \
     --concepts "$OUTPUT/strategy/gemini_concepts.json" \
     --topic    "$TOPIC" \
     --output   "$OUTPUT/strategy/claude_slides.json" \
@@ -312,35 +328,37 @@ if ! $DRY_RUN; then
 fi
 
 # ══════════════════════════════════════════════════════════
-# FASE 3 — GENERAZIONE IMMAGINI (solo slide con image_prompt)
+# FASE 3 — IMAGE BRAINSTORM + FIREWORKS GENERATION
 # ══════════════════════════════════════════════════════════
 log ""
-log "━━━ FASE 3: GENERAZIONE IMMAGINI ComfyUI/Flux (T+05:00) ━━━"
+log "━━━ FASE 3: IMAGE BRAINSTORM + FIREWORKS (T+05:00) ━━━"
 if ! $DRY_RUN; then
-  IMAGE_PROMPTS_FILE="$OUTPUT/images/image_prompts.json"
-
-  # Estrai solo slide con image_prompt != null
-  python3 -c "
-import json
-data = json.load(open('$OUTPUT/strategy/claude_slides.json'))
-slides = data.get('slides', [])
-prompts = [
-  {'slide': s.get('slide_number'), 'is_cover': s.get('is_cover', False),
-   'prompt': s.get('image_prompt'), 'placement': s.get('image_placement', '')}
-  for s in slides if s.get('image_prompt')
-]
-print(json.dumps(prompts, ensure_ascii=False, indent=2))
-" > "$IMAGE_PROMPTS_FILE" 2>/dev/null || echo '[]' > "$IMAGE_PROMPTS_FILE"
-
-  IMG_COUNT=$(python3 -c "import json; print(len(json.load(open('$IMAGE_PROMPTS_FILE'))))" 2>/dev/null || echo "0")
-  log "   🖼️  Slide con image_prompt: $IMG_COUNT"
-
-  if (( IMG_COUNT > 0 )); then
-    log "   ℹ️  $IMG_COUNT image_prompt nelle slides — annotazioni testuali, nessuna generazione"
-    log "   💡 I prompt sono embedded nel testo Canva per il designer"
+  # Load FIREWORKS_API_KEY from .env if not in environment
+  if [[ -z "${FIREWORKS_API_KEY:-}" ]]; then
+    export FIREWORKS_API_KEY=$(grep '^FIREWORKS_API_KEY=' "$WAR_ROOM/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
   fi
-  log "✅ Step immagini completato (solo annotazioni)"
+  if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
+    export OPENROUTER_API_KEY=$(grep '^OPENROUTER_API_KEY=' "$WAR_ROOM/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
+  fi
+
+  run_phase "image_brainstorm" 600 \
+    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/05_image_brainstorm.py" \
+    --slides "$OUTPUT/strategy/claude_slides.json" \
+    --output "$OUTPUT/images/" \
+    || log "⚠️  Image brainstorm fallito — continua senza immagini (non bloccante)"
+
+  IMG_GENERATED=$(python3 -c "import json; m=json.load(open('$OUTPUT/images/image_manifest.json')); print(sum(1 for x in m if x.get('generated')))" 2>/dev/null || echo "0")
+  IMG_TOTAL=$(python3 -c "import json; m=json.load(open('$OUTPUT/images/image_manifest.json')); print(len(m))" 2>/dev/null || echo "0")
+  log "   🖼️  Immagini generate: $IMG_GENERATED/$IMG_TOTAL"
+  log "✅ Image brainstorm completato"
+else
+  log "⚠️  DRY RUN — Image brainstorm skipped"
+  "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/05_image_brainstorm.py" \
+    --slides "$OUTPUT/strategy/claude_slides.json" \
+    --output "$OUTPUT/images/" \
+    --dry-run 2>/dev/null || true
 fi
+
 
 # ══════════════════════════════════════════════════════════
 # FASE 4 — CANVA CAROUSEL BUILDER
@@ -352,7 +370,7 @@ log "   Design: $CANVA_DESIGN"
 
 if ! $DRY_RUN; then
   run_phase "canva_builder" 600 \
-    $WAR_ROOM/.venv/bin/python3 "$WAR_ROOM/agents/06_canva_builder.py" \
+    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/06_canva_builder.py" \
     --slides    "$OUTPUT/strategy/claude_slides.json" \
     --output    "$OUTPUT/canva/" \
     --master    "$OUTPUT/master/" \
