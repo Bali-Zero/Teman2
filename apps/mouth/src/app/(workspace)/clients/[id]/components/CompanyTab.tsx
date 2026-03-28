@@ -1968,8 +1968,12 @@ export function CompanyTab({
               </div>
             )}
 
-            {/* Akta Perubahan */}
-            {co?.akta_perubahan_no && (
+            {/* Akta Perubahan — hide if identical to Pendirian (data entry duplicate) */}
+            {co?.akta_perubahan_no &&
+              !(
+                co.akta_perubahan_no === co.akta_pendirian_no &&
+                co.akta_perubahan_date === co.akta_pendirian_date
+              ) && (
               <div style={pillData}>
                 <p
                   className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
