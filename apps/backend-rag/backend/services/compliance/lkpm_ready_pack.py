@@ -77,7 +77,7 @@ def generate_ready_pack_html(pack: LKPMReadyPack) -> str:
         or "Perusahaan akan melanjutkan realisasi investasi sesuai rencana yang telah disetujui."
     )
 
-    html = f"""<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -234,7 +234,6 @@ def generate_ready_pack_html(pack: LKPMReadyPack) -> str:
 </body>
 </html>"""
 
-    return html
 
 
 def _cumulative_row(label: str, cumulative: int, planned: int) -> str:

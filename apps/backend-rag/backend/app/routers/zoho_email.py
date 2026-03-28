@@ -689,14 +689,13 @@ async def upload_attachment(
         email_service = _get_email_service(db_pool)
 
         content = await file.read()
-        attachment_result = await email_service.upload_attachment(
+        return await email_service.upload_attachment(
             user_id=user_id,
             filename=file.filename or "unnamed",
             content=content,
             content_type=file.content_type or "application/octet-stream",
         )
 
-        return attachment_result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:

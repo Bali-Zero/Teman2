@@ -45,7 +45,7 @@ def get_domain_format_instruction(domain: str, language: str) -> str:
     else:
         return ""
 
-    instruction = f"""
+    return f"""
 **FORMATTING RULE FOR {domain_name} QUESTIONS:**
 You MUST use the following standard structure for your response.
 Fill in the placeholders [...] with specific data from your retrieval.
@@ -58,4 +58,3 @@ IMPORTANT:
 - Do not invent data. If a field is unknown, write "Contact for details".
 - Use the "Cost ({settings.COMPANY_NAME})" field ONLY if you retrieved a price from get_pricing.
 """
-    return instruction

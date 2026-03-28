@@ -84,8 +84,7 @@ def async_timed(component: str = "request") -> Any:
         async def wrapper(*args, **kwargs) -> Any:
             start_time = time.time()
             try:
-                result = await func(*args, **kwargs)
-                return result
+                return await func(*args, **kwargs)
             finally:
                 duration = time.time() - start_time
                 perf_monitor.record_component_time(component, duration)
@@ -107,8 +106,7 @@ def timed(component: str = "request") -> Any:
             """Wrapper."""
             start_time = time.time()
             try:
-                result = func(*args, **kwargs)
-                return result
+                return func(*args, **kwargs)
             finally:
                 duration = time.time() - start_time
                 perf_monitor.record_component_time(component, duration)

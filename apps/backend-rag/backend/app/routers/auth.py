@@ -84,8 +84,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> A
         expire = datetime.now(timezone.utc) + timedelta(hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS)
 
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
 async def get_current_user(
@@ -343,11 +342,10 @@ async def get_csrf_token() -> Any:
     )
 
     # Return in both JSON and headers
-    response_data = {"csrfToken": csrf_token, "sessionId": session_id}
+    return {"csrfToken": csrf_token, "sessionId": session_id}
 
     # Note: FastAPI Response model doesn't support setting headers directly in decorator
     # Headers will be set in the endpoint function
-    return response_data
 
 
 @router.post("/refresh", response_model=LoginResponse)

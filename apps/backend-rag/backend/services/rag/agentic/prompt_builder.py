@@ -1078,7 +1078,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         context_str = f"Event Context: {event_context}"
         memory_str = "\n".join([f"- {f}" for f in facts])
 
-        prompt = f"""
+        return f"""
 # SYSTEM INSTRUCTION: PROACTIVE TRIGGER
 You are ZANTARA. A system event '{event_type}' has occurred for user '{user_name}'.
 
@@ -1110,4 +1110,3 @@ Concise, helpful, proactive. No fluff. Max 1-2 sentences.
 
 GENERATE RESPONSE OR [SILENCE]:
 """
-        return prompt
