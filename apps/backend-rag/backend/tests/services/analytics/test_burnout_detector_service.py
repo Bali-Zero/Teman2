@@ -2,7 +2,7 @@
 Tests for BurnoutDetectorService
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -35,7 +35,7 @@ async def test_detect_burnout_signals_with_warnings(burnout_service, mock_pool):
         {
             "user_name": "Test User",
             "user_email": "test@example.com",
-            "session_start": datetime.now() - timedelta(days=7),
+            "session_start": datetime.now(tz=timezone.utc) - timedelta(days=7),
             "duration_minutes": 120,
             "conversations_count": 10,
             "activities_count": 5,
@@ -44,7 +44,7 @@ async def test_detect_burnout_signals_with_warnings(burnout_service, mock_pool):
         {
             "user_name": "Test User",
             "user_email": "test@example.com",
-            "session_start": datetime.now() - timedelta(days=6),
+            "session_start": datetime.now(tz=timezone.utc) - timedelta(days=6),
             "duration_minutes": 120,
             "conversations_count": 10,
             "activities_count": 5,
@@ -53,7 +53,7 @@ async def test_detect_burnout_signals_with_warnings(burnout_service, mock_pool):
         {
             "user_name": "Test User",
             "user_email": "test@example.com",
-            "session_start": datetime.now() - timedelta(days=1),
+            "session_start": datetime.now(tz=timezone.utc) - timedelta(days=1),
             "duration_minutes": 120,
             "conversations_count": 10,
             "activities_count": 5,

@@ -4,7 +4,7 @@ Target: >95% coverage
 """
 
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -55,8 +55,8 @@ class TestTeamInsightsService:
         session.__getitem__ = lambda self, key: {
             "user_name": "User 1",
             "user_email": "user1@example.com",
-            "session_start": datetime.now(),
-            "session_end": datetime.now() + timedelta(hours=4),
+            "session_start": datetime.now(tz=timezone.utc),
+            "session_end": datetime.now(tz=timezone.utc) + timedelta(hours=4),
             "duration_minutes": 240,
             "conversations_count": 20,
             "activities_count": 50,

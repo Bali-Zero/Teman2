@@ -74,7 +74,7 @@ class TestEpisodicMemoryService:
 
         match = re.search(r"(\d{1,2})[/\-](\d{1,2})(?:[/\-](\d{2,4}))?", "15/03")
         result = episodic_service._parse_date(match)
-        assert result.year == datetime.now().year
+        assert result.year == datetime.now(tz=timezone.utc).year
         assert result.month == 3
         assert result.day == 15
 

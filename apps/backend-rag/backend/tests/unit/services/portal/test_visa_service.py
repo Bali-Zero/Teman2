@@ -4,7 +4,7 @@ Target: ≥80% coverage
 """
 
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -81,7 +81,7 @@ def make_visa_row(
         "visa_number": "C123456",
         "sponsor_name": "PT Example Indonesia",
         "sponsor_type": "company",
-        "created_at": datetime.now(),
+        "created_at": datetime.now(tz=timezone.utc),
     }
 
 

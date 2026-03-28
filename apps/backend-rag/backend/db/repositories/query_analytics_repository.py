@@ -8,7 +8,7 @@ Provides:
 - Dashboard aggregation queries (failed queries, collection hit rates, volume, satisfaction)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
@@ -150,7 +150,7 @@ class QueryAnalyticsRepository:
         Top N queries that returned 0 chunks (failed to find relevant content).
         """
         try:
-            cutoff = datetime.now() - timedelta(days=days)
+            cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch(
                     """
@@ -184,7 +184,7 @@ class QueryAnalyticsRepository:
         what percentage of queries to that collection return results.
         """
         try:
-            cutoff = datetime.now() - timedelta(days=days)
+            cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch(
                     """
@@ -224,7 +224,7 @@ class QueryAnalyticsRepository:
         """
         trunc = "hour" if granularity == "hour" else "day"
         try:
-            cutoff = datetime.now() - timedelta(days=days)
+            cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch(
                     f"""
@@ -262,7 +262,7 @@ class QueryAnalyticsRepository:
         User satisfaction metrics from thumbs up/down feedback.
         """
         try:
-            cutoff = datetime.now() - timedelta(days=days)
+            cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
             async with self.db_pool.acquire() as conn:
                 row = await conn.fetchrow(
                     """
@@ -323,5 +323,5 @@ class QueryAnalyticsRepository:
             "query_volume_hourly": hourly_volume,
             "query_volume_daily": daily_volume,
             "satisfaction": satisfaction,
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         }

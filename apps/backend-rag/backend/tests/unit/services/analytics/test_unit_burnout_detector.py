@@ -4,7 +4,7 @@ Target: >95% coverage
 """
 
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -59,7 +59,7 @@ class TestBurnoutDetectorService:
                     "conversations_count": 10,
                     "activities_count": 5,
                     "day_of_week": 1,
-                    "session_start": datetime.now(),
+                    "session_start": datetime.now(tz=timezone.utc),
                 },
                 {
                     "user_name": "Test User",
@@ -68,7 +68,7 @@ class TestBurnoutDetectorService:
                     "conversations_count": 10,
                     "activities_count": 5,
                     "day_of_week": 2,
-                    "session_start": datetime.now(),
+                    "session_start": datetime.now(tz=timezone.utc),
                 },
             ]
         )
@@ -78,7 +78,7 @@ class TestBurnoutDetectorService:
     @pytest.mark.asyncio
     async def test_detect_burnout_signals_increasing_hours(self, burnout_detector, mock_db_pool):
         """Test detecting increasing work hours trend"""
-        cutoff = datetime.now() - timedelta(days=30)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=30)
         sessions = [
             {
                 "user_name": "Test User",
@@ -134,7 +134,7 @@ class TestBurnoutDetectorService:
     @pytest.mark.asyncio
     async def test_detect_burnout_signals_long_sessions(self, burnout_detector, mock_db_pool):
         """Test detecting very long sessions"""
-        cutoff = datetime.now() - timedelta(days=30)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=30)
         sessions = [
             {
                 "user_name": "Test User",
@@ -171,7 +171,7 @@ class TestBurnoutDetectorService:
     @pytest.mark.asyncio
     async def test_detect_burnout_signals_weekend_work(self, burnout_detector, mock_db_pool):
         """Test detecting weekend work"""
-        cutoff = datetime.now() - timedelta(days=30)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=30)
         sessions = [
             {
                 "user_name": "Test User",
@@ -217,7 +217,7 @@ class TestBurnoutDetectorService:
     @pytest.mark.asyncio
     async def test_detect_burnout_signals_multiple_users(self, burnout_detector, mock_db_pool):
         """Test detecting burnout signals for multiple users"""
-        cutoff = datetime.now() - timedelta(days=30)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=30)
         sessions = [
             {
                 "user_name": "User 1",

@@ -4,7 +4,7 @@ Target: ≥80% coverage
 """
 
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -82,7 +82,7 @@ def make_tax_row(
         "status": status,
         "amount_due": amount_due,
         "amount_paid": None,
-        "created_at": datetime.now(),
+        "created_at": datetime.now(tz=timezone.utc),
     }
 
 

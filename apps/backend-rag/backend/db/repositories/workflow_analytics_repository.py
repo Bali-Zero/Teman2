@@ -8,7 +8,7 @@ Provides:
 - Dashboard aggregation queries (follow rate, avg confidence, top workflows)
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
@@ -143,7 +143,7 @@ class WorkflowAnalyticsRepository:
     async def get_follow_rate(self, days: int = 7) -> dict[str, Any]:
         """Percentage of workflows that were followed by users."""
         try:
-            cutoff = datetime.now() - timedelta(days=days)
+            cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
             async with self.db_pool.acquire() as conn:
                 row = await conn.fetchrow(
                     """
@@ -186,7 +186,7 @@ class WorkflowAnalyticsRepository:
     async def get_top_workflows(self, limit: int = 10, days: int = 7) -> list[dict[str, Any]]:
         """Top N most generated workflow types by frequency."""
         try:
-            cutoff = datetime.now() - timedelta(days=days)
+            cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch(
                     """
@@ -218,7 +218,7 @@ class WorkflowAnalyticsRepository:
         """Workflow generation volume over time."""
         trunc = "hour" if granularity == "hour" else "day"
         try:
-            cutoff = datetime.now() - timedelta(days=days)
+            cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch(
                     f"""
@@ -266,5 +266,5 @@ class WorkflowAnalyticsRepository:
             "top_workflows": top_workflows,
             "workflow_volume_hourly": hourly_volume,
             "workflow_volume_daily": daily_volume,
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         }

@@ -2,7 +2,7 @@
 Tests for QualityCheckService - Phase 8
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -75,7 +75,7 @@ class TestQualityReport:
             issues=[],
             recommendations=["Test rec"],
             is_acceptable=True,
-            checked_at=datetime.now().isoformat(),
+            checked_at=datetime.now(tz=timezone.utc).isoformat(),
         )
 
         d = report.to_dict()

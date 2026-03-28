@@ -51,7 +51,9 @@ export default async function SectorPage({
       />
 
       <div>
-        <div className="mb-1 text-3xl">{meta.icon}</div>
+        <div className="mb-1 text-3xl" aria-hidden="true">
+          {meta.icon}
+        </div>
         <h1 className="text-2xl font-bold text-[var(--foreground)]">
           Section {id.toUpperCase()} — {meta.nameEn}
         </h1>
@@ -61,7 +63,10 @@ export default async function SectorPage({
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+        aria-label={`KBLI codes in Section ${id.toUpperCase()}`}
+      >
         {codes.map((c) => (
           <KBLICard key={c.code} code={c} />
         ))}

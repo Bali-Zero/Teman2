@@ -495,10 +495,10 @@ class TestPipelineStats:
 
     def test_stats_with_duration(self):
         """Test stats with start/end time"""
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
         stats = PipelineStats()
-        stats.start_time = datetime.now()
+        stats.start_time = datetime.now(tz=timezone.utc)
         stats.end_time = stats.start_time + timedelta(seconds=10)
 
         result = stats.to_dict()

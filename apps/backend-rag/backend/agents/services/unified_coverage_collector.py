@@ -16,7 +16,7 @@ import json
 import logging
 import subprocess
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -148,7 +148,7 @@ class UnifiedCoverageCollector:
                 covered_lines=covered_lines,
                 coverage_gaps=gaps,
                 report_path=str(coverage_json),
-                timestamp=datetime.now().isoformat(),
+                timestamp=datetime.now(tz=timezone.utc).isoformat(),
             )
 
         except subprocess.TimeoutExpired:
@@ -176,7 +176,7 @@ class UnifiedCoverageCollector:
                         covered_lines=totals.get("covered_lines", 0),
                         coverage_gaps=[],
                         report_path=str(coverage_json),
-                        timestamp=datetime.now().isoformat(),
+                        timestamp=datetime.now(tz=timezone.utc).isoformat(),
                     )
                 except Exception as e2:
                     logger.error(f"❌ Error reading existing coverage: {e2}")
@@ -307,7 +307,7 @@ class UnifiedCoverageCollector:
             covered_lines=hit_lines,
             coverage_gaps=gaps,
             report_path=str(lcov_file),
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(tz=timezone.utc).isoformat(),
         )
 
     def _parse_vitest_json(
@@ -363,7 +363,7 @@ class UnifiedCoverageCollector:
             covered_lines=covered_lines,
             coverage_gaps=gaps,
             report_path=str(coverage_json),
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(tz=timezone.utc).isoformat(),
         )
 
     def collect_all_coverage(self) -> UnifiedCoverageReport:
@@ -433,7 +433,7 @@ class UnifiedCoverageCollector:
                     )
 
         report = UnifiedCoverageReport(
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(tz=timezone.utc).isoformat(),
             overall_coverage=overall_coverage,
             components=components,
             coverage_by_type=coverage_by_type,

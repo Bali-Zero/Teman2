@@ -2,7 +2,7 @@
 Test ExpiryChecker logic.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -29,7 +29,7 @@ class TestPassportAlerts:
     def test_passport_expired(self, checker: ExpiryChecker, base_client: ClientInfo):
         """Alert when passport is already expired."""
         client = base_client.model_copy()
-        client.passport_expiry = datetime.now() - timedelta(days=30)
+        client.passport_expiry = datetime.now(tz=timezone.utc) - timedelta(days=30)
 
         alert = checker._check_passport(client)
 
@@ -39,7 +39,7 @@ class TestPassportAlerts:
     def test_passport_critical_9_months(self, checker: ExpiryChecker, base_client: ClientInfo):
         """Critical alert when passport expires within 9 months."""
         client = base_client.model_copy()
-        client.passport_expiry = datetime.now() + timedelta(days=240)  # ~8 months
+        client.passport_expiry = datetime.now(tz=timezone.utc) + timedelta(days=240)  # ~8 months
 
         alert = checker._check_passport(client)
 
@@ -49,7 +49,7 @@ class TestPassportAlerts:
     def test_passport_warning_13_months(self, checker: ExpiryChecker, base_client: ClientInfo):
         """Warning alert when passport expires within 13 months."""
         client = base_client.model_copy()
-        client.passport_expiry = datetime.now() + timedelta(days=365)  # ~12 months
+        client.passport_expiry = datetime.now(tz=timezone.utc) + timedelta(days=365)  # ~12 months
 
         alert = checker._check_passport(client)
 
@@ -59,7 +59,7 @@ class TestPassportAlerts:
     def test_passport_no_alert_valid(self, checker: ExpiryChecker, base_client: ClientInfo):
         """No alert when passport is valid for more than 13 months."""
         client = base_client.model_copy()
-        client.passport_expiry = datetime.now() + timedelta(days=500)  # ~16 months
+        client.passport_expiry = datetime.now(tz=timezone.utc) + timedelta(days=500)  # ~16 months
 
         alert = checker._check_passport(client)
 
@@ -128,7 +128,7 @@ class TestVisaAlerts:
     def test_visa_expired(self, checker: ExpiryChecker, base_client: ClientInfo):
         """Alert when visa is already expired."""
         client = base_client.model_copy()
-        client.visa_expiry = datetime.now() - timedelta(days=10)
+        client.visa_expiry = datetime.now(tz=timezone.utc) - timedelta(days=10)
 
         alert = checker._check_visa(client)
 
@@ -138,7 +138,7 @@ class TestVisaAlerts:
     def test_visa_critical_2_months(self, checker: ExpiryChecker, base_client: ClientInfo):
         """Critical alert when visa expires within 60 days."""
         client = base_client.model_copy()
-        client.visa_expiry = datetime.now() + timedelta(days=50)
+        client.visa_expiry = datetime.now(tz=timezone.utc) + timedelta(days=50)
 
         alert = checker._check_visa(client)
 
@@ -148,7 +148,7 @@ class TestVisaAlerts:
     def test_visa_warning_4_months(self, checker: ExpiryChecker, base_client: ClientInfo):
         """Warning alert when visa expires within 120 days."""
         client = base_client.model_copy()
-        client.visa_expiry = datetime.now() + timedelta(days=100)
+        client.visa_expiry = datetime.now(tz=timezone.utc) + timedelta(days=100)
 
         alert = checker._check_visa(client)
 
@@ -158,7 +158,7 @@ class TestVisaAlerts:
     def test_visa_no_alert_valid(self, checker: ExpiryChecker, base_client: ClientInfo):
         """No alert when visa is valid for more than 120 days."""
         client = base_client.model_copy()
-        client.visa_expiry = datetime.now() + timedelta(days=150)
+        client.visa_expiry = datetime.now(tz=timezone.utc) + timedelta(days=150)
 
         alert = checker._check_visa(client)
 
@@ -197,7 +197,7 @@ class TestVisaAlerts:
         """When visa_type is None, should use 'Current' as default."""
         client = base_client.model_copy()
         client.visa_type = None
-        client.visa_expiry = datetime.now() + timedelta(days=50)
+        client.visa_expiry = datetime.now(tz=timezone.utc) + timedelta(days=50)
 
         alert = checker._check_visa(client)
 
@@ -237,7 +237,7 @@ class TestBirthdayAlerts:
     def test_birthday_not_today(self, checker: ExpiryChecker, base_client: ClientInfo):
         """No alert when today is not client's birthday."""
         client = base_client.model_copy()
-        today = datetime.now()
+        today = datetime.now(tz=timezone.utc)
         client.date_of_birth = today.replace(year=today.year - 30, month=today.month % 12 + 1)
 
         alert = checker._check_birthday(client)
@@ -313,7 +313,7 @@ class TestExpiryCheckerEdgeCases:
 
     def test_check_all_clients(self, checker: ExpiryChecker):
         """check_all_clients processes a list of clients."""
-        today = datetime.now()
+        today = datetime.now(tz=timezone.utc)
         clients = [
             ClientInfo(
                 id=1,
@@ -341,7 +341,7 @@ class TestExpiryCheckerEdgeCases:
             email="test@example.com",
             full_name="Marco Rossi",
             preferred_language="it",
-            passport_expiry=datetime.now() + timedelta(days=365),
+            passport_expiry=datetime.now(tz=timezone.utc) + timedelta(days=365),
         )
 
         alert = checker._check_passport(client)

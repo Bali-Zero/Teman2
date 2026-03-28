@@ -2,7 +2,7 @@
 Tests for ChangeDetector - Phase 8
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -32,7 +32,7 @@ class TestDocumentState:
 
     def test_state_creation(self):
         """Test creating document state"""
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         state = DocumentState(
             document_id="doc123",
             source_id="test_source",
@@ -49,7 +49,7 @@ class TestDocumentState:
 
     def test_to_db_dict(self):
         """Test conversion to database dict"""
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         state = DocumentState(
             document_id="doc123",
             source_id="test_source",
@@ -67,7 +67,7 @@ class TestDocumentState:
 
     def test_from_db_dict(self):
         """Test creation from database dict"""
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         data = {
             "document_id": "doc123",
             "source_id": "test",
@@ -97,7 +97,7 @@ class TestChangeEvent:
             document_id="doc123",
             source_id="test_source",
             change_type=ChangeType.NEW,
-            detected_at=datetime.now(),
+            detected_at=datetime.now(tz=timezone.utc),
             new_hash="hash123",
             title="Test Doc",
             url="https://example.com",
@@ -108,7 +108,7 @@ class TestChangeEvent:
 
     def test_to_dict(self):
         """Test conversion to dict"""
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         event = ChangeEvent(
             document_id="doc123",
             source_id="test",
@@ -158,7 +158,7 @@ class TestChangeDetector:
             url="https://example.com/new",
             content="New content",
             raw_html="<p>New</p>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
         )
 
         changes = await detector.detect_changes([doc], "test_source")
@@ -183,8 +183,8 @@ class TestChangeDetector:
             url="https://example.com",
             title="Existing",
             content_hash=content_hash,
-            first_seen=datetime.now(),
-            last_checked=datetime.now(),
+            first_seen=datetime.now(tz=timezone.utc),
+            last_checked=datetime.now(tz=timezone.utc),
         )
 
         # Create document with same hash
@@ -195,7 +195,7 @@ class TestChangeDetector:
             url="https://example.com",
             content="Content that produces same hash",
             raw_html="<p>Same</p>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
             document_hash=content_hash,
         )
 
@@ -218,8 +218,8 @@ class TestChangeDetector:
             url="https://example.com",
             title="Old Title",
             content_hash="old_hash",
-            first_seen=datetime.now(),
-            last_checked=datetime.now(),
+            first_seen=datetime.now(tz=timezone.utc),
+            last_checked=datetime.now(tz=timezone.utc),
             change_count=0,
         )
 
@@ -231,7 +231,7 @@ class TestChangeDetector:
             url="https://example.com",
             content="New content for new hash",
             raw_html="<p>New</p>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
             document_hash="new_hash",
         )
 
@@ -256,8 +256,8 @@ class TestChangeDetector:
             url="https://example.com/deleted",
             title="Deleted Doc",
             content_hash="hash",
-            first_seen=datetime.now(),
-            last_checked=datetime.now(),
+            first_seen=datetime.now(tz=timezone.utc),
+            last_checked=datetime.now(tz=timezone.utc),
             is_active=True,
         )
 
@@ -281,8 +281,8 @@ class TestChangeDetector:
             url="https://example.com/1",
             title="Doc 1",
             content_hash="hash1",
-            first_seen=datetime.now(),
-            last_checked=datetime.now(),
+            first_seen=datetime.now(tz=timezone.utc),
+            last_checked=datetime.now(tz=timezone.utc),
         )
 
         docs = [
@@ -294,7 +294,7 @@ class TestChangeDetector:
                 url="https://example.com/new",
                 content="New content",
                 raw_html="<p>New</p>",
-                scraped_at=datetime.now(),
+                scraped_at=datetime.now(tz=timezone.utc),
             ),
             # Unchanged document
             ScrapedDocument(
@@ -304,7 +304,7 @@ class TestChangeDetector:
                 url="https://example.com/1",
                 content="Content for hash1",
                 raw_html="<p>Same</p>",
-                scraped_at=datetime.now(),
+                scraped_at=datetime.now(tz=timezone.utc),
                 document_hash="hash1",
             ),
         ]
@@ -325,7 +325,7 @@ class TestChangeDetector:
             "updated_documents": 5,
             "unchanged_documents": 80,
             "deleted_documents": 5,
-            "last_run": datetime.now().isoformat(),
+            "last_run": datetime.now(tz=timezone.utc).isoformat(),
         }
         detector._state_cache = {"doc1": MagicMock(), "doc2": MagicMock()}
 

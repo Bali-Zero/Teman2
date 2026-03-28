@@ -19,7 +19,7 @@ import json
 import logging
 import signal
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -124,7 +124,7 @@ class TestForceOrchestrator:
 
         results = {
             "scan_type": "full",
-            "start_time": datetime.now().isoformat(),
+            "start_time": datetime.now(tz=timezone.utc).isoformat(),
             "options": options,
             "agent_results": {},
             "summary": {},
@@ -255,7 +255,7 @@ class TestForceOrchestrator:
             # Generate summary
             duration = time.time() - start_time
             results["duration"] = duration
-            results["end_time"] = datetime.now().isoformat()
+            results["end_time"] = datetime.now(tz=timezone.utc).isoformat()
             results["summary"] = self._generate_summary(results)
 
             # Record metrics
@@ -445,7 +445,7 @@ class TestForceOrchestrator:
         elif format == "markdown":
             md = f"""# 🎭 Test Force Report
 
-**Generated:** {datetime.now().isoformat()}
+**Generated:** {datetime.now(tz=timezone.utc).isoformat()}
 **Duration:** {results.get("duration", 0):.2f}s
 **Success:** {results.get("summary", {}).get("overall_success", False)}
 

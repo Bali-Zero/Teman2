@@ -4,7 +4,7 @@ Daily cron job to cleanup old conversations and anonymize user data
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.app.dependencies import get_database_pool_direct
 from backend.app.utils.logging_utils import get_logger, log_error, log_success
@@ -58,7 +58,7 @@ async def cleanup_conversations(
             "anonymized_count": anonymized_count,
             "retention_days": retention_days,
             "anonymize_days": anonymize_days,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         }
 
     except Exception as e:

@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -89,7 +89,7 @@ class UnifiedTestForceOrchestrator:
 
         results = {
             "analysis_type": "unified_full",
-            "start_time": datetime.now().isoformat(),
+            "start_time": datetime.now(tz=timezone.utc).isoformat(),
             "components_analyzed": [],
             "coverage_report": None,
             "differential_report": None,
@@ -162,7 +162,7 @@ class UnifiedTestForceOrchestrator:
             # Generate summary
             duration = time.time() - start_time
             results["duration"] = duration
-            results["end_time"] = datetime.now().isoformat()
+            results["end_time"] = datetime.now(tz=timezone.utc).isoformat()
             results["summary"] = self._generate_summary(results)
 
             # Record metrics

@@ -2,7 +2,7 @@
 Test NotificationService.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -106,7 +106,7 @@ class TestNotificationService:
             message="Test alert",
             email_subject="Test Subject",
             email_body="<p>Test</p>",
-            created_at=datetime.now(),
+            created_at=datetime.now(tz=timezone.utc),
         )
 
         result = await service.process_alert(alert, "test@example.com")
@@ -129,7 +129,7 @@ class TestNotificationService:
             message="Critical alert",
             email_subject="URGENT",
             email_body="<p>Test</p>",
-            created_at=datetime.now(),
+            created_at=datetime.now(tz=timezone.utc),
         )
 
         await service.process_alert(alert, "test@example.com")
@@ -151,7 +151,7 @@ class TestNotificationService:
             message="Happy birthday",
             email_subject="Happy Birthday",
             email_body="<p>Test</p>",
-            created_at=datetime.now(),
+            created_at=datetime.now(tz=timezone.utc),
         )
 
         await service.process_alert(alert, "test@example.com")
@@ -173,7 +173,7 @@ class TestNotificationService:
             message="Test alert",
             email_subject="Test",
             email_body="<p>Test</p>",
-            created_at=datetime.now(),
+            created_at=datetime.now(tz=timezone.utc),
         )
 
         result = await service.process_alert(alert, "test@example.com")
@@ -193,7 +193,7 @@ class TestNotificationService:
                 message="Alert 1",
                 email_subject="Subject 1",
                 email_body="<p>Test</p>",
-                created_at=datetime.now(),
+                created_at=datetime.now(tz=timezone.utc),
             ),
             ClientAlert(
                 id=2,
@@ -203,7 +203,7 @@ class TestNotificationService:
                 message="Alert 2",
                 email_subject="Subject 2",
                 email_body="<p>Test</p>",
-                created_at=datetime.now(),
+                created_at=datetime.now(tz=timezone.utc),
             ),
         ]
 
@@ -228,7 +228,7 @@ class TestNotificationService:
                 "message": "Test",
                 "email_subject": "Subject",
                 "email_body": "<p>Test</p>",
-                "created_at": datetime.now(),
+                "created_at": datetime.now(tz=timezone.utc),
                 "sent_at": None,
                 "error_message": None,
             }

@@ -20,7 +20,7 @@ Requirements:
 import asyncio
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Add project root to path
@@ -217,7 +217,7 @@ async def run_all_tests():
     print("\n" + "=" * 80)
     print("LangGraph Agent Workflow - Manual Test Suite")
     print("=" * 80)
-    print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Started: {datetime.now(tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 80)
 
     results = {}
@@ -263,7 +263,7 @@ async def run_all_tests():
 
     print(f"\n📊 Results: {passed_count}/{total_run} tests passed")
     print("=" * 80)
-    print(f"Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Completed: {datetime.now(tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}")
 
     return all(v is not False for v in results.values())
 
