@@ -40,8 +40,11 @@ def include_routers(api: FastAPI) -> None:
         conversations,
         crm_analytics,  # [NEW] CRM Analytics dashboard
         crm_clients,
+        crm_clients_documents,
         crm_company,  # [NEW] Company-Centric CRM
         crm_enhanced,
+        crm_enhanced_alerts,
+        crm_enhanced_documents,
         crm_interactions,
         crm_portal_integration,
         crm_practices,
@@ -62,7 +65,10 @@ def include_routers(api: FastAPI) -> None:
         ingest,
         instagram_chat,
         intel,
+        intel_analytics,
+        intel_scraper,
         kbli_notebook,
+        kbli_notebook_chat,
         kg_agentic,
         knowledge_activity,
         knowledge_visa,
@@ -137,8 +143,11 @@ def include_routers(api: FastAPI) -> None:
 
     # CRM routers
     api.include_router(crm_clients.router)
+    api.include_router(crm_clients_documents.router)
     api.include_router(crm_company.router)  # [NEW] Company-Centric CRM
-    api.include_router(crm_enhanced.router)  # Family members, Documents, Expiry Alerts
+    api.include_router(crm_enhanced.router)
+    api.include_router(crm_enhanced_documents.router)
+    api.include_router(crm_enhanced_alerts.router)
     api.include_router(crm_interactions.router)
     api.include_router(crm_practices.router)
     api.include_router(crm_shared_memory.router)
@@ -172,10 +181,15 @@ def include_routers(api: FastAPI) -> None:
 
     # Intelligence & Oracle routers
     api.include_router(intel.router)
+    api.include_router(intel_scraper.router)
+    api.include_router(intel_analytics.router)
     api.include_router(oracle_universal.router)
     api.include_router(
         kbli_notebook.router, prefix=settings.API_V1_STR,
     )  # [NEW] KBLI 2025 Notebook Explorer
+    api.include_router(
+        kbli_notebook_chat.router, prefix=settings.API_V1_STR,
+    )
 
     # Preview router (for Telegram article previews)
     from backend.app.routers import preview
