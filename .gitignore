@@ -493,3 +493,76 @@ venv/
 .venv/
 .worktrees/
 apps/backend-rag/venv/
+
+# ========================================
+# CLEANUP 2026-03-28 — Untracked binaries, state, generated
+# ========================================
+
+# Large PDFs — serve from Google Drive / Vercel Blob, not git
+apps/mouth/public/blueprints/*.pdf
+apps/mouth/public/files/visa/*.pdf
+apps/mouth/public/audio/*.mp3
+apps/mouth/public/videos/*.mp4
+apps/kbli-navigator/public/*.mp4
+apps/backend-rag/data/assets/*.pdf
+apps/war-room/docs/*.pdf
+data/kb_sources/**/*.pdf
+data/kbli_pdfs/
+docs/team-guides/*.pdf
+
+# KBLI JSON duplicates (keep only source_documents canonical)
+apps/mouth/data/KBLI_2025_FINAL_CLEAN.json
+apps/kbli-navigator/data/kbli-2025.json
+apps/backend-rag/source_documents/
+
+# Generated/state JSON files
+apps/backend-rag/coverage_report.json
+apps/backend-rag/coverage_response_processor.json
+apps/backend-rag/scripts/ready_to_curl.json
+apps/backend-rag/openapi.json
+apps/evaluator/articles_indexing_state.json
+apps/evaluator/indexing_state.json
+apps/evaluator/nlm_nb2_*.json
+apps/evaluator/nlm_nb2_*.jsonl
+apps/mouth/scripts/kbli_data_backup.json
+apps/mouth/scripts/kbli_english_keywords.json
+scripts/.rag_canary/
+apps/mouth/data/kbli-gold-all.json
+
+# Agent/tool runtime state (local only)
+.agent/
+.clawhub/
+.serena/
+.superpowers/
+.openclaw/
+.opencode/
+.homunculus/
+.ai-dispatch-cache/
+
+# Data exports and snapshots
+data/exports/
+data/kbli_2025_export/
+data/scraping/
+data/source_documents/PP*.pdf
+data/source_documents/kbli_2020_official.json
+
+# Training data (ingested into Qdrant, not needed in git)
+apps/backend-rag/training-data/
+
+# Package lock files in sub-apps (root handles dependencies)
+apps/*/package-lock.json
+apps/team-agent/bridge/package-lock.json
+
+# War-room output artifacts
+apps/war-room/output/
+apps/war-room/logs/
+
+# Backend test/state artifacts  
+apps/backend-rag/business-testing/
+apps/backend-rag/reports/
+
+# Canva script output
+scripts/canva/output/
+
+# NLM handoff files
+apps/evaluator/handoff/

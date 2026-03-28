@@ -1,5 +1,0 @@
-opencv-python==4.11.0.86
-mediapipe==0.10.21
-numpy==2.2.3
-pyobjc-framework-Quartz==11.1
-pyautogui==0.9.54
