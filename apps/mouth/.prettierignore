@@ -1,0 +1,3 @@
+apps/mouth/data/*.json
+coverage/
+data/*.json

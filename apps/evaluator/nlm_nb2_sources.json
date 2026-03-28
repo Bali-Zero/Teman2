@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "notebook_id": "NB-2",
-  "last_updated": "2026-03-28T17:00:00+08:00",
+  "last_updated": "2026-03-28T18:30:00+08:00",
   "summary": {
-    "total_tracked": 43,
-    "active": 43,
+    "total_tracked": 44,
+    "active": 44,
     "quarantine": 0,
     "archived": 0
   },
@@ -42,10 +42,30 @@
         "ingested": "2026-03-28T00:00:00+08:00",
         "promoted": "2026-03-28T00:00:00+08:00",
         "last_reviewed": null,
-        "last_confirmed_valid": null
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
-      "claims": [],
+      "scores": {
+        "svs_total": 0.671,
+        "svs_classification": "VALUABLE",
+        "times_cited": 2,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.25,
+          "staleness": 0.994,
+          "v_citations": 0.4,
+          "v_uniqueness": 1.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 2,
+          "unique_claims": 2,
+          "times_cited": 2,
+          "t_effective": 1
+        }
+      },
+      "claims": [
+        "NB2-P2-002",
+        "NB2-P2-003"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "alih status offshore autogate guida 2025",
@@ -70,9 +90,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -98,9 +136,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.361,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.65,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -126,9 +182,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -156,7 +230,24 @@
         "ingested": "2026-03-28T00:00:00+08:00",
         "promoted": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.3,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 1.0,
+          "v_claims": 0.0,
+          "staleness": 0.0,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.05,
+          "days_old": 4834,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 4834
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -184,12 +275,31 @@
         "ingested": "2026-03-28T00:00:00+08:00",
         "promoted": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.5,
+        "svs_classification": "VALUABLE",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 1.0,
+          "v_claims": 0.0,
+          "staleness": 1.0,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.05,
+          "days_old": 5565,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 5565
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
         "title_normalized": "uu no 6 tahun 2011 keimigrasian",
-        "known_duplicates": ["7625b0cd-37ab-40d2-a560-6adc6303327d"]
+        "known_duplicates": [
+          "7625b0cd-37ab-40d2-a560-6adc6303327d"
+        ]
       },
       "flags": {
         "pinned": true,
@@ -212,7 +322,24 @@
         "ingested": "2026-03-28T00:00:00+08:00",
         "promoted": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.3,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 1.0,
+          "v_claims": 0.0,
+          "staleness": 0.0,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.05,
+          "days_old": 1912,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1912
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -238,9 +365,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -266,10 +411,35 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
-      "claims": [],
+      "scores": {
+        "svs_total": 0.861,
+        "svs_classification": "ESSENTIAL",
+        "times_cited": 6,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.75,
+          "staleness": 0.994,
+          "v_citations": 1.0,
+          "v_uniqueness": 0.167,
+          "bonus": 0.1,
+          "days_old": 1,
+          "claims_count": 6,
+          "unique_claims": 1,
+          "times_cited": 6,
+          "t_effective": 1
+        }
+      },
+      "claims": [
+        "NB2-P1-001",
+        "NB2-P1-008",
+        "NB2-P4-001",
+        "NB2-P4-003",
+        "NB2-P4-004",
+        "NB2-P4-005"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "izin kerja tka procedura completa 2025",
@@ -294,10 +464,32 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
-      "claims": [],
+      "scores": {
+        "svs_total": 0.808,
+        "svs_classification": "ESSENTIAL",
+        "times_cited": 3,
+        "svs_breakdown": {
+          "v_tier": 0.9,
+          "v_claims": 0.375,
+          "staleness": 0.994,
+          "v_citations": 0.6,
+          "v_uniqueness": 0.667,
+          "bonus": 0.1,
+          "days_old": 1,
+          "claims_count": 3,
+          "unique_claims": 2,
+          "times_cited": 3,
+          "t_effective": 1
+        }
+      },
+      "claims": [
+        "NB2-P1-003",
+        "NB2-P1-005",
+        "NB2-P2-004"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "jabatan tka kepmen228 settori ammessi 2025",
@@ -322,10 +514,31 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
-      "claims": [],
+      "scores": {
+        "svs_total": 0.721,
+        "svs_classification": "ESSENTIAL",
+        "times_cited": 2,
+        "svs_breakdown": {
+          "v_tier": 0.9,
+          "v_claims": 0.25,
+          "staleness": 0.994,
+          "v_citations": 0.4,
+          "v_uniqueness": 0.5,
+          "bonus": 0.1,
+          "days_old": 1,
+          "claims_count": 2,
+          "unique_claims": 1,
+          "times_cited": 2,
+          "t_effective": 1
+        }
+      },
+      "claims": [
+        "NB2-P1-004",
+        "NB2-P2-004"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "jabatan tka vietate kepmen349 2025",
@@ -350,9 +563,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -378,10 +609,33 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
-      "claims": [],
+      "scores": {
+        "svs_total": 0.819,
+        "svs_classification": "ESSENTIAL",
+        "times_cited": 4,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.5,
+          "staleness": 0.994,
+          "v_citations": 0.8,
+          "v_uniqueness": 0.5,
+          "bonus": 0.1,
+          "days_old": 1,
+          "claims_count": 4,
+          "unique_claims": 2,
+          "times_cited": 4,
+          "t_effective": 1
+        }
+      },
+      "claims": [
+        "NB2-P1-006",
+        "NB2-P1-009",
+        "NB2-P4-003",
+        "NB2-P4-004"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "kitas e23 tka guida 2025",
@@ -406,9 +660,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -434,9 +706,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -462,9 +752,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -490,9 +798,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -518,9 +844,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -546,9 +890,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -574,10 +936,31 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
-      "claims": [],
+      "scores": {
+        "svs_total": 0.596,
+        "svs_classification": "VALUABLE",
+        "times_cited": 2,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.25,
+          "staleness": 0.994,
+          "v_citations": 0.4,
+          "v_uniqueness": 0.5,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 2,
+          "unique_claims": 1,
+          "times_cited": 2,
+          "t_effective": 1
+        }
+      },
+      "claims": [
+        "NB2-P1-007",
+        "NB2-P2-001"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "merp rientro guida 2025",
@@ -602,9 +985,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.361,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.65,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -630,9 +1031,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -658,10 +1077,31 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
-      "claims": [],
+      "scores": {
+        "svs_total": 0.696,
+        "svs_classification": "VALUABLE",
+        "times_cited": 2,
+        "svs_breakdown": {
+          "v_tier": 0.9,
+          "v_claims": 0.25,
+          "staleness": 0.994,
+          "v_citations": 0.4,
+          "v_uniqueness": 1.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 2,
+          "unique_claims": 2,
+          "times_cited": 2,
+          "t_effective": 1
+        }
+      },
+      "claims": [
+        "NB2-P1-002",
+        "NB2-P4-002"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "nb2 immigration circulars",
@@ -686,9 +1126,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.361,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.65,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -714,10 +1172,31 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
-      "claims": [],
+      "scores": {
+        "svs_total": 0.621,
+        "svs_classification": "VALUABLE",
+        "times_cited": 2,
+        "svs_breakdown": {
+          "v_tier": 0.9,
+          "v_claims": 0.25,
+          "staleness": 0.994,
+          "v_citations": 0.4,
+          "v_uniqueness": 0.5,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 2,
+          "unique_claims": 1,
+          "times_cited": 2,
+          "t_effective": 1
+        }
+      },
+      "claims": [
+        "NB2-P1-001",
+        "NB2-P1-010"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "nb2 tka rptka guide",
@@ -742,9 +1221,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -770,9 +1267,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -798,9 +1313,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -826,9 +1359,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -854,9 +1405,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -882,10 +1451,30 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
-      "claims": [],
+      "scores": {
+        "svs_total": 0.485,
+        "svs_classification": "VALUABLE",
+        "times_cited": 1,
+        "svs_breakdown": {
+          "v_tier": 0.9,
+          "v_claims": 0.125,
+          "staleness": 0.994,
+          "v_citations": 0.2,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 1,
+          "unique_claims": 0,
+          "times_cited": 1,
+          "t_effective": 1
+        }
+      },
+      "claims": [
+        "NB2-P1-008"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "rptka dkp tka guida 2025",
@@ -910,9 +1499,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -938,9 +1545,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -966,9 +1591,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -994,9 +1637,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -1022,9 +1683,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -1050,9 +1729,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -1078,9 +1775,27 @@
       "dates": {
         "published": "2025-01-01",
         "ingested": "2026-03-28T00:00:00+08:00",
-        "promoted": "2026-03-28T00:00:00+08:00"
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
-      "scores": { "svs_total": null, "svs_classification": null },
+      "scores": {
+        "svs_total": 0.399,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.8,
+          "v_claims": 0.0,
+          "staleness": 0.994,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.0,
+          "days_old": 1,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 1
+        }
+      },
       "claims": [],
       "dedup": {
         "url_hash": null,
@@ -1091,6 +1806,298 @@
         "pinned": false,
         "enforcement_divergence": false,
         "manual_review_needed": false
+      }
+    },
+    "42a3f083-0205-4d9a-9e0c-f666f4284885": {
+      "nlm_source_id": "42a3f083-0205-4d9a-9e0c-f666f4284885",
+      "stage": "ACTIVE",
+      "category": "master_digest",
+      "source_type": "MASTER_DIGEST",
+      "title": "[NB2-MD] Change Log",
+      "url": null,
+      "language": "en",
+      "tier": null,
+      "tier_label": "MASTER_DIGEST",
+      "dates": {
+        "published": "2026-03-28",
+        "ingested": "2026-03-28T17:00:00+08:00",
+        "promoted": "2026-03-28T17:00:00+08:00",
+        "last_reviewed": null,
+        "last_confirmed_valid": "2026-03-28T17:00:00+08:00"
+      },
+      "scores": {
+        "svs_total": 0.425,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.5,
+          "v_claims": 0.0,
+          "staleness": 1.0,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.1,
+          "days_old": 0,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 0
+        }
+      },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 md change log",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": true,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "c46cbb51-81f2-4f10-81f1-9f3b505ec614": {
+      "nlm_source_id": "c46cbb51-81f2-4f10-81f1-9f3b505ec614",
+      "stage": "ACTIVE",
+      "category": "master_digest",
+      "source_type": "MASTER_DIGEST",
+      "title": "[NB2-MD] Operations Status",
+      "url": null,
+      "language": "en",
+      "tier": null,
+      "tier_label": "MASTER_DIGEST",
+      "dates": {
+        "published": "2026-03-28",
+        "ingested": "2026-03-28T17:00:00+08:00",
+        "promoted": "2026-03-28T17:00:00+08:00",
+        "last_reviewed": null,
+        "last_confirmed_valid": "2026-03-28T17:00:00+08:00"
+      },
+      "scores": {
+        "svs_total": 0.486,
+        "svs_classification": "VALUABLE",
+        "times_cited": 1,
+        "svs_breakdown": {
+          "v_tier": 0.5,
+          "v_claims": 0.125,
+          "staleness": 1.0,
+          "v_citations": 0.2,
+          "v_uniqueness": 0.0,
+          "bonus": 0.1,
+          "days_old": 0,
+          "claims_count": 1,
+          "unique_claims": 0,
+          "times_cited": 1,
+          "t_effective": 0
+        }
+      },
+      "claims": [
+        "NB2-P2-004"
+      ],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 md operations status",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": true,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "6d336e6b-de51-4da0-84be-07a772e3c6b0": {
+      "nlm_source_id": "6d336e6b-de51-4da0-84be-07a772e3c6b0",
+      "stage": "ACTIVE",
+      "category": "master_digest",
+      "source_type": "MASTER_DIGEST",
+      "title": "[NB2-MD] Cross-Domain Impacts",
+      "url": null,
+      "language": "en",
+      "tier": null,
+      "tier_label": "MASTER_DIGEST",
+      "dates": {
+        "published": "2026-03-28",
+        "ingested": "2026-03-28T17:00:00+08:00",
+        "promoted": "2026-03-28T17:00:00+08:00",
+        "last_reviewed": null,
+        "last_confirmed_valid": "2026-03-28T17:00:00+08:00"
+      },
+      "scores": {
+        "svs_total": 0.425,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.5,
+          "v_claims": 0.0,
+          "staleness": 1.0,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.1,
+          "days_old": 0,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 0
+        }
+      },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 md cross domain impacts",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": true,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "d818b8ec-a5ca-450e-8478-6504fdc57d6e": {
+      "nlm_source_id": "d818b8ec-a5ca-450e-8478-6504fdc57d6e",
+      "stage": "ACTIVE",
+      "category": "master_digest",
+      "source_type": "MASTER_DIGEST",
+      "title": "[NB2-MD] Open Questions",
+      "url": null,
+      "language": "en",
+      "tier": null,
+      "tier_label": "MASTER_DIGEST",
+      "dates": {
+        "published": "2026-03-28",
+        "ingested": "2026-03-28T17:00:00+08:00",
+        "promoted": "2026-03-28T17:00:00+08:00",
+        "last_reviewed": null,
+        "last_confirmed_valid": "2026-03-28T17:00:00+08:00"
+      },
+      "scores": {
+        "svs_total": 0.425,
+        "svs_classification": "MARGINAL",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 0.5,
+          "v_claims": 0.0,
+          "staleness": 1.0,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.1,
+          "days_old": 0,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 0
+        }
+      },
+      "claims": [],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "nb2 md open questions",
+        "known_duplicates": []
+      },
+      "flags": {
+        "pinned": true,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "adc39025-f3ec-4a51-adc0-57f7c0c212ce": {
+      "nlm_source_id": "adc39025-f3ec-4a51-adc0-57f7c0c212ce",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "LAW",
+      "title": "UU No. 63 Tahun 2024 — Perubahan atas UU Keimigrasian (Key Provisions)",
+      "url": null,
+      "language": "id",
+      "tier": 0,
+      "tier_label": "T0_NATIONAL_LAW",
+      "dates": {
+        "published": "2024-10-01",
+        "ingested": "2026-03-28T17:30:00+08:00",
+        "promoted": "2026-03-28T17:30:00+08:00",
+        "last_reviewed": null,
+        "last_confirmed_valid": "2026-03-28T18:15:00+08:00"
+      },
+      "scores": {
+        "svs_total": 0.623,
+        "svs_classification": "VALUABLE",
+        "times_cited": 2,
+        "svs_breakdown": {
+          "v_tier": 1.0,
+          "v_claims": 0.25,
+          "staleness": 1.0,
+          "v_citations": 0.4,
+          "v_uniqueness": 0.0,
+          "bonus": 0.05,
+          "days_old": 0,
+          "claims_count": 2,
+          "unique_claims": 0,
+          "times_cited": 2,
+          "t_effective": 0
+        }
+      },
+      "claims": [
+        "NB2-P2-001",
+        "NB2-P4-005"
+      ],
+      "dedup": {
+        "url_hash": null,
+        "title_normalized": "uu no 63 tahun 2024 perubahan atas uu keimigrasian",
+        "known_duplicates": [
+          "4061643c-5660-4f8c-83b4-c507565f47d0"
+        ]
+      },
+      "flags": {
+        "pinned": true,
+        "enforcement_divergence": false,
+        "manual_review_needed": false
+      }
+    },
+    "4061643c-5660-4f8c-83b4-c507565f47d0": {
+      "nlm_source_id": "4061643c-5660-4f8c-83b4-c507565f47d0",
+      "stage": "ACTIVE",
+      "category": "canonical",
+      "source_type": "LAW",
+      "title": "UU No. 63 Tahun 2024 (BPK Full Text)",
+      "url": "https://peraturan.bpk.go.id/Details/273550/uu-no-63-tahun-2024",
+      "language": "id",
+      "tier": 0,
+      "tier_label": "T0_NATIONAL_LAW",
+      "dates": {
+        "published": "2024-10-01",
+        "ingested": "2026-03-28T00:00:00+08:00",
+        "promoted": "2026-03-28T00:00:00+08:00",
+        "last_reviewed": null,
+        "last_confirmed_valid": null
+      },
+      "scores": {
+        "svs_total": 0.5,
+        "svs_classification": "VALUABLE",
+        "times_cited": 0,
+        "svs_breakdown": {
+          "v_tier": 1.0,
+          "v_claims": 0.0,
+          "staleness": 1.0,
+          "v_citations": 0.0,
+          "v_uniqueness": 0.0,
+          "bonus": 0.05,
+          "days_old": 543,
+          "claims_count": 0,
+          "unique_claims": 0,
+          "times_cited": 0,
+          "t_effective": 543
+        }
+      },
+      "claims": [],
+      "dedup": {
+        "url_hash": "bpk_273550_uu_63_2024",
+        "title_normalized": "uu no 63 tahun 2024",
+        "known_duplicates": [
+          "adc39025-f3ec-4a51-adc0-57f7c0c212ce"
+        ]
+      },
+      "flags": {
+        "pinned": true,
+        "enforcement_divergence": false,
+        "manual_review_needed": true,
+        "note": "Same law as adc39025, different source format (BPK full text vs key provisions). Keep both for citation diversity."
       }
     }
   },
