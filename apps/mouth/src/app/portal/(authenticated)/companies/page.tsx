@@ -184,9 +184,13 @@ function CompanyCard({
   const licenseStatus = getLicenseStatus();
 
   return (
-    <div
+    <article
       onClick={onClick}
-      className="rounded-xl border p-4 cursor-pointer transition-all duration-200 active:scale-[0.99] hover:-translate-y-0.5 hover:shadow-lg"
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      tabIndex={0}
+      role="button"
+      aria-label={`View ${company.name} details`}
+      className="rounded-xl border p-4 cursor-pointer transition-all duration-200 active:scale-[0.99] hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-accent-warm)]"
       style={{
         background: 'rgba(30,30,35,0.7)',
         borderColor: 'rgba(255,255,255,0.05)',
@@ -274,7 +278,7 @@ function CompanyCard({
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
