@@ -59,7 +59,7 @@ class TestCrossEncoderRerankerMixin:
 
         # Create a proper mock class that inherits from the mixin
         class MockSearchService(CrossEncoderRerankerMixin):
-            def __init__(self, reranker):
+            def __init__(self, reranker) -> None:
                 self._cross_encoder_reranker = reranker
 
             async def search(self, **kwargs):
@@ -95,7 +95,7 @@ class TestCrossEncoderRerankerMixin:
         mock_reranker.enabled = False
 
         class MockSearchService(CrossEncoderRerankerMixin):
-            def __init__(self, reranker):
+            def __init__(self, reranker) -> None:
                 self._cross_encoder_reranker = reranker
 
             async def search(self, **kwargs):
@@ -128,7 +128,7 @@ class TestCrossEncoderRerankerMixin:
         mock_reranker.enabled = True
 
         class MockSearchService(CrossEncoderRerankerMixin):
-            def __init__(self, reranker):
+            def __init__(self, reranker) -> None:
                 self._cross_encoder_reranker = reranker
 
             async def search(self, **kwargs):
@@ -164,7 +164,7 @@ class TestCrossEncoderRerankerMixin:
         mock_reranker.model_name = "test-model"
 
         class MockSearchService(CrossEncoderRerankerMixin):
-            def __init__(self, reranker):
+            def __init__(self, reranker) -> None:
                 self._cross_encoder_reranker = reranker
 
             async def search(self, **kwargs):
@@ -199,7 +199,7 @@ class TestCrossEncoderRerankerMixin:
         mock_reranker.rerank = AsyncMock(return_value=[{"text": "result", "score": 0.99}])
 
         class MockSearchService(CrossEncoderRerankerMixin):
-            def __init__(self, reranker):
+            def __init__(self, reranker) -> None:
                 self._cross_encoder_reranker = reranker
 
             async def hybrid_search(self, **kwargs):
@@ -235,7 +235,7 @@ class TestCrossEncoderRerankerMixin:
         mock_reranker.rerank = AsyncMock(return_value=[{"text": "result", "score": 0.99}])
 
         class MockSearchService(CrossEncoderRerankerMixin):
-            def __init__(self, reranker):
+            def __init__(self, reranker) -> None:
                 self._cross_encoder_reranker = reranker
 
             async def hybrid_search(self, **kwargs):

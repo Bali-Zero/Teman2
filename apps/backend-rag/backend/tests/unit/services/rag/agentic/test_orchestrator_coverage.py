@@ -24,7 +24,7 @@ from backend.services.tools.definitions import AgentState, BaseTool, ToolCall
 class MockTool(BaseTool):
     """Mock tool for testing"""
 
-    def __init__(self, name: str = "mock_tool"):
+    def __init__(self, name: str = "mock_tool") -> None:
         self._name = name
 
     @property

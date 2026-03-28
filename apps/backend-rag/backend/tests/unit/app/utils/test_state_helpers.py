@@ -164,7 +164,7 @@ class TestGetRequestState:
         """Test getting attribute from dict-like object"""
 
         class DictLike:
-            def __init__(self):
+            def __init__(self) -> None:
                 self.data = {"user_id": "user123"}
 
             def __getattr__(self, name):
