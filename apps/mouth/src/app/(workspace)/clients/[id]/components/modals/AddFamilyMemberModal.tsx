@@ -46,7 +46,7 @@ export function AddFamilyMemberModal({
     'w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50';
 
   return (
-    <Modal title="Add Family Member" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
+    <Modal title="Add Family Member" aria-label="Add Family Member" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Full Name *</label>

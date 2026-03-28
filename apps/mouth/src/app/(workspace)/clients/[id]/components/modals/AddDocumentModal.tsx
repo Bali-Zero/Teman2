@@ -84,6 +84,7 @@ export function AddDocumentModal({
   return (
     <Modal
       title="Add Document"
+      aria-label="Add Document"
       onClose={onClose}
       isSaving={isSaving}
       onSave={handleSubmit}

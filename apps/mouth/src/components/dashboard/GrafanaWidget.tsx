@@ -100,6 +100,7 @@ export function GrafanaWidget({ className = '' }: GrafanaWidgetProps) {
           disabled={isLoading}
           className="p-2 rounded-lg hover:bg-orange-500/20 transition-colors"
           title="Refresh"
+          aria-label="Refresh"
         >
           <RefreshCw className={`w-5 h-5 text-orange-400 ${isLoading ? 'animate-spin' : ''}`} />
         </button>

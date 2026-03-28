@@ -91,6 +91,7 @@ export function TelegramList({
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               placeholder="Search conversations..."
+              aria-label="Search conversations"
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
             />
           </div>
@@ -99,6 +100,7 @@ export function TelegramList({
         <button
           className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)] transition-colors"
           title="Filters"
+          aria-label="Filters"
         >
           <Filter className="w-4 h-4" />
         </button>

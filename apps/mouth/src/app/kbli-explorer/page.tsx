@@ -757,6 +757,7 @@ const InspectorChoreographed = ({
               onClick={handleCopy}
               className="p-2 rounded hover:bg-white/5 text-[#666] hover:text-[#D4B483] transition-colors"
               title="Copy details"
+              aria-label="Copy details"
             >
               <Copy size={14} />
             </button>
@@ -1226,6 +1227,7 @@ export default function KBLIExplorerPage() {
               <input
                 type="text"
                 placeholder=""
+                aria-label="Ask a question about KBLI"
                 className="w-full bg-[#0F1115]/80 backdrop-blur-md text-[#E1E1E3] placeholder-[#444] rounded-lg py-4 md:py-5 pl-12 md:pl-14 pr-28 border border-white/5 focus:border-[#D4B483]/30 focus:ring-1 focus:ring-[#D4B483]/30 focus:outline-none transition-all shadow-2xl font-light tracking-wide min-h-[44px]"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -1270,6 +1272,7 @@ export default function KBLIExplorerPage() {
                     onClick={handleClearConversation}
                     className="p-2 rounded-md hover:bg-[#1A1D24] text-[#555] hover:text-[#888] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                     title="Clear conversation"
+                    aria-label="Clear conversation"
                   >
                     <Trash2 size={16} />
                   </button>

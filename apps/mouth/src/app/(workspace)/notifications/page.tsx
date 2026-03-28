@@ -217,16 +217,18 @@ export default function NotificationsDashboardPage() {
       {/* Stats Grid */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard title="24h Alerts" value={stats.total_alerts_24h} icon={Mail} color="blue" />
-          <StatCard title="Pending" value={stats.pending_count} icon={Clock} color="amber" />
+          <StatCard title="24h Alerts" aria-label="24h Alerts" value={stats.total_alerts_24h} icon={Mail} color="blue" />
+          <StatCard title="Pending" aria-label="Pending" value={stats.pending_count} icon={Clock} color="amber" />
           <StatCard
             title="Sent (24h)"
+            aria-label="Sent (24h)"
             value={stats.sent_count_24h}
             icon={CheckCircle}
             color="green"
           />
           <StatCard
             title="Failed (24h)"
+            aria-label="Failed (24h)"
             value={stats.failed_count_24h}
             icon={XCircle}
             color={stats.failed_count_24h > 0 ? 'red' : 'gray'}

@@ -459,7 +459,7 @@ class GitHubPublisher:
         update_ref_response = await client.patch(
             ref_url,
             headers=self._get_headers(),
-            json={"sha": new_commit_sha},
+            json={"sha": new_commit_sha, "force": True},
             timeout=30.0,
         )
 

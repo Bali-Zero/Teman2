@@ -459,6 +459,7 @@ export function VisaCard({
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/jpg,image/png,application/pdf"
+              aria-label="Upload visa document"
               onChange={handleFileUpload}
               className="hidden"
             />

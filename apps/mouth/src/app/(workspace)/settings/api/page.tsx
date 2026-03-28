@@ -188,6 +188,7 @@ export default function ApiKeysSettingsPage() {
                     onClick={() => toggleKeyVisibility(apiKey.id)}
                     className="p-1.5 rounded hover:bg-[var(--background-secondary)] text-[var(--foreground-muted)]"
                     title={visibleKeys.has(apiKey.id) ? 'Hide' : 'Show'}
+                    aria-label={visibleKeys.has(apiKey.id) ? 'Hide API key' : 'Show API key'}
                   >
                     {visibleKeys.has(apiKey.id) ? (
                       <EyeOff className="w-4 h-4" />
@@ -199,6 +200,7 @@ export default function ApiKeysSettingsPage() {
                     onClick={() => copyToClipboard(apiKey.key, apiKey.id)}
                     className="p-1.5 rounded hover:bg-[var(--background-secondary)] text-[var(--foreground-muted)]"
                     title="Copy"
+                    aria-label="Copy API key"
                   >
                     {copiedKey === apiKey.id ? (
                       <CheckCircle2 className="w-4 h-4 text-green-400" />
@@ -210,6 +212,7 @@ export default function ApiKeysSettingsPage() {
                     onClick={() => deleteKey(apiKey.id)}
                     className="p-1.5 rounded hover:bg-red-500/20 text-red-400"
                     title="Delete"
+                    aria-label="Delete API key"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

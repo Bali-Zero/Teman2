@@ -244,6 +244,7 @@ function CompanyDocUpload({
             ref={fileInputRef}
             type="file"
             accept=".jpg,.jpeg,.png,.pdf"
+            aria-label="Upload document"
             className="hidden"
             onChange={handleUpload}
             disabled={isUploading}
@@ -1146,6 +1147,7 @@ export function CompanyTab({
                     className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors"
                     style={{ color: "rgba(148,163,184,0.7)" }}
                     title="Edit company"
+                    aria-label="Edit company"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>

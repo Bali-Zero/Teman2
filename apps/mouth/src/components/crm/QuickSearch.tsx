@@ -244,6 +244,7 @@ export function QuickSearch({
             ref={inputRef}
             type="text"
             placeholder="Search clients..."
+            aria-label="Search clients"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}

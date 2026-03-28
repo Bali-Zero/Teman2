@@ -690,6 +690,7 @@ function ClientsListContent() {
               ref={searchInputRef}
               type="text"
               placeholder="Search clients… (press / to focus)"
+              aria-label="Search clients"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               title="Press / to focus, Escape to clear"
