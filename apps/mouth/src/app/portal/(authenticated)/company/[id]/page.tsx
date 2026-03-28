@@ -61,8 +61,48 @@ export default function CompanyDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--bz-accent-warm)' }} />
+      <div className="space-y-6 animate-in fade-in duration-500">
+        {/* Back button */}
+        <div className="h-8 w-16 rounded animate-pulse" style={{ background: 'var(--bz-border)' }} />
+        {/* Company header card */}
+        <section className="rounded-xl border p-6 animate-pulse" style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl" style={{ background: 'var(--bz-border)' }} />
+            <div className="space-y-2 flex-1">
+              <div className="h-6 w-48 rounded" style={{ background: 'var(--bz-border)' }} />
+              <div className="h-4 w-24 rounded" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+            </div>
+            <div className="h-6 w-20 rounded-full" style={{ background: 'var(--bz-border)', opacity: 0.4 }} />
+          </div>
+          <div className="mt-4 space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="h-4 w-4 rounded" style={{ background: 'var(--bz-border)', opacity: 0.4 }} />
+                <div className="h-4 w-40 rounded" style={{ background: 'var(--bz-border)', opacity: 0.4 }} />
+              </div>
+            ))}
+          </div>
+        </section>
+        {/* Licenses section skeleton */}
+        <div className="rounded-xl border p-6 space-y-3 animate-pulse" style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="h-5 w-24 rounded" style={{ background: 'var(--bz-border)' }} />
+          {[1, 2].map((i) => (
+            <div key={i} className="rounded-lg border p-3 space-y-1.5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+              <div className="h-4 w-36 rounded" style={{ background: 'var(--bz-border)' }} />
+              <div className="h-3 w-28 rounded" style={{ background: 'var(--bz-border)', opacity: 0.4 }} />
+            </div>
+          ))}
+        </div>
+        {/* Compliance section skeleton */}
+        <div className="rounded-xl border p-6 space-y-3 animate-pulse" style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="h-5 w-32 rounded" style={{ background: 'var(--bz-border)' }} />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between">
+              <div className="h-4 w-40 rounded" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+              <div className="h-5 w-16 rounded-full" style={{ background: 'var(--bz-border)', opacity: 0.4 }} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
