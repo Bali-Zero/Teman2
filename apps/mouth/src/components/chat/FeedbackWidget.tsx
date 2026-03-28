@@ -35,6 +35,17 @@ export function FeedbackWidget({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Close on Escape
+  useEffect(() => {
+    if (!isVisible) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleDismiss();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVisible]);
+
   // Show widget after 8+ turns, but ONLY if not already submitted or dismissed
   useEffect(() => {
     // Check if already shown this session
@@ -127,6 +138,8 @@ export function FeedbackWidget({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         transition={{ duration: 0.3 }}
+        role="dialog"
+        aria-modal="true"
         className="fixed bottom-24 right-4 md:max-w-sm w-[calc(100%-2rem)] md:w-80 bg-[var(--background-elevated)] border border-[var(--border)] rounded-xl p-4 shadow-xl z-50"
       >
         {submitSuccess ? (

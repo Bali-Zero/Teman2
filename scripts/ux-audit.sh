@@ -62,8 +62,24 @@ if [ "$TSX_COUNT" -gt 0 ]; then
   done < <(grep -rn "^[[:space:]]*<button$\|^[[:space:]]*<Button$" "$TARGET" --include="*.tsx" 2>/dev/null | grep -v "node_modules\|\.test\.\|__tests__\|type=\"submit\"\|onClick\|href")
 
   # 3. Overlays/modals missing Escape key handler
+  # Skip files that use Radix UI primitives (Dialog, Popover, Sheet, AlertDialog) — they handle Escape natively
   while IFS= read -r file; do
     [ -z "$file" ] && continue
+    # Radix / Shadcn handles Escape natively — skip files using its primitives
+    if grep -q "@radix-ui\|Dialog\.Root\|DialogPrimitive\|Popover\|Sheet\.Root\|AlertDialog\.Root\|components/ui/dialog\|components/ui/sheet\|components/ui/popover\|components/ui/alert-dialog" "$file" 2>/dev/null; then
+      continue
+    fi
+    # Also skip purely decorative/static overlays (nav bars, bg layers without open/close state)
+    if ! grep -qE "useState|isOpen|setIsOpen|open.*Modal|isVisible" "$file" 2>/dev/null; then
+      continue
+    fi
+    # Skip nav bars and toolbars (z-50 on <nav> or non-fullscreen elements, not dismissable overlays)
+    if ! grep -qE "fixed inset-0|inset-0.*fixed" "$file" 2>/dev/null; then
+      # Only flag if it has a clear modal/dialog-like open state (setIsOpen, onClose, isOpen)
+      if ! grep -qE "setIsOpen|onClose|isOpen.*true|setOpen\(true\)|setIsVisible\(true\)" "$file" 2>/dev/null; then
+        continue
+      fi
+    fi
     if ! grep -q "Escape" "$file" 2>/dev/null; then
       add_issue "HIGH" "no-escape" "$file" "Fixed overlay/modal without Escape key handler"
     fi

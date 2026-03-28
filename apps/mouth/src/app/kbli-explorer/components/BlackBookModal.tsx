@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -23,6 +23,15 @@ export default function BlackBookModal({
   onClose,
   detectedCode,
 }: BlackBookModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onClose]);
+
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsApp] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -46,7 +55,7 @@ export default function BlackBookModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6" role="dialog" aria-modal="true">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}

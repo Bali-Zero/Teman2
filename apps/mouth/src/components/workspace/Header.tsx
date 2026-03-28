@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, Menu, X, MessageCircle, CheckCheck } from "lucide-react";
 import { routeTitles } from "@/types/navigation";
@@ -70,6 +70,15 @@ export function Header({
     };
     return new Date().toLocaleDateString("en-US", options);
   };
+
+  useEffect(() => {
+    if (!showNotifications) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowNotifications(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [showNotifications]);
 
   const handleNotificationClick = (actionUrl?: string, id?: string) => {
     if (id) markAsRead(id);

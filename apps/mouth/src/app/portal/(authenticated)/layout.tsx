@@ -139,6 +139,16 @@ export default function PortalLayout({
     setIsMobileMenuOpen(false);
   }, []);
 
+  // Close mobile menu on Escape
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isMobileMenuOpen]);
+
   // Show loading state
   if (isLoading) {
     return (

@@ -25,7 +25,7 @@ See: CLAUDE.md "Asyncpg + JSONB Development Guidelines" for full documentation.
 """
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
