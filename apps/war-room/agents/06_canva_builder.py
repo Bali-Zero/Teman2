@@ -52,8 +52,8 @@ TEMPLATE_SLOTS = [
     (5,  "PBZjXPTPh9tnvx82-LBSZHpqHtJfq43QC",  "PBZjXPTPh9tnvx82-LB9q34XMJhYmJcVV"),   # slide 5
     (6,  "PBgr2GbZD3DJkPP0-LB0cZMDY3BRdprNk",  "PBgr2GbZD3DJkPP0-LB1kPFcPYqsqQYfQ"),   # slide 6
     (7,  "PBk1XphW0PnpKMh2-LBbh37qB3S4DrdrD",  "PBk1XphW0PnpKMh2-LB2XL6f0tjmwhgk8"),   # slide 7
-    (8,  "PBNffcgkNpZKTtmM-LBFg8s6hy6DF3HvB",  "PBNffcgkNpZKTtmM-LBY2F75l9NJp4bpf"),   # slide 8
-    (9,  "PBqdbS4QcwHgGN0F-LBFxtRbKJBx5qKch",  None),                                    # slide 9 (heading only)
+    (8,  "PBNffcgkNpZKTtmM-LBqZPxQl4n18fr93",  "PBNffcgkNpZKTtmM-LBY2F75l9NJp4bpf"),   # slide 8 — heading ID fixed 2026-03-28
+    (9,  "PBqdbS4QcwHgGN0F-LBxNXD1BhmjjkJfc",  None),                                    # slide 9 (heading only) — ID fixed 2026-03-28
     (10, "PBz4hjP71RbnjKhb-LBbCpkK9wH5C1KQX",  "PBz4hjP71RbnjKhb-LBTVJsF8WVLZBx8L"),   # slide 10
     (11, "PBxns7m6jJJm3BKT-LBtXZ6mvNj5TH3n0",  None),                                    # slide 11 (heading only)
 ]
@@ -66,18 +66,21 @@ MAX_SLIDES = 11
 # None = non ancora mappato (Claude li recupera dinamicamente via Get Design Pages)
 # page_index → image_element_id
 IMAGE_ELEMENT_IDS: dict[int, str | None] = {
-    1:  None,   # cover — placeholder da mappare
+    1:  "PB6Rxs8n5DZkNS9Z-LBHqK4g0FxbCCC2M",   # cover — full-bleed background
     2:  None,
-    3:  None,
-    4:  None,   # slide 4 — immagine aerial villa
+    3:  "PBswT8p6LMg6vyX4-LBxWhDcGyymfN9lK",   # slide 3 — bottom image
+    4:  "PB9rgJ5tQj1yNJrD-LBtpL9tDPBgSywD2",   # slide 4 — bottom image (aerial villa)
     5:  None,
-    6:  None,
+    6:  "PBgr2GbZD3DJkPP0-LB95B2ZrsbxVqpQL",   # slide 6 — bottom image
     7:  None,
     8:  None,
-    9:  None,   # slide 9 — immagine notarial seal
+    9:  "PBqdbS4QcwHgGN0F-LBzTLpBTRhdtwgRX",   # slide 9 — left half image (CTA)
     10: None,
     11: None,
 }
+# NOTE: Tigris URLs must use subdomain format:
+#   https://nuzantara-warroom-images.fly.storage.tigris.dev/warroom/slide_XX.jpg
+# NOT path-style: https://fly.storage.tigris.dev/nuzantara-warroom-images/...
 
 
 # ── Slide → operations list ───────────────────────────────────────────────────
