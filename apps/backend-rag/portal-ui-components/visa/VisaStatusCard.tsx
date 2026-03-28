@@ -39,6 +39,7 @@ interface VisaRecord {
 interface VisaStatusCardProps {
   clientId: number;
   apiUrl?: string;
+  onRenew?: () => void;
 }
 
 const fetcher = (url: string) =>
@@ -74,6 +75,7 @@ function getExpiryUrgency(daysUntil: number): "safe" | "warning" | "critical" {
 export function VisaStatusCard({
   clientId,
   apiUrl = process.env.NEXT_PUBLIC_API_URL,
+  onRenew,
 }: VisaStatusCardProps) {
   const { data, error, isLoading } = useSWR<VisaRecord>(
     `${apiUrl}/api/portal/visa`,
@@ -224,6 +226,7 @@ export function VisaStatusCard({
           <Button
             className="w-full"
             variant={urgency === "critical" ? "default" : "outline"}
+            onClick={onRenew}
           >
             {urgency === "critical" ? "Renew Now" : "Start Renewal Process"}
           </Button>
