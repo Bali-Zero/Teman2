@@ -286,8 +286,8 @@ class TestExpiryCheckerEdgeCases:
 
     def test_months_between_calculation(self, checker: ExpiryChecker):
         """Test months calculation is accurate."""
-        start = datetime(2024, 1, 15)
-        end = datetime(2024, 9, 15)
+        start = datetime(2024, 1, 15, tzinfo=timezone.utc)
+        end = datetime(2024, 9, 15, tzinfo=timezone.utc)
 
         months = checker._months_between(start, end)
 
@@ -295,8 +295,8 @@ class TestExpiryCheckerEdgeCases:
 
     def test_months_between_partial_month(self, checker: ExpiryChecker):
         """Test partial months are handled correctly."""
-        start = datetime(2024, 1, 15)
-        end = datetime(2024, 9, 10)  # Less than full month
+        start = datetime(2024, 1, 15, tzinfo=timezone.utc)
+        end = datetime(2024, 9, 10, tzinfo=timezone.utc)  # Less than full month
 
         months = checker._months_between(start, end)
 
@@ -304,8 +304,8 @@ class TestExpiryCheckerEdgeCases:
 
     def test_months_between_negative_returns_zero(self, checker: ExpiryChecker):
         """Negative months (past date) should return 0."""
-        start = datetime(2024, 9, 15)
-        end = datetime(2024, 1, 15)  # Before start
+        start = datetime(2024, 9, 15, tzinfo=timezone.utc)
+        end = datetime(2024, 1, 15, tzinfo=timezone.utc)  # Before start
 
         months = checker._months_between(start, end)
 

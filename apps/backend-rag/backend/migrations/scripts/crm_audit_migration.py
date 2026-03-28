@@ -5,7 +5,7 @@ Creates tables and indexes for comprehensive audit trails
 
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.app.dependencies import get_database_pool
 from backend.app.utils.logging_utils import get_logger
