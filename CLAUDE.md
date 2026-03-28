@@ -779,7 +779,12 @@ GitKraken MCP (`gk mcp`) is installed and provides 23 tools. Use them in these s
 ### Federation Protocol
 
 - **Escalation**: Air scrive finding in `shared/escalations.json`, Pro legge a inizio sessione
-- **Git sync**: post-commit hook → `ssh air 'cd ~/Projects/nuzantara && git pull --ff-only'`
+- **Git sync** (2026-03-28): Automatic via `.husky/post-commit` (git-tracked, identical on both machines):
+  - Pro commits → Air auto-pulls (`ssh air 'git pull pro main --ff-only'`)
+  - Air commits → Air pushes to Pro (`git push pro main`)
+  - GitHub: only Pro pushes to `origin`. Air NEVER pushes to `origin`.
+  - Both on `main`. No `air` branch. Log: `~/.openclaw/logs/git-sync.log`
+  - Details: `docs/PRO_AIR_CONNECTION.md`
 - **CLAUDE.md**: IDENTICO su entrambe — git-tracked, push/pull obbligatorio
 - **A2A Plan**: pilot con Damar — Gemini CLI agent per team member, Claude Code supervisor
 
