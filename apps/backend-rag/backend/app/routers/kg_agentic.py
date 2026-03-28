@@ -216,7 +216,7 @@ async def kg_query(
             raise HTTPException(
                 status_code=500,
                 detail=f"KG query processing failed: {str(e)}",
-            )
+            ) from e
 
 
 @router.get(
@@ -252,7 +252,7 @@ async def list_golden_routes(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to list golden routes: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -327,7 +327,7 @@ async def kg_stats(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get KG stats: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -420,7 +420,7 @@ async def find_kg_path(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to find path: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -451,7 +451,7 @@ async def kg_visualize(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to visualize KG: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(

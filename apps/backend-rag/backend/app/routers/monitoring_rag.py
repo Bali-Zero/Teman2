@@ -190,7 +190,7 @@ async def get_retrieval_quality(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve metrics: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -230,7 +230,7 @@ async def get_scores_trend(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve score trends: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -267,7 +267,7 @@ async def get_abstain_statistics(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve abstain statistics: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -304,7 +304,7 @@ async def get_latency_percentiles(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve latency statistics: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(
@@ -362,7 +362,7 @@ async def set_alert_thresholds(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to set alert thresholds: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -400,7 +400,7 @@ async def get_alert_thresholds(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get alert thresholds: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -430,7 +430,7 @@ async def health_check(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Monitoring service unhealthy: {str(e)}",
-        )
+        ) from e
 
 
 # Import datetime for health check

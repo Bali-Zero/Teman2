@@ -203,7 +203,7 @@ async def voice_query(
 
     except Exception as e:
         logger.error(f"Voice query failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Voice query failed")
+        raise HTTPException(status_code=500, detail="Voice query failed") from e
 
 
 kbli_eye = KBLIEye("source_documents/KBLI_2025_FINAL_CLEAN.json")

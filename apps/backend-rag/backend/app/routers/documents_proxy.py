@@ -93,7 +93,7 @@ async def proxy_drive_file(
         raise
     except Exception as e:
         logger.error(f"[PROXY] Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.get("/thumbnail/{file_id}")
@@ -178,7 +178,7 @@ async def get_drive_thumbnail(
         raise
     except Exception as e:
         logger.error(f"[THUMBNAIL] Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 def extract_file_id_from_url(url: str) -> str | None:
