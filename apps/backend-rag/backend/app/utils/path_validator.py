@@ -77,7 +77,7 @@ def validate_path(
                 allowed = True
                 path_obj = resolved
             except ValueError:
-                pass
+                pass  # path not relative to cwd — will be blocked below
 
     if not allowed:
         logger.warning(f"Path traversal attempt blocked: {path}")

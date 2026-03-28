@@ -452,7 +452,7 @@ class LLMAdapter:
                 else:
                     logger.warning(f"⚠️ Ollama running but model {self.ollama_model} not found")
         except Exception:
-            pass  # Ollama not responding
+            pass  # Ollama not responding — will attempt to start below
 
         # Try to start Ollama
         logger.info("🚀 Attempting to start Ollama...")

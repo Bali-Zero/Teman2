@@ -93,7 +93,7 @@ class ConversationTrainer:
             if pool:
                 return pool
         except Exception:
-            pass
+            pass  # app.state.db_pool not yet available at init time
 
         raise RuntimeError(
             "Database pool not available. Provide db_pool in __init__ or ensure app.state.db_pool is set.",

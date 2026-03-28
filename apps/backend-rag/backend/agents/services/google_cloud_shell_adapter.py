@@ -38,8 +38,8 @@ class GoogleCloudShellAdapter:
                 version = result.stdout.decode().strip().split("\n")[0]
                 logger.info(f"✅ Google Cloud SDK trovato: {version}")
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Google Cloud SDK not available: {e}")
 
         logger.info("ℹ️ Google Cloud Shell Editor è web-based. Accedi via Google Cloud Console.")
         return False

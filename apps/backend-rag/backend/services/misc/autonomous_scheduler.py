@@ -189,7 +189,7 @@ class AutonomousScheduler:
                         )
                         break
                     except asyncio.TimeoutError:
-                        pass
+                        pass  # timeout elapsed — retry task
                     continue
 
                 logger.info(f"⏰ Running scheduled task: {task.name}")

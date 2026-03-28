@@ -79,8 +79,8 @@ class GoogleServices:
                         decoded = base64.b64decode(creds_json).decode("utf-8")
                         creds_dict = json.loads(decoded)
                         logger.info("✅ Loaded Google credentials from base64-encoded env var")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Google creds base64 decode failed: {e}")
 
             # Create credentials from dict or fallback to file
             if creds_dict and creds_dict.get("type") == "service_account":

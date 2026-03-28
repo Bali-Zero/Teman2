@@ -231,8 +231,8 @@ class OrchestratorStreamingCore:
                         nlm_cached_result = await self.core.faq_cache.get(
                             query, notebook_id=nlm_match["notebook_id"],
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"NLM cache get skipped: {e}")
                 # Launch async NLM query only on cache miss
                 if not nlm_cached_result:
                     nlm_task = asyncio.create_task(
@@ -334,7 +334,7 @@ class OrchestratorStreamingCore:
                 try:
                     await nlm_task
                 except (asyncio.CancelledError, Exception):
-                    pass
+                    pass  # Task cancelled cleanly
 
             if nlm_result and nlm_domain:
                 yield {
@@ -361,8 +361,8 @@ class OrchestratorStreamingCore:
                             metadata=nlm_result,
                             notebook_id=nlm_domain.get("notebook_id", ""),
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"NLM cache set skipped: {e}")
 
             # 6. Yield done event with metrics
             execution_time = time.time() - start_time
@@ -414,7 +414,7 @@ class OrchestratorStreamingCore:
                 try:
                     await nlm_task
                 except (asyncio.CancelledError, Exception):
-                    pass
+                    pass  # Ensure cleanup on exit
 
     async def _stream_core_result(
         self,
