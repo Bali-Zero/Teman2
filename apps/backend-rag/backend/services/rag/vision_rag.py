@@ -48,7 +48,7 @@ class VisionRAGService:
     Estrae e indicizza elementi visuali (tabelle, grafici, form).
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._genai_client: GenAIClient | None = None
         self.vision_model_name = "gemini-2.0-flash-lite"  # Vision capable
         self.text_model_name = "gemini-2.0-flash-lite"

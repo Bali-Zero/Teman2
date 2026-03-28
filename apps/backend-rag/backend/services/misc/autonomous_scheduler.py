@@ -133,7 +133,7 @@ class AutonomousScheduler:
     - Task status monitoring
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.tasks: dict[str, ScheduledTask] = {}
         self._running = False
         self._shutdown_event = asyncio.Event()

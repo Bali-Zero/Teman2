@@ -26,7 +26,7 @@ class VertexAIService:
     Service for interacting with Vertex AI Gemini models.
     """
 
-    def __init__(self, project_id: str = None, location: str = "us-central1"):
+    def __init__(self, project_id: str = None, location: str = "us-central1") -> None:
         """
         Initialize Vertex AI service.
 

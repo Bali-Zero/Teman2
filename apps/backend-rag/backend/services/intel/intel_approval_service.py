@@ -25,7 +25,7 @@ class IntelApprovalService:
     Handles Telegram notifications, voting status, and approval coordination.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the approval service."""
         self.pending_intel_path = Path(settings.get_intel_pending_path)
         self.pending_intel_path.mkdir(exist_ok=True)

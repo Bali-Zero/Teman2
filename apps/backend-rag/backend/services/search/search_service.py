@@ -115,7 +115,7 @@ class SearchService:
         cultural_insights: CulturalInsightsService | None = None,
         query_router: Any | None = None,
         query_expander: QueryExpander | None = None,
-    ):
+    ) -> None:
         """Initialize SearchService with dependency injection.
 
         Sets up the core search service with modular, composable dependencies

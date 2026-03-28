@@ -57,7 +57,7 @@ class MemoryServicePostgres:
     MAX_FACTS = MemoryConstants.MAX_FACTS
     MAX_SUMMARY_LENGTH = MemoryConstants.MAX_SUMMARY_LENGTH
 
-    def __init__(self, database_url: str | None = None):
+    def __init__(self, database_url: str | None = None) -> None:
         """
         Initialize MemoryService with PostgreSQL.
 

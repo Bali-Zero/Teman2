@@ -26,7 +26,7 @@ class DebugContext:
         enable_verbose_logging: bool = True,
         capture_api_calls: bool = True,
         save_state_snapshot: bool = False,
-    ):
+    ) -> None:
         """
         Initialize debug context.
 

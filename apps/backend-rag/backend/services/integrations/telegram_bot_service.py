@@ -19,7 +19,7 @@ TELEGRAM_API_BASE = "https://api.telegram.org/bot"
 class TelegramBotService:
     """Service for interacting with Telegram Bot API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._token = settings.telegram_bot_token
         self._client: httpx.AsyncClient | None = None
 

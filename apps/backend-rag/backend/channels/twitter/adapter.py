@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class TwitterChannelAdapter(BaseChannel):
     """Twitter/X API v2 adapter for DMs."""
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
         self.twitter_config = TwitterChannelConfig(
             consumer_key=config.get("consumer_key", ""),

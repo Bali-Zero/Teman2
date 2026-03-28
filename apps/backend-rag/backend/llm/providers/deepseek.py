@@ -22,7 +22,7 @@ class DeepSeekProvider(LLMProvider):
     - Context: 64k tokens
     """
 
-    def __init__(self, model: str = "deepseek-chat"):
+    def __init__(self, model: str = "deepseek-chat") -> None:
         """
         Initialize DeepSeek provider.
 

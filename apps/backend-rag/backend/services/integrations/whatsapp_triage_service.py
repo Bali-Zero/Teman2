@@ -30,7 +30,7 @@ class TriageDecision(str, Enum):
 class WhatsAppTriageService:
     """Service to determine if message should go to human or AI."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Personal contacts whitelist (from env var)
         whitelist = settings.whatsapp_personal_contacts or ""
         self.personal_contacts = {phone.strip() for phone in whitelist.split(",") if phone.strip()}

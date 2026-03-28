@@ -31,7 +31,7 @@ class TokenEstimator:
     TOKEN_CHAR_RATIO = 4  # Average characters per token
     TOKEN_WORD_RATIO = 1.3  # Average words per token
 
-    def __init__(self, model: str = "gpt-4"):
+    def __init__(self, model: str = "gpt-4") -> None:
         """
         Initialize TokenEstimator.
 

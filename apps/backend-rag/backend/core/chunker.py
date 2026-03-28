@@ -4,7 +4,7 @@ Minimal Chunker stub for tests.
 
 
 class Chunker:
-    def __init__(self, max_tokens: int = 512, overlap: int = 0):
+    def __init__(self, max_tokens: int = 512, overlap: int = 0) -> None:
         self.max_tokens = max_tokens
         self.overlap = overlap
 
@@ -42,7 +42,7 @@ class TextChunker:
     Optimized for book content with natural language structure.
     """
 
-    def __init__(self, chunk_size: int = None, chunk_overlap: int = None, max_chunks: int = None):
+    def __init__(self, chunk_size: int = None, chunk_overlap: int = None, max_chunks: int = None) -> None:
         """
         Initialize chunker with configuration.
 

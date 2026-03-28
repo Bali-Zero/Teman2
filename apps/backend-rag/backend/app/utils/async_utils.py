@@ -74,7 +74,7 @@ class AsyncResourcePool:
         factory: Callable[[], Coroutine[Any, Any, T]],
         max_size: int = 10,
         timeout: float = 30.0,
-    ):
+    ) -> None:
         self.factory = factory
         self.max_size = max_size
         self.timeout = timeout
@@ -133,7 +133,7 @@ class CircuitBreaker:
         failure_threshold: int = 5,
         recovery_timeout: float = 60.0,
         half_open_max_calls: int = 3,
-    ):
+    ) -> None:
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
         self.half_open_max_calls = half_open_max_calls
@@ -211,7 +211,7 @@ class CircuitBreakerOpen(Exception):
 class Debouncer:
     """Debounce multiple calls into a single execution."""
 
-    def __init__(self, delay: float = 0.3):
+    def __init__(self, delay: float = 0.3) -> None:
         self.delay = delay
         self._task: asyncio.Task | None = None
         self._lock = asyncio.Lock()

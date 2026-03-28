@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class TestMapper:
     """Maps source files to their corresponding test files."""
 
-    def __init__(self, repo_path: Path, tests_dir: Path):
+    def __init__(self, repo_path: Path, tests_dir: Path) -> None:
         self.repo_path = repo_path
         self.tests_dir = tests_dir
         self._mapping_cache: dict[str, list[str]] = {}
@@ -147,7 +147,7 @@ class TestMapper:
 class ChangeImpactAnalyzer:
     """Analyzes the impact of code changes on tests."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def analyze_changes(

@@ -24,7 +24,7 @@ class MemoryFactExtractor:
     - Concerns and pain points (what user is worried about)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize fact extractor with patterns"""
 
         # Preference patterns

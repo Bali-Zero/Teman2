@@ -24,7 +24,7 @@ class CollectionManager:
     REFACTORED: Extracted from SearchService to reduce complexity.
     """
 
-    def __init__(self, qdrant_url: str | None = None):
+    def __init__(self, qdrant_url: str | None = None) -> None:
         """
         Initialize collection manager.
 

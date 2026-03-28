@@ -13,7 +13,7 @@ class GraphPathfinder:
     Navigates the Knowledge Graph to reconstruct deterministic workflows.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
 
     async def get_workflow_by_id(self, workflow_id: str) -> dict[str, Any] | None:

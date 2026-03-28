@@ -19,7 +19,7 @@ class JourneyBuilderService:
     Responsibility: Create journeys from templates or custom steps.
     """
 
-    def __init__(self, templates_service: JourneyTemplatesService | None = None):
+    def __init__(self, templates_service: JourneyTemplatesService | None = None) -> None:
         """
         Initialize journey builder service.
 

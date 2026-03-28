@@ -30,7 +30,7 @@ class TelegramChannelAdapter(BaseChannel):
     - Rate limiting compliance (Telegram API limits)
     """
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         """
         Initialize Telegram adapter.
 

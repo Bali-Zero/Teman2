@@ -28,7 +28,7 @@ class IntelligentRouter:
         personality_service=None,
         collaborator_service=None,
         db_pool=None,
-    ):
+    ) -> None:
         # Initialize the new Brain (Agentic RAG)
         # We need to pass the retriever (search_service) and db_pool
 

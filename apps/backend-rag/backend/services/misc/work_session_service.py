@@ -24,7 +24,7 @@ class WorkSessionService:
     - JSONL file: Local backup log (work_sessions_log.jsonl)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         from backend.app.core.config import settings
 
         self.db_url = settings.database_url

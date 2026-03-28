@@ -213,7 +213,7 @@ class DatasetBuilder:
         self,
         llm_client: UnifiedLLMClient | None = None,
         seed: int | None = None,
-    ):
+    ) -> None:
         """
         Initialize DatasetBuilder.
 

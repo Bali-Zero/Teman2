@@ -27,7 +27,7 @@ class RateLimiter:
     Rate limiter with sliding window algorithm
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.redis_available = False
         self.redis_client = None
 

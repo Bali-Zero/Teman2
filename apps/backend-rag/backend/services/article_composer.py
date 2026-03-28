@@ -25,7 +25,7 @@ class ErrorCode(Enum):
 class APIError(Exception):
     """API Error exception."""
 
-    def __init__(self, message: str, code: ErrorCode, status_code: int = 500):
+    def __init__(self, message: str, code: ErrorCode, status_code: int = 500) -> None:
         self.message = message
         self.code = code
         self.status_code = status_code
@@ -35,7 +35,7 @@ class APIError(Exception):
 class ComposeRequestValidator:
     """Validator for compose requests."""
 
-    def __init__(self, max_length: int = 10000):
+    def __init__(self, max_length: int = 10000) -> None:
         self.max_length = max_length
 
     def validate(self, content: str) -> tuple[bool, str]:

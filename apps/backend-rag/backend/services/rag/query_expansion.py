@@ -154,7 +154,7 @@ Example output: ["variant 1", "variant 2"]"""
         cache_service: CacheService | None = None,
         max_variants: int = 5,
         llm_timeout_ms: int = 100,
-    ):
+    ) -> None:
         """
         Initialize QueryExpander.
 

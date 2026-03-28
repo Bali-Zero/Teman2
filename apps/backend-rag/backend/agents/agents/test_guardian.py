@@ -81,7 +81,7 @@ COVERAGE_TARGET = 99.0
 class CodeContextAnalyzer(ast.NodeVisitor):
     """Analyzes Python code to find imports and dependencies for better context."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.imports = []
         self.classes = []
         self.functions = []
@@ -118,7 +118,7 @@ class TestGuardian:
     - Self-healing with retry logic
     """
 
-    def __init__(self, provider: str = "local", local_model: str = None):
+    def __init__(self, provider: str = "local", local_model: str = None) -> None:
         import os
 
         # Use environment variable or default

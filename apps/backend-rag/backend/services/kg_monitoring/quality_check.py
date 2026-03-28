@@ -132,7 +132,7 @@ class QualityCheckService:
         self,
         min_accept_score: float = 0.50,
         strict_mode: bool = False,
-    ):
+    ) -> None:
         """
         Initialize quality check service.
 

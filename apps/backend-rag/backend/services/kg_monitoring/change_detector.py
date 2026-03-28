@@ -125,7 +125,7 @@ class ChangeDetector:
         db_pool=None,
         alert_on_change: bool = True,
         slack_webhook: str | None = None,
-    ):
+    ) -> None:
         """
         Initialize change detector.
 

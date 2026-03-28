@@ -22,7 +22,7 @@ class OpenRouterProvider(LLMProvider):
     - qwen/qwen3.5-27b
     """
 
-    def __init__(self, tier: str = "rag"):
+    def __init__(self, tier: str = "rag") -> None:
         """
         Initialize OpenRouter provider.
 

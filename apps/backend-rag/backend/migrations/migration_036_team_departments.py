@@ -18,7 +18,7 @@ from backend.db.migration_base import BaseMigration
 class Migration036(BaseMigration):
     """Team Departments Migration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=36,
             sql_file="036_team_departments.sql",

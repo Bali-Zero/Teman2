@@ -37,7 +37,7 @@ class GraphRelation(BaseModel):
 
 
 class GraphService:
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.pool: asyncpg.Pool = db_pool
 
     @staticmethod

@@ -26,7 +26,7 @@ class DriveAuthManager:
     Incorpora il rinnovo asincrono dei token OAuth e la validazione dei permessi (folder access rules).
     """
 
-    def __init__(self, db_pool: asyncpg.Pool, http_client: httpx.AsyncClient):
+    def __init__(self, db_pool: asyncpg.Pool, http_client: httpx.AsyncClient) -> None:
         self.db_pool = db_pool
         self.http_client = http_client
         self.scopes = ["https://www.googleapis.com/auth/drive"]

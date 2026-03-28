@@ -72,7 +72,7 @@ class BackendSelfHealingAgent:
         orchestrator_url: str = "https://nuzantara-orchestrator.fly.dev",
         check_interval: int = 30,
         auto_fix_enabled: bool = False,
-    ):
+    ) -> None:
         self.service_name = service_name
         self.orchestrator_url = orchestrator_url
         self.check_interval = check_interval

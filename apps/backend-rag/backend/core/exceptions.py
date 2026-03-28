@@ -11,7 +11,7 @@ from typing import Any
 class NuzantaraBaseError(Exception):
     """Base exception for all Nuzantara backend errors."""
 
-    def __init__(self, message: str, details: dict[str, Any] | None = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -77,7 +77,7 @@ class QdrantTimeoutError(QdrantError):
 class QdrantServerError(QdrantError):
     """Qdrant server returned an error (5xx)."""
 
-    def __init__(self, message: str, status_code: int, response_text: str | None = None):
+    def __init__(self, message: str, status_code: int, response_text: str | None = None) -> None:
         super().__init__(
             message, details={"status_code": status_code, "response_text": response_text}
         )
@@ -88,7 +88,7 @@ class QdrantServerError(QdrantError):
 class QdrantClientError(QdrantError):
     """Qdrant client error (4xx) - bad request."""
 
-    def __init__(self, message: str, status_code: int, response_text: str | None = None):
+    def __init__(self, message: str, status_code: int, response_text: str | None = None) -> None:
         super().__init__(
             message, details={"status_code": status_code, "response_text": response_text}
         )
@@ -99,7 +99,7 @@ class QdrantClientError(QdrantError):
 class CollectionNotFoundError(QdrantError):
     """Qdrant collection does not exist."""
 
-    def __init__(self, collection_name: str):
+    def __init__(self, collection_name: str) -> None:
         super().__init__(
             f"Collection '{collection_name}' not found",
             details={"collection_name": collection_name},
@@ -133,7 +133,7 @@ class LLMError(NuzantaraBaseError):
 class LLMRateLimitError(LLMError):
     """LLM API rate limit exceeded."""
 
-    def __init__(self, provider: str, retry_after: int | None = None):
+    def __init__(self, provider: str, retry_after: int | None = None) -> None:
         super().__init__(
             f"Rate limit exceeded for {provider}",
             details={"provider": provider, "retry_after": retry_after},
@@ -145,7 +145,7 @@ class LLMRateLimitError(LLMError):
 class LLMContextLengthError(LLMError):
     """Input exceeds LLM context length."""
 
-    def __init__(self, provider: str, max_tokens: int, actual_tokens: int):
+    def __init__(self, provider: str, max_tokens: int, actual_tokens: int) -> None:
         super().__init__(
             f"Context length exceeded for {provider}",
             details={
@@ -246,7 +246,7 @@ class GeminiError(IntegrationError):
 class ValidationError(NuzantaraBaseError):
     """Input validation failed."""
 
-    def __init__(self, field: str, message: str, value: Any = None):
+    def __init__(self, field: str, message: str, value: Any = None) -> None:
         super().__init__(
             f"Validation failed for '{field}': {message}",
             details={"field": field, "value": value},
@@ -257,7 +257,7 @@ class ValidationError(NuzantaraBaseError):
 class ConfigurationError(NuzantaraBaseError):
     """Configuration is missing or invalid."""
 
-    def __init__(self, config_key: str, message: str | None = None):
+    def __init__(self, config_key: str, message: str | None = None) -> None:
         msg = message or f"Configuration missing or invalid: {config_key}"
         super().__init__(msg, details={"config_key": config_key})
         self.config_key = config_key
@@ -277,7 +277,7 @@ class BusinessError(NuzantaraBaseError):
 class ResourceNotFoundError(BusinessError):
     """Requested resource does not exist."""
 
-    def __init__(self, resource_type: str, resource_id: str):
+    def __init__(self, resource_type: str, resource_id: str) -> None:
         super().__init__(
             f"{resource_type} with ID '{resource_id}' not found",
             details={"resource_type": resource_type, "resource_id": resource_id},
@@ -287,7 +287,7 @@ class ResourceNotFoundError(BusinessError):
 class DuplicateResourceError(BusinessError):
     """Resource already exists."""
 
-    def __init__(self, resource_type: str, identifier: str):
+    def __init__(self, resource_type: str, identifier: str) -> None:
         super().__init__(
             f"{resource_type} '{identifier}' already exists",
             details={"resource_type": resource_type, "identifier": identifier},
@@ -297,7 +297,7 @@ class DuplicateResourceError(BusinessError):
 class QuotaExceededError(BusinessError):
     """Usage quota exceeded."""
 
-    def __init__(self, resource: str, limit: int, current: int):
+    def __init__(self, resource: str, limit: int, current: int) -> None:
         super().__init__(
             f"Quota exceeded for {resource}: {current}/{limit}",
             details={"resource": resource, "limit": limit, "current": current},
@@ -312,7 +312,7 @@ class QuotaExceededError(BusinessError):
 class ServiceUnavailableError(NuzantaraBaseError):
     """External service is unavailable."""
 
-    def __init__(self, service_name: str, reason: str | None = None):
+    def __init__(self, service_name: str, reason: str | None = None) -> None:
         msg = f"Service '{service_name}' is unavailable"
         if reason:
             msg += f": {reason}"
@@ -322,6 +322,6 @@ class ServiceUnavailableError(NuzantaraBaseError):
 class RetryableError(NuzantaraBaseError):
     """Error that can be retried."""
 
-    def __init__(self, message: str, retry_after: int | None = None):
+    def __init__(self, message: str, retry_after: int | None = None) -> None:
         super().__init__(message, details={"retry_after": retry_after})
         self.retry_after = retry_after

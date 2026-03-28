@@ -112,7 +112,7 @@ def cached_sync(
 class CacheWarmer:
     """Cache warming utility for pre-populating cache."""
 
-    def __init__(self, cache_service: Any):
+    def __init__(self, cache_service: Any) -> None:
         self.cache = cache_service
         self._warmup_tasks: list[Any] = []
 
@@ -138,7 +138,7 @@ class CacheWarmer:
 class Memoize:
     """Memoization with TTL for instance methods."""
 
-    def __init__(self, ttl_seconds: int = 300):
+    def __init__(self, ttl_seconds: int = 300) -> None:
         self.ttl = ttl_seconds
         self._cache: dict[str, tuple[Any, float]] = {}
 

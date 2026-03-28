@@ -16,7 +16,7 @@ class ConversationService:
     Handles saving to PostgreSQL and Memory Cache fallback.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
 
     async def save_conversation(

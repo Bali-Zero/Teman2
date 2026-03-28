@@ -20,7 +20,7 @@ class CulturalRAGService:
     Retrieves ZANTARA-generated Indonesian cultural intelligence for ZANTARA AI enrichment
     """
 
-    def __init__(self, search_service=None, cultural_insights_service=None):
+    def __init__(self, search_service=None, cultural_insights_service=None) -> None:
         """
         Initialize CulturalRAGService
 

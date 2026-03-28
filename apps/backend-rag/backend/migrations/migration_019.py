@@ -18,7 +18,7 @@ class Migration019:
     description = "Create episodic memory table for user timeline events"
     dependencies = [18]  # Depends on collective memory (migration 018)
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sql_file = (
             Path(__file__).parent.parent / "db" / "migrations" / "019_episodic_memory.sql"
         )

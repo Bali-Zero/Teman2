@@ -33,7 +33,7 @@ class PersonalityService:
     basandosi sul team member che interagisce
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Usa il nostro modello Zantara su Oracle Cloud
         self.zantara_oracle_url = os.getenv(
             "ZANTARA_ORACLE_URL", "https://zantara.oracle.cloud/api/generate"

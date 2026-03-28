@@ -66,7 +66,7 @@ class ZantaraAIClient:
     - Token estimation for cost tracking
     """
 
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
         """
         Initialize ZantaraAIClient.
 

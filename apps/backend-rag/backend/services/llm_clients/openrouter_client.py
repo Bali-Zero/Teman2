@@ -112,7 +112,7 @@ class OpenRouterClient:
         timeout: float = 120.0,  # Longer timeout for large context
         site_url: str = "https://nuzantara-rag.fly.dev",
         site_name: str = "Nuzantara RAG",
-    ):
+    ) -> None:
         self.api_key = api_key or settings.openrouter_api_key or os.getenv("OPENROUTER_API_KEY")
         if not self.api_key:
             logger.warning("OpenRouter API key not configured")

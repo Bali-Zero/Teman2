@@ -62,7 +62,7 @@ class HybridSearchService:
         self,
         collection_manager: CollectionManager | None = None,
         bm25_vectorizer: BM25Vectorizer | None = None,
-    ):
+    ) -> None:
         """
         Initialize HybridSearchService.
 

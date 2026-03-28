@@ -25,7 +25,7 @@ class LegalMetadataExtractor:
     Identifies document type, number, year, topic, and status.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the metadata extractor"""
         logger.info("LegalMetadataExtractor initialized")
 

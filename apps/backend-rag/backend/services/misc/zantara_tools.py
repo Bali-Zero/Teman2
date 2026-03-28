@@ -20,7 +20,7 @@ class ZantaraTools:
     - Memory tools: User memory operations
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.pricing_service = get_pricing_service()
         self.collaborator_service = CollaboratorService()
         logger.info("✅ ZantaraTools initialized")

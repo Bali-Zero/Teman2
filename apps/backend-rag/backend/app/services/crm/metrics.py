@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 class CRMMetrics:
     """CRM-specific metrics for business operations"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Client metrics
         self.active_clients_total = Gauge(
             "crm_active_clients_total",
@@ -99,7 +99,7 @@ crm_metrics = CRMMetrics()
 class CRMMetricsCollector:
     """Collects and updates CRM metrics from database"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.pool = None
 
     def initialize(self, pool: asyncpg.Pool) -> Any:

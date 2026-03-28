@@ -54,7 +54,7 @@ class InvoiceGenerator:
     COLOR_MUTED = colors.HexColor("#6c757d") if _REPORTLAB_AVAILABLE else None
     COLOR_WHITE = colors.white if _REPORTLAB_AVAILABLE else None
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.styles = getSampleStyleSheet()
         self._setup_custom_styles()
 

@@ -14,7 +14,7 @@ logger = logging.getLogger("KBLI-Symmetric-Enricher")
 
 
 class KBLIEnricher:
-    def __init__(self, batch_size: int = 100, concurrency: int = 8, retries: int = 3):
+    def __init__(self, batch_size: int = 100, concurrency: int = 8, retries: int = 3) -> None:
         self.batch_size = batch_size
         self.semaphore = asyncio.Semaphore(concurrency)
         self.retries = retries

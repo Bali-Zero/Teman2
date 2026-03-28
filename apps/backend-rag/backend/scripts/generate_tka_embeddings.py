@@ -41,7 +41,7 @@ UPLOAD_BATCH_SIZE = 50  # Upload to Qdrant in batches
 class OpenAIEmbedder:
     """OpenAI embedding generator."""
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self, api_key: str | None = None) -> None:
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
@@ -78,7 +78,7 @@ class OpenAIEmbedder:
 class QdrantClient:
     """Simple Qdrant client for upserting points."""
 
-    def __init__(self, url: str | None = None, api_key: str | None = None):
+    def __init__(self, url: str | None = None, api_key: str | None = None) -> None:
         self.url = (url or os.getenv("QDRANT_URL") or DEFAULT_QDRANT_URL).rstrip("/")
         self.api_key = api_key or os.getenv("QDRANT_API_KEY")
         self.timeout = 60.0

@@ -20,7 +20,7 @@ thread_pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="rag_")
 class PerformanceMonitor:
     """Monitor and log performance metrics"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.metrics = {
             "request_count": 0,
             "total_time": 0,
@@ -122,7 +122,7 @@ def timed(component: str = "request") -> Any:
 class AsyncLRUCache:
     """Async-safe LRU cache with TTL"""
 
-    def __init__(self, maxsize: int = 128, ttl: int = 300):
+    def __init__(self, maxsize: int = 128, ttl: int = 300) -> None:
         self.maxsize = maxsize
         self.ttl = ttl
         self.cache = {}
@@ -167,7 +167,7 @@ search_cache = AsyncLRUCache(maxsize=200, ttl=300)  # 5 minute TTL
 class ConnectionPool:
     """Simple connection pool for HTTP clients"""
 
-    def __init__(self, max_connections: int = 10):
+    def __init__(self, max_connections: int = 10) -> None:
         self.max_connections = max_connections
         self.connections = asyncio.Queue(maxsize=max_connections)
         self.created_connections = 0
@@ -210,7 +210,7 @@ http_pool = ConnectionPool()
 class BatchProcessor:
     """Process multiple requests in batches for efficiency"""
 
-    def __init__(self, batch_size: int = 10, max_wait: float = 0.1):
+    def __init__(self, batch_size: int = 10, max_wait: float = 0.1) -> None:
         self.batch_size = batch_size
         self.max_wait = max_wait
         self.queue = asyncio.Queue()
@@ -275,7 +275,7 @@ class BatchProcessor:
 class OptimizedSearchService:
     """Performance-optimized search service"""
 
-    def __init__(self, original_search_service):
+    def __init__(self, original_search_service) -> None:
         self.original = original_search_service
         self.batch_processor = BatchProcessor(batch_size=5, max_wait=0.05)
 

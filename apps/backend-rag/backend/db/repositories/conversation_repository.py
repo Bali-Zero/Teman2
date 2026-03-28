@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 class ConversationRepository:
     """Repository for conversation persistence operations"""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
 
     async def save_messages(

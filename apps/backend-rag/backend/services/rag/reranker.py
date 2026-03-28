@@ -76,7 +76,7 @@ class CrossEncoderReranker:
         max_length: int = 512,
         batch_size: int = 32,
         enabled: bool | None = None,
-    ):
+    ) -> None:
         """
         Initialize the Cross-Encoder Reranker.
 

@@ -29,7 +29,7 @@ class GoldenRouterService:
         embeddings_generator=None,
         golden_answer_service=None,
         search_service=None,
-    ):
+    ) -> None:
         """
         Initialize GoldenRouterService.
 

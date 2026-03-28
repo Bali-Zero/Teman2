@@ -119,7 +119,7 @@ class RAGBenchmark:
         evaluator: RAGASEvaluator | None = None,
         hybrid_service: HybridSearchService | None = None,
         reranker: CrossEncoderRerankerMixin | None = None,
-    ):
+    ) -> None:
         """
         Initialize RAG Benchmark.
 

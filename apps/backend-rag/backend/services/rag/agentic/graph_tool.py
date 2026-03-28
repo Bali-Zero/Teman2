@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class GraphTraversalTool(BaseTool):
     """Tool for exploring the Knowledge Graph"""
 
-    def __init__(self, graph_service: GraphService):
+    def __init__(self, graph_service: GraphService) -> None:
         self.graph = graph_service
 
     @property

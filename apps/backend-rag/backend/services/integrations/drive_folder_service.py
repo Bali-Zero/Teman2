@@ -16,7 +16,7 @@ CLIENTS_ROOT_FOLDER_ID = "YOUR_CLIENTS_FOLDER_ID"  # Configure this
 class DriveFolderService:
     """Service for managing client folders in Google Drive."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.drive_service = ServiceAccountDriveService()
         self.root_folder_id = CLIENTS_ROOT_FOLDER_ID
 

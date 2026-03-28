@@ -45,7 +45,7 @@ class DeepSeekClient:
     BASE_URL = "https://api.deepseek.com/v1"
     DEFAULT_MODEL = "deepseek-chat"  # DeepSeek V3
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self, api_key: str | None = None) -> None:
         """
         Initialize DeepSeek client.
 

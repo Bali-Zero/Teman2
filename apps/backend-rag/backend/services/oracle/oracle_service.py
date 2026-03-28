@@ -136,7 +136,7 @@ async def reason_with_gemini(
 
 
 class OracleService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.prompt_builder = ZantaraPromptBuilder(model_adapter=GeminiAdapter())
         self.intent_classifier = IntentClassifier()
 

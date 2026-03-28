@@ -123,7 +123,7 @@ class MetricsTracker:
         ... )
     """
 
-    def __init__(self, pool: asyncpg.Pool | None = None):
+    def __init__(self, pool: asyncpg.Pool | None = None) -> None:
         """
         Initialize MetricsTracker.
 

@@ -72,7 +72,7 @@ class CollectiveMemoryService:
     def __init__(
         self,
         pool: asyncpg.Pool | None = None,
-    ):
+    ) -> None:
         self.pool = pool
         logger.info("CollectiveMemoryService initialized (PostgreSQL only)")
 

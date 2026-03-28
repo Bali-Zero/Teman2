@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class InstagramChannelAdapter(BaseChannel):
     """Instagram Business API adapter."""
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
         self.instagram_config = InstagramChannelConfig(
             access_token=config.get("access_token", ""),

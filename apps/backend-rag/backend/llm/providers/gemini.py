@@ -21,7 +21,7 @@ class GeminiProvider(LLMProvider):
     - gemini-2.0-flash (fallback)
     """
 
-    def __init__(self, model_name: str = "gemini-2.0-flash-lite"):
+    def __init__(self, model_name: str = "gemini-2.0-flash-lite") -> None:
         """
         Initialize Gemini provider.
 

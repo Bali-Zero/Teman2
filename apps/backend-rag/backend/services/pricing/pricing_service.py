@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class PricingService:
     """Official Service Pricing - NO AI GENERATION ALLOWED"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.prices: dict[str, Any] = {}
         self.loaded = False
         self._load_prices()

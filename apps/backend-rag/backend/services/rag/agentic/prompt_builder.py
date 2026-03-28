@@ -52,7 +52,7 @@ class SystemPromptBuilder:
         r"^selamat\s+datang",  # Indonesian
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize SystemPromptBuilder with caching.
 
         Sets up prompt caching infrastructure to avoid rebuilding expensive

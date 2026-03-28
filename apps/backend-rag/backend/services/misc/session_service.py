@@ -32,7 +32,7 @@ class SessionService:
 
     def __init__(
         self, redis_url: str | None = None, ttl_hours: int = 24, redis_client: Any | None = None
-    ):
+    ) -> None:
         """
         Initialize SessionService
 

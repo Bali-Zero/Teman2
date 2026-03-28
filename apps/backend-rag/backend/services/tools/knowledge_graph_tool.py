@@ -12,7 +12,7 @@ from backend.services.tools.definitions import BaseTool
 class KnowledgeGraphTool(BaseTool):
     """Tool for querying the business knowledge graph."""
 
-    def __init__(self, kg_builder: KnowledgeGraphBuilder):
+    def __init__(self, kg_builder: KnowledgeGraphBuilder) -> None:
         self.kg_builder = kg_builder
 
     @property

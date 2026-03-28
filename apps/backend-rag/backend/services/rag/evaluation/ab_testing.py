@@ -134,7 +134,7 @@ class ABTestManager:
         self,
         experiments: dict[str, ExperimentConfig] | None = None,
         metrics_tracker: MetricsTracker | None = None,
-    ):
+    ) -> None:
         """
         Initialize A/B Test Manager.
 

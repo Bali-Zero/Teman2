@@ -13,7 +13,7 @@ logger = structlog.get_logger(__name__)
 class TaxService:
     """Service for managing client tax obligations."""
 
-    def __init__(self, db_pool: Pool):
+    def __init__(self, db_pool: Pool) -> None:
         self.db_pool = db_pool
 
     async def get_client_taxes(
