@@ -174,7 +174,7 @@ class EnhancedCRMService:
         try:
             # Recupera dati esistenti
             async with self.db_pool.acquire() as conn:
-                old_data = await conn.fetchrow("SELECT * FROM clients WHERE id = $1", client_id)
+                old_data = await conn.fetchrow("SELECT * FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id)
 
                 if not old_data:
                     raise ResourceNotFoundError("Client", str(client_id))
@@ -255,7 +255,7 @@ class EnhancedCRMService:
                 result = results[0] if results else None
             else:
                 async with self.db_pool.acquire() as conn:
-                    row = await conn.fetchrow("SELECT * FROM clients WHERE id = $1", client_id)
+                    row = await conn.fetchrow("SELECT * FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id)
                     result = dict(row) if row else None
 
             if result:
@@ -379,6 +379,11 @@ class EnhancedCRMService:
             )
 
             logger.info(f"Practice {practice_id} status: {old_status} -> {new_status}")
+
+            # HR Bonus hook: auto-create bonus entry when practice completed
+            if new_status == "completed" and old_status != "completed":
+                await self._create_hr_bonus_entry(practice_id, result)
+
             return result
 
         except ResourceNotFoundError:
@@ -409,6 +414,87 @@ class EnhancedCRMService:
         except Exception as e:
             logger.error(f"Batch create failed: {sanitize_error_message(e)}")
             raise DatabaseError("Batch creation failed", operation="batch_insert")
+
+    # ==================== HR BONUS HOOK ====================
+
+    async def _create_hr_bonus_entry(
+        self, practice_id: int, practice_data: dict[str, Any],
+    ) -> None:
+        """
+        Auto-create a bonus ledger entry when a practice is completed.
+        Non-blocking: logs warning on failure, never crashes the status update.
+        """
+        try:
+            assigned_to = practice_data.get("assigned_to")
+            if not assigned_to:
+                logger.debug(f"HR bonus skip: practice {practice_id} has no assigned_to")
+                return
+
+            async with self.db_pool.acquire() as conn:
+                # Get practice type code
+                pt = await conn.fetchrow("""
+                    SELECT pt.code FROM practice_types pt
+                    JOIN practices p ON p.practice_type_id = pt.id
+                    WHERE p.id = $1
+                """, practice_id)
+                if not pt:
+                    logger.debug(f"HR bonus skip: practice {practice_id} has no practice_type")
+                    return
+
+                practice_type_code = pt["code"]
+
+                # Find active bonus rate
+                rate = await conn.fetchrow("""
+                    SELECT id, amount_idr FROM hr_bonus_rates
+                    WHERE practice_type_code = $1
+                      AND is_active = TRUE
+                      AND effective_from <= CURRENT_DATE
+                      AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)
+                """, practice_type_code)
+                if not rate:
+                    logger.debug(
+                        f"HR bonus skip: no active rate for practice_type={practice_type_code}"
+                    )
+                    return
+
+                # Find employee by assigned_to email
+                emp = await conn.fetchrow("""
+                    SELECT e.id FROM hr_employees e
+                    JOIN team_members tm ON tm.id = e.team_member_id
+                    WHERE tm.email = $1 AND e.is_active = TRUE
+                """, assigned_to)
+                if not emp:
+                    logger.debug(
+                        f"HR bonus skip: no HR employee for email={assigned_to}"
+                    )
+                    return
+
+                # Check duplicate (practice + employee already has bonus)
+                existing = await conn.fetchval("""
+                    SELECT id FROM hr_bonus_ledger
+                    WHERE practice_id = $1 AND employee_id = $2
+                """, practice_id, emp["id"])
+                if existing:
+                    logger.debug(f"HR bonus skip: duplicate for practice={practice_id}")
+                    return
+
+                # Insert bonus entry
+                await conn.execute("""
+                    INSERT INTO hr_bonus_ledger (
+                        practice_id, employee_id, bonus_rate_id,
+                        practice_type_code, amount_idr, status
+                    ) VALUES ($1, $2, $3, $4, $5, 'pending')
+                """, practice_id, emp["id"], rate["id"],
+                    practice_type_code, rate["amount_idr"])
+
+                logger.info(
+                    f"HR bonus created: practice={practice_id}, "
+                    f"employee={assigned_to}, amount={rate['amount_idr']} IDR"
+                )
+
+        except Exception as e:
+            # Non-blocking: log but don't crash the status update
+            logger.warning(f"HR bonus hook failed for practice {practice_id}: {e}")
 
     # ==================== UTILITY METHODS ====================
 
