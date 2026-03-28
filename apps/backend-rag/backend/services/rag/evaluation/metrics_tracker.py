@@ -43,7 +43,7 @@ import json
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 import asyncpg
@@ -447,7 +447,7 @@ class MetricsTracker:
         if not self._initialized:
             await self.initialize()
 
-        since = since or datetime.utcnow() - timedelta(days=30)
+        since = since or datetime.now(timezone.utc) - timedelta(days=30)
 
         try:
             async with pool.acquire() as conn:
@@ -685,7 +685,7 @@ class MetricsTracker:
         if pool is None:
             return []
 
-        since = since or datetime.utcnow() - timedelta(days=30)
+        since = since or datetime.now(timezone.utc) - timedelta(days=30)
 
         try:
             async with pool.acquire() as conn:
@@ -744,7 +744,7 @@ class MetricsTracker:
         if pool is None:
             return []
 
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         try:
             async with pool.acquire() as conn:
@@ -785,7 +785,7 @@ class MetricsTracker:
         if pool is None:
             return 0
 
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         try:
             async with pool.acquire() as conn:

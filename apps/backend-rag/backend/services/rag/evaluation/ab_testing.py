@@ -29,7 +29,7 @@ import hashlib
 import logging
 import math
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -73,7 +73,7 @@ class ExperimentConfig:
 
     def __post_init__(self):
         if self.start_date is None:
-            self.start_date = datetime.utcnow()
+            self.start_date = datetime.now(timezone.utc)
 
 
 # Predefined experiment configurations
@@ -366,7 +366,7 @@ class ABTestManager:
                 "significance": significance_results,
                 "total_queries": sum(v.get("count", 0) for v in variant_metrics.values()),
                 "is_active": config.enabled
-                and (not config.end_date or datetime.utcnow() < config.end_date),
+                and (not config.end_date or datetime.now(timezone.utc) < config.end_date),
             }
 
         except Exception as e:
@@ -567,5 +567,5 @@ class ABTestManager:
             "experiments": experiments_data,
             "total_experiments": len(self.experiments),
             "active_experiments": sum(1 for e in self.experiments.values() if e.enabled),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }

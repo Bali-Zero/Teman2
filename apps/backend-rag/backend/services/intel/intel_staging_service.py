@@ -8,7 +8,7 @@ import hashlib
 import json
 import logging
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -78,7 +78,7 @@ class IntelStagingService:
         Returns:
             Unique item ID
         """
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         content_hash = hashlib.sha256(f"{title}{source_url}".encode()).hexdigest()[:8]
         return f"{intel_type}_{timestamp}_{content_hash}"
 
@@ -169,7 +169,7 @@ class IntelStagingService:
             Existing item data if duplicate found, None otherwise
         """
         staging_dir = self.get_staging_dir(intel_type)
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         file_paths = list(staging_dir.glob("*.json"))
 

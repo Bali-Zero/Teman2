@@ -8,7 +8,7 @@ Flow: Damar replies to article notification with photo → bot downloads → sav
 import base64
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +41,7 @@ class IntelCoverHandler:
             if NOTIFICATION_MAP_FILE.exists():
                 data = json.loads(NOTIFICATION_MAP_FILE.read_text())
                 # Prune old entries
-                cutoff = (datetime.utcnow() - timedelta(days=MAP_MAX_AGE_DAYS)).isoformat()
+                cutoff = (datetime.now(timezone.utc) - timedelta(days=MAP_MAX_AGE_DAYS)).isoformat()
                 self._notification_map = {
                     k: v for k, v in data.items() if v.get("registered_at", "") > cutoff
                 }
@@ -75,7 +75,7 @@ class IntelCoverHandler:
             "item_id": item_id,
             "chat_id": chat_id,
             "title": title,
-            "registered_at": datetime.utcnow().isoformat(),
+            "registered_at": datetime.now(timezone.utc).isoformat(),
         }
         self._save_map()
         logger.info(f"Registered notification mapping: msg_id={telegram_message_id} → {item_id}")
@@ -218,7 +218,7 @@ class IntelCoverHandler:
                 item_data["cover_image"] = f"covers/{item_id}.jpg"
                 item_data["cover_image_base64"] = base64.b64encode(photo_bytes).decode()
                 item_data["cover_uploaded_by"] = "damar"
-                item_data["cover_uploaded_at"] = datetime.utcnow().isoformat()
+                item_data["cover_uploaded_at"] = datetime.now(timezone.utc).isoformat()
                 item_file.write_text(json.dumps(item_data, indent=2, ensure_ascii=False))
                 logger.info(f"Updated staging item {item_id} with cover image")
             except Exception as e:

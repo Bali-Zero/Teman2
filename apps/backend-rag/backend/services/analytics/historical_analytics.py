@@ -22,7 +22,7 @@ Metrics Tracked:
 """
 
 import asyncio
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import structlog
@@ -439,7 +439,7 @@ async def generate_monthly_report(db_pool, year: int, month: int) -> dict:
         "response_times": response_times,
         "sla_compliance": sla,
         "revenue": revenue,
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
     logger.info(f"Monthly report generated: {len(completion['results'])} practice types analyzed")
@@ -457,7 +457,7 @@ async def main() -> Any:
 
     try:
         # Generate current month report
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         report = await generate_monthly_report(db_pool, now.year, now.month)
 
         # Print summary

@@ -8,7 +8,7 @@ import asyncio
 import hashlib
 import logging
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 from typing import Any, TypeVar
 
@@ -38,7 +38,7 @@ class CRMCache:
                 return None
 
             value, expiry = self._cache[key]
-            if datetime.utcnow() > expiry:
+            if datetime.now(timezone.utc) > expiry:
                 del self._cache[key]
                 return None
 
@@ -47,7 +47,7 @@ class CRMCache:
     async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Salva valore in cache."""
         ttl = ttl or self._default_ttl
-        expiry = datetime.utcnow() + timedelta(seconds=ttl)
+        expiry = datetime.now(timezone.utc) + timedelta(seconds=ttl)
 
         async with self._lock:
             self._cache[key] = (value, expiry)
@@ -72,7 +72,7 @@ class CRMCache:
 
     async def cleanup_expired(self) -> int:
         """Rimuove elementi scaduti. Ritorna numero elementi rimossi."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         async with self._lock:
             expired = [k for k, (_, expiry) in self._cache.items() if now > expiry]
             for k in expired:
@@ -148,7 +148,7 @@ class QueryCache:
             if email not in self._client_by_email:
                 return None
             client_id, expiry = self._client_by_email[email]
-            if datetime.utcnow() > expiry:
+            if datetime.now(timezone.utc) > expiry:
                 del self._client_by_email[email]
                 return None
             return client_id
@@ -158,7 +158,7 @@ class QueryCache:
         async with self._lock:
             self._client_by_email[email.lower()] = (
                 client_id,
-                datetime.utcnow() + timedelta(seconds=ttl),
+                datetime.now(timezone.utc) + timedelta(seconds=ttl),
             )
 
     async def get_client_by_phone(self, phone: str) -> int | None:
@@ -168,7 +168,7 @@ class QueryCache:
             if normalized not in self._client_by_phone:
                 return None
             client_id, expiry = self._client_by_phone[normalized]
-            if datetime.utcnow() > expiry:
+            if datetime.now(timezone.utc) > expiry:
                 del self._client_by_phone[normalized]
                 return None
             return client_id
@@ -179,7 +179,7 @@ class QueryCache:
             normalized = self._normalize_phone(phone)
             self._client_by_phone[normalized] = (
                 client_id,
-                datetime.utcnow() + timedelta(seconds=ttl),
+                datetime.now(timezone.utc) + timedelta(seconds=ttl),
             )
 
     async def get_practice_types(self) -> list[dict] | None:
@@ -189,7 +189,7 @@ class QueryCache:
                 return None
             if (
                 self._practice_types_updated
-                and datetime.utcnow() - self._practice_types_updated > timedelta(hours=1)
+                and datetime.now(timezone.utc) - self._practice_types_updated > timedelta(hours=1)
             ):
                 self._practice_types = None
                 return None
@@ -199,7 +199,7 @@ class QueryCache:
         """Salva tipi pratica in cache."""
         async with self._lock:
             self._practice_types = types
-            self._practice_types_updated = datetime.utcnow()
+            self._practice_types_updated = datetime.now(timezone.utc)
 
     @staticmethod
     def _normalize_phone(phone: str) -> str:
