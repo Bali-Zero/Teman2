@@ -199,6 +199,27 @@ PRACTICE_SERVICE_NAMES: dict[str, dict[str, str]] = {
         "uk": "дозвіл KITAS",
         "id": "izin KITAS",
     },
+    "KITAP": {
+        "en": "KITAP permanent permit",
+        "it": "permesso permanente KITAP",
+        "ru": "постоянное разрешение KITAP",
+        "uk": "постійний дозвіл KITAP",
+        "id": "izin tinggal tetap KITAP",
+    },
+    "VISA": {
+        "en": "visa",
+        "it": "visto",
+        "ru": "виза",
+        "uk": "віза",
+        "id": "visa",
+    },
+    "COMPANY": {
+        "en": "company service",
+        "it": "servizio aziendale",
+        "ru": "корпоративная услуга",
+        "uk": "корпоративна послуга",
+        "id": "layanan perusahaan",
+    },
     "PT_PMA": {
         "en": "PT PMA company",
         "it": "società PT PMA",
@@ -220,14 +241,53 @@ PRACTICE_SERVICE_NAMES: dict[str, dict[str, str]] = {
         "uk": "послуги з нерухомості",
         "id": "layanan properti",
     },
+    "URGENT": {
+        "en": "urgent processing",
+        "it": "pratica urgente",
+        "ru": "срочная обработка",
+        "uk": "термінова обробка",
+        "id": "proses urgent",
+    },
+    "OTHER": {
+        "en": "service",
+        "it": "servizio",
+        "ru": "услуга",
+        "uk": "послуга",
+        "id": "layanan",
+    },
 }
+
+# Map code prefixes to service name keys for the new granular codes
+_PREFIX_TO_SERVICE: list[tuple[str, str]] = [
+    ("KITAS_", "KITAS"),
+    ("KITAP_", "KITAP"),
+    ("MERP_", "KITAP"),
+    ("VISA_", "VISA"),
+    ("EXT_", "VISA"),
+    ("COMPANY_", "COMPANY"),
+    ("TAX_", "TAX"),
+    ("URGENT_", "URGENT"),
+    ("OTHER_", "OTHER"),
+]
 
 
 def get_service_name(practice_type_code: str, lang: str) -> str:
     """Return localized service name for practice type. Falls back to EN."""
-    type_map = PRACTICE_SERVICE_NAMES.get(
-        practice_type_code.upper(), PRACTICE_SERVICE_NAMES["KITAS"],
-    )
+    code_upper = practice_type_code.upper()
+
+    # Direct match first (legacy codes like KITAS, VISA, TAX, PT_PMA)
+    if code_upper in PRACTICE_SERVICE_NAMES:
+        type_map = PRACTICE_SERVICE_NAMES[code_upper]
+        return type_map.get(lang, type_map["en"])
+
+    # Prefix match for new granular codes (kitas_working_offshore → KITAS)
+    for prefix, key in _PREFIX_TO_SERVICE:
+        if code_upper.startswith(prefix):
+            type_map = PRACTICE_SERVICE_NAMES[key]
+            return type_map.get(lang, type_map["en"])
+
+    # Final fallback
+    type_map = PRACTICE_SERVICE_NAMES["OTHER"]
     return type_map.get(lang, type_map["en"])
 
 
