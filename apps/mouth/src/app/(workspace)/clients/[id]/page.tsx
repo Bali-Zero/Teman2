@@ -898,7 +898,7 @@ export default function ClientDetailPage() {
       )}
 
       {activeTab === "tax" && (
-        <TaxTab clientId={clientId} formatDate={formatDate} client={profile?.client ?? null} />
+        <TaxTab clientId={clientId} formatDate={formatDate} client={profile?.client ?? null} companyLinks={company_links} />
       )}
 
       {activeTab === "timeline" && (
@@ -906,6 +906,8 @@ export default function ClientDetailPage() {
           interactions={interactions}
           formatDate={formatDate}
           formatTime={formatTime}
+          clientCreatedAt={client.created_at}
+          clientFirstContact={client.first_contact_date}
         />
       )}
 
