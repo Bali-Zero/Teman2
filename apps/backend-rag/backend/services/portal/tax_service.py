@@ -68,7 +68,7 @@ class TaxService:
             days_until = None
             status = "ok"
             if row["next_deadline"]:
-                days_until = (row["next_deadline"] - date.today()).days
+                days_until = (row["next_deadline"] - datetime.now(tz=timezone.utc).date()).days
                 if days_until <= 7:
                     status = "critical"
                 elif days_until <= 14:

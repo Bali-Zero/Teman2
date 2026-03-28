@@ -343,13 +343,13 @@ class TestQueryBuilderIntegration:
 
     def test_admin_logs_query(self) -> None:
         """Simulate building an admin logs query with date range."""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         qb = QueryBuilder()
         qb.eq("user_email", "admin@balizero.com")
         qb.eq("action_type", "create")
-        qb.gte("created_at", datetime(2026, 1, 1))
-        qb.lte("created_at", datetime(2026, 1, 31))
+        qb.gte("created_at", datetime(2026, 1, 1, tzinfo=timezone.utc))
+        qb.lte("created_at", datetime(2026, 1, 31, tzinfo=timezone.utc))
 
         result = qb.build()
 

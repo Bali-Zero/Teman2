@@ -116,7 +116,7 @@ class ClientCreate(BaseModel):
             return v
         try:
             dob = datetime.strptime(v, "%Y-%m-%d").date()
-            today = date.today()
+            today = datetime.now(tz=timezone.utc).date()
             age = (today - dob).days // 365
             if age < 18:
                 raise ValueError(
@@ -196,7 +196,7 @@ class ClientUpdate(BaseModel):
             return v
         try:
             dob = datetime.strptime(v, "%Y-%m-%d").date()
-            today = date.today()
+            today = datetime.now(tz=timezone.utc).date()
             age = (today - dob).days // 365
             if age < 18:
                 raise ValueError(

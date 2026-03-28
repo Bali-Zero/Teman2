@@ -67,9 +67,9 @@ def make_visa_row(
 ):
     """Helper to create mock visa record row."""
     if expiry_date is None:
-        expiry_date = date.today() + timedelta(days=365)
+        expiry_date = datetime.now(tz=timezone.utc).date() + timedelta(days=365)
     if issue_date is None:
-        issue_date = date.today() - timedelta(days=30)
+        issue_date = datetime.now(tz=timezone.utc).date() - timedelta(days=30)
     return {
         "id": id,
         "uuid": "550e8400-e29b-41d4-a716-446655440001",
@@ -156,7 +156,7 @@ class TestVisaService:
     @pytest.mark.asyncio
     async def test_get_visa_summary_active(self, visa_service, mock_conn):
         """Test summary when visa active (>30 days)."""
-        expiry_date = date.today() + timedelta(days=100)
+        expiry_date = datetime.now(tz=timezone.utc).date() + timedelta(days=100)
         mock_conn.fetchrow.return_value = make_visa_row(expiry_date=expiry_date)
 
         result = await visa_service.get_visa_summary(client_id=123)
@@ -169,7 +169,7 @@ class TestVisaService:
     @pytest.mark.asyncio
     async def test_get_visa_summary_expiring_soon(self, visa_service, mock_conn):
         """Test summary when visa expiring in <30 days."""
-        expiry_date = date.today() + timedelta(days=20)
+        expiry_date = datetime.now(tz=timezone.utc).date() + timedelta(days=20)
         mock_conn.fetchrow.return_value = make_visa_row(expiry_date=expiry_date)
 
         result = await visa_service.get_visa_summary(client_id=123)
@@ -180,7 +180,7 @@ class TestVisaService:
     @pytest.mark.asyncio
     async def test_get_visa_summary_expired(self, visa_service, mock_conn):
         """Test summary when visa expired."""
-        expiry_date = date.today() - timedelta(days=10)
+        expiry_date = datetime.now(tz=timezone.utc).date() - timedelta(days=10)
         mock_conn.fetchrow.return_value = make_visa_row(expiry_date=expiry_date)
 
         result = await visa_service.get_visa_summary(client_id=123)
