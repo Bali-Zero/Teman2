@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 import {
   ExternalLink,
   Download,
@@ -11,8 +11,8 @@ import {
   FileText,
   Users,
   Eye,
-} from "lucide-react";
-import type { FileItem } from "@/lib/api/drive/drive.types";
+} from 'lucide-react';
+import type { FileItem } from '@/lib/api/drive/drive.types';
 
 interface ContextMenuProps {
   file: FileItem;
@@ -54,17 +54,17 @@ export function ContextMenu({
     };
 
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         onClose();
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [onClose]);
 
@@ -99,7 +99,7 @@ export function ContextMenu({
       ? [
           {
             icon: Eye,
-            label: "Visualizza anteprima",
+            label: 'Visualizza anteprima',
             action: () => onPreview(file),
             divider: false,
           },
@@ -107,19 +107,19 @@ export function ContextMenu({
       : []),
     {
       icon: ExternalLink,
-      label: file.is_folder ? "Apri cartella" : "Apri in Drive",
+      label: file.is_folder ? 'Apri cartella' : 'Apri in Drive',
       action: () => onOpen(file),
       divider: false,
     },
     {
       icon: Pencil,
-      label: "Rinomina",
+      label: 'Rinomina',
       action: () => onRename(file),
       divider: false,
     },
     {
       icon: FolderInput,
-      label: "Sposta in...",
+      label: 'Sposta in...',
       action: () => onMove(file),
       divider: false,
     },
@@ -128,13 +128,13 @@ export function ContextMenu({
       : [
           {
             icon: Copy,
-            label: "Crea copia",
+            label: 'Copia link',
             action: () => onCopy(file),
             divider: false,
           },
           {
             icon: Download,
-            label: "Scarica",
+            label: 'Scarica',
             action: () => onDownload(file),
             divider: false,
           },
@@ -144,7 +144,7 @@ export function ContextMenu({
       ? [
           {
             icon: Users,
-            label: "Gestisci accesso",
+            label: 'Gestisci accesso',
             action: () => onManageAccess(file),
             divider: true,
             highlight: true,
@@ -153,7 +153,7 @@ export function ContextMenu({
       : []),
     {
       icon: Trash2,
-      label: "Elimina",
+      label: 'Elimina',
       action: () => onDelete(file),
       divider: false,
       danger: true,
@@ -175,23 +175,22 @@ export function ContextMenu({
       </div>
 
       {/* Menu items */}
-      <div className="py-1">
+      <div className="py-1" role="menu">
         {menuItems.map((item, index) => (
           <div key={item.label}>
-            {item.divider && (
-              <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
-            )}
+            {item.divider && <div className="my-1 border-t border-gray-200 dark:border-gray-700" />}
             <button
+              role="menuitem"
               onClick={() => {
                 item.action();
                 onClose();
               }}
               className={`flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors ${
                 item.danger
-                  ? "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  ? 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
                   : (item as { highlight?: boolean }).highlight
-                    ? "text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
-                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+                    ? 'text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700'
               }`}
             >
               <item.icon className="h-4 w-4" />

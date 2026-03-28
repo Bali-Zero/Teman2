@@ -1,22 +1,18 @@
-"use client";
+'use client';
 
-import React, { useState, useRef, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  useDriveFiles,
-  useDriveMutations,
-  useDriveStatus,
-} from "@/hooks/useDrive";
-import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
-import { DriveToolbar } from "@/components/drive/DriveToolbar";
-import { DriveBreadcrumb } from "@/components/drive/DriveBreadcrumb";
-import { FileGrid } from "@/components/drive/FileGrid";
-import { FileList } from "@/components/drive/FileList";
-import { FileGridSkeleton } from "@/components/drive/FileGridSkeleton";
-import { FileListSkeleton } from "@/components/drive/FileListSkeleton";
-import { DepartmentHome } from "@/components/drive/DepartmentHome";
-import { DriveSidebar } from "@/components/drive/DriveSidebar";
-import { DriveInfoPanel } from "@/components/drive/DriveInfoPanel";
+import React, { useState, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useDriveFiles, useDriveMutations, useDriveStatus } from '@/hooks/useDrive';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
+import { DriveToolbar } from '@/components/drive/DriveToolbar';
+import { DriveBreadcrumb } from '@/components/drive/DriveBreadcrumb';
+import { FileGrid } from '@/components/drive/FileGrid';
+import { FileList } from '@/components/drive/FileList';
+import { FileGridSkeleton } from '@/components/drive/FileGridSkeleton';
+import { FileListSkeleton } from '@/components/drive/FileListSkeleton';
+import { DepartmentHome } from '@/components/drive/DepartmentHome';
+import { DriveSidebar } from '@/components/drive/DriveSidebar';
+import { DriveInfoPanel } from '@/components/drive/DriveInfoPanel';
 import {
   FileModal,
   CreateMenu,
@@ -26,26 +22,22 @@ import {
   UploadProgress,
   UploadDialog,
   FileViewer,
-} from "@/components/documents";
-import { Loader2, CloudOff, Cloud, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { api } from "@/lib/api";
-import { logger } from "@/lib/logger";
-import { driveLogger } from "@/lib/logging/drive-logger";
-import { motion } from "framer-motion";
-import type {
-  FileItem,
-  BreadcrumbItem,
-  DocType,
-} from "@/lib/api/drive/drive.types";
+} from '@/components/documents';
+import { Loader2, CloudOff, Cloud, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
+import { driveLogger } from '@/lib/logging/drive-logger';
+import { motion } from 'framer-motion';
+import type { FileItem, BreadcrumbItem, DocType } from '@/lib/api/drive/drive.types';
 
 export default function DrivePage() {
-  const BZ_ROOT_FOLDER_ID = "1hkOeV03YM5-sHbQhswYz809jsrnwC0At";
+  const BZ_ROOT_FOLDER_ID = '1hkOeV03YM5-sHbQhswYz809jsrnwC0At';
 
   // Navigation State
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // React Query Hooks
   const queryClient = useQueryClient();
@@ -59,15 +51,14 @@ export default function DrivePage() {
     fetchNextPage,
   } = useDriveFiles(currentFolderId, searchQuery);
 
-  const { createFolder, createDoc, renameFile, deleteFile, moveFiles } =
-    useDriveMutations();
+  const { createFolder, createDoc, renameFile, deleteFile, moveFiles } = useDriveMutations();
 
   // Derived Data
   const files = data?.files || [];
   const breadcrumb = data?.breadcrumb || [];
   const isConnected = driveStatus?.connected ?? false;
   const isConfigured = driveStatus?.configured ?? false;
-  const isAtRoot = currentFolderId === null && searchQuery === "";
+  const isAtRoot = currentFolderId === null && searchQuery === '';
 
   // Auto-navigate to BZ root folder when connected (Service Account — no OAuth needed)
   useEffect(() => {
@@ -88,7 +79,7 @@ export default function DrivePage() {
 
   // Modal State
   const [modalMode, setModalMode] = useState<
-    "folder" | "document" | "spreadsheet" | "presentation" | "rename" | null
+    'folder' | 'document' | 'spreadsheet' | 'presentation' | 'rename' | null
   >(null);
   const [renameTarget, setRenameTarget] = useState<FileItem | null>(null);
   const [createMenuPos, setCreateMenuPos] = useState<{
@@ -102,9 +93,9 @@ export default function DrivePage() {
 
   // UI State
   const [showInfoPanel, setShowInfoPanel] = useState(false);
-  const [sidebarView, setSidebarView] = useState<
-    "my-drive" | "recent" | "starred" | "trash"
-  >("my-drive");
+  const [sidebarView, setSidebarView] = useState<'my-drive' | 'recent' | 'starred' | 'trash'>(
+    'my-drive'
+  );
 
   // Upload State
   const [uploads, setUploads] = useState<
@@ -112,7 +103,7 @@ export default function DrivePage() {
       id: string;
       name: string;
       progress: number;
-      status: "uploading" | "completed" | "error";
+      status: 'uploading' | 'completed' | 'error';
       error?: string;
       abortController?: AbortController;
     }>
@@ -121,7 +112,7 @@ export default function DrivePage() {
   // Handlers
   const handleNavigate = (index: number) => {
     const targetId = index === -1 ? null : breadcrumb[index].id;
-    const targetName = index === -1 ? "Root" : breadcrumb[index].name;
+    const targetName = index === -1 ? 'Root' : breadcrumb[index].name;
     driveLogger.logBreadcrumbClick(targetId, targetName, index);
 
     if (index === -1) {
@@ -129,15 +120,11 @@ export default function DrivePage() {
     } else {
       setCurrentFolderId(breadcrumb[index].id);
     }
-    setSearchQuery("");
+    setSearchQuery('');
   };
 
   // Single click = select, Double click = open (Google Drive behavior)
-  const handleFileClick = (
-    file: FileItem,
-    index: number,
-    e: React.MouseEvent,
-  ) => {
+  const handleFileClick = (file: FileItem, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (e.metaKey || e.ctrlKey) {
       const next = new Set(selectedFiles);
@@ -170,7 +157,7 @@ export default function DrivePage() {
 
     if (file.is_folder) {
       setCurrentFolderId(file.id);
-      setSearchQuery("");
+      setSearchQuery('');
       setSelectedFiles(new Set());
     } else {
       setPreviewFile(file);
@@ -181,7 +168,7 @@ export default function DrivePage() {
   const handleFolderClick = (folder: FileItem) => {
     driveLogger.logFolderNavigation(folder.id, folder.name, false);
     setCurrentFolderId(folder.id);
-    setSearchQuery("");
+    setSearchQuery('');
     setSelectedFiles(new Set());
   };
 
@@ -211,30 +198,20 @@ export default function DrivePage() {
           id: uploadId,
           name: file.name,
           progress: 0,
-          status: "uploading",
+          status: 'uploading',
           abortController,
         },
       ]);
 
       try {
-        await api.drive.uploadFile(
-          file,
-          currentFolderId || "root",
-          (progress) => {
-            setUploads((prev) =>
-              prev.map((u) =>
-                u.id === uploadId ? { ...u, progress: progress.percentage } : u,
-              ),
-            );
-          },
-        );
+        await api.drive.uploadFile(file, currentFolderId || 'root', (progress) => {
+          setUploads((prev) =>
+            prev.map((u) => (u.id === uploadId ? { ...u, progress: progress.percentage } : u))
+          );
+        });
 
         setUploads((prev) =>
-          prev.map((u) =>
-            u.id === uploadId
-              ? { ...u, status: "completed", progress: 100 }
-              : u,
-          ),
+          prev.map((u) => (u.id === uploadId ? { ...u, status: 'completed', progress: 100 } : u))
         );
 
         setTimeout(() => {
@@ -248,19 +225,18 @@ export default function DrivePage() {
             u.id === uploadId
               ? {
                   ...u,
-                  status: "error",
-                  error:
-                    error instanceof Error ? error.message : "Upload error",
+                  status: 'error',
+                  error: error instanceof Error ? error.message : 'Upload error',
                 }
-              : u,
-          ),
+              : u
+          )
         );
         return { success: false, uploadId };
       }
     });
 
     await Promise.allSettled(uploadPromises);
-    queryClient.invalidateQueries({ queryKey: ["drive", "files"] });
+    queryClient.invalidateQueries({ queryKey: ['drive', 'files'] });
   };
 
   const handleCancelUpload = (uploadId: string) => {
@@ -284,8 +260,8 @@ export default function DrivePage() {
       setContextMenu(null);
       setCreateMenuPos(null);
     };
-    window.addEventListener("click", handleClick);
-    return () => window.removeEventListener("click", handleClick);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
   }, []);
 
   useKeyboardNavigation({
@@ -297,15 +273,11 @@ export default function DrivePage() {
     },
     onOpen: handleFileDoubleClick,
     onDelete: (filesToDelete) => {
-      const names = filesToDelete.map((f) => f.name).join(", ");
-      if (
-        confirm(
-          `Delete ${filesToDelete.length > 1 ? "these files" : ""}: ${names}?`,
-        )
-      ) {
+      const names = filesToDelete.map((f) => f.name).join(', ');
+      if (confirm(`Delete ${filesToDelete.length > 1 ? 'these files' : ''}: ${names}?`)) {
         driveLogger.logFileDeleted(
           filesToDelete.map((f) => f.id),
-          filesToDelete.map((f) => f.name),
+          filesToDelete.map((f) => f.name)
         );
         filesToDelete.forEach((f) => deleteFile.mutate(f.id));
         setSelectedFiles(new Set());
@@ -319,7 +291,7 @@ export default function DrivePage() {
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[#141416]">
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         >
           <Loader2 className="h-10 w-10 text-[#d4845a]" />
         </motion.div>
@@ -339,23 +311,21 @@ export default function DrivePage() {
         >
           <div
             className="absolute inset-0 animate-pulse rounded-full blur-2xl"
-            style={{ background: "rgba(212,132,90,0.15)" }}
+            style={{ background: 'rgba(212,132,90,0.15)' }}
           />
           <div
             className="relative flex h-24 w-24 items-center justify-center rounded-full shadow-xl"
-            style={{ background: "var(--bz-accent)" }}
+            style={{ background: 'var(--bz-accent)' }}
           >
             <CloudOff className="h-12 w-12 text-white" />
           </div>
         </motion.div>
 
         <div className="text-center">
-          <h2 className="mb-2 text-3xl font-bold text-white">
-            Connetti Google Drive
-          </h2>
+          <h2 className="mb-2 text-3xl font-bold text-white">Connetti Google Drive</h2>
           <p className="max-w-md text-[#9aa0a6]">
-            Accedi ai tuoi documenti aziendali collegando il tuo account Google
-            Drive. Tutti i file saranno organizzati per dipartimento.
+            Accedi ai tuoi documenti aziendali collegando il tuo account Google Drive. Tutti i file
+            saranno organizzati per dipartimento.
           </p>
         </div>
 
@@ -369,7 +339,7 @@ export default function DrivePage() {
               onClick={handleConnect}
               size="lg"
               className="px-8 py-6 text-lg text-white shadow-lg transition-all rounded-2xl hover:shadow-xl"
-              style={{ background: "var(--bz-accent)" }}
+              style={{ background: 'var(--bz-accent)' }}
             >
               <Cloud className="mr-3 h-5 w-5" />
               Connect Google Drive
@@ -385,18 +355,12 @@ export default function DrivePage() {
           className="mt-8 grid max-w-2xl grid-cols-3 gap-6 text-center"
         >
           {[
-            { label: "30TB", desc: "Available storage" },
-            { label: "6", desc: "Departments" },
-            { label: "100%", desc: "Secure" },
+            { label: '30TB', desc: 'Available storage' },
+            { label: '6', desc: 'Departments' },
+            { label: '100%', desc: 'Secure' },
           ].map((stat, i) => (
-            <div
-              key={i}
-              className="rounded-lg border border-[#3c3c3c] bg-[#1e1e20] p-4 shadow-sm"
-            >
-              <div
-                className="text-2xl font-bold"
-                style={{ color: "var(--bz-accent)" }}
-              >
+            <div key={i} className="rounded-lg border border-[#3c3c3c] bg-[#1e1e20] p-4 shadow-sm">
+              <div className="text-2xl font-bold" style={{ color: 'var(--bz-accent)' }}>
                 {stat.label}
               </div>
               <div className="text-sm text-[#9aa0a6]">{stat.desc}</div>
@@ -408,9 +372,7 @@ export default function DrivePage() {
   }
 
   const selectedFile =
-    selectedFiles.size === 1
-      ? files.find((f) => selectedFiles.has(f.id)) || null
-      : null;
+    selectedFiles.size === 1 ? files.find((f) => selectedFiles.has(f.id)) || null : null;
 
   return (
     <div className="flex h-screen bg-[#141416]">
@@ -470,16 +432,13 @@ export default function DrivePage() {
           </>
         )}
 
-        <DropZone
-          onFilesDropped={handleFilesDropped}
-          disabled={!isConnected || isAtRoot}
-        >
+        <DropZone onFilesDropped={handleFilesDropped} disabled={!isConnected || isAtRoot}>
           <div
             className="flex-1 overflow-auto bg-[#141416]"
             onClick={() => setSelectedFiles(new Set())}
           >
             {filesLoading ? (
-              viewMode === "grid" ? (
+              viewMode === 'grid' ? (
                 <FileGridSkeleton />
               ) : (
                 <FileListSkeleton />
@@ -491,7 +450,7 @@ export default function DrivePage() {
                 storageUsed={0}
                 storageTotal={30 * 1024 * 1024 * 1024 * 1024}
               />
-            ) : viewMode === "grid" ? (
+            ) : viewMode === 'grid' ? (
               <FileGrid
                 files={files}
                 selectedFiles={selectedFiles}
@@ -537,11 +496,11 @@ export default function DrivePage() {
               await api.drive.downloadFile(file.id, file.name);
             } catch (err) {
               driveLogger.logError(
-                "Download failed",
+                'Download failed',
                 err instanceof Error ? err : new Error(String(err)),
-                { fileId: file.id },
+                { fileId: file.id }
               );
-              window.open(api.drive.getDownloadUrl(file.id), "_blank");
+              window.open(api.drive.getDownloadUrl(file.id), '_blank');
             }
           }}
           onDelete={(file) => {
@@ -563,38 +522,29 @@ export default function DrivePage() {
       />
 
       <FileModal
-        mode={
-          modalMode as
-            | "folder"
-            | "document"
-            | "spreadsheet"
-            | "presentation"
-            | "rename"
-        }
+        mode={modalMode as 'folder' | 'document' | 'spreadsheet' | 'presentation' | 'rename'}
         isOpen={!!modalMode}
         onClose={() => {
           setModalMode(null);
           setRenameTarget(null);
         }}
-        initialName={renameTarget?.name || ""}
-        loading={
-          createFolder.isPending || createDoc.isPending || renameFile.isPending
-        }
+        initialName={renameTarget?.name || ''}
+        loading={createFolder.isPending || createDoc.isPending || renameFile.isPending}
         onSubmit={(name, docType) => {
-          if (modalMode === "rename" && renameTarget) {
+          if (modalMode === 'rename' && renameTarget) {
             renameFile.mutate(
               { fileId: renameTarget.id, newName: name },
-              { onSuccess: () => setModalMode(null) },
+              { onSuccess: () => setModalMode(null) }
             );
-          } else if (modalMode === "folder") {
+          } else if (modalMode === 'folder') {
             createFolder.mutate(
               { name, parentId: currentFolderId },
-              { onSuccess: () => setModalMode(null) },
+              { onSuccess: () => setModalMode(null) }
             );
           } else if (docType) {
             createDoc.mutate(
               { name, parentId: currentFolderId, docType },
-              { onSuccess: () => setModalMode(null) },
+              { onSuccess: () => setModalMode(null) }
             );
           }
         }}
@@ -610,12 +560,12 @@ export default function DrivePage() {
             if (file.is_folder) {
               setCurrentFolderId(file.id);
             } else {
-              window.open(file.web_view_link, "_blank");
+              window.open(file.web_view_link, '_blank');
             }
           }}
           onRename={(file) => {
             setRenameTarget(file);
-            setModalMode("rename");
+            setModalMode('rename');
           }}
           onDelete={(file) => {
             if (confirm(`Delete ${file.name}?`)) {
@@ -626,17 +576,18 @@ export default function DrivePage() {
             setFilesToMove([file]);
             setShowMoveDialog(true);
           }}
-          onCopy={() => {
-            /* TODO: Copy */
+          onCopy={(file) => {
+            const link = file.web_view_link || `https://drive.google.com/file/d/${file.id}/view`;
+            navigator.clipboard.writeText(link);
           }}
           onDownload={async (file) => {
             try {
               await api.drive.downloadFile(file.id, file.name);
             } catch (err) {
-              logger.error("Download failed", {
+              logger.error('Download failed', {
                 metadata: { error: String(err) },
               });
-              window.open(api.drive.getDownloadUrl(file.id), "_blank");
+              window.open(api.drive.getDownloadUrl(file.id), '_blank');
             }
           }}
         />
@@ -666,7 +617,7 @@ export default function DrivePage() {
         isOpen={showUploadDialog}
         onClose={() => setShowUploadDialog(false)}
         onUpload={handleUpload}
-        uploading={uploads.some((u) => u.status === "uploading")}
+        uploading={uploads.some((u) => u.status === 'uploading')}
       />
 
       <UploadProgress
@@ -684,15 +635,15 @@ export default function DrivePage() {
             await api.drive.downloadFile(file.id, file.name);
           } catch (err) {
             logger.error(
-              "Download failed",
+              'Download failed',
               {
-                component: "DrivePage",
-                action: "downloadFile",
+                component: 'DrivePage',
+                action: 'downloadFile',
                 metadata: { fileId: file.id, fileName: file.name },
               },
-              err instanceof Error ? err : new Error(String(err)),
+              err instanceof Error ? err : new Error(String(err))
             );
-            window.open(api.drive.getDownloadUrl(file.id), "_blank");
+            window.open(api.drive.getDownloadUrl(file.id), '_blank');
           }
         }}
       />
