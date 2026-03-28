@@ -186,7 +186,24 @@ All 7 steps are now designed. The full pipeline specification covers:
 | 7    | `07_testing_protocol.md`           | 8-phase test, Go/No-Go, production transition            |
 | 7b   | `07b_testing_protocol_deepseek.md` | Baselines, KPIs, statistical tests, cost model, go/no-go |
 
-**Next action:** Complete Phase 1 adversarial review synthesis, then proceed to Phase 2.
+**Next action:** Phase 3 (Claim Extraction) or continue with Phases 3-7.
+
+## Phase 2: L2 Comparative Query ✅ COMPLETE (2026-03-28 18:15)
+
+**L2 Query (Cluster A — Comparative pre/post-2026):**
+
+- Context injection: conversation_id from Phase 1 L1
+- Response: 27 citations, 11/43 sources (25.6%)
+- **Master Documents used as first-class sources** — MD-1, MD-2, MD-4 all cited with confidence levels
+
+**Key Findings:**
+
+1. **OQ-002 RESOLVED** — MERP applies to ALL KITAS types + KITAP, per UU 63/2024
+2. **Kepmenaker 228/2019 & 349/2019 still in force** — no amendments found, freshness flagged
+3. **Two national/local divergences:** Alih Status E23 (Bali requires RPTKA pre-approval), C1→E33G (prassi variabile)
+4. **NLM propagated confidence levels from MDs** — cited PROVISIONAL (0.55) for One Sponsor Policy
+
+**Verdict: STRONG PASS** — L2 demonstrates comparative synthesis, context injection works, MDs are first-class sources.
 
 ## Phase 0: Environment Setup ✅ COMPLETE (2026-03-28 17:05)
 
