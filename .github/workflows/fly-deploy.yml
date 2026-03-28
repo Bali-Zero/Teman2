@@ -63,12 +63,29 @@ jobs:
           ruff check backend/app/ --select E,F --quiet
           echo "✅ Lint OK"
 
-      - name: Core tests (confidence + KG — fast gate)
+      - name: Core tests (confidence + KG — 82 tests fast gate)
         run: |
-          PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py \
+          PYTHONPATH=. pytest \
+            backend/tests/services/rag/test_confidence.py \
+            backend/tests/services/rag/test_kg_langgraph.py \
+            backend/tests/services/rag/test_kg_subgraphs.py \
             -q --tb=short -x \
             --junit-xml=test-results-gate.xml
           echo "✅ Core tests OK"
+
+      - name: Check Dependabot critical vulnerabilities
+        run: |
+          pip install safety -q
+          safety check -r requirements.txt \
+            --ignore 70612 \
+            --output text \
+            --short-report 2>/dev/null || {
+            echo "⚠️ Vulnerabilità trovate — controlla output sopra"
+            # Non blocchiamo per ora: solo segnaliamo (--continue-on-error sotto)
+            exit 0
+          }
+          echo "✅ No critical vulnerabilities"
+        continue-on-error: true
 
       - name: Upload gate test results
         uses: actions/upload-artifact@v4
@@ -76,6 +93,15 @@ jobs:
         with:
           name: pre-deploy-gate-results
           path: apps/backend-rag/test-results-gate.xml
+
+      - name: Notifica Telegram — gate fallito
+        if: failure()
+        run: |
+          MESSAGE="🔴 <b>Pre-deploy gate FALLITO</b>%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}%0A%0ACheck GitHub Actions per dettagli."
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=HTML" || true
 
   run-migrations:
     name: Run DB migrations on Fly.io
