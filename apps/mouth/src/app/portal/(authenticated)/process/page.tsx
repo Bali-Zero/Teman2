@@ -163,8 +163,9 @@ function DocumentUploadModal({
           />
 
           <div>
-            <label className="text-sm font-medium mb-1 block">Notes (optional)</label>
+            <label htmlFor="doc-upload-notes" className="text-sm font-medium mb-1 block">Notes (optional)</label>
             <textarea
+              id="doc-upload-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add any notes about this document..."

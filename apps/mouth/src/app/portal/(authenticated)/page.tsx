@@ -163,8 +163,9 @@ export default function PortalHomePage() {
       {(defaultDashboard.documents.pending > 0 || defaultDashboard.messages.unread > 0) && (
         <section className="flex flex-wrap gap-3">
           {defaultDashboard.documents.pending > 0 && (
-            <div
-              onClick={() => router.push('/portal/process')}
+            <button
+              type="button"
+              onClick={() => { window.location.href = '/portal/process'; }}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all hover:scale-[1.01]"
               style={{
                 background: 'rgba(245,158,11,0.06)',
@@ -176,11 +177,12 @@ export default function PortalHomePage() {
                 {defaultDashboard.documents.pending} document
                 {defaultDashboard.documents.pending !== 1 ? 's' : ''} pending
               </span>
-            </div>
+            </button>
           )}
           {defaultDashboard.messages.unread > 0 && (
-            <div
-              onClick={() => router.push('/portal/messages')}
+            <button
+              type="button"
+              onClick={() => { window.location.href = '/portal/messages'; }}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all hover:scale-[1.01]"
               style={{
                 background: 'rgba(59,130,246,0.06)',
@@ -192,7 +194,7 @@ export default function PortalHomePage() {
                 {defaultDashboard.messages.unread} unread message
                 {defaultDashboard.messages.unread !== 1 ? 's' : ''}
               </span>
-            </div>
+            </button>
           )}
         </section>
       )}
@@ -205,11 +207,12 @@ export default function PortalHomePage() {
           </h2>
           <div className="space-y-2">
             {defaultDashboard.actions.map((action) => (
-              <div
+              <button
                 key={action.id}
-                onClick={() => router.push(action.href)}
+                type="button"
+                onClick={() => { window.location.href = action.href; }}
                 className={cn(
-                  'flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.01]',
+                  'flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.01] w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-accent-warm)]',
                   action.priority === 'high'
                     ? 'bg-[rgba(244,63,94,0.1)] border-[rgba(244,63,94,0.2)] text-[var(--neon-rose)]'
                     : action.priority === 'medium'
@@ -222,7 +225,7 @@ export default function PortalHomePage() {
                   <p className="text-sm opacity-80">{action.description}</p>
                 </div>
                 <ChevronRight className="w-5 h-5" />
-              </div>
+              </button>
             ))}
           </div>
         </section>
@@ -347,10 +350,11 @@ function StatusCard({
   const expiryInfo = getExpiryInfo();
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
       className={cn(
-        'crystal-stat-card cursor-pointer !flex !flex-col border transition-all duration-200 hover:scale-[1.02] hover:shadow-lg',
+        'crystal-stat-card cursor-pointer !flex !flex-col border transition-all duration-200 hover:scale-[1.02] hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-accent-warm)]',
         getStatusStyle(status)
       )}
     >
@@ -377,7 +381,7 @@ function StatusCard({
       >
         {expiryInfo.text}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -519,9 +523,13 @@ function TimelineItem({ entry, isLast }: { entry: TimelineEntry; isLast: boolean
         </p>
 
         {entry.type === 'message' && entry.status === 'team_to_client' && (
-          <div className="mt-3 text-[10px] font-bold uppercase tracking-widest flex items-center text-[var(--bz-copper)] hover:text-white transition-colors cursor-pointer w-fit inline-flex">
+          <button
+            type="button"
+            onClick={() => { window.location.href = '/portal/chat'; }}
+            className="mt-3 text-[10px] font-bold uppercase tracking-widest flex items-center text-[var(--bz-copper)] hover:text-white transition-colors cursor-pointer w-fit inline-flex"
+          >
             Reply <ChevronRight className="w-3 h-3 ml-1" />
-          </div>
+          </button>
         )}
       </div>
     </div>
