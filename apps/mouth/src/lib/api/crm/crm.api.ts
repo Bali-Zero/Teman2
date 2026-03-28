@@ -296,6 +296,26 @@ export class CrmApi {
   }
 
   /**
+   * Get practice types catalog grouped by category (for process creation form)
+   */
+  async getPracticeTypesCatalog(): Promise<{
+    categories: Array<{
+      code: string;
+      label: string;
+      services: Array<{
+        code: string;
+        name: string;
+        description: string | null;
+        base_price: number | null;
+        typical_duration_days: number | null;
+      }>;
+    }>;
+    total_services: number;
+  }> {
+    return this.client.request(`/api/crm/practices/types/catalog`);
+  }
+
+  /**
    * Create a new practice/case
    */
   async createPractice(
