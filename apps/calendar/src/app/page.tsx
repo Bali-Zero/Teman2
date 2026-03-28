@@ -602,6 +602,25 @@ export default function CalendarPage() {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-[#9AA0AE] mb-1.5">
+                      Partecipanti
+                    </label>
+                    <input
+                      type="text"
+                      value={newEvent.attendees}
+                      onChange={(e) =>
+                        setNewEvent({
+                          ...newEvent,
+                          attendees: e.target.value,
+                        })
+                      }
+                      className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
+                      placeholder="email1@example.com, email2@example.com"
+                      aria-label="Partecipanti (separati da virgola)"
+                    />
+                  </div>
+
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -757,7 +776,10 @@ export default function CalendarPage() {
 
       {/* Error Banner */}
       {error && (
-        <div role="alert" className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-900/80 text-red-200 px-4 py-2 rounded-lg text-sm backdrop-blur-sm border border-red-700/50">
+        <div
+          role="alert"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-900/80 text-red-200 px-4 py-2 rounded-lg text-sm backdrop-blur-sm border border-red-700/50"
+        >
           {error}
         </div>
       )}
