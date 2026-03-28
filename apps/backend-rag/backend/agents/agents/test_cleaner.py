@@ -484,7 +484,7 @@ class TestCleanerAgent:
         tests_dir: Path = Path("tests"),
         llm_provider: str = "local",
         dry_run: bool = True,
-    ):
+    ) -> None:
         self.repo_path = repo_path
         self.tests_dir = tests_dir
         self.llm_provider = llm_provider

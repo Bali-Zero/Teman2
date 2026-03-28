@@ -158,7 +158,7 @@ class TestCreatorAgent:
         tests_dir: Path = Path("tests/generated"),
         llm_provider: str = "local",
         coverage_target: float = 99.0,
-    ):
+    ) -> None:
         self.repo_path = repo_path
         self.tests_dir = tests_dir
         self.llm_provider = llm_provider
