@@ -164,7 +164,7 @@ class TestCollectiveMemory:
 
     def test_to_dict(self):
         """Test conversion to dict"""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         memory = CollectiveMemory(
             id=1,
@@ -173,8 +173,8 @@ class TestCollectiveMemory:
             confidence=0.9,
             source_count=3,
             is_promoted=True,
-            first_learned_at=datetime.now(),
-            last_confirmed_at=datetime.now(),
+            first_learned_at=datetime.now(tz=timezone.utc),
+            last_confirmed_at=datetime.now(tz=timezone.utc),
             metadata={},
         )
 

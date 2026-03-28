@@ -3,7 +3,7 @@ Conversation Repository
 Handles all database operations for conversation persistence
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import asyncpg
 
@@ -94,7 +94,7 @@ class ConversationRepository:
                         session_id,
                         to_jsonb(messages),
                         to_jsonb(metadata or {}),
-                        datetime.now(),
+                        datetime.now(tz=timezone.utc),
                     )
 
                     conversation_id = row["id"] if row else None
@@ -164,7 +164,7 @@ class ConversationRepository:
             Number of conversations deleted
         """
         try:
-            cutoff_date = datetime.now() - timedelta(days=days)
+            cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
 
             async with self.db_pool.acquire() as conn:
                 result = await conn.execute(
@@ -202,7 +202,7 @@ class ConversationRepository:
             Number of conversations anonymized
         """
         try:
-            cutoff_date = datetime.now() - timedelta(days=days)
+            cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
 
             async with self.db_pool.acquire() as conn:
                 result = await conn.execute(

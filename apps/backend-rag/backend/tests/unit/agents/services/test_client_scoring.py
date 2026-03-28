@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -56,11 +56,11 @@ class TestClientScoringService:
             "name": "Test Client",
             "email": "test@example.com",
             "phone": "+1234567890",
-            "created_at": datetime.now() - timedelta(days=100),
+            "created_at": datetime.now(tz=timezone.utc) - timedelta(days=100),
             "interaction_count": 10,
             "avg_sentiment": 0.75,
             "recent_interactions": 5,
-            "last_interaction": datetime.now() - timedelta(days=5),
+            "last_interaction": datetime.now(tz=timezone.utc) - timedelta(days=5),
             "conversation_count": 8,
             "avg_rating": 4.5,
             "practice_statuses": ["active", "pending"],
@@ -70,11 +70,11 @@ class TestClientScoringService:
             "name": "Test Client",
             "email": "test@example.com",
             "phone": "+1234567890",
-            "created_at": datetime.now() - timedelta(days=100),
+            "created_at": datetime.now(tz=timezone.utc) - timedelta(days=100),
             "interaction_count": 10,
             "avg_sentiment": 0.75,
             "recent_interactions": 5,
-            "last_interaction": datetime.now() - timedelta(days=5),
+            "last_interaction": datetime.now(tz=timezone.utc) - timedelta(days=5),
             "conversation_count": 8,
             "avg_rating": 4.5,
             "practice_statuses": ["active", "pending"],
