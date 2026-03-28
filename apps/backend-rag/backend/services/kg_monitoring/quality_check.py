@@ -13,6 +13,7 @@ Features:
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -169,8 +170,6 @@ class QualityCheckService:
         Returns:
             QualityReport with scores and assessment
         """
-        from datetime import datetime
-
         document_id = extracted_doc.document_id
         dimension_scores = []
         all_issues = []
