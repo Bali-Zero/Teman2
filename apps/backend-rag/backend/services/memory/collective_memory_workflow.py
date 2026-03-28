@@ -272,20 +272,18 @@ def route_by_existence(state: CollectiveMemoryState) -> str:
     """Routing basato su esistenza memorie"""
     if state["needs_consolidation"]:
         return "consolidate"
-    elif state["existing_memories"]:
+    if state["existing_memories"]:
         return "exists"
-    else:
-        return "new"
+    return "new"
 
 
 def route_by_importance(state: CollectiveMemoryState) -> str:
     """Routing basato su importanza"""
     if state["personal_importance"] >= 0.8:
         return "high"
-    elif state["personal_importance"] >= 0.6:
+    if state["personal_importance"] >= 0.6:
         return "medium"
-    else:
-        return "low"
+    return "low"
 
 
 def create_collective_memory_workflow(memory_service: Any = None, _mcp_client: Any = None) -> Any:

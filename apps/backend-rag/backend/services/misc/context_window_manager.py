@@ -80,7 +80,7 @@ class ContextWindowManager:
             }
 
         # CASE 2: Medium conversation - approaching limit
-        elif total_messages <= self.summary_threshold:
+        if total_messages <= self.summary_threshold:
             logger.info(
                 f"📊 [Context] Conversation medium ({total_messages} msgs) - approaching limit"
             )
@@ -94,23 +94,22 @@ class ContextWindowManager:
             }
 
         # CASE 3: Long conversation - needs summarization
-        else:
-            logger.info(
-                f"📊 [Context] Conversation long ({total_messages} msgs) - triggering summarization"
-            )
+        logger.info(
+            f"📊 [Context] Conversation long ({total_messages} msgs) - triggering summarization"
+        )
 
-            # Keep last max_messages in full
-            recent_messages = conversation_history[-self.max_messages :]
+        # Keep last max_messages in full
+        recent_messages = conversation_history[-self.max_messages :]
 
-            # Older messages need summarization
-            older_messages = conversation_history[: -self.max_messages]
+        # Older messages need summarization
+        older_messages = conversation_history[: -self.max_messages]
 
-            return {
-                "trimmed_messages": recent_messages,
-                "needs_summarization": True,
-                "messages_to_summarize": older_messages,
-                "context_summary": current_summary or "",
-            }
+        return {
+            "trimmed_messages": recent_messages,
+            "needs_summarization": True,
+            "messages_to_summarize": older_messages,
+            "context_summary": current_summary or "",
+        }
 
     def build_summarization_prompt(self, messages: list[dict]) -> str:
         """

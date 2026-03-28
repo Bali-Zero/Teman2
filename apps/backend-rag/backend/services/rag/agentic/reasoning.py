@@ -506,11 +506,10 @@ class ReasoningEngine:
                                         "🔄 [Agent] Low quality context, continuing to gather more..."
                                     )
                                     continue  # Try another tool
-                                else:
-                                    # Last step - use what we have but warn
-                                    logger.warning(
-                                        "Using low-quality context due to max steps reached"
-                                    )
+                                # Last step - use what we have but warn
+                                logger.warning(
+                                    "Using low-quality context due to max steps reached"
+                                )
 
                         # OPTIMIZATION: Early exit (only for simple queries)
                         # Complex queries (business_complex, business_strategic) may need KG tool
@@ -529,7 +528,7 @@ class ReasoningEngine:
                             set_span_attribute("early_exit", "true")
                             set_span_status("ok")
                             break
-                        elif is_complex_query and tool_call.tool_name == "vector_search":
+                        if is_complex_query and tool_call.tool_name == "vector_search":
                             logger.info(
                                 "🔗 [Complex Query] Allowing multi-tool reasoning (KG may be needed)"
                             )
@@ -557,11 +556,10 @@ class ReasoningEngine:
                             set_span_attribute("is_final_answer", "true")
                             set_span_status("ok")
                             break
-                        else:
-                            # Just a thought step
-                            step = AgentStep(step_number=state.current_step, thought=text_response)
-                            state.steps.append(step)
-                            set_span_status("ok")
+                        # Just a thought step
+                        step = AgentStep(step_number=state.current_step, thought=text_response)
+                        state.steps.append(step)
+                        set_span_status("ok")
 
             # Set final loop attributes
             set_span_attribute("total_steps", state.current_step)

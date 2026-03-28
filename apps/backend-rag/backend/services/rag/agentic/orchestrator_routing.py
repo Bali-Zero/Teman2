@@ -81,10 +81,9 @@ class OrchestratorRoutingManager:
 
         if suggested_ai == "deep_think":
             return TIER_PRO, True
-        elif suggested_ai == "pro":
+        if suggested_ai == "pro":
             return TIER_PRO, False
-        else:
-            return TIER_FLASH, False
+        return TIER_FLASH, False
 
     def create_agent_state(
         self,

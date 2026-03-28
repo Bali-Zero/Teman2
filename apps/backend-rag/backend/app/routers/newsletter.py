@@ -124,7 +124,7 @@ async def subscribe(
                         "code": "ALREADY_SUBSCRIBED",
                     },
                 )
-            elif existing["unsubscribed_at"]:
+            if existing["unsubscribed_at"]:
                 # Resubscribing
                 confirmation_token = secrets.token_urlsafe(32)
                 await conn.execute(
@@ -154,11 +154,10 @@ async def subscribe(
                     message="Please check your email to confirm your subscription.",
                     subscriberId=existing["id"],
                 )
-            else:
-                # Exists but not confirmed - resend confirmation
-                confirmation_token = secrets.token_urlsafe(32)
-                await conn.execute(
-                    """
+            # Exists but not confirmed - resend confirmation
+            confirmation_token = secrets.token_urlsafe(32)
+            await conn.execute(
+                """
                     UPDATE newsletter_subscribers
                     SET confirmation_token = $2,
                         confirmation_sent_at = NOW(),
@@ -169,19 +168,19 @@ async def subscribe(
                         updated_at = NOW()
                     WHERE email = $1
                     """,
-                    request.email,
-                    confirmation_token,
-                    request.categories,
-                    request.frequency,
-                    request.language,
-                    request.name,
-                )
-                logger.info(f"Resent confirmation: {request.email}")
-                return SubscribeResponse(
-                    success=True,
-                    message="Confirmation email resent. Please check your inbox.",
-                    subscriberId=existing["id"],
-                )
+                request.email,
+                confirmation_token,
+                request.categories,
+                request.frequency,
+                request.language,
+                request.name,
+            )
+            logger.info(f"Resent confirmation: {request.email}")
+            return SubscribeResponse(
+                success=True,
+                message="Confirmation email resent. Please check your inbox.",
+                subscriberId=existing["id"],
+            )
 
         # New subscriber
         confirmation_token = secrets.token_urlsafe(32)

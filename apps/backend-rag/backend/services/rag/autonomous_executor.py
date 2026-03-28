@@ -301,9 +301,9 @@ class AutonomousExecutor:
         query_lower = query.lower()
         if "npwp" in query_lower:
             return "npwp_registration"
-        elif any(kw in query_lower for kw in ("kitas", "work permit", "stay permit")):
+        if any(kw in query_lower for kw in ("kitas", "work permit", "stay permit")):
             return "kitas_application"
-        elif any(kw in query_lower for kw in ("pt pma", "incorporate", "company setup")):
+        if any(kw in query_lower for kw in ("pt pma", "incorporate", "company setup")):
             return "pt_pma_incorporation"
         return "general_task"
 

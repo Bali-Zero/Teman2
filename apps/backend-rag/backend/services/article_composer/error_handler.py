@@ -124,7 +124,7 @@ def handle_anthropic_error(
         )
         return HTTPException(status_code=429, detail=api_error.model_dump())
 
-    elif isinstance(error, anthropic.APITimeoutError):
+    if isinstance(error, anthropic.APITimeoutError):
         # Check before APIConnectionError (APITimeoutError subclasses it)
         api_error = APIError.create(
             code=ErrorCode.API_TIMEOUT,
@@ -138,7 +138,7 @@ def handle_anthropic_error(
         logger.error("API timeout", extra=error_context)
         return HTTPException(status_code=504, detail=api_error.model_dump())
 
-    elif isinstance(error, anthropic.APIConnectionError):
+    if isinstance(error, anthropic.APIConnectionError):
         api_error = APIError.create(
             code=ErrorCode.API_CONNECTION_ERROR,
             message="Failed to connect to Claude API",
@@ -151,7 +151,7 @@ def handle_anthropic_error(
         logger.error("API connection error", extra=error_context, exc_info=True)
         return HTTPException(status_code=503, detail=api_error.model_dump())
 
-    elif isinstance(error, anthropic.AuthenticationError):
+    if isinstance(error, anthropic.AuthenticationError):
         api_error = APIError.create(
             code=ErrorCode.API_KEY_NOT_CONFIGURED,
             message="Invalid or missing Anthropic API key",
@@ -164,19 +164,18 @@ def handle_anthropic_error(
         logger.error("Authentication error", extra=error_context)
         return HTTPException(status_code=401, detail=api_error.model_dump())
 
-    else:
-        # Generic API error
-        api_error = APIError.create(
-            code=ErrorCode.API_ERROR,
-            message=f"Claude API error: {str(error)}",
-            details={
-                **error_context,
-                "traceback": traceback.format_exc(),
-            },
-            request_id=request_id,
-        )
-        logger.error("API error", extra=error_context, exc_info=True)
-        return HTTPException(status_code=500, detail=api_error.model_dump())
+    # Generic API error
+    api_error = APIError.create(
+        code=ErrorCode.API_ERROR,
+        message=f"Claude API error: {str(error)}",
+        details={
+            **error_context,
+            "traceback": traceback.format_exc(),
+        },
+        request_id=request_id,
+    )
+    logger.error("API error", extra=error_context, exc_info=True)
+    return HTTPException(status_code=500, detail=api_error.model_dump())
 
 
 def handle_json_error(

@@ -90,7 +90,6 @@ class ConfidenceCalculatorService:
         """
         if confidence >= self.CONFIDENCE_THRESHOLD_HIGH:
             return "high"
-        elif confidence >= self.CONFIDENCE_THRESHOLD_LOW:
+        if confidence >= self.CONFIDENCE_THRESHOLD_LOW:
             return "medium"
-        else:
-            return "low"
+        return "low"

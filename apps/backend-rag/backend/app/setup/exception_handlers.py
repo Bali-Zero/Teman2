@@ -28,7 +28,7 @@ def sanitize_detail(detail: Any) -> str | dict[str, Any]:
     """
     if isinstance(detail, str):
         return detail
-    elif isinstance(detail, dict):
+    if isinstance(detail, dict):
         # Create a copy and sanitize any non-serializable values
         sanitized = {}
         for key, value in detail.items():
@@ -44,9 +44,8 @@ def sanitize_detail(detail: Any) -> str | dict[str, Any]:
                 # Convert non-serializable objects to string
                 sanitized[key] = str(value)
         return sanitized
-    else:
-        # Convert non-serializable objects to string
-        return str(detail)
+    # Convert non-serializable objects to string
+    return str(detail)
 
 
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:

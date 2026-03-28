@@ -70,7 +70,7 @@ class ScrapedDocument:
     metadata: dict[str, Any] = field(default_factory=dict)
     document_hash: str = ""  # MD5 hash of content for change detection
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.document_hash:
             self.document_hash = hashlib.md5(f"{self.title}:{self.content}".encode()).hexdigest()
 
@@ -255,7 +255,7 @@ class LegalScraper:
         # Add query parameters based on source
         if source.source_id == "jdih_kemenkumham":
             return f"{base}?page={page}&per_page={per_page}"
-        elif source.source_id == "peraturan_bpk":
+        if source.source_id == "peraturan_bpk":
             return f"{base}?page={page}&size={per_page}"
 
         return f"{base}?page={page}"

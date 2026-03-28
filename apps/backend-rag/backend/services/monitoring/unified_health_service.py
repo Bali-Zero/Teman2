@@ -152,8 +152,7 @@ class UnifiedHealthService:
                     metadata={"collection": client.collection_name},
                     timestamp=time.time(),
                 )
-            else:
-                raise Exception("Qdrant client missing required attributes")
+            raise Exception("Qdrant client missing required attributes")
         except Exception as e:
             self.service_registry.register("qdrant", ServiceStatus.UNAVAILABLE, error=str(e))
             return HealthCheckResult(
@@ -224,15 +223,14 @@ class UnifiedHealthService:
                     latency_ms=latency,
                     timestamp=time.time(),
                 )
-            else:
-                self.service_registry.register("api", ServiceStatus.DEGRADED)
-                return HealthCheckResult(
-                    name="api",
-                    status="warning",
-                    message=f"API returned status {response.status_code}",
-                    latency_ms=latency,
-                    timestamp=time.time(),
-                )
+            self.service_registry.register("api", ServiceStatus.DEGRADED)
+            return HealthCheckResult(
+                name="api",
+                status="warning",
+                message=f"API returned status {response.status_code}",
+                latency_ms=latency,
+                timestamp=time.time(),
+            )
         except Exception as e:
             self.service_registry.register("api", ServiceStatus.UNAVAILABLE, error=str(e))
             return HealthCheckResult(

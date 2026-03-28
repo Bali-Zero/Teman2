@@ -73,7 +73,7 @@ async def submit_data(
             "realized_total": draft.realized.grand_total,
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Form submission failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -99,7 +99,7 @@ async def sync_jurnal(
             "data_source": draft.data_source.value,
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Jurnal sync failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -145,7 +145,7 @@ async def validate_draft(
             "alerts": [a.model_dump() for a in result.alerts],
         }
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Validation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -178,7 +178,7 @@ async def get_ready_pack(
             "ready_pack": pack.model_dump(),
         }
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Ready pack generation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e

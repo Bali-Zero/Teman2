@@ -183,9 +183,8 @@ class SessionService:
             if deleted > 0:
                 logger.info(f"🗑️ Deleted session: {session_id}")
                 return True
-            else:
-                logger.warning(f"⚠️ Session not found for deletion: {session_id}")
-                return False
+            logger.warning(f"⚠️ Session not found for deletion: {session_id}")
+            return False
         except Exception as e:
             logger.error(f"❌ Failed to delete session: {e}")
             return False
@@ -428,16 +427,16 @@ class SessionService:
 
                 return "".join(lines)
 
-            else:  # JSON format (default)
-                return json.dumps(
-                    {
-                        "session_id": session_id,
-                        "message_count": len(history),
-                        "conversation": history,
-                    },
-                    indent=2,
-                    ensure_ascii=False,
-                )
+            # JSON format (default)
+            return json.dumps(
+                {
+                    "session_id": session_id,
+                    "message_count": len(history),
+                    "conversation": history,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
 
         except Exception as e:
             logger.error(f"❌ Failed to export session: {e}")

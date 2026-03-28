@@ -44,12 +44,11 @@ class ZantaraTools:
 
             if tool_name == "get_pricing":
                 return await self._get_pricing(tool_input)
-            elif tool_name == "search_team_member":
+            if tool_name == "search_team_member":
                 return await self._search_team_member(tool_input)
-            elif tool_name == "get_team_members_list":
+            if tool_name == "get_team_members_list":
                 return await self._get_team_members_list(tool_input)
-            else:
-                return {"success": False, "error": f"Unknown tool: {tool_name}"}
+            return {"success": False, "error": f"Unknown tool: {tool_name}"}
 
         except Exception as e:
             logger.error(f"❌ Error executing {tool_name}: {e}")

@@ -198,12 +198,11 @@ async def handle_auth_error(request: Request, exc: Exception):
             status_code=exc.status_code,
             content={"detail": exc.detail, "path": str(request.url)},
         )
-    else:
-        # Generic error handler
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "Authentication error", "path": str(request.url)},
-        )
+    # Generic error handler
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Authentication error", "path": str(request.url)},
+    )
 
 
 # Endpoint security classification constants
@@ -304,11 +303,11 @@ def apply_security_by_endpoint(path: str) -> Any:
 
     if security_level == SecurityLevel.PUBLIC:
         return public_endpoint
-    elif security_level == SecurityLevel.API_KEY:
+    if security_level == SecurityLevel.API_KEY:
         return api_key_required()
-    elif security_level == SecurityLevel.JWT:
+    if security_level == SecurityLevel.JWT:
         return jwt_required
-    elif security_level == SecurityLevel.ADMIN_ONLY:
+    if security_level == SecurityLevel.ADMIN_ONLY:
         return role_required(["admin"])
-    else:  # HYBRID
-        return optional_auth
+    # HYBRID
+    return optional_auth

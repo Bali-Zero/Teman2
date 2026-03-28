@@ -277,14 +277,13 @@ def route_after_traversal(state: KGAgentState) -> str:
     if chains_count >= 5:
         logger.info("✅ [Router] Sufficient evidence found, routing to reasoning")
         return "reason"
-    elif chains_count > 0:
+    if chains_count > 0:
         # Could implement expand_search logic here (try synonyms, related entities)
         # For now, proceed with limited evidence
         logger.info(f"⚠️ [Router] Limited evidence ({chains_count} chains), proceeding to reasoning")
         return "reason"
-    else:
-        logger.info("❌ [Router] No graph evidence found, terminating")
-        return END
+    logger.info("❌ [Router] No graph evidence found, terminating")
+    return END
 
 
 # ============================================================================

@@ -69,10 +69,9 @@ class PluginRegistry:
                         f"Plugin {metadata.name} v{metadata.version} already registered, skipping"
                     )
                     return self._plugins[metadata.name]
-                else:
-                    logger.warning(
-                        f"Plugin {metadata.name} version conflict: existing={existing.version}, new={metadata.version}"
-                    )
+                logger.warning(
+                    f"Plugin {metadata.name} version conflict: existing={existing.version}, new={metadata.version}"
+                )
 
             # Register
             self._plugins[metadata.name] = plugin

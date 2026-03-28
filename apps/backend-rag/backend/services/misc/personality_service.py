@@ -319,8 +319,7 @@ Your response:"""
                             "personality": personality["name"],
                             "response": result.get("response", ""),
                         }
-                    else:
-                        return {"success": False, "error": f"Model failed: {response.status}"}
+                    return {"success": False, "error": f"Model failed: {response.status}"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -467,8 +466,7 @@ Enhanced text:"""
                 if response.status == 200:
                     result = await response.json()
                     return result.get("response", text)
-                else:
-                    return text
+                return text
 
         except Exception as e:
             logger.warning(f"⚠️ Zantara enhancement failed: {e}")

@@ -71,7 +71,7 @@ class ExperimentConfig:
     start_date: datetime | None = None
     end_date: datetime | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.start_date is None:
             self.start_date = datetime.now(timezone.utc)
 

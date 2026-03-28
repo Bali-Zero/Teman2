@@ -788,8 +788,7 @@ async def enable_scheduler_task(task_name: str) -> dict[str, Any]:
                 "message": f"Task '{task_name}' enabled",
                 "task_name": task_name,
             }
-        else:
-            raise HTTPException(status_code=404, detail=f"Task '{task_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Task '{task_name}' not found")
     except HTTPException:
         raise
     except Exception as e:
@@ -817,8 +816,7 @@ async def disable_scheduler_task(task_name: str) -> dict[str, Any]:
                 "message": f"Task '{task_name}' disabled",
                 "task_name": task_name,
             }
-        else:
-            raise HTTPException(status_code=404, detail=f"Task '{task_name}' not found")
+        raise HTTPException(status_code=404, detail=f"Task '{task_name}' not found")
     except HTTPException:
         raise
     except Exception as e:

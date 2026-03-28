@@ -726,7 +726,7 @@ class PortalService:
         days = next_deadline["days_until"]
         if days < 0:
             return "overdue"
-        elif days <= 14:
+        if days <= 14:
             return "attention"
         return "compliant"
 

@@ -911,7 +911,7 @@ def calculate_workflow_confidence(state: KGAgentState) -> float:
     chains_count = len(state["relationship_chains"])
     if chains_count == 0:
         return 0.0
-    elif chains_count < 3:
+    if chains_count < 3:
         base = 0.5
     elif chains_count < 10:
         base = 0.7

@@ -42,9 +42,9 @@ def get_status_from_score(score: float) -> str:
     """Convert health score to status"""
     if score >= 90:
         return "healthy"
-    elif score >= 70:
+    if score >= 70:
         return "warning"
-    elif score >= 50:
+    if score >= 50:
         return "degraded"
     return "critical"
 

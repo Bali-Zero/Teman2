@@ -188,7 +188,7 @@ class EpisodicMemoryService:
             if match:
                 if resolver == "_parse_date":
                     return self._parse_date(match)
-                elif callable(resolver):
+                if callable(resolver):
                     try:
                         # Check if resolver needs the match object
                         import inspect
@@ -196,8 +196,7 @@ class EpisodicMemoryService:
                         sig = inspect.signature(resolver)
                         if len(sig.parameters) > 0:
                             return resolver(match)
-                        else:
-                            return resolver()
+                        return resolver()
                     except Exception:
                         continue
 

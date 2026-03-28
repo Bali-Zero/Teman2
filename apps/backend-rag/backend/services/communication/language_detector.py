@@ -137,8 +137,7 @@ def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru"]:
 
     if max_score >= 1:
         return max_lang
-    else:
-        return "auto"
+    return "auto"
 
 
 def get_language_instruction(language: str) -> str:

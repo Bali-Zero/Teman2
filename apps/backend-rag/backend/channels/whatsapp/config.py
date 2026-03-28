@@ -35,7 +35,7 @@ class WhatsAppChannelConfig:
     api_version: str = "v18.0"
     api_base_url: str = "https://graph.facebook.com"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration."""
         if not self.access_token:
             raise ValueError("access_token is required")

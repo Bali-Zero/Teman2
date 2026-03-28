@@ -165,7 +165,7 @@ async def get_portal_status(
                     "invite_expires_at": None,
                 },
             }
-        elif pending_invite:
+        if pending_invite:
             return {
                 "success": True,
                 "data": {
@@ -177,18 +177,17 @@ async def get_portal_status(
                     "invite_expires_at": pending_invite["expires_at"].isoformat(),
                 },
             }
-        else:
-            return {
-                "success": True,
-                "data": {
-                    "has_portal_access": False,
-                    "portal_user_id": None,
-                    "portal_email": None,
-                    "last_login": None,
-                    "pending_invite": False,
-                    "invite_expires_at": None,
-                },
-            }
+        return {
+            "success": True,
+            "data": {
+                "has_portal_access": False,
+                "portal_user_id": None,
+                "portal_email": None,
+                "last_login": None,
+                "pending_invite": False,
+                "invite_expires_at": None,
+            },
+        }
 
 
 # ================================================

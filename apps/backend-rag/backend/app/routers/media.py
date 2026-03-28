@@ -47,19 +47,17 @@ async def generate_image(request: ImagePrompt) -> Any:
             }
             logger.info(f"✅ Image generation successful: {response['url'][:100]}")
             return response
-        else:
-            # Service returned an error
-            error_msg = result.get("error", "Unknown error")
-            error_details = result.get("details", "")
-            logger.error(f"❌ Image generation failed: {error_msg} - {error_details}")
+        # Service returned an error
+        error_msg = result.get("error", "Unknown error")
+        error_details = result.get("details", "")
+        logger.error(f"❌ Image generation failed: {error_msg} - {error_details}")
 
-            # Return proper HTTP status codes for different error types
-            if "not configured" in error_msg:
-                raise HTTPException(status_code=503, detail=result)
-            elif "Invalid prompt" in error_msg:
-                raise HTTPException(status_code=400, detail=result)
-            else:
-                raise HTTPException(status_code=500, detail=result)
+        # Return proper HTTP status codes for different error types
+        if "not configured" in error_msg:
+            raise HTTPException(status_code=503, detail=result)
+        if "Invalid prompt" in error_msg:
+            raise HTTPException(status_code=400, detail=result)
+        raise HTTPException(status_code=500, detail=result)
 
     except HTTPException:
         # Re-raise HTTP exceptions as-is

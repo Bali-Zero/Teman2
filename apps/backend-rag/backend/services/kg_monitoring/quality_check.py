@@ -492,14 +492,13 @@ class QualityCheckService:
         """Determine quality level from score"""
         if score >= self.THRESHOLDS["excellent"]:
             return QualityLevel.EXCELLENT
-        elif score >= self.THRESHOLDS["good"]:
+        if score >= self.THRESHOLDS["good"]:
             return QualityLevel.GOOD
-        elif score >= self.THRESHOLDS["accept"]:
+        if score >= self.THRESHOLDS["accept"]:
             return QualityLevel.ACCEPTABLE
-        elif score >= 0.30:
+        if score >= 0.30:
             return QualityLevel.POOR
-        else:
-            return QualityLevel.REJECT
+        return QualityLevel.REJECT
 
     def _generate_recommendations(self, dimension_scores: list[DimensionScore]) -> list[str]:
         """Generate improvement recommendations"""

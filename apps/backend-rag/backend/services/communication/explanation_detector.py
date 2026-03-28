@@ -136,7 +136,7 @@ def build_explanation_instructions(level: Literal["simple", "standard", "expert"
 - If explaining KITAS: "È come un permesso speciale per stare in Indonesia..."
 - If explaining PT PMA: "È come aprire una società in Indonesia..."
 """
-    elif level == "expert":
+    if level == "expert":
         return """
 ### EXPLANATION LEVEL: EXPERT
 - Use technical terminology (KITAS, NIB, NPWP, etc.)
@@ -145,8 +145,8 @@ def build_explanation_instructions(level: Literal["simple", "standard", "expert"
 - Provide detailed procedures and requirements
 - Mention specific government agencies (BKPM, Ditjen Imigrasi, etc.)
 """
-    else:  # standard
-        return """
+    # standard
+    return """
 ### EXPLANATION LEVEL: STANDARD
 - Balanced explanation: clear but informative
 - Use technical terms with brief explanations
