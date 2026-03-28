@@ -361,6 +361,7 @@ function FieldInput({
             min={field.min}
             max={field.max}
             step={field.step}
+            aria-label={field.label}
             className={cn(
               'w-full px-4 py-2.5 rounded-lg',
               'bg-white/5 border border-white/10',
@@ -387,6 +388,7 @@ function FieldInput({
             min={field.min ?? 0}
             max={field.max ?? 100}
             step={field.step ?? 1}
+            aria-label={field.label}
             className="w-full accent-[#2251ff]"
           />
           <div className="flex justify-between text-xs text-white/40">
