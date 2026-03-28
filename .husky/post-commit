@@ -6,13 +6,13 @@ python3 scripts/docs_sync.py --quiet 2>/dev/null &
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 if [ "$BRANCH" = "main" ] && [ "$(whoami)" = "nuzantara" ]; then
     mkdir -p ~/.openclaw/logs
-    # Update Pro's local 'air' branch to stay in sync with main
-    # (only if air is ancestor of main, i.e. no Air-only commits pending)
+    REPO="/Users/nuzantara/Desktop/nuzantara"
+    LOG="$HOME/.openclaw/logs/git-sync.log"
     (
-      # Advance local 'air' to main (only if air is ancestor of main)
-      git merge-base --is-ancestor air main 2>/dev/null && git branch -f air main && \
-        ssh -o ConnectTimeout=5 -o BatchMode=yes air \
-          "cd ~/Projects/nuzantara && git fetch pro && git rebase pro/main 2>&1" \
-          >> ~/.openclaw/logs/git-sync.log 2>&1
+      cd "$REPO" && \
+      git branch -f air main 2>/dev/null && \
+      ssh -o ConnectTimeout=5 -o BatchMode=yes air \
+        "cd ~/Projects/nuzantara && git fetch pro && git rebase pro/main 2>&1" \
+        >> "$LOG" 2>&1
     ) &
 fi
