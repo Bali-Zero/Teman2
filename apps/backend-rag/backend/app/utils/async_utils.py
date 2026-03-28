@@ -217,7 +217,7 @@ class Debouncer:
         self._lock = asyncio.Lock()
 
     async def call(
-        self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
+        self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any,
     ) -> None:
         """Schedule function call with debouncing."""
         async with self._lock:
@@ -227,7 +227,7 @@ class Debouncer:
             self._task = asyncio.create_task(self._delayed_call(func, *args, **kwargs))
 
     async def _delayed_call(
-        self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
+        self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any,
     ) -> None:
         await asyncio.sleep(self.delay)
         with contextlib.suppress(asyncio.CancelledError):

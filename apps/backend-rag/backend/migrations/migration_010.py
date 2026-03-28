@@ -39,7 +39,7 @@ class Migration010(BaseMigration):
                 'notes', 'last_login', 'failed_attempts', 'locked_until',
                 'full_name', 'active'
             )
-        """
+        """,
         )
         return len(columns) >= 8  # At least 8 of the expected columns
 

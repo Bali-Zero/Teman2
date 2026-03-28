@@ -59,7 +59,7 @@ class OrchestratorContextManager:
                 # 3. Context Window Management (Trimming/Summarization)
                 if context_data.get("history"):
                     context_data["history"] = await self.context_window_manager.manage_context(
-                        context_data["history"], query=query
+                        context_data["history"], query=query,
                     )
 
                 # Metriche e tracciamento
@@ -73,7 +73,7 @@ class OrchestratorContextManager:
             except Exception as e:
                 # Fallback graceful: ritorna un contesto base vuoto per non far fallire l'intera RAG query
                 logger.error(
-                    f"Errore critico durante il caricamento del contesto: {e}", exc_info=True
+                    f"Errore critico durante il caricamento del contesto: {e}", exc_info=True,
                 )
                 set_span_status("ERROR", str(e))
                 return {
@@ -140,10 +140,10 @@ class OrchestratorContextManager:
             try:
                 summary = await self.context_window_manager.generate_summary(messages_to_summarize)
                 optimized = self.context_window_manager.inject_summary_into_history(
-                    recent_messages, summary
+                    recent_messages, summary,
                 )
                 logger.info(
-                    f"📊 [Context] Summarized {len(messages_to_summarize)} messages → {len(optimized)} items"
+                    f"📊 [Context] Summarized {len(messages_to_summarize)} messages → {len(optimized)} items",
                 )
                 return optimized
             except Exception as e:

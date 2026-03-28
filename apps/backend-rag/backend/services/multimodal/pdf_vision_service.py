@@ -110,7 +110,7 @@ class PDFVisionService:
             result = await self._analyze_via_ollama(prompt, image_base64)
             if result:
                 logger.info(
-                    f"👁️ Vision analysis complete via Ollama for {local_path} p.{page_number}"
+                    f"👁️ Vision analysis complete via Ollama for {local_path} p.{page_number}",
                 )
                 if is_drive_file and os.path.exists(local_path):
                     os.remove(local_path)
@@ -120,7 +120,7 @@ class PDFVisionService:
             result = await self._analyze_via_gemini(prompt, image_base64)
             if result:
                 logger.info(
-                    f"👁️ Vision analysis complete via Gemini for {local_path} p.{page_number}"
+                    f"👁️ Vision analysis complete via Gemini for {local_path} p.{page_number}",
                 )
                 if is_drive_file and os.path.exists(local_path):
                     os.remove(local_path)
@@ -145,7 +145,7 @@ class PDFVisionService:
                         "role": "user",
                         "content": prompt,
                         "images": [image_base64],
-                    }
+                    },
                 ],
                 "stream": False,
                 "think": False,
@@ -215,7 +215,7 @@ class PDFVisionService:
         return Image.open(io.BytesIO(img_data))
 
     async def extract_kbli_table(
-        self, pdf_identifier: str, page_range: tuple[int, int], is_drive_file: bool = True
+        self, pdf_identifier: str, page_range: tuple[int, int], is_drive_file: bool = True,
     ) -> str:
         """
         Estrae dati KBLI da un range di pagine.

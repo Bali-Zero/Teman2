@@ -113,7 +113,7 @@ class LegalMetadataExtractor:
 
         logger.info(
             f"Extracted metadata: {metadata['type_abbrev']} No {metadata['number']} "
-            f"Tahun {metadata['year']} - {metadata['topic'][:50]}"
+            f"Tahun {metadata['year']} - {metadata['topic'][:50]}",
         )
 
         return metadata

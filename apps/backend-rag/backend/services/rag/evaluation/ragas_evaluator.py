@@ -221,7 +221,7 @@ class RAGASEvaluator:
         self._cache_hit_count = 0
 
         logger.info(
-            f"RAGASEvaluator initialized (cache={'enabled' if enable_cache else 'disabled'})"
+            f"RAGASEvaluator initialized (cache={'enabled' if enable_cache else 'disabled'})",
         )
 
     def _get_cache_key(self, query: str, context: list[str], answer: str, metric: str) -> str:
@@ -333,7 +333,7 @@ class RAGASEvaluator:
             return cached
 
         context_text = "\n\n".join(
-            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)]
+            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)],
         )
 
         prompt = FAITHFULNESS_PROMPT.format(
@@ -376,7 +376,7 @@ class RAGASEvaluator:
         return result
 
     async def evaluate_context_precision(
-        self, query: str, context: list[str], ground_truth: str
+        self, query: str, context: list[str], ground_truth: str,
     ) -> dict[str, Any]:
         """
         Evaluate context precision - retrieved context is relevant.
@@ -395,7 +395,7 @@ class RAGASEvaluator:
             return cached
 
         context_text = "\n\n".join(
-            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)]
+            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)],
         )
 
         prompt = CONTEXT_PRECISION_PROMPT.format(
@@ -411,7 +411,7 @@ class RAGASEvaluator:
         return result
 
     async def evaluate_context_recall(
-        self, query: str, context: list[str], ground_truth: str
+        self, query: str, context: list[str], ground_truth: str,
     ) -> dict[str, Any]:
         """
         Evaluate context recall - all relevant context is retrieved.
@@ -430,7 +430,7 @@ class RAGASEvaluator:
             return cached
 
         context_text = "\n\n".join(
-            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)]
+            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)],
         )
 
         prompt = CONTEXT_RECALL_PROMPT.format(
@@ -446,7 +446,7 @@ class RAGASEvaluator:
         return result
 
     async def evaluate_context_entity_recall(
-        self, answer: str, context: list[str]
+        self, answer: str, context: list[str],
     ) -> dict[str, Any]:
         """
         Evaluate context entity recall - entities in answer are in context.
@@ -464,7 +464,7 @@ class RAGASEvaluator:
             return cached
 
         context_text = "\n\n".join(
-            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)]
+            [f"[Konteks {i + 1}]\n{chunk}" for i, chunk in enumerate(context)],
         )
 
         prompt = CONTEXT_ENTITY_RECALL_PROMPT.format(
@@ -569,7 +569,7 @@ class RAGASEvaluator:
                 f"RAGAS evaluation completed: "
                 f"faithfulness={results.get('faithfulness', 'N/A')}, "
                 f"answer_relevance={results.get('answer_relevance', 'N/A')}, "
-                f"overall={evaluation_result.overall_score:.3f}"
+                f"overall={evaluation_result.overall_score:.3f}",
             )
 
             return evaluation_result

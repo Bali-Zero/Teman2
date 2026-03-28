@@ -154,7 +154,7 @@ class VectorSearchTool(BaseTool):
                 # No collection specified - search ALL (federated)
                 target_collections = AVAILABLE_COLLECTIONS.copy()
                 logger.info(
-                    f"🌐 [Federated Search] Searching all {len(target_collections)} collections"
+                    f"🌐 [Federated Search] Searching all {len(target_collections)} collections",
                 )
 
             set_span_attribute("collections_searched", str(target_collections))
@@ -209,7 +209,7 @@ class VectorSearchTool(BaseTool):
                 logger.info("🔀 [Hybrid Search] Using BM25+Dense+RRF+CrossEncoder pipeline")
 
             search_results = await asyncio.gather(
-                *[_search_collection(col) for col in target_collections]
+                *[_search_collection(col) for col in target_collections],
             )
 
             # Process and deduplicate results
@@ -229,7 +229,7 @@ class VectorSearchTool(BaseTool):
 
             # Sort by score and take top results
             all_chunks.sort(
-                key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True
+                key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True,
             )
             chunks = all_chunks[:top_k]
 
@@ -260,7 +260,7 @@ class VectorSearchTool(BaseTool):
                 # Include document ID in formatted text if available
                 id_prefix = f"ID: {doc_id}\n" if doc_id else ""
                 formatted_texts.append(
-                    f"[{i + 1}] Source: {source_col} | Title: {title}\n{id_prefix}{text}"
+                    f"[{i + 1}] Source: {source_col} | Title: {title}\n{id_prefix}{text}",
                 )
 
                 sources_metadata.append(
@@ -271,7 +271,7 @@ class VectorSearchTool(BaseTool):
                         "score": chunk.get("score", 0.0) if isinstance(chunk, dict) else 0.0,
                         "collection": source_col,
                         "doc_id": doc_id,
-                    }
+                    },
                 )
 
             content_str = "\n\n".join(formatted_texts)
@@ -494,7 +494,7 @@ class TeamKnowledgeTool(BaseTool):
 
             if self._data_file is None:
                 logger.error(
-                    f"[{self.name}] CRITICAL: team_members.json NOT FOUND in any expected location."
+                    f"[{self.name}] CRITICAL: team_members.json NOT FOUND in any expected location.",
                 )
 
         return self._data_file
@@ -548,7 +548,7 @@ class TeamKnowledgeTool(BaseTool):
 
             if query_type == "list_all":
                 return json.dumps(
-                    [{"name": m.get("name"), "role": m.get("role")} for m in team_data]
+                    [{"name": m.get("name"), "role": m.get("role")} for m in team_data],
                 )
 
             # Search logic
@@ -615,7 +615,7 @@ class ImageGenerationTool(BaseTool):
 
                 if not api_key:
                     return json.dumps(
-                        {"success": False, "error": "Image generation not configured"}
+                        {"success": False, "error": "Image generation not configured"},
                     )
 
                 url = "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict"
@@ -650,7 +650,7 @@ class ImageGenerationTool(BaseTool):
                             "image_url": fallback_url,
                             "service": "pollinations_fallback",
                             "message": f"Generated image for: {prompt}",
-                        }
+                        },
                     )
 
                 response.raise_for_status()
@@ -668,7 +668,7 @@ class ImageGenerationTool(BaseTool):
                                 "image_data": image_data_url,
                                 "service": "google_imagen",
                                 "message": f"Generated image for: {prompt}",
-                            }
+                            },
                         )
 
                 return json.dumps({"success": False, "error": "No image generated"})
@@ -684,7 +684,7 @@ class ImageGenerationTool(BaseTool):
                         "image_url": fallback_url,
                         "service": "pollinations_fallback",
                         "message": f"Generated image for: {prompt}",
-                    }
+                    },
                 )
 
 
@@ -819,14 +819,14 @@ class WebSearchTool(BaseTool):
 
             if not tavily_key and not brave_key:
                 logger.warning(
-                    "⚠️ [WebSearch] No API keys configured (TAVILY_API_KEY or BRAVE_API_KEY)"
+                    "⚠️ [WebSearch] No API keys configured (TAVILY_API_KEY or BRAVE_API_KEY)",
                 )
                 return json.dumps(
                     {
                         "success": False,
                         "error": "Web search not configured. Please contact support.",
                         "disclaimer": self.WEB_DISCLAIMER,
-                    }
+                    },
                 )
 
             # Clamp num_results
@@ -867,7 +867,7 @@ class WebSearchTool(BaseTool):
                             "content": "No relevant web results found for this query.",
                             "sources": [],
                             "disclaimer": self.WEB_DISCLAIMER,
-                        }
+                        },
                     )
 
                 # Format results based on provider
@@ -890,7 +890,7 @@ class WebSearchTool(BaseTool):
                         url = result.get("url", "")
 
                     formatted_results.append(
-                        f"[{i + 1}] **{title}**\n   {content[:300]}...\n   Source: {url}"
+                        f"[{i + 1}] **{title}**\n   {content[:300]}...\n   Source: {url}",
                     )
 
                     sources.append(
@@ -900,7 +900,7 @@ class WebSearchTool(BaseTool):
                             "url": url,
                             "content": content[:200],
                             "verified": False,
-                        }
+                        },
                     )
 
                 content = "\n\n".join(formatted_results)
@@ -918,7 +918,7 @@ class WebSearchTool(BaseTool):
                         "provider": provider,
                         "disclaimer": self.WEB_DISCLAIMER,
                         "query": query,
-                    }
+                    },
                 )
 
             except httpx.HTTPStatusError as e:
@@ -929,7 +929,7 @@ class WebSearchTool(BaseTool):
                         "success": False,
                         "error": f"Web search failed: HTTP {e.response.status_code}",
                         "disclaimer": self.WEB_DISCLAIMER,
-                    }
+                    },
                 )
             except Exception as e:
                 logger.error(f"❌ [WebSearch] Error: {e}")
@@ -939,7 +939,7 @@ class WebSearchTool(BaseTool):
                         "success": False,
                         "error": f"Web search error: {str(e)}",
                         "disclaimer": self.WEB_DISCLAIMER,
-                    }
+                    },
                 )
 
 

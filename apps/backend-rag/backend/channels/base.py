@@ -123,7 +123,7 @@ class BaseChannel(ABC):
 
     @abstractmethod
     async def stream_response(
-        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse]
+        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
     ) -> None:
         """
         Handle streaming responses with platform-specific optimizations.

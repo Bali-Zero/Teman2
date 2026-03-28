@@ -247,7 +247,7 @@ def initialize_optimizations():
             max_requests_per_minute=60,
             max_requests_per_hour=1000,
             burst_size=10,
-        )
+        ),
     )
 
     message_deduplicator = MessageDeduplicator(ttl_seconds=300)

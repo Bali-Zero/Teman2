@@ -88,7 +88,7 @@ class CrossEncoderReranker:
             enabled: Whether to enable reranking. Defaults to config setting.
         """
         self.model_name = model_name or getattr(
-            settings, "reranker_model", "cross-encoder/ms-marco-MiniLM-L-6-v2"
+            settings, "reranker_model", "cross-encoder/ms-marco-MiniLM-L-6-v2",
         )
         self.max_length = max_length
         self.batch_size = batch_size
@@ -103,7 +103,7 @@ class CrossEncoderReranker:
 
         if not self.enabled:
             logger.warning(
-                "⚠️ CrossEncoderReranker is disabled. Reranking will return documents unchanged."
+                "⚠️ CrossEncoderReranker is disabled. Reranking will return documents unchanged.",
             )
         else:
             logger.info(f"🔧 CrossEncoderReranker initialized (model: {self.model_name})")
@@ -155,7 +155,7 @@ class CrossEncoderReranker:
         except ImportError as e:
             logger.error(
                 f"❌ Failed to import sentence-transformers: {e}. "
-                "Install with: pip install sentence-transformers"
+                "Install with: pip install sentence-transformers",
             )
             self.enabled = False
             return None
@@ -220,7 +220,7 @@ class CrossEncoderReranker:
             inference_time = (time.perf_counter() - start_time) * 1000
 
             logger.debug(
-                f"Computed scores for {len(documents)} documents in {inference_time:.1f}ms"
+                f"Computed scores for {len(documents)} documents in {inference_time:.1f}ms",
             )
 
             # Convert to list of floats and normalize to 0-1 if needed
@@ -368,7 +368,7 @@ class CrossEncoderReranker:
 
                 logger.info(
                     f"✅ Reranked {len(reranked_docs)} documents in {compute_time:.1f}ms "
-                    f"(model: {self.model_name})"
+                    f"(model: {self.model_name})",
                 )
 
                 return reranked_docs[:top_k]
@@ -413,7 +413,7 @@ class CrossEncoderReranker:
 
         if len(queries) != len(documents_list):
             raise ValueError(
-                f"Queries count ({len(queries)}) must match documents list count ({len(documents_list)})"
+                f"Queries count ({len(queries)}) must match documents list count ({len(documents_list)})",
             )
 
         # Run all reranks concurrently

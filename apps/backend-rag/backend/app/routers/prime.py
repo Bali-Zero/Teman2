@@ -647,7 +647,7 @@ async def _query_batara(lat: float, lng: float) -> dict[str, Any] | None:
             building_codes = _calculate_building_yield(zone_code)
 
             logger.info(
-                f"✅ [Prime/BATARA] {zone_code} '{zone_name}' @ {lat},{lng} — {len(businesses)} businesses"
+                f"✅ [Prime/BATARA] {zone_code} '{zone_name}' @ {lat},{lng} — {len(businesses)} businesses",
             )
             return {
                 "zone_code": zone_code,
@@ -765,13 +765,13 @@ async def _search_local_intel(
                     "source_name": payload.get("source_name", ""),
                     "published_at": payload.get("published_at", ""),
                     "relevance_score": round(score, 3),
-                }
+                },
             )
             if len(articles) >= limit:
                 break
 
         logger.info(
-            f"[Prime/Intel] {len(articles)} articles found for {zone_code} in {subdistrict}"
+            f"[Prime/Intel] {len(articles)} articles found for {zone_code} in {subdistrict}",
         )
         return articles
 
@@ -833,7 +833,7 @@ async def get_zoning(
         zone_name = zone_type.split(":", 1)[1].strip() if ":" in zone_type else zone_type
 
         label_info = _ZONE_LABELS.get(
-            zone_code, {"label_en": zone_name, "desc_en": "Contact local authorities for details"}
+            zone_code, {"label_en": zone_name, "desc_en": "Contact local authorities for details"},
         )
         is_restricted = zone_code in _RESTRICTED_ZONES
         building_codes = _calculate_building_yield(zone_code)
@@ -994,7 +994,7 @@ async def get_zones_geojson() -> dict[str, Any]:
                         "max_height_meters": max_height,
                         "kdb": kdb,
                     },
-                }
+                },
             )
 
         result: dict[str, Any] = {"type": "FeatureCollection", "features": features}

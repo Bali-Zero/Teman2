@@ -66,11 +66,11 @@ class PluginRegistry:
                 existing = self._metadata[metadata.name]
                 if existing.version == metadata.version:
                     logger.warning(
-                        f"Plugin {metadata.name} v{metadata.version} already registered, skipping"
+                        f"Plugin {metadata.name} v{metadata.version} already registered, skipping",
                     )
                     return self._plugins[metadata.name]
                 logger.warning(
-                    f"Plugin {metadata.name} version conflict: existing={existing.version}, new={metadata.version}"
+                    f"Plugin {metadata.name} version conflict: existing={existing.version}, new={metadata.version}",
                 )
 
             # Register
@@ -91,7 +91,7 @@ class PluginRegistry:
             try:
                 await plugin.on_load()
                 logger.info(
-                    f"Registered plugin: {metadata.name} v{metadata.version} ({metadata.category})"
+                    f"Registered plugin: {metadata.name} v{metadata.version} ({metadata.category})",
                 )
             except Exception as e:
                 logger.error(f"Failed to load plugin {metadata.name}: {e}")
@@ -103,7 +103,7 @@ class PluginRegistry:
             return plugin
 
     async def register_batch(
-        self, plugin_classes: list[type[Plugin]], config: dict | None = None
+        self, plugin_classes: list[type[Plugin]], config: dict | None = None,
     ) -> list[Plugin]:
         """
         Register multiple plugins in batch
@@ -217,7 +217,7 @@ class PluginRegistry:
         return result
 
     async def discover_plugins(
-        self, plugins_dir: Path, package_prefix: str = "", strict: bool = False
+        self, plugins_dir: Path, package_prefix: str = "", strict: bool = False,
     ):
         """
         Auto-discover plugins in directory
@@ -398,7 +398,7 @@ class PluginRegistry:
                 tools.append(tool_def)
             except Exception as e:
                 logger.error(
-                    f"Failed to generate ZANTARA AI tool definition for {plugin.metadata.name}: {e}"
+                    f"Failed to generate ZANTARA AI tool definition for {plugin.metadata.name}: {e}",
                 )
         return tools
 

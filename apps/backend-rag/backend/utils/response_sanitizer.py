@@ -296,7 +296,7 @@ def classify_query_type(message: str) -> str:
 
 
 def process_zantara_response(
-    response: str, query_type: str, apply_santai: bool = True, add_contact: bool = True
+    response: str, query_type: str, apply_santai: bool = True, add_contact: bool = True,
 ) -> str:
     """
     Complete response processing pipeline

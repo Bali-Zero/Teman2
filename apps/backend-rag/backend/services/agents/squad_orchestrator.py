@@ -46,7 +46,7 @@ class SquadOrchestrator:
             )
 
     async def delegate_task(
-        self, agent_role: str, task_payload: dict[str, Any], strict_schema: type[T]
+        self, agent_role: str, task_payload: dict[str, Any], strict_schema: type[T],
     ) -> T:
         """
         COMMAND 1: Task Delegation
@@ -83,7 +83,7 @@ class SquadOrchestrator:
                     "Task Context & Data:\n{payload_str}\n\n"
                     "Provide the requested analysis according to the required schema.",
                 ),
-            ]
+            ],
         )
 
         # Core mechanic: Pydantic enforced output (no raw text parsing)

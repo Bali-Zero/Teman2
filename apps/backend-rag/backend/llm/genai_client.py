@@ -78,7 +78,7 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
             # CRITICAL: Set env var so SDK finds it!
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = gac_path
             logger.info(
-                f"✅ Service Account credentials loaded from file: {gac_path} (project: {project_id})"
+                f"✅ Service Account credentials loaded from file: {gac_path} (project: {project_id})",
             )
             return True, project_id
         except Exception as e:
@@ -129,7 +129,7 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
             # Defensive check for Mock objects during testing
             if "MagicMock" in str(e) or "Mock" in str(e):
                 logger.warning(
-                    "⚠️ Detected Mock object in credentials during test - skipping file write"
+                    "⚠️ Detected Mock object in credentials during test - skipping file write",
                 )
                 return False, None
             raise e  # Re-raise real serialization errors
@@ -138,7 +138,7 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_file
 
         logger.info(
-            f"✅ Service Account credentials configured from ENV: {creds_dict.get('client_email', 'unknown')} (project: {project_id})"
+            f"✅ Service Account credentials configured from ENV: {creds_dict.get('client_email', 'unknown')} (project: {project_id})",
         )
         return True, project_id
 
@@ -245,7 +245,7 @@ class GenAIClient:
                 self._available = True
                 self._auth_method = "service_account_vertexai"
                 logger.info(
-                    f"✅ GenAI client initialized with Vertex AI (project: {_sa_project_id})"
+                    f"✅ GenAI client initialized with Vertex AI (project: {_sa_project_id})",
                 )
                 return
             except Exception as e:

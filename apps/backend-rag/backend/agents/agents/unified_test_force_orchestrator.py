@@ -138,7 +138,7 @@ class UnifiedTestForceOrchestrator:
             if options.get("generate_tests", True):
                 logger.info("🤖 Step 4: Generating tests for critical gaps (Qwen)...")
                 test_generation = await self._generate_tests_for_gaps(
-                    coverage_report, options.get("max_tests_per_component", 5)
+                    coverage_report, options.get("max_tests_per_component", 5),
                 )
                 results["test_generation"] = test_generation
 
@@ -148,11 +148,11 @@ class UnifiedTestForceOrchestrator:
                     updated_coverage = await self._recalculate_coverage_after_tests()
                     if updated_coverage:
                         logger.info(
-                            f"   ✅ Coverage aggiornata: {updated_coverage.get('overall_coverage', 0):.1f}%"
+                            f"   ✅ Coverage aggiornata: {updated_coverage.get('overall_coverage', 0):.1f}%",
                         )
                         # Aggiorna coverage nel report
                         coverage_report.overall_coverage = updated_coverage.get(
-                            "overall_coverage", coverage_report.overall_coverage
+                            "overall_coverage", coverage_report.overall_coverage,
                         )
                         results["coverage_report"]["overall_coverage"] = (
                             coverage_report.overall_coverage
@@ -191,7 +191,7 @@ class UnifiedTestForceOrchestrator:
             return partial_results
 
     async def _generate_tests_for_gaps(
-        self, coverage_report: UnifiedCoverageReport, max_per_component: int
+        self, coverage_report: UnifiedCoverageReport, max_per_component: int,
     ) -> dict[str, Any]:
         """Generate tests for coverage gaps using Qwen"""
         test_results = {
@@ -213,7 +213,7 @@ class UnifiedTestForceOrchestrator:
                         "coverage": gap["coverage"],
                         "missing_lines": gap.get("missing_lines", []),
                         "missing_lines_count": gap.get("missing_lines_count", 0),
-                    }
+                    },
                 )
 
         # Sort by priority (lowest coverage first)
@@ -223,7 +223,7 @@ class UnifiedTestForceOrchestrator:
 
         for i, gap in enumerate(all_gaps[:20], 1):  # Limit to top 20 gaps
             logger.info(
-                f"   [{i}/{min(len(all_gaps), 20)}] Generating test for {gap['component']}/{gap['file']}"
+                f"   [{i}/{min(len(all_gaps), 20)}] Generating test for {gap['component']}/{gap['file']}",
             )
 
             try:
@@ -475,7 +475,7 @@ async def main():
     parser.add_argument("--provider", default="local", choices=["local", "mock"])
     parser.add_argument("--save-baseline", action="store_true", help="Save current as baseline")
     parser.add_argument(
-        "--generate-tests", action="store_true", default=True, help="Generate tests"
+        "--generate-tests", action="store_true", default=True, help="Generate tests",
     )
     parser.add_argument("--max-tests", type=int, default=5, help="Max tests per component")
     parser.add_argument("--output", help="Output JSON report file")

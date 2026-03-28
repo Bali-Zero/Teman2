@@ -328,7 +328,7 @@ class PostgreSQLDebugger:
         return True, None
 
     async def execute_query(
-        self, query: str, limit: int = 100, pool: asyncpg.Pool | None = None
+        self, query: str, limit: int = 100, pool: asyncpg.Pool | None = None,
     ) -> dict[str, Any]:
         """
         Execute a read-only query safely.
@@ -658,7 +658,7 @@ class PostgreSQLDebugger:
                         "table_size": row["table_size"],
                         "indexes_size": row["indexes_size"],
                         "index_count": row["index_count"],
-                    }
+                    },
                 )
             return stats
         finally:
@@ -675,7 +675,7 @@ class PostgreSQLDebugger:
         try:
             # Database size
             db_size = await conn.fetchval(
-                "SELECT pg_size_pretty(pg_database_size(current_database()))"
+                "SELECT pg_size_pretty(pg_database_size(current_database()))",
             )
 
             # Database version
@@ -683,7 +683,7 @@ class PostgreSQLDebugger:
 
             # Connection count
             conn_count = await conn.fetchval(
-                "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database()"
+                "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database()",
             )
 
             # Active connections
@@ -691,7 +691,7 @@ class PostgreSQLDebugger:
                 """
                 SELECT COUNT(*) FROM pg_stat_activity
                 WHERE datname = current_database() AND state = 'active'
-                """
+                """,
             )
 
             # Idle connections
@@ -699,7 +699,7 @@ class PostgreSQLDebugger:
                 """
                 SELECT COUNT(*) FROM pg_stat_activity
                 WHERE datname = current_database() AND state = 'idle'
-                """
+                """,
             )
 
             # Database name
@@ -734,7 +734,7 @@ class PostgreSQLDebugger:
                 SELECT EXISTS(
                     SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements'
                 )
-                """
+                """,
             )
 
             if not extension_exists:
@@ -828,7 +828,7 @@ class PostgreSQLDebugger:
         try:
             # Total connections
             total = await conn.fetchval(
-                "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database()"
+                "SELECT COUNT(*) FROM pg_stat_activity WHERE datname = current_database()",
             )
 
             # By state
@@ -848,7 +848,7 @@ class PostgreSQLDebugger:
                 WHERE datname = current_database()
                 AND state = 'active'
                 AND now() - query_start > interval '5 minutes'
-                """
+                """,
             )
 
             # Idle in transaction
@@ -857,7 +857,7 @@ class PostgreSQLDebugger:
                 SELECT COUNT(*) FROM pg_stat_activity
                 WHERE datname = current_database()
                 AND state = 'idle in transaction'
-                """
+                """,
             )
 
             return {

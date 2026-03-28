@@ -35,7 +35,7 @@ class Migration015(BaseMigration):
             FROM information_schema.columns
             WHERE table_name = 'parent_documents'
             AND column_name IN ('drive_file_id', 'drive_web_view_link', 'mime_type')
-        """
+        """,
         )
         return len(columns) == 3
 

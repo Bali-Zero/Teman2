@@ -35,7 +35,7 @@ class InMemoryConversationCache:
     def add_message(self, conversation_id: str, role: str, content: str) -> None:
         """Add a message to the in-memory cache."""
         self._cache[conversation_id].append(
-            {"role": role, "content": content, "timestamp": datetime.now(tz=timezone.utc).isoformat()}
+            {"role": role, "content": content, "timestamp": datetime.now(tz=timezone.utc).isoformat()},
         )
         self._timestamps[conversation_id] = datetime.now(tz=timezone.utc)
 

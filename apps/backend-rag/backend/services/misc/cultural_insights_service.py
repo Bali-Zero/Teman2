@@ -75,20 +75,20 @@ class CulturalInsightsService:
             cultural_db = self.collection_manager.get_collection(self.collection_name)
             if not cultural_db:
                 logger.error(
-                    f"❌ Cultural insights collection '{self.collection_name}' not available"
+                    f"❌ Cultural insights collection '{self.collection_name}' not available",
                 )
                 return False
 
             # Convert list fields to strings for Qdrant compatibility
             chroma_metadata = {**metadata}
             if "when_to_use" in chroma_metadata and isinstance(
-                chroma_metadata["when_to_use"], list
+                chroma_metadata["when_to_use"], list,
             ):
                 chroma_metadata["when_to_use"] = ", ".join(chroma_metadata["when_to_use"])
 
             # Upsert (async)
             await cultural_db.upsert_documents(
-                chunks=[text], embeddings=[embedding], metadatas=[chroma_metadata], ids=[doc_id]
+                chunks=[text], embeddings=[embedding], metadatas=[chroma_metadata], ids=[doc_id],
             )
 
             logger.info(f"✅ Added cultural insight: {metadata.get('topic', 'unknown')}")
@@ -99,7 +99,7 @@ class CulturalInsightsService:
             return False
 
     async def query_insights(
-        self, query: str, when_to_use: str | None = None, limit: int = 3
+        self, query: str, when_to_use: str | None = None, limit: int = 3,
     ) -> list[dict[str, Any]]:
         """
         Query cultural insights from Qdrant using semantic search.
@@ -126,12 +126,12 @@ class CulturalInsightsService:
             cultural_db = self.collection_manager.get_collection(self.collection_name)
             if not cultural_db:
                 logger.warning(
-                    f"⚠️ Cultural insights collection '{self.collection_name}' not available"
+                    f"⚠️ Cultural insights collection '{self.collection_name}' not available",
                 )
                 return []
 
             raw_results = await cultural_db.search(
-                query_embedding=query_embedding, filter=chroma_filter, limit=limit
+                query_embedding=query_embedding, filter=chroma_filter, limit=limit,
             )
 
             # Format results
@@ -157,7 +157,7 @@ class CulturalInsightsService:
                             else {}
                         ),
                         "score": round(score, 4),
-                    }
+                    },
                 )
 
             logger.info(f"🌴 Retrieved {len(formatted_results)} cultural insights for query")

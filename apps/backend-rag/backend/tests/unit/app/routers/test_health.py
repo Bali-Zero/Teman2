@@ -53,7 +53,7 @@ class TestHealthRouter:
         app.state.search_service = mock_search_service
 
         with patch(
-            "backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock
+            "backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock,
         ) as mock_stats:
             mock_stats.return_value = {"collections": 5, "total_documents": 1000}
 
@@ -74,7 +74,7 @@ class TestHealthRouter:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.json.return_value = {
-                "result": {"collections": [{"name": "collection1"}, {"name": "collection2"}]}
+                "result": {"collections": [{"name": "collection1"}, {"name": "collection2"}]},
             }
             mock_response.raise_for_status = MagicMock()
 

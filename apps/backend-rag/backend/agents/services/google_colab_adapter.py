@@ -63,7 +63,7 @@ class GoogleColabAdapter:
         """
         if not self.available:
             raise RuntimeError(
-                "Google Colab non disponibile. Accedi via: https://colab.research.google.com"
+                "Google Colab non disponibile. Accedi via: https://colab.research.google.com",
             )
 
         logger.info("ℹ️ Google Colab è web-based. Usa browser per editing.")

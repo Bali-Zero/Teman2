@@ -9,7 +9,7 @@ T = TypeVar("T")
 
 
 def get_app_state(
-    app_state: Any, attr_name: str, default: T | None = None, expected_type: type[T] | None = None
+    app_state: Any, attr_name: str, default: T | None = None, expected_type: type[T] | None = None,
 ) -> T | None:
     """
     Type-safe getattr for app.state attributes.
@@ -37,7 +37,7 @@ def get_app_state(
         logger = logging.getLogger(__name__)
         logger.warning(
             f"Type mismatch for app.state.{attr_name}: "
-            f"expected {expected_type.__name__}, got {type(value).__name__}"
+            f"expected {expected_type.__name__}, got {type(value).__name__}",
         )
         return default
 
@@ -76,7 +76,7 @@ def get_request_state(
         logger = logging.getLogger(__name__)
         logger.warning(
             f"Type mismatch for request.state.{attr_name}: "
-            f"expected {expected_type.__name__}, got {type(value).__name__}"
+            f"expected {expected_type.__name__}, got {type(value).__name__}",
         )
         return default
 

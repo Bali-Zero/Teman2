@@ -53,7 +53,7 @@ class GoogleCloudShellAdapter:
         if not self.available:
             raise RuntimeError(
                 "Google Cloud Shell Editor non disponibile. "
-                "Accedi via: https://console.cloud.google.com"
+                "Accedi via: https://console.cloud.google.com",
             )
 
         logger.info("ℹ️ Google Cloud Shell Editor è web-based.")

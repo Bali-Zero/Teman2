@@ -19,7 +19,7 @@ def mock_prices():
             "company_services": {},
             "other_process": {},
             "urgent_services": {},
-        }
+        },
     }
 
 

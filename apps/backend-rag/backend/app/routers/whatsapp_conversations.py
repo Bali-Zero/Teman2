@@ -131,7 +131,7 @@ async def get_whatsapp_conversations(
                         "unread_count": 0,
                         "interaction_count": 0,
                         "session_id": row["session_id"],
-                    }
+                    },
                 )
 
             return conversations
@@ -196,7 +196,7 @@ async def get_whatsapp_messages(
                         "direction": "inbound" if m.get("role") == "user" else "outbound",
                         "timestamp": row["created_at"].isoformat(),
                         "status": "read",
-                    }
+                    },
                 )
             return result
     except Exception as e:

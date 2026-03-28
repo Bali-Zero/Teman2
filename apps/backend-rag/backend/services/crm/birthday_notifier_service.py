@@ -231,7 +231,7 @@ class BirthdayNotifierService:
         famous = enrichment.get("famous_people", [])
         if famous and client.get("birthplace"):
             notes.append(
-                f"As someone from {client['birthplace']}, home of {famous[0]}, you bring a special perspective!"
+                f"As someone from {client['birthplace']}, home of {famous[0]}, you bring a special perspective!",
             )
 
         # Mention local specialties

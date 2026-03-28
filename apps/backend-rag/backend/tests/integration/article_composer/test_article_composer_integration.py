@@ -36,8 +36,8 @@ def mock_anthropic_response():
     mock_message = MagicMock()
     mock_message.content = [
         MagicMock(
-            text='{"headline": "Test Headline", "tldr": {"should_worry": "No", "what": "Test", "who": "Everyone", "when": "Now", "risk_level": "Low"}, "facts": "Test facts content", "bali_zero_take": {"hidden_insight": "Insight", "our_analysis": "Analysis", "our_advice": "Advice"}, "next_steps": {"expat": ["Step 1"], "investor": ["Step 2"]}, "category": "business", "priority": "medium", "relevance_score": 75, "ai_summary": "Test summary", "ai_tags": ["tag1", "tag2"], "suggested_components": []}'
-        )
+            text='{"headline": "Test Headline", "tldr": {"should_worry": "No", "what": "Test", "who": "Everyone", "when": "Now", "risk_level": "Low"}, "facts": "Test facts content", "bali_zero_take": {"hidden_insight": "Insight", "our_analysis": "Analysis", "our_advice": "Advice"}, "next_steps": {"expat": ["Step 1"], "investor": ["Step 2"]}, "category": "business", "priority": "medium", "relevance_score": 75, "ai_summary": "Test summary", "ai_tags": ["tag1", "tag2"], "suggested_components": []}',
+        ),
     ]
     mock_message.usage = MagicMock(input_tokens=1000, output_tokens=1500)
     return mock_message
@@ -191,7 +191,7 @@ class TestArticleComposerIntegration:
 
         # Simulate rate limit error
         mock_claude_call.side_effect = anthropic.RateLimitError(
-            message="Rate limit exceeded", response=MagicMock(), body={}
+            message="Rate limit exceeded", response=MagicMock(), body={},
         )
 
         response = client.post(

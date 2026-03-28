@@ -36,7 +36,7 @@ class Migration012(BaseMigration):
                 WHERE table_name = 'interactions'
                 AND column_name = 'conversation_id'
             )
-        """
+        """,
         )
         return bool(result)
 

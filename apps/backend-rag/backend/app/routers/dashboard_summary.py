@@ -148,7 +148,7 @@ async def _get_revenue_stats(db_pool: asyncpg.Pool) -> dict:
                     COALESCE(SUM(CASE WHEN payment_status IN ('unpaid', 'partial') THEN actual_price - COALESCE(paid_amount, 0) ELSE 0 END), 0) as outstanding_revenue
                 FROM practices
                 WHERE actual_price IS NOT NULL
-                """
+                """,
             )
 
             if revenue_row:
@@ -187,7 +187,7 @@ async def _calculate_revenue_growth(db_pool: asyncpg.Pool) -> float:
                 WHERE actual_price IS NOT NULL
                 AND payment_status = 'paid'
                 AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE)
-                """
+                """,
             )
 
             # Get previous month revenue
@@ -198,7 +198,7 @@ async def _calculate_revenue_growth(db_pool: asyncpg.Pool) -> float:
                 WHERE actual_price IS NOT NULL
                 AND payment_status = 'paid'
                 AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
-                """
+                """,
             )
 
             current_revenue = float(current_month["revenue"] or 0) if current_month else 0
@@ -258,12 +258,12 @@ async def get_dashboard_summary(
             ),
             _with_timeout(
                 list_interactions(
-                    interaction_type="whatsapp", limit=5, user_id=user_id, pool=db_pool
+                    interaction_type="whatsapp", limit=5, user_id=user_id, pool=db_pool,
                 ),
                 [],
             ),
             _with_timeout(
-                _get_email_stats(db_pool, user_id), {"connected": False, "unread_count": 0}
+                _get_email_stats(db_pool, user_id), {"connected": False, "unread_count": 0},
             ),
             _with_timeout(_get_critical_deadlines(db_pool, user_id, is_admin), 0),
         ]
@@ -277,7 +277,7 @@ async def get_dashboard_summary(
                         {"total_revenue": 0, "paid_revenue": 0, "outstanding_revenue": 0},
                     ),
                     _with_timeout(_calculate_revenue_growth(db_pool), 0.0),
-                ]
+                ],
             )
 
         # Execute all tasks in parallel
@@ -349,7 +349,7 @@ async def get_dashboard_summary(
                     days_remaining = (expiry_date - today).days
                 except (ValueError, TypeError) as e:
                     logger.warning(
-                        f"Failed to parse expiry_date for practice {practice.get('id')}: {e}"
+                        f"Failed to parse expiry_date for practice {practice.get('id')}: {e}",
                     )
                     days_remaining = None
 
@@ -361,7 +361,7 @@ async def get_dashboard_summary(
                     "client": practice.get("client_name", "Unknown Client"),
                     "status": frontend_status,
                     "daysRemaining": days_remaining,
-                }
+                },
             )
 
         # Map interactions to WhatsApp format
@@ -379,7 +379,7 @@ async def get_dashboard_summary(
                     "isRead": interaction.get("read_receipt") is True,
                     "hasAiSuggestion": bool(interaction.get("conversation_id")),
                     "practiceId": interaction.get("practice_id"),
-                }
+                },
             )
 
         # Calculate stats
@@ -487,14 +487,14 @@ async def get_neural_pulse(
                 # Check last conversation - use session_id as identifier since title may not exist
                 last_conv = await conn.fetchval(
                     """SELECT session_id FROM conversations
-                       ORDER BY created_at DESC LIMIT 1"""
+                       ORDER BY created_at DESC LIMIT 1""",
                 )
                 if last_conv:
                     last_activity = f"Last chat: {last_conv[:30]}..."
                 else:
                     # Fallback to interactions table
                     last_int = await conn.fetchval(
-                        "SELECT summary FROM interactions ORDER BY created_at DESC LIMIT 1"
+                        "SELECT summary FROM interactions ORDER BY created_at DESC LIMIT 1",
                     )
                     if last_int:
                         last_activity = f"Last CRM: {last_int[:30]}..."
@@ -545,13 +545,13 @@ async def get_role_metrics(
             # Common stats used by multiple roles
             active_practices = (
                 await conn.fetchval(
-                    "SELECT COUNT(*) FROM practices WHERE status NOT IN ('completed', 'cancelled')"
+                    "SELECT COUNT(*) FROM practices WHERE status NOT IN ('completed', 'cancelled')",
                 )
                 or 0
             )
             overdue_invoices = (
                 await conn.fetchval(
-                    "SELECT COUNT(*) FROM practices WHERE payment_status = 'unpaid' AND actual_price IS NOT NULL"
+                    "SELECT COUNT(*) FROM practices WHERE payment_status = 'unpaid' AND actual_price IS NOT NULL",
                 )
                 or 0
             )
@@ -559,7 +559,7 @@ async def get_role_metrics(
                 await conn.fetchval(
                     """SELECT COALESCE(SUM(actual_price), 0) FROM practices
                    WHERE payment_status = 'paid'
-                   AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE)"""
+                   AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE)""",
                 )
                 or 0
             )
@@ -568,7 +568,7 @@ async def get_role_metrics(
                     """SELECT COUNT(*) FROM practices
                    WHERE expiry_date IS NOT NULL
                    AND expiry_date <= CURRENT_DATE + INTERVAL '30 days'
-                   AND status NOT IN ('completed', 'cancelled')"""
+                   AND status NOT IN ('completed', 'cancelled')""",
                 )
                 or 0
             )
@@ -626,7 +626,7 @@ async def get_role_metrics(
             async with db_pool.acquire() as conn:
                 articles_published = (
                     await conn.fetchval(
-                        "SELECT COUNT(*) FROM articles WHERE status = 'published' AND DATE_TRUNC('month', published_at) = DATE_TRUNC('month', CURRENT_DATE)"
+                        "SELECT COUNT(*) FROM articles WHERE status = 'published' AND DATE_TRUNC('month', published_at) = DATE_TRUNC('month', CURRENT_DATE)",
                     )
                     or 0
                 )
@@ -645,14 +645,14 @@ async def get_role_metrics(
                     await conn.fetchval(
                         """SELECT COUNT(*) FROM practices
                        WHERE payment_status = 'paid'
-                       AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE)"""
+                       AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE)""",
                     )
                     or 0
                 )
                 overdue_total = (
                     await conn.fetchval(
                         """SELECT COALESCE(SUM(actual_price - COALESCE(paid_amount, 0)), 0)
-                       FROM practices WHERE payment_status = 'unpaid' AND actual_price IS NOT NULL"""
+                       FROM practices WHERE payment_status = 'unpaid' AND actual_price IS NOT NULL""",
                     )
                     or 0
                 )

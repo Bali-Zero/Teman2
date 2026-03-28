@@ -91,7 +91,7 @@ async def create_client_drive_folder(
     # Check if folder already exists
     if client["google_drive_folder_id"]:
         logger.warning(
-            f"[CRM] Client {client_id} already has Drive folder: {client['google_drive_folder_id']}"
+            f"[CRM] Client {client_id} already has Drive folder: {client['google_drive_folder_id']}",
         )
         raise HTTPException(
             status_code=400,
@@ -189,7 +189,7 @@ async def create_client_drive_folder(
 
     logger.info(
         f"[CRM] Successfully created folder structure for client {client_id}. "
-        f"Root folder: {root_folder['id']}"
+        f"Root folder: {root_folder['id']}",
     )
 
     return {
@@ -261,7 +261,7 @@ async def get_client_drive_folder(
     except Exception as e:
         logger.warning(
             f"[CRM] Could not verify folder {client['google_drive_folder_id']} "
-            f"for client {client_id}: {e}"
+            f"for client {client_id}: {e}",
         )
 
     return {
@@ -313,7 +313,7 @@ async def unlink_client_drive_folder(
         )
 
     logger.info(
-        f"[CRM] Unlinked Drive folder {client['google_drive_folder_id']} from client {client_id}"
+        f"[CRM] Unlinked Drive folder {client['google_drive_folder_id']} from client {client_id}",
     )
 
     return {
@@ -561,7 +561,7 @@ async def upload_file_to_folder(
         )
 
         logger.info(
-            f"[CRM] Uploaded file '{file_name}' to folder {folder_name} for client {client_id}"
+            f"[CRM] Uploaded file '{file_name}' to folder {folder_name} for client {client_id}",
         )
 
         # Dispatch OCR in background

@@ -27,7 +27,7 @@ import redis
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO, format="🤖 [Backend Agent] %(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="🤖 [Backend Agent] %(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ class BackendSelfHealingAgent:
                     "hostname": settings.hostname or "unknown",
                     "fly_region": settings.fly_region or "unknown",
                 },
-            }
+            },
         )
 
         # Start monitoring loop
@@ -179,12 +179,12 @@ class BackendSelfHealingAgent:
                 f"Health: CPU={cpu:.1f}% MEM={memory:.1f}% "
                 f"API={'✅' if api_healthy else '❌'} "
                 f"DB={'✅' if db_healthy else '❌'} "
-                f"Cache={'✅' if cache_healthy else '❌'}"
+                f"Cache={'✅' if cache_healthy else '❌'}",
             )
 
             # Report to orchestrator
             await self.report_to_orchestrator(
-                {"type": "health_check", "severity": "low", "data": asdict(metrics)}
+                {"type": "health_check", "severity": "low", "data": asdict(metrics)},
             )
 
             return metrics
@@ -241,7 +241,7 @@ class BackendSelfHealingAgent:
                     "severity": "high",
                     "value": cpu,
                     "message": f"CPU usage at {cpu:.1f}%",
-                }
+                },
             )
 
         # Check high memory usage
@@ -253,7 +253,7 @@ class BackendSelfHealingAgent:
                     "severity": "critical",
                     "value": memory,
                     "message": f"Memory usage at {memory:.1f}%",
-                }
+                },
             )
 
         # Check disk space
@@ -265,13 +265,13 @@ class BackendSelfHealingAgent:
                     "severity": "high",
                     "value": disk,
                     "message": f"Disk usage at {disk:.1f}%",
-                }
+                },
             )
 
         # Check API health
         if not await self.check_api_health():
             issues.append(
-                {"type": "api_down", "severity": "critical", "message": "API health check failing"}
+                {"type": "api_down", "severity": "critical", "message": "API health check failing"},
             )
 
         # Check DB health
@@ -281,7 +281,7 @@ class BackendSelfHealingAgent:
                     "type": "db_down",
                     "severity": "critical",
                     "message": "Database health check failing",
-                }
+                },
             )
 
         # Check cache health
@@ -291,7 +291,7 @@ class BackendSelfHealingAgent:
                     "type": "cache_down",
                     "severity": "medium",
                     "message": "Cache health check failing",
-                }
+                },
             )
 
         if issues:
@@ -343,7 +343,7 @@ class BackendSelfHealingAgent:
                         "issue_type": issue["type"],
                         "strategy": fix_strategy,
                         "success": fix_success,
-                    }
+                    },
                 )
 
                 if fix_success:
@@ -359,7 +359,7 @@ class BackendSelfHealingAgent:
                             "type": "auto_fix_failed",
                             "severity": issue["severity"],
                             "data": {"issue": issue, "fix_strategy": fix_strategy},
-                        }
+                        },
                     )
 
             except Exception as e:
@@ -376,7 +376,7 @@ class BackendSelfHealingAgent:
                             "error": str(e),
                             "traceback": traceback.format_exc(),
                         },
-                    }
+                    },
                 )
 
     async def restart_service(self) -> bool:
@@ -423,7 +423,7 @@ class BackendSelfHealingAgent:
             }
 
             await self.http_client.post(
-                f"{self.orchestrator_url}/api/report", json=payload, timeout=5.0
+                f"{self.orchestrator_url}/api/report", json=payload, timeout=5.0,
             )
 
         except Exception as e:

@@ -38,7 +38,7 @@ class Migration007(BaseMigration):
                 'interactions', 'documents', 'renewal_alerts', 'crm_settings',
                 'activity_log'
             )
-        """
+        """,
         )
         return len(tables) == 9
 

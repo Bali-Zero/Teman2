@@ -69,7 +69,7 @@ async def upload_and_ingest(
         # Ingest book
         service = IngestionService()
         result = await service.ingest_book(
-            file_path=str(temp_path), title=title, author=author, tier_override=tier_override
+            file_path=str(temp_path), title=title, author=author, tier_override=tier_override,
         )
 
         # Clean up temp file
@@ -117,7 +117,7 @@ async def ingest_local_file(request: BookIngestionRequest) -> BookIngestionRespo
 
 @router.post("/batch", response_model=BatchIngestionResponse)
 async def batch_ingest(
-    request: BatchIngestionRequest, _background_tasks: BackgroundTasks
+    request: BatchIngestionRequest, _background_tasks: BackgroundTasks,
 ) -> BatchIngestionResponse:
     """
     Process all books in a directory.
@@ -132,7 +132,7 @@ async def batch_ingest(
         directory = Path(request.directory_path)
         if not directory.exists():
             raise HTTPException(
-                status_code=404, detail=f"Directory not found: {request.directory_path}"
+                status_code=404, detail=f"Directory not found: {request.directory_path}",
             )
 
         # Get all matching files
@@ -142,7 +142,7 @@ async def batch_ingest(
 
         if not book_files:
             raise HTTPException(
-                status_code=400, detail=f"No books found in {request.directory_path}"
+                status_code=400, detail=f"No books found in {request.directory_path}",
             )
 
         logger.info(f"Found {len(book_files)} books to ingest")
@@ -174,7 +174,7 @@ async def batch_ingest(
                         chunks_created=0,
                         message="Ingestion failed",
                         error=str(e),
-                    )
+                    ),
                 )
                 failed += 1
 
@@ -182,7 +182,7 @@ async def batch_ingest(
 
         logger.info(
             f"Batch ingestion complete: {successful} successful, "
-            f"{failed} failed in {execution_time:.2f}s"
+            f"{failed} failed in {execution_time:.2f}s",
         )
 
         return BatchIngestionResponse(

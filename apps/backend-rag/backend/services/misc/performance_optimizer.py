@@ -297,7 +297,7 @@ class OptimizedSearchService:
         # Run in thread pool for CPU-bound work
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            thread_pool, lambda: self.original.embedding_model.encode(text).tolist()
+            thread_pool, lambda: self.original.embedding_model.encode(text).tolist(),
         )
 
     @async_timed("search")
@@ -322,7 +322,7 @@ class OptimizedSearchService:
         # Run search in thread pool
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            thread_pool, lambda: self.original.search_with_embedding(embedding, k)
+            thread_pool, lambda: self.original.search_with_embedding(embedding, k),
         )
 
 

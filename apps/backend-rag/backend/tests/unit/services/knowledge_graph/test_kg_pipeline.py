@@ -30,7 +30,7 @@ def mock_db_pool():
 def pipeline_config():
     """Create pipeline config"""
     return PipelineConfig(
-        extractor_type="gemini", use_coreference=False, database_url="postgresql://test"
+        extractor_type="gemini", use_coreference=False, database_url="postgresql://test",
     )
 
 
@@ -106,10 +106,10 @@ class TestKGPipeline:
 
         with patch.object(kg_pipeline.extractor, "extract") as mock_extract:
             mock_entity = ExtractedEntity(
-                id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
+                id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA",
             )
             mock_extract.return_value = ExtractionResult(
-                chunk_id=chunk_id, entities=[mock_entity], relations=[]
+                chunk_id=chunk_id, entities=[mock_entity], relations=[],
             )
 
             result = await kg_pipeline.process_chunk(chunk_id, chunk_text)
@@ -132,16 +132,16 @@ class TestKGPipeline:
         with patch.object(kg_pipeline.extractor, "extract") as mock_extract:
             # Need entities for relations to be valid
             mock_entity1 = ExtractedEntity(
-                id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
+                id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA",
             )
             mock_entity2 = ExtractedEntity(
-                id="e2", type=EntityType.IZIN_USAHA, name="Investment", mention="investment"
+                id="e2", type=EntityType.IZIN_USAHA, name="Investment", mention="investment",
             )
             mock_relation = ExtractedRelation(
-                source_id="e1", target_id="e2", type=RelationType.REQUIRES, evidence="requires"
+                source_id="e1", target_id="e2", type=RelationType.REQUIRES, evidence="requires",
             )
             mock_extract.return_value = ExtractionResult(
-                chunk_id=chunk_id, entities=[mock_entity1, mock_entity2], relations=[mock_relation]
+                chunk_id=chunk_id, entities=[mock_entity1, mock_entity2], relations=[mock_relation],
             )
 
             result = await kg_pipeline.process_chunk(chunk_id, chunk_text)
@@ -168,7 +168,7 @@ class TestKGPipeline:
         kg_pipeline._db_pool = mock_db_pool
 
         entity = ExtractedEntity(
-            id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
+            id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA",
         )
         result = ExtractionResult(chunk_id="chunk1", entities=[entity], relations=[])
 
@@ -190,7 +190,7 @@ class TestKGPipeline:
             patch.object(kg_pipeline, "persist_results") as mock_persist,
         ):
             mock_process.return_value = ExtractionResult(
-                chunk_id="chunk1", entities=[], relations=[]
+                chunk_id="chunk1", entities=[], relations=[],
             )
             mock_persist.return_value = None
 
@@ -213,7 +213,7 @@ class TestKGPipeline:
 
         with patch.object(kg_pipeline.extractor, "extract") as mock_extract:
             mock_extract.return_value = ExtractionResult(
-                chunk_id=chunk_id, entities=[], relations=[]
+                chunk_id=chunk_id, entities=[], relations=[],
             )
 
             result = await kg_pipeline.process_chunk(chunk_id, chunk_text)
@@ -228,7 +228,7 @@ class TestKGPipeline:
 
         with patch.object(kg_pipeline.extractor, "extract") as mock_extract:
             mock_extract.return_value = ExtractionResult(
-                chunk_id="chunk1", entities=[], relations=[]
+                chunk_id="chunk1", entities=[], relations=[],
             )
 
             # Process chunks
@@ -262,7 +262,7 @@ class TestKGPipeline:
 
         with patch.object(kg_pipeline, "process_chunk") as mock_process:
             mock_process.return_value = ExtractionResult(
-                chunk_id="chunk1", entities=[], relations=[]
+                chunk_id="chunk1", entities=[], relations=[],
             )
 
             results = await kg_pipeline.process_batch(chunks)
@@ -281,7 +281,7 @@ class TestKGPipeline:
             patch.object(kg_pipeline, "persist_results") as mock_persist,
         ):
             mock_batch.return_value = [
-                ExtractionResult(chunk_id="chunk1", entities=[], relations=[])
+                ExtractionResult(chunk_id="chunk1", entities=[], relations=[]),
             ]
 
             stats = await kg_pipeline.run(chunks, persist=True)
@@ -300,7 +300,7 @@ class TestKGPipeline:
             patch.object(kg_pipeline, "persist_results") as mock_persist,
         ):
             mock_batch.return_value = [
-                ExtractionResult(chunk_id="chunk1", entities=[], relations=[])
+                ExtractionResult(chunk_id="chunk1", entities=[], relations=[]),
             ]
 
             stats = await kg_pipeline.run(chunks, persist=False)
@@ -314,7 +314,7 @@ class TestKGPipeline:
         from backend.services.knowledge_graph.ontology import EntityType
 
         entity = ExtractedEntity(
-            id="local_1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
+            id="local_1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA",
         )
 
         canonical_id = kg_pipeline._get_canonical_id_by_local("local_1", [entity])
@@ -359,7 +359,7 @@ class TestKGPipeline:
 
         # Create two results with same entity
         entity = ExtractedEntity(
-            id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
+            id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA",
         )
         result1 = ExtractionResult(chunk_id="chunk1", entities=[entity], relations=[])
         result2 = ExtractionResult(chunk_id="chunk2", entities=[entity], relations=[])
@@ -385,10 +385,10 @@ class TestKGPipeline:
             patch.object(kg_pipeline.coreference, "update_cache"),
         ):
             mock_entity = ExtractedEntity(
-                id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
+                id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA",
             )
             mock_extract.return_value = ExtractionResult(
-                chunk_id=chunk_id, entities=[mock_entity], relations=[]
+                chunk_id=chunk_id, entities=[mock_entity], relations=[],
             )
             mock_resolve.return_value = {}
             mock_dedup.return_value = [mock_entity]
@@ -449,7 +449,7 @@ class TestKGPipeline:
                         e
                         for e in result.entities
                         if e.confidence >= kg_pipeline.config.min_confidence
-                    ]
+                    ],
                 )
                 >= 0
             )

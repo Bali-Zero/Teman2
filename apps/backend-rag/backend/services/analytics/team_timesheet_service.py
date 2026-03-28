@@ -83,11 +83,11 @@ class TeamTimesheetService:
                     logger.info(
                         f"🕕 Auto-logout: {row.get('out_email')} "
                         f"(clocked in at {row.get('out_clock_in_time')}, "
-                        f"auto-logged out at {row.get('out_auto_logout_time')})"
+                        f"auto-logged out at {row.get('out_auto_logout_time')})",
                     )
 
     async def clock_in(
-        self, user_id: str, email: str, metadata: dict[str, Any] | None = None
+        self, user_id: str, email: str, metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Clock in a team member
@@ -125,7 +125,7 @@ class TeamTimesheetService:
                         "clocked_in_at": bali_time.isoformat(),
                     }
                 logger.info(
-                    f"🔄 Stale session detected for {email}. Last action: {last_action_date}. Allowing new clock-in."
+                    f"🔄 Stale session detected for {email}. Last action: {last_action_date}. Allowing new clock-in.",
                 )
 
             # Insert clock-in
@@ -154,7 +154,7 @@ class TeamTimesheetService:
             }
 
     async def clock_out(
-        self, user_id: str, email: str, metadata: dict[str, Any] | None = None
+        self, user_id: str, email: str, metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Clock out a team member
@@ -200,12 +200,12 @@ class TeamTimesheetService:
 
             logger.info(
                 f"🔴 Clock-out: {email} at {now.strftime('%H:%M')} Bali time "
-                f"({hours_worked:.2f}h worked)"
+                f"({hours_worked:.2f}h worked)",
             )
 
             # NOTE: Admin notification removed - will be replaced by MCP
             logger.info(
-                f"📢 Admin notification: {email} clocked out, worked {hours_worked:.2f}h (MCP pending)"
+                f"📢 Admin notification: {email} clocked out, worked {hours_worked:.2f}h (MCP pending)",
             )
 
             return {
@@ -369,7 +369,7 @@ class TeamTimesheetService:
             ]
 
     async def get_monthly_summary(
-        self, month_start: datetime | None = None
+        self, month_start: datetime | None = None,
     ) -> list[dict[str, Any]]:
         """
         Get monthly work summary (ADMIN ONLY)
@@ -438,13 +438,13 @@ class TeamTimesheetService:
                 f"{row['work_date'].isoformat()},"
                 f"{row['clock_in_bali'].strftime('%H:%M')},"
                 f"{row['clock_out_bali'].strftime('%H:%M')},"
-                f"{row['hours_worked']}"
+                f"{row['hours_worked']}",
             )
 
         return "\n".join(csv_lines)
 
     async def _get_user_current_status(
-        self, conn: "asyncpg.Connection", user_id: str
+        self, conn: "asyncpg.Connection", user_id: str,
     ) -> dict[str, Any] | None:
         """Get user's current online/offline status"""
         row = await conn.fetchrow("SELECT * FROM team_online_status WHERE user_id = $1", user_id)

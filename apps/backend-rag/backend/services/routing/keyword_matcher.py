@@ -548,6 +548,6 @@ class KeywordMatcherService:
             active_scores = {k: v for k, v in scores.items() if v > 0}
             logger.info(
                 f"🔀 [KeywordMatcher] Multi-domain query detected: {active_domains} "
-                f"(scores: {active_scores})"
+                f"(scores: {active_scores})",
             )
         return active_domains

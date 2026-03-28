@@ -66,7 +66,7 @@ def apply_migration_013():
                     SELECT FROM information_schema.tables
                     WHERE table_name = '{table}'
                 )
-            """
+            """,
             )
             exists = cursor.fetchone()[0]
             if exists:

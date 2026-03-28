@@ -68,7 +68,7 @@ class InvoiceGenerator:
                 fontName="Helvetica-Bold",
                 textColor=self.COLOR_TEXT,
                 spaceAfter=4,
-            )
+            ),
         )
         self.styles.add(
             ParagraphStyle(
@@ -77,7 +77,7 @@ class InvoiceGenerator:
                 fontSize=13,
                 fontName="Helvetica-Bold",
                 textColor=self.COLOR_TEXT,
-            )
+            ),
         )
         self.styles.add(
             ParagraphStyle(
@@ -86,7 +86,7 @@ class InvoiceGenerator:
                 fontSize=9,
                 textColor=self.COLOR_MUTED,
                 spaceAfter=2,
-            )
+            ),
         )
         self.styles.add(
             ParagraphStyle(
@@ -96,7 +96,7 @@ class InvoiceGenerator:
                 fontName="Helvetica-Bold",
                 textColor=self.COLOR_MUTED,
                 spaceAfter=4,
-            )
+            ),
         )
         self.styles.add(
             ParagraphStyle(
@@ -106,7 +106,7 @@ class InvoiceGenerator:
                 fontName="Helvetica-Bold",
                 textColor=self.COLOR_TEXT,
                 spaceAfter=2,
-            )
+            ),
         )
         self.styles.add(
             ParagraphStyle(
@@ -115,7 +115,7 @@ class InvoiceGenerator:
                 fontSize=9,
                 textColor=self.COLOR_MUTED,
                 spaceAfter=1,
-            )
+            ),
         )
         self.styles.add(
             ParagraphStyle(
@@ -124,7 +124,7 @@ class InvoiceGenerator:
                 fontSize=8,
                 textColor=self.COLOR_MUTED,
                 alignment=1,
-            )
+            ),
         )
 
     def generate_invoice_number(self, practice_id: int) -> str:
@@ -168,7 +168,7 @@ class InvoiceGenerator:
             [
                 Paragraph(f"<b>{self.COMPANY_NAME}</b>", self.styles["CompanyName"]),
                 Paragraph("INVOICE", self.styles["InvoiceTitle"]),
-            ]
+            ],
         ]
         header_table = Table(header_data, colWidths=[10 * cm, 7 * cm])
         header_table.setStyle(
@@ -178,14 +178,14 @@ class InvoiceGenerator:
                     ("ALIGN", (1, 0), (1, 0), "RIGHT"),
                     ("TOPPADDING", (0, 0), (-1, -1), 0),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                ]
-            )
+                ],
+            ),
         )
         elements.append(header_table)
 
         # Company sub-info
         elements.append(
-            Paragraph(f"{self.COMPANY_EMAIL} | {self.COMPANY_PHONE}", self.styles["CompanyInfo"])
+            Paragraph(f"{self.COMPANY_EMAIL} | {self.COMPANY_PHONE}", self.styles["CompanyInfo"]),
         )
         elements.append(Paragraph(self.COMPANY_TAX_ID, self.styles["CompanyInfo"]))
         elements.append(Spacer(1, 0.4 * cm))
@@ -198,8 +198,8 @@ class InvoiceGenerator:
                     ("LINEBELOW", (0, 0), (-1, -1), 1.5, self.COLOR_ACCENT),
                     ("TOPPADDING", (0, 0), (-1, -1), 0),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                ]
-            )
+                ],
+            ),
         )
         elements.append(divider)
         elements.append(Spacer(1, 0.5 * cm))
@@ -236,8 +236,8 @@ class InvoiceGenerator:
                     ("TEXTCOLOR", (0, 0), (-1, -1), self.COLOR_TEXT),
                     ("TOPPADDING", (0, 0), (-1, -1), 2),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ]
-            )
+                ],
+            ),
         )
 
         two_col_data = [[bill_lines, detail_table]]
@@ -249,8 +249,8 @@ class InvoiceGenerator:
                     ("ALIGN", (1, 0), (1, 0), "RIGHT"),
                     ("TOPPADDING", (0, 0), (-1, -1), 0),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                ]
-            )
+                ],
+            ),
         )
         elements.append(two_col)
         elements.append(Spacer(1, 0.8 * cm))
@@ -290,8 +290,8 @@ class InvoiceGenerator:
                     ("LINEBELOW", (0, 0), (-1, 0), 0.5, self.COLOR_BORDER),
                     ("LINEBELOW", (0, -1), (-1, -1), 0.5, self.COLOR_BORDER),
                     ("BOX", (0, 0), (-1, -1), 0.5, self.COLOR_BORDER),
-                ]
-            )
+                ],
+            ),
         )
         elements.append(svc_table)
         elements.append(Spacer(1, 0.3 * cm))
@@ -346,8 +346,8 @@ class InvoiceGenerator:
                     ("BOTTOMPADDING", (0, -1), (-1, -1), 8),
                     ("LEFTPADDING", (0, -1), (-1, -1), 10),
                     ("RIGHTPADDING", (0, -1), (-1, -1), 10),
-                ]
-            )
+                ],
+            ),
         )
         elements.append(totals_table)
         elements.append(Spacer(1, 0.8 * cm))
@@ -364,7 +364,7 @@ class InvoiceGenerator:
                     textColor=self.COLOR_TEXT,
                     spaceAfter=6,
                 ),
-            )
+            ),
         )
 
         pay_data = [
@@ -387,8 +387,8 @@ class InvoiceGenerator:
                     ("BOX", (0, 0), (-1, -1), 0.5, self.COLOR_BORDER),
                     ("LINEBELOW", (0, 0), (-1, -2), 0.5, self.COLOR_BORDER),
                     ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                ]
-            )
+                ],
+            ),
         )
         elements.append(pay_table)
         elements.append(Spacer(1, 0.5 * cm))
@@ -410,7 +410,7 @@ class InvoiceGenerator:
                     fontSize=9,
                     textColor=self.COLOR_TEXT,
                 ),
-            )
+            ),
         )
 
         # ── FOOTER ────────────────────────────────────────────────────────────
@@ -422,8 +422,8 @@ class InvoiceGenerator:
                     ("LINEABOVE", (0, 0), (-1, -1), 0.5, self.COLOR_BORDER),
                     ("TOPPADDING", (0, 0), (-1, -1), 0),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                ]
-            )
+                ],
+            ),
         )
         elements.append(footer_divider)
         elements.append(Spacer(1, 0.3 * cm))
@@ -433,7 +433,7 @@ class InvoiceGenerator:
                 f"For any questions, please contact {self.COMPANY_EMAIL}<br/>"
                 f"{self.COMPANY_NAME} | Bali, Indonesia",
                 self.styles["Footer"],
-            )
+            ),
         )
 
         # Build PDF

@@ -39,10 +39,10 @@ class ConversationService:
             mem_cache = get_memory_cache()
             for msg in messages:
                 mem_cache.add_message(
-                    session_id, msg.get("role", "unknown"), msg.get("content", "")
+                    session_id, msg.get("role", "unknown"), msg.get("content", ""),
                 )
             logger.info(
-                f"✅ Saved {len(messages)} messages to memory cache for session {session_id}"
+                f"✅ Saved {len(messages)} messages to memory cache for session {session_id}",
             )
         except Exception as e:
             logger.warning(f"⚠️ Failed to save to memory cache: {e}")
@@ -94,7 +94,7 @@ class ConversationService:
         }
 
     async def get_history(
-        self, user_email: str, limit: int = 20, session_id: str | None = None
+        self, user_email: str, limit: int = 20, session_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Retrieve conversation history from DB or Memory Cache.

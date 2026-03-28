@@ -166,7 +166,7 @@ class ClaudeAdapter:
         if not self.client:
             raise RuntimeError(
                 "Claude client not initialized. "
-                "Configura ANTHROPIC_API_KEY o usa abbonamento Claude."
+                "Configura ANTHROPIC_API_KEY o usa abbonamento Claude.",
             )
 
         start_time = time.time()

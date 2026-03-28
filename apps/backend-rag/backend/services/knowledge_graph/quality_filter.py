@@ -284,7 +284,7 @@ class KGQualityFilter:
                 if entity.type != correct_type:
                     logger.debug(
                         f"Corrected entity type: {entity.name} "
-                        f"{entity.type.value} -> {correct_type.value}"
+                        f"{entity.type.value} -> {correct_type.value}",
                     )
                     entity.type = correct_type
                     self.stats.entities_corrected += 1
@@ -464,7 +464,7 @@ class KGQualityFilter:
                                     type=rel_type,
                                     evidence="[inferred from co-occurrence]",
                                     confidence=0.6,  # Lower confidence for inferred
-                                )
+                                ),
                             )
                             break  # Only one inference per orphan
 

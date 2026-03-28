@@ -165,7 +165,7 @@ class KeywordTranslator:
 
         expanded = f"{query} {en_expansion} {id_expansion}"
         logger.debug(
-            f"Query expanded: '{query}' → +{len(en_parts)} EN terms, +{len(id_parts)} ID terms"
+            f"Query expanded: '{query}' → +{len(en_parts)} EN terms, +{len(id_parts)} ID terms",
         )
         return expanded
 

@@ -131,14 +131,14 @@ class QueryRouterIntegration:
         if is_multi_domain and not enable_fallbacks:
             logger.info(
                 f"🔀 [Routing] Multi-domain query detected ({active_domains}), "
-                f"auto-enabling fallbacks"
+                f"auto-enabling fallbacks",
             )
             enable_fallbacks = True
 
         # Use QueryRouter for intelligent routing
         if enable_fallbacks:
             primary_collection, confidence, collections = self.router.route_with_confidence(
-                query, return_fallbacks=True
+                query, return_fallbacks=True,
             )
 
             # For multi-domain queries, ensure all relevant domain collections are included
@@ -164,7 +164,7 @@ class QueryRouterIntegration:
                 f"🎯 [Routing] Primary: {primary_collection} "
                 f"(confidence={confidence:.2f}), "
                 f"Total collections: {len(collections)}, "
-                f"multi_domain={is_multi_domain}"
+                f"multi_domain={is_multi_domain}",
             )
             return {
                 "collection_name": primary_collection,

@@ -49,7 +49,7 @@ class KnowledgeService:
         Use SearchService from backend.app.state.search_service instead.
         """
         logger.warning(
-            "⚠️ KnowledgeService is deprecated. Use SearchService from backend.app.state.search_service instead."
+            "⚠️ KnowledgeService is deprecated. Use SearchService from backend.app.state.search_service instead.",
         )
         logger.info("🔄 KnowledgeService initialization starting...")
 
@@ -59,7 +59,7 @@ class KnowledgeService:
 
         self.embedder = create_embeddings_generator()
         logger.info(
-            f"✅ EmbeddingsGenerator ready: {self.embedder.provider} ({self.embedder.dimensions} dims)"
+            f"✅ EmbeddingsGenerator ready: {self.embedder.provider} ({self.embedder.dimensions} dims)",
         )
 
         # Get Qdrant URL from centralized config
@@ -92,47 +92,47 @@ class KnowledgeService:
                 collection_name=resolved_collections["bali_zero_pricing_hybrid"],
             ),
             "visa_oracle": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["visa_oracle"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["visa_oracle"],
             ),
             "kbli_2025_final": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["kbli_2025_final"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["kbli_2025_final"],
             ),
             "tax_genius": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_genius"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_genius"],
             ),
             "legal_architect": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_architect"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_architect"],
             ),
             "legal_unified": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_unified"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_unified"],
             ),
             "kb_indonesian": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["kb_indonesian"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["kb_indonesian"],
             ),
             "balizero_news": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["balizero_news"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["balizero_news"],
             ),
             "zantara_books": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["zantara_books"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["zantara_books"],
             ),
             "cultural_insights": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["cultural_insights"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["cultural_insights"],
             ),
             "tax_updates": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_updates"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_updates"],
             ),
             "tax_knowledge": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_knowledge"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_knowledge"],
             ),
             "property_listings": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["property_listings"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["property_listings"],
             ),
             "property_knowledge": QdrantClient(
                 qdrant_url=qdrant_url,
                 collection_name=resolved_collections["property_knowledge"],
             ),
             "legal_updates": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_updates"]
+                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_updates"],
             ),
             "legal_intelligence": QdrantClient(
                 qdrant_url=qdrant_url,
@@ -195,10 +195,10 @@ class KnowledgeService:
             query_embedding = self.embedder.generate_query_embedding(query)
 
             logger.debug(
-                f"Query: '{query[:50]}...', embedding_dim={len(query_embedding)}, provider={self.embedder.provider}"
+                f"Query: '{query[:50]}...', embedding_dim={len(query_embedding)}, provider={self.embedder.provider}",
             )
             logger.debug(
-                f"Parameters: collection_override={collection_override}, user_level={user_level}, limit={limit}"
+                f"Parameters: collection_override={collection_override}, user_level={user_level}, limit={limit}",
             )
 
             # Detect if pricing query
@@ -280,7 +280,7 @@ class KnowledgeService:
                         ),
                         "metadata": metadata,
                         "score": round(score, 4),
-                    }
+                    },
                 )
 
             return {

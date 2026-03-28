@@ -72,7 +72,7 @@ class QdrantDebugger:
         """
         try:
             async with httpx.AsyncClient(
-                base_url=self.qdrant_url, headers=self.headers, timeout=10.0
+                base_url=self.qdrant_url, headers=self.headers, timeout=10.0,
             ) as client:
                 # Get collection info
                 response = await client.get(f"/collections/{collection_name}")
@@ -110,7 +110,7 @@ class QdrantDebugger:
         """
         try:
             async with httpx.AsyncClient(
-                base_url=self.qdrant_url, headers=self.headers, timeout=10.0
+                base_url=self.qdrant_url, headers=self.headers, timeout=10.0,
             ) as client:
                 # Get all collections
                 response = await client.get("/collections")
@@ -131,7 +131,7 @@ class QdrantDebugger:
             return []
 
     async def analyze_query_performance(
-        self, collection: str, query_vector: list[float], limit: int = 10
+        self, collection: str, query_vector: list[float], limit: int = 10,
     ) -> QueryPerformance:
         """
         Analyze query performance.
@@ -150,7 +150,7 @@ class QdrantDebugger:
 
         try:
             async with httpx.AsyncClient(
-                base_url=self.qdrant_url, headers=self.headers, timeout=30.0
+                base_url=self.qdrant_url, headers=self.headers, timeout=30.0,
             ) as client:
                 # Perform search
                 search_payload = {
@@ -161,7 +161,7 @@ class QdrantDebugger:
                 }
 
                 response = await client.post(
-                    f"/collections/{collection}/points/search", json=search_payload
+                    f"/collections/{collection}/points/search", json=search_payload,
                 )
                 response.raise_for_status()
 
@@ -198,7 +198,7 @@ class QdrantDebugger:
         """
         try:
             async with httpx.AsyncClient(
-                base_url=self.qdrant_url, headers=self.headers, timeout=10.0
+                base_url=self.qdrant_url, headers=self.headers, timeout=10.0,
             ) as client:
                 # Get collection info
                 response = await client.get(f"/collections/{collection_name}")
@@ -220,7 +220,7 @@ class QdrantDebugger:
             }
 
     async def inspect_document(
-        self, collection: str, document_id: str | int
+        self, collection: str, document_id: str | int,
     ) -> dict[str, Any] | None:
         """
         Inspect a specific document in a collection.
@@ -234,7 +234,7 @@ class QdrantDebugger:
         """
         try:
             async with httpx.AsyncClient(
-                base_url=self.qdrant_url, headers=self.headers, timeout=10.0
+                base_url=self.qdrant_url, headers=self.headers, timeout=10.0,
             ) as client:
                 response = await client.post(
                     f"/collections/{collection}/points/retrieve",

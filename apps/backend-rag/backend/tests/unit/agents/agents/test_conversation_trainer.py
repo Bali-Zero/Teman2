@@ -59,8 +59,8 @@ class TestConversationTrainer:
                     "rating": 5,
                     "client_feedback": "Great!",
                     "created_at": "2024-01-01T00:00:00",
-                }
-            ]
+                },
+            ],
         )
 
         @asynccontextmanager
@@ -72,7 +72,7 @@ class TestConversationTrainer:
         # Mock zantara_client properly - it needs to be available
         if conversation_trainer.zantara_client is None:
             with patch(
-                "backend.agents.agents.conversation_trainer.ZantaraAIClient"
+                "backend.agents.agents.conversation_trainer.ZantaraAIClient",
             ) as mock_client_class:
                 mock_client = MagicMock()
                 mock_client.generate = AsyncMock(return_value="Pattern analysis")

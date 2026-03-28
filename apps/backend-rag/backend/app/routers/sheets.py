@@ -121,7 +121,7 @@ async def find_row(req: FindRequest) -> dict[str, Any]:
     try:
         svc = _get_sheets_service()
         row_num = await svc.find_row_by_value(
-            req.spreadsheet_id, req.range, req.search_column, req.search_value
+            req.spreadsheet_id, req.range, req.search_column, req.search_value,
         )
         if row_num is None:
             return {"status": "not_found", "row": None}

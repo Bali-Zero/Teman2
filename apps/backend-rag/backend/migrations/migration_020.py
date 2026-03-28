@@ -94,7 +94,7 @@ class Migration020:
                 SELECT id, content, category, confidence, source_count, is_promoted
                 FROM collective_memories
                 WHERE embedding_synced = FALSE OR embedding_synced IS NULL
-                """
+                """,
             )
 
             if not memories:
@@ -167,7 +167,7 @@ class Migration020:
                 SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'collective_memories' AND column_name = 'embedding_synced'
             )
-            """
+            """,
         )
         if not column_exists:
             logger.error("Column embedding_synced not found")
@@ -180,7 +180,7 @@ async def run_migration():
     import os
 
     database_url = os.getenv(
-        "DATABASE_URL", "postgresql://balizero:test1234@localhost:5432/balizero"
+        "DATABASE_URL", "postgresql://balizero:test1234@localhost:5432/balizero",
     )
 
     conn = await asyncpg.connect(database_url)

@@ -288,7 +288,7 @@ class CRMAuditor:
             logger.error(f"Failed to flush audit buffer: {sanitize_error_message(e)}")
 
     def _calculate_changes(
-        self, old_values: dict[str, Any], new_values: dict[str, Any]
+        self, old_values: dict[str, Any], new_values: dict[str, Any],
     ) -> dict[str, dict[str, Any]]:
         """Calcola differenze tra old e new values."""
         changes = {}

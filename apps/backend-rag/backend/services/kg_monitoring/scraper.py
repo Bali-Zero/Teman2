@@ -47,8 +47,8 @@ class SourceConfig:
     selectors: dict[str, str] = field(default_factory=dict)
     headers: dict[str, str] = field(
         default_factory=lambda: {
-            "User-Agent": "Mozilla/5.0 (compatible; ZantaraBot/1.0; +https://balizero.com/bot)"
-        }
+            "User-Agent": "Mozilla/5.0 (compatible; ZantaraBot/1.0; +https://balizero.com/bot)",
+        },
     )
     rate_limit_delay: float = 1.0  # seconds between requests
     timeout: int = 30
@@ -398,7 +398,7 @@ class LegalScraper:
                     document.raw_html = str(elem)
                     # Update hash with new content
                     document.document_hash = hashlib.md5(
-                        f"{document.title}:{document.content}".encode()
+                        f"{document.title}:{document.content}".encode(),
                     ).hexdigest()
                     break
 

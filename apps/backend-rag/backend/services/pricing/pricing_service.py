@@ -352,7 +352,7 @@ class PricingService:
                     lines.append(
                         f"- {name}: IDR {price_idr:,}{usd_str}{suffix}"
                         if isinstance(price_idr, (int, float))
-                        else f"- {name}: {price_idr}{usd_str}{suffix}"
+                        else f"- {name}: {price_idr}{usd_str}{suffix}",
                     )
         elif isinstance(category_data, dict):
             for name, data in category_data.items():
@@ -382,7 +382,7 @@ class PricingService:
             context_parts.append("## VISA PRICES")
             context_parts.extend(self._format_service_list(services.get("single_entry_visas", [])))
             context_parts.extend(
-                self._format_service_list(services.get("multiple_entry_visas", []))
+                self._format_service_list(services.get("multiple_entry_visas", [])),
             )
             context_parts.extend(self._format_service_list(services.get("visa_extensions", [])))
             context_parts.append("")
@@ -414,7 +414,7 @@ class PricingService:
         # Contact info
         contact = self.prices.get("contact_info", {})
         context_parts.append(
-            f"Contact: {contact.get('email', settings.SUPPORT_EMAIL)} | WhatsApp: {contact.get('whatsapp', settings.SUPPORT_WHATSAPP)}"
+            f"Contact: {contact.get('email', settings.SUPPORT_EMAIL)} | WhatsApp: {contact.get('whatsapp', settings.SUPPORT_WHATSAPP)}",
         )
 
         return "\n".join(context_parts)

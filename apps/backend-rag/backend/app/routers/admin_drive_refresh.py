@@ -24,7 +24,7 @@ async def drive_refresh(request: Request) -> dict[str, Any]:
         # Get current refresh token
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT refresh_token FROM google_drive_tokens WHERE user_id = 'SYSTEM'"
+                "SELECT refresh_token FROM google_drive_tokens WHERE user_id = 'SYSTEM'",
             )
             if not row or not row["refresh_token"]:
                 return {

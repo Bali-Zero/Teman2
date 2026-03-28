@@ -80,7 +80,7 @@ async def send_message(
     """Send a message from this node to another node (or broadcast to 'all')."""
     if req.to_node not in VALID_NODES:
         raise HTTPException(
-            status_code=400, detail=f"Unknown node: {req.to_node}. Valid: {VALID_NODES}"
+            status_code=400, detail=f"Unknown node: {req.to_node}. Valid: {VALID_NODES}",
         )
 
     from_node = _email_to_node(email)
@@ -99,7 +99,7 @@ async def send_message(
         req.priority,
     )
     logger.info(
-        f"[federation] {from_node} → {req.to_node} ({req.message_type}): {req.subject or req.body[:60]}"
+        f"[federation] {from_node} → {req.to_node} ({req.message_type}): {req.subject or req.body[:60]}",
     )
     return FederationMessage(**dict(row))
 
@@ -181,10 +181,10 @@ async def federation_status(
         FROM federation_messages
         WHERE read_at IS NULL AND to_node != 'all'
         GROUP BY to_node
-        """
+        """,
     )
     broadcast = await db.fetchval(
-        "SELECT COUNT(*) FROM federation_messages WHERE to_node = 'all' AND read_at IS NULL"
+        "SELECT COUNT(*) FROM federation_messages WHERE to_node = 'all' AND read_at IS NULL",
     )
     return {
         "nodes": {r["to_node"]: r["unread"] for r in rows},

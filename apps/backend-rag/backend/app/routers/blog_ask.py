@@ -89,7 +89,7 @@ async def ask_zantara(request: Request, body: BlogAskRequest) -> BlogAskResponse
                             "snippet": source.get("content", "")[:200]
                             if source.get("content")
                             else "",
-                        }
+                        },
                     )
                 elif hasattr(source, "title"):
                     sources.append(
@@ -98,7 +98,7 @@ async def ask_zantara(request: Request, body: BlogAskRequest) -> BlogAskResponse
                             "snippet": getattr(source, "content", "")[:200]
                             if hasattr(source, "content")
                             else "",
-                        }
+                        },
                     )
 
         # Calculate confidence from evidence score if available
@@ -117,5 +117,5 @@ async def ask_zantara(request: Request, body: BlogAskRequest) -> BlogAskResponse
     except Exception as e:
         logger.error(f"❌ Blog ask error: {str(e)}")
         raise HTTPException(
-            status_code=500, detail="Sorry, I couldn't process your question. Please try again."
+            status_code=500, detail="Sorry, I couldn't process your question. Please try again.",
         ) from e

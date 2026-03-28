@@ -174,7 +174,7 @@ class EmbeddingsGenerator:
 
         self.client = AsyncOpenAI(api_key=self.api_key)
         logger.info(
-            f"🔌 [EmbeddingsGenerator] Initialized with OpenAI (Async): {self.model} ({self.dimensions} dims)"
+            f"🔌 [EmbeddingsGenerator] Initialized with OpenAI (Async): {self.model} ({self.dimensions} dims)",
         )
 
     def _init_sentence_transformers(self, model: str | None = None):
@@ -186,7 +186,7 @@ class EmbeddingsGenerator:
         )
 
         logger.info(
-            f"🔌 [EmbeddingsGenerator] Attempting to load Sentence Transformers: {self.model}"
+            f"🔌 [EmbeddingsGenerator] Attempting to load Sentence Transformers: {self.model}",
         )
 
         try:
@@ -196,18 +196,18 @@ class EmbeddingsGenerator:
             self.transformer = SentenceTransformer(self.model)
             self.dimensions = self.transformer.get_sentence_embedding_dimension()
             logger.info(
-                f"🔌 [EmbeddingsGenerator] Initialized with Sentence Transformers: {self.model} ({self.dimensions} dims)"
+                f"🔌 [EmbeddingsGenerator] Initialized with Sentence Transformers: {self.model} ({self.dimensions} dims)",
             )
 
         except ImportError:
             # Sentence transformers not available (size constraint on Fly.io)
             # Fallback to OpenAI
             logger.warning(
-                "🔌 [EmbeddingsGenerator] Sentence Transformers not available (size constraint)"
+                "🔌 [EmbeddingsGenerator] Sentence Transformers not available (size constraint)",
             )
             logger.warning("   Falling back to OpenAI (text-embedding-3-small)")
             logger.warning(
-                "   ⚠️ NOTE: This may cause dimension mismatch if Qdrant collections expect 384 dims"
+                "   ⚠️ NOTE: This may cause dimension mismatch if Qdrant collections expect 384 dims",
             )
             self._init_openai(model=None)
 
@@ -312,12 +312,12 @@ class EmbeddingsGenerator:
             all_embeddings.extend(batch_embeddings)
 
         logger.info(
-            f"✅ Generated {len(all_embeddings)} embeddings (OpenAI, {len(all_embeddings[0]) if all_embeddings else 0} dims)"
+            f"✅ Generated {len(all_embeddings)} embeddings (OpenAI, {len(all_embeddings[0]) if all_embeddings else 0} dims)",
         )
         return all_embeddings
 
     async def _generate_embeddings_sentence_transformers(
-        self, texts: list[str]
+        self, texts: list[str],
     ) -> list[list[float]]:
         """Generate embeddings using Sentence Transformers (Thread Pool Offload)"""
         logger.info(f"Generating embeddings for {len(texts)} texts using Sentence Transformers")
@@ -329,7 +329,7 @@ class EmbeddingsGenerator:
             embeddings = await loop.run_in_executor(
                 self._executor,
                 lambda: self.transformer.encode(
-                    texts, convert_to_numpy=True, show_progress_bar=False
+                    texts, convert_to_numpy=True, show_progress_bar=False,
                 ),
             )
 

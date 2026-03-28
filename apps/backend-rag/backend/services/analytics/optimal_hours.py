@@ -83,7 +83,7 @@ class OptimalHoursService:
                         "conversations_per_hour": round(conv_per_hour, 2),
                         "total_hours_worked": round(total_hours, 2),
                         "total_conversations": data["total_conversations"],
-                    }
+                    },
                 )
 
         # Sort by productivity

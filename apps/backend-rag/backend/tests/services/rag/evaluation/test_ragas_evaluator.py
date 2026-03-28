@@ -42,7 +42,7 @@ def mock_llm_response():
                 "reasoning": reasoning,
                 "supported_statements": ["statement 1"],
                 "unsupported_statements": [],
-            }
+            },
         )
         return LLMResponse(
             content=content,
@@ -111,7 +111,7 @@ class TestEvaluatorInitialization:
     def test_init_with_defaults(self):
         """Test initialization with default parameters."""
         with patch(
-            "backend.services.rag.evaluation.ragas_evaluator.create_default_client"
+            "backend.services.rag.evaluation.ragas_evaluator.create_default_client",
         ) as mock_create:
             mock_client = MagicMock()
             mock_create.return_value = mock_client
@@ -324,7 +324,7 @@ class TestFaithfulness:
 
     @pytest.mark.asyncio
     async def test_evaluate_faithfulness_success(
-        self, evaluator, sample_answer, sample_context, mock_llm_client
+        self, evaluator, sample_answer, sample_context, mock_llm_client,
     ):
         """Test successful faithfulness evaluation."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -354,7 +354,7 @@ class TestFaithfulness:
 
     @pytest.mark.asyncio
     async def test_evaluate_faithfulness_prompt_format(
-        self, evaluator, sample_answer, sample_context, mock_llm_client
+        self, evaluator, sample_answer, sample_context, mock_llm_client,
     ):
         """Test that faithfulness prompt is correctly formatted."""
         await evaluator.evaluate_faithfulness(sample_answer, sample_context)
@@ -374,7 +374,7 @@ class TestAnswerRelevance:
 
     @pytest.mark.asyncio
     async def test_evaluate_answer_relevance_success(
-        self, evaluator, sample_query, sample_answer, mock_llm_client
+        self, evaluator, sample_query, sample_answer, mock_llm_client,
     ):
         """Test successful answer relevance evaluation."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -390,7 +390,7 @@ class TestAnswerRelevance:
 
     @pytest.mark.asyncio
     async def test_evaluate_answer_relevance_prompt_contains_query(
-        self, evaluator, sample_query, sample_answer, mock_llm_client
+        self, evaluator, sample_query, sample_answer, mock_llm_client,
     ):
         """Test that prompt contains the query."""
         await evaluator.evaluate_answer_relevance(sample_query, sample_answer)
@@ -408,7 +408,7 @@ class TestContextPrecision:
 
     @pytest.mark.asyncio
     async def test_evaluate_context_precision_success(
-        self, evaluator, sample_query, sample_context, sample_ground_truth, mock_llm_client
+        self, evaluator, sample_query, sample_context, sample_ground_truth, mock_llm_client,
     ):
         """Test successful context precision evaluation."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -418,14 +418,14 @@ class TestContextPrecision:
         )
 
         result = await evaluator.evaluate_context_precision(
-            sample_query, sample_context, sample_ground_truth
+            sample_query, sample_context, sample_ground_truth,
         )
 
         assert result["score"] == 0.75
 
     @pytest.mark.asyncio
     async def test_evaluate_context_precision_with_cache(
-        self, evaluator, sample_query, sample_context, sample_ground_truth
+        self, evaluator, sample_query, sample_context, sample_ground_truth,
     ):
         """Test context precision evaluation with caching."""
         evaluator.enable_cache = True
@@ -434,7 +434,7 @@ class TestContextPrecision:
         evaluator._cache[cache_key] = {"result": cached_result, "timestamp": 9999999999}
 
         result = await evaluator.evaluate_context_precision(
-            sample_query, sample_context, sample_ground_truth
+            sample_query, sample_context, sample_ground_truth,
         )
 
         assert result == cached_result
@@ -445,7 +445,7 @@ class TestContextRecall:
 
     @pytest.mark.asyncio
     async def test_evaluate_context_recall_success(
-        self, evaluator, sample_query, sample_context, sample_ground_truth, mock_llm_client
+        self, evaluator, sample_query, sample_context, sample_ground_truth, mock_llm_client,
     ):
         """Test successful context recall evaluation."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -455,7 +455,7 @@ class TestContextRecall:
         )
 
         result = await evaluator.evaluate_context_recall(
-            sample_query, sample_context, sample_ground_truth
+            sample_query, sample_context, sample_ground_truth,
         )
 
         assert result["score"] == 0.82
@@ -466,7 +466,7 @@ class TestContextEntityRecall:
 
     @pytest.mark.asyncio
     async def test_evaluate_context_entity_recall_success(
-        self, evaluator, sample_answer, sample_context, mock_llm_client
+        self, evaluator, sample_answer, sample_context, mock_llm_client,
     ):
         """Test successful context entity recall evaluation."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -476,7 +476,7 @@ class TestContextEntityRecall:
                     "reasoning": "Entities found",
                     "entities_in_answer": ["KITAS", "WNA"],
                     "entities_in_context": ["KITAS", "WNA"],
-                }
+                },
             ),
             model="gemini",
             provider="gemini",
@@ -535,7 +535,7 @@ class TestFullEvaluation:
 
     @pytest.mark.asyncio
     async def test_evaluate_without_ground_truth(
-        self, evaluator, sample_query, sample_context, sample_answer, mock_llm_client
+        self, evaluator, sample_query, sample_context, sample_answer, mock_llm_client,
     ):
         """Test evaluation without ground truth."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -559,7 +559,7 @@ class TestFullEvaluation:
 
     @pytest.mark.asyncio
     async def test_evaluate_specific_metrics(
-        self, evaluator, sample_query, sample_context, sample_answer, mock_llm_client
+        self, evaluator, sample_query, sample_context, sample_answer, mock_llm_client,
     ):
         """Test evaluation with specific metrics only."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -581,7 +581,7 @@ class TestFullEvaluation:
 
     @pytest.mark.asyncio
     async def test_evaluate_overall_score(
-        self, evaluator, sample_query, sample_context, sample_answer, mock_llm_client
+        self, evaluator, sample_query, sample_context, sample_answer, mock_llm_client,
     ):
         """Test overall score calculation."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -602,7 +602,7 @@ class TestFullEvaluation:
 
     @pytest.mark.asyncio
     async def test_evaluate_result_to_dict(
-        self, evaluator, sample_query, sample_context, sample_answer, mock_llm_client
+        self, evaluator, sample_query, sample_context, sample_answer, mock_llm_client,
     ):
         """Test EvaluationResult serialization."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -627,7 +627,7 @@ class TestFullEvaluation:
 
     @pytest.mark.asyncio
     async def test_evaluate_metadata(
-        self, evaluator, sample_query, sample_context, sample_answer, mock_llm_client
+        self, evaluator, sample_query, sample_context, sample_answer, mock_llm_client,
     ):
         """Test that evaluation result includes metadata."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -740,7 +740,7 @@ class TestIntegration:
                 content=json.dumps({"score": 0.85, "reasoning": "Test reasoning"}),
                 model="test-model",
                 provider="test",
-            )
+            ),
         )
         evaluator = RAGASEvaluator(llm_client=mock_client, enable_cache=False)
 
@@ -829,7 +829,7 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_evaluate_empty_context(
-        self, evaluator, sample_query, sample_answer, mock_llm_client
+        self, evaluator, sample_query, sample_answer, mock_llm_client,
     ):
         """Test evaluation with empty context."""
         mock_llm_client.generate.return_value = LLMResponse(
@@ -849,7 +849,7 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_evaluate_empty_answer(
-        self, evaluator, sample_query, sample_context, mock_llm_client
+        self, evaluator, sample_query, sample_context, mock_llm_client,
     ):
         """Test evaluation with empty answer."""
         mock_llm_client.generate.return_value = LLMResponse(

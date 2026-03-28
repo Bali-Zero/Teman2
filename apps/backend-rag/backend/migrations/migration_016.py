@@ -36,7 +36,7 @@ class Migration016(BaseMigration):
                 WHERE table_name = 'parent_documents'
                 AND column_name = 'summary'
             )
-        """
+        """,
         )
         return bool(result)
 

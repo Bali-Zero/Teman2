@@ -49,7 +49,7 @@ class OpenRouterProvider(LLMProvider):
             self._client = OpenRouterClient(default_tier=self._model_tier)
             self._available = bool(self._client.api_key)
             logger.info(
-                f"OpenRouterProvider initialized: tier={self._tier}, available={self._available}"
+                f"OpenRouterProvider initialized: tier={self._tier}, available={self._available}",
             )
         except Exception as e:
             logger.warning(f"Failed to initialize OpenRouterProvider: {e}")
@@ -64,7 +64,7 @@ class OpenRouterProvider(LLMProvider):
         return self._available and self._client is not None
 
     async def generate(
-        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs,
     ) -> LLMResponse:
         """Generate response using OpenRouter."""
         if not self.is_available:
@@ -74,7 +74,7 @@ class OpenRouterProvider(LLMProvider):
         openai_messages = [{"role": msg.role, "content": msg.content} for msg in messages]
 
         result = await self._client.complete(
-            messages=openai_messages, temperature=temperature, max_tokens=max_tokens, **kwargs
+            messages=openai_messages, temperature=temperature, max_tokens=max_tokens, **kwargs,
         )
 
         return LLMResponse(
@@ -86,7 +86,7 @@ class OpenRouterProvider(LLMProvider):
         )
 
     async def stream(
-        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs,
     ) -> AsyncIterator[str]:
         """Stream response using OpenRouter."""
         if not self.is_available:
@@ -96,6 +96,6 @@ class OpenRouterProvider(LLMProvider):
         openai_messages = [{"role": msg.role, "content": msg.content} for msg in messages]
 
         async for chunk in self._client.complete_stream(
-            messages=openai_messages, temperature=temperature, **kwargs
+            messages=openai_messages, temperature=temperature, **kwargs,
         ):
             yield chunk

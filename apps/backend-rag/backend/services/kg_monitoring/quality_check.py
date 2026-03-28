@@ -506,7 +506,7 @@ class QualityCheckService:
         for dim in dimension_scores:
             if dim.score < 0.5:
                 recommendations.append(
-                    f"Improve {dim.dimension.value}: {', '.join(dim.issues[:2])}"
+                    f"Improve {dim.dimension.value}: {', '.join(dim.issues[:2])}",
                 )
             elif dim.score < 0.7:
                 recommendations.append(f"Consider enhancing {dim.dimension.value}")

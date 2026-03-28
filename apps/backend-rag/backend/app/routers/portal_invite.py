@@ -197,7 +197,7 @@ async def send_invitation(
             logger.warning(f"Failed to send invitation email: {email_err}")
 
         logger.info(
-            f"Invitation created for client {request.client_id} by {current_user.get('email')}"
+            f"Invitation created for client {request.client_id} by {current_user.get('email')}",
         )
 
         return {

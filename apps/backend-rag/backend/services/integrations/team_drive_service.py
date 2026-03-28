@@ -37,11 +37,11 @@ class TeamDriveService:
         self.auth = DriveAuthManager(db_pool=self.db_pool, http_client=self.http_client)
 
         self.operations = DriveOperationsManager(
-            auth_manager=self.auth, http_client=self.http_client, audit=self.audit
+            auth_manager=self.auth, http_client=self.http_client, audit=self.audit,
         )
 
         self.permissions = DrivePermissionsManager(
-            auth_manager=self.auth, http_client=self.http_client, audit=self.audit
+            auth_manager=self.auth, http_client=self.http_client, audit=self.audit,
         )
 
     def is_configured(self) -> bool:
@@ -96,15 +96,15 @@ class TeamDriveService:
         return await self.operations.get_folder_path(user_email=user_email, folder_id=folder_id)
 
     async def search_files(
-        self, user_email: str, query: str, file_type: str | None = None, page_size: int = 20
+        self, user_email: str, query: str, file_type: str | None = None, page_size: int = 20,
     ) -> dict[str, Any]:
         return await self.operations.search_files(
-            user_email=user_email, query=query, file_type=file_type, page_size=page_size
+            user_email=user_email, query=query, file_type=file_type, page_size=page_size,
         )
 
     async def upload_file(self, user_email: str, file: Any, parent_id: str) -> dict[str, Any]:
         return await self.operations.upload_file(
-            user_email=user_email, file=file, parent_id=parent_id
+            user_email=user_email, file=file, parent_id=parent_id,
         )
 
     async def create_folder(self, user_email: str, request: Any) -> dict[str, Any]:
@@ -115,24 +115,24 @@ class TeamDriveService:
 
     async def rename_file(self, user_email: str, file_id: str, request: Any) -> dict[str, Any]:
         return await self.operations.rename_file(
-            user_email=user_email, file_id=file_id, request=request
+            user_email=user_email, file_id=file_id, request=request,
         )
 
     async def delete_file(
-        self, user_email: str, file_id: str, permanent: bool = False
+        self, user_email: str, file_id: str, permanent: bool = False,
     ) -> dict[str, Any]:
         return await self.operations.delete_file(
-            user_email=user_email, file_id=file_id, permanent=permanent
+            user_email=user_email, file_id=file_id, permanent=permanent,
         )
 
     async def move_file(self, user_email: str, file_id: str, request: Any) -> dict[str, Any]:
         return await self.operations.move_file(
-            user_email=user_email, file_id=file_id, request=request
+            user_email=user_email, file_id=file_id, request=request,
         )
 
     async def copy_file(self, user_email: str, file_id: str, request: Any) -> dict[str, Any]:
         return await self.operations.copy_file(
-            user_email=user_email, file_id=file_id, request=request
+            user_email=user_email, file_id=file_id, request=request,
         )
 
     # =========================================================================
@@ -144,21 +144,21 @@ class TeamDriveService:
 
     async def add_permission(self, user_email: str, file_id: str, request: Any) -> dict[str, Any]:
         return await self.permissions.add_permission(
-            user_email=user_email, file_id=file_id, request=request
+            user_email=user_email, file_id=file_id, request=request,
         )
 
     async def update_permission(
-        self, user_email: str, file_id: str, permission_id: str, request: Any
+        self, user_email: str, file_id: str, permission_id: str, request: Any,
     ) -> dict[str, Any]:
         return await self.permissions.update_permission(
-            user_email=user_email, file_id=file_id, permission_id=permission_id, request=request
+            user_email=user_email, file_id=file_id, permission_id=permission_id, request=request,
         )
 
     async def remove_permission(
-        self, user_email: str, file_id: str, permission_id: str
+        self, user_email: str, file_id: str, permission_id: str,
     ) -> dict[str, Any]:
         return await self.permissions.remove_permission(
-            user_email=user_email, file_id=file_id, permission_id=permission_id
+            user_email=user_email, file_id=file_id, permission_id=permission_id,
         )
 
 

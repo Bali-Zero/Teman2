@@ -88,7 +88,7 @@ class TestAgenticRAGOrchestrator:
     """Tests for AgenticRAGOrchestrator"""
 
     def test_init_with_all_services(
-        self, mock_tools, mock_db_pool, mock_retriever, mock_semantic_cache
+        self, mock_tools, mock_db_pool, mock_retriever, mock_semantic_cache,
     ):
         """Test initialization with all services"""
         with (
@@ -197,7 +197,7 @@ class TestAgenticRAGOrchestrator:
             mock_stream.return_value = async_gen()
 
             async for event in orchestrator.stream_query(
-                query, user_id, conversation_history=history
+                query, user_id, conversation_history=history,
             ):
                 assert event.type == "text"
 
@@ -264,7 +264,7 @@ class TestAgenticRAGOrchestrator:
 
         with patch.object(orchestrator, "process_query") as mock_process:
             mock_result = CoreResult(
-                answer="4", sources=[], verification_score=1.0, evidence_score=1.0
+                answer="4", sources=[], verification_score=1.0, evidence_score=1.0,
             )
             mock_process.return_value = mock_result
 
@@ -279,7 +279,7 @@ class TestAgenticRAGOrchestrator:
 
         with patch.object(orchestrator, "process_query") as mock_process:
             mock_result = CoreResult(
-                answer="4", sources=[], verification_score=1.0, evidence_score=1.0
+                answer="4", sources=[], verification_score=1.0, evidence_score=1.0,
             )
             mock_process.return_value = mock_result
 
@@ -297,7 +297,7 @@ class TestAgenticRAGOrchestrator:
 
             with patch.object(orchestrator, "process_query") as mock_process:
                 mock_result = CoreResult(
-                    answer="KITAS info", sources=[], verification_score=1.0, evidence_score=1.0
+                    answer="KITAS info", sources=[], verification_score=1.0, evidence_score=1.0,
                 )
                 mock_process.return_value = mock_result
 
@@ -316,7 +316,7 @@ class TestAgenticRAGOrchestrator:
 
             with patch.object(orchestrator, "process_query") as mock_process:
                 mock_result = CoreResult(
-                    answer="KITAS info", sources=[], verification_score=1.0, evidence_score=1.0
+                    answer="KITAS info", sources=[], verification_score=1.0, evidence_score=1.0,
                 )
                 mock_process.return_value = mock_result
 

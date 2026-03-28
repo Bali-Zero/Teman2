@@ -112,7 +112,7 @@ class TestKnowledgeGraphRepositoryAdditional:
         """Test getting entity relationships"""
         if hasattr(kg_repository, "get_entity_relationships"):
             mock_relationships = [
-                {"target_entity_id": "target_1", "relationship_type": "requires", "confidence": 0.8}
+                {"target_entity_id": "target_1", "relationship_type": "requires", "confidence": 0.8},
             ]
 
             @asynccontextmanager

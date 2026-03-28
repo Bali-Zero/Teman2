@@ -33,7 +33,7 @@ class DocumentChunk(BaseModel):
 
     content: str = Field(..., description="Document content (text)", min_length=10)
     metadata: dict[str, Any] = Field(
-        ..., description="Metadata (law_id, pasal, category, type, etc.)"
+        ..., description="Metadata (law_id, pasal, category, type, etc.)",
     )
 
 
@@ -68,7 +68,7 @@ class IngestResponse(BaseModel):
 
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_documents(
-    request: IngestRequest, service: SearchService = Depends(get_search_service)
+    request: IngestRequest, service: SearchService = Depends(get_search_service),
 ) -> IngestResponse:
     """
     Bulk ingest documents into Qdrant collection
@@ -109,7 +109,7 @@ async def ingest_documents(
             # Auto-create collection if legal_intelligence
             if request.collection == "legal_intelligence":
                 logger.info(
-                    "Auto-creating collection: %s -> %s", request.collection, target_collection
+                    "Auto-creating collection: %s -> %s", request.collection, target_collection,
                 )
                 vector_db = QdrantClient(collection_name=target_collection)
                 service.collections[request.collection] = vector_db
@@ -153,13 +153,13 @@ async def ingest_documents(
 
         # Qdrant upsert method (async)
         await vector_db.upsert_documents(
-            chunks=documents, embeddings=embeddings, metadatas=metadatas, ids=ids
+            chunks=documents, embeddings=embeddings, metadatas=metadatas, ids=ids,
         )
 
         execution_time = (time.time() - start_time) * 1000
 
         logger.info(
-            f"✅ Successfully ingested {len(documents)} documents in {execution_time:.2f}ms"
+            f"✅ Successfully ingested {len(documents)} documents in {execution_time:.2f}ms",
         )
 
         return IngestResponse(

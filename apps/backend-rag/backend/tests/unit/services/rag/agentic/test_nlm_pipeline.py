@@ -22,10 +22,10 @@ async def test_speculative_fire_and_cautious_merge():
                     "section": "Pasal 48",
                     "excerpt": "...",
                     "page": 23,
-                }
+                },
             ],
             "confidence": 0.82,
-        }
+        },
     )
 
     task = asyncio.create_task(nlm_service.query("nb-id", "KITAS requirements"))

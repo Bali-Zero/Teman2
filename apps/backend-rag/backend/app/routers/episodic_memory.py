@@ -29,7 +29,7 @@ class AddEventRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
     event_type: str = Field(
-        default="general"
+        default="general",
     )  # milestone, problem, resolution, decision, meeting, deadline
     emotion: str = Field(default="neutral")  # positive, negative, neutral, urgent, frustrated
     occurred_at: datetime | None = None

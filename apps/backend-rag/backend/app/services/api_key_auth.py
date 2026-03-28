@@ -42,7 +42,7 @@ class APIKeyAuth:
         self.key_stats = {key: {"usage_count": 0, "last_used": None} for key in self.valid_keys}
 
         logger.info(
-            f"API Key service initialized with {len(self.valid_keys)} valid keys from environment"
+            f"API Key service initialized with {len(self.valid_keys)} valid keys from environment",
         )
 
     def validate_api_key(self, api_key: str) -> dict[str, Any] | None:
@@ -69,7 +69,7 @@ class APIKeyAuth:
         self.key_stats[api_key]["last_used"] = datetime.now(timezone.utc).isoformat()
 
         logger.debug(
-            f"Valid API key used: {key_info['role']} (usage: {self.key_stats[api_key]['usage_count']})"
+            f"Valid API key used: {key_info['role']} (usage: {self.key_stats[api_key]['usage_count']})",
         )
 
         return {

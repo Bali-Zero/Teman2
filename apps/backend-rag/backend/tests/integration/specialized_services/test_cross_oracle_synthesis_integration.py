@@ -31,7 +31,7 @@ def mock_search_service():
     """Mock SearchService"""
     service = MagicMock()
     service.search = AsyncMock(
-        return_value={"results": [{"id": "doc1", "text": "Test result", "score": 0.9}], "total": 1}
+        return_value={"results": [{"id": "doc1", "text": "Test result", "score": 0.9}], "total": 1},
     )
     return service
 
@@ -54,7 +54,7 @@ def cross_oracle_service(mock_search_service, mock_db_pool):
             "plan": {},
             "timeline": "60-90 days",
             "cost_estimate": "Rp 50-100 million",
-        }
+        },
     )
     return service
 
@@ -64,7 +64,7 @@ class TestCrossOracleSynthesisIntegration:
 
     @pytest.mark.asyncio
     async def test_business_planning_query_synthesis(
-        self, cross_oracle_service, mock_search_service
+        self, cross_oracle_service, mock_search_service,
     ):
         """Test synthesis of business planning queries across multiple oracles"""
         query = "Crea un piano completo per aprire un ristorante a Bali"
@@ -75,7 +75,7 @@ class TestCrossOracleSynthesisIntegration:
             side_effect=[
                 {"results": [{"id": f"doc{i}", "text": f"Oracle {i} result"}], "total": 1}
                 for i in range(len(oracles))
-            ]
+            ],
         )
 
         # Execute synthesis
@@ -107,7 +107,7 @@ class TestCrossOracleSynthesisIntegration:
 
         # Mock specialized router
         with patch(
-            "backend.services.routing.specialized_service_router.SpecializedServiceRouter"
+            "backend.services.routing.specialized_service_router.SpecializedServiceRouter",
         ) as mock_router:
             mock_router_instance = MagicMock()
             mock_router_instance.should_route_to_cross_oracle = MagicMock(return_value=True)
@@ -123,7 +123,7 @@ class TestCrossOracleSynthesisIntegration:
 
     @pytest.mark.asyncio
     async def test_comprehensive_analysis_synthesis(
-        self, cross_oracle_service, mock_search_service
+        self, cross_oracle_service, mock_search_service,
     ):
         """Test comprehensive analysis synthesis"""
         query = "Analisi completa: PT PMA vs PT Lokal per ristorante"
@@ -151,7 +151,7 @@ class TestCrossOracleSynthesisIntegration:
             }
 
             result = await cross_oracle_service.synthesize(
-                query=query, results=comprehensive_results
+                query=query, results=comprehensive_results,
             )
 
             # Verify comprehensive analysis
@@ -162,7 +162,7 @@ class TestCrossOracleSynthesisIntegration:
 
     @pytest.mark.asyncio
     async def test_synthesis_with_user_context(
-        self, cross_oracle_service, mock_search_service, mock_db_pool
+        self, cross_oracle_service, mock_search_service, mock_db_pool,
     ):
         """Test synthesis using user context for personalization"""
         query = "Piano per il mio business"

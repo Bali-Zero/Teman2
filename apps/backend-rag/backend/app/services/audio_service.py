@@ -47,7 +47,7 @@ class AudioService:
             logger.warning("AudioService: OpenAI not available (no API key), Pollinations only")
 
     async def transcribe_audio(
-        self, file_path_or_buffer, model: str = "whisper-1", language: str | None = None
+        self, file_path_or_buffer, model: str = "whisper-1", language: str | None = None,
     ) -> str:
         """
         Transcribe audio to text.
@@ -62,12 +62,12 @@ class AudioService:
             if isinstance(file_path_or_buffer, str):
                 with open(file_path_or_buffer, "rb") as file_obj:
                     transcript = await self.openai_client.audio.transcriptions.create(
-                        model=model, file=file_obj, language=language
+                        model=model, file=file_obj, language=language,
                     )
                     return transcript.text
             else:
                 transcript = await self.openai_client.audio.transcriptions.create(
-                    model=model, file=file_path_or_buffer, language=language
+                    model=model, file=file_path_or_buffer, language=language,
                 )
                 return transcript.text
 
@@ -171,7 +171,7 @@ class AudioService:
         Generate speech using OpenAI TTS.
         """
         response = await self.openai_client.audio.speech.create(
-            model=model, voice=voice, input=text
+            model=model, voice=voice, input=text,
         )
         return response.content
 

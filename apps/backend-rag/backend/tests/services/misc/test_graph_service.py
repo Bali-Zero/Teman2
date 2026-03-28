@@ -77,8 +77,8 @@ async def test_get_neighbors_with_filters_and_limit():
                 "target_name": "Target",
                 "target_type": "org",
                 "description": "desc",
-            }
-        ]
+            },
+        ],
     )
     service = GraphService(_build_pool(conn))
 
@@ -106,7 +106,7 @@ async def test_find_entity_by_name_handles_missing_properties():
                 "name": "Acme",
                 "properties": None,
             },
-        ]
+        ],
     )
     service = GraphService(_build_pool(conn))
 
@@ -127,7 +127,7 @@ async def test_traverse_builds_subgraph():
             "type": "person",
             "name": "Alice",
             "description": "Founder",
-        }
+        },
     )
 
     async def _fetch(query, *params):
@@ -140,7 +140,7 @@ async def test_traverse_builds_subgraph():
                     "target_type": "org",
                     "target_name": "Acme",
                     "target_desc": "Company",
-                }
+                },
             ]
         return []
 

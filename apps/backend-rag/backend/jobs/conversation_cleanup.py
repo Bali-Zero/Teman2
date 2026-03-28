@@ -81,7 +81,7 @@ async def main():
 
     if result["success"]:
         logger.info(
-            f"✅ Cleanup completed: {result['deleted_count']} deleted, {result['anonymized_count']} anonymized"
+            f"✅ Cleanup completed: {result['deleted_count']} deleted, {result['anonymized_count']} anonymized",
         )
     else:
         logger.error(f"❌ Cleanup failed: {result.get('error')}")

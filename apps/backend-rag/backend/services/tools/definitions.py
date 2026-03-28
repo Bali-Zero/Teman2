@@ -36,7 +36,7 @@ def _convert_schema_to_gemini_format(schema: dict) -> dict:
             "object": "OBJECT",
         }
         result["type"] = type_mapping.get(
-            type_value, type_value.upper() if isinstance(type_value, str) else type_value
+            type_value, type_value.upper() if isinstance(type_value, str) else type_value,
         )
 
     # Recursively convert properties

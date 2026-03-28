@@ -39,7 +39,7 @@ class CollectionManager:
         # Read semaphores: allow concurrent searches
         self._collection_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._collection_read_semaphores: dict[str, asyncio.Semaphore] = defaultdict(
-            lambda: asyncio.Semaphore(20)  # Allow 20 concurrent reads per collection
+            lambda: asyncio.Semaphore(20),  # Allow 20 concurrent reads per collection
         )
         self._lock_timeout = 30.0  # seconds (longer for ingestion operations)
 
@@ -251,7 +251,7 @@ class CollectionManager:
         async with semaphore:
             # Multiple searches can proceed concurrently
             return await collection.search(
-                query_embedding=query_embedding, filter=filter, limit=limit
+                query_embedding=query_embedding, filter=filter, limit=limit,
             )
 
     async def ingest_with_lock(
@@ -302,5 +302,5 @@ class CollectionManager:
                 lock.release()
         except asyncio.TimeoutError:
             raise RuntimeError(
-                f"Ingestion lock timeout for {collection_name} (timeout: {self._lock_timeout}s)"
+                f"Ingestion lock timeout for {collection_name} (timeout: {self._lock_timeout}s)",
             )

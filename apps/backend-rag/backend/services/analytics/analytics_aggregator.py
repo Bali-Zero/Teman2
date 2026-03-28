@@ -140,7 +140,7 @@ class AnalyticsAggregator:
                     # Conversations today
                     stats.conversations_today = (
                         await conn.fetchval(
-                            "SELECT COUNT(*) FROM conversations WHERE created_at >= CURRENT_DATE"
+                            "SELECT COUNT(*) FROM conversations WHERE created_at >= CURRENT_DATE",
                         )
                         or 0
                     )
@@ -148,7 +148,7 @@ class AnalyticsAggregator:
                     # Conversations this week
                     stats.conversations_week = (
                         await conn.fetchval(
-                            "SELECT COUNT(*) FROM conversations WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'"
+                            "SELECT COUNT(*) FROM conversations WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'",
                         )
                         or 0
                     )
@@ -156,7 +156,7 @@ class AnalyticsAggregator:
                     # Active users (users with activity in last 24h)
                     stats.users_active = (
                         await conn.fetchval(
-                            "SELECT COUNT(DISTINCT user_id) FROM conversations WHERE created_at >= NOW() - INTERVAL '24 hours'"
+                            "SELECT COUNT(DISTINCT user_id) FROM conversations WHERE created_at >= NOW() - INTERVAL '24 hours'",
                         )
                         or 0
                     )
@@ -165,9 +165,9 @@ class AnalyticsAggregator:
                     stats.revenue_pipeline = float(
                         await conn.fetchval(
                             """SELECT COALESCE(SUM(quoted_price), 0) FROM practices
-                        WHERE status NOT IN ('completed', 'cancelled')"""
+                        WHERE status NOT IN ('completed', 'cancelled')""",
                         )
-                        or 0
+                        or 0,
                     )
 
             # Uptime
@@ -243,8 +243,8 @@ class AnalyticsAggregator:
                 MetricsCollector()
                 # These would come from actual Prometheus metrics
                 stats.cache_hit_rate = 0.65  # Placeholder
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Analytics aggregation item skipped: {e}")
 
         except Exception as e:
             logger.error(f"Error fetching RAG stats: {e}")
@@ -358,7 +358,7 @@ class AnalyticsAggregator:
                         FROM team_work_sessions
                         WHERE session_start >= CURRENT_DATE
                     """)
-                        or 0
+                        or 0,
                     )
 
                     # Hours worked this week
@@ -368,7 +368,7 @@ class AnalyticsAggregator:
                         FROM team_work_sessions
                         WHERE session_start >= CURRENT_DATE - INTERVAL '7 days'
                     """)
-                        or 0
+                        or 0,
                     )
 
                     # Conversations by agent
@@ -440,7 +440,7 @@ class AnalyticsAggregator:
                             "healthy": state.get("healthy", False),
                             "last_check": state.get("last_check", ""),
                             "error": state.get("error", ""),
-                        }
+                        },
                     )
             stats.services = services
 
@@ -492,7 +492,7 @@ class AnalyticsAggregator:
                         status = coll_info.get("status", "unknown")
                         total_docs += count
                         collections.append(
-                            {"name": coll_name, "documents": count, "status": status}
+                            {"name": coll_name, "documents": count, "status": status},
                         )
                     except Exception as e:
                         logger.warning(f"Failed to get info for collection {coll_name}: {e}")
@@ -527,7 +527,7 @@ class AnalyticsAggregator:
                         FROM conversation_ratings
                         WHERE created_at >= NOW() - INTERVAL '30 days'
                     """)
-                        or 0
+                        or 0,
                     )
 
                     # Rating distribution

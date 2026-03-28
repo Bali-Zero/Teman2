@@ -51,7 +51,7 @@ class TestServiceHealth:
         """Test converting to dictionary"""
         now = datetime.now(timezone.utc)
         health = ServiceHealth(
-            name="test_service", status=ServiceStatus.HEALTHY, initialized_at=now, last_check=now
+            name="test_service", status=ServiceStatus.HEALTHY, initialized_at=now, last_check=now,
         )
         result = health.to_dict()
         assert result["name"] == "test_service"
@@ -62,7 +62,7 @@ class TestServiceHealth:
     def test_to_dict_with_error(self):
         """Test converting to dictionary with error"""
         health = ServiceHealth(
-            name="test_service", status=ServiceStatus.UNAVAILABLE, error="Service error"
+            name="test_service", status=ServiceStatus.UNAVAILABLE, error="Service error",
         )
         result = health.to_dict()
         assert result["error"] == "Service error"

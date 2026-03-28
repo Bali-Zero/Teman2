@@ -138,7 +138,7 @@ class ClientIdentityResolver:
 
 
     async def link_messaging_user_to_client(
-        self, channel: str, identifier: str, client_id: int
+        self, channel: str, identifier: str, client_id: int,
     ) -> bool:
         """
         Link a messaging_user to a client.
@@ -188,7 +188,7 @@ class ClientIdentityResolver:
             return success
 
     async def resolve_or_create_client(
-        self, channel: str, identifier: str, client_data: dict[str, Any] | None = None
+        self, channel: str, identifier: str, client_data: dict[str, Any] | None = None,
     ) -> tuple[int, bool]:
         """
         Resolve client identity or create new client.

@@ -105,7 +105,7 @@ class TestVectorSearchTool:
         """Test execute with specific collection"""
         tool = VectorSearchTool(retriever=mock_retriever)
         mock_retriever.search_with_reranking.return_value = {
-            "results": [{"text": "test", "score": 0.9, "metadata": {"title": "Test"}}]
+            "results": [{"text": "test", "score": 0.9, "metadata": {"title": "Test"}}],
         }
 
         result = await tool.execute(query="test", collection="visa_oracle", top_k=5)
@@ -117,7 +117,7 @@ class TestVectorSearchTool:
         """Test federated search (no collection)"""
         tool = VectorSearchTool(retriever=mock_retriever)
         mock_retriever.search_with_reranking.return_value = {
-            "results": [{"text": "test", "score": 0.9, "metadata": {"title": "Test"}}]
+            "results": [{"text": "test", "score": 0.9, "metadata": {"title": "Test"}}],
         }
 
         result = await tool.execute(query="test", top_k=5)
@@ -140,7 +140,7 @@ class TestVectorSearchTool:
             "results": [
                 {"text": "test content", "score": 0.9, "metadata": {"title": "Test"}},
                 {"text": "test content", "score": 0.8, "metadata": {"title": "Test2"}},
-            ]
+            ],
         }
 
         result = await tool.execute(query="test")
@@ -243,7 +243,7 @@ class TestPricingTool:
             tool = PricingTool()
             # get_pricing is not async, it's a regular method
             mock_pricing_service.get_pricing.return_value = {
-                "items": [{"name": "KITAS", "price": "15000000"}]
+                "items": [{"name": "KITAS", "price": "15000000"}],
             }
 
             result = await tool.execute(service_type="visa")
@@ -295,7 +295,7 @@ class TestTeamKnowledgeTool:
         tool = TeamKnowledgeTool()
         # Mock the _load_team_data method to return test data
         with patch.object(
-            tool, "_load_team_data", return_value=[{"name": "Test", "email": "test@example.com"}]
+            tool, "_load_team_data", return_value=[{"name": "Test", "email": "test@example.com"}],
         ):
             result = await tool.execute(query_type="list_all")
             assert result is not None
@@ -322,7 +322,7 @@ class TestVisionTool:
             tool.vision_service = mock_vision_service
             mock_vision_service.process_pdf = AsyncMock(return_value={"doc": "test"})
             mock_vision_service.query_with_vision = AsyncMock(
-                return_value={"answer": "test analysis"}
+                return_value={"answer": "test analysis"},
             )
 
             with patch("backend.app.core.config.settings") as mock_settings:

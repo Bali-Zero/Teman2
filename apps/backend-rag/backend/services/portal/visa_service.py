@@ -61,7 +61,7 @@ class VisaService:
                 status = "expiring_soon"
 
         logger.info(
-            "Generated visa summary", client_id=client_id, status=status, days_until=days_until
+            "Generated visa summary", client_id=client_id, status=status, days_until=days_until,
         )
 
         return VisaSummary(

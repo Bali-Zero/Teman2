@@ -136,10 +136,10 @@ class ZohoOAuthService:
             if response.status_code != 200:
                 error_data = response.json() if response.content else {}
                 logger.error(
-                    f"Zoho token exchange failed: {response.status_code} - {error_data.get('error', 'unknown')}"
+                    f"Zoho token exchange failed: {response.status_code} - {error_data.get('error', 'unknown')}",
                 )
                 raise ValueError(
-                    f"Token exchange failed: {error_data.get('error', 'unknown error')}"
+                    f"Token exchange failed: {error_data.get('error', 'unknown error')}",
                 )
 
             token_data = response.json()
@@ -388,7 +388,7 @@ class ZohoOAuthService:
 
         # Update stored token
         expires_at = datetime.now(timezone.utc) + timedelta(
-            seconds=token_data.get("expires_in", 3600)
+            seconds=token_data.get("expires_in", 3600),
         )
 
         async with self.db_pool.acquire() as conn:

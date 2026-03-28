@@ -19,7 +19,7 @@ class ContextSuggestionService:
         self.db_pool = db_pool
 
     async def get_suggestions(
-        self, query: str, user_id: str, response: str, conversation_history: list[dict] = None
+        self, query: str, user_id: str, response: str, conversation_history: list[dict] = None,
     ) -> list[str]:
         """
         Generate follow-up suggestions based on the interaction.

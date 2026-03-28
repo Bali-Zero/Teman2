@@ -389,7 +389,7 @@ class RAGBenchmark:
                         ground_truth=sample.expected_answer,
                         metrics={},
                         metadata={"error": str(e)},
-                    )
+                    ),
                 )
 
         duration_ms = (time.time() - start_time) * 1000
@@ -433,7 +433,7 @@ class RAGBenchmark:
         with get_performance_logger(__name__, f"benchmark_{config.name}"):
             logger.info(
                 f"Starting benchmark: {config.name} "
-                f"(dataset={len(dataset)}, methods={config.search_methods})"
+                f"(dataset={len(dataset)}, methods={config.search_methods})",
             )
 
             method_results: list[MethodResult] = []
@@ -456,7 +456,7 @@ class RAGBenchmark:
 
             logger.info(
                 f"Benchmark completed: {config.name} "
-                f"(best_method={comparison.get('best_method', 'N/A')})"
+                f"(best_method={comparison.get('best_method', 'N/A')})",
             )
 
             return benchmark_result
@@ -622,7 +622,7 @@ class RAGBenchmark:
                     f"  Overall Score: {method_result.overall_score:.3f}",
                     f"  Duration: {method_result.duration_ms:.0f}ms",
                     "  Metrics:",
-                ]
+                ],
             )
             for metric, value in method_result.avg_metrics.items():
                 report_lines.append(f"    {metric}: {value:.3f}")
@@ -634,14 +634,14 @@ class RAGBenchmark:
                 "-" * 60,
                 f"Best Method: {result.comparison.get('best_method', 'N/A')}",
                 f"Best Score: {result.comparison.get('best_overall_score', 0):.3f}",
-            ]
+            ],
         )
 
         method_scores = result.comparison.get("method_scores", {})
         for method, scores in method_scores.items():
             if "improvement_vs_baseline" in scores:
                 report_lines.append(
-                    f"  {method}: +{scores['improvement_vs_baseline']:.1f}% vs baseline"
+                    f"  {method}: +{scores['improvement_vs_baseline']:.1f}% vs baseline",
                 )
 
         report_lines.extend(
@@ -650,7 +650,7 @@ class RAGBenchmark:
                 "=" * 60,
                 "End of Report",
                 "=" * 60,
-            ]
+            ],
         )
 
         return "\n".join(report_lines)
@@ -696,7 +696,7 @@ async def create_evaluation_tables() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_eval_runs_timestamp
             ON rag_evaluation_runs(timestamp DESC);
-        """
+        """,
         )
 
     logger.info("Evaluation tables created/verified")

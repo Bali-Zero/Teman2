@@ -40,7 +40,7 @@ def mock_orchestrator():
             sources=[{"title": "Source 1", "url": "https://example.com"}],
             tool_calls=[],
             reasoning="Test reasoning",
-        )
+        ),
     )
 
     async def mock_stream_query(**kwargs):
@@ -68,7 +68,7 @@ class TestAgenticRAGStreamAnonymous:
         """Test stream endpoint with anonymous user creates anonymous_XXX user_id"""
         with patch("backend.app.routers.agentic_rag.get_current_user_optional", return_value=None):
             with patch(
-                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator,
             ):
                 with patch(
                     "backend.app.routers.agentic_rag.get_optional_database_pool",
@@ -98,10 +98,10 @@ class TestAgenticRAGStreamAuthenticated:
 
         with (
             patch(
-                "backend.app.routers.agentic_rag.get_current_user_optional", return_value=mock_user
+                "backend.app.routers.agentic_rag.get_current_user_optional", return_value=mock_user,
             ),
             patch(
-                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator
+                "backend.app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator,
             ),
             patch(
                 "backend.app.routers.agentic_rag.get_optional_database_pool",

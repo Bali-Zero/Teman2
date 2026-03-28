@@ -162,7 +162,7 @@ class TestMetricsCollector:
         return self.agents[agent_name]
 
     def record_test_generation(
-        self, duration: float, success: bool = True, coverage_delta: float = 0.0
+        self, duration: float, success: bool = True, coverage_delta: float = 0.0,
     ):
         """Record test generation operation"""
         self.test_generation.tests_generated += 1
@@ -179,7 +179,7 @@ class TestMetricsCollector:
         )
 
         logger.debug(
-            f"📈 Test generation recorded: {success}, {duration:.2f}s, +{coverage_delta:.1f}% coverage"
+            f"📈 Test generation recorded: {success}, {duration:.2f}s, +{coverage_delta:.1f}% coverage",
         )
 
     def record_coverage_update(self, coverage_data: dict[str, Any]):
@@ -188,11 +188,11 @@ class TestMetricsCollector:
         self.coverage.files_analyzed = coverage_data.get("files_analyzed", 0)
         self.coverage.coverage_gaps = coverage_data.get("gaps", [])
         self.coverage.files_below_threshold = len(
-            [g for g in self.coverage.coverage_gaps if g["percent"] < self.target_coverage]
+            [g for g in self.coverage.coverage_gaps if g["percent"] < self.target_coverage],
         )
 
         logger.info(
-            f"📊 Coverage updated: {self.coverage.current_coverage:.1f}% ({self.coverage.coverage_gap_count} gaps)"
+            f"📊 Coverage updated: {self.coverage.current_coverage:.1f}% ({self.coverage.coverage_gap_count} gaps)",
         )
 
     def update_system_metrics(self):
@@ -244,7 +244,7 @@ class TestMetricsCollector:
                     "message": f"Low success rate: {self.test_generation.success_rate:.1f}%",
                     "threshold": self.alert_thresholds["success_rate"],
                     "current": self.test_generation.success_rate,
-                }
+                },
             )
 
         if self.test_generation.avg_generation_time > self.alert_thresholds["avg_generation_time"]:
@@ -255,7 +255,7 @@ class TestMetricsCollector:
                     "message": f"Slow test generation: {self.test_generation.avg_generation_time:.1f}s",
                     "threshold": self.alert_thresholds["avg_generation_time"],
                     "current": self.test_generation.avg_generation_time,
-                }
+                },
             )
 
         # Coverage alerts
@@ -267,7 +267,7 @@ class TestMetricsCollector:
                     "message": f"Coverage below target: {self.coverage.current_coverage:.1f}% < {self.target_coverage}%",
                     "threshold": self.target_coverage,
                     "current": self.coverage.current_coverage,
-                }
+                },
             )
 
         # System alerts
@@ -279,7 +279,7 @@ class TestMetricsCollector:
                     "message": f"High memory usage: {self.system.memory_usage:.1f}%",
                     "threshold": self.alert_thresholds["memory_usage"],
                     "current": self.system.memory_usage,
-                }
+                },
             )
 
         if self.system.cpu_usage > self.alert_thresholds["cpu_usage"]:
@@ -290,7 +290,7 @@ class TestMetricsCollector:
                     "message": f"High CPU usage: {self.system.cpu_usage:.1f}%",
                     "threshold": self.alert_thresholds["cpu_usage"],
                     "current": self.system.cpu_usage,
-                }
+                },
             )
 
         # Agent-specific alerts
@@ -303,7 +303,7 @@ class TestMetricsCollector:
                         "message": f"Agent {name} low success rate: {agent.success_rate:.1f}%",
                         "agent": name,
                         "current": agent.success_rate,
-                    }
+                    },
                 )
 
         return alerts
@@ -421,7 +421,7 @@ class TestMetricsCollector:
         return html
 
     def _generate_markdown_report(
-        self, summary: dict[str, Any], alerts: list[dict[str, Any]]
+        self, summary: dict[str, Any], alerts: list[dict[str, Any]],
     ) -> str:
         """Generate Markdown report"""
         md = f"""# 🤖 Test Force Metrics Report

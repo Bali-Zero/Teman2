@@ -256,7 +256,7 @@ Return ONLY the JSON object, no additional text."""
         except Exception as e:
             # In production, Ollama might not be available. Log warning and exit gracefully.
             logger.warning(
-                f"⚠️ Birthplace Enrichment skipped: Cannot connect to Ollama ({e}). This is expected if running on Fly.io without sidecar."
+                f"⚠️ Birthplace Enrichment skipped: Cannot connect to Ollama ({e}). This is expected if running on Fly.io without sidecar.",
             )
             stats["error"] = f"Cannot connect to Ollama: {e}"
             return stats

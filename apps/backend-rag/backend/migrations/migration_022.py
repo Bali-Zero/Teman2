@@ -48,7 +48,7 @@ class Migration022:
                 -- Composite index for conversations with timestamp ordering
                 CREATE INDEX IF NOT EXISTS idx_conversations_user_created
                 ON conversations(user_id, created_at DESC);
-            """
+            """,
             )
 
             # Record migration

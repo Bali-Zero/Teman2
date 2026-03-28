@@ -194,7 +194,7 @@ class TestDataCollector:
         from backend.services.compliance.lkpm_data_collector import LKPMDataCollector
 
         entries = [
-            {"id": "1", "description": "test", "account_name": "Kas", "debit": 0, "credit": 0}
+            {"id": "1", "description": "test", "account_name": "Kas", "debit": 0, "credit": 0},
         ]
         collector = LKPMDataCollector(db_pool=MagicMock())
         categorized = collector.categorize_transactions(entries)
@@ -517,7 +517,7 @@ class TestLKPMServiceWithMockedDB:
                 "land": 0,
                 "wc": 0,
                 "other": 0,
-            }
+            },
         ]
         # Mock save (upsert returns id)
         conn.fetchrow.return_value = {"id": 1}

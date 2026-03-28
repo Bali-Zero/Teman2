@@ -148,7 +148,7 @@ _VISA_TYPE_TO_ENTITY_TYPE: dict[str, str] = {
 
 
 async def identify_visa_type_node(
-    state: VisaState, llm: Any, db_pool: asyncpg.Pool | None = None
+    state: VisaState, llm: Any, db_pool: asyncpg.Pool | None = None,
 ) -> VisaState:
     """
     Identify visa type from query and user context.
@@ -225,7 +225,7 @@ async def identify_visa_type_node(
                         visa_type = kg_visa_type
                         logger.info(
                             f"✅ [Visa Subgraph] KG override: employment:{employment_type} "
-                            f"REQUIRES {kg_visa_type}"
+                            f"REQUIRES {kg_visa_type}",
                         )
         except Exception as e:
             logger.warning(f"⚠️ [Visa Subgraph] KG employment lookup failed: {e}")
@@ -239,7 +239,7 @@ async def identify_visa_type_node(
 
     logger.info(
         f"✅ [Visa Subgraph] Identified: {visa_type}, purpose: {purpose}, "
-        f"employment: {employment_type}, RPTKA: {state['requires_rptka']}"
+        f"employment: {employment_type}, RPTKA: {state['requires_rptka']}",
     )
 
     return state
@@ -399,7 +399,7 @@ async def get_visa_requirements_node(state: VisaState, db_pool: asyncpg.Pool) ->
                         requirements["validity"] = props["validity"]
                 kg_sources += 1
                 logger.info(
-                    f"✅ [Visa Subgraph] Got node properties for {entity_type} from KG"
+                    f"✅ [Visa Subgraph] Got node properties for {entity_type} from KG",
                 )
 
             # Query 2: Get REQUIRES edges (required documents/permits)
@@ -498,7 +498,7 @@ async def get_visa_requirements_node(state: VisaState, db_pool: asyncpg.Pool) ->
             "requirement_type": "visa_documents_and_fees",
             "visa_type": visa_type,
             "details": requirements,
-        }
+        },
     )
 
     state["duration_months"] = _FALLBACK_DURATION_MONTHS.get(visa_type, 12)
@@ -506,7 +506,7 @@ async def get_visa_requirements_node(state: VisaState, db_pool: asyncpg.Pool) ->
 
     logger.info(
         f"✅ [Visa Subgraph] Requirements added for {visa_type} "
-        f"(KG sources: {kg_sources})"
+        f"(KG sources: {kg_sources})",
     )
 
     return state
@@ -552,7 +552,7 @@ async def synthesize_visa_workflow_node(state: VisaState) -> VisaState:
                     "requirement": "Work permit for foreign employee (IMTA)",
                     "processing_time": "2-4 weeks",
                 },
-            }
+            },
         )
 
     # Step 2: VITAS application (for KITAS/KITAP)
@@ -566,7 +566,7 @@ async def synthesize_visa_workflow_node(state: VisaState) -> VisaState:
                     "system": "Online application via immigration portal",
                     "processing_time": "7-14 days",
                 },
-            }
+            },
         )
 
     # Step 3: Entry to Indonesia
@@ -578,7 +578,7 @@ async def synthesize_visa_workflow_node(state: VisaState) -> VisaState:
             "details": {
                 "validity": f"{state.get('duration_months', 1)} months",
             },
-        }
+        },
     )
 
     # Step 4: KITAS conversion (if VITAS)
@@ -592,7 +592,7 @@ async def synthesize_visa_workflow_node(state: VisaState) -> VisaState:
                     "location": "Immigration office in Indonesia",
                     "documents": "Passport, VITAS, sponsorship docs",
                 },
-            }
+            },
         )
 
     # Step 5: MERP (for KITAS/KITAP)
@@ -606,7 +606,7 @@ async def synthesize_visa_workflow_node(state: VisaState) -> VisaState:
                     "purpose": "Allow multiple exits from Indonesia",
                     "validity": "Matches KITAS/KITAP validity",
                 },
-            }
+            },
         )
 
     from dataclasses import asdict
@@ -638,7 +638,7 @@ async def synthesize_visa_workflow_node(state: VisaState) -> VisaState:
 
     logger.info(
         f"✅ [Visa Subgraph] Workflow synthesized with {len(steps)} steps "
-        f"(confidence: {breakdown.overall}, KG sources: {kg_sources})"
+        f"(confidence: {breakdown.overall}, KG sources: {kg_sources})",
     )
 
     return state

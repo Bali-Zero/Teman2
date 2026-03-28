@@ -160,7 +160,7 @@ class OrchestratorCore:
                 from backend.app.metrics import faq_cache_hits_total
 
                 faq_cache_hits_total.labels(
-                    domain=cached.get("metadata", {}).get("domain", "unknown")
+                    domain=cached.get("metadata", {}).get("domain", "unknown"),
                 ).inc()
 
                 return CoreResult(
@@ -170,7 +170,7 @@ class OrchestratorCore:
                             "type": "faq_cache",
                             "source": cached.get("metadata", {}).get("source", "team_qa"),
                             "domain": cached.get("metadata", {}).get("domain", "unknown"),
-                        }
+                        },
                     ],
                     model_used="faq_cache",
                     entities=extracted_entities,
@@ -292,7 +292,7 @@ class OrchestratorCore:
                 if kg_context and kg_context.graph_summary:
                     logger.info(
                         f"🔗 [KG Legacy] Added {len(kg_context.entities_found)} entities, "
-                        f"{len(kg_context.relationships)} relationships to context"
+                        f"{len(kg_context.relationships)} relationships to context",
                     )
                 return kg_context
             except Exception as e:
@@ -303,7 +303,7 @@ class OrchestratorCore:
             """KGLangGraphOrchestrator task (Phase 3)"""
             if not self.kg_langgraph_orchestrator:
                 logger.warning(
-                    "🔀 [KG LangGraph] DISABLED: Orchestrator not initialized (ENABLE_KG_LANGGRAPH=false or db_pool missing)"
+                    "🔀 [KG LangGraph] DISABLED: Orchestrator not initialized (ENABLE_KG_LANGGRAPH=false or db_pool missing)",
                 )
                 return None
             logger.info("🔀 [KG LangGraph] ENABLED: Starting workflow synthesis...")
@@ -327,7 +327,7 @@ class OrchestratorCore:
                         workflow = result["workflow"]
                         logger.info(
                             f"🔀 [KG LangGraph] Synthesized workflow: {workflow['type']} "
-                            f"({len(workflow.get('steps', []))} steps, source: {workflow.get('source', 'unknown')})"
+                            f"({len(workflow.get('steps', []))} steps, source: {workflow.get('source', 'unknown')})",
                         )
                         set_span_attribute("workflow_type", workflow["type"])
                         set_span_attribute("workflow_steps", len(workflow.get("steps", [])))
@@ -336,7 +336,7 @@ class OrchestratorCore:
                     return result
             except Exception as e:
                 logger.warning(
-                    f"⚠️ [KG LangGraph] Failed to synthesize workflow: {e}", exc_info=True
+                    f"⚠️ [KG LangGraph] Failed to synthesize workflow: {e}", exc_info=True,
                 )
                 set_span_status("error", str(e))
                 return None
@@ -402,7 +402,7 @@ class OrchestratorCore:
                     query=query,
                     workflow=workflow,
                     execution_time_ms=int((time.time() - langgraph_start) * 1000),
-                )
+                ),
             )
 
         total_time = time.time() - start_time
@@ -421,7 +421,7 @@ class OrchestratorCore:
             logger.info(
                 f"⚡ [Orchestrator] PARALLEL Entity+KG+LangGraph completed in {total_time:.3f}s "
                 f"(Entity: {entity_time_actual:.3f}s, KG: {kg_time_actual:.3f}s, LangGraph: {langgraph_time_actual:.3f}s, "
-                f"speedup: ~{speedup:.3f}s vs sequential ~{estimated_sequential_time:.3f}s)"
+                f"speedup: ~{speedup:.3f}s vs sequential ~{estimated_sequential_time:.3f}s)",
             )
 
         # Extract workflow dict for direct answer injection
@@ -662,7 +662,7 @@ class OrchestratorCore:
         )
         if gate_result.triggered:
             return self.query_gates.gate_result_to_core_result(
-                gate_result, start_time, extracted_entities=extracted_entities
+                gate_result, start_time, extracted_entities=extracted_entities,
             )
 
         # 3. Check FAQ cache (exact match, < 1ms)
@@ -721,14 +721,14 @@ class OrchestratorCore:
                 if self.faq_cache:
                     try:
                         nlm_cached_result = await self.faq_cache.get(
-                            query, notebook_id=nlm_match["notebook_id"]
+                            query, notebook_id=nlm_match["notebook_id"],
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"NLM cache get skipped: {e}")
                 # Launch async NLM query only on cache miss
                 if not nlm_cached_result:
                     nlm_task = asyncio.create_task(
-                        self.nlm_enrichment_service.query(nlm_match["notebook_id"], query)
+                        self.nlm_enrichment_service.query(nlm_match["notebook_id"], query),
                     )
 
         # 4. Route query (intent classification + tier selection)
@@ -781,13 +781,13 @@ class OrchestratorCore:
                     if isinstance(s, dict)
                     else str(s)
                     for s in sources
-                }
+                },
             )
             if sources
             else []
         )
         logger.info(
-            f"\U0001f4c4 [Retrieval] Chunks retrieved: {len(sources)} from {source_collections}"
+            f"\U0001f4c4 [Retrieval] Chunks retrieved: {len(sources)} from {source_collections}",
         )
 
         # 9. Record metrics
@@ -850,7 +850,7 @@ class OrchestratorCore:
             workflow_text = self._format_workflow_for_prompt(langgraph_workflow)
             result.answer = result.answer.rstrip() + "\n\n" + workflow_text
             logger.info(
-                f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}"
+                f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}",
             )
 
         # 13. NLM Enrichment merge — only in CAUTIOUS zone
@@ -877,7 +877,7 @@ class OrchestratorCore:
             try:
                 await nlm_task
             except (asyncio.CancelledError, Exception):
-                pass
+                pass  # Task cancelled cleanly
 
         if nlm_result and nlm_domain:
             result.nlm_enrichment = {
@@ -899,8 +899,8 @@ class OrchestratorCore:
                         metadata=nlm_result,
                         notebook_id=nlm_domain.get("notebook_id", ""),
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"NLM cache set skipped: {e}")
 
         return result
 

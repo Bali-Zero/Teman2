@@ -82,7 +82,7 @@ class FallbackManagerService:
     CONFIDENCE_THRESHOLD_LOW = RoutingConstants.CONFIDENCE_THRESHOLD_LOW
 
     def get_fallback_collections(
-        self, primary_collection: CollectionName, confidence: float, max_fallbacks: int = 3
+        self, primary_collection: CollectionName, confidence: float, max_fallbacks: int = 3,
     ) -> list[CollectionName]:
         """
         Get list of collections to try based on confidence.

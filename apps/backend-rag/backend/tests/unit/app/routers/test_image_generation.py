@@ -48,7 +48,7 @@ class TestImageGenerationRouter:
             "generatedImages": [
                 {"bytesBase64Encoded": "base64data1"},
                 {"bytesBase64Encoded": "base64data2"},
-            ]
+            ],
         }
         mock_response.raise_for_status = MagicMock()
         mock_client.post = AsyncMock(return_value=mock_response)
@@ -57,7 +57,7 @@ class TestImageGenerationRouter:
         mock_client_class.return_value = mock_client
 
         response = client.post(
-            "/api/v1/image/generate", json={"prompt": "test prompt", "number_of_images": 2}
+            "/api/v1/image/generate", json={"prompt": "test prompt", "number_of_images": 2},
         )
         assert response.status_code == 200
         data = response.json()

@@ -32,7 +32,7 @@ Return ONLY the title text, nothing else."""
 
 
 async def generate_conversation_title(
-    conversation_id: str, first_user_message: str, max_length: int = 50
+    conversation_id: str, first_user_message: str, max_length: int = 50,
 ) -> str | None:
     """
     Generate concise title from first user message.
@@ -52,7 +52,7 @@ async def generate_conversation_title(
     if not first_user_message or len(first_user_message.strip()) < 10:
         logger.info(
             f"Skipping title generation for conv {conversation_id}: "
-            f"message too short ({len(first_user_message)} chars)"
+            f"message too short ({len(first_user_message)} chars)",
         )
         return None
 

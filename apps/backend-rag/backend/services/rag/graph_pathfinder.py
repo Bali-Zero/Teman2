@@ -112,7 +112,7 @@ class GraphPathfinder:
             }
 
     async def find_workflow_for_query(
-        self, query: str, user_context: dict[str, Any] | None = None
+        self, query: str, user_context: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """
         Semantic search for the right workflow based on user query AND context.

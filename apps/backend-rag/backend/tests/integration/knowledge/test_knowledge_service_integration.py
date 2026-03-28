@@ -219,13 +219,13 @@ class TestKnowledgeServiceIntegration:
                 return_value=[
                     {"id": "doc1", "text": "Reranked doc", "score": 0.95, "metadata": {}},
                     {"id": "doc2", "text": "Another doc", "score": 0.85, "metadata": {}},
-                ]
+                ],
             )
             mock_reranker_class.return_value = mock_reranker
 
             # Execute search with reranking
             result = await knowledge_service_integration.search_with_reranking(
-                query="Test query", user_level=1, limit=2
+                query="Test query", user_level=1, limit=2,
             )
 
             # Verify reranking applied
@@ -249,7 +249,7 @@ class TestKnowledgeServiceIntegration:
 
             # Execute search with reranking
             result = await knowledge_service_integration.search_with_reranking(
-                query="Test query", user_level=1, limit=5
+                query="Test query", user_level=1, limit=5,
             )
 
             # Verify reranking not applied
@@ -261,7 +261,7 @@ class TestKnowledgeServiceIntegration:
         """Test collection override integration"""
         # Override to specific collection
         result = await knowledge_service_integration.search(
-            query="Any query", user_level=1, limit=5, collection_override="tax_genius"
+            query="Any query", user_level=1, limit=5, collection_override="tax_genius",
         )
 
         # Verify override applied
@@ -275,7 +275,7 @@ class TestKnowledgeServiceIntegration:
         """Test fallback to visa_oracle when unknown collection specified"""
         # Use a non-existent collection override
         result = await knowledge_service_integration.search(
-            query="Test query", user_level=1, limit=5, collection_override="nonexistent_collection"
+            query="Test query", user_level=1, limit=5, collection_override="nonexistent_collection",
         )
 
         # Should fallback to visa_oracle
@@ -295,11 +295,11 @@ class TestKnowledgeServiceIntegration:
             }
 
         knowledge_service_integration.collections["visa_oracle"].search = AsyncMock(
-            side_effect=multi_result_search
+            side_effect=multi_result_search,
         )
 
         result = await knowledge_service_integration.search(
-            query="Test query", user_level=1, limit=5
+            query="Test query", user_level=1, limit=5,
         )
 
         # Verify all results formatted correctly
@@ -349,7 +349,7 @@ class TestKnowledgeServiceIntegration:
             # Service may re-raise or return an error response
             try:
                 result = await knowledge_service_integration.search(
-                    query="Test query", user_level=1, limit=5
+                    query="Test query", user_level=1, limit=5,
                 )
                 # If no exception, service handled gracefully
                 assert result is not None
@@ -373,7 +373,7 @@ class TestKnowledgeServiceIntegration:
         # Test with hybrid collection (if exists)
         # Note: This tests the logic, actual hybrid collections may not exist in test env
         knowledge_service_integration.collections["visa_oracle"].search = AsyncMock(
-            side_effect=capture_search
+            side_effect=capture_search,
         )
 
         await knowledge_service_integration.search(
@@ -424,7 +424,7 @@ class TestKnowledgeServiceIntegration:
                 "collection_used": "visa_oracle",
                 "user_level": 1,
                 "allowed_tiers": [],
-            }
+            },
         )
 
         app.state.search_service = mock_search_service
@@ -461,7 +461,7 @@ class TestKnowledgeServiceIntegration:
                     "collection_used": "visa_oracle",
                     "user_level": 1,
                     "allowed_tiers": [],
-                }
+                },
             )
             mock_ks_class.return_value = mock_ks
 
@@ -469,7 +469,7 @@ class TestKnowledgeServiceIntegration:
 
             # Test POST /api/search
             response = client.post(
-                "/api/search", json={"query": "Test query", "level": 1, "limit": 5}
+                "/api/search", json={"query": "Test query", "level": 1, "limit": 5},
             )
 
             # Verify fallback used

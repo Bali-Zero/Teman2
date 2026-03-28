@@ -141,7 +141,7 @@ class TestQueryOptimization:
         # Add index hint
         if ":Visa" in query and "USING INDEX" not in query:
             optimized_query = query.replace(
-                "MATCH (n:Visa)", "MATCH (n:Visa) USING INDEX n:Visa(name)"
+                "MATCH (n:Visa)", "MATCH (n:Visa) USING INDEX n:Visa(name)",
             )
         else:
             optimized_query = query

@@ -51,7 +51,7 @@ def apply_migration():
                 'activity_log'
             )
             ORDER BY table_name
-        """
+        """,
         )
 
         tables = cursor.fetchall()

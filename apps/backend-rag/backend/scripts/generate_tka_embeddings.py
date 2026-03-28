@@ -60,7 +60,7 @@ class OpenAIEmbedder:
         for i in range(0, len(texts), MAX_BATCH_SIZE):
             batch = texts[i : i + MAX_BATCH_SIZE]
             logger.info(
-                f"Generating embeddings batch {i // MAX_BATCH_SIZE + 1}: {len(batch)} texts"
+                f"Generating embeddings batch {i // MAX_BATCH_SIZE + 1}: {len(batch)} texts",
             )
 
             response = await client.embeddings.create(model=self.model, input=batch)
@@ -116,7 +116,7 @@ class QdrantClient:
                     "vectors": {
                         "size": vector_size,
                         "distance": distance,
-                    }
+                    },
                 }
                 response = await client.put(
                     f"{self.url}/collections/{collection_name}",
@@ -160,7 +160,7 @@ class QdrantClient:
                     response.raise_for_status()
                     total_upserted += len(batch)
                     logger.info(
-                        f"📤 Upserted batch {i // batch_size + 1}: {len(batch)}/{total} points"
+                        f"📤 Upserted batch {i // batch_size + 1}: {len(batch)}/{total} points",
                     )
                 except Exception as e:
                     error_msg = str(e)

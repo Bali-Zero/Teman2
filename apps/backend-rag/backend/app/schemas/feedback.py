@@ -15,7 +15,7 @@ class RateConversationRequest(BaseModel):
     session_id: UUID = Field(..., description="Session ID of the conversation (UUID)")
     rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
     feedback_text: str | None = Field(
-        None, description="Optional feedback text describing the experience"
+        None, description="Optional feedback text describing the experience",
     )
     feedback_type: str | None = Field(
         None,
@@ -23,7 +23,7 @@ class RateConversationRequest(BaseModel):
         pattern="^(positive|negative|issue)$",
     )
     correction_text: str | None = Field(
-        None, description="Optional correction text if the AI response was incorrect"
+        None, description="Optional correction text if the AI response was incorrect",
     )
 
 
@@ -32,7 +32,7 @@ class FeedbackResponse(BaseModel):
 
     success: bool = Field(..., description="Whether the feedback was saved successfully")
     review_queue_id: UUID | None = Field(
-        None, description="ID of review_queue entry if created (for low ratings or corrections)"
+        None, description="ID of review_queue entry if created (for low ratings or corrections)",
     )
     message: str = Field(..., description="Human-readable message")
 

@@ -34,7 +34,7 @@ class Migration036(BaseMigration):
                 SELECT 1 FROM information_schema.columns
                 WHERE table_name = 'team_members' AND column_name = 'department'
             )
-            """
+            """,
         )
         if not result:
             return False
@@ -46,7 +46,7 @@ class Migration036(BaseMigration):
                 SELECT 1 FROM information_schema.tables
                 WHERE table_name = 'departments'
             )
-            """
+            """,
         )
         return result
 

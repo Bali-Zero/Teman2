@@ -170,12 +170,12 @@ async def test_extract_returns_workflow_when_langgraph_succeeds():
                 "steps": [{"step": 1, "action": "Do thing"}],
                 "source": "test",
                 "confidence": 0.9,
-            }
-        }
+            },
+        },
     )
 
     entities, context_str, workflow = await core.extract_entities_and_kg_context(
-        "test query", user_context={}
+        "test query", user_context={},
     )
 
     assert workflow is not None
@@ -209,11 +209,11 @@ async def test_extract_returns_none_workflow_when_langgraph_fails():
     core.kg_langgraph_orchestrator = AsyncMock()
     core.kg_langgraph_orchestrator.app = MagicMock()
     core.kg_langgraph_orchestrator.query = AsyncMock(
-        side_effect=RuntimeError("DB connection failed")
+        side_effect=RuntimeError("DB connection failed"),
     )
 
     entities, context_str, workflow = await core.extract_entities_and_kg_context(
-        "test query", user_context={}
+        "test query", user_context={},
     )
 
     assert workflow is None
@@ -277,7 +277,7 @@ def test_source_collections_with_dict_sources():
         {
             s.get("collection", s.get("source", "unknown")) if isinstance(s, dict) else str(s)
             for s in sources
-        }
+        },
     )
     assert "kbli_2025" in source_collections
     assert "regulations" in source_collections
@@ -290,7 +290,7 @@ def test_source_collections_with_string_sources():
         {
             s.get("collection", s.get("source", "unknown")) if isinstance(s, dict) else str(s)
             for s in sources
-        }
+        },
     )
     assert "kbli_2025" in source_collections
     assert "regulations" in source_collections
@@ -305,7 +305,7 @@ def test_source_collections_empty():
             {
                 s.get("collection", s.get("source", "unknown")) if isinstance(s, dict) else str(s)
                 for s in sources
-            }
+            },
         )
         if sources
         else []
@@ -330,7 +330,7 @@ async def test_prepare_query_context_returns_5_tuple():
     core.kg_langgraph_orchestrator = None
 
     result = await core.prepare_query_context(
-        query="test", user_id="user1", conversation_history=None
+        query="test", user_id="user1", conversation_history=None,
     )
 
     assert len(result) == 5

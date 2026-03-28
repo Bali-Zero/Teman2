@@ -100,7 +100,7 @@ class KGExtractor:
         self.schema_prompt = self._build_schema_prompt()
 
         logger.warning(
-            f"KGExtractor (Anthropic) initialized with model={model} - DEPRECATED: Use GeminiKGExtractor instead"
+            f"KGExtractor (Anthropic) initialized with model={model} - DEPRECATED: Use GeminiKGExtractor instead",
         )
 
     def _build_schema_prompt(self) -> str:
@@ -311,7 +311,7 @@ Extract entities and relations now:"""
             return []
 
     async def extract_relations(
-        self, text: str, entities: list[ExtractedEntity]
+        self, text: str, entities: list[ExtractedEntity],
     ) -> list[ExtractedRelation]:
         """
         Extract relations given entities
@@ -344,7 +344,7 @@ Extract entities and relations now:"""
             return []
 
     async def extract(
-        self, text: str, chunk_id: str = "", two_stage: bool = False
+        self, text: str, chunk_id: str = "", two_stage: bool = False,
     ) -> ExtractionResult:
         """
         Extract entities and relations from text
@@ -376,7 +376,7 @@ Extract entities and relations now:"""
         )
 
     async def _extract_combined(
-        self, text: str
+        self, text: str,
     ) -> tuple[list[ExtractedEntity], list[ExtractedRelation]]:
         """Combined entity and relation extraction in single LLM call"""
         prompt = self._build_combined_extraction_prompt(text)
@@ -458,7 +458,7 @@ Extract entities and relations now:"""
                         mention=e.get("mention", e.get("name", "")),
                         attributes=e.get("attributes", {}),
                         confidence=float(e.get("confidence", 0.8)),
-                    )
+                    ),
                 )
             except Exception as ex:
                 logger.debug(f"Failed to parse entity: {ex}")
@@ -504,7 +504,7 @@ Extract entities and relations now:"""
                         evidence=r.get("evidence", ""),
                         confidence=float(r.get("confidence", 0.7)),
                         attributes=r.get("attributes", {}),
-                    )
+                    ),
                 )
             except Exception as ex:
                 logger.debug(f"Failed to parse relation: {ex}")

@@ -73,7 +73,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
     logger.warning(
         f"[{correlation_id}] HTTPException: {exc.status_code} - {request.method} {request.url.path}. "
-        f"Detail: {sanitized_detail if isinstance(sanitized_detail, str) else 'See detail object'}"
+        f"Detail: {sanitized_detail if isinstance(sanitized_detail, str) else 'See detail object'}",
     )
 
     # Build response headers
@@ -88,7 +88,7 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 
 async def starlette_http_exception_handler(
-    request: Request, exc: StarletteHTTPException
+    request: Request, exc: StarletteHTTPException,
 ) -> JSONResponse:
     """
     Global handler for Starlette HTTPException (used by FastAPI internally).
@@ -110,7 +110,7 @@ async def starlette_http_exception_handler(
     sanitized_detail = sanitize_detail(exc.detail)
 
     logger.warning(
-        f"[{correlation_id}] StarletteHTTPException: {exc.status_code} - {request.method} {request.url.path}"
+        f"[{correlation_id}] StarletteHTTPException: {exc.status_code} - {request.method} {request.url.path}",
     )
 
     return JSONResponse(
@@ -143,7 +143,7 @@ async def validation_exception_handler(request: Request, exc: Exception) -> JSON
 
     logger.warning(
         f"[{correlation_id}] ValidationError: {len(errors)} validation errors - "
-        f"{request.method} {request.url.path}"
+        f"{request.method} {request.url.path}",
     )
 
     return JSONResponse(
@@ -183,7 +183,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     if isinstance(exc, asyncpg.InterfaceError):
         logger.warning(
             f"[{correlation_id}] Stale DB connection on {request.method} {request.url.path}: {exc}. "
-            "Expiring pool connections."
+            "Expiring pool connections.",
         )
         try:
             db_pool = getattr(request.app.state, "db_pool", None)

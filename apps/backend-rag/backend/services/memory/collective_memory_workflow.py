@@ -149,7 +149,7 @@ async def extract_entities_and_relationships(state: CollectiveMemoryState) -> Co
 
 
 async def check_existing_memories(
-    state: CollectiveMemoryState, _memory_service
+    state: CollectiveMemoryState, _memory_service,
 ) -> CollectiveMemoryState:
     """Verifica memorie esistenti correlate"""
     # Cerca memorie simili (semplificato)
@@ -240,7 +240,7 @@ async def update_member_profiles(state: CollectiveMemoryState) -> CollectiveMemo
 
 
 async def store_collective_memory(
-    state: CollectiveMemoryState, memory_service
+    state: CollectiveMemoryState, memory_service,
 ) -> CollectiveMemoryState:
     """Salva memoria collettiva"""
     if state["memory_to_store"] and memory_service:

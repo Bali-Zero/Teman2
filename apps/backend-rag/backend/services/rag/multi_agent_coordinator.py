@@ -47,7 +47,7 @@ except ImportError:
 
 
 def _merge_agent_outputs(
-    existing: list[dict[str, Any]], new: list[dict[str, Any]]
+    existing: list[dict[str, Any]], new: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Reducer: append new agent outputs to existing list."""
     return existing + new
@@ -120,7 +120,7 @@ def _get_multi_agent_llm() -> Any:
         f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} "
         f"(lib={'ok' if ChatAnthropic else 'missing'}), "
         f"OPENAI_API_KEY={'set' if openai_key else 'missing'} "
-        f"(lib={'ok' if ChatOpenAI else 'missing'})"
+        f"(lib={'ok' if ChatOpenAI else 'missing'})",
     )
 
 
@@ -154,7 +154,7 @@ class LegalAgent:
                 mentions = self.kg_retrieval.extract_entities_from_query(query)
                 if mentions:
                     kg_entities = await self.kg_retrieval.find_kg_entities(
-                        mentions, limit_per_mention=5
+                        mentions, limit_per_mention=5,
                     )
                     legal_entities = [
                         e
@@ -208,7 +208,7 @@ class LegalAgent:
 
             logger.info(
                 f"⚖️ [LegalAgent] Analysis complete in {duration:.2f}s "
-                f"({len(legal_entities)} KG entities used)"
+                f"({len(legal_entities)} KG entities used)",
             )
 
             return {
@@ -219,7 +219,7 @@ class LegalAgent:
                         "output": analysis,
                         "entities_used": len(legal_entities),
                         "duration_s": round(duration, 2),
-                    }
+                    },
                 ],
             }
 
@@ -232,7 +232,7 @@ class LegalAgent:
                         "agent": "legal",
                         "output": "",
                         "error": str(e),
-                    }
+                    },
                 ],
                 "errors": [f"LegalAgent: {e}"],
             }
@@ -284,7 +284,7 @@ class FinancialAgent:
 
             logger.info(
                 f"💰 [FinancialAgent] Breakdown complete in {duration:.2f}s "
-                f"(service_type={service_type})"
+                f"(service_type={service_type})",
             )
 
             return {
@@ -296,7 +296,7 @@ class FinancialAgent:
                         "service_type": service_type,
                         "pricing_loaded": self.pricing_service.loaded,
                         "duration_s": round(duration, 2),
-                    }
+                    },
                 ],
             }
 
@@ -309,7 +309,7 @@ class FinancialAgent:
                         "agent": "financial",
                         "output": "",
                         "error": str(e),
-                    }
+                    },
                 ],
                 "errors": [f"FinancialAgent: {e}"],
             }
@@ -367,7 +367,7 @@ class TimelineAgent:
                 ]
                 if time_mentions:
                     duration_entities = await self.kg_retrieval.find_kg_entities(
-                        time_mentions, limit_per_mention=3
+                        time_mentions, limit_per_mention=3,
                     )
 
             # Build prompt with legal context
@@ -379,7 +379,7 @@ class TimelineAgent:
             if duration_entities:
                 dur_names = [e.get("name", "unknown") for e in duration_entities[:5]]
                 duration_context = "\n\nKnown duration entities from KG:\n- " + "\n- ".join(
-                    dur_names
+                    dur_names,
                 )
 
             prompt = (
@@ -402,7 +402,7 @@ class TimelineAgent:
 
             logger.info(
                 f"⏱️ [TimelineAgent] Estimate complete in {duration:.2f}s "
-                f"({len(duration_entities)} duration entities used)"
+                f"({len(duration_entities)} duration entities used)",
             )
 
             return {
@@ -414,7 +414,7 @@ class TimelineAgent:
                         "duration_entities_used": len(duration_entities),
                         "had_legal_context": bool(legal_context),
                         "duration_s": round(duration, 2),
-                    }
+                    },
                 ],
             }
 
@@ -427,7 +427,7 @@ class TimelineAgent:
                         "agent": "timeline",
                         "output": "",
                         "error": str(e),
-                    }
+                    },
                 ],
                 "errors": [f"TimelineAgent: {e}"],
             }
@@ -562,7 +562,7 @@ class MultiAgentCoordinator:
                     {
                         "agent": "synthesizer",
                         "duration_s": round(duration, 2),
-                    }
+                    },
                 ],
             }
 
@@ -621,7 +621,7 @@ class MultiAgentCoordinator:
 
             logger.info(
                 f"✅ [MultiAgentCoordinator] Complete in {execution_time:.2f}s "
-                f"({len(successful_agents)} agents succeeded, {len(error_agents)} failed)"
+                f"({len(successful_agents)} agents succeeded, {len(error_agents)} failed)",
             )
 
             result["execution_time_s"] = round(execution_time, 2)

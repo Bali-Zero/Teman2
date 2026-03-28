@@ -87,7 +87,7 @@ class LKPMDataCollector:
         """Convert client form submission into an LKPM draft."""
         logger.info(
             f"Collecting form data for client {submission.client_id}, "
-            f"{submission.quarter} {submission.year}"
+            f"{submission.quarter} {submission.year}",
         )
 
         realized = InvestmentRealization(
@@ -163,7 +163,7 @@ class LKPMDataCollector:
         )
 
     def categorize_transactions(
-        self, entries: list[dict[str, Any]]
+        self, entries: list[dict[str, Any]],
     ) -> list[TransactionCategorization]:
         """
         Map journal entries to LKPM categories deterministically.
@@ -198,13 +198,13 @@ class LKPMDataCollector:
                     ai_needs_review=not is_deterministic,
                     original_account_code=account_code,
                     original_account_name=account_name[:100] if account_name else None,
-                )
+                ),
             )
 
         logger.info(
             f"Categorized {len(categorized)} transactions: "
             f"{sum(1 for c in categorized if c.confidence == 'deterministic')} deterministic, "
-            f"{sum(1 for c in categorized if c.ai_needs_review)} need review"
+            f"{sum(1 for c in categorized if c.ai_needs_review)} need review",
         )
         return categorized
 
@@ -224,7 +224,7 @@ class LKPMDataCollector:
         return "other", "domestic", False
 
     def _aggregate_categorized(
-        self, items: list[TransactionCategorization]
+        self, items: list[TransactionCategorization],
     ) -> InvestmentRealization:
         """Sum categorized transactions into InvestmentRealization."""
         totals: dict[str, int] = {

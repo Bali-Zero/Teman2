@@ -123,9 +123,9 @@ def mock_anthropic_response():
                     "ai_summary": "Indonesia introduces stricter visa requirements",
                     "ai_tags": ["visa", "immigration", "regulation"],
                     "suggested_components": ["timeline", "checklist"],
-                }
-            )
-        )
+                },
+            ),
+        ),
     ]
     mock_response.usage = MagicMock(input_tokens=1000, output_tokens=1500)
     return mock_response
@@ -138,7 +138,7 @@ def mock_anthropic_response():
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
 def test_compose_article_success(
-    mock_anthropic_class, test_client, sample_compose_request, mock_anthropic_response
+    mock_anthropic_class, test_client, sample_compose_request, mock_anthropic_response,
 ):
     """Test successful article composition with Claude API"""
     # Setup mock
@@ -200,9 +200,9 @@ def test_compose_article_priority_word_count(mock_anthropic_class, test_client):
                         "ai_summary": "Test",
                         "ai_tags": [],
                         "suggested_components": [],
-                    }
-                )
-            )
+                    },
+                ),
+            ),
         ]
         mock_response.usage = MagicMock(input_tokens=1000, output_tokens=1500)
 
@@ -282,7 +282,7 @@ def test_compose_article_json_cleanup(mock_anthropic_class, test_client, sample_
         mock_anthropic_class.return_value = mock_client
 
         response = test_client.post(
-            "/api/articles/compose", json=sample_compose_request.model_dump()
+            "/api/articles/compose", json=sample_compose_request.model_dump(),
         )
 
         assert response.status_code == 200
@@ -304,7 +304,7 @@ def test_compose_article_missing_api_key(test_client, sample_compose_request):
 @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
 def test_compose_article_json_parse_error(
-    mock_anthropic_class, test_client, sample_compose_request
+    mock_anthropic_class, test_client, sample_compose_request,
 ):
     """Test compose handles JSON parse errors"""
     mock_response = MagicMock()
@@ -335,7 +335,7 @@ def test_compose_article_api_error(mock_anthropic_class, test_client, sample_com
     # anthropic.APIError requires message, request, and body
     mock_request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
     mock_client.messages.create.side_effect = anthropic.APIError(
-        "API Error", request=mock_request, body={}
+        "API Error", request=mock_request, body={},
     )
     mock_anthropic_class.return_value = mock_client
 
@@ -376,13 +376,13 @@ def test_compose_status_not_configured(test_client):
 @pytest.mark.asyncio
 @patch("backend.services.integrations.github_publisher.github_publisher")
 async def test_publish_article_with_cover_image(
-    mock_publisher, test_client, sample_enriched_article
+    mock_publisher, test_client, sample_enriched_article,
 ):
     """Test publishing article with cover image (base64)"""
     # Setup mock
     mock_publisher.is_configured = True
     mock_publisher.create_commit_with_files = AsyncMock(
-        return_value={"success": True, "commit_sha": "abc123", "files_count": 2, "branch": "main"}
+        return_value={"success": True, "commit_sha": "abc123", "files_count": 2, "branch": "main"},
     )
 
     # Create base64 image
@@ -415,13 +415,13 @@ async def test_publish_article_with_cover_image(
 @pytest.mark.asyncio
 @patch("backend.services.integrations.github_publisher.github_publisher")
 async def test_publish_article_without_cover_image(
-    mock_publisher, test_client, sample_enriched_article
+    mock_publisher, test_client, sample_enriched_article,
 ):
     """Test publishing article without cover image"""
     # Setup mock
     mock_publisher.is_configured = True
     mock_publisher.upload_file = AsyncMock(
-        return_value={"success": True, "commit_sha": "def456", "path": "test.mdx"}
+        return_value={"success": True, "commit_sha": "def456", "path": "test.mdx"},
     )
 
     # Call endpoint
@@ -440,7 +440,7 @@ async def test_publish_article_without_cover_image(
 
 @patch("backend.services.integrations.github_publisher.github_publisher")
 def test_publish_article_github_not_configured(
-    mock_publisher, test_client, sample_enriched_article
+    mock_publisher, test_client, sample_enriched_article,
 ):
     """Test publish fails when GitHub not configured"""
     mock_publisher.is_configured = False
@@ -611,7 +611,7 @@ def test_build_enrichment_prompt_priority_instructions():
 @patch("backend.app.routers.article_composer.anthropic.Anthropic")
 @patch("backend.services.integrations.github_publisher.github_publisher")
 async def test_full_compose_and_publish_flow(
-    mock_publisher, mock_anthropic_class, test_client, mock_anthropic_response
+    mock_publisher, mock_anthropic_class, test_client, mock_anthropic_response,
 ):
     """Integration test: compose article then publish it"""
     # Setup mocks
@@ -621,7 +621,7 @@ async def test_full_compose_and_publish_flow(
 
     mock_publisher.is_configured = True
     mock_publisher.upload_file = AsyncMock(
-        return_value={"success": True, "commit_sha": "abc123", "path": "test.mdx"}
+        return_value={"success": True, "commit_sha": "abc123", "path": "test.mdx"},
     )
 
     # Step 1: Compose article

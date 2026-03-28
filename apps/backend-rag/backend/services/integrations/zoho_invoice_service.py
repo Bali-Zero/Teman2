@@ -107,7 +107,7 @@ class ZohoInvoiceService:
         if response.status_code == 401:
             logger.error("Zoho token expired - manual reconnect required")
             raise ValueError(
-                "Zoho OAuth token expired - please reconnect at /api/integrations/zoho/auth"
+                "Zoho OAuth token expired - please reconnect at /api/integrations/zoho/auth",
             )
 
         response.raise_for_status()
@@ -165,7 +165,7 @@ class ZohoInvoiceService:
                     else "",
                     "email": email,
                     "phone": client_data.get("phone", ""),
-                }
+                },
             ],
             "billing_address": {
                 "address": client_data.get("address", ""),
@@ -218,12 +218,12 @@ class ZohoInvoiceService:
             {
                 "name": service_name,
                 "description": practice_data.get(
-                    "notes", f"Service for {client_data['full_name']}"
+                    "notes", f"Service for {client_data['full_name']}",
                 ),
                 "rate": quoted_price,
                 "quantity": 1,
                 "item_total": quoted_price,
-            }
+            },
         )
 
         # Calculate due date (7 days from now)

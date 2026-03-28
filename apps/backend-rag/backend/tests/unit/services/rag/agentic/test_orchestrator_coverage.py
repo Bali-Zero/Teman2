@@ -88,7 +88,7 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
         patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
         patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
         patch(
-            "backend.services.rag.agentic.orchestrator.SystemPromptBuilder"
+            "backend.services.rag.agentic.orchestrator.SystemPromptBuilder",
         ) as mock_prompt_builder,
         patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
         patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_gateway,
@@ -98,7 +98,7 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
         patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_followup_class,
         patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
         patch(
-            "backend.services.rag.agentic.orchestrator.ContextWindowManager"
+            "backend.services.rag.agentic.orchestrator.ContextWindowManager",
         ) as mock_context_window,
     ):
         # Setup mock instances
@@ -120,7 +120,7 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
         mock_state.final_answer = "Test answer"
         mock_state.steps = []
         mock_reasoning_instance.execute_react_loop = AsyncMock(
-            return_value=(mock_state, "gemini-2.0-flash-lite", [], TokenUsage())
+            return_value=(mock_state, "gemini-2.0-flash-lite", [], TokenUsage()),
         )
 
         # Mock execute_react_loop_stream for stream_query tests
@@ -163,7 +163,7 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
                 "suggested_ai": "FLASH",
                 "deep_think_mode": False,
                 "skip_rag": False,
-            }
+            },
         )
         orchestrator.intent_classifier = mock_intent_classifier
 
@@ -183,16 +183,16 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
         if hasattr(orchestrator, "core") and orchestrator.core is not None:
             orchestrator.core.context_manager = MagicMock()
             orchestrator.core.context_manager.get_full_context = AsyncMock(
-                return_value=(default_context, [])
+                return_value=(default_context, []),
             )
             orchestrator.core.context_manager.get_basic_context = AsyncMock(
-                return_value=(default_context, [])
+                return_value=(default_context, []),
             )
             orchestrator.core.context_manager.load_user_context = AsyncMock(
-                return_value=default_context
+                return_value=default_context,
             )
             orchestrator.core.context_manager.prepare_conversation_history = MagicMock(
-                return_value=[]
+                return_value=[],
             )
             # Use real QueryGates with mocked prompt_builder so gate tests work
             orchestrator.core.query_gates = QueryGates(
@@ -213,7 +213,7 @@ def orchestrator_setup(mock_tools, mock_db_pool, mock_retriever, mock_semantic_c
                     "llm": 0.1,
                     "reasoning": 0.1,
                     "tools": 0.0,
-                }
+                },
             )
             mock_metrics_mgr.extract_collections_from_state = MagicMock(return_value=set())
             mock_metrics_mgr.extract_sources_from_state = MagicMock(return_value=[])
@@ -256,7 +256,7 @@ class TestProcessQueryGates:
         )
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -279,7 +279,7 @@ class TestProcessQueryGates:
         mocks["prompt_builder"].check_greetings.return_value = "Ciao! Come posso aiutarti?"
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -302,7 +302,7 @@ class TestProcessQueryGates:
         mocks["prompt_builder"].get_casual_response.return_value = "Sto bene, grazie!"
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -326,7 +326,7 @@ class TestProcessQueryGates:
         ].check_identity_questions.return_value = "Sono ZANTARA, l'AI di Bali Zero"
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -362,7 +362,7 @@ class TestProcessQueryGates:
         conv_history = [{"role": "user", "content": "Ciao"}]
         default_ctx = {"profile": None, "facts": [], "collective_facts": [], "history": []}
         orch.core.context_manager.get_full_context = AsyncMock(
-            return_value=(default_ctx, conv_history)
+            return_value=(default_ctx, conv_history),
         )
 
         result = await orch.process_query(
@@ -395,7 +395,7 @@ class TestProcessQueryGates:
             orch.core.query_gates.clarification_service = mock_clarification
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -437,7 +437,7 @@ class TestProcessQueryGates:
         orch.semantic_cache.get_cached_result = AsyncMock(return_value=cached_result)
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -459,7 +459,7 @@ class TestProcessQueryGates:
         orch.semantic_cache.get_cached_result = AsyncMock(side_effect=ValueError("Cache error"))
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -479,7 +479,7 @@ class TestProcessQueryGates:
         orch = orchestrator_setup["orchestrator"]
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.side_effect = Exception("Context load failed")
 
@@ -502,7 +502,7 @@ class TestProcessQueryGates:
         }
         mocks["context_window"].generate_summary = AsyncMock(return_value="Summary of old messages")
         mocks["context_window"].inject_summary_into_history.return_value = [
-            {"role": "system", "content": "Summary of old messages"}
+            {"role": "system", "content": "Summary of old messages"},
         ]
 
         # Override get_full_context to run context window flow (fixture mocks it)
@@ -522,7 +522,7 @@ class TestProcessQueryGates:
                     trim_result.get("context_summary", ""),
                 )
                 optimized_history = mocks["context_window"].inject_summary_into_history(
-                    trim_result.get("trimmed_messages", []), "Summary of old messages"
+                    trim_result.get("trimmed_messages", []), "Summary of old messages",
                 )
             else:
                 optimized_history = history
@@ -548,11 +548,11 @@ class TestProcessQueryGates:
             "trimmed_messages": [{"role": "user", "content": "Recent message"}],
         }
         mocks["context_window"].generate_summary = AsyncMock(
-            side_effect=Exception("Summary failed")
+            side_effect=Exception("Summary failed"),
         )
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -572,11 +572,11 @@ class TestProcessQueryGates:
         mocks = orchestrator_setup["mocks"]
 
         mocks["entity"].extract_entities = AsyncMock(
-            return_value={"person": ["Marco"], "location": ["Bali"]}
+            return_value={"person": ["Marco"], "location": ["Bali"]},
         )
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -605,7 +605,7 @@ class TestProcessQueryGates:
         orch.core.kg_retrieval = mock_kg_retrieval
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -630,7 +630,7 @@ class TestProcessQueryGates:
         orch.core.kg_retrieval = mock_kg_retrieval
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -663,11 +663,11 @@ class TestProcessQueryGates:
                 "gemini-2.0-flash-lite",
                 [],
                 TokenUsage(prompt_tokens=100, completion_tokens=50),
-            )
+            ),
         )
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -733,11 +733,11 @@ class TestProcessQueryGates:
         mock_state.evidence_score = 0.7
 
         mocks["reasoning"].execute_react_loop = AsyncMock(
-            return_value=(mock_state, "gemini-2.0-flash-lite", [], TokenUsage())
+            return_value=(mock_state, "gemini-2.0-flash-lite", [], TokenUsage()),
         )
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -752,7 +752,7 @@ class TestProcessQueryGates:
             timings = {"total": 0.5, "tools": 0.5, "search": 0.3, "llm": 0.2}
             orch.core.metrics_manager.extract_timings_from_state = MagicMock(return_value=timings)
             orch.core.response_builder.build_core_result = MagicMock(
-                return_value=CoreResult(answer="Answer", timings=timings)
+                return_value=CoreResult(answer="Answer", timings=timings),
             )
 
             result = await orch.process_query("test", "user@test.com")
@@ -780,11 +780,11 @@ class TestProcessQueryGates:
         mock_state.steps = [mock_step]
 
         mocks["reasoning"].execute_react_loop = AsyncMock(
-            return_value=(mock_state, "gemini-2.0-flash-lite", [], TokenUsage())
+            return_value=(mock_state, "gemini-2.0-flash-lite", [], TokenUsage()),
         )
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -803,7 +803,7 @@ class TestProcessQueryGates:
         orch = orchestrator_setup["orchestrator"]
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -822,7 +822,7 @@ class TestProcessQueryGates:
         orch = orchestrator_setup["orchestrator"]
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -852,7 +852,7 @@ class TestStreamQueryGates:
         )
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -879,7 +879,7 @@ class TestStreamQueryGates:
         mocks["prompt_builder"].check_greetings.return_value = "Ciao! Come posso aiutarti?"
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -906,7 +906,7 @@ class TestStreamQueryGates:
         mocks["prompt_builder"].get_casual_response.return_value = "Sto bene!"
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -932,7 +932,7 @@ class TestStreamQueryGates:
         mocks["prompt_builder"].check_identity_questions.return_value = "Sono ZANTARA"
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -951,7 +951,7 @@ class TestStreamQueryGates:
             )
 
     @pytest.mark.skip(
-        reason="Interface removed in OrchestratorStreamingCore refactor — clarification now via QueryGates.run_all_gates()"
+        reason="Interface removed in OrchestratorStreamingCore refactor — clarification now via QueryGates.run_all_gates()",
     )
     async def test_stream_clarification(self, orchestrator_setup):
         """Test clarification gate in stream_query"""
@@ -971,7 +971,7 @@ class TestStreamQueryGates:
         orch.clarification_service = mock_clarification
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -991,7 +991,7 @@ class TestStreamQueryGates:
             )
 
     @pytest.mark.skip(
-        reason="Interface removed in OrchestratorStreamingCore refactor — out-of-domain now via QueryGates.run_all_gates()"
+        reason="Interface removed in OrchestratorStreamingCore refactor — out-of-domain now via QueryGates.run_all_gates()",
     )
     async def test_stream_out_of_domain(self, orchestrator_setup):
         """Test out-of-domain in stream_query"""
@@ -1029,7 +1029,7 @@ class TestStreamQueryGates:
         orch.semantic_cache.get_cached_result = AsyncMock(return_value=cached_result)
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -1049,7 +1049,7 @@ class TestStreamQueryGates:
             )
 
     @pytest.mark.skip(
-        reason="Interface removed in OrchestratorStreamingCore refactor — user_id validation no longer raises ValueError"
+        reason="Interface removed in OrchestratorStreamingCore refactor — user_id validation no longer raises ValueError",
     )
     async def test_stream_user_id_validation(self, orchestrator_setup):
         """Test user_id validation in stream_query"""
@@ -1070,7 +1070,7 @@ class TestStreamQueryGates:
         images = [{"base64": "dummy", "name": "test.jpg"}]
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -1082,7 +1082,7 @@ class TestStreamQueryGates:
             # Should not raise error with images
             events = []
             async for event in orch.stream_query(
-                "What's in this image?", "user@test.com", images=images
+                "What's in this image?", "user@test.com", images=images,
             ):
                 events.append(event)
                 if len(events) > 10:  # Limit to avoid infinite loops
@@ -1092,7 +1092,7 @@ class TestStreamQueryGates:
             assert events is not None  # Just verify it doesn't crash
 
     @pytest.mark.skip(
-        reason="Interface removed in OrchestratorStreamingCore refactor — team-query gate removed, queries go through ReAct loop"
+        reason="Interface removed in OrchestratorStreamingCore refactor — team-query gate removed, queries go through ReAct loop",
     )
     async def test_stream_team_query(self, orchestrator_setup):
         """Test team query handling in stream_query"""
@@ -1114,7 +1114,7 @@ class TestStreamQueryGates:
             mock_execute.return_value = ("Team data: Zainal is CEO", 0.1)
 
             mocks["gateway"].send_message = AsyncMock(
-                return_value=("Answer about Zainal", "gemini-3-flash", None, TokenUsage())
+                return_value=("Answer about Zainal", "gemini-3-flash", None, TokenUsage()),
             )
 
             events = []
@@ -1130,7 +1130,7 @@ class TestStreamQueryGates:
             )
 
     @pytest.mark.skip(
-        reason="Interface removed in OrchestratorStreamingCore refactor — recall gate removed, queries go through ReAct loop"
+        reason="Interface removed in OrchestratorStreamingCore refactor — recall gate removed, queries go through ReAct loop",
     )
     async def test_stream_recall_query(self, orchestrator_setup):
         """Test conversation recall query in stream_query"""
@@ -1143,11 +1143,11 @@ class TestStreamQueryGates:
         ]
 
         mocks["gateway"].send_message = AsyncMock(
-            return_value=("Marco vuole aprire un ristorante", "gemini-3-flash", None, TokenUsage())
+            return_value=("Marco vuole aprire un ristorante", "gemini-3-flash", None, TokenUsage()),
         )
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -1158,7 +1158,7 @@ class TestStreamQueryGates:
 
             events = []
             async for event in orch.stream_query(
-                "Ti ricordi di Marco?", "user@test.com", conversation_history=history
+                "Ti ricordi di Marco?", "user@test.com", conversation_history=history,
             ):
                 events.append(event)
                 if len(events) > 20:
@@ -1171,7 +1171,7 @@ class TestStreamQueryGates:
             )
 
     @pytest.mark.skip(
-        reason="Interface removed in OrchestratorStreamingCore refactor — CWM summarization now inside core.context_manager"
+        reason="Interface removed in OrchestratorStreamingCore refactor — CWM summarization now inside core.context_manager",
     )
     async def test_stream_context_window_summarization(self, orchestrator_setup):
         """Test context window summarization in stream_query"""
@@ -1186,7 +1186,7 @@ class TestStreamQueryGates:
         }
         mocks["context_window"].generate_summary = AsyncMock(return_value="Summary")
         mocks["context_window"].inject_summary_into_history.return_value = [
-            {"role": "system", "content": "Summary"}
+            {"role": "system", "content": "Summary"},
         ]
 
         # Override get_basic_context to run context window flow (stream uses it, not get_full_context)
@@ -1206,7 +1206,7 @@ class TestStreamQueryGates:
                     trim_result.get("context_summary", ""),
                 )
                 optimized_history = mocks["context_window"].inject_summary_into_history(
-                    trim_result.get("trimmed_messages", []), "Summary"
+                    trim_result.get("trimmed_messages", []), "Summary",
                 )
             else:
                 optimized_history = history
@@ -1229,14 +1229,14 @@ class TestStreamQueryGates:
 
         # Core uses orch.core.entity_extractor (fixture mocks it separately)
         orch.core.entity_extractor.extract_entities = AsyncMock(
-            return_value={"person": ["Marco"], "location": ["Bali"]}
+            return_value={"person": ["Marco"], "location": ["Bali"]},
         )
         mocks["entity"].extract_entities = AsyncMock(
-            return_value={"person": ["Marco"], "location": ["Bali"]}
+            return_value={"person": ["Marco"], "location": ["Bali"]},
         )
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -1328,7 +1328,7 @@ class TestStreamEventValidation:
         mocks["reasoning"].execute_react_loop_stream = lambda *args, **kwargs: mock_stream_gen()
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -1358,7 +1358,7 @@ class TestStreamEventValidation:
         mocks["reasoning"].execute_react_loop_stream = mock_stream_gen()
 
         with patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_context:
             mock_get_context.return_value = {
                 "profile": None,
@@ -1442,7 +1442,7 @@ class TestStreamEventValidation:
             assert any(e.get("type") == "error" for e in events)
 
     @pytest.mark.skip(
-        reason="Interface removed in OrchestratorStreamingCore refactor — followup generation now inside streaming_core post-stream"
+        reason="Interface removed in OrchestratorStreamingCore refactor — followup generation now inside streaming_core post-stream",
     )
     async def test_stream_followup_generation(self, orchestrator_setup):
         """Test follow-up question generation in stream"""

@@ -54,7 +54,7 @@ def _load_full_pricing() -> str:
                 notes = item.get("notes", "")
                 note_str = f" ({notes})" if notes else ""
                 lines.append(
-                    f"{code} = {name}: {price_idr:,} IDR (circa ${price_usd} USD){note_str}"
+                    f"{code} = {name}: {price_idr:,} IDR (circa ${price_usd} USD){note_str}",
                 )
             sections.append("\n".join(lines))
 

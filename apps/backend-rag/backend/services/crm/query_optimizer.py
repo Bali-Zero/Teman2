@@ -85,7 +85,7 @@ class CRMQueryOptimizer:
             "next_renewal_date",
             "practice_type_id",
             "client_id",
-        }
+        },
     )
 
     async def batch_update_practices(self, updates: list[dict[str, Any]]) -> int:
@@ -171,7 +171,7 @@ class CRMQueryOptimizer:
             return [dict(row) for row in rows]
 
     async def search_clients_optimized(
-        self, query: str, limit: int = 20, offset: int = 0
+        self, query: str, limit: int = 20, offset: int = 0,
     ) -> tuple[list[dict], int]:
         """
         Ricerca clienti ottimizzata con full-text search.
@@ -331,7 +331,7 @@ async def health_check_crm_tables(db_pool: asyncpg.Pool) -> dict[str, Any]:
         checks["clients"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM clients")}
         checks["practices"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM practices")}
         checks["practice_types"] = {
-            "count": await conn.fetchval("SELECT COUNT(*) FROM practice_types")
+            "count": await conn.fetchval("SELECT COUNT(*) FROM practice_types"),
         }
         checks["interactions"] = {"count": await conn.fetchval("SELECT COUNT(*) FROM interactions")}
 

@@ -105,7 +105,7 @@ async def get_dashboard(
                 COUNT(*) FILTER (WHERE status = 'sent' AND sent_at > NOW() - INTERVAL '24 hours') as sent_24h,
                 COUNT(*) FILTER (WHERE status = 'failed' AND created_at > NOW() - INTERVAL '24 hours') as failed_24h
             FROM notification_alerts
-            """
+            """,
         )
 
         # Get alerts by type
@@ -116,7 +116,7 @@ async def get_dashboard(
             WHERE created_at > NOW() - INTERVAL '30 days'
             GROUP BY alert_type
             ORDER BY count DESC
-            """
+            """,
         )
 
         # Get alerts by status
@@ -125,7 +125,7 @@ async def get_dashboard(
             SELECT status, COUNT(*) as count
             FROM notification_alerts
             GROUP BY status
-            """
+            """,
         )
 
         # Get top clients with most alerts
@@ -142,7 +142,7 @@ async def get_dashboard(
             GROUP BY c.id, c.full_name, c.email
             ORDER BY alert_count DESC
             LIMIT 10
-            """
+            """,
         )
 
         # Get recent alerts
@@ -163,7 +163,7 @@ async def get_dashboard(
             JOIN clients c ON c.id = na.client_id
             ORDER BY na.created_at DESC
             LIMIT 50
-            """
+            """,
         )
 
         # Get last check time
@@ -414,7 +414,7 @@ async def retry_failed_alerts(
                 SELECT * FROM notification_alerts
                 WHERE status = 'failed'
                 AND created_at > NOW() - INTERVAL '7 days'
-                """
+                """,
             )
 
         if not rows:

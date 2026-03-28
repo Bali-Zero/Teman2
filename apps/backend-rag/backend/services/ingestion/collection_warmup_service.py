@@ -171,7 +171,7 @@ class CollectionWarmupService:
 
             # Step 2: Warm up Qdrant collections with light searches
             logger.info(
-                f"   🔥 [Warmup] Step 2/2: Warming up {len(self.priority_collections)} collections..."
+                f"   🔥 [Warmup] Step 2/2: Warming up {len(self.priority_collections)} collections...",
             )
 
             for collection_name in self.priority_collections:
@@ -188,11 +188,11 @@ class CollectionWarmupService:
             logger.info(f"   ✅ [Warmup] Warmed {len(collections_warmed)} collections successfully")
             if collections_failed:
                 logger.warning(
-                    f"   ⚠️ [Warmup] Failed to warm {len(collections_failed)} collections"
+                    f"   ⚠️ [Warmup] Failed to warm {len(collections_failed)} collections",
                 )
 
             logger.info(
-                "   💡 [Warmup] First business query should now respond in <1s (vs 5-20s cold start)"
+                "   💡 [Warmup] First business query should now respond in <1s (vs 5-20s cold start)",
             )
 
             return {

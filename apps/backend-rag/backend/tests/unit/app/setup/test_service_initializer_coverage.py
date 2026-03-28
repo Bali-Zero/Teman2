@@ -95,7 +95,7 @@ async def test_init_critical_services_search_failure_generic(mock_app):
             await _init_critical_services(mock_app)
 
         mock_registry.register.assert_any_call(
-            "search", ServiceStatus.UNAVAILABLE, error="Unexpected"
+            "search", ServiceStatus.UNAVAILABLE, error="Unexpected",
         )
 
 
@@ -120,7 +120,7 @@ async def test_init_critical_services_ai_failure_generic(mock_app):
             await _init_critical_services(mock_app)
 
         mock_registry.register.assert_any_call(
-            "ai", ServiceStatus.UNAVAILABLE, error="UnexpectedAI"
+            "ai", ServiceStatus.UNAVAILABLE, error="UnexpectedAI",
         )
 
 
@@ -219,10 +219,10 @@ async def test_initialize_database_services_retry_then_success(mock_app):
     with (
         patch("backend.app.setup.service_initializer.settings") as mock_settings,
         patch(
-            "backend.app.setup.service_initializer.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.app.setup.service_initializer.asyncpg.create_pool", new_callable=AsyncMock,
         ) as mock_create_pool,
         patch(
-            "backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock
+            "backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock,
         ) as mock_sleep,
         patch("backend.services.analytics.daily_checkin_notifier.init_daily_notifier"),
         patch("backend.services.analytics.team_timesheet_service.init_timesheet_service"),
@@ -296,7 +296,7 @@ async def test_database_health_check_loop_exception_recovery():
             await task
 
         mock_registry.register.assert_any_call(
-            "database", ServiceStatus.DEGRADED, error="Connection failed"
+            "database", ServiceStatus.DEGRADED, error="Connection failed",
         )
 
 

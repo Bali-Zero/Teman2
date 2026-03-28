@@ -53,13 +53,13 @@ class Emotion(str, Enum):
 TEMPORAL_PATTERNS = {
     # Today/Yesterday
     r"\b(oggi|today)\b": lambda: datetime.now(timezone.utc).replace(
-        hour=12, minute=0, second=0, microsecond=0
+        hour=12, minute=0, second=0, microsecond=0,
     ),
     r"\b(ieri|yesterday)\b": lambda: (datetime.now(timezone.utc) - timedelta(days=1)).replace(
-        hour=12, minute=0, second=0, microsecond=0
+        hour=12, minute=0, second=0, microsecond=0,
     ),
     r"\b(domani|tomorrow)\b": lambda: (datetime.now(timezone.utc) + timedelta(days=1)).replace(
-        hour=12, minute=0, second=0, microsecond=0
+        hour=12, minute=0, second=0, microsecond=0,
     ),
     # Relative days
     r"\b(\d+)\s*(giorni? fa|days? ago)\b": lambda m: (

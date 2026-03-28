@@ -427,7 +427,7 @@ async def list_practices(
                 JOIN clients c ON p.client_id = c.id
                 JOIN practice_types pt ON p.practice_type_id = pt.id
                 WHERE 1=1
-                """
+                """,
             ]
             params: list[Any] = []
             param_index = 1
@@ -480,14 +480,14 @@ async def list_practices(
                 query_parts.append(
                     f" AND p.status != 'cancelled'"
                     f" AND ((p.created_at >= ${param_index} AND p.created_at < ${param_index + 1})"
-                    f" OR (al.performed_at >= ${param_index} AND al.performed_at < ${param_index + 1}))"
+                    f" OR (al.performed_at >= ${param_index} AND al.performed_at < ${param_index + 1}))",
                 )
                 params.extend([month_start, month_end])
                 param_index += 2
                 query_parts[0] = query_parts[0].replace("SELECT\n", "SELECT DISTINCT\n", 1)
 
             query_parts.append(
-                f" ORDER BY p.created_at DESC LIMIT ${param_index} OFFSET ${param_index + 1}"
+                f" ORDER BY p.created_at DESC LIMIT ${param_index} OFFSET ${param_index + 1}",
             )
             params.extend([limit, offset])
 
@@ -740,7 +740,7 @@ async def update_practice(
                 )
                 if not (created_by_match or assigned_to_match):
                     raise HTTPException(
-                        status_code=403, detail="You don't have permission to update this practice"
+                        status_code=403, detail="You don't have permission to update this practice",
                     )
 
             # Build update query dynamically
@@ -844,7 +844,7 @@ async def update_practice(
                         except Exception as e:
                             if getattr(e, "sqlstate", None) != "42P01":
                                 logger.warning(
-                                    f"Could not create timeline event for status change: {e}"
+                                    f"Could not create timeline event for status change: {e}",
                                 )
 
             # Log activity
@@ -897,7 +897,7 @@ async def update_practice(
                     waiting_docs_service.trigger_on_waiting_documents(
                         practice_id=practice_id,
                         triggered_by=user_email,
-                    )
+                    ),
                 )
                 logger.info(f"🚀 Waiting documents automation triggered for practice {practice_id}")
 
@@ -909,7 +909,7 @@ async def update_practice(
                     invoice_service.trigger_on_sending_invoice(
                         practice_id=practice_id,
                         triggered_by=user_email,
-                    )
+                    ),
                 )
                 logger.info(f"🚀 Invoice automation triggered for practice {practice_id}")
 
@@ -922,7 +922,7 @@ async def update_practice(
                     process_service.trigger_on_process_start(
                         practice_id=practice_id,
                         triggered_by=user_email,
-                    )
+                    ),
                 )
                 logger.info(f"🚀 Process start automation triggered for practice {practice_id}")
 
@@ -935,10 +935,10 @@ async def update_practice(
                     completion_service.trigger_on_completed(
                         practice_id=practice_id,
                         triggered_by=user_email,
-                    )
+                    ),
                 )
                 logger.info(
-                    f"🚀 Process completion automation triggered for practice {practice_id}"
+                    f"🚀 Process completion automation triggered for practice {practice_id}",
                 )
 
             log_success(
@@ -999,7 +999,7 @@ async def delete_practice(
                 assigned_to_match = assigned_to == user_email
                 if not (created_by_match or assigned_to_match):
                     raise HTTPException(
-                        status_code=403, detail="You don't have permission to delete this practice"
+                        status_code=403, detail="You don't have permission to delete this practice",
                     )
 
             # Soft delete - mark as cancelled
@@ -1398,7 +1398,7 @@ async def add_required_document(
         async with db_pool.acquire() as conn:
             # Check if practice exists
             practice = await conn.fetchrow(
-                "SELECT id, client_id FROM practices WHERE id = $1", practice_id
+                "SELECT id, client_id FROM practices WHERE id = $1", practice_id,
             )
             if not practice:
                 raise HTTPException(status_code=404, detail="Practice not found")
@@ -1615,7 +1615,7 @@ async def upload_client_document(
 
             # Verify client is uploading their own document
             client = await conn.fetchrow(
-                "SELECT id FROM clients WHERE email = $1", current_user.get("email")
+                "SELECT id FROM clients WHERE email = $1", current_user.get("email"),
             )
 
             if not client or client["id"] != req_doc["client_id"]:
@@ -1625,7 +1625,7 @@ async def upload_client_document(
 
             # Decode and upload file to Google Drive
             file_data = base64.b64decode(
-                request.file.split(",")[-1] if "," in request.file else request.file
+                request.file.split(",")[-1] if "," in request.file else request.file,
             )
 
             drive_service = GoogleDriveService(db_pool)

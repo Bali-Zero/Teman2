@@ -30,10 +30,10 @@ logger = structlog.get_logger(__name__)
 
 # Metrics
 practices_checked = Counter(
-    "auto_practice_creator_visas_checked", "Total visas checked for renewal"
+    "auto_practice_creator_visas_checked", "Total visas checked for renewal",
 )
 practices_created = Counter(
-    "auto_practice_creator_practices_created", "Renewal practices created", ["visa_type"]
+    "auto_practice_creator_practices_created", "Renewal practices created", ["visa_type"],
 )
 practices_skipped = Counter(
     "auto_practice_creator_practices_skipped",
@@ -83,7 +83,7 @@ async def get_practice_type_id(db_pool, visa_type: str) -> int | None:
 
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT id FROM practice_types WHERE code = $1 AND active = true", practice_type_code
+            "SELECT id FROM practice_types WHERE code = $1 AND active = true", practice_type_code,
         )
 
         if not row:
@@ -310,7 +310,7 @@ async def run_auto_practice_creator(db_pool) -> dict:
 
                 # Check if practice already exists
                 exists = await check_existing_renewal_practice(
-                    db_pool, visa["client_id"], visa["visa_record_id"]
+                    db_pool, visa["client_id"], visa["visa_record_id"],
                 )
 
                 if exists:

@@ -68,7 +68,7 @@ class TestPlanGeneration:
     async def test_generate_kitas_plan(self, executor):
         """KITAS query generates a 6-step plan."""
         plan = await executor.create_plan(
-            "Apply for KITAS work permit for client@bali.com", "client@bali.com"
+            "Apply for KITAS work permit for client@bali.com", "client@bali.com",
         )
 
         assert plan["task_type"] == "kitas_application"
@@ -80,7 +80,7 @@ class TestPlanGeneration:
     async def test_generate_pt_pma_plan(self, executor):
         """PT PMA query generates a 6-step plan."""
         plan = await executor.create_plan(
-            "Set up PT PMA for investor@company.com", "investor@company.com"
+            "Set up PT PMA for investor@company.com", "investor@company.com",
         )
 
         assert plan["task_type"] == "pt_pma_incorporation"

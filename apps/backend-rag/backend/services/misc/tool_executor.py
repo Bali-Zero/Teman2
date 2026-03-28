@@ -55,7 +55,7 @@ class ToolExecutor:
         }
 
         logger.info(
-            f"🔧 ToolExecutor initialized (ZantaraTools: {'✅' if zantara_tools else '❌'}, MCP: {'✅' if mcp_client else '❌'})"
+            f"🔧 ToolExecutor initialized (ZantaraTools: {'✅' if zantara_tools else '❌'}, MCP: {'✅' if mcp_client else '❌'})",
         )
 
     async def execute_tool_calls(self, tool_uses: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -109,7 +109,7 @@ class ToolExecutor:
 
                     # Execute ZantaraTools directly
                     result = await self.zantara_tools.execute_tool(
-                        tool_name=tool_name, tool_input=tool_input, user_id="system"
+                        tool_name=tool_name, tool_input=tool_input, user_id="system",
                     )
 
                     if not result.get("success"):
@@ -121,7 +121,7 @@ class ToolExecutor:
                                 "tool_use_id": tool_id,
                                 "is_error": True,
                                 "content": f"Error: {error_message}",
-                            }
+                            },
                         )
                         continue
 
@@ -134,7 +134,7 @@ class ToolExecutor:
 
                     logger.info(f"✅ [ZantaraTools] {tool_name} executed successfully")
                     results.append(
-                        {"type": "tool_result", "tool_use_id": tool_id, "content": content_text}
+                        {"type": "tool_result", "tool_use_id": tool_id, "content": content_text},
                     )
 
                 # Check if this is an MCP tool
@@ -142,7 +142,7 @@ class ToolExecutor:
                     logger.info(f"🔌 [MCP] Executing: {tool_name}")
 
                     result = await self.mcp_client.execute_tool(
-                        tool_name=tool_name, params=tool_input
+                        tool_name=tool_name, params=tool_input,
                     )
 
                     if not result.get("success"):
@@ -154,7 +154,7 @@ class ToolExecutor:
                                 "tool_use_id": tool_id,
                                 "is_error": True,
                                 "content": f"Error: {error_message}",
-                            }
+                            },
                         )
                         continue
 
@@ -167,7 +167,7 @@ class ToolExecutor:
 
                     logger.info(f"✅ [MCP] {tool_name} executed successfully")
                     results.append(
-                        {"type": "tool_result", "tool_use_id": tool_id, "content": content_text}
+                        {"type": "tool_result", "tool_use_id": tool_id, "content": content_text},
                     )
 
                 else:
@@ -185,7 +185,7 @@ class ToolExecutor:
                             "tool_use_id": tool_id,
                             "is_error": True,
                             "content": error_message,
-                        }
+                        },
                     )
 
             except Exception as e:
@@ -196,13 +196,13 @@ class ToolExecutor:
                         "tool_use_id": tool_id,
                         "is_error": True,
                         "content": f"Tool execution error: {str(e)}",
-                    }
+                    },
                 )
 
         return results
 
     async def execute_tool(
-        self, tool_name: str, tool_input: dict[str, Any], user_id: str = "system"
+        self, tool_name: str, tool_input: dict[str, Any], user_id: str = "system",
     ) -> dict[str, Any]:
         """
         Execute a single tool (for prefetch system)
@@ -226,7 +226,7 @@ class ToolExecutor:
 
                 # Execute ZantaraTools directly
                 result = await self.zantara_tools.execute_tool(
-                    tool_name=tool_name, tool_input=tool_input, user_id=user_id
+                    tool_name=tool_name, tool_input=tool_input, user_id=user_id,
                 )
 
                 if not result.get("success"):
@@ -295,11 +295,11 @@ class ToolExecutor:
         if self.zantara_tools:
             try:
                 zantara_tool_defs = self.zantara_tools.get_tool_definitions(
-                    include_admin_tools=False
+                    include_admin_tools=False,
                 )
                 tools.extend(zantara_tool_defs)
                 logger.info(
-                    f"📋 Loaded {len(zantara_tool_defs)} ZantaraTools (Python): {[t['name'] for t in zantara_tool_defs]}"
+                    f"📋 Loaded {len(zantara_tool_defs)} ZantaraTools (Python): {[t['name'] for t in zantara_tool_defs]}",
                 )
             except Exception as e:
                 logger.error(f"❌ Failed to load ZantaraTools: {e}")

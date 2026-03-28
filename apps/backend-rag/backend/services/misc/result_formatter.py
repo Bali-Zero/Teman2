@@ -109,7 +109,7 @@ def format_search_results(
                 "text": doc_content,
                 "metadata": metadata,
                 "score": round(score, 4),
-            }
+            },
         )
 
     return formatted_results

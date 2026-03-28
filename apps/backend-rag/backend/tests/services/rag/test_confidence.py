@@ -80,7 +80,7 @@ def rich_chains():
                 "target_source_collection": "legal_unified_hybrid",
                 "target_created_at": yesterday,
                 "edge_created_at": yesterday,
-            }
+            },
         ],
         [
             {
@@ -97,7 +97,7 @@ def rich_chains():
                 "target_source_collection": "visa_oracle",
                 "target_created_at": yesterday,
                 "edge_created_at": yesterday,
-            }
+            },
         ],
         [
             {
@@ -114,7 +114,7 @@ def rich_chains():
                 "target_source_collection": "legal_unified_hybrid",
                 "target_created_at": now,
                 "edge_created_at": now,
-            }
+            },
         ],
     ]
 
@@ -272,8 +272,8 @@ class TestDynamicConfidence:
                     "target_type": "dokumen",
                     "depth": 1,
                     # No edge_confidence, no source_collection, no created_at
-                }
-            ]
+                },
+            ],
         ]
         sample_state["confidence_scores"] = {"kbli:56101": 0.9}
         sample_state["intent"] = "company_setup"
@@ -350,7 +350,7 @@ class TestSerialization:
     def test_asdict(self):
         """ConfidenceBreakdown should be serializable via asdict."""
         breakdown = ConfidenceBreakdown(
-            overall=0.75, warning_level="medium", warning_message="test"
+            overall=0.75, warning_level="medium", warning_message="test",
         )
         d = asdict(breakdown)
         assert isinstance(d, dict)

@@ -51,7 +51,7 @@ class GoldenRouterService:
         if not self.db_pool:
             try:
                 self.db_pool = await asyncpg.create_pool(
-                    settings.database_url, min_size=1, max_size=5
+                    settings.database_url, min_size=1, max_size=5,
                 )
             except Exception as e:
                 logger.error(f"Failed to create DB pool: {e}")
@@ -69,7 +69,7 @@ class GoldenRouterService:
                 SELECT route_id, canonical_query, document_ids, chapter_ids, collections, routing_hints
                 FROM golden_routes
                 WHERE usage_count >= 0 -- Load all for now
-            """
+            """,
             )
 
             self.routes_cache = []
@@ -88,7 +88,7 @@ class GoldenRouterService:
                             if isinstance(row["routing_hints"], str)
                             else row["routing_hints"]
                         ),
-                    }
+                    },
                 )
                 canonical_queries.append(row["canonical_query"])
 
@@ -98,7 +98,7 @@ class GoldenRouterService:
 
                 asyncio.create_task(self._generate_embeddings_background(canonical_queries))
                 logger.info(
-                    f"🌟 Loaded {len(self.routes_cache)} Golden Routes (Embeddings generating in background...)"
+                    f"🌟 Loaded {len(self.routes_cache)} Golden Routes (Embeddings generating in background...)",
                 )
             else:
                 logger.warning("⚠️ No Golden Routes found in DB")
@@ -122,7 +122,7 @@ class GoldenRouterService:
                         # Convert list back to numpy array
                         self.route_embeddings = np.array(cache_data)
                         logger.info(
-                            f"✅ Loaded {len(queries)} embeddings from cache ({CACHE_FILE})"
+                            f"✅ Loaded {len(queries)} embeddings from cache ({CACHE_FILE})",
                         )
                         return
                     logger.warning("⚠️ Cache mismatch (count differs). Regenerating...")
@@ -139,7 +139,7 @@ class GoldenRouterService:
             if not embeddings and queries:
                 loop = asyncio.get_running_loop()
                 embeddings = await loop.run_in_executor(
-                    None, self.embeddings.generate_embeddings, queries
+                    None, self.embeddings.generate_embeddings, queries,
                 )
 
             self.route_embeddings = np.array(embeddings)
@@ -205,7 +205,7 @@ class GoldenRouterService:
         if best_score >= self.similarity_threshold:
             route = self.routes_cache[best_idx]
             logger.info(
-                f"🌟 Golden Route Matched! '{query}' -> '{route['canonical_query']}' (score: {best_score:.2f})"
+                f"🌟 Golden Route Matched! '{query}' -> '{route['canonical_query']}' (score: {best_score:.2f})",
             )
 
             # Update usage stats async

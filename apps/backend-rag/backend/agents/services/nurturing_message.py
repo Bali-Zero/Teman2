@@ -60,7 +60,7 @@ class NurturingMessageService:
             return message.strip()
         except asyncio.TimeoutError:
             logger.error(
-                f"Timeout generating nurturing message for {client_data.get('name', 'client')}"
+                f"Timeout generating nurturing message for {client_data.get('name', 'client')}",
             )
             return self._generate_fallback_message(client_data)
         except Exception as e:

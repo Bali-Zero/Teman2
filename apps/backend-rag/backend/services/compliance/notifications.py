@@ -26,7 +26,7 @@ class ComplianceNotificationService:
         self.notification_service = notification_service
 
     async def send_alert(
-        self, alert_id: str, client_id: str, message: str, via: str = "whatsapp"
+        self, alert_id: str, client_id: str, message: str, via: str = "whatsapp",
     ) -> bool:
         """
         Send alert to client.
@@ -46,7 +46,7 @@ class ComplianceNotificationService:
             # Use notification service
             try:
                 success = await self.notification_service.send(
-                    client_id=client_id, message=message, via=via
+                    client_id=client_id, message=message, via=via,
                 )
             except Exception as e:
                 logger.error(f"Error sending notification: {e}")

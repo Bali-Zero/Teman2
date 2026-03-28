@@ -121,7 +121,7 @@ async def get_portal_status(
 
         if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
             raise HTTPException(
-                status_code=403, detail="You don't have access to this client's portal status"
+                status_code=403, detail="You don't have access to this client's portal status",
             )
 
         # Check for portal user
@@ -219,7 +219,7 @@ async def send_portal_invite(
 
         if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
             raise HTTPException(
-                status_code=403, detail="You don't have access to send invites to this client"
+                status_code=403, detail="You don't have access to send invites to this client",
             )
 
     try:
@@ -293,7 +293,7 @@ async def get_portal_preview(
 
         if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
             raise HTTPException(
-                status_code=403, detail="You don't have access to preview this client's portal"
+                status_code=403, detail="You don't have access to preview this client's portal",
             )
 
     try:
@@ -403,7 +403,7 @@ async def get_client_messages(
 
         if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
             raise HTTPException(
-                status_code=403, detail="You don't have access to this client's messages"
+                status_code=403, detail="You don't have access to this client's messages",
             )
 
     try:

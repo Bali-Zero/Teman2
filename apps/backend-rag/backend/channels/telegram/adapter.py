@@ -136,7 +136,7 @@ class TelegramChannelAdapter(BaseChannel):
 
             logger.info(
                 f"📨 Telegram message received: chat_id={chat_id}, "
-                f"user={first_name} (@{username}), text={text[:50]}..."
+                f"user={first_name} (@{username}), text={text[:50]}...",
             )
 
             return ChannelMessage(
@@ -167,7 +167,7 @@ class TelegramChannelAdapter(BaseChannel):
             # Truncate if too long
             if len(formatted_text) > self.telegram_config.max_message_length:
                 formatted_text = self.truncate_message(
-                    formatted_text, self.telegram_config.max_message_length
+                    formatted_text, self.telegram_config.max_message_length,
                 )
 
             # Send message
@@ -221,7 +221,7 @@ class TelegramChannelAdapter(BaseChannel):
             logger.warning(f"Failed to send Telegram status update: {e}")
 
     async def stream_response(
-        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse]
+        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
     ) -> None:
         """
         Stream response to Telegram using progressive message edits.
@@ -256,7 +256,7 @@ class TelegramChannelAdapter(BaseChannel):
                 message = initial_result.get("result", {})
                 message_id = message.get("message_id")
                 logger.info(
-                    f"📝 Created initial Telegram message {message_id} in chat {channel_id}"
+                    f"📝 Created initial Telegram message {message_id} in chat {channel_id}",
                 )
 
             # Process stream events
@@ -292,7 +292,7 @@ class TelegramChannelAdapter(BaseChannel):
                     formatted_text = self.formatter.format_response(current_response)
                     if len(formatted_text) > self.telegram_config.max_message_length:
                         formatted_text = self.truncate_message(
-                            formatted_text, self.telegram_config.max_message_length
+                            formatted_text, self.telegram_config.max_message_length,
                         )
 
                     # Edit message
@@ -306,7 +306,7 @@ class TelegramChannelAdapter(BaseChannel):
 
                         last_update_time = current_time
                         logger.debug(
-                            f"📝 Updated Telegram message {message_id}: {len(formatted_text)} chars"
+                            f"📝 Updated Telegram message {message_id}: {len(formatted_text)} chars",
                         )
 
                     except Exception as e:
@@ -325,7 +325,7 @@ class TelegramChannelAdapter(BaseChannel):
                 formatted_text = self.formatter.format_response(final_response)
                 if len(formatted_text) > self.telegram_config.max_message_length:
                     formatted_text = self.truncate_message(
-                        formatted_text, self.telegram_config.max_message_length
+                        formatted_text, self.telegram_config.max_message_length,
                     )
 
                 # Final edit
@@ -337,7 +337,7 @@ class TelegramChannelAdapter(BaseChannel):
                 )
 
                 logger.info(
-                    f"✅ Completed Telegram message stream: {message_id} ({len(accumulated_text)} chars)"
+                    f"✅ Completed Telegram message stream: {message_id} ({len(accumulated_text)} chars)",
                 )
 
         except Exception as e:
@@ -346,7 +346,7 @@ class TelegramChannelAdapter(BaseChannel):
             # Send error message
             if message_id:
                 error_text = self.formatter.format_error(
-                    "Si è verificato un errore durante l'elaborazione. Riprova."
+                    "Si è verificato un errore durante l'elaborazione. Riprova.",
                 )
                 await self.bot_service.edit_message_text(
                     chat_id=channel_id,

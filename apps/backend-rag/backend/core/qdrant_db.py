@@ -153,7 +153,7 @@ def get_qdrant_metrics() -> dict[str, Any]:
 
 
 async def _retry_with_backoff(
-    func, max_retries: int = MAX_RETRIES, base_delay: float = RETRY_BASE_DELAY
+    func, max_retries: int = MAX_RETRIES, base_delay: float = RETRY_BASE_DELAY,
 ):
     """
     Retry function with exponential backoff.
@@ -178,7 +178,7 @@ async def _retry_with_backoff(
             if attempt < max_retries:
                 delay = base_delay * (2**attempt)
                 logger.warning(
-                    f"Retry attempt {attempt + 1}/{max_retries} after {delay}s: {str(e)[:100]}"
+                    f"Retry attempt {attempt + 1}/{max_retries} after {delay}s: {str(e)[:100]}",
                 )
                 await asyncio.sleep(delay)
             else:
@@ -244,7 +244,7 @@ class QdrantClient:
         logger.info(
             f"Qdrant client initialized: collection='{self.collection_name}', "
             f"url='{self.qdrant_url}', api_key_configured={bool(self.api_key)}, "
-            f"timeout={self.timeout}s"
+            f"timeout={self.timeout}s",
         )
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -314,7 +314,7 @@ class QdrantClient:
         return headers
 
     def _convert_filter_to_qdrant_format(
-        self, filter_dict: dict[str, Any]
+        self, filter_dict: dict[str, Any],
     ) -> dict[str, Any] | None:
         """
         Convert simplified filter format to Qdrant filter format.
@@ -344,18 +344,18 @@ class QdrantClient:
                     match_values = value["$in"]
                     if match_values:
                         must_conditions.append(
-                            {"key": f"metadata.{key}", "match": {"any": match_values}}
+                            {"key": f"metadata.{key}", "match": {"any": match_values}},
                         )
                 elif "$ne" in value:
                     # Must NOT match this value
                     must_not_conditions.append(
-                        {"key": f"metadata.{key}", "match": {"value": value["$ne"]}}
+                        {"key": f"metadata.{key}", "match": {"value": value["$ne"]}},
                     )
                 elif "$nin" in value:
                     # Must NOT match any of these values
                     for excluded_value in value["$nin"]:
                         must_not_conditions.append(
-                            {"key": f"metadata.{key}", "match": {"value": excluded_value}}
+                            {"key": f"metadata.{key}", "match": {"value": excluded_value}},
                         )
             else:
                 # Direct value match
@@ -434,7 +434,7 @@ class QdrantClient:
                 }
 
                 logger.debug(
-                    f"Qdrant search: collection={self.collection_name}, found {len(results)} results"
+                    f"Qdrant search: collection={self.collection_name}, found {len(results)} results",
                 )
                 return formatted_results
 
@@ -473,7 +473,7 @@ class QdrantClient:
                     from backend.app.metrics import qdrant_http_error_total
 
                     qdrant_http_error_total.labels(
-                        status_code=e.response.status_code, error_type=error_type.value
+                        status_code=e.response.status_code, error_type=error_type.value,
                     ).inc()
                 except ImportError:
                     pass
@@ -647,7 +647,7 @@ class QdrantClient:
                 return True
             except httpx.HTTPStatusError as e:
                 logger.error(
-                    f"Failed to create collection: {e.response.status_code} - {e.response.text}"
+                    f"Failed to create collection: {e.response.status_code} - {e.response.text}",
                 )
                 return False
             except Exception as e:
@@ -732,7 +732,7 @@ class QdrantClient:
                     total_added += len(batch_chunks)
                     logger.info(
                         f"Upserted batch {i // batch_size + 1}: {len(batch_chunks)}/{total} documents "
-                        f"to Qdrant collection '{self.collection_name}'"
+                        f"to Qdrant collection '{self.collection_name}'",
                     )
                 except httpx.HTTPStatusError as e:
                     # Check if error is about named vectors
@@ -743,7 +743,7 @@ class QdrantClient:
                     ):
                         # Retry with named vector format
                         logger.info(
-                            "Collection uses named vectors, retrying with 'dense' vector name"
+                            "Collection uses named vectors, retrying with 'dense' vector name",
                         )
                         points = []
                         for j in range(len(batch_chunks)):
@@ -764,7 +764,7 @@ class QdrantClient:
                             total_added += len(batch_chunks)
                             logger.info(
                                 f"Upserted batch {i // batch_size + 1}: {len(batch_chunks)}/{total} documents "
-                                f"to Qdrant collection '{self.collection_name}' (with named vectors)"
+                                f"to Qdrant collection '{self.collection_name}' (with named vectors)",
                             )
                         except Exception:
                             error_msg = f"HTTP {e.response.status_code}"
@@ -772,7 +772,7 @@ class QdrantClient:
                                 error_msg += f": {e.response.text}"
                             errors.append(error_msg)
                             logger.error(
-                                f"Qdrant upsert batch failed even with named vectors: {error_msg}"
+                                f"Qdrant upsert batch failed even with named vectors: {error_msg}",
                             )
                     else:
                         error_msg = f"HTTP {e.response.status_code}"
@@ -794,7 +794,7 @@ class QdrantClient:
                 }
 
             logger.info(
-                f"Successfully upserted {total_added} documents to Qdrant collection '{self.collection_name}'"
+                f"Successfully upserted {total_added} documents to Qdrant collection '{self.collection_name}'",
             )
             # Track metrics
             elapsed = time.time() - start_time
@@ -906,7 +906,7 @@ class QdrantClient:
                 response.raise_for_status()
 
                 logger.info(
-                    f"Deleted {len(ids)} points from Qdrant collection '{self.collection_name}'"
+                    f"Deleted {len(ids)} points from Qdrant collection '{self.collection_name}'",
                 )
                 return {"success": True, "deleted_count": len(ids)}
             except httpx.HTTPStatusError as e:
@@ -1092,7 +1092,7 @@ class QdrantClient:
 
                 logger.debug(
                     f"Hybrid search: collection={self.collection_name}, "
-                    f"found {len(results)} results (RRF fusion)"
+                    f"found {len(results)} results (RRF fusion)",
                 )
                 return formatted_results
 
@@ -1109,11 +1109,11 @@ class QdrantClient:
                 ):
                     logger.warning(
                         f"Hybrid search not available for {self.collection_name}, "
-                        "falling back to dense search"
+                        "falling back to dense search",
                     )
                     return await self.search(query_embedding, filter=filter, limit=limit)
                 logger.error(
-                    f"Qdrant hybrid search failed: {e.response.status_code} - {error_text}"
+                    f"Qdrant hybrid search failed: {e.response.status_code} - {error_text}",
                 )
                 return {
                     "ids": [],
@@ -1198,7 +1198,7 @@ class QdrantClient:
                 len(chunks) == len(embeddings) == len(sparse_vectors) == len(metadatas) == len(ids)
             ):
                 raise ValueError(
-                    "chunks, embeddings, sparse_vectors, metadatas, and ids must have same length"
+                    "chunks, embeddings, sparse_vectors, metadatas, and ids must have same length",
                 )
 
             total = len(chunks)
@@ -1233,7 +1233,7 @@ class QdrantClient:
                     total_added += len(batch_chunks)
                     logger.info(
                         f"Upserted batch {i // batch_size + 1}: {len(batch_chunks)}/{total} documents "
-                        f"with sparse vectors to '{self.collection_name}'"
+                        f"with sparse vectors to '{self.collection_name}'",
                     )
                 except httpx.HTTPStatusError as e:
                     error_msg = f"HTTP {e.response.status_code}"
@@ -1255,7 +1255,7 @@ class QdrantClient:
                 }
 
             logger.info(
-                f"Successfully upserted {total_added} documents with sparse vectors to '{self.collection_name}'"
+                f"Successfully upserted {total_added} documents with sparse vectors to '{self.collection_name}'",
             )
             elapsed = time.time() - start_time
             _qdrant_metrics["upsert_calls"] += 1

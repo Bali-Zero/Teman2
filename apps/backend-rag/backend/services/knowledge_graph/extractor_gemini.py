@@ -166,7 +166,7 @@ Return a JSON object with this exact structure:
 Extract entities and relations now (ensure every entity has at least one relationship):"""
 
     async def extract(
-        self, text: str, chunk_id: str = "", two_stage: bool = False
+        self, text: str, chunk_id: str = "", two_stage: bool = False,
     ) -> ExtractionResult:
         """
         Extract entities and relations from text
@@ -256,7 +256,7 @@ Extract entities and relations now (ensure every entity has at least one relatio
                         mention=e.get("mention", e.get("name", "")),
                         attributes=e.get("attributes", {}),
                         confidence=float(e.get("confidence", 0.8)),
-                    )
+                    ),
                 )
             except Exception as ex:
                 logger.debug(f"Failed to parse entity: {ex}")
@@ -287,7 +287,7 @@ Extract entities and relations now (ensure every entity has at least one relatio
                         evidence=r.get("evidence", ""),
                         confidence=float(r.get("confidence", 0.7)),
                         attributes=r.get("attributes", {}),
-                    )
+                    ),
                 )
             except Exception as ex:
                 logger.debug(f"Failed to parse relation: {ex}")

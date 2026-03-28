@@ -109,7 +109,7 @@ class DifferentialCoverageAnalyzer:
             return json.load(f)
 
     def calculate_delta(
-        self, current_report: UnifiedCoverageReport, baseline_name: str = "latest"
+        self, current_report: UnifiedCoverageReport, baseline_name: str = "latest",
     ) -> DifferentialReport | None:
         """Calculate coverage delta vs baseline"""
         baseline = self.load_baseline(baseline_name)
@@ -156,10 +156,10 @@ class DifferentialCoverageAnalyzer:
                     regression=regression,
                     improvement=improvement,
                     files_added=max(
-                        0, current_comp.files_analyzed - baseline_comp.get("files_analyzed", 0)
+                        0, current_comp.files_analyzed - baseline_comp.get("files_analyzed", 0),
                     ),
                     files_removed=max(
-                        0, baseline_comp.get("files_analyzed", 0) - current_comp.files_analyzed
+                        0, baseline_comp.get("files_analyzed", 0) - current_comp.files_analyzed,
                     ),
                 )
 

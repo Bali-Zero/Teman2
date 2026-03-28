@@ -82,7 +82,7 @@ class UnifiedCoverageCollector:
         self.components = {}
 
     def collect_backend_coverage(
-        self, component_path: Path, component_name: str
+        self, component_path: Path, component_name: str,
     ) -> ComponentCoverage | None:
         """Collect coverage from Python/pytest backend"""
         try:
@@ -135,7 +135,7 @@ class UnifiedCoverageCollector:
                             "coverage": file_coverage,
                             "missing_lines": file_data.get("missing_lines", []),
                             "missing_lines_count": len(file_data.get("missing_lines", [])),
-                        }
+                        },
                     )
 
             return ComponentCoverage(
@@ -154,7 +154,7 @@ class UnifiedCoverageCollector:
         except subprocess.TimeoutExpired:
             logger.warning(
                 f"⏱️ Coverage generation timeout for {component_name} - "
-                f"using existing coverage.json if available"
+                f"using existing coverage.json if available",
             )
             # Try to use existing coverage.json even if generation timed out
             if coverage_json.exists():
@@ -186,7 +186,7 @@ class UnifiedCoverageCollector:
             return None
 
     def collect_frontend_coverage(
-        self, component_path: Path, component_name: str
+        self, component_path: Path, component_name: str,
     ) -> ComponentCoverage | None:
         """Collect coverage from TypeScript/JS frontend"""
         try:
@@ -205,7 +205,7 @@ class UnifiedCoverageCollector:
                     with open(package_json) as f:
                         pkg = json.load(f)
                         test_script = pkg.get("scripts", {}).get("test:coverage") or pkg.get(
-                            "scripts", {}
+                            "scripts", {},
                         ).get("test:ci")
                         if test_script:
                             # Longer timeout for large frontend projects (20 minutes)
@@ -223,7 +223,7 @@ class UnifiedCoverageCollector:
                             except subprocess.TimeoutExpired:
                                 logger.warning(
                                     f"⏱️ Coverage generation timeout for {component_name} - "
-                                    f"skipping generation, will use existing if available"
+                                    f"skipping generation, will use existing if available",
                                 )
 
             # Parse LCOV format (preferred)
@@ -243,7 +243,7 @@ class UnifiedCoverageCollector:
             return None
 
     def _parse_lcov(
-        self, lcov_file: Path, component_name: str, _component_path: Path
+        self, lcov_file: Path, component_name: str, _component_path: Path,
     ) -> ComponentCoverage:
         """Parse LCOV format"""
         total_lines = 0
@@ -294,7 +294,7 @@ class UnifiedCoverageCollector:
                             "coverage": file_coverage,
                             "missing_lines": missing_lines,
                             "missing_lines_count": len(missing_lines),
-                        }
+                        },
                     )
 
         return ComponentCoverage(
@@ -311,7 +311,7 @@ class UnifiedCoverageCollector:
         )
 
     def _parse_vitest_json(
-        self, coverage_json: Path, component_name: str, _component_path: Path
+        self, coverage_json: Path, component_name: str, _component_path: Path,
     ) -> ComponentCoverage:
         """Parse Vitest JSON coverage format"""
         with open(coverage_json) as f:
@@ -350,7 +350,7 @@ class UnifiedCoverageCollector:
                         "file": file_path,
                         "coverage": file_data["coverage"],
                         "missing_lines_count": file_data["total"] - file_data["covered"],
-                    }
+                    },
                 )
 
         return ComponentCoverage(
@@ -429,7 +429,7 @@ class UnifiedCoverageCollector:
                             "file": gap["file"],
                             "coverage": gap["coverage"],
                             "missing_lines": gap.get("missing_lines_count", 0),
-                        }
+                        },
                     )
 
         report = UnifiedCoverageReport(

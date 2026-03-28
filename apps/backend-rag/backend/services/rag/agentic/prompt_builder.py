@@ -359,7 +359,7 @@ class SystemPromptBuilder:
             dept = profile.get("department", "General")
             notes = profile.get("notes", "")
             memory_parts.append(
-                f"User Name: {user_name}\nEmail: {user_email}\nRole: {user_role}\nDepartment: {dept}\nNotes: {notes}"
+                f"User Name: {user_name}\nEmail: {user_email}\nRole: {user_role}\nDepartment: {dept}\nNotes: {notes}",
             )
         elif entities:
             user_name = entities.get("user_name", "Partner")
@@ -367,7 +367,7 @@ class SystemPromptBuilder:
             email_display = user_email if "@" in user_email else "Unknown"
             user_city = entities.get("user_city", "Unknown City")
             memory_parts.append(
-                f"User Name: {user_name}\nEmail: {email_display}\nCity: {user_city}"
+                f"User Name: {user_name}\nEmail: {email_display}\nCity: {user_city}",
             )
 
         # 2. Personal Facts
@@ -381,7 +381,7 @@ class SystemPromptBuilder:
         # 4. Collective Knowledge
         if collective_facts:
             memory_parts.append(
-                "COLLECTIVE KNOWLEDGE:\n" + "\n".join([f"- {f}" for f in collective_facts])
+                "COLLECTIVE KNOWLEDGE:\n" + "\n".join([f"- {f}" for f in collective_facts]),
             )
 
         user_memory_text = "\n\n".join(memory_parts) if memory_parts else "No specific memory yet."

@@ -47,8 +47,8 @@ async def get_qdrant_stats() -> dict[str, Any]:
                         coll_response.raise_for_status()
                         points = coll_response.json().get("result", {}).get("points_count", 0)
                         total_documents += points
-                    except Exception:
-                        pass  # Skip failed collections
+                    except Exception as coll_err:
+                        logger.debug(f"Skip failed collection {coll_name}: {coll_err}")
 
             return {
                 "collections": len(collections_data),
@@ -63,10 +63,10 @@ router = APIRouter(prefix="/health", tags=["health"])
 
 
 @router.get(
-    "", response_model=HealthResponse
+    "", response_model=HealthResponse,
 )  # /health without trailing slash (for Fly.io health checks)
 @router.get(
-    "/", response_model=HealthResponse, include_in_schema=False
+    "/", response_model=HealthResponse, include_in_schema=False,
 )  # /health/ with trailing slash
 async def health_check(request: Request) -> HealthResponse:
     """
@@ -323,7 +323,7 @@ async def detailed_health(request: Request) -> dict[str, Any]:
         from backend.app.dependencies import _agentic_rag_orchestrator
 
         if _agentic_rag_orchestrator and hasattr(
-            _agentic_rag_orchestrator, "kg_langgraph_orchestrator"
+            _agentic_rag_orchestrator, "kg_langgraph_orchestrator",
         ):
             kg_orchestrator = _agentic_rag_orchestrator.kg_langgraph_orchestrator
             if kg_orchestrator:
@@ -531,12 +531,12 @@ async def knowledge_graph_stats(request: Request) -> dict[str, Any]:
 
             # KBLI nodes
             kbli_nodes = await conn.fetchval(
-                "SELECT COUNT(*) FROM kg_nodes WHERE entity_id LIKE 'kbli:%'"
+                "SELECT COUNT(*) FROM kg_nodes WHERE entity_id LIKE 'kbli:%'",
             )
 
             # Perizinan nodes
             perizinan_nodes = await conn.fetchval(
-                "SELECT COUNT(*) FROM kg_nodes WHERE entity_type = 'perizinan'"
+                "SELECT COUNT(*) FROM kg_nodes WHERE entity_type = 'perizinan'",
             )
 
             # Orphan nodes

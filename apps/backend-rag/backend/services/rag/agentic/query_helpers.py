@@ -249,7 +249,7 @@ def format_conversation_history_for_recall(history: list[dict], max_messages: in
             f"{'USER' if msg.get('role') == 'user' else 'ASSISTANT'}: {msg.get('content', '')}"
             for msg in recent_history
             if isinstance(msg, dict)
-        ]
+        ],
     )
 
 

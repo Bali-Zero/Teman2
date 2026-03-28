@@ -172,7 +172,7 @@ class NotebookLMCacheService:
 
             # Store with TTL
             await self.redis_client.setex(
-                key, self.ttl_seconds, json.dumps(cache_entry, ensure_ascii=False)
+                key, self.ttl_seconds, json.dumps(cache_entry, ensure_ascii=False),
             )
 
             logger.info(f"✅ Cached: {question[:50]}... (TTL: {self.ttl_seconds}s)")

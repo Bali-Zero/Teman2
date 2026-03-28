@@ -12,7 +12,7 @@ from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("ingest_zoning")
 
@@ -58,7 +58,7 @@ async def ingest_geojson(file_path: Path):
 
             if not geom or geom.get("type") not in ["Polygon", "MultiPolygon"]:
                 logger.warning(
-                    f"Skipping feature without valid Polygon geometry: {props.get('name', 'Unknown')}"
+                    f"Skipping feature without valid Polygon geometry: {props.get('name', 'Unknown')}",
                 )
                 continue
 

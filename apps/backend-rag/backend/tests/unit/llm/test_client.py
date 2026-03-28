@@ -57,7 +57,7 @@ class TestUnifiedLLMClient:
         mock_provider1.name = "provider1"
         mock_provider1.is_available = True
         mock_provider1.generate = AsyncMock(
-            return_value=LLMResponse(content="Response", model="model1", provider="provider1")
+            return_value=LLMResponse(content="Response", model="model1", provider="provider1"),
         )
 
         mock_provider2 = MagicMock()
@@ -86,7 +86,7 @@ class TestUnifiedLLMClient:
         mock_provider2.name = "provider2"
         mock_provider2.is_available = True
         mock_provider2.generate = AsyncMock(
-            return_value=LLMResponse(content="Response", model="model2", provider="provider2")
+            return_value=LLMResponse(content="Response", model="model2", provider="provider2"),
         )
 
         client = UnifiedLLMClient([mock_provider1, mock_provider2])
@@ -110,7 +110,7 @@ class TestUnifiedLLMClient:
         mock_provider2.name = "provider2"
         mock_provider2.is_available = True
         mock_provider2.generate = AsyncMock(
-            return_value=LLMResponse(content="Response", model="model2", provider="provider2")
+            return_value=LLMResponse(content="Response", model="model2", provider="provider2"),
         )
 
         client = UnifiedLLMClient([mock_provider1, mock_provider2])
@@ -149,7 +149,7 @@ class TestUnifiedLLMClient:
         mock_provider.name = "provider1"
         mock_provider.is_available = True
         mock_provider.generate = AsyncMock(
-            return_value=LLMResponse(content="Response", model="model1", provider="provider1")
+            return_value=LLMResponse(content="Response", model="model1", provider="provider1"),
         )
 
         client = UnifiedLLMClient([mock_provider])

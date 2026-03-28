@@ -174,7 +174,7 @@ class KGAgenticOrchestrator:
                 intent_result = await self._classify_intent(query)
                 reasoning_trace.append(
                     f"Detected intent: {intent_result['category']} "
-                    f"(confidence: {intent_result['confidence']:.2f})"
+                    f"(confidence: {intent_result['confidence']:.2f})",
                 )
                 set_span_attribute("intent_category", intent_result["category"])
 
@@ -186,13 +186,13 @@ class KGAgenticOrchestrator:
                     entity_names = [e.get("name", "unknown") for e in kg_context.entities_found[:3]]
                     reasoning_trace.append(
                         f"Extracted entities: {', '.join(entity_names)} "
-                        f"({len(kg_context.entities_found)} total)"
+                        f"({len(kg_context.entities_found)} total)",
                     )
                     set_span_attribute("kg_entities_count", len(kg_context.entities_found))
 
                 if kg_context.relationships:
                     reasoning_trace.append(
-                        f"KG path: {len(kg_context.relationships)} relationships found"
+                        f"KG path: {len(kg_context.relationships)} relationships found",
                     )
 
                 # Step 3: Golden Route Matching
@@ -201,7 +201,7 @@ class KGAgenticOrchestrator:
                     logger.info(f"🌟 [Step 3] Golden route matched: {golden_route.route_id}")
                     reasoning_trace.append(f"Golden route matched: {golden_route.name}")
                     reasoning_trace.append(
-                        f"Recommended path: {' → '.join(golden_route.path[:3])}..."
+                        f"Recommended path: {' → '.join(golden_route.path[:3])}...",
                     )
                     set_span_attribute("golden_route_id", golden_route.route_id)
                 else:
@@ -218,7 +218,7 @@ class KGAgenticOrchestrator:
 
                 reasoning_trace.append(
                     f"Vector search: {collections_searched} "
-                    f"({len(search_results.get('sources', []))} chunks retrieved)"
+                    f"({len(search_results.get('sources', []))} chunks retrieved)",
                 )
                 set_span_attribute("collections_searched", str(collections_searched))
 
@@ -234,7 +234,7 @@ class KGAgenticOrchestrator:
 
                 reasoning_trace.append(
                     f"LLM synthesis: {synthesis_result['model_used']} "
-                    f"({synthesis_result['tokens_used']} tokens)"
+                    f"({synthesis_result['tokens_used']} tokens)",
                 )
 
                 # Step 6: Build Final Response
@@ -255,7 +255,7 @@ class KGAgenticOrchestrator:
                 total_time = (time.time() - start_time) * 1000
                 logger.info(
                     f"✅ KG-Agentic orchestration complete in {total_time:.0f}ms "
-                    f"(confidence: {response.confidence:.2f})"
+                    f"(confidence: {response.confidence:.2f})",
                 )
 
                 return response
@@ -318,7 +318,7 @@ class KGAgenticOrchestrator:
             logger.debug(
                 f"KG context retrieved: {len(kg_context.entities_found)} entities, "
                 f"{len(kg_context.relationships)} relationships, "
-                f"golden_route={'matched' if kg_context.golden_route else 'none'}"
+                f"golden_route={'matched' if kg_context.golden_route else 'none'}",
             )
 
             return kg_context
@@ -510,7 +510,7 @@ class KGAgenticOrchestrator:
                     [
                         f"[{i + 1}] {s.get('title', 'Document')}\n{s.get('snippet', '')}"
                         for i, s in enumerate(search_results["sources"][:5])
-                    ]
+                    ],
                 )
                 context_parts.append("**Retrieved Documents:**\n" + sources_text)
 

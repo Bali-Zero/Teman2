@@ -98,7 +98,7 @@ class AutonomousResearchService:
         logger.info(f"   Confidence threshold: {self.CONFIDENCE_THRESHOLD}")
 
     async def analyze_gaps(
-        self, query: str, results: list[dict], collections_searched: list[str]
+        self, query: str, results: list[dict], collections_searched: list[str],
     ) -> tuple[bool, list[str], str]:
         """
         Analyze search results for information gaps.
@@ -171,7 +171,7 @@ class AutonomousResearchService:
         """
         # Use query router with fallback chain
         primary, confidence, all_collections = self.router.route_with_confidence(
-            query, return_fallbacks=True
+            query, return_fallbacks=True,
         )
 
         # Filter out already searched
@@ -232,7 +232,7 @@ class AutonomousResearchService:
         return expansions[:3]  # Max 3 query variants
 
     async def research_iteration(
-        self, query: str, step_number: int, collections_searched: list[str], user_level: int = 3
+        self, query: str, step_number: int, collections_searched: list[str], user_level: int = 3,
     ) -> ResearchStep:
         """
         Perform single research iteration.
@@ -268,7 +268,7 @@ class AutonomousResearchService:
         # Search
         try:
             search_results = await self.search.search(
-                query=query, user_level=user_level, limit=5, collection_override=collection
+                query=query, user_level=user_level, limit=5, collection_override=collection,
             )
 
             results = search_results.get("results", [])
@@ -303,7 +303,7 @@ class AutonomousResearchService:
 
             logger.info(
                 f"   [Step {step_number}] {collection}: "
-                f"{results_found} results, confidence={confidence:.2f}"
+                f"{results_found} results, confidence={confidence:.2f}",
             )
 
             return step
@@ -321,7 +321,7 @@ class AutonomousResearchService:
             )
 
     async def synthesize_research(
-        self, original_query: str, research_steps: list[ResearchStep]
+        self, original_query: str, research_steps: list[ResearchStep],
     ) -> tuple[str, float]:
         """
         Synthesize findings from all research steps into final answer.
@@ -341,7 +341,7 @@ class AutonomousResearchService:
         for step in research_steps:
             if step.results_found > 0:
                 context_parts.append(
-                    f"\n=== {step.collection.upper()} (Step {step.step_number}) ==="
+                    f"\n=== {step.collection.upper()} (Step {step.step_number}) ===",
                 )
                 for finding in step.key_findings:
                     context_parts.append(f"- {finding}")
@@ -455,13 +455,13 @@ Format:
             # Add to reasoning chain
             reasoning_chain.append(
                 f"Step {iteration}: Searched {step.collection} for '{current_query}' - "
-                f"found {step.results_found} results (confidence={step.confidence:.2f})"
+                f"found {step.results_found} results (confidence={step.confidence:.2f})",
             )
 
             # Check termination conditions
             if step.confidence >= self.CONFIDENCE_THRESHOLD:
                 reasoning_chain.append(
-                    f"Terminating: High confidence achieved ({step.confidence:.2f})"
+                    f"Terminating: High confidence achieved ({step.confidence:.2f})",
                 )
                 logger.info(f"   High confidence reached at step {iteration}")
                 break
@@ -476,7 +476,7 @@ Format:
                 all_findings.extend(s.key_findings)
 
             has_gaps, expanded_queries, gap_rationale = await self.analyze_gaps(
-                query, [{"text": f, "score": 0.5} for f in all_findings], collections_searched
+                query, [{"text": f, "score": 0.5} for f in all_findings], collections_searched,
             )
 
             if not has_gaps:
@@ -530,7 +530,7 @@ Format:
             f"✅ Research complete: {len(research_steps)} steps, "
             f"{len(collections_searched)} collections, "
             f"confidence={overall_confidence:.2f}, "
-            f"{duration_ms:.0f}ms"
+            f"{duration_ms:.0f}ms",
         )
 
         return result

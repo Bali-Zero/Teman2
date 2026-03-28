@@ -44,7 +44,7 @@ class TestMediaRouter:
                 "success": True,
                 "url": "https://pollinations.ai/image.jpg",
                 "prompt": "test prompt",
-            }
+            },
         )
         mock_service_class.return_value = mock_service
 
@@ -59,7 +59,7 @@ class TestMediaRouter:
         """Test generating image with error"""
         mock_service = MagicMock()
         mock_service.generate_image = AsyncMock(
-            return_value={"success": False, "error": "Invalid prompt"}
+            return_value={"success": False, "error": "Invalid prompt"},
         )
         mock_service_class.return_value = mock_service
 
@@ -71,7 +71,7 @@ class TestMediaRouter:
         """Test generating image when service not configured"""
         mock_service = MagicMock()
         mock_service.generate_image = AsyncMock(
-            return_value={"success": False, "error": "Service not configured"}
+            return_value={"success": False, "error": "Service not configured"},
         )
         mock_service_class.return_value = mock_service
 

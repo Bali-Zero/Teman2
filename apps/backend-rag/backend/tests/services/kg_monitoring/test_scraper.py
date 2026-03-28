@@ -123,7 +123,7 @@ class TestLegalScraper:
                 name="Custom",
                 base_url="https://custom.com",
                 source_type=SourceType.GOVERNMENT_SITE,
-            )
+            ),
         }
         scraper = LegalScraper(custom_sources=custom)
 

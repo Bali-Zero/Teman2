@@ -84,7 +84,7 @@ class TestObservabilitySetup:
                 mock_resource.create.assert_called_once()
                 mock_trace.set_tracer_provider.assert_called_once()
                 mock_grpc_exporter.assert_called_once_with(
-                    endpoint="http://localhost:4317", insecure=True
+                    endpoint="http://localhost:4317", insecure=True,
                 )
                 mock_batch_processor.assert_called_once()
                 mock_trace.get_tracer_provider.return_value.add_span_processor.assert_called_once()
@@ -143,7 +143,7 @@ class TestObservabilitySetup:
     @patch("backend.app.setup.observability.Instrumentator")
     @patch("backend.app.setup.observability.OTLPHttpSpanExporter")
     def test_setup_observability_http_exporter_not_available(
-        self, mock_http_exporter, mock_instrumentator
+        self, mock_http_exporter, mock_instrumentator,
     ):
         """Test observability setup when HTTP exporter is not available"""
         mock_app = MagicMock()
@@ -217,7 +217,7 @@ class TestObservabilitySetup:
     @patch("backend.app.setup.observability.trace")
     @patch("backend.app.setup.observability.OTLPHttpSpanExporter")
     def test_setup_observability_http_headers_parsing(
-        self, mock_http_exporter, mock_trace, mock_instrumentator
+        self, mock_http_exporter, mock_trace, mock_instrumentator,
     ):
         """Test parsing of multiple HTTP headers"""
         mock_app = MagicMock()

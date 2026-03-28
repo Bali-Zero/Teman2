@@ -92,7 +92,7 @@ async def list_companies(
             comp = company_record_to_dict(row)
             # Get associates count
             count = await conn.fetchval(
-                "SELECT COUNT(*) FROM client_company_links WHERE company_id = $1", comp["id"]
+                "SELECT COUNT(*) FROM client_company_links WHERE company_id = $1", comp["id"],
             )
             comp["associates_count"] = count
             companies.append(comp)
@@ -275,7 +275,7 @@ async def get_company(
 
         # Get tax record
         tax_row = await conn.fetchrow(
-            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1", company_id
+            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1", company_id,
         )
 
         company["associates"] = [
@@ -635,7 +635,7 @@ async def delete_company_document(
     """Delete a company document"""
     async with db.acquire() as conn:
         result = await conn.execute(
-            "DELETE FROM company_documents WHERE id = $1 AND company_id = $2", doc_id, company_id
+            "DELETE FROM company_documents WHERE id = $1 AND company_id = $2", doc_id, company_id,
         )
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Document not found")
@@ -656,7 +656,7 @@ async def get_company_tax_record(
     """Get tax record for a company"""
     async with db.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1", company_id
+            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1", company_id,
         )
 
         if not row:

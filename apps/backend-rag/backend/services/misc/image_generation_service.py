@@ -26,14 +26,14 @@ class ImageGenerationService:
         # If api_key is explicitly None, don't try to get from settings
         if api_key is None:
             self.api_key = getattr(settings, "google_imagen_api_key", None) or getattr(
-                settings, "google_api_key", None
+                settings, "google_api_key", None,
             )
         else:
             self.api_key = api_key
 
         if not self.api_key:
             logger.warning(
-                "⚠️ GOOGLE_IMAGEN_API_KEY or GOOGLE_API_KEY not set. Image generation disabled."
+                "⚠️ GOOGLE_IMAGEN_API_KEY or GOOGLE_API_KEY not set. Image generation disabled.",
             )
         else:
             # Note: Google Imagen requires Vertex AI setup, currently using pollinations.ai fallback

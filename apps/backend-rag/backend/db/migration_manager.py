@@ -47,7 +47,7 @@ class MigrationManager:
         """
         if self.pool is None:
             self.pool = await asyncpg.create_pool(
-                self.database_url, min_size=1, max_size=5, command_timeout=60
+                self.database_url, min_size=1, max_size=5, command_timeout=60,
             )
             logger.info("Migration manager connection pool created")
 
@@ -93,7 +93,7 @@ class MigrationManager:
                 rollback_sql TEXT,
                 applied_by VARCHAR(255) DEFAULT 'system'
             );
-        """
+        """,
         )
 
     async def get_applied_migrations(self) -> list[dict]:
@@ -117,7 +117,7 @@ class MigrationManager:
                 SELECT migration_name, migration_number, executed_at, description
                 FROM _schema_versions
                 ORDER BY migration_number
-            """
+            """,
             )
             return [
                 {
@@ -221,7 +221,7 @@ class MigrationManager:
             try:
                 migration_number = int(sql_file.stem.split("_")[0])
                 migrations.append(
-                    {"number": migration_number, "file": sql_file.name, "path": sql_file}
+                    {"number": migration_number, "file": sql_file.name, "path": sql_file},
                 )
             except (ValueError, IndexError):
                 logger.warning(f"Could not parse migration number from {sql_file.name}, skipping")
@@ -294,7 +294,7 @@ class MigrationManager:
                         WHERE table_schema = 'public'
                         AND table_name = 'clients'
                     );
-                """
+                """,
                 )
 
                 if tables_exist:

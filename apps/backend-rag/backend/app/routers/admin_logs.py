@@ -177,7 +177,7 @@ async def get_team_interactions(
     client_email: str | None = Query(None, description="Filter by client"),
     interaction_type: str | None = Query(None, description="Filter by type"),
     direction: Literal["inbound", "outbound"] | None = Query(
-        None, description="Filter by direction"
+        None, description="Filter by direction",
     ),
     date_from: datetime | None = Query(None, description="Start date (UTC)"),
     date_to: datetime | None = Query(None, description="End date (UTC)"),

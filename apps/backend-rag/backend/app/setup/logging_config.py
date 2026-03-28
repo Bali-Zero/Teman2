@@ -208,7 +208,7 @@ def configure_logging() -> None:
                 "level": settings.log_level,
                 "environment": settings.environment,
                 "format": "json" if is_production else "development",
-            }
+            },
         },
     )
 

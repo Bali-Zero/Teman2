@@ -225,7 +225,7 @@ async def delete_old_points(qdrant_url: str, api_key: str | None):
                     "should": [
                         {"key": "doc_type", "match": {"value": "kbli_bps"}},
                         {"key": "metadata.doc_type", "match": {"value": "kbli_bps"}},
-                    ]
+                    ],
                 },
                 "exact": True,
             },
@@ -250,8 +250,8 @@ async def delete_old_points(qdrant_url: str, api_key: str | None):
                     "should": [
                         {"key": "doc_type", "match": {"value": "kbli_bps"}},
                         {"key": "metadata.doc_type", "match": {"value": "kbli_bps"}},
-                    ]
-                }
+                    ],
+                },
             },
             headers=headers,
         )
@@ -306,7 +306,7 @@ async def verify_collection(qdrant_url: str, api_key: str | None):
                 f"{qdrant_url}/collections/{COLLECTION_NAME}/points/count",
                 json={
                     "filter": {
-                        "must": [{"key": "metadata.doc_type", "match": {"value": doc_type}}]
+                        "must": [{"key": "metadata.doc_type", "match": {"value": doc_type}}],
                     },
                     "exact": True,
                 },
@@ -319,13 +319,13 @@ async def verify_collection(qdrant_url: str, api_key: str | None):
 
 async def main():
     parser = argparse.ArgumentParser(
-        description="Re-index kbli_2025_final from KBLI_2025_FINAL_CLEAN.json"
+        description="Re-index kbli_2025_final from KBLI_2025_FINAL_CLEAN.json",
     )
     parser.add_argument(
-        "--dry-run", action="store_true", help="Parse and build but don't embed or upsert"
+        "--dry-run", action="store_true", help="Parse and build but don't embed or upsert",
     )
     parser.add_argument(
-        "--qdrant-url", type=str, default="", help="Qdrant URL (default: from env or localhost)"
+        "--qdrant-url", type=str, default="", help="Qdrant URL (default: from env or localhost)",
     )
     parser.add_argument("--skip-delete", action="store_true", help="Skip deleting old points")
     parser.add_argument("--limit", type=int, default=0, help="Limit number of codes (0=all)")
@@ -377,7 +377,7 @@ async def main():
                 "id": deterministic_uuid(code),
                 "payload": payload,
                 "_text_to_embed": embedding_text,
-            }
+            },
         )
 
     logger.info(f"Built {len(all_points)} points")
@@ -397,7 +397,7 @@ async def main():
     text_lengths = [len(p["_text_to_embed"]) for p in all_points]
     avg_len = sum(text_lengths) / len(text_lengths)
     logger.info(
-        f"  Avg text length: {avg_len:.0f} chars (min={min(text_lengths)}, max={max(text_lengths)})"
+        f"  Avg text length: {avg_len:.0f} chars (min={min(text_lengths)}, max={max(text_lengths)})",
     )
 
     if args.dry_run:
@@ -463,7 +463,7 @@ async def main():
                     "bm25": sparse,
                 },
                 "payload": point["payload"],
-            }
+            },
         )
 
     await upsert_to_qdrant(qdrant_points, qdrant_url, qdrant_api_key)

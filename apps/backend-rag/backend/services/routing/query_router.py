@@ -583,13 +583,13 @@ class QueryRouter:
         elif primary_domain == "property":
             collection = "legal_unified"
             logger.info(
-                f"🧭 Route: {collection} (property fallback: property={domain_scores['property']})"
+                f"🧭 Route: {collection} (property fallback: property={domain_scores['property']})",
             )
         elif primary_domain == "business":
             # Business setup & capital requirements: route to training_conversations_hybrid
             collection = "training_conversations_hybrid"
             logger.info(
-                f"🧭 Route: {collection} (business setup: business={domain_scores['business']})"
+                f"🧭 Route: {collection} (business setup: business={domain_scores['business']})",
             )
         elif primary_domain == "circular" or (
             primary_domain == "visa" and domain_scores.get("circular", 0) > 0
@@ -598,7 +598,7 @@ class QueryRouter:
             # Even if visa score is higher, circular keywords indicate specific circular query
             collection = "immigration_circulars"
             logger.info(
-                f"🧭 Route: {collection} (circular priority: circular={domain_scores.get('circular', 0)}, visa={domain_scores.get('visa', 0)})"
+                f"🧭 Route: {collection} (circular priority: circular={domain_scores.get('circular', 0)}, visa={domain_scores.get('visa', 0)})",
             )
         elif primary_domain == "visa":
             collection = "visa_oracle"
@@ -612,7 +612,7 @@ class QueryRouter:
         elif primary_domain == "team":
             collection = "bali_zero_pricing_hybrid"
             logger.warning(
-                f"⚠️ Route: {collection} (team query fallback - no dedicated live collection)"
+                f"⚠️ Route: {collection} (team query fallback - no dedicated live collection)",
             )
         else:  # books
             # Fallback for books if collection missing
@@ -709,7 +709,7 @@ class QueryRouter:
         return self.confidence_calculator.calculate_confidence(query, domain_scores)
 
     def get_fallback_collections(
-        self, primary_collection: CollectionName, confidence: float, max_fallbacks: int = 3
+        self, primary_collection: CollectionName, confidence: float, max_fallbacks: int = 3,
     ) -> list[CollectionName]:
         """
         Get list of collections to try based on confidence (Phase 3).
@@ -725,11 +725,11 @@ class QueryRouter:
             List of collections to query in order (primary first)
         """
         return self.fallback_manager.get_fallback_collections(
-            primary_collection, confidence, max_fallbacks
+            primary_collection, confidence, max_fallbacks,
         )
 
     def route_with_confidence(
-        self, query: str, return_fallbacks: bool = True
+        self, query: str, return_fallbacks: bool = True,
     ) -> tuple[CollectionName, float, list[CollectionName]]:
         """
         Route query with confidence scoring and fallback suggestions (Phase 3).
@@ -781,7 +781,7 @@ class QueryRouter:
         if len(all_collections) > 1:
             logger.info(
                 f"🎯 Route with fallbacks: {collection} (confidence={confidence:.2f}) "
-                f"→ fallbacks={all_collections[1:]}"
+                f"→ fallbacks={all_collections[1:]}",
             )
         else:
             logger.info(f"🎯 Route: {collection} (confidence={confidence:.2f}, high confidence)")

@@ -231,7 +231,7 @@ class TestNotificationService:
                 "created_at": datetime.now(tz=timezone.utc),
                 "sent_at": None,
                 "error_message": None,
-            }
+            },
         ]
 
         alerts = await service.get_pending_alerts()

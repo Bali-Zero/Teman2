@@ -104,12 +104,12 @@ class LegalIngestionService:
             )
 
             logger.info(
-                f"Starting legal document ingestion: {file_path} (Category: {category or 'None'})"
+                f"Starting legal document ingestion: {file_path} (Category: {category or 'None'})",
             )
 
             # Override collection if specified
             target_collection = resolve_collection_name(
-                collection_name or self.vector_db.collection_name
+                collection_name or self.vector_db.collection_name,
             )
             if collection_name:
                 self.vector_db = QdrantClient(collection_name=target_collection)
@@ -191,7 +191,7 @@ class LegalIngestionService:
             )
 
             metrics_collector.record_parsing_duration(
-                file_type=file_type, source=source, duration_seconds=parsing_duration
+                file_type=file_type, source=source, duration_seconds=parsing_duration,
             )
 
             # Logging already done above with structured data
@@ -312,7 +312,7 @@ class LegalIngestionService:
             metadata_duration = time.time() - metadata_start
 
             metrics_collector.record_metadata_extraction_duration(
-                document_type="legal", source=source, duration_seconds=metadata_duration
+                document_type="legal", source=source, duration_seconds=metadata_duration,
             )
 
             ingestion_logger.metadata_extracted(
@@ -341,7 +341,7 @@ class LegalIngestionService:
                     from google import genai
 
                     api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get(
-                        "GOOGLE_IMAGEN_API_KEY"
+                        "GOOGLE_IMAGEN_API_KEY",
                     )
                     if not api_key:
                         raise ValueError("GOOGLE_API_KEY not configured")
@@ -451,7 +451,7 @@ Return ONLY valid JSON, no markdown."""
                 # Use first 2000 chars for classification
                 content_sample = cleaned_text[:2000]
                 tier = self.classifier.classify_book_tier(
-                    document_title, "Pemerintah Indonesia", content_sample
+                    document_title, "Pemerintah Indonesia", content_sample,
                 )
 
             min_level = self.classifier.get_min_access_level(tier)
@@ -459,7 +459,7 @@ Return ONLY valid JSON, no markdown."""
             # STAGE 6: Hierarchical Indexing (Parent-Child)
             # Generate a document ID
             doc_id = f"{metadata.get('type_abbrev', 'DOC')}_{metadata.get('number', '0')}_{metadata.get('year', '0')}".replace(
-                " ", "_"
+                " ", "_",
             ).replace("/", "_")
 
             # Prepare base metadata
@@ -494,7 +494,7 @@ Return ONLY valid JSON, no markdown."""
             # Use HierarchicalIndexer
             indexing_start = time.time()
             indexing_result = await self.indexer.index_legal_document(
-                document_text=cleaned_text, document_id=doc_id, metadata=base_metadata
+                document_text=cleaned_text, document_id=doc_id, metadata=base_metadata,
             )
             indexing_duration = time.time() - indexing_start
 
@@ -517,7 +517,7 @@ Return ONLY valid JSON, no markdown."""
             )
 
             metrics_collector.record_document_processing_duration(
-                source=source, collection=target_collection, duration_seconds=total_duration
+                source=source, collection=target_collection, duration_seconds=total_duration,
             )
 
             logger.info(
@@ -578,7 +578,7 @@ Return ONLY valid JSON, no markdown."""
                                 "stage": "kg_extraction",
                                 "entities_extracted": kg_result.get("entities_extracted", 0),
                                 "relationships_extracted": kg_result.get(
-                                    "relationships_extracted", 0
+                                    "relationships_extracted", 0,
                                 ),
                                 "chunks_processed": kg_result.get("chunks_processed", 0),
                                 "duration_seconds": kg_duration,
@@ -660,7 +660,7 @@ Return ONLY valid JSON, no markdown."""
             )
 
             metrics_collector.record_parsing_error(
-                file_type=file_type, error_type=error_type, source=source
+                file_type=file_type, error_type=error_type, source=source,
             )
 
             # Log error with structured logging
@@ -741,7 +741,7 @@ Return ONLY valid JSON, no markdown."""
             except Exception as e:
                 # Se list_files fallisce, prova a creare direttamente
                 logger.warning(
-                    f"Error listing files in {current_parent_id}: {e}. Attempting to create folder..."
+                    f"Error listing files in {current_parent_id}: {e}. Attempting to create folder...",
                 )
                 try:
                     folder = await drive_service.create_folder(
@@ -779,7 +779,7 @@ Return ONLY valid JSON, no markdown."""
 
                 if not os.path.exists(kg_extractor_path):
                     raise ImportError(
-                        f"kg_incremental_extraction.py not found at {kg_extractor_path}"
+                        f"kg_incremental_extraction.py not found at {kg_extractor_path}",
                     )
 
                 if scripts_path not in sys.path:
@@ -789,7 +789,7 @@ Return ONLY valid JSON, no markdown."""
                 import importlib.util
 
                 spec = importlib.util.spec_from_file_location(
-                    "kg_incremental_extraction", kg_extractor_path
+                    "kg_incremental_extraction", kg_extractor_path,
                 )
                 kg_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(kg_module)
@@ -808,7 +808,7 @@ Return ONLY valid JSON, no markdown."""
 
                     if creds_json:
                         with tempfile.NamedTemporaryFile(
-                            mode="w", suffix=".json", delete=False
+                            mode="w", suffix=".json", delete=False,
                         ) as f:
                             f.write(creds_json)
                             creds_path = f.name
@@ -825,11 +825,11 @@ Return ONLY valid JSON, no markdown."""
                 if settings.database_url:
                     try:
                         db_pool = await asyncpg.create_pool(
-                            settings.database_url, min_size=1, max_size=5
+                            settings.database_url, min_size=1, max_size=5,
                         )
                     except Exception as db_error:
                         logger.warning(
-                            f"Could not create database pool for KG extraction: {db_error}"
+                            f"Could not create database pool for KG extraction: {db_error}",
                         )
                         # Return None to skip KG extraction
                         return None

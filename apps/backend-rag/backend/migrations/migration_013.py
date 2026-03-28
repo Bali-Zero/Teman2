@@ -36,7 +36,7 @@ class Migration013(BaseMigration):
                     SELECT FROM information_schema.tables
                     WHERE table_name = '{table}'
                 )
-            """
+            """,
             )
             if not exists:
                 return False

@@ -83,7 +83,7 @@ class VisaTypeCreate(VisaTypeBase):
 
 @router.get("/", response_model=VisaTypeListResponse)
 async def list_visa_types(
-    category: str | None = None, pool=Depends(get_db_pool)
+    category: str | None = None, pool=Depends(get_db_pool),
 ) -> VisaTypeListResponse:
     """
     List all visa types, optionally filtered by category.
@@ -361,11 +361,11 @@ async def create_visa_type(
     async with pool.acquire() as conn:
         # Check if code already exists
         existing = await conn.fetchval(
-            "SELECT id FROM visa_types WHERE UPPER(code) = UPPER($1)", visa.code
+            "SELECT id FROM visa_types WHERE UPPER(code) = UPPER($1)", visa.code,
         )
         if existing:
             raise HTTPException(
-                status_code=400, detail=f"Visa type with code '{visa.code}' already exists"
+                status_code=400, detail=f"Visa type with code '{visa.code}' already exists",
             )
 
         row = await conn.fetchrow(

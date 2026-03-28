@@ -115,7 +115,7 @@ class VerificationStage(PipelineStage):
 
             logger.info(
                 f"[{self.name}] Verification complete: "
-                f"status={verification.status.value}, score={verification.score:.2f}"
+                f"status={verification.status.value}, score={verification.score:.2f}",
             )
 
         except (ValueError, RuntimeError, KeyError) as e:
@@ -160,7 +160,7 @@ class PostProcessingStage(PipelineStage):
             data["response"] = cleaned
 
             logger.info(
-                f"[{self.name}] Post-processing complete: {original_length} -> {len(cleaned)} chars"
+                f"[{self.name}] Post-processing complete: {original_length} -> {len(cleaned)} chars",
             )
 
         except (ValueError, RuntimeError) as e:
@@ -219,7 +219,7 @@ class CitationStage(PipelineStage):
 
             logger.info(
                 f"[{self.name}] Processed {len(sources)} sources -> "
-                f"{len(normalized)} unique citations"
+                f"{len(normalized)} unique citations",
             )
 
         except (ValueError, KeyError, TypeError) as e:
@@ -270,7 +270,7 @@ class CitationStage(PipelineStage):
                     "score": float(src.get("score", 0)),
                     "snippet": src.get("snippet", ""),
                     "metadata": src.get("metadata", {}),
-                }
+                },
             )
 
         # Sort by relevance score (descending)
@@ -343,7 +343,7 @@ class ResponsePipeline:
         self.stages = stages
         logger.info(
             f"[ResponsePipeline] Initialized with {len(stages)} stages: "
-            f"{', '.join(s.name for s in stages)}"
+            f"{', '.join(s.name for s in stages)}",
         )
 
     async def process(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -379,7 +379,7 @@ class ResponsePipeline:
 
         logger.info(
             f"[ResponsePipeline] Processing complete: "
-            f"{len(data['stages_completed'])} stages executed"
+            f"{len(data['stages_completed'])} stages executed",
         )
 
         return data
@@ -404,5 +404,5 @@ def create_default_pipeline() -> ResponsePipeline:
             PostProcessingStage(),
             CitationStage(max_citations=10),
             FormatStage(),
-        ]
+        ],
     )

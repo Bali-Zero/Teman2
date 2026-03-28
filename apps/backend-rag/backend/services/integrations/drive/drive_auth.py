@@ -78,7 +78,7 @@ class DriveAuthManager:
                 # Se mancano meno di 5 minuti alla scadenza, esegui il refresh
                 if time_to_expiry < 300:
                     logger.info(
-                        f"Token OAuth per {user_id} in scadenza (TTL: {time_to_expiry}s). Inizio refresh."
+                        f"Token OAuth per {user_id} in scadenza (TTL: {time_to_expiry}s). Inizio refresh.",
                     )
                     return await self._refresh_oauth_token(user_id, refresh_token)
 
@@ -86,7 +86,7 @@ class DriveAuthManager:
 
         except Exception as e:
             logger.error(
-                f"Errore critico nel recupero token OAuth per {user_id}: {e}", exc_info=True
+                f"Errore critico nel recupero token OAuth per {user_id}: {e}", exc_info=True,
             )
             return None
 
@@ -97,7 +97,7 @@ class DriveAuthManager:
         """
         if not refresh_token:
             logger.error(
-                f"Impossibile effettuare il refresh per {user_id}: refresh_token mancante."
+                f"Impossibile effettuare il refresh per {user_id}: refresh_token mancante.",
             )
             if METRICS_ENABLED:
                 drive_oauth_refresh_total.labels(status="failed").inc()
@@ -108,7 +108,7 @@ class DriveAuthManager:
 
         if not client_id or not client_secret:
             logger.error(
-                "Credenziali OAuth (Client ID/Secret) non configurate nelle variabili d'ambiente."
+                "Credenziali OAuth (Client ID/Secret) non configurate nelle variabili d'ambiente.",
             )
             return None
 
@@ -174,13 +174,13 @@ class DriveAuthManager:
             sa_json_str = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
             if not sa_json_str:
                 logger.error(
-                    "La variabile d'ambiente GOOGLE_SERVICE_ACCOUNT_JSON non è configurata."
+                    "La variabile d'ambiente GOOGLE_SERVICE_ACCOUNT_JSON non è configurata.",
                 )
                 return None
 
             sa_info = json.loads(sa_json_str)
             credentials = service_account.Credentials.from_service_account_info(
-                sa_info, scopes=self.scopes
+                sa_info, scopes=self.scopes,
             )
 
             # Nota: L'oggetto request di google.auth è sincrono,
@@ -191,7 +191,7 @@ class DriveAuthManager:
 
         except json.JSONDecodeError as e:
             logger.error(
-                f"GOOGLE_SERVICE_ACCOUNT_JSON contiene JSON non valido: {e}", exc_info=True
+                f"GOOGLE_SERVICE_ACCOUNT_JSON contiene JSON non valido: {e}", exc_info=True,
             )
             return None
         except Exception as e:
@@ -231,6 +231,6 @@ class DriveAuthManager:
 
         except Exception as e:
             logger.error(
-                f"Fallimento recupero permessi folder per l'utente {user_email}: {e}", exc_info=True
+                f"Fallimento recupero permessi folder per l'utente {user_email}: {e}", exc_info=True,
             )
             return ([], False)

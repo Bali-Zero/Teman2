@@ -141,7 +141,7 @@ class TestEmbeddingsGenerator:
             side_effect=[
                 create_batch_response(2048),  # First batch
                 create_batch_response(952),  # Second batch (3000 - 2048)
-            ]
+            ],
         )
         mock_openai_class.return_value = mock_client
 

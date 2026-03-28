@@ -151,7 +151,7 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
                     "duration_ms": duration_ms,
                     "timestamp": time.time(),
                     **metadata,
-                }
+                },
             )
 
     @staticmethod

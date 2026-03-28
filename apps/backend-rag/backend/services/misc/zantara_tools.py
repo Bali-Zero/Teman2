@@ -26,7 +26,7 @@ class ZantaraTools:
         logger.info("✅ ZantaraTools initialized")
 
     async def execute_tool(
-        self, tool_name: str, tool_input: dict[str, Any], _user_id: str = "system"
+        self, tool_name: str, tool_input: dict[str, Any], _user_id: str = "system",
     ) -> dict[str, Any]:
         """
         Execute a Zantara tool
@@ -246,7 +246,7 @@ DO NOT generate prices from memory - prices change and must be accurate. All pri
                         "query": {
                             "type": "string",
                             "description": "Name to search for (e.g. 'Dea', 'Zero', 'Krisna')",
-                        }
+                        },
                     },
                     "required": ["query"],
                 },
@@ -260,7 +260,7 @@ DO NOT generate prices from memory - prices change and must be accurate. All pri
                         "department": {
                             "type": "string",
                             "description": "Optional: filter by department (technology, operations, creative, etc.)",
-                        }
+                        },
                     },
                 },
             },

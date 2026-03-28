@@ -49,7 +49,7 @@ class PerformanceTrendService:
 
         # Group by week
         weekly_data = defaultdict(
-            lambda: {"hours": 0, "conversations": 0, "activities": 0, "sessions": 0}
+            lambda: {"hours": 0, "conversations": 0, "activities": 0, "sessions": 0},
         )
 
         for s in sessions:
@@ -75,7 +75,7 @@ class PerformanceTrendService:
                     "conversations_per_hour": (
                         round(data["conversations"] / data["hours"], 2) if data["hours"] > 0 else 0
                     ),
-                }
+                },
             )
 
         # Calculate trend

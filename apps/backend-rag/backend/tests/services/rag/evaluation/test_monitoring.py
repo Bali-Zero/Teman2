@@ -53,13 +53,13 @@ def mock_prometheus_metrics():
         patch("backend.services.rag.evaluation.monitoring.query_total") as mock_query,
         patch("backend.services.rag.evaluation.monitoring.query_latency_ms") as mock_latency,
         patch(
-            "backend.services.rag.evaluation.monitoring.evidence_score_distribution"
+            "backend.services.rag.evaluation.monitoring.evidence_score_distribution",
         ) as mock_score,
         patch("backend.services.rag.evaluation.monitoring.abstain_total") as mock_abstain,
         patch("backend.services.rag.evaluation.monitoring.cache_hits_total") as mock_cache_hit,
         patch("backend.services.rag.evaluation.monitoring.cache_misses_total") as mock_cache_miss,
         patch(
-            "backend.services.rag.evaluation.monitoring.low_score_queries_total"
+            "backend.services.rag.evaluation.monitoring.low_score_queries_total",
         ) as mock_low_score,
         patch("backend.services.rag.evaluation.monitoring.alert_threshold_breaches") as mock_alert,
     ):
@@ -300,7 +300,7 @@ class TestRecordQueryMetrics:
         """Test that exceptions are logged not raised."""
         # This should not raise
         with patch.object(
-            monitor, "_update_prometheus_metrics", side_effect=Exception("Test error")
+            monitor, "_update_prometheus_metrics", side_effect=Exception("Test error"),
         ):
             monitor.record_query_metrics(
                 query="test",
@@ -327,7 +327,7 @@ class TestRecordRetrievalScore:
     def test_record_clamps_score_high(self, monitor: RetrievalQualityMonitor) -> None:
         """Test that scores above 1.0 are clamped."""
         with patch(
-            "backend.services.rag.evaluation.monitoring.evidence_score_distribution"
+            "backend.services.rag.evaluation.monitoring.evidence_score_distribution",
         ) as mock:
             monitor.record_retrieval_score(1.5)
             mock.observe.assert_called_once_with(1.0)
@@ -335,7 +335,7 @@ class TestRecordRetrievalScore:
     def test_record_clamps_score_low(self, monitor: RetrievalQualityMonitor) -> None:
         """Test that scores below 0.0 are clamped."""
         with patch(
-            "backend.services.rag.evaluation.monitoring.evidence_score_distribution"
+            "backend.services.rag.evaluation.monitoring.evidence_score_distribution",
         ) as mock:
             monitor.record_retrieval_score(-0.5)
             mock.observe.assert_called_once_with(0.0)
@@ -349,7 +349,7 @@ class TestRecordRetrievalScore:
         monitor.record_retrieval_score(0.2)  # Below default threshold of 0.3
 
         mock_prometheus_metrics["alert_threshold_breaches"].labels.assert_called_once_with(
-            metric_name="retrieval_score", severity="warning"
+            metric_name="retrieval_score", severity="warning",
         )
 
 
@@ -365,7 +365,7 @@ class TestRecordAbstain:
         monitor.record_abstain()
 
         mock_prometheus_metrics["abstain_total"].labels.assert_called_once_with(
-            domain="general", reason="low_confidence"
+            domain="general", reason="low_confidence",
         )
         assert len(monitor._query_records) == 1
 
@@ -378,7 +378,7 @@ class TestRecordAbstain:
         monitor.record_abstain(domain="visa", reason="safety")
 
         mock_prometheus_metrics["abstain_total"].labels.assert_called_once_with(
-            domain="visa", reason="safety"
+            domain="visa", reason="safety",
         )
 
         record = monitor._query_records[0]
@@ -596,7 +596,7 @@ class TestGetDashboardData:
                 max_abstain_rate=0.01,
                 max_latency_ms=50.0,
                 min_cache_hit_rate=0.99,
-            )
+            ),
         )
 
         # Add query that breaches all thresholds

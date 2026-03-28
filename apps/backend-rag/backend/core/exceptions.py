@@ -79,7 +79,7 @@ class QdrantServerError(QdrantError):
 
     def __init__(self, message: str, status_code: int, response_text: str | None = None) -> None:
         super().__init__(
-            message, details={"status_code": status_code, "response_text": response_text}
+            message, details={"status_code": status_code, "response_text": response_text},
         )
         self.status_code = status_code
         self.response_text = response_text
@@ -90,7 +90,7 @@ class QdrantClientError(QdrantError):
 
     def __init__(self, message: str, status_code: int, response_text: str | None = None) -> None:
         super().__init__(
-            message, details={"status_code": status_code, "response_text": response_text}
+            message, details={"status_code": status_code, "response_text": response_text},
         )
         self.status_code = status_code
         self.response_text = response_text

@@ -55,7 +55,7 @@ class TestIdentityRouter:
             mock_service.authenticate_user = AsyncMock(return_value=mock_user)
             mock_service.create_access_token = MagicMock(return_value="mock_jwt_token")
             mock_service.get_permissions_for_role = MagicMock(
-                return_value=["chat:read", "chat:write"]
+                return_value=["chat:read", "chat:write"],
             )
             mock_get_service.return_value = mock_service
 

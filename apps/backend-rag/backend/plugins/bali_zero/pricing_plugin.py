@@ -31,7 +31,7 @@ class PricingQueryOutput(PluginOutput):
     """Output schema for pricing queries"""
 
     prices: list[dict] | None = Field(
-        None, description="List of pricing items (None if result is dict format - check data field)"
+        None, description="List of pricing items (None if result is dict format - check data field)",
     )
     fallback_contact: dict | None = Field(None, description="Contact info if prices not available")
 
@@ -124,7 +124,7 @@ class PricingPlugin(Plugin):
                         if isinstance(services, dict):
                             for service_name, service_data in services.items():
                                 prices_list.append(
-                                    {"category": category, "name": service_name, **service_data}
+                                    {"category": category, "name": service_name, **service_data},
                                 )
                 # Otherwise, result is already in the right format
                 # Keep as dict in data field, set prices to None (will be extracted by client)

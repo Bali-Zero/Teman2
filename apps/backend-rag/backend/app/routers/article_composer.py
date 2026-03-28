@@ -55,7 +55,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 def get_or_create_metric(
-    metric_class: Any, name: Any, documentation: Any, labelnames: Any = (), **kwargs
+    metric_class: Any, name: Any, documentation: Any, labelnames: Any = (), **kwargs,
 ) -> Any:
     """Helper to avoid duplicate registration in tests"""
     # Check if metric already exists in the registry
@@ -345,7 +345,7 @@ async def compose_article(
     try:
         # Check cache first
         cached_result = await cache_service.get_compose_cache(
-            payload.title, payload.content, payload.category
+            payload.title, payload.content, payload.category,
         )
         if cached_result:
             logger.info(
@@ -365,7 +365,7 @@ async def compose_article(
 
         # Build prompt
         prompt = build_enrichment_prompt(
-            title=payload.title, content=payload.content, category=payload.category
+            title=payload.title, content=payload.content, category=payload.category,
         )
 
         # Call Claude with retry logic
@@ -419,13 +419,13 @@ async def compose_article(
                         "when": "Now",
                         "risk_level": "Medium",
                     },
-                )
+                ),
             ),
             facts=data.get("facts", payload.content[:500]),
             bali_zero_take=BaliZeroTake(
                 **data.get(
-                    "bali_zero_take", {"hidden_insight": "", "our_analysis": "", "our_advice": ""}
-                )
+                    "bali_zero_take", {"hidden_insight": "", "our_analysis": "", "our_advice": ""},
+                ),
             ),
             next_steps=NextSteps(**data.get("next_steps", {"expat": [], "investor": []})),
             category=data.get("category", payload.category),
@@ -542,14 +542,14 @@ class PublishRequest(BaseModel):
 
     article: EnrichedArticle
     cover_image_base64: str | None = Field(
-        default=None, description="Cover image as base64 encoded string"
+        default=None, description="Cover image as base64 encoded string",
     )
     cover_image_filename: str | None = Field(
-        default=None, description="Cover image filename (e.g., 'article-cover.jpg')"
+        default=None, description="Cover image filename (e.g., 'article-cover.jpg')",
     )
     position: str = Field(default="normal", description="Position: main_featured|secondary|normal")
     slug: str | None = Field(
-        default=None, description="Custom slug, auto-generated if not provided"
+        default=None, description="Custom slug, auto-generated if not provided",
     )
 
 
@@ -654,7 +654,7 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
     ai_confidence = getattr(article, "ai_confidence_score", 0.85)
     answer_snippet = getattr(article, "answer_snippet", article.ai_summary)
     primary_question = getattr(
-        article, "primary_question", f"What does {article.headline} mean for expats in Bali?"
+        article, "primary_question", f"What does {article.headline} mean for expats in Bali?",
     )
 
     # Entity mentions from enrichment
@@ -794,12 +794,12 @@ async def publish_article(request: PublishRequest) -> PublishResponse:
         if len(files_to_commit) == 1:
             # Single file commit
             result = await github_publisher.upload_file(
-                path=mdx_git_path, content=mdx_content, message=commit_message
+                path=mdx_git_path, content=mdx_content, message=commit_message,
             )
         else:
             # Atomic multi-file commit
             result = await github_publisher.create_commit_with_files(
-                files=files_to_commit, message=commit_message
+                files=files_to_commit, message=commit_message,
             )
 
         # Build article URL
@@ -858,7 +858,7 @@ async def publish_article(request: PublishRequest) -> PublishResponse:
 
         # Track metrics
         article_publish_requests.labels(
-            status="success", has_cover_image=str(has_cover_image)
+            status="success", has_cover_image=str(has_cover_image),
         ).inc()
 
         return PublishResponse(
@@ -873,7 +873,7 @@ async def publish_article(request: PublishRequest) -> PublishResponse:
     except GitHubPublisherError as e:
         logger.error(f"GitHub publish error: {e}")
         article_publish_requests.labels(
-            status="github_error", has_cover_image=str(has_cover_image)
+            status="github_error", has_cover_image=str(has_cover_image),
         ).inc()
         return PublishResponse(success=False, message="Failed to publish to GitHub", error=str(e))
     except Exception as e:

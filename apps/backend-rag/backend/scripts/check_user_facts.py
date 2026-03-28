@@ -40,7 +40,7 @@ async def check_user_facts():
                 WHERE table_schema = 'public'
                 AND table_name = 'user_memory_facts'
             );
-            """
+            """,
         )
 
         if not table_exists:
@@ -82,7 +82,7 @@ async def check_user_facts():
                     SELECT DISTINCT user_id
                     FROM user_memory_facts
                     LIMIT 5
-                    """
+                    """,
                 )
                 logger.info("Sample users with facts:")
                 for user in sample_users:

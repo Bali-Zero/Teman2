@@ -119,7 +119,7 @@ class TestOracleServiceProperties:
         oracle_service._memory_orchestrator = mock_orchestrator
 
         await oracle_service._save_memory_facts(
-            user_email="test@example.com", user_message="test message", ai_response="test response"
+            user_email="test@example.com", user_message="test message", ai_response="test response",
         )
         # Should not raise exception
         mock_orchestrator.process_conversation.assert_called_once()

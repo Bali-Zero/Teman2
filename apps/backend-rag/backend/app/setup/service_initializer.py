@@ -68,7 +68,7 @@ async def _init_critical_services(
 
         embedder = create_embeddings_generator()
         cultural_insights = CulturalInsightsService(
-            collection_manager=collection_manager, embedder=embedder
+            collection_manager=collection_manager, embedder=embedder,
         )
 
         # Create SearchService with dependencies
@@ -172,7 +172,7 @@ async def _init_rag_components(app: FastAPI, search_service):
     cultural_insights_service = getattr(app.state, "cultural_insights", None)
     if cultural_insights_service:
         cultural_rag_service = CulturalRAGService(
-            cultural_insights_service=cultural_insights_service
+            cultural_insights_service=cultural_insights_service,
         )
     else:
         # Fallback to search_service for backward compatibility
@@ -224,18 +224,18 @@ async def _init_specialized_agents(
     except Exception as e:
         # Exception contains service init error, not credentials
         logger.error(
-            f"❌ Failed to initialize AutonomousResearchService: {e}"
+            f"❌ Failed to initialize AutonomousResearchService: {e}",
         )  # nosemgrep: python-logger-credential-disclosure
 
     try:
         cross_oracle_synthesis_service = CrossOracleSynthesisService(
-            search_service=search_service, zantara_ai_client=ai_client
+            search_service=search_service, zantara_ai_client=ai_client,
         )
         logger.info("✅ CrossOracleSynthesisService initialized")
     except Exception as e:
         # Exception contains service init error, not credentials
         logger.error(
-            f"❌ Failed to initialize CrossOracleSynthesisService: {e}"
+            f"❌ Failed to initialize CrossOracleSynthesisService: {e}",
         )  # nosemgrep: python-logger-credential-disclosure
 
     try:
@@ -357,7 +357,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
 
             # Start health check task
             app.state.db_health_check_task = asyncio.create_task(
-                _database_health_check_loop(db_pool)
+                _database_health_check_loop(db_pool),
             )
 
             service_registry.register("database", ServiceStatus.HEALTHY, critical=False)
@@ -388,7 +388,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 from backend.app.metrics import database_init_failed_total
 
                 database_init_failed_total.labels(
-                    error_type=error_type, is_transient=str(is_transient)
+                    error_type=error_type, is_transient=str(is_transient),
                 ).inc()
             except ImportError:
                 pass
@@ -435,7 +435,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 from backend.app.metrics import database_init_failed_total
 
                 database_init_failed_total.labels(
-                    error_type=error_type, is_transient=str(is_transient)
+                    error_type=error_type, is_transient=str(is_transient),
                 ).inc()
             except ImportError:
                 pass
@@ -446,7 +446,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 await asyncio.sleep(delay)
             else:
                 service_registry.register(
-                    "database", ServiceStatus.UNAVAILABLE, error=str(e), critical=False
+                    "database", ServiceStatus.UNAVAILABLE, error=str(e), critical=False,
                 )
                 logger.error(f"❌ Unexpected error initializing database: {e}")
                 app.state.ts_service = None
@@ -572,7 +572,7 @@ async def initialize_faq_cache_service(app: FastAPI) -> None:
 
 
 async def initialize_crm_and_memory_services(
-    app: FastAPI, ai_client, db_pool: asyncpg.Pool | None
+    app: FastAPI, ai_client, db_pool: asyncpg.Pool | None,
 ) -> None:
     """
     Initialize CRM and Memory services: MemoryService, ConversationService.
@@ -616,7 +616,7 @@ async def initialize_crm_and_memory_services(
 
         # Initialize Collective Memory Workflow
         collective_memory_workflow = create_collective_memory_workflow(
-            memory_service=app.state.memory_service
+            memory_service=app.state.memory_service,
         )
         app.state.collective_memory_workflow = collective_memory_workflow
         service_registry.register("memory", ServiceStatus.HEALTHY, critical=False)
@@ -740,7 +740,7 @@ async def _init_background_services(
         logger.info("✅ Health Monitor: Active (check_interval=60s)")
     except Exception as e:
         service_registry.register(
-            "health_monitor", ServiceStatus.DEGRADED, error=str(e), critical=False
+            "health_monitor", ServiceStatus.DEGRADED, error=str(e), critical=False,
         )
         logger.error(f"❌ Failed to initialize Health Monitor: {e}")
 
@@ -767,7 +767,7 @@ async def _init_background_services(
         logger.info("✅ Proactive Compliance Monitor: Active")
     except Exception as e:
         service_registry.register(
-            "compliance", ServiceStatus.DEGRADED, error=str(e), critical=False
+            "compliance", ServiceStatus.DEGRADED, error=str(e), critical=False,
         )
         logger.error(f"❌ Failed to initialize Compliance Monitor: {e}")
 
@@ -787,7 +787,7 @@ async def _init_background_services(
         logger.info("✅ Autonomous Scheduler: Active")
     except Exception as e:
         service_registry.register(
-            "autonomous_scheduler", ServiceStatus.DEGRADED, error=str(e), critical=False
+            "autonomous_scheduler", ServiceStatus.DEGRADED, error=str(e), critical=False,
         )
         logger.error(f"❌ Failed to initialize Autonomous Scheduler: {e}")
 
@@ -958,7 +958,7 @@ async def initialize_channel_router(
         x_consumer_secret = settings.x_consumer_secret or os.getenv("TWITTER_CONSUMER_SECRET")
         x_access_token = settings.x_access_token or os.getenv("TWITTER_ACCESS_TOKEN")
         x_access_token_secret = settings.x_access_token_secret or os.getenv(
-            "TWITTER_ACCESS_TOKEN_SECRET"
+            "TWITTER_ACCESS_TOKEN_SECRET",
         )
         x_bearer_token = settings.x_bearer_token or os.getenv("TWITTER_BEARER_TOKEN")
         if x_consumer_key and x_consumer_secret and x_access_token and x_access_token_secret:
@@ -988,7 +988,7 @@ async def initialize_channel_router(
 
     except Exception as e:
         service_registry.register(
-            "channel_router", ServiceStatus.DEGRADED, error=str(e), critical=False
+            "channel_router", ServiceStatus.DEGRADED, error=str(e), critical=False,
         )
         logger.error(f"❌ Failed to initialize Channel Router: {e}", exc_info=True)
         app.state.channel_router_init_error = str(e)
@@ -1040,7 +1040,7 @@ async def initialize_services(app: FastAPI) -> None:
     cultural_insights_service = getattr(app.state, "cultural_insights", None)
     if cultural_insights_service:
         cultural_rag_service = CulturalRAGService(
-            cultural_insights_service=cultural_insights_service
+            cultural_insights_service=cultural_insights_service,
         )
     else:
         # Fallback to search_service for backward compatibility
@@ -1117,7 +1117,7 @@ async def initialize_services(app: FastAPI) -> None:
         logger.info("✅ Health Monitor: Active (check_interval=60s)")
     except Exception as e:
         service_registry.register(
-            "health_monitor", ServiceStatus.DEGRADED, error=str(e), critical=False
+            "health_monitor", ServiceStatus.DEGRADED, error=str(e), critical=False,
         )
         logger.error(f"❌ Failed to initialize Health Monitor: {e}")
 

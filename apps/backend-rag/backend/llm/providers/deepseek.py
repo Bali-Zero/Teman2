@@ -42,7 +42,7 @@ class DeepSeekProvider(LLMProvider):
             self._client = DeepSeekClient()
             self._available = self._client.is_available
             logger.info(
-                f"DeepSeekProvider initialized: model={self._model}, available={self._available}"
+                f"DeepSeekProvider initialized: model={self._model}, available={self._available}",
             )
         except Exception as e:
             logger.warning(f"Failed to initialize DeepSeekProvider: {e}")
@@ -57,7 +57,7 @@ class DeepSeekProvider(LLMProvider):
         return self._available and self._client is not None
 
     async def generate(
-        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs,
     ) -> LLMResponse:
         """Generate response using DeepSeek."""
         if not self.is_available:
@@ -82,7 +82,7 @@ class DeepSeekProvider(LLMProvider):
         )
 
     async def stream(
-        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs,
     ) -> AsyncIterator[str]:
         """Stream response using DeepSeek."""
         if not self.is_available:

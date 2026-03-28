@@ -44,7 +44,7 @@ class TestStartupHandlers:
         # Import inside test to use mocked dependencies
         with patch("backend.app.setup.plugin_initializer.initialize_plugins", new=AsyncMock()):
             with patch(
-                "backend.app.setup.service_initializer.initialize_services", new=AsyncMock()
+                "backend.app.setup.service_initializer.initialize_services", new=AsyncMock(),
             ):
                 # Re-import with mocked deps
                 if "backend.app.lifecycle.startup" in sys.modules:
@@ -55,13 +55,13 @@ class TestStartupHandlers:
                     "sys.modules",
                     {
                         "backend.app.setup.plugin_initializer": MagicMock(
-                            initialize_plugins=AsyncMock()
+                            initialize_plugins=AsyncMock(),
                         ),
                         "backend.app.setup.service_initializer": MagicMock(
-                            initialize_services=AsyncMock()
+                            initialize_services=AsyncMock(),
                         ),
                         "backend.services.monitoring.alert_service": MagicMock(
-                            AlertService=MagicMock()
+                            AlertService=MagicMock(),
                         ),
                     },
                 ):
@@ -141,13 +141,13 @@ class TestStartupHandlersDirect:
             "sys.modules",
             {
                 "backend.app.setup.plugin_initializer": MagicMock(
-                    initialize_plugins=mock_init_plugins
+                    initialize_plugins=mock_init_plugins,
                 ),
                 "backend.app.setup.service_initializer": MagicMock(
-                    initialize_services=mock_init_services
+                    initialize_services=mock_init_services,
                 ),
                 "backend.services.monitoring.alert_service": MagicMock(
-                    AlertService=mock_alert_service
+                    AlertService=mock_alert_service,
                 ),
             },
         ):
@@ -197,10 +197,10 @@ class TestStartupHandlersDirect:
             "sys.modules",
             {
                 "backend.app.setup.plugin_initializer": MagicMock(
-                    initialize_plugins=mock_init_plugins
+                    initialize_plugins=mock_init_plugins,
                 ),
                 "backend.app.setup.service_initializer": MagicMock(
-                    initialize_services=mock_init_services
+                    initialize_services=mock_init_services,
                 ),
                 "backend.services.monitoring.alert_service": MagicMock(AlertService=MagicMock()),
             },

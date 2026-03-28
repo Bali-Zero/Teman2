@@ -87,7 +87,7 @@ class DatabaseManager:
                 SELECT id, email, name, role, status, language_preference, meta_json, role_level, timezone
                 FROM users
                 WHERE email = :email AND status = 'active'
-                """
+                """,
                 )
                 result = conn.execute(query, {"email": user_email}).mappings().fetchone()
 
@@ -125,7 +125,7 @@ class DatabaseManager:
                     :language_preference, :model_used, :response_time_ms,
                     :document_count, :session_id, :metadata
                 )
-                """
+                """,
                 )
 
                 params = {
@@ -165,7 +165,7 @@ class DatabaseManager:
                     :feedback_type, :model_used, :response_time_ms,
                     :user_rating, :session_id, :metadata
                 )
-                """
+                """,
                 )
 
                 params = {

@@ -9,7 +9,7 @@ class ConversationTrainerRequest(BaseModel):
     """Request schema for ConversationTrainer"""
 
     days_back: int = Field(
-        ge=1, le=365, default=7, description="Days to look back for conversations (1-365)"
+        ge=1, le=365, default=7, description="Days to look back for conversations (1-365)",
     )
 
 
@@ -17,7 +17,7 @@ class KnowledgeGraphBuilderRequest(BaseModel):
     """Request schema for KnowledgeGraphBuilder"""
 
     days_back: int = Field(
-        ge=1, le=365, default=30, description="Days to look back for conversations (1-365)"
+        ge=1, le=365, default=30, description="Days to look back for conversations (1-365)",
     )
     init_schema: bool = Field(default=False, description="Initialize database schema")
 

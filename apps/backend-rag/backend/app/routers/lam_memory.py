@@ -34,7 +34,7 @@ async def _get_qdrant() -> QdrantClient:
         except Exception:
             # Collection may not exist yet — create it on first save
             logger.info(
-                f"LAM memory: collection '{COLLECTION}' not found, will create on first write"
+                f"LAM memory: collection '{COLLECTION}' not found, will create on first write",
             )
     return _qdrant
 
@@ -166,7 +166,7 @@ async def recall_similar(request: RecallRequest) -> RecallResponse:
                         for k, v in payload.items()
                         if k not in ("content", "agent", "tags", "outcome", "timestamp")
                     },
-                )
+                ),
             )
 
         elapsed_ms = (time.time() - start) * 1000
@@ -210,7 +210,7 @@ async def list_recent_episodes(limit: int = 10, agent: str | None = None) -> Lis
                         for k, v in payload.items()
                         if k not in ("content", "agent", "tags", "outcome", "timestamp")
                     },
-                )
+                ),
             )
 
         return ListEpisodesResponse(episodes=episodes, total=len(episodes))
@@ -219,7 +219,7 @@ async def list_recent_episodes(limit: int = 10, agent: str | None = None) -> Lis
         err_str = str(e)
         if "not found" in err_str.lower() or "doesn't exist" in err_str.lower() or "404" in err_str:
             logger.info(
-                f"LAM list_episodes: collection '{COLLECTION}' not yet created — returning empty"
+                f"LAM list_episodes: collection '{COLLECTION}' not yet created — returning empty",
             )
             return ListEpisodesResponse(episodes=[], total=0)
         logger.error(f"LAM list_episodes failed: {e}", exc_info=True)

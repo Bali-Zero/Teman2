@@ -118,7 +118,7 @@ async def get_agents_status(current_user: dict = Depends(get_current_user)) -> d
 
 class CreateJourneyRequest(BaseModel):
     journey_type: str = Field(
-        ..., description="Journey type: pt_pma_setup, kitas_application, property_purchase"
+        ..., description="Journey type: pt_pma_setup, kitas_application, property_purchase",
     )
     client_id: str = Field(..., description="Client ID")
     custom_steps: list[dict[str, Any]] | None = Field(None, description="Custom journey steps")
@@ -126,7 +126,7 @@ class CreateJourneyRequest(BaseModel):
 
 @router.post("/journey/create")
 async def create_client_journey(
-    request: CreateJourneyRequest, current_user: dict = Depends(get_current_user)
+    request: CreateJourneyRequest, current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     🎯 AGENT 1: Client Journey Orchestrator
@@ -157,7 +157,7 @@ async def create_client_journey(
 
 @router.get("/journey/{journey_id}")
 async def get_journey(
-    journey_id: str, current_user: dict = Depends(get_current_user)
+    journey_id: str, current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Get journey details and progress"""
     journey = journey_orchestrator.get_journey(journey_id)
@@ -192,7 +192,7 @@ async def complete_journey_step(
 
 @router.get("/journey/{journey_id}/next-steps")
 async def get_next_steps(
-    journey_id: str, current_user: dict = Depends(get_current_user)
+    journey_id: str, current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Get next available steps in the journey"""
     next_steps = journey_orchestrator.get_next_steps(journey_id)
@@ -220,7 +220,7 @@ class AddComplianceItemRequest(BaseModel):
 
 @router.post("/compliance/track")
 async def add_compliance_tracking(
-    request: AddComplianceItemRequest, current_user: dict = Depends(get_current_user)
+    request: AddComplianceItemRequest, current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     ⚠️ AGENT 2: Proactive Compliance Monitor
@@ -310,7 +310,7 @@ async def get_compliance_alerts(
                     for a in alerts
                     if (hasattr(a, "severity") and a.severity == AlertSeverity.CRITICAL)
                     or (isinstance(a, dict) and a.get("severity") == AlertSeverity.CRITICAL.value)
-                ]
+                ],
             ),
             "urgent": len(
                 [
@@ -318,7 +318,7 @@ async def get_compliance_alerts(
                     for a in alerts
                     if (hasattr(a, "severity") and a.severity == AlertSeverity.URGENT)
                     or (isinstance(a, dict) and a.get("severity") == AlertSeverity.URGENT.value)
-                ]
+                ],
             ),
             "warning": len(
                 [
@@ -326,7 +326,7 @@ async def get_compliance_alerts(
                     for a in alerts
                     if (hasattr(a, "severity") and a.severity == AlertSeverity.WARNING)
                     or (isinstance(a, dict) and a.get("severity") == AlertSeverity.WARNING.value)
-                ]
+                ],
             ),
             "info": len(
                 [
@@ -334,7 +334,7 @@ async def get_compliance_alerts(
                     for a in alerts
                     if (hasattr(a, "severity") and a.severity == AlertSeverity.INFO)
                     or (isinstance(a, dict) and a.get("severity") == AlertSeverity.INFO.value)
-                ]
+                ],
             ),
         },
         "notifications_sent": notifications_sent if auto_notify else None,
@@ -343,7 +343,7 @@ async def get_compliance_alerts(
 
 @router.get("/compliance/client/{client_id}")
 async def get_client_compliance(
-    client_id: str, current_user: dict = Depends(get_current_user)
+    client_id: str, current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Get all compliance items for a client"""
     items = compliance_monitor.get_client_items(client_id)
@@ -431,7 +431,7 @@ async def extract_knowledge_graph(
 
 @router.get("/knowledge-graph/export")
 async def export_knowledge_graph(
-    format: str = "neo4j", current_user: dict = Depends(get_current_user)
+    format: str = "neo4j", current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Export knowledge graph in Neo4j-ready format
@@ -555,7 +555,7 @@ async def cross_oracle_synthesis(
 
         if search_service and ai_client:
             cross_oracle_service = CrossOracleSynthesisService(
-                search_service=search_service, zantara_ai_client=ai_client
+                search_service=search_service, zantara_ai_client=ai_client,
             )
         else:
             return {
@@ -663,7 +663,7 @@ async def run_autonomous_research(
 
         # Create service instance with dependencies
         research_service = AutonomousResearchService(
-            search_service=search_service, query_router=query_router, zantara_ai_service=ai_client
+            search_service=search_service, query_router=query_router, zantara_ai_service=ai_client,
         )
 
         # Adjust max iterations based on depth

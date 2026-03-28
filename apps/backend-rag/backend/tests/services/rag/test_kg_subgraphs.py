@@ -132,8 +132,8 @@ async def test_check_pma_eligibility(mock_db_pool):
                 "entity_id": "kbli:56101",
                 "name": "Restoran",
                 "properties": {"pma_status": "allowed"},
-            }
-        ]
+            },
+        ],
     )
 
     state: CompanyState = {
@@ -288,7 +288,7 @@ async def test_check_rptka_requirements_from_kg(mock_db_pool):
                 "duration": "3-4 weeks",
                 "validity": "Max 5 years",
             },
-        }
+        },
     )
     conn.fetch = AsyncMock(
         return_value=[
@@ -302,7 +302,7 @@ async def test_check_rptka_requirements_from_kg(mock_db_pool):
                 "dur": None,
                 "val": None,
             },
-        ]
+        ],
     )
 
     state: VisaState = {
@@ -375,7 +375,7 @@ async def test_get_visa_requirements_from_kg(mock_db_pool):
             },
             # dur_row (HAS_DURATION query)
             {"dur_desc": "1-2 years (renewable)", "dur_name": "KITAS validity"},
-        ]
+        ],
     )
 
     # Mock REQUIRES and HAS_FEE queries
@@ -398,7 +398,7 @@ async def test_get_visa_requirements_from_kg(mock_db_pool):
                     "fee_desc": "PNBP",
                 },
             ],
-        ]
+        ],
     )
 
     state: VisaState = {

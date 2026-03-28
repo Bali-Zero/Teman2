@@ -111,10 +111,10 @@ def clean_image_generation_response(text: str) -> str:
             and "http" in line
             or line.strip().startswith("[Visualizza")
             or re.search(
-                r"^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)", line, re.IGNORECASE
+                r"^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)", line, re.IGNORECASE,
             )
             or re.search(
-                r"^\s*[\*\-]\s*\*{0,2}(Versione|Prima|Seconda|Opzione)", line, re.IGNORECASE
+                r"^\s*[\*\-]\s*\*{0,2}(Versione|Prima|Seconda|Opzione)", line, re.IGNORECASE,
             )
             or re.search(r"^\s*\*{0,2}Versione\s*\d", line, re.IGNORECASE)
             or re.search(
@@ -230,7 +230,7 @@ async def query_agentic_rag(
 
     # DIAGNOSTIC: Log identity info
     logger.info(
-        f"🔍 Sync query: user={authenticated_user_id} (authenticated: {current_user is not None})"
+        f"🔍 Sync query: user={authenticated_user_id} (authenticated: {current_user is not None})",
     )
 
     # A/B TESTING: Assign variants and get configurations
@@ -247,17 +247,17 @@ async def query_agentic_rag(
     # Get variant configurations
     hybrid_config = ab_manager.get_variant_config("hybrid_vs_dense", ab_variants["hybrid_vs_dense"])
     rerank_config = ab_manager.get_variant_config(
-        "reranking_on_off", ab_variants["reranking_on_off"]
+        "reranking_on_off", ab_variants["reranking_on_off"],
     )
     expansion_config = ab_manager.get_variant_config(
-        "query_expansion", ab_variants["query_expansion"]
+        "query_expansion", ab_variants["query_expansion"],
     )
 
     logger.info(
         f"🧪 A/B Test variants for {authenticated_user_id}: "
         f"hybrid={ab_variants['hybrid_vs_dense']}, "
         f"rerank={ab_variants['reranking_on_off']}, "
-        f"expansion={ab_variants['query_expansion']}"
+        f"expansion={ab_variants['query_expansion']}",
     )
 
     try:
@@ -271,13 +271,13 @@ async def query_agentic_rag(
                 {"role": msg.role, "content": msg.content} for msg in request.conversation_history
             ]
             logger.info(
-                f"💬 Using {len(conversation_history)} messages from frontend conversation_history (DB-independent)"
+                f"💬 Using {len(conversation_history)} messages from frontend conversation_history (DB-independent)",
             )
 
         # Priority 2: Try to retrieve from database if no frontend history
         elif authenticated_user_id and (request.conversation_id or request.session_id):
             logger.info(
-                f"🔍 Retrieving conversation history from DB: conversation_id={request.conversation_id}, session_id={request.session_id}, user_id={authenticated_user_id}"
+                f"🔍 Retrieving conversation history from DB: conversation_id={request.conversation_id}, session_id={request.session_id}, user_id={authenticated_user_id}",
             )
             conversation_history = await get_conversation_history_for_agentic(
                 conversation_id=request.conversation_id,
@@ -369,7 +369,7 @@ async def query_agentic_rag(
         # Temporarily include traceback in response for debugging
         # Generic error message for production
         raise HTTPException(
-            status_code=500, detail="Internal Server Error: The request could not be processed."
+            status_code=500, detail="Internal Server Error: The request could not be processed.",
         ) from e
 
 
@@ -393,7 +393,7 @@ async def get_conversation_history_for_agentic(
     """
     if not db_pool or not user_id:
         logger.debug(
-            f"⚠️ Cannot retrieve conversation history: db_pool={db_pool is not None}, user_id={user_id}"
+            f"⚠️ Cannot retrieve conversation history: db_pool={db_pool is not None}, user_id={user_id}",
         )
         return []
 
@@ -405,7 +405,7 @@ async def get_conversation_history_for_agentic(
             # If user_id doesn't look like an email, try to get email from team_members
             if "@" not in user_email:
                 logger.debug(
-                    f"🔍 user_id '{user_id}' doesn't look like email, trying to find email..."
+                    f"🔍 user_id '{user_id}' doesn't look like email, trying to find email...",
                 )
                 email_row = await conn.fetchrow(
                     """
@@ -501,7 +501,7 @@ async def stream_agentic_rag(
         )
 
     logger.info(
-        f"📡 Chat Stream: user={authenticated_user_id} (authenticated: {current_user is not None})"
+        f"📡 Chat Stream: user={authenticated_user_id} (authenticated: {current_user is not None})",
     )
     # Get correlation ID from request state (set by RequestTracingMiddleware)
     correlation_id = (
@@ -513,7 +513,7 @@ async def stream_agentic_rag(
     # Safe query hash for logging (first 50 chars + hash)
     query_preview = request_body.query[:50] if request_body.query else ""
     query_hash = hashlib.sha256(
-        request_body.query.encode() if request_body.query else b""
+        request_body.query.encode() if request_body.query else b"",
     ).hexdigest()[:8]
 
     # Log request start
@@ -523,7 +523,7 @@ async def stream_agentic_rag(
         f"query_preview='{query_preview}...', query_hash={query_hash}, "
         f"query_length={len(request_body.query) if request_body.query else 0}, "
         f"user_id={authenticated_user_id[:8] + '...' if authenticated_user_id and len(authenticated_user_id) > 8 else authenticated_user_id}, "
-        f"session_id={request_body.session_id}"
+        f"session_id={request_body.session_id}",
     )
 
     # TRACING: Record span for streaming request (completes before response streams)
@@ -590,7 +590,7 @@ async def stream_agentic_rag(
                 ]
                 logger.info(
                     f"💬 Using {len(conversation_history)} messages from frontend conversation_history (DB-independent) "
-                    f"(correlation_id={correlation_id})"
+                    f"(correlation_id={correlation_id})",
                 )
 
             # Priority 2: Try to retrieve from database if no frontend history
@@ -600,7 +600,7 @@ async def stream_agentic_rag(
                 logger.info(
                     f"🔍 Retrieving conversation history from DB: conversation_id={request_body.conversation_id}, "
                     f"session_id={request_body.session_id}, user_id={authenticated_user_id} "
-                    f"(correlation_id={correlation_id})"
+                    f"(correlation_id={correlation_id})",
                 )
                 try:
                     conversation_history = await get_conversation_history_for_agentic(
@@ -611,7 +611,7 @@ async def stream_agentic_rag(
                     )
                     logger.info(
                         f"💬 Retrieved {len(conversation_history)} messages from database "
-                        f"(correlation_id={correlation_id})"
+                        f"(correlation_id={correlation_id})",
                     )
                 except Exception as e:
                     logger.warning(f"Failed to load history: {e}")
@@ -631,7 +631,7 @@ async def stream_agentic_rag(
             # Check for client disconnect before starting stream
             if await http_request.is_disconnected():
                 logger.warning(
-                    f"⚠️ Client disconnected before stream start (correlation_id={correlation_id})"
+                    f"⚠️ Client disconnected before stream start (correlation_id={correlation_id})",
                 )
                 return
 
@@ -644,7 +644,7 @@ async def stream_agentic_rag(
                     {"base64": img.base64, "name": img.name} for img in request_body.images
                 ]
                 logger.info(
-                    f"🖼️ Vision enabled with {len(images_for_vision)} images (correlation_id={correlation_id})"
+                    f"🖼️ Vision enabled with {len(images_for_vision)} images (correlation_id={correlation_id})",
                 )
 
             async for event in orchestrator.stream_query(
@@ -829,7 +829,7 @@ async def stream_agentic_rag(
                     if persisted:
                         logger.info(
                             f"💾 Conversation persisted: conversation_id={conversation_id}, "
-                            f"session_id={request_body.session_id}"
+                            f"session_id={request_body.session_id}",
                         )
                 except Exception as persist_error:
                     logger.warning(f"⚠️ Failed to persist conversation: {persist_error}")
@@ -854,7 +854,7 @@ async def stream_agentic_rag(
                 f"✅ SSE stream completed: correlation_id={correlation_id}, "
                 f"duration={duration:.2f}s, events_yielded={events_yielded}, "
                 f"tokens_sent={tokens_sent}, final_answer_received={final_answer_received}, "
-                f"events_by_type={events_by_type}, persisted={persisted}"
+                f"events_by_type={events_by_type}, persisted={persisted}",
             )
 
             # Warning if stream was interrupted prematurely
@@ -862,7 +862,7 @@ async def stream_agentic_rag(
                 logger.warning(
                     f"⚠️ SSE stream interrupted: correlation_id={correlation_id}, "
                     f"events_yielded={events_yielded}, tokens_sent={tokens_sent}, "
-                    f"duration={duration:.2f}s, events_by_type={events_by_type}"
+                    f"duration={duration:.2f}s, events_by_type={events_by_type}",
                 )
 
     return StreamingResponse(
@@ -905,12 +905,12 @@ async def trigger_proactivity(
         # Check permissions? For now, strictly verify it matches or is system call.
         # Let's enforce authenticated user for safety unless it's a specific system token (not impl yet).
         logger.warning(
-            f"⚠️ Proactive trigger mismatch: Auth={authenticated_user_id}, Req={request_body.user_id}. Forcing Auth ID."
+            f"⚠️ Proactive trigger mismatch: Auth={authenticated_user_id}, Req={request_body.user_id}. Forcing Auth ID.",
         )
         target_user_id = authenticated_user_id
 
     correlation_id = getattr(
-        http_request.state, "correlation_id", None
+        http_request.state, "correlation_id", None,
     ) or http_request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
 
     logger.info(f"⚡ [Proactive] Trigger received: {request_body.event_type} for {target_user_id}")

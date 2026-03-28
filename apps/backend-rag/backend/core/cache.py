@@ -311,7 +311,7 @@ def get_cache_service() -> CacheService:
 
 
 def cached(
-    ttl: int = DEFAULT_CACHE_TTL, prefix: str = "default", cache_service: CacheService | None = None
+    ttl: int = DEFAULT_CACHE_TTL, prefix: str = "default", cache_service: CacheService | None = None,
 ) -> Any:
     """
     Decorator to cache function results

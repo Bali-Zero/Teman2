@@ -34,7 +34,7 @@ class PoliticsIngestionService:
             office_lines = []
             for o in offices:
                 office_lines.append(
-                    f"- {o.get('office', '')} ({o.get('from', '?')}→{o.get('to', '?')}) @ {o.get('jurisdiction_id', '')}"
+                    f"- {o.get('office', '')} ({o.get('from', '?')}→{o.get('to', '?')}) @ {o.get('jurisdiction_id', '')}",
                 )
             parties = record.get("party_memberships", [])
             party_lines = [
@@ -119,7 +119,7 @@ class PoliticsIngestionService:
                                 "qid": rec.get("qid"),
                                 "period": rec.get("period", "1999-ongoing"),
                                 "source_count": len(rec.get("sources", []) or []),
-                            }
+                            },
                         )
                         rid = rec.get("id") or f"record:{p.stem}:{line_idx}"
                         ids.append(f"pol:{rec.get('type', 'record')}:{rid}:{line_idx}")
@@ -131,7 +131,7 @@ class PoliticsIngestionService:
 
         embeddings = self.embedder.generate_embeddings(documents)
         self.vector_db.upsert_documents(
-            chunks=documents, embeddings=embeddings, metadatas=metadatas, ids=ids
+            chunks=documents, embeddings=embeddings, metadatas=metadatas, ids=ids,
         )
 
         return {"success": True, "documents_added": len(documents)}

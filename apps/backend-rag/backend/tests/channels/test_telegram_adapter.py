@@ -120,7 +120,7 @@ async def test_receive_message_no_message_field(telegram_adapter):
 async def test_send_response(telegram_adapter):
     """Test sending a complete response via Telegram."""
     with patch.object(
-        telegram_adapter.bot_service, "send_message", new_callable=AsyncMock
+        telegram_adapter.bot_service, "send_message", new_callable=AsyncMock,
     ) as mock_send:
         mock_send.return_value = {
             "ok": True,
@@ -147,7 +147,7 @@ async def test_send_response(telegram_adapter):
 async def test_send_status_update(telegram_adapter):
     """Test sending typing indicator."""
     with patch.object(
-        telegram_adapter.bot_service, "send_chat_action", new_callable=AsyncMock
+        telegram_adapter.bot_service, "send_chat_action", new_callable=AsyncMock,
     ) as mock_action:
         mock_action.return_value = True
 
@@ -164,10 +164,10 @@ async def test_stream_response(telegram_adapter):
     """Test streaming response with progressive updates."""
     with (
         patch.object(
-            telegram_adapter.bot_service, "send_message", new_callable=AsyncMock
+            telegram_adapter.bot_service, "send_message", new_callable=AsyncMock,
         ) as mock_send,
         patch.object(
-            telegram_adapter.bot_service, "edit_message_text", new_callable=AsyncMock
+            telegram_adapter.bot_service, "edit_message_text", new_callable=AsyncMock,
         ) as mock_edit,
     ):
         # Mock initial message creation
@@ -205,7 +205,7 @@ async def test_truncate_long_message(telegram_adapter):
     response = ChannelResponse(text=long_text, metadata={})
 
     with patch.object(
-        telegram_adapter.bot_service, "send_message", new_callable=AsyncMock
+        telegram_adapter.bot_service, "send_message", new_callable=AsyncMock,
     ) as mock_send:
         mock_send.return_value = {"ok": True, "result": {"message_id": 999}}
 
