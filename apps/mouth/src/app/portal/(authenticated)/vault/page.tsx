@@ -176,6 +176,7 @@ export default function VaultPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
+              aria-pressed={selectedCategory === cat}
               className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors"
               style={
                 selectedCategory === cat
