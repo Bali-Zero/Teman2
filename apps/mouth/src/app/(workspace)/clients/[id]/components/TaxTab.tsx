@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fileToBase64 } from '@/lib/utils';
-import type { Client } from '@/lib/api/crm/crm.types';
+import type { Client, ClientCompanyLink } from '@/lib/api/crm/crm.types';
 
 // ============================================
 // TAX TYPES AND INTERFACES
@@ -413,7 +413,33 @@ const SideWorkspace = memo(function SideWorkspace({
 // ============================================
 // TAX ID BADGE
 // ============================================
-function TaxIdBadge({ label, value }: { label: string; value?: string }) {
+function TaxIdBadge({
+  label,
+  value,
+  fallbackValue,
+  fallbackLabel,
+}: {
+  label: string;
+  value?: string;
+  fallbackValue?: string;
+  fallbackLabel?: string;
+}) {
+  if (!value && fallbackValue) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10">
+        <Building2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-[10px] text-amber-400/70 font-medium uppercase tracking-wide">
+            {label} <span className="normal-case font-normal">via company</span>
+          </p>
+          <p className="text-xs font-mono text-amber-300 truncate">{fallbackValue}</p>
+          {fallbackLabel && (
+            <p className="text-[10px] text-amber-400/50 truncate">{fallbackLabel}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
   if (!value) {
     return (
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]">
@@ -440,10 +466,12 @@ export function TaxTab({
   clientId,
   formatDate,
   client,
+  companyLinks,
 }: {
   clientId: number;
   formatDate: (d: string) => string;
   client: Client | null;
+  companyLinks?: ClientCompanyLink[];
 }) {
   const [selectedYear, setSelectedYear] = useState<TaxYear>(new Date().getFullYear());
   const [activeSection, setActiveSection] = useState<TaxSection>('personal');
@@ -492,10 +520,19 @@ export function TaxTab({
       </div>
 
       {/* Tax identifiers from CRM */}
-      <div className="flex flex-wrap gap-2">
-        <TaxIdBadge label="NPWP" value={client?.npwp ?? client?.tax_id ?? undefined} />
-        <TaxIdBadge label="NIB" value={client?.nib ?? undefined} />
-      </div>
+      {(() => {
+        const primaryCompany = companyLinks?.find((l) => l.is_primary) ?? companyLinks?.[0];
+        const npwpValue = client?.npwp ?? client?.tax_id ?? undefined;
+        const nibValue = client?.nib ?? undefined;
+        const companyNpwp = !npwpValue ? primaryCompany?.npwp_company : undefined;
+        const companyNib = !nibValue ? primaryCompany?.nib : undefined;
+        return (
+          <div className="flex flex-wrap gap-2">
+            <TaxIdBadge label="NPWP" value={npwpValue} fallbackValue={companyNpwp} fallbackLabel={primaryCompany?.company_name} />
+            <TaxIdBadge label="NIB" value={nibValue} fallbackValue={companyNib} fallbackLabel={primaryCompany?.company_name} />
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content - Tax cards */}
