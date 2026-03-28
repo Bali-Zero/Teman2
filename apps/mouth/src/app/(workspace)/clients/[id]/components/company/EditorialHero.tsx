@@ -54,53 +54,35 @@ export function EditorialHero({
 
   // Build editorial prose dynamically
   const location = city || province;
-  const foundingMonth = foundingYear
-    ? undefined // We don't have month in companyData — just year
-    : undefined;
   const typeLabel = companyTypeSubtitles[companyType] || companyType;
+  const isPMA = companyType === "PT PMA" || companyType === "PMA";
+  const typeStr = isPMA ? "PT PMA (foreign-owned)" : typeLabel || companyType;
 
-  const proseSegments: string[] = [];
-  if (companyType && foundingYear && location) {
-    proseSegments.push(
-      `A ${companyType === "PT PMA" || companyType === "PMA" ? "foreign-owned limited liability company (PMA)" : typeLabel || companyType} incorporated in ${location} in ${foundingYear}`,
-    );
-  } else if (companyType) {
-    proseSegments.push(
-      `A ${companyType === "PT PMA" || companyType === "PMA" ? "foreign-owned limited liability company (PMA)" : typeLabel || companyType}`,
-    );
-  }
+  // Line 1: type + location + year
+  const line1Parts: string[] = [];
+  if (companyType) line1Parts.push(typeStr);
+  if (foundingYear && location) line1Parts.push(`founded in ${location}, ${foundingYear}`);
+  else if (foundingYear) line1Parts.push(`founded ${foundingYear}`);
+  else if (location) line1Parts.push(`based in ${location}`);
 
-  if (kbliDescription) {
-    const desc = kbliDescription.toLowerCase().replace(/;/g, " and");
-    proseSegments.push(`specializing in ${desc}`);
-  }
+  // Line 2: business activity (KBLI)
+  const line2 = kbliDescription
+    ? kbliDescription.split(";")[0].trim() // Take first activity only
+    : null;
 
-  if (addressStr) {
-    proseSegments.push(`based in ${city || addressStr}`);
-  }
+  // Line 3: structure summary
+  const line3Parts: string[] = [];
+  if (shareholderCount > 0)
+    line3Parts.push(`${shareholderCount} shareholder${shareholderCount > 1 ? "s" : ""}`);
+  if (capital) line3Parts.push(`authorized capital ${capital}`);
 
-  if (shareholderCount > 0) {
-    proseSegments.push(
-      `held by ${shareholderCount} shareholder${shareholderCount > 1 ? "s" : ""}`,
-    );
-  }
-
-  if (capital) {
-    proseSegments.push(`with authorized capital of ${capital}`);
-  }
-
-  // Join into a paragraph
-  let prose = "";
-  if (proseSegments.length > 0) {
-    prose = proseSegments[0];
-    for (let i = 1; i < proseSegments.length; i++) {
-      if (i === 1) prose += ", " + proseSegments[i];
-      else if (i === proseSegments.length - 1)
-        prose += ". " + proseSegments[i].charAt(0).toUpperCase() + proseSegments[i].slice(1);
-      else prose += ", " + proseSegments[i];
-    }
-    prose += ".";
-  }
+  const prose = [
+    line1Parts.join(", "),
+    line2,
+    line3Parts.length > 0 ? line3Parts.join(" · ") : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const status = companyStatus || "active";
 
