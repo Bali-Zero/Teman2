@@ -1632,7 +1632,7 @@ async def upload_client_document(
             folder_id = await drive_service.get_or_create_client_folder(req_doc["client_id"])
 
             file_ext = request.file_name.split(".")[-1] if "." in request.file_name else "pdf"
-            drive_filename = f"{req_doc['document_type']}_{practice_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{file_ext}"
+            drive_filename = f"{req_doc['document_type']}_{practice_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.{file_ext}"
 
             uploaded_file = await drive_service.upload_file(file_data, drive_filename, folder_id)
 

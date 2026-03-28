@@ -5,7 +5,7 @@ Query ottimizzate e batch operations per massima performance.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 import asyncpg
@@ -287,7 +287,7 @@ class CRMQueryOptimizer:
             Lista pratiche scadute/in scadenza
         """
         async with self.db_pool.acquire() as conn:
-            threshold = datetime.utcnow() + timedelta(days=days)
+            threshold = datetime.now(timezone.utc) + timedelta(days=days)
 
             query = """
                 SELECT

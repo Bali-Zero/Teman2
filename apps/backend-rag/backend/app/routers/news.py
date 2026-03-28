@@ -4,7 +4,7 @@ Handles CRUD operations, search, and subscriptions
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
@@ -293,7 +293,7 @@ async def create_news(
                 item.category,
                 item.priority,
                 item.image_url,
-                item.published_at or datetime.utcnow(),
+                item.published_at or datetime.now(timezone.utc),
                 item.source_feed,
                 item.external_id,
             )
@@ -343,7 +343,7 @@ async def create_news_bulk(
                     item.category,
                     item.priority,
                     item.image_url,
-                    item.published_at or datetime.utcnow(),
+                    item.published_at or datetime.now(timezone.utc),
                     item.source_feed,
                     item.external_id,
                 )
@@ -507,7 +507,7 @@ async def get_rss_feed(
         <link>https://balizero.com/news</link>
         <description>Latest Indonesia news on immigration, business, tax, and property</description>
         <language>en</language>
-        <lastBuildDate>{datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S +0000")}</lastBuildDate>
+        <lastBuildDate>{datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")}</lastBuildDate>
         <atom:link href="https://balizero.com/api/v2/news/feed/rss" rel="self" type="application/rss+xml"/>
         {items_xml}
     </channel>

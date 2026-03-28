@@ -8,7 +8,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from backend.app.metrics import metrics_collector
@@ -403,7 +403,7 @@ class ScraperDataNormalizer:
     def _normalize_date(self, date_str: str) -> str:
         """Normalize date string to ISO format"""
         if not date_str:
-            return datetime.utcnow().isoformat()
+            return datetime.now(timezone.utc).isoformat()
 
         try:
             # Try parsing ISO format first

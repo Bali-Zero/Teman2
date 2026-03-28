@@ -21,7 +21,7 @@ Features:
 """
 
 import asyncio
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import structlog
 from prometheus_client import Counter, Gauge
@@ -343,7 +343,7 @@ async def run_auto_practice_creator(db_pool) -> dict:
                     stats["errors"] += 1
 
         # Update last run metric
-        job_last_run.set(datetime.utcnow().timestamp())
+        job_last_run.set(datetime.now(timezone.utc).timestamp())
 
         logger.info(
             "Auto-practice-creator job completed",

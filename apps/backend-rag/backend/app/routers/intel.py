@@ -12,7 +12,7 @@ import os
 import re
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from pathlib import Path as PathLib
 from typing import Any
 
@@ -409,7 +409,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         "cover_image": None,  # Will be set from staging_data if available
         "source": source_name,
         "source_url": source_url,
-        "enriched_at": datetime.utcnow().isoformat(),
+        "enriched_at": datetime.now(timezone.utc).isoformat(),
     }
 
     return enriched_article
@@ -509,7 +509,7 @@ async def submit_from_scraper(
             "intel_type": intel_type,
             "status": "pending",
             "detection_type": "scraper_auto",
-            "detected_at": datetime.utcnow().isoformat(),
+            "detected_at": datetime.now(timezone.utc).isoformat(),
         }
 
         if submission.cover_image:
@@ -1002,7 +1002,7 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
             "source_url": source_url,
             "category": category,
             "intel_type": intel_type,
-            "published_at": datetime.utcnow().isoformat(),
+            "published_at": datetime.now(timezone.utc).isoformat(),
             "source_name": data.get("source_name", ""),
             "relevance_score": data.get("relevance_score", 0),
         }
@@ -1104,7 +1104,7 @@ async def publish_staging_item(
                 title=title,
                 url=published_url,
                 category=category,
-                published_at=datetime.utcnow().isoformat(),
+                published_at=datetime.now(timezone.utc).isoformat(),
             )
 
             logger.info(
@@ -1389,7 +1389,7 @@ async def publish_staging_item(
                         {
                             "slug": article_slug,
                             "category": category,
-                            "queued_at": datetime.utcnow().isoformat(),
+                            "queued_at": datetime.now(timezone.utc).isoformat(),
                         }
                     )
             logger.info(
@@ -1400,7 +1400,7 @@ async def publish_staging_item(
             logger.warning(f"Failed to enqueue post-processing (non-blocking): {e}")
 
         # Step 5: Update staging file with publish timestamp
-        data["published_at"] = datetime.utcnow().isoformat()
+        data["published_at"] = datetime.now(timezone.utc).isoformat()
         data["published_url"] = published_url
         data["status"] = "published"
         if github_commit_sha:
@@ -1462,7 +1462,7 @@ async def enqueue_post_publish(request: Request) -> dict:
         # avoid duplicates
         if not any(item["slug"] == slug for item in _post_publish_queue):
             _post_publish_queue.append(
-                {"slug": slug, "category": category, "queued_at": datetime.utcnow().isoformat()}
+                {"slug": slug, "category": category, "queued_at": datetime.now(timezone.utc).isoformat()}
             )
     logger.info("📥 Post-publish queue: added", extra={"slug": slug, "category": category})
     return {"ok": True, "slug": slug}

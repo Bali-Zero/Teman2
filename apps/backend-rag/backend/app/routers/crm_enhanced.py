@@ -11,7 +11,7 @@ Provides endpoints for:
 import base64
 import logging
 import re as regex
-from datetime import datetime
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from typing import Any
 
@@ -286,7 +286,7 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
 
         # Prepare OCR data
         ocr_data = {
-            "extracted_at": datetime.utcnow().isoformat(),
+            "extracted_at": datetime.now(timezone.utc).isoformat(),
             "auto_triggered": True,
             "raw_response": extracted,
             "file_id": file_id,
@@ -394,7 +394,7 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
                     extracted[date_field] = f"{parts[2]}-{parts[1]}-{parts[0]}"
 
         ocr_data = {
-            "extracted_at": datetime.utcnow().isoformat(),
+            "extracted_at": datetime.now(timezone.utc).isoformat(),
             "auto_triggered": True,
             "raw_response": extracted,
             "file_id": file_id,
@@ -476,7 +476,7 @@ async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None)
             return {"success": False, "error": "Could not parse OCR response"}
 
         ocr_data = {
-            "extracted_at": datetime.utcnow().isoformat(),
+            "extracted_at": datetime.now(timezone.utc).isoformat(),
             "auto_triggered": True,
             "raw_response": extracted,
             "file_id": file_id,
@@ -562,7 +562,7 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
             return {"success": False, "error": "Could not parse OCR response"}
 
         ocr_data = {
-            "extracted_at": datetime.utcnow().isoformat(),
+            "extracted_at": datetime.now(timezone.utc).isoformat(),
             "auto_triggered": True,
             "raw_response": extracted,
             "file_id": file_id,

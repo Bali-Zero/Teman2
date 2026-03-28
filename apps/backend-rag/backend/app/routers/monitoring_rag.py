@@ -350,11 +350,11 @@ async def set_alert_thresholds(
 
         monitor.set_alert_thresholds(new_thresholds)
 
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         return {
             **new_thresholds.to_dict(),
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
     except Exception as e:
@@ -388,11 +388,11 @@ async def get_alert_thresholds(
     try:
         thresholds = monitor.get_alert_thresholds()
 
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         return {
             **thresholds.to_dict(),
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
     except Exception as e:
@@ -423,7 +423,7 @@ async def health_check(
         return {
             "status": "healthy",
             "service": "rag-monitoring",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
@@ -434,4 +434,4 @@ async def health_check(
 
 
 # Import datetime for health check
-from datetime import datetime
+from datetime import datetime, timezone

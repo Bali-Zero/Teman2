@@ -14,7 +14,7 @@ import json
 import logging
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
@@ -448,7 +448,7 @@ class RAGBenchmark:
             benchmark_result = BenchmarkResult(
                 id=f"{config.name}_{int(time.time())}",
                 config=config,
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(timezone.utc).isoformat(),
                 dataset_size=len(dataset),
                 method_results=method_results,
                 comparison=comparison,
@@ -728,7 +728,7 @@ async def run_weekly_benchmark(
 
     # Configure benchmark
     config = BenchmarkConfig(
-        name=f"weekly_eval_{datetime.utcnow().strftime('%Y%m%d')}",
+        name=f"weekly_eval_{datetime.now(timezone.utc).strftime('%Y%m%d')}",
         description="Weekly automated RAG evaluation",
         collection=collection,
         search_methods=["dense", "hybrid", "hybrid_rerank"],
