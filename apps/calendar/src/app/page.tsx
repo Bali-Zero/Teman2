@@ -465,7 +465,7 @@ export default function CalendarPage() {
               /* List View */
               <div className="flex-1 overflow-auto">
                 {loading ? (
-                  <div className="flex items-center justify-center h-full text-[#9AA0AE]">
+                  <div role="status" aria-live="polite" className="flex items-center justify-center h-full text-[#9AA0AE]">
                     <RefreshCw className="h-5 w-5 animate-spin mr-2" />
                     Caricamento...
                   </div>
@@ -627,6 +627,7 @@ export default function CalendarPage() {
                       checked={newEvent.withMeet}
                       onChange={(e) => setNewEvent({ ...newEvent, withMeet: e.target.checked })}
                       className="w-4 h-4 rounded bg-[#242424] border-white/10"
+                      aria-label="Aggiungi Google Meet"
                     />
                     <Video className="h-4 w-4 text-[#34D399]" />
                     <span className="text-sm text-[#9AA0AE]">Aggiungi Google Meet</span>
