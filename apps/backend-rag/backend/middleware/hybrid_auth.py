@@ -158,6 +158,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/agentic-rag/query",  # BUSINESS: Prime Intelligence AI chat - public anonymous access for map intelligence
             "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
             "/api/agent/health",  # BUSINESS: LangGraph agent layer health check - public status endpoint for monitoring
+            "/api/cell/metrics",  # BUSINESS: CELL ErrorRateSensor reads this internally — no user data exposed
             "/api/v1/kbli-notebook/",  # BUSINESS: KBLI Explorer - public business classification search, inspect, and chat
             "/api/webhook/chat",  # BUSINESS: Public AI chat webhook for website visitors
             "/api/webhook/chat/history",  # BUSINESS: Public chat history retrieval for session persistence
