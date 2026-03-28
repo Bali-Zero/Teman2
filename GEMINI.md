@@ -1,7 +1,7 @@
 # GEMINI.md — Nuzantara Project Context
 
 > Caricato automaticamente da Gemini CLI all'avvio nel workspace.
-> Fonte canonica: `GEMINI.md` (project root) | Aggiornato: 2026-03-14
+> Fonte canonica: `GEMINI.md` (project root) | Aggiornato: 2026-03-28
 
 ---
 
@@ -82,6 +82,16 @@ L'utente scrive in **italiano colloquiale**. Traduci automaticamente in azione t
 | `nuzantara-qdrant` | 2GB | v1.12.1 |
 
 **bali-intel-scraper NON è su Fly** — gira SOLO locale su Pro.
+
+### Git Sync Architecture (updated 2026-03-28)
+
+Entrambe le macchine lavorano su `main` direttamente. Sync automatico via husky:
+
+- **Pro commit** → Air riceve pull automatico (`git pull pro main --ff-only`)
+- **Air commit** → Air fa push a Pro (`git push pro main`)
+- **GitHub** (`origin`) aggiornato solo da Pro
+
+**REGOLE:** MAI creare un branch `air`. MAI fare push da Air su `origin/main` — lo fa solo Pro.
 
 ---
 
