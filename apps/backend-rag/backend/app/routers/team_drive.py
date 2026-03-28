@@ -431,11 +431,12 @@ async def download_file(
     For Google Docs/Sheets/Slides, exports to PDF/XLSX.
     For regular files, downloads the content directly.
     """
+    # Get user email for service and audit
+    user_email = current_user.get("email", "unknown")
     try:
-        content, filename, mime_type = await drive.download_file(file_id)
+        content, filename, mime_type = await drive.download_file(user_email, file_id)
 
         # Log download for audit
-        user_email = current_user.get("email", "unknown")
         logger.info(f"[TEAM_DRIVE] {user_email} downloaded: {filename}")
 
         return Response(
