@@ -90,7 +90,7 @@ class TestReRanker:
             "results": [
                 {"index": 1, "relevance_score": 0.95},
                 {"index": 0, "relevance_score": 0.85},
-            ]
+            ],
         }
         mock_response.raise_for_status = MagicMock()
 

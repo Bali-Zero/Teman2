@@ -401,7 +401,7 @@ class GitHubPublisher:
             if blob_response.status_code != 201:
                 logger.error(f"Failed to create blob for {path}: {blob_response.text}")
                 raise GitHubPublisherError(
-                    f"Failed to create blob for {path}: {blob_response.text}"
+                    f"Failed to create blob for {path}: {blob_response.text}",
                 )
 
             blob_sha = blob_response.json()["sha"]
@@ -413,7 +413,7 @@ class GitHubPublisher:
                     "mode": "100644",  # Regular file
                     "type": "blob",
                     "sha": blob_sha,
-                }
+                },
             )
 
         # Step 4: Create new tree

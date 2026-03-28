@@ -61,7 +61,7 @@ def register_shutdown_handlers(app: FastAPI) -> None:
 
         # Shutdown Compliance Monitor
         compliance_monitor: ProactiveComplianceMonitor | None = getattr(
-            app.state, "compliance_monitor", None
+            app.state, "compliance_monitor", None,
         )
         if compliance_monitor:
             await compliance_monitor.stop()

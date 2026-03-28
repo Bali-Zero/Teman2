@@ -46,8 +46,8 @@ def mock_llm_gateway():
     gateway = MagicMock()
     gateway.query = AsyncMock(
         return_value={
-            "text": '{"entities": [{"name": "Marco Verdi", "type": "PERSON"}], "relations": []}'
-        }
+            "text": '{"entities": [{"name": "Marco Verdi", "type": "PERSON"}], "relations": []}',
+        },
     )
     return gateway
 
@@ -77,7 +77,7 @@ class TestE2EKnowledgeGraphFlow:
 
     @pytest.mark.asyncio
     async def test_complete_kg_extraction_pipeline(
-        self, kg_pipeline, kg_extractor, mock_db_pool, mock_llm_gateway
+        self, kg_pipeline, kg_extractor, mock_db_pool, mock_llm_gateway,
     ):
         """Test complete pipeline: Document → Entities → Relations → Storage"""
         document_text = """
@@ -125,7 +125,7 @@ class TestE2EKnowledgeGraphFlow:
 
         # Mock coreference resolver
         with patch(
-            "backend.services.knowledge_graph.coreference.CoreferenceResolver"
+            "backend.services.knowledge_graph.coreference.CoreferenceResolver",
         ) as mock_resolver:
             mock_resolver_instance = MagicMock()
             mock_resolver_instance.resolve = MagicMock(
@@ -136,13 +136,13 @@ class TestE2EKnowledgeGraphFlow:
                         {"mention": "La società", "entity": "PT PMA"},
                         {"mention": "Essa", "entity": "PT PMA"},
                     ],
-                }
+                },
             )
             mock_resolver.return_value = mock_resolver_instance
 
             # Execute pipeline
             result = await kg_pipeline.process_chunk(
-                chunk_id="test-coreference", text=document_text
+                chunk_id="test-coreference", text=document_text,
             )
 
             # Verify coreference resolution was applied
@@ -155,18 +155,18 @@ class TestE2EKnowledgeGraphFlow:
 
         # Mock episodic memory service
         with patch(
-            "backend.services.memory.episodic_memory_service.EpisodicMemoryService"
+            "backend.services.memory.episodic_memory_service.EpisodicMemoryService",
         ) as mock_episodic:
             mock_episodic_instance = MagicMock()
             mock_episodic_instance.create_event = AsyncMock(
-                return_value={"event_id": 123, "success": True}
+                return_value={"event_id": 123, "success": True},
             )
             mock_episodic_instance.link_entity_to_event = AsyncMock(return_value={"success": True})
             mock_episodic.return_value = mock_episodic_instance
 
             # Execute pipeline
             result = await kg_pipeline.process_chunk(
-                chunk_id="test-entity-link", text=document_text
+                chunk_id="test-entity-link", text=document_text,
             )
 
             # Verify entity linking occurred
@@ -208,8 +208,8 @@ class TestE2EKnowledgeGraphFlow:
         mock_result = MagicMock()
         mock_result.fetchall = AsyncMock(
             return_value=[
-                {"subject": "Marco Verdi", "predicate": "FOUNDED", "object": "Bali Tech Solutions"}
-            ]
+                {"subject": "Marco Verdi", "predicate": "FOUNDED", "object": "Bali Tech Solutions"},
+            ],
         )
 
         conn = await mock_db_pool.acquire()

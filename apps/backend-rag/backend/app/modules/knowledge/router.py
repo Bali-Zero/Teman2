@@ -37,7 +37,7 @@ def get_search_service(request: Request) -> Any:
     # Fallback to KnowledgeService singleton (for test/local boot scenarios)
     logger.warning(
         "SearchService not found in app.state, falling back to KnowledgeService singleton. "
-        "This should only happen in test/local boot scenarios."
+        "This should only happen in test/local boot scenarios.",
     )
     global _knowledge_service_fallback
     if _knowledge_service_fallback is None:
@@ -68,11 +68,11 @@ async def semantic_search(query: SearchQuery, request: Request) -> SearchRespons
         logger.info(
             f"🔍 [SEARCH ENDPOINT] Request received: method={request.method}, "
             f"url={request.url}, path={request.url.path}, "
-            f"headers={dict(request.headers)}"
+            f"headers={dict(request.headers)}",
         )
 
         logger.info(
-            f"Received query: '{query.query}', collection={query.collection}, level={query.level}, limit={query.limit}"
+            f"Received query: '{query.query}', collection={query.collection}, level={query.level}, limit={query.limit}",
         )
 
         # Validate level
@@ -129,7 +129,7 @@ async def semantic_search(query: SearchQuery, request: Request) -> SearchRespons
 
                 # Create search result
                 result = SearchResult(
-                    text=text, metadata=metadata, similarity_score=round(similarity_score, 4)
+                    text=text, metadata=metadata, similarity_score=round(similarity_score, 4),
                 )
 
                 search_results.append(result)
@@ -138,7 +138,7 @@ async def semantic_search(query: SearchQuery, request: Request) -> SearchRespons
 
         logger.info(
             f"Search completed: '{query.query}' (level {query.level}) -> "
-            f"{len(search_results)} results in {execution_time:.2f}ms"
+            f"{len(search_results)} results in {execution_time:.2f}ms",
         )
 
         return SearchResponse(
@@ -221,7 +221,7 @@ async def get_parent_documents_debug(document_id: str) -> dict[str, Any]:
                     "char_count": r["char_count"],
                     "full_text_length": r["full_text_length"],
                     "text_preview": r["text_preview"],
-                }
+                },
             )
 
         return {"document_id": document_id, "total_bab": len(bab_list), "bab": bab_list}
@@ -229,7 +229,7 @@ async def get_parent_documents_debug(document_id: str) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error fetching parent documents: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Failed to fetch parent documents: {str(e)}"
+            status_code=500, detail=f"Failed to fetch parent documents: {str(e)}",
         ) from e
 
 
@@ -239,7 +239,7 @@ router_public = APIRouter(prefix="/api/public", tags=["public"])
 
 @router_public.get("/bab/{document_id}")
 async def get_bab_public(
-    document_id: str, current_user: dict = Depends(get_current_user)
+    document_id: str, current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get BAB (Buku Acuan Bali) document by ID.

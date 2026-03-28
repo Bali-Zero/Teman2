@@ -49,7 +49,7 @@ class TestSemanticSplitter:
                 [1.0, 0.0, 0.0],
                 [0.9, 0.1, 0.0],
                 [0.0, 0.0, 1.0],
-            ]
+            ],
         )
         splitter = SemanticSplitter(mock_embedder, similarity_threshold=0.7)
         text = "First sentence. Second sentence. Third sentence."
@@ -201,8 +201,8 @@ It should use fallback semantic chunking."""
                     "number": "I",
                     "title": "KETENTUAN UMUM",
                     "pasal": [{"number": "1"}],
-                }
-            ]
+                },
+            ],
         }
         text = """Pasal 1
 Content of Pasal 1."""
@@ -362,8 +362,8 @@ Content of Pasal 2."""
                     "number": "I",
                     "title": "KETENTUAN UMUM",
                     "pasal": [{"number": "1"}],
-                }
-            ]
+                },
+            ],
         }
 
         bab_context = chunker._find_bab_for_pasal(structure, "1")
@@ -383,8 +383,8 @@ Content of Pasal 2."""
                     "number": "I",
                     "title": "KETENTUAN UMUM",
                     "pasal": [{"number": "1"}],
-                }
-            ]
+                },
+            ],
         }
 
         bab_context = chunker._find_bab_for_pasal(structure, "99")

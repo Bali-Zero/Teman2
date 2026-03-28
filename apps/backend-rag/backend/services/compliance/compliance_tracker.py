@@ -115,7 +115,7 @@ class ComplianceTrackerService:
         return self.compliance_items.get(item_id)
 
     def get_upcoming_deadlines(
-        self, client_id: str | None = None, days_ahead: int = 90
+        self, client_id: str | None = None, days_ahead: int = 90,
     ) -> list[ComplianceItem]:
         """
         Get upcoming compliance deadlines.

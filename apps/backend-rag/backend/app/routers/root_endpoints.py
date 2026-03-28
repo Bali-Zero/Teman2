@@ -72,7 +72,7 @@ async def get_dashboard_stats(request: Request) -> dict[str, str | dict[str, str
                 SELECT COUNT(DISTINCT session_id)
                 FROM conversations
                 WHERE created_at > NOW() - INTERVAL '24 hours'
-                """
+                """,
             )
 
             # Total knowledge base documents
@@ -80,7 +80,7 @@ async def get_dashboard_stats(request: Request) -> dict[str, str | dict[str, str
                 """
                 SELECT COUNT(*)
                 FROM parent_documents
-                """
+                """,
             )
 
             # System health check (simple: can we query DB?)

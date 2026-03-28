@@ -166,8 +166,8 @@ async def lifespan(app: FastAPI):
         from backend.services.workflow.checkpointer import close_checkpointer
 
         await close_checkpointer()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Checkpointer close skipped: {e}")
 
     # Shutdown WebSocket Redis Listener
     redis_task = getattr(app.state, "redis_listener_task", None)
@@ -300,8 +300,8 @@ async def lifespan(app: FastAPI):
                     else:
                         attr_val.close()
                     logger.info(f"✅ Additional service '{attr_name}' closed")
-                except Exception:
-                    pass
+                except Exception as close_err:
+                    logger.debug(f"Could not close '{attr_name}': {close_err}")
 
     # Module-level client cleanups (Addressing global clients in specific services)
     try:

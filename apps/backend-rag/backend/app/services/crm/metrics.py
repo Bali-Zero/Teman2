@@ -88,7 +88,7 @@ class CRMMetrics:
                 "version": "1.0.0",
                 "environment": "production",
                 "last_updated": datetime.now(tz=timezone.utc).isoformat(),
-            }
+            },
         )
 
 
@@ -111,7 +111,7 @@ class CRMMetricsCollector:
         """Get database pool connection"""
         if not self.pool:
             raise RuntimeError(
-                "CRMMetricsCollector not initialized with pool. Call .initialize(pool) first."
+                "CRMMetricsCollector not initialized with pool. Call .initialize(pool) first.",
             )
         return self.pool
 
@@ -141,7 +141,7 @@ class CRMMetricsCollector:
 
             duration = time.time() - start_time
             logger.info(
-                f"📊 [CRM METRICS] Updated {len(results['metrics_updated'])} metrics in {duration:.2f}s"
+                f"📊 [CRM METRICS] Updated {len(results['metrics_updated'])} metrics in {duration:.2f}s",
             )
 
             return results
@@ -224,7 +224,7 @@ class CRMMetricsCollector:
 
                 for row in in_progress:
                     crm_metrics.applications_in_progress.labels(
-                        stage=row["stage"], priority=row["priority"]
+                        stage=row["stage"], priority=row["priority"],
                     ).set(row["count"])
 
                 results["metrics_updated"].append("applications_in_progress")
@@ -281,7 +281,7 @@ class CRMMetricsCollector:
                 for row in conversion_data:
                     conversion_rate = row.get("conversion_rate") or 0.0
                     crm_metrics.conversion_rate.labels(
-                        period="30_days", source=row.get("lead_source") or "unknown"
+                        period="30_days", source=row.get("lead_source") or "unknown",
                     ).set(conversion_rate)
 
                 results["metrics_updated"].append("conversion_rate")
@@ -418,14 +418,14 @@ def track_client_creation(client_type: str = "individual", lead_source: str = "u
                 duration = time.time() - start_time
 
                 crm_metrics.client_creation_duration.labels(
-                    client_type=client_type, lead_source=lead_source
+                    client_type=client_type, lead_source=lead_source,
                 ).observe(duration)
 
                 return result
             except Exception:
                 duration = time.time() - start_time
                 crm_metrics.client_creation_duration.labels(
-                    client_type=client_type, lead_source=lead_source
+                    client_type=client_type, lead_source=lead_source,
                 ).observe(duration)
                 raise
 
@@ -435,7 +435,7 @@ def track_client_creation(client_type: str = "individual", lead_source: str = "u
 
 
 def track_application_processing(
-    visa_type: str = "unknown", destination_country: str = "unknown"
+    visa_type: str = "unknown", destination_country: str = "unknown",
 ) -> Any:
     """Decorator to track application processing time"""
 
@@ -454,14 +454,14 @@ def track_application_processing(
                 )
 
                 crm_metrics.application_processing_duration.labels(
-                    visa_type=visa_type, destination_country=destination_country, outcome=outcome
+                    visa_type=visa_type, destination_country=destination_country, outcome=outcome,
                 ).observe(duration)
 
                 return result
             except Exception:
                 duration = time.time() - start_time
                 crm_metrics.application_processing_duration.labels(
-                    visa_type=visa_type, destination_country=destination_country, outcome="error"
+                    visa_type=visa_type, destination_country=destination_country, outcome="error",
                 ).observe(duration)
                 raise
 

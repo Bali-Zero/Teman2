@@ -55,7 +55,7 @@ class ReRanker:
             logger.info(f"✅ Ze-Rank 2 initialized with endpoint: {self.api_url}")
 
     async def rerank(
-        self, query: str, documents: list[dict[str, Any]], top_k: int = 5
+        self, query: str, documents: list[dict[str, Any]], top_k: int = 5,
     ) -> list[dict[str, Any]]:
         """
         Re-rank a list of documents based on relevance to the query using Ze-Rank 2 API.
@@ -80,7 +80,7 @@ class ReRanker:
             if not self.enabled or not documents:
                 set_span_attribute("skipped", True)
                 set_span_attribute(
-                    "skip_reason", "disabled" if not self.enabled else "no_documents"
+                    "skip_reason", "disabled" if not self.enabled else "no_documents",
                 )
                 set_span_status("ok")
                 return documents[:top_k]
@@ -127,7 +127,7 @@ class ReRanker:
 
                     if response.status_code != 200:
                         logger.error(
-                            f"❌ Ze-Rank 2 API Error: {response.status_code} - {response.text}"
+                            f"❌ Ze-Rank 2 API Error: {response.status_code} - {response.text}",
                         )
                         set_span_status("error", f"API returned {response.status_code}")
                         return documents[:top_k]

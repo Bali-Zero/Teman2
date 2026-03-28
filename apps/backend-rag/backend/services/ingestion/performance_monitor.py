@@ -276,16 +276,16 @@ class PerformanceMonitor:
             critical_threshold = thresholds.get("critical")
             if critical_threshold and metric.value > critical_threshold:
                 await self._create_alert(
-                    metric.metric_name, metric.value, critical_threshold, AlertSeverity.CRITICAL
+                    metric.metric_name, metric.value, critical_threshold, AlertSeverity.CRITICAL,
                 )
             # Check warning threshold
             elif thresholds.get("warning") and metric.value > thresholds["warning"]:
                 await self._create_alert(
-                    metric.metric_name, metric.value, thresholds["warning"], AlertSeverity.MEDIUM
+                    metric.metric_name, metric.value, thresholds["warning"], AlertSeverity.MEDIUM,
                 )
 
     async def _create_alert(
-        self, metric_name: str, current_value: float, threshold: float, severity: AlertSeverity
+        self, metric_name: str, current_value: float, threshold: float, severity: AlertSeverity,
     ) -> Any:
         """Create a performance alert"""
         alert_id = f"{metric_name}_{int(time.time())}"
@@ -319,7 +319,7 @@ class PerformanceMonitor:
         )
 
     async def _create_anomaly_alert(
-        self, metric_name: str, avg_value: float, anomalies: list[float]
+        self, metric_name: str, avg_value: float, anomalies: list[float],
     ) -> None:
         """Create anomaly detection alert"""
         alert_id = f"anomaly_{metric_name}_{int(time.time())}"

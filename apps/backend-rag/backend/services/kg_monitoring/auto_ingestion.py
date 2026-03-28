@@ -333,7 +333,7 @@ Return ONLY the JSON object, no other text."""
                         started_at=datetime.now(tz=timezone.utc),
                         completed_at=datetime.now(tz=timezone.utc),
                         error_message=str(e),
-                    )
+                    ),
                 )
 
         # Send batch summary alert
@@ -514,7 +514,7 @@ Full Text:
                     "subject": extracted.subject,
                     "chunk_type": "main",
                 },
-            }
+            },
         )
 
         # Key points chunks
@@ -530,7 +530,7 @@ Full Text:
                         "chunk_type": "key_point",
                         "point_index": i,
                     },
-                }
+                },
             )
 
         return chunks

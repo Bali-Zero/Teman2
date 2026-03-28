@@ -42,7 +42,7 @@ class GraphService:
 
     @staticmethod
     def _merge_description(
-        properties: Mapping[str, Any], description: str | None
+        properties: Mapping[str, Any], description: str | None,
     ) -> dict[str, Any]:
         merged = dict(properties)
         if description:
@@ -91,7 +91,7 @@ class GraphService:
 
         # Generate relationship_id (TEXT PK) from source, type, target
         relationship_id = self._build_relationship_id(
-            relation.source_id, relation.type, relation.target_id
+            relation.source_id, relation.type, relation.target_id,
         )
 
         query = """
@@ -112,7 +112,7 @@ class GraphService:
             )
 
     async def get_neighbors(
-        self, entity_id: str, relation_type: str | None = None, limit: int | None = None
+        self, entity_id: str, relation_type: str | None = None, limit: int | None = None,
     ) -> list[dict[str, Any]]:
         """Get outgoing edges and target entities for a node (kg_edges + kg_nodes)."""
         query = """
@@ -161,7 +161,7 @@ class GraphService:
             ]
 
     async def traverse(
-        self, start_id: str, max_depth: int = 2, max_edges_per_node: int | None = None
+        self, start_id: str, max_depth: int = 2, max_edges_per_node: int | None = None,
     ) -> dict[str, Any]:
         """
         BFS Traversal from a starting node (kg_nodes + kg_edges).

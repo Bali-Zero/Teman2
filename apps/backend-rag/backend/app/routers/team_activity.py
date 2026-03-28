@@ -148,7 +148,7 @@ async def clock_in(request: ClockInRequest) -> ClockResponse:
 
     try:
         result = await service.clock_in(
-            user_id=request.user_id, email=request.email, metadata=request.metadata
+            user_id=request.user_id, email=request.email, metadata=request.metadata,
         )
         return ClockResponse(**result)
     except Exception as e:
@@ -172,7 +172,7 @@ async def clock_out(request: ClockOutRequest) -> ClockResponse:
 
     try:
         result = await service.clock_out(
-            user_id=request.user_id, email=request.email, metadata=request.metadata
+            user_id=request.user_id, email=request.email, metadata=request.metadata,
         )
         return ClockResponse(**result)
     except Exception as e:
@@ -351,7 +351,7 @@ async def export_timesheet(
             content=csv_data,
             media_type="text/csv",
             headers={
-                "Content-Disposition": f"attachment; filename=timesheet_{start_date}_to_{end_date}.csv"
+                "Content-Disposition": f"attachment; filename=timesheet_{start_date}_to_{end_date}.csv",
             },
         )
     except ValueError as e:

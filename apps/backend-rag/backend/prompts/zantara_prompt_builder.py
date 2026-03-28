@@ -50,7 +50,7 @@ class ZantaraPromptBuilder:
     def _load_modes(self) -> dict:
         try:
             path = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "../config/communication_modes.yaml")
+                os.path.join(os.path.dirname(__file__), "../config/communication_modes.yaml"),
             )
             with open(path) as f:
                 return yaml.safe_load(f)["modes"]

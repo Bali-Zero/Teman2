@@ -83,7 +83,7 @@ async def fetch_profile_and_history(
                     WHERE CAST(up.id AS TEXT) = $1 OR up.email = $1
                 """
                 logger.info(
-                    f"🧠 [ContextManager] Executing profile query for user_id: {user_id}, session_id: {session_id}"
+                    f"🧠 [ContextManager] Executing profile query for user_id: {user_id}, session_id: {session_id}",
                 )
                 row = await conn.fetchrow(query_combined, user_id, session_id)
             else:
@@ -111,7 +111,7 @@ async def fetch_profile_and_history(
                     WHERE CAST(up.id AS TEXT) = $1 OR up.email = $1
                 """
                 logger.info(
-                    f"🧠 [ContextManager] Executing profile query for user_id: {user_id} (no session_id)"
+                    f"🧠 [ContextManager] Executing profile query for user_id: {user_id} (no session_id)",
                 )
                 row = await conn.fetchrow(query_combined, user_id)
 
@@ -202,7 +202,7 @@ async def fetch_memory_facts(
         logger.warning(
             f"✅ [ContextManager] Memory loaded: {len(memory_context.profile_facts)} personal facts, "
             f"{len(memory_context.collective_facts)} collective facts, "
-            f"{len(memory_context.kg_entities)} KG entities for {user_id}"
+            f"{len(memory_context.kg_entities)} KG entities for {user_id}",
         )
 
         # DIAGNOSTIC: Log first 3 facts for debugging
@@ -210,7 +210,7 @@ async def fetch_memory_facts(
             logger.warning(f"📋 [ContextManager] Sample facts: {memory_context.profile_facts[:3]}")
         else:
             logger.warning(
-                f"⚠️  [ContextManager] NO profile facts found for {user_id} - user recognition will fail!"
+                f"⚠️  [ContextManager] NO profile facts found for {user_id} - user recognition will fail!",
             )
 
     except (asyncpg.PostgresError, ValueError, RuntimeError, KeyError) as e:
@@ -257,7 +257,7 @@ async def get_user_context(
     start_time = time.time()
 
     logger.warning(
-        f"🔍 [ContextManager] get_user_context called with user_id='{user_id}', session_id='{session_id}', query={query[:50] if query else None}..."
+        f"🔍 [ContextManager] get_user_context called with user_id='{user_id}', session_id='{session_id}', query={query[:50] if query else None}...",
     )
     context = {"profile": None, "history": [], "facts": [], "collective_facts": [], "entities": {}}
 
@@ -280,7 +280,7 @@ async def get_user_context(
 
     if not db_pool or not user_id or user_id == "anonymous":
         logger.debug(
-            "🧠 [ContextManager] DB Pool missing or user anonymous, returning empty context"
+            "🧠 [ContextManager] DB Pool missing or user anonymous, returning empty context",
         )
         return context
 
@@ -338,12 +338,12 @@ async def get_user_context(
         logger.warning(
             f"⚡ [ContextManager] PARALLEL LOADING completed in {total_time:.3f}s "
             f"(DB: {profile_time:.3f}s, Memory: {memory_time:.3f}s, "
-            f"speedup: ~{speedup:.3f}s vs sequential ~{estimated_sequential_time:.3f}s)"
+            f"speedup: ~{speedup:.3f}s vs sequential ~{estimated_sequential_time:.3f}s)",
         )
     else:
         logger.warning(
             f"⚡ [ContextManager] PARALLEL LOADING completed in {total_time:.3f}s "
-            f"(one or more tasks failed)"
+            f"(one or more tasks failed)",
         )
 
     return context

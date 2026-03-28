@@ -46,7 +46,7 @@ class TestCrossEncoderRerankerMixin:
     @pytest.mark.asyncio
     @patch("backend.services.rag.reranker.settings")
     async def test_search_with_cross_encoder_reranking_success(
-        self, mock_settings, sample_documents
+        self, mock_settings, sample_documents,
     ):
         """Test successful search with cross-encoder reranking."""
         mock_settings.enable_reranker = True
@@ -70,7 +70,7 @@ class TestCrossEncoderRerankerMixin:
                 }
 
         with patch(
-            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker,
         ):
             service = MockSearchService(mock_reranker)
             results = await service.search_with_cross_encoder_reranking(
@@ -106,7 +106,7 @@ class TestCrossEncoderRerankerMixin:
                 }
 
         with patch(
-            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker,
         ):
             service = MockSearchService(mock_reranker)
             results = await service.search_with_cross_encoder_reranking(
@@ -139,7 +139,7 @@ class TestCrossEncoderRerankerMixin:
                 }
 
         with patch(
-            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker,
         ):
             service = MockSearchService(mock_reranker)
             results = await service.search_with_cross_encoder_reranking(
@@ -175,7 +175,7 @@ class TestCrossEncoderRerankerMixin:
                 }
 
         with patch(
-            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker,
         ):
             service = MockSearchService(mock_reranker)
             results = await service.search_with_cross_encoder_reranking(
@@ -211,7 +211,7 @@ class TestCrossEncoderRerankerMixin:
                 }
 
         with patch(
-            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker,
         ):
             service = MockSearchService(mock_reranker)
             results = await service.hybrid_search_with_cross_encoder_reranking(
@@ -249,7 +249,7 @@ class TestCrossEncoderRerankerMixin:
                 }
 
         with patch(
-            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker
+            "backend.services.rag.reranker.CrossEncoderReranker", return_value=mock_reranker,
         ):
             service = MockSearchService(mock_reranker)
             results = await service.hybrid_search_with_cross_encoder_reranking(

@@ -29,7 +29,7 @@ async def apply(conn: Any) -> None:
 
     # 2. Add to migrations table
     await conn.execute(
-        "INSERT INTO migrations (migration_name) VALUES ('035_kbli_blueprints') ON CONFLICT DO NOTHING;"
+        "INSERT INTO migrations (migration_name) VALUES ('035_kbli_blueprints') ON CONFLICT DO NOTHING;",
     )
 
     print("✅ Applied migration 035: KBLI Blueprints table created")

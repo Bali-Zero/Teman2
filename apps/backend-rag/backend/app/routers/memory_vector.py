@@ -34,8 +34,8 @@ async def initialize_memory_vector_db(qdrant_url: str | None = None) -> QdrantCl
         stats = await memory_vector_db.get_collection_stats()
         logger.info(
             "✅ Memory vector DB ready (collection='zantara_memories', url='{}', total={})".format(
-                target_url, stats.get("total_documents", 0)
-            )
+                target_url, stats.get("total_documents", 0),
+            ),
         )
     except Exception as exc:
         logger.error(f"Memory vector DB initialization failed: {exc}")
@@ -192,7 +192,7 @@ async def search_memories_semantic(request: SearchMemoryRequest) -> MemorySearch
         # Search Qdrant (async)
         db = await get_memory_vector_db()
         results = await db.search(
-            query_embedding=request.query_embedding, filter=where_filter, limit=request.limit
+            query_embedding=request.query_embedding, filter=where_filter, limit=request.limit,
         )
 
         execution_time = (time.time() - start_time) * 1000
@@ -205,11 +205,11 @@ async def search_memories_semantic(request: SearchMemoryRequest) -> MemorySearch
                     "document": results["documents"][idx],
                     "metadata": results["metadatas"][idx],
                     "distance": results["distances"][idx],
-                }
+                },
             )
 
         logger.info(
-            f"Memory search completed: {len(formatted_results)} results in {execution_time:.2f}ms"
+            f"Memory search completed: {len(formatted_results)} results in {execution_time:.2f}ms",
         )
 
         return MemorySearchResponse(
@@ -252,7 +252,7 @@ async def find_similar_memories(request: SimilarMemoryRequest) -> MemorySearchRe
             query_embedding = list(embeddings_raw)
         else:
             raise HTTPException(
-                status_code=500, detail="Invalid embedding format returned by vector store"
+                status_code=500, detail="Invalid embedding format returned by vector store",
             )
 
         results = await db.search(
@@ -285,11 +285,11 @@ async def find_similar_memories(request: SimilarMemoryRequest) -> MemorySearchRe
                     "document": filtered_results["documents"][idx],
                     "metadata": filtered_results["metadatas"][idx],
                     "distance": filtered_results["distances"][idx],
-                }
+                },
             )
 
         logger.info(
-            f"Similar memories found: {len(formatted_results)} results in {execution_time:.2f}ms"
+            f"Similar memories found: {len(formatted_results)} results in {execution_time:.2f}ms",
         )
 
         return MemorySearchResponse(
@@ -360,5 +360,5 @@ async def memory_vector_health() -> dict[str, Any]:
         }
     except Exception as e:
         raise HTTPException(
-            status_code=503, detail=f"Memory vector service unhealthy: {str(e)}"
+            status_code=503, detail=f"Memory vector service unhealthy: {str(e)}",
         ) from e

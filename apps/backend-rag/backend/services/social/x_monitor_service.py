@@ -193,7 +193,7 @@ class XMonitorService:
             return None
 
     async def _create_lead(
-        self, tweet: dict[str, Any], author: dict[str, Any] | None, tweet_row_id: int
+        self, tweet: dict[str, Any], author: dict[str, Any] | None, tweet_row_id: int,
     ) -> int | None:
         """Create CRM client record for high-intent leads."""
         if not self._db_pool or not author:
@@ -429,7 +429,7 @@ class XMonitorService:
         """Background loop that posts a digest every N hours."""
         interval = settings.x_monitor_digest_interval_hours * 3600
         logger.info(
-            f"🐦 X Digest loop started: posting every {settings.x_monitor_digest_interval_hours}h"
+            f"🐦 X Digest loop started: posting every {settings.x_monitor_digest_interval_hours}h",
         )
         # Wait for first interval before posting (let tweets accumulate)
         await asyncio.sleep(interval)
@@ -446,7 +446,7 @@ class XMonitorService:
         """Main polling loop."""
         interval = settings.x_monitor_interval_seconds
         logger.info(
-            f"🐦 X Monitor started: polling every {interval}s with {len(self._keywords)} keywords"
+            f"🐦 X Monitor started: polling every {interval}s with {len(self._keywords)} keywords",
         )
         while self._running:
             try:
@@ -501,7 +501,7 @@ class XMonitorService:
                     COUNT(*) FILTER (WHERE responded = true) as responded,
                     COUNT(*) FILTER (WHERE client_id IS NOT NULL) as linked_clients
                 FROM x_monitored_tweets
-                """
+                """,
             )
             return (
                 dict(row) if row else {"total": 0, "leads": 0, "responded": 0, "linked_clients": 0}

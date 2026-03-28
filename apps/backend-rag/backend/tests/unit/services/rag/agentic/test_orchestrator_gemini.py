@@ -73,25 +73,25 @@ def orchestrator(mock_llm_gateway, mock_reasoning_engine):
         patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
         patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
         patch(
-            "backend.services.rag.agentic.orchestrator.LLMGateway", return_value=mock_llm_gateway
+            "backend.services.rag.agentic.orchestrator.LLMGateway", return_value=mock_llm_gateway,
         ),
         patch(
             "backend.services.rag.agentic.orchestrator.ReasoningEngine",
             return_value=mock_reasoning_engine,
         ),
         patch(
-            "backend.services.rag.agentic.orchestrator.EntityExtractionService"
+            "backend.services.rag.agentic.orchestrator.EntityExtractionService",
         ) as MockEntityExtractor,
         patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
         patch(
-            "backend.services.rag.agentic.orchestrator.get_user_context"
+            "backend.services.rag.agentic.orchestrator.get_user_context",
         ) as mock_get_user_context,
         patch("backend.services.rag.agentic.orchestrator.trace_span") as mock_trace_span,
     ):
         # Setup specific mocks
         mock_intent_classifier = MockIntentClassifier.return_value
         mock_intent_classifier.classify_intent = AsyncMock(
-            return_value={"category": "business_complex", "suggested_ai": "pro"}
+            return_value={"category": "business_complex", "suggested_ai": "pro"},
         )
 
         mock_entity_extractor = MockEntityExtractor.return_value
@@ -150,10 +150,10 @@ def orchestrator(mock_llm_gateway, mock_reasoning_engine):
 
         # Mock context loading to avoid DB calls in process_query_core and stream_query
         orch.core.context_manager.get_full_context = AsyncMock(
-            return_value=({"profile": None, "facts": [], "history": []}, [])
+            return_value=({"profile": None, "facts": [], "history": []}, []),
         )
         orch.core.context_manager.get_basic_context = AsyncMock(
-            return_value=({"profile": None, "facts": []}, [])
+            return_value=({"profile": None, "facts": []}, []),
         )
         orch.core.extract_entities_and_kg_context = AsyncMock(return_value=({}, "", None))
 
@@ -217,8 +217,8 @@ async def test_process_query_semantic_cache_hit(orchestrator):
     mock_cache = MagicMock()
     mock_cache.get_cached_result = AsyncMock(
         return_value={
-            "result": {"answer": "Cached Answer", "sources": [], "model_used": "cached_model"}
-        }
+            "result": {"answer": "Cached Answer", "sources": [], "model_used": "cached_model"},
+        },
     )
     orchestrator.semantic_cache = mock_cache
     orchestrator.core.semantic_cache = mock_cache
@@ -302,7 +302,7 @@ async def test_stream_query_injection(orchestrator):
 @pytest.mark.skip(
     reason="Team early-route logic (detect_team_query + execute_tool shortcut) was removed "
     "from OrchestratorStreamingCore in the streaming refactor. Team queries now go through "
-    "the standard ReAct loop. This test is kept for documentation purposes."
+    "the standard ReAct loop. This test is kept for documentation purposes.",
 )
 async def test_stream_query_team_early_route(orchestrator, mock_llm_gateway):
     """Test early team route in streaming."""
@@ -313,7 +313,7 @@ async def test_stream_query_team_early_route(orchestrator, mock_llm_gateway):
     ):
         # Mock tool execution for team_knowledge
         with patch(
-            "backend.services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock
+            "backend.services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock,
         ) as mock_exec:
             mock_exec.return_value = (
                 "Zainal info found and it is definitely longer than twenty characters now.",
@@ -348,7 +348,7 @@ async def test_stream_query_team_early_route(orchestrator, mock_llm_gateway):
 @pytest.mark.skip(
     reason="Conversation recall gate (is_conversation_recall_query shortcut) was removed "
     "from OrchestratorStreamingCore in the streaming refactor. Recall queries now go through "
-    "the standard ReAct loop without a dedicated metadata route event."
+    "the standard ReAct loop without a dedicated metadata route event.",
 )
 async def test_stream_query_recall_gate(orchestrator, mock_llm_gateway):
     """Test conversation recall gate."""
@@ -369,7 +369,7 @@ async def test_stream_query_recall_gate(orchestrator, mock_llm_gateway):
 
     events = []
     async for event in orchestrator.stream_query(
-        query, user_id="test_user", conversation_history=history
+        query, user_id="test_user", conversation_history=history,
     ):
         events.append(event)
 
@@ -395,7 +395,7 @@ async def test_context_window_management(orchestrator):
     }
     orchestrator.context_window_manager.generate_summary = AsyncMock(return_value="New Summary")
     orchestrator.context_window_manager.inject_summary_into_history.return_value = [
-        {"role": "system", "content": "Summary"}
+        {"role": "system", "content": "Summary"},
     ] + history[20:]
 
     await orchestrator.process_query("test", user_id="test", conversation_history=history)

@@ -74,14 +74,14 @@ class TestConfidenceScoring:
         query = "visa requirements"
 
         score_low_quality = calculate_evidence_score(
-            sources=sources_low, context_gathered=context, query=query
+            sources=sources_low, context_gathered=context, query=query,
         )
 
         # High quality sources (score > 0.15)
         sources_high = [{"id": 1, "title": "Source 1", "score": 0.85}]
 
         score_high_quality = calculate_evidence_score(
-            sources=sources_high, context_gathered=context, query=query
+            sources=sources_high, context_gathered=context, query=query,
         )
 
         # High quality source adds HIGH_QUALITY_SOURCE_BONUS (0.5)
@@ -96,7 +96,7 @@ class TestConfidenceScoring:
         sources_single = [{"id": 1, "title": "Source 1", "score": 0.85}]
 
         score_single_source = calculate_evidence_score(
-            sources=sources_single, context_gathered=context, query=query
+            sources=sources_single, context_gathered=context, query=query,
         )
 
         # Multiple sources (> MIN_SOURCES_FOR_BONUS which is 3)
@@ -108,7 +108,7 @@ class TestConfidenceScoring:
         ]
 
         score_multiple_sources = calculate_evidence_score(
-            sources=sources_multiple, context_gathered=context, query=query
+            sources=sources_multiple, context_gathered=context, query=query,
         )
 
         # Multiple sources adds MULTIPLE_SOURCES_BONUS (0.2)

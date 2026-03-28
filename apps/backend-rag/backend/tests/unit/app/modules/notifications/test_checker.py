@@ -75,7 +75,7 @@ class TestPassportAlerts:
         assert alert is None
 
     def test_passport_boundary_exactly_9_months(
-        self, checker: ExpiryChecker, base_client: ClientInfo
+        self, checker: ExpiryChecker, base_client: ClientInfo,
     ):
         """Exactly 9 months: should be CRITICAL (boundary)."""
         client = base_client.model_copy()
@@ -92,7 +92,7 @@ class TestPassportAlerts:
         assert alert.alert_type == AlertType.PASSPORT_CRITICAL
 
     def test_passport_boundary_exactly_13_months(
-        self, checker: ExpiryChecker, base_client: ClientInfo
+        self, checker: ExpiryChecker, base_client: ClientInfo,
     ):
         """Exactly 13 months: should be WARNING (boundary)."""
         client = base_client.model_copy()

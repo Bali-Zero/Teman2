@@ -213,8 +213,8 @@ class CrossOracleSynthesisService:
             # Default: use query router's fallback logic
             return [
                 OracleQuery(
-                    collection="visa_oracle", query=query, priority=1, rationale="Default Oracle"
-                )
+                    collection="visa_oracle", query=query, priority=1, rationale="Default Oracle",
+                ),
             ]
 
         pattern = self.SCENARIO_PATTERNS[scenario_type]
@@ -228,7 +228,7 @@ class CrossOracleSynthesisService:
                     query=query,  # Same query for all
                     priority=1,
                     rationale=f"Required for {scenario_type}",
-                )
+                ),
             )
 
         # Add optional Oracles
@@ -239,13 +239,13 @@ class CrossOracleSynthesisService:
                     query=query,
                     priority=2,
                     rationale=f"Enhances {scenario_type} analysis",
-                )
+                ),
             )
 
         logger.info(
             f"📋 Oracles to consult: {len(oracle_queries)} "
             f"(required={len(pattern['required_oracles'])}, "
-            f"optional={len(pattern['optional_oracles'])})"
+            f"optional={len(pattern['optional_oracles'])})",
         )
 
         return oracle_queries
@@ -294,7 +294,7 @@ class CrossOracleSynthesisService:
             }
 
     async def query_all_oracles(
-        self, oracle_queries: list[OracleQuery], user_level: int = 3
+        self, oracle_queries: list[OracleQuery], user_level: int = 3,
     ) -> dict[str, Any]:
         """
         Query all Oracles in parallel.
@@ -322,13 +322,13 @@ class CrossOracleSynthesisService:
 
         logger.info(
             f"✅ Oracle queries complete: {successful}/{len(oracle_queries)} successful, "
-            f"{total_results} total results"
+            f"{total_results} total results",
         )
 
         return results_dict
 
     async def synthesize_with_zantara(
-        self, query: str, scenario_type: str, oracle_results: dict[str, Any]
+        self, query: str, scenario_type: str, oracle_results: dict[str, Any],
     ) -> str:
         """
         Use ZANTARA AI to synthesize Oracle results into integrated answer.
@@ -399,7 +399,7 @@ Keep the response comprehensive but concise (max 800 words).
         try:
             # Call ZANTARA AI
             response = await self.zantara.generate_text(
-                prompt=synthesis_prompt, max_tokens=8192, temperature=0.7
+                prompt=synthesis_prompt, max_tokens=8192, temperature=0.7,
             )
 
             synthesis_text = response.get("text", "")
@@ -442,14 +442,14 @@ Keep the response comprehensive but concise (max 800 words).
 
         # Extract investment
         investment_match = re.search(
-            r"## Investment Required\s*\n(.*?)(?=\n##|\Z)", synthesis_text, re.DOTALL
+            r"## Investment Required\s*\n(.*?)(?=\n##|\Z)", synthesis_text, re.DOTALL,
         )
         if investment_match:
             parsed["investment"] = investment_match.group(1).strip()
 
         # Extract key requirements
         req_match = re.search(
-            r"## Key Requirements\s*\n(.*?)(?=\n##|\Z)", synthesis_text, re.DOTALL
+            r"## Key Requirements\s*\n(.*?)(?=\n##|\Z)", synthesis_text, re.DOTALL,
         )
         if req_match:
             req_text = req_match.group(1).strip()
@@ -461,7 +461,7 @@ Keep the response comprehensive but concise (max 800 words).
 
         # Extract risks
         risk_match = re.search(
-            r"## Potential Risks\s*\n(.*?)(?=\n##|\Z)", synthesis_text, re.DOTALL
+            r"## Potential Risks\s*\n(.*?)(?=\n##|\Z)", synthesis_text, re.DOTALL,
         )
         if risk_match:
             risk_text = risk_match.group(1).strip()
@@ -474,7 +474,7 @@ Keep the response comprehensive but concise (max 800 words).
         return parsed
 
     async def synthesize(
-        self, query: str, user_level: int = 3, use_cache: bool = True
+        self, query: str, user_level: int = 3, use_cache: bool = True,
     ) -> SynthesisResult:
         """
         Main synthesis method - orchestrates full cross-Oracle synthesis.
@@ -542,7 +542,7 @@ Keep the response comprehensive but concise (max 800 words).
         logger.info(
             f"✅ Synthesis complete: {scenario_type}, "
             f"{len(oracles_consulted)} Oracles, "
-            f"confidence={confidence:.2f}"
+            f"confidence={confidence:.2f}",
         )
 
         return result

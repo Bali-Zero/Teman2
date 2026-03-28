@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 
 # Metrics
 completion_rate = Gauge(
-    "analytics_completion_rate", "Practice completion rate", ["practice_type", "period"]
+    "analytics_completion_rate", "Practice completion rate", ["practice_type", "period"],
 )
 avg_completion_days = Gauge(
     "analytics_avg_completion_days",
@@ -45,7 +45,7 @@ avg_response_days = Gauge(
     ["practice_type", "period"],
 )
 sla_compliance_rate = Gauge(
-    "analytics_sla_compliance", "SLA compliance rate", ["practice_type", "period"]
+    "analytics_sla_compliance", "SLA compliance rate", ["practice_type", "period"],
 )
 revenue_total = Gauge("analytics_revenue_total", "Total revenue", ["practice_type", "period"])
 
@@ -127,13 +127,13 @@ async def calculate_completion_rate(
                     "completed_practices": row["completed_practices"],
                     "cancelled_practices": row["cancelled_practices"],
                     "completion_rate_pct": float(row["completion_rate_pct"] or 0),
-                }
+                },
             )
 
             # Update Prometheus metric
             period = f"{start_date}_{end_date}" if start_date and end_date else "all_time"
             completion_rate.labels(practice_type=row["practice_type"], period=period).set(
-                float(row["completion_rate_pct"] or 0)
+                float(row["completion_rate_pct"] or 0),
             )
 
         return {"results": results, "period": {"start": start_date, "end": end_date}}
@@ -217,20 +217,20 @@ async def calculate_response_times(
                     "median_days_inquiry_to_start": float(row["median_days_inquiry_to_start"] or 0),
                     "avg_days_start_to_completion": float(row["avg_days_start_to_completion"] or 0),
                     "median_days_start_to_completion": float(
-                        row["median_days_start_to_completion"] or 0
+                        row["median_days_start_to_completion"] or 0,
                     ),
                     "avg_days_total_cycle": float(row["avg_days_total_cycle"] or 0),
                     "median_days_total_cycle": float(row["median_days_total_cycle"] or 0),
-                }
+                },
             )
 
             # Update Prometheus metrics
             period = f"{start_date}_{end_date}" if start_date and end_date else "all_time"
             avg_response_days.labels(practice_type=row["practice_type"], period=period).set(
-                float(row["avg_days_inquiry_to_start"] or 0)
+                float(row["avg_days_inquiry_to_start"] or 0),
             )
             avg_completion_days.labels(practice_type=row["practice_type"], period=period).set(
-                float(row["avg_days_total_cycle"] or 0)
+                float(row["avg_days_total_cycle"] or 0),
             )
 
         return {"results": results, "period": {"start": start_date, "end": end_date}}
@@ -304,13 +304,13 @@ async def calculate_sla_compliance(
                     "total_completed": row["total_completed"],
                     "within_sla": row["within_sla"],
                     "sla_compliance_pct": float(row["sla_compliance_pct"] or 0),
-                }
+                },
             )
 
             # Update Prometheus metric
             period = f"{start_date}_{end_date}" if start_date and end_date else "all_time"
             sla_compliance_rate.labels(practice_type=row["practice_type"], period=period).set(
-                float(row["sla_compliance_pct"] or 0)
+                float(row["sla_compliance_pct"] or 0),
             )
 
         return {"results": results, "period": {"start": start_date, "end": end_date}}
@@ -391,7 +391,7 @@ async def calculate_revenue_metrics(
                     "total_outstanding": float(row["total_outstanding"] or 0),
                     "fully_paid_count": row["fully_paid_count"],
                     "payment_completion_rate_pct": float(row["payment_completion_rate_pct"] or 0),
-                }
+                },
             )
 
             # Update Prometheus metric
@@ -468,13 +468,13 @@ async def main() -> Any:
         logger.info("\n📊 COMPLETION RATES:")
         for item in report["completion_rates"]["results"][:5]:
             logger.info(
-                f"  {item['practice_name']}: {item['completion_rate_pct']}% ({item['completed_practices']}/{item['total_practices']})"
+                f"  {item['practice_name']}: {item['completion_rate_pct']}% ({item['completed_practices']}/{item['total_practices']})",
             )
 
         logger.info("\n⏱️  RESPONSE TIMES:")
         for item in report["response_times"]["results"][:5]:
             logger.info(
-                f"  {item['practice_name']}: {item['avg_days_total_cycle']} days avg cycle time"
+                f"  {item['practice_name']}: {item['avg_days_total_cycle']} days avg cycle time",
             )
 
         logger.info("\n✅ SLA COMPLIANCE:")

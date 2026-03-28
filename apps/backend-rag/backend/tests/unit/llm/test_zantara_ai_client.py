@@ -104,7 +104,7 @@ def test_validate_inputs(mock_genai_available, mock_genai_client):
 
     # Valid
     client._validate_inputs(
-        max_tokens=100, temperature=0.5, messages=[{"role": "user", "content": "hi"}]
+        max_tokens=100, temperature=0.5, messages=[{"role": "user", "content": "hi"}],
     )
 
     # Invalid max_tokens

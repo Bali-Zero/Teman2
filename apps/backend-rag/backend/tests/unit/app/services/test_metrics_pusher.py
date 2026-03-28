@@ -103,7 +103,7 @@ class TestMetricsPusher:
         """Test pushing metrics"""
         with (
             patch.object(
-                metrics_pusher, "_collect_metrics", return_value="test_metric 123.45"
+                metrics_pusher, "_collect_metrics", return_value="test_metric 123.45",
             ) as mock_collect,
             patch("backend.app.services.metrics_pusher.httpx.AsyncClient") as mock_client,
         ):

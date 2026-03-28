@@ -33,7 +33,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
             logger.info("✅ ErrorMonitoringMiddleware initialized with AlertService")
         else:
             logger.info(
-                "ℹ️ ErrorMonitoringMiddleware initialized without AlertService (will use app.state if available)"
+                "ℹ️ ErrorMonitoringMiddleware initialized without AlertService (will use app.state if available)",
             )
 
     def _resolve_alert_service(self, request: Request):
@@ -140,7 +140,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
             )
 
     async def _handle_error_response(
-        self, request: Request, response: Response, request_id: str, duration_ms: float
+        self, request: Request, response: Response, request_id: str, duration_ms: float,
     ):
         """
         Handle error response (4xx/5xx)
@@ -164,7 +164,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
         # Log error
         logger.warning(
             f"[{request_id}] {method} {path} → {status_code} "
-            f"({duration_ms:.2f}ms) | UA: {user_agent[:50]}"
+            f"({duration_ms:.2f}ms) | UA: {user_agent[:50]}",
         )
 
         # Send alert if enabled and if it's a server error (5xx) or critical client error

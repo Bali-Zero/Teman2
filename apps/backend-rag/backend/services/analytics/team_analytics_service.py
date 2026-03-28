@@ -144,7 +144,7 @@ class TeamAnalyticsService:
         REFACTORED: Delegates to TeamInsightsService.
         """
         return self.team_insights._generate_team_insights_text(
-            members, hours, conversations, collab_windows, health_score
+            members, hours, conversations, collab_windows, health_score,
         )
 
     # ========================================

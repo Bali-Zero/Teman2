@@ -71,7 +71,7 @@ class CircuitBreaker:
         """Transition circuit to OPEN state."""
         if self.state != CircuitState.OPEN:
             logger.warning(
-                f"🔴 Circuit breaker '{self.name}' OPENED after {self.failure_count} failures"
+                f"🔴 Circuit breaker '{self.name}' OPENED after {self.failure_count} failures",
             )
             self.state = CircuitState.OPEN
             self.last_failure_time = time.time()
@@ -91,7 +91,7 @@ class CircuitBreaker:
         """Transition circuit to CLOSED state."""
         if self.state != CircuitState.CLOSED:
             logger.info(
-                f"🟢 Circuit breaker '{self.name}' CLOSED after {self.success_count} successes"
+                f"🟢 Circuit breaker '{self.name}' CLOSED after {self.success_count} successes",
             )
             self.state = CircuitState.CLOSED
             self.last_state_change_time = time.time()
@@ -159,7 +159,7 @@ class CircuitBreaker:
         if self.is_open():
             if fallback:
                 logger.debug(
-                    f"Circuit breaker '{self.name}' OPEN, using fallback for {operation_name}"
+                    f"Circuit breaker '{self.name}' OPEN, using fallback for {operation_name}",
                 )
                 try:
                     return await fallback()

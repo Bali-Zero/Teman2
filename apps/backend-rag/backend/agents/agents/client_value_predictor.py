@@ -76,7 +76,7 @@ class ClientValuePredictor:
 
         if not self.db_pool:
             raise RuntimeError(
-                "Database pool not available. Provide db_pool in __init__ or ensure app.state.db_pool is set."
+                "Database pool not available. Provide db_pool in __init__ or ensure app.state.db_pool is set.",
             )
 
         # Initialize services
@@ -128,7 +128,7 @@ class ClientValuePredictor:
         return enriched
 
     async def generate_nurturing_message(
-        self, client_data: dict[str, Any], timeout: float = 30.0
+        self, client_data: dict[str, Any], timeout: float = 30.0,
     ) -> str:
         """
         Generate personalized nurturing message.
@@ -143,7 +143,7 @@ class ClientValuePredictor:
         return await self.message_service.generate_message(client_data, timeout)
 
     async def send_whatsapp_message(
-        self, phone: str, message: str, max_retries: int = 3
+        self, phone: str, message: str, max_retries: int = 3,
     ) -> str | None:
         """
         Send WhatsApp message via Twilio.
@@ -223,14 +223,14 @@ class ClientValuePredictor:
                                     "last_score_update": datetime.now(tz=timezone.utc)
                                     .replace(tzinfo=None)
                                     .isoformat(),
-                                }
+                                },
                             ),
                             int(client_id),
                         )
 
                         # Decide if we should reach out
                         should_nurture, reason = self.segmentation_service.should_nurture(
-                            client_data
+                            client_data,
                         )
 
                         if should_nurture and client_data.get("phone"):
@@ -239,7 +239,7 @@ class ClientValuePredictor:
 
                             # Send WhatsApp
                             message_sid = await self.send_whatsapp_message(
-                                client_data["phone"], message
+                                client_data["phone"], message,
                             )
 
                             if message_sid:
@@ -284,7 +284,7 @@ High-Risk Contacted: {results["high_risk_contacted"]}
 Total Messages Sent: {results["total_messages_sent"]}
 Errors: {len(results["errors"])}
 
-All clients scored and segmented automatically!"""
+All clients scored and segmented automatically!""",
                             },
                         )
                 except Exception as e:

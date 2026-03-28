@@ -176,7 +176,7 @@ async def grade_node(state: WorkflowState) -> WorkflowState:
                     relevance_scores.append(score)
 
             logger.info(
-                f"[GRADE_NODE] Score-filtered {len(documents)} -> {len(filtered_docs)} documents"
+                f"[GRADE_NODE] Score-filtered {len(documents)} -> {len(filtered_docs)} documents",
             )
 
             execution_path = state.get("execution_path", [])
@@ -196,7 +196,7 @@ async def grade_node(state: WorkflowState) -> WorkflowState:
             [
                 f"Document {i + 1} (score: {score:.3f}):\n{doc[:500]}..."
                 for i, (doc, score) in enumerate(zip(documents, retrieved_scores, strict=False))
-            ]
+            ],
         )
 
         grading_prompt = f"""You are a document relevance grader. Your task is to assess if documents are relevant to answer a question.
@@ -244,7 +244,7 @@ Your response (JSON array only):"""
             # Ensure we have the right number of scores
             if len(relevance_scores) != len(documents):
                 logger.warning(
-                    f"[GRADE_NODE] Score count mismatch: {len(relevance_scores)} vs {len(documents)}"
+                    f"[GRADE_NODE] Score count mismatch: {len(relevance_scores)} vs {len(documents)}",
                 )
                 # Pad or truncate
                 if len(relevance_scores) < len(documents):
@@ -268,7 +268,7 @@ Your response (JSON array only):"""
                 filtered_scores.append(score)
 
         logger.info(
-            f"[GRADE_NODE] LLM-filtered {len(documents)} -> {len(filtered_docs)} documents (threshold: {threshold})"
+            f"[GRADE_NODE] LLM-filtered {len(documents)} -> {len(filtered_docs)} documents (threshold: {threshold})",
         )
 
         # Update execution tracking
@@ -342,7 +342,7 @@ This is a mock answer. Real generation requires LLMGateway to be initialized.
             [
                 f"Context {i + 1}:\n{doc[:1000]}"  # Limit context length
                 for i, doc in enumerate(filtered_docs[:5])  # Max 5 docs
-            ]
+            ],
         )
 
         system_prompt = """You are Zantara, an expert AI assistant for Indonesian business and immigration matters.

@@ -226,7 +226,7 @@ PRACTICE_SERVICE_NAMES: dict[str, dict[str, str]] = {
 def get_service_name(practice_type_code: str, lang: str) -> str:
     """Return localized service name for practice type. Falls back to EN."""
     type_map = PRACTICE_SERVICE_NAMES.get(
-        practice_type_code.upper(), PRACTICE_SERVICE_NAMES["KITAS"]
+        practice_type_code.upper(), PRACTICE_SERVICE_NAMES["KITAS"],
     )
     return type_map.get(lang, type_map["en"])
 

@@ -54,7 +54,7 @@ class TestUserContextTracking:
         # Add 60 queries
         for i in range(60):
             user_context["history"].append(
-                {"query_text": f"Query {i}", "timestamp": datetime.now(timezone.utc).isoformat()}
+                {"query_text": f"Query {i}", "timestamp": datetime.now(timezone.utc).isoformat()},
             )
 
         # Keep only last 50
@@ -108,7 +108,7 @@ class TestUserPreferences:
             "domains": {
                 "visa": {"detail_level": "high", "include_citations": True},
                 "tax": {"detail_level": "medium", "include_examples": True},
-            }
+            },
         }
 
         assert preferences["domains"]["visa"]["detail_level"] == "high"

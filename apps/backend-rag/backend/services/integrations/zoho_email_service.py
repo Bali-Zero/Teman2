@@ -262,7 +262,7 @@ class ZohoEmailService:
             error_data = response.json() if response.content else {}
             logger.warning(
                 f"[Email API] Error: {method} {endpoint} user={user_id} "
-                f"status={response.status_code} error={error_data}"
+                f"status={response.status_code} error={error_data}",
             )
             raise ValueError(f"API error: {error_data.get('data', {}).get('errorCode', 'unknown')}")
 
@@ -342,7 +342,7 @@ class ZohoEmailService:
         """
         logger.info(
             f"[Email] Listing emails user={user_id} folder={folder_id} "
-            f"limit={limit} start={start} search={search_key}"
+            f"limit={limit} start={start} search={search_key}",
         )
         params: dict[str, Any] = {
             "folderId": folder_id,
@@ -381,7 +381,7 @@ class ZohoEmailService:
                     "is_read": email.get("isRead", True),
                     "is_flagged": email.get("isFlagged", False),
                     "date": email.get("receivedTime") or email.get("sentDateInGMT"),
-                }
+                },
             )
 
         result = {
@@ -391,7 +391,7 @@ class ZohoEmailService:
         }
         logger.debug(
             f"[Email] Listed {len(transformed_emails)} emails, total={result['total']}, "
-            f"has_more={result['has_more']}"
+            f"has_more={result['has_more']}",
         )
         return result
 
@@ -420,7 +420,7 @@ class ZohoEmailService:
         return result
 
     async def get_email(
-        self, user_id: str, message_id: str, folder_id: str | None = None
+        self, user_id: str, message_id: str, folder_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Get full email content.
@@ -438,7 +438,7 @@ class ZohoEmailService:
 
         # Step 1: Get metadata from list endpoint (Zoho doesn't have single message metadata endpoint)
         list_response = await self._request(
-            user_id, "GET", "/messages/view", params={"folderId": folder_id, "limit": "50"}
+            user_id, "GET", "/messages/view", params={"folderId": folder_id, "limit": "50"},
         )
         emails_list = list_response.get("data", [])
 
@@ -573,7 +573,7 @@ class ZohoEmailService:
         start_time = time.time()
         logger.info(
             f"[Email] Sending email user={user_id} to={to} subject='{subject[:50]}...' "
-            f"cc={cc} bcc={bcc} attachments={len(attachments or [])}"
+            f"cc={cc} bcc={bcc} attachments={len(attachments or [])}",
         )
         try:
             # Get sender email from account
@@ -601,7 +601,7 @@ class ZohoEmailService:
                             "storeName": att.get("store_name"),
                             "attachmentPath": att.get("attachment_path"),
                             "attachmentName": att.get("attachment_name"),
-                        }
+                        },
                     )
                 payload["attachments"] = formatted_attachments
 
@@ -611,7 +611,7 @@ class ZohoEmailService:
             duration = time.time() - start_time
             logger.info(f"[Email] Email sent successfully user={user_id} message_id={message_id}")
             metrics_collector.record_email_operation(
-                operation="send", user_id=user_id, status="success", duration_seconds=duration
+                operation="send", user_id=user_id, status="success", duration_seconds=duration,
             )
 
             # Log activity for weekly report
@@ -631,7 +631,7 @@ class ZohoEmailService:
         except Exception:
             duration = time.time() - start_time
             metrics_collector.record_email_operation(
-                operation="send", user_id=user_id, status="error", duration_seconds=duration
+                operation="send", user_id=user_id, status="error", duration_seconds=duration,
             )
             metrics_collector.record_email_error(error_type="api_error", operation="send")
             raise
@@ -662,7 +662,7 @@ class ZohoEmailService:
         action = "replyall" if reply_all else "reply"
         logger.info(
             f"[Email] Replying to email user={user_id} message_id={message_id} "
-            f"reply_all={reply_all} to={to_address}"
+            f"reply_all={reply_all} to={to_address}",
         )
 
         # Build payload with required toAddress
@@ -688,7 +688,7 @@ class ZohoEmailService:
 
         reply_message_id = response.get("data", {}).get("messageId")
         logger.info(
-            f"[Email] Reply sent successfully user={user_id} reply_message_id={reply_message_id}"
+            f"[Email] Reply sent successfully user={user_id} reply_message_id={reply_message_id}",
         )
 
         # Log activity for weekly report
@@ -738,7 +738,7 @@ class ZohoEmailService:
 
         fwd_message_id = response.get("data", {}).get("messageId")
         logger.info(
-            f"[Email] Email forwarded successfully user={user_id} fwd_message_id={fwd_message_id}"
+            f"[Email] Email forwarded successfully user={user_id} fwd_message_id={fwd_message_id}",
         )
 
         # Log activity for weekly report
@@ -804,7 +804,7 @@ class ZohoEmailService:
             Success status
         """
         logger.info(
-            f"[Email] Toggling flag user={user_id} message_id={message_id} flagged={is_flagged}"
+            f"[Email] Toggling flag user={user_id} message_id={message_id} flagged={is_flagged}",
         )
         await self._request(
             user_id,
@@ -833,7 +833,7 @@ class ZohoEmailService:
             Success status
         """
         logger.info(
-            f"[Email] Moving {len(message_ids)} emails to folder={folder_id} user={user_id}"
+            f"[Email] Moving {len(message_ids)} emails to folder={folder_id} user={user_id}",
         )
         await self._request(
             user_id,
@@ -869,7 +869,7 @@ class ZohoEmailService:
         """
         start_time = time.time()
         logger.info(
-            f"[Email] Deleting {len(message_ids)} emails user={user_id} message_ids={message_ids}"
+            f"[Email] Deleting {len(message_ids)} emails user={user_id} message_ids={message_ids}",
         )
         try:
             # Step 1: Find Trash Folder
@@ -900,7 +900,7 @@ class ZohoEmailService:
 
             duration = time.time() - start_time
             metrics_collector.record_email_operation(
-                operation="delete", user_id=user_id, status="success", duration_seconds=duration
+                operation="delete", user_id=user_id, status="success", duration_seconds=duration,
             )
 
             # Log activity for weekly report (one entry per delete operation)
@@ -913,7 +913,7 @@ class ZohoEmailService:
         except Exception:
             duration = time.time() - start_time
             metrics_collector.record_email_operation(
-                operation="delete", user_id=user_id, status="error", duration_seconds=duration
+                operation="delete", user_id=user_id, status="error", duration_seconds=duration,
             )
             metrics_collector.record_email_error(error_type="api_error", operation="delete")
             raise
@@ -941,7 +941,7 @@ class ZohoEmailService:
         """
         logger.info(
             f"[Email] Downloading attachment user={user_id} "
-            f"message_id={message_id} attachment_id={attachment_id}"
+            f"message_id={message_id} attachment_id={attachment_id}",
         )
         account_id = await self._get_account_id(user_id)
         headers = await self._get_headers(user_id)
@@ -961,7 +961,7 @@ class ZohoEmailService:
             raise ValueError(f"Failed to download attachment: {response.status_code}")
 
         logger.debug(
-            f"[Email] Attachment downloaded successfully size={len(response.content)} bytes"
+            f"[Email] Attachment downloaded successfully size={len(response.content)} bytes",
         )
         return response.content
 
@@ -996,7 +996,7 @@ class ZohoEmailService:
 
         logger.info(
             f"[Email] Upload request user={user_id} "
-            f"filename={filename!r} size={file_size_mb:.2f}MB type={content_type}"
+            f"filename={filename!r} size={file_size_mb:.2f}MB type={content_type}",
         )
 
         # Validate file size (Zoho limit: 25MB per attachment)
@@ -1026,7 +1026,7 @@ class ZohoEmailService:
         if sanitized_filename != original_filename:
             logger.info(
                 f"[Email] Filename sanitized user={user_id} "
-                f"original={original_filename!r} → sanitized={sanitized_filename!r}"
+                f"original={original_filename!r} → sanitized={sanitized_filename!r}",
             )
             filename = sanitized_filename
 
@@ -1075,12 +1075,12 @@ class ZohoEmailService:
                     f"  HTTP Status: {response.status_code}\n"
                     f"  Zoho Error Code: {error_code}\n"
                     f"  Zoho Error Message: {error_message}\n"
-                    f"  Full Response: {error_body}"
+                    f"  Full Response: {error_body}",
                 )
 
                 # Raise informative error for user
                 raise ValueError(
-                    f"Upload failed for '{original_filename}': {error_code} - {error_message}"
+                    f"Upload failed for '{original_filename}': {error_code} - {error_message}",
                 )
 
             # ========================================
@@ -1100,7 +1100,7 @@ class ZohoEmailService:
             logger.info(
                 f"[Email] Attachment uploaded successfully "
                 f"user={user_id} attachment_id={result['attachment_id']} "
-                f"filename={filename!r} size={file_size_mb:.2f}MB"
+                f"filename={filename!r} size={file_size_mb:.2f}MB",
             )
 
             return result
@@ -1166,7 +1166,7 @@ class ZohoEmailService:
                         "storeName": att.get("store_name"),
                         "attachmentPath": att.get("attachment_path"),
                         "attachmentName": att.get("attachment_name"),
-                    }
+                    },
                 )
             payload["attachments"] = formatted_attachments
 

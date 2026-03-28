@@ -41,7 +41,7 @@ class KBLIMatchingSchema(BaseModel):
             raise ValueError("Confidence score must be between 0.0 and 1.0.")
         if v < 0.60:
             raise ValueError(
-                "Confidence < 0.60 requires manual review or fallback. Discarding deterministic match."
+                "Confidence < 0.60 requires manual review or fallback. Discarding deterministic match.",
             )
         return v
 

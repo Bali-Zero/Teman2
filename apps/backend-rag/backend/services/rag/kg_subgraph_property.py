@@ -153,7 +153,7 @@ async def _fetch_badung_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
                 json.dumps(geom),
                 0.0,
                 0.5,
-            )
+            ),
         )
 
     return await _execute_batch_insert(rows, db_pool)
@@ -208,7 +208,7 @@ async def _fetch_gistaru_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
                 json.dumps(geom),
                 0.0,
                 0.5,
-            )
+            ),
         )
 
     return await _execute_batch_insert(rows, db_pool)
@@ -247,7 +247,7 @@ async def _execute_batch_insert(rows: list[tuple[Any, ...]], db_pool: asyncpg.Po
 
 
 async def _check_existing_zoning(
-    lat: float, lng: float, db_pool: asyncpg.Pool
+    lat: float, lng: float, db_pool: asyncpg.Pool,
 ) -> dict[str, Any] | None:
     """
     Step 0: check if we already have zoning polygons for these coordinates
@@ -494,7 +494,7 @@ async def get_property_requirements_node(state: Any, db_pool: Any = None) -> dic
     return {
         "property_requirements": [
             {"requirement_type": "ownership", "details": reqs},
-        ]
+        ],
     }
 
 

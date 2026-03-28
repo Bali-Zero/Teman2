@@ -182,7 +182,7 @@ async def execute_tool(
         tool_execution_counter["count"] += 1
         if tool_execution_counter["count"] > 10:
             logger.warning(
-                f"⚠️ Tool execution limit exceeded ({tool_execution_counter['count']} > 10)"
+                f"⚠️ Tool execution limit exceeded ({tool_execution_counter['count']} > 10)",
             )
             metrics_collector.record_tool_call(tool_name, "rate_limited")
             raise RuntimeError("Maximum tool executions exceeded (10 per query)")

@@ -81,7 +81,7 @@ class TestTeamAnalyticsRouter:
     def test_get_work_patterns_error(self, client, mock_team_analytics_service):
         """Test getting work patterns with error"""
         mock_team_analytics_service.analyze_work_patterns = AsyncMock(
-            side_effect=Exception("Error")
+            side_effect=Exception("Error"),
         )
         response = client.get("/api/team-analytics/patterns")
         assert response.status_code == 500
@@ -104,7 +104,7 @@ class TestTeamAnalyticsRouter:
     def test_get_productivity_scores_error(self, client, mock_team_analytics_service):
         """Test getting productivity scores with error"""
         mock_team_analytics_service.calculate_productivity_scores = AsyncMock(
-            side_effect=Exception("Error")
+            side_effect=Exception("Error"),
         )
         response = client.get("/api/team-analytics/productivity")
         assert response.status_code == 500
@@ -127,7 +127,7 @@ class TestTeamAnalyticsRouter:
     def test_get_burnout_signals_error(self, client, mock_team_analytics_service):
         """Test getting burnout signals with error"""
         mock_team_analytics_service.detect_burnout_signals = AsyncMock(
-            side_effect=Exception("Error")
+            side_effect=Exception("Error"),
         )
         response = client.get("/api/team-analytics/burnout")
         assert response.status_code == 500
@@ -140,7 +140,7 @@ class TestTeamAnalyticsRouter:
         assert data["success"] is True
         assert "trends" in data
         mock_team_analytics_service.analyze_performance_trends.assert_called_once_with(
-            "test@example.com", 4
+            "test@example.com", 4,
         )
 
     def test_get_performance_trends_with_weeks(self, client, mock_team_analytics_service):
@@ -148,13 +148,13 @@ class TestTeamAnalyticsRouter:
         response = client.get("/api/team-analytics/trends/test@example.com?weeks=8")
         assert response.status_code == 200
         mock_team_analytics_service.analyze_performance_trends.assert_called_with(
-            "test@example.com", 8
+            "test@example.com", 8,
         )
 
     def test_get_performance_trends_error(self, client, mock_team_analytics_service):
         """Test getting performance trends with error"""
         mock_team_analytics_service.analyze_performance_trends = AsyncMock(
-            side_effect=Exception("Error")
+            side_effect=Exception("Error"),
         )
         response = client.get("/api/team-analytics/trends/test@example.com")
         assert response.status_code == 500
@@ -177,7 +177,7 @@ class TestTeamAnalyticsRouter:
     def test_get_workload_balance_error(self, client, mock_team_analytics_service):
         """Test getting workload balance with error"""
         mock_team_analytics_service.analyze_workload_balance = AsyncMock(
-            side_effect=Exception("Error")
+            side_effect=Exception("Error"),
         )
         response = client.get("/api/team-analytics/workload-balance")
         assert response.status_code == 500

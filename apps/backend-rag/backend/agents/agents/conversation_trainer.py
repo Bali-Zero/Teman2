@@ -35,12 +35,12 @@ except ImportError:
 
     def safe_git_checkout_new(branch, cwd=None):
         return subprocess.run(
-            ["git", "checkout", "-b", branch], cwd=cwd, check=True, capture_output=True
+            ["git", "checkout", "-b", branch], cwd=cwd, check=True, capture_output=True,
         )
 
     def safe_git_checkout(branch, cwd=None):
         return subprocess.run(
-            ["git", "checkout", branch], cwd=cwd, check=False, capture_output=True
+            ["git", "checkout", branch], cwd=cwd, check=False, capture_output=True,
         )
 
     def safe_git_add(files, cwd=None):
@@ -68,7 +68,7 @@ class ConversationTrainer:
     """
 
     def __init__(
-        self, db_pool: asyncpg.Pool | None = None, zantara_client: ZantaraAIClient | None = None
+        self, db_pool: asyncpg.Pool | None = None, zantara_client: ZantaraAIClient | None = None,
     ) -> None:
         """
         Initialize ConversationTrainer with dependencies.
@@ -96,11 +96,11 @@ class ConversationTrainer:
             pass
 
         raise RuntimeError(
-            "Database pool not available. Provide db_pool in __init__ or ensure app.state.db_pool is set."
+            "Database pool not available. Provide db_pool in __init__ or ensure app.state.db_pool is set.",
         )
 
     async def analyze_winning_patterns(
-        self, days_back: int = 7, timeout: float = 60.0
+        self, days_back: int = 7, timeout: float = 60.0,
     ) -> dict[str, Any] | None:
         """Find patterns in successful conversations"""
         if days_back < 1 or days_back > 365:
@@ -185,7 +185,7 @@ Return JSON:
                     try:
                         analysis_text = await asyncio.wait_for(
                             self.zantara_client.generate_text(
-                                prompt=analysis_prompt, max_tokens=8192, temperature=0.3
+                                prompt=analysis_prompt, max_tokens=8192, temperature=0.3,
                             ),
                             timeout=timeout,
                         )
@@ -236,7 +236,7 @@ Return ONLY the prompt text, no explanations."""
             try:
                 improved_prompt = await asyncio.wait_for(
                     self.zantara_client.generate_text(
-                        prompt=prompt, max_tokens=8192, temperature=0.5
+                        prompt=prompt, max_tokens=8192, temperature=0.5,
                     ),
                     timeout=timeout,
                 )
@@ -381,7 +381,7 @@ async def run_conversation_trainer(days_back: int = 7):
                     await client.post(
                         settings.slack_webhook_url,
                         json={
-                            "text": f"🤖 New prompt improvement PR created: {pr_branch}\n\nAnalyzed {ANALYSIS_CONVERSATIONS_LIMIT} top conversations, found actionable improvements!"
+                            "text": f"🤖 New prompt improvement PR created: {pr_branch}\n\nAnalyzed {ANALYSIS_CONVERSATIONS_LIMIT} top conversations, found actionable improvements!",
                         },
                     )
             except Exception as e:

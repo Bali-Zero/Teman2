@@ -47,7 +47,7 @@ async def seed_users():
                 WHERE table_schema = 'public'
                 AND table_name = 'team_members'
             );
-        """
+        """,
         )
 
         if not exists:

@@ -91,7 +91,7 @@ class PluginExecutor:
                 "last_success": None,
                 "cache_hits": 0,
                 "cache_misses": 0,
-            }
+            },
         )
         self._rate_limits = defaultdict(list)  # plugin -> [timestamps]
         self._circuit_breakers = {}  # plugin -> {failures, last_failure_time}
@@ -136,10 +136,10 @@ class PluginExecutor:
 
         # Check rate limit
         if plugin.metadata.rate_limit and not await self._check_rate_limit(
-            plugin_name, plugin.metadata.rate_limit, user_id
+            plugin_name, plugin.metadata.rate_limit, user_id,
         ):
             logger.warning(
-                f"Rate limit exceeded for {plugin_name} (limit: {plugin.metadata.rate_limit}/min)"
+                f"Rate limit exceeded for {plugin_name} (limit: {plugin.metadata.rate_limit}/min)",
             )
             return PluginOutput(
                 success=False,
@@ -186,7 +186,7 @@ class PluginExecutor:
                 raise
             except asyncio.TimeoutError:
                 logger.warning(
-                    f"Plugin {plugin_name} execution timeout (attempt {attempt + 1}/{retry_count + 1})"
+                    f"Plugin {plugin_name} execution timeout (attempt {attempt + 1}/{retry_count + 1})",
                 )
                 if attempt < retry_count:
                     wait_time = 2**attempt
@@ -218,7 +218,7 @@ class PluginExecutor:
                     )
 
     async def _execute_with_monitoring(
-        self, plugin: Plugin, input_data: PluginInput, timeout: float | None = None
+        self, plugin: Plugin, input_data: PluginInput, timeout: float | None = None,
     ) -> PluginOutput:
         """
         Execute plugin with monitoring
@@ -276,7 +276,7 @@ class PluginExecutor:
             raise
 
     async def _check_rate_limit(
-        self, plugin_name: str, limit: int, user_id: str | None = None
+        self, plugin_name: str, limit: int, user_id: str | None = None,
     ) -> bool:
         """
         Check if plugin has exceeded rate limit.
@@ -333,7 +333,7 @@ class PluginExecutor:
         return True
 
     async def _get_cached(
-        self, plugin_name: str, input_data: dict[str, Any]
+        self, plugin_name: str, input_data: dict[str, Any],
     ) -> PluginOutput | None:
         """
         Get cached result if exists
@@ -360,7 +360,7 @@ class PluginExecutor:
         return None
 
     async def _cache_result(
-        self, plugin_name: str, input_data: dict[str, Any], output: PluginOutput
+        self, plugin_name: str, input_data: dict[str, Any], output: PluginOutput,
     ):
         """
         Cache execution result

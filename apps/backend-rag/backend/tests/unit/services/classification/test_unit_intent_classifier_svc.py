@@ -86,7 +86,7 @@ class TestIntentClassifier:
     async def test_classify_business_complex(self, intent_classifier):
         """Test classifying complex business question"""
         result = await intent_classifier.classify_intent(
-            "how to setup PT PMA company with investment requirements"
+            "how to setup PT PMA company with investment requirements",
         )
         assert result["category"] == "business_complex"
         assert result["suggested_ai"] == "pro"

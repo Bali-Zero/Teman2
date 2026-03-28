@@ -48,7 +48,7 @@ def mock_search_service():
                 },
             ],
             "total": 2,
-        }
+        },
     )
     return service
 
@@ -99,7 +99,7 @@ def mock_llm_gateway():
         return_value={
             "text": "E33G Digital Nomad KITAS costs Rp 17-19 million based on the documents.",
             "usage": {"prompt_tokens": 100, "completion_tokens": 50},
-        }
+        },
     )
 
     return gateway
@@ -115,7 +115,7 @@ def mock_memory_orchestrator():
             "facts": [],
             "collective_facts": [],
             "entities": {},
-        }
+        },
     )
     orchestrator.save_conversation = AsyncMock(return_value={"success": True})
     return orchestrator
@@ -143,7 +143,7 @@ class TestE2ERAGFlow:
 
     @pytest.mark.asyncio
     async def test_complete_query_flow_with_vector_search(
-        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator
+        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator,
     ):
         """Test complete flow: Query → Intent → Routing → Vector Search → Response"""
         query = "Quanto costa E33G Digital Nomad KITAS?"
@@ -151,7 +151,7 @@ class TestE2ERAGFlow:
 
         # Mock intent classification
         with patch(
-            "backend.services.classification.intent_classifier.IntentClassifier"
+            "backend.services.classification.intent_classifier.IntentClassifier",
         ) as mock_intent:
             mock_classifier = MagicMock()
             mock_classifier.classify_intent = AsyncMock(
@@ -160,7 +160,7 @@ class TestE2ERAGFlow:
                     "confidence": 0.9,
                     "suggested_ai": "fast",
                     "skip_rag": False,
-                }
+                },
             )
             mock_intent.return_value = mock_classifier
 
@@ -186,13 +186,13 @@ class TestE2ERAGFlow:
                     side_effect=[
                         [mock_tool_call],  # Tool call
                         [mock_final_response],  # Final answer
-                    ]
+                    ],
                 )
                 mock_gateway.return_value = mock_gateway_instance
 
                 # Execute query
                 result = await orchestrator.process_query(
-                    query=query, user_id=user_id, session_id="test-session", conversation_history=[]
+                    query=query, user_id=user_id, session_id="test-session", conversation_history=[],
                 )
 
                 # Verify flow - result is a CoreResult dataclass
@@ -201,7 +201,7 @@ class TestE2ERAGFlow:
 
     @pytest.mark.asyncio
     async def test_multi_step_reasoning_flow(
-        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator
+        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator,
     ):
         """Test multi-step reasoning: Query → Thought → Action → Observation → Final Answer"""
         query = "Calcola il costo totale per E33G KITAS più visto C1"
@@ -211,7 +211,7 @@ class TestE2ERAGFlow:
         with patch("backend.services.rag.agentic.tools.PricingTool") as mock_pricing:
             mock_pricing_instance = MagicMock()
             mock_pricing_instance.execute = AsyncMock(
-                return_value={"service": "E33G", "price": "Rp 17-19 million"}
+                return_value={"service": "E33G", "price": "Rp 17-19 million"},
             )
             mock_pricing.return_value = mock_pricing_instance
 
@@ -223,7 +223,7 @@ class TestE2ERAGFlow:
 
                 # Execute query
                 result = await orchestrator.process_query(
-                    query=query, user_id=user_id, session_id="test-session", conversation_history=[]
+                    query=query, user_id=user_id, session_id="test-session", conversation_history=[],
                 )
 
                 # Verify multi-step reasoning occurred
@@ -234,7 +234,7 @@ class TestE2ERAGFlow:
 
     @pytest.mark.asyncio
     async def test_conversation_history_context(
-        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator
+        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator,
     ):
         """Test that conversation history is properly used in context"""
         query = "E il visto C1?"
@@ -257,7 +257,7 @@ class TestE2ERAGFlow:
 
     @pytest.mark.asyncio
     async def test_response_pipeline_processing(
-        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator
+        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator,
     ):
         """Test that response goes through all pipeline stages"""
         query = "Quali sono i requisiti per E33G?"
@@ -297,7 +297,7 @@ class TestE2ERAGFlow:
 
     @pytest.mark.asyncio
     async def test_error_handling_and_fallback(
-        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator
+        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator,
     ):
         """Test error handling and fallback mechanisms"""
         query = "Test query"
@@ -309,7 +309,7 @@ class TestE2ERAGFlow:
         # Execute query - should handle error gracefully
         try:
             result = await orchestrator.process_query(
-                query=query, user_id=user_id, session_id="test-session", conversation_history=[]
+                query=query, user_id=user_id, session_id="test-session", conversation_history=[],
             )
             # Should either return error response or fallback
             assert result is not None
@@ -319,7 +319,7 @@ class TestE2ERAGFlow:
 
     @pytest.mark.asyncio
     async def test_streaming_response_flow(
-        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator
+        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator,
     ):
         """Test streaming response generation"""
         query = "Raccontami di E33G"
@@ -337,7 +337,7 @@ class TestE2ERAGFlow:
             # Collect streamed chunks
             chunks = []
             async for chunk in orchestrator.stream_query(
-                query=query, user_id=user_id, session_id="test-session", conversation_history=[]
+                query=query, user_id=user_id, session_id="test-session", conversation_history=[],
             ):
                 chunks.append(chunk)
 
@@ -347,7 +347,7 @@ class TestE2ERAGFlow:
 
     @pytest.mark.asyncio
     async def test_semantic_cache_integration(
-        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator
+        self, orchestrator, mock_search_service, mock_db_pool, mock_memory_orchestrator,
     ):
         """Test semantic cache integration in query flow"""
         query = "Quanto costa E33G?"
@@ -370,7 +370,7 @@ class TestE2ERAGFlow:
         # Execute query (may fail due to missing env/services, verify cache was checked)
         try:
             await orchestrator_with_cache.process_query(
-                query=query, user_id=user_id, session_id="test-session", conversation_history=[]
+                query=query, user_id=user_id, session_id="test-session", conversation_history=[],
             )
         except Exception:
             pass

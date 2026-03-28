@@ -133,7 +133,7 @@ class OrchestratorRoutingManager:
 
         logger.debug(
             f"🎯 [Routing] Query routed: tier={model_tier}, "
-            f"deep_think={deep_think_mode}, intent={intent.get('category')}"
+            f"deep_think={deep_think_mode}, intent={intent.get('category')}",
         )
 
         return model_tier, deep_think_mode, agent_state

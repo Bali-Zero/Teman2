@@ -136,7 +136,7 @@ class TestLegalAgent:
     async def test_analyze_returns_legal_analysis(self, mock_llm, mock_kg_retrieval, base_state):
         """LegalAgent returns legal_analysis and agent_outputs."""
         mock_llm.ainvoke.return_value = MagicMock(
-            content="- NPWP required\n- Akta Pendirian needed"
+            content="- NPWP required\n- Akta Pendirian needed",
         )
 
         agent = LegalAgent(mock_llm, mock_kg_retrieval)
@@ -155,7 +155,7 @@ class TestLegalAgent:
         kg.find_kg_entities = AsyncMock(
             return_value=[
                 {"entity_id": "pt_pma:1", "entity_type": "pt_pma", "name": "PT PMA Setup"},
-            ]
+            ],
         )
 
         mock_llm.ainvoke.return_value = MagicMock(content="Legal steps for PT PMA")
@@ -240,7 +240,7 @@ class TestTimelineAgent:
     async def test_analyze_returns_timeline(self, mock_llm, mock_kg_retrieval, base_state):
         """TimelineAgent returns timeline_estimate."""
         mock_llm.ainvoke.return_value = MagicMock(
-            content="Phase 1: 7 days\nPhase 2: 14 days\nTotal: 21 days"
+            content="Phase 1: 7 days\nPhase 2: 14 days\nTotal: 21 days",
         )
 
         agent = TimelineAgent(mock_llm, mock_kg_retrieval)
@@ -285,7 +285,7 @@ class TestMultiAgentCoordinator:
     async def test_process_returns_all_fields(self, mock_kg_retrieval, mock_pricing_service):
         """Full process returns all expected fields."""
         with patch(
-            "backend.services.rag.multi_agent_coordinator._get_multi_agent_llm"
+            "backend.services.rag.multi_agent_coordinator._get_multi_agent_llm",
         ) as mock_get_llm:
             llm = AsyncMock()
             llm.ainvoke.return_value = MagicMock(content="Test output")
@@ -312,7 +312,7 @@ class TestMultiAgentCoordinator:
     async def test_process_calls_all_agents(self, mock_kg_retrieval, mock_pricing_service):
         """All three agents + synthesizer are called."""
         with patch(
-            "backend.services.rag.multi_agent_coordinator._get_multi_agent_llm"
+            "backend.services.rag.multi_agent_coordinator._get_multi_agent_llm",
         ) as mock_get_llm:
             llm = AsyncMock()
             llm.ainvoke.return_value = MagicMock(content="Agent output")
@@ -335,7 +335,7 @@ class TestMultiAgentCoordinator:
     async def test_process_handles_total_failure(self):
         """Coordinator handles complete LLM failure gracefully."""
         with patch(
-            "backend.services.rag.multi_agent_coordinator._get_multi_agent_llm"
+            "backend.services.rag.multi_agent_coordinator._get_multi_agent_llm",
         ) as mock_get_llm:
             mock_get_llm.side_effect = ValueError("No LLM available")
 
@@ -350,7 +350,7 @@ class TestMultiAgentCoordinator:
     async def test_process_with_no_dependencies(self, mock_pricing_service):
         """Coordinator works without KG retrieval (None)."""
         with patch(
-            "backend.services.rag.multi_agent_coordinator._get_multi_agent_llm"
+            "backend.services.rag.multi_agent_coordinator._get_multi_agent_llm",
         ) as mock_get_llm:
             llm = AsyncMock()
             llm.ainvoke.return_value = MagicMock(content="Output without KG")

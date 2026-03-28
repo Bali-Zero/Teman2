@@ -41,14 +41,14 @@ async def upgrade(conn: Any) -> None:
             error_message       TEXT,
             created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-        """
+        """,
     )
 
     await conn.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_cell_pulse_log_created_at
             ON cell_pulse_log (created_at DESC)
-        """
+        """,
     )
 
     await conn.execute(
@@ -62,14 +62,14 @@ async def upgrade(conn: Any) -> None:
             pulse_number    INTEGER NOT NULL DEFAULT 0,
             created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-        """
+        """,
     )
 
     await conn.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_cell_alerts_created_at
             ON cell_alerts (created_at DESC)
-        """
+        """,
     )
 
     logger.info("Migration 065: cell_pulse_log and cell_alerts tables created")

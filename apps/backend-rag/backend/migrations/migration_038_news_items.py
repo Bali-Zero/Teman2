@@ -47,18 +47,18 @@ async def apply(conn: Any) -> None:
 
     # Create indexes
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_news_items_category ON news_items(category);"
+        "CREATE INDEX IF NOT EXISTS idx_news_items_category ON news_items(category);",
     )
     await conn.execute("CREATE INDEX IF NOT EXISTS idx_news_items_status ON news_items(status);")
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_news_items_published_at ON news_items(published_at DESC);"
+        "CREATE INDEX IF NOT EXISTS idx_news_items_published_at ON news_items(published_at DESC);",
     )
     await conn.execute("CREATE INDEX IF NOT EXISTS idx_news_items_slug ON news_items(slug);")
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_news_items_source_feed ON news_items(source_feed);"
+        "CREATE INDEX IF NOT EXISTS idx_news_items_source_feed ON news_items(source_feed);",
     )
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_news_items_external_id ON news_items(external_id);"
+        "CREATE INDEX IF NOT EXISTS idx_news_items_external_id ON news_items(external_id);",
     )
 
     # Full-text search index
@@ -79,7 +79,7 @@ async def apply(conn: Any) -> None:
     """)
 
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_user_saved_news_user ON user_saved_news(user_id);"
+        "CREATE INDEX IF NOT EXISTS idx_user_saved_news_user ON user_saved_news(user_id);",
     )
 
     # Create news_subscriptions table
@@ -96,10 +96,10 @@ async def apply(conn: Any) -> None:
     """)
 
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_news_subscriptions_email ON news_subscriptions(email);"
+        "CREATE INDEX IF NOT EXISTS idx_news_subscriptions_email ON news_subscriptions(email);",
     )
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_news_subscriptions_active ON news_subscriptions(is_active) WHERE is_active = true;"
+        "CREATE INDEX IF NOT EXISTS idx_news_subscriptions_active ON news_subscriptions(is_active) WHERE is_active = true;",
     )
 
     # Create slug generation function

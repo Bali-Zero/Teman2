@@ -57,7 +57,7 @@ class KnowledgeGraphTool(BaseTool):
         }
 
     async def execute(
-        self, entity: str, depth: int = 1, relationship_type: str = None, **kwargs
+        self, entity: str, depth: int = 1, relationship_type: str = None, **kwargs,
     ) -> str:
         """
         Execute the graph search.
@@ -75,7 +75,7 @@ class KnowledgeGraphTool(BaseTool):
         relationships_count = result["total_relationships"]
 
         output = [
-            f"Found subgraph for '{result['query']}' ({entities_count} nodes, {relationships_count} edges):"
+            f"Found subgraph for '{result['query']}' ({entities_count} nodes, {relationships_count} edges):",
         ]
 
         # Start Entity details

@@ -61,7 +61,7 @@ async def create_session(service: SessionService = Depends(get_session_service))
 
 @router.get("/{session_id}")
 async def get_session(
-    session_id: str, service: SessionService = Depends(get_session_service)
+    session_id: str, service: SessionService = Depends(get_session_service),
 ) -> dict[str, Any]:
     """Get conversation history for a session"""
     try:
@@ -104,7 +104,7 @@ async def update_session_with_ttl(
     """Update session with custom TTL"""
     try:
         success = await service.update_history_with_ttl(
-            session_id, request.history, request.ttl_hours
+            session_id, request.history, request.ttl_hours,
         )
         if not success:
             raise HTTPException(status_code=400, detail="Failed to update session")
@@ -118,7 +118,7 @@ async def update_session_with_ttl(
 
 @router.delete("/{session_id}")
 async def delete_session(
-    session_id: str, service: SessionService = Depends(get_session_service)
+    session_id: str, service: SessionService = Depends(get_session_service),
 ) -> dict[str, Any]:
     """Delete a session"""
     try:
@@ -160,7 +160,7 @@ async def extend_session_ttl_custom(
 
 @router.get("/{session_id}/info")
 async def get_session_info(
-    session_id: str, service: SessionService = Depends(get_session_service)
+    session_id: str, service: SessionService = Depends(get_session_service),
 ) -> dict[str, Any]:
     """Get session metadata"""
     try:

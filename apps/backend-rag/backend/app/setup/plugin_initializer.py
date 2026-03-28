@@ -44,7 +44,7 @@ async def initialize_plugins(app: FastAPI) -> None:
 
         stats = registry.get_statistics()
         logger.info(
-            f"Plugin System: Discovered {stats['total_plugins']} plugins in {stats['categories']} categories"
+            f"Plugin System: Discovered {stats['total_plugins']} plugins in {stats['categories']} categories",
         )
 
         # Store registry in app state for health endpoints

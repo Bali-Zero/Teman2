@@ -60,7 +60,7 @@ class CrossEncoderRerankerMixin:
 
             self._cross_encoder_reranker = CrossEncoderReranker()
             logger.info(
-                f"🔧 CrossEncoderReranker integrated: enabled={self._cross_encoder_reranker.enabled}"
+                f"🔧 CrossEncoderReranker integrated: enabled={self._cross_encoder_reranker.enabled}",
             )
         return self._cross_encoder_reranker
 
@@ -182,7 +182,7 @@ class CrossEncoderRerankerMixin:
 
                     logger.info(
                         f"✅ Cross-encoder reranking applied: {len(candidates['results'])} candidates "
-                        f"→ {len(reranked_docs)} results using {reranker.model_name}"
+                        f"→ {len(reranked_docs)} results using {reranker.model_name}",
                     )
 
                 except Exception as e:
@@ -308,7 +308,7 @@ class CrossEncoderRerankerMixin:
 
                     logger.info(
                         f"✅ Hybrid + Cross-encoder pipeline complete: "
-                        f"{len(candidates['results'])} candidates → {len(reranked_docs)} results"
+                        f"{len(candidates['results'])} candidates → {len(reranked_docs)} results",
                     )
 
                 except Exception as e:
@@ -344,17 +344,17 @@ def add_cross_encoder_reranking(search_service: Any) -> None:
     # Bind mixin methods to the search_service instance
     search_service._cross_encoder_reranker = None
     search_service._init_cross_encoder_reranker = mixin._init_cross_encoder_reranker.__get__(
-        search_service, type(search_service)
+        search_service, type(search_service),
     )
     search_service.cross_encoder_reranker = property(
-        lambda self: self._init_cross_encoder_reranker()
+        lambda self: self._init_cross_encoder_reranker(),
     )
     search_service.search_with_cross_encoder_reranking = (
         mixin.search_with_cross_encoder_reranking.__get__(search_service, type(search_service))
     )
     search_service.hybrid_search_with_cross_encoder_reranking = (
         mixin.hybrid_search_with_cross_encoder_reranking.__get__(
-            search_service, type(search_service)
+            search_service, type(search_service),
         )
     )
 
@@ -431,6 +431,6 @@ def should_use_cross_encoder() -> bool:
         raise ImportError("sentence_transformers not found")
     except ImportError:
         logger.warning(
-            "sentence-transformers not installed. Cross-encoder reranking will be disabled."
+            "sentence-transformers not installed. Cross-encoder reranking will be disabled.",
         )
         return False

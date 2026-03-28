@@ -81,7 +81,7 @@ class MemoryServicePostgres:
 
         try:
             self.pool = await asyncpg.create_pool(
-                self.database_url, min_size=5, max_size=50, command_timeout=60
+                self.database_url, min_size=5, max_size=50, command_timeout=60,
             )
             logger.info("✅ PostgreSQL connection pool created")
         except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, OSError) as e:
@@ -343,7 +343,7 @@ class MemoryServicePostgres:
         success = await self.save_memory(memory)
         if success:
             logger.debug(
-                f"✅ Incremented {counter_name} for {user_id}: {memory.counters[counter_name]}"
+                f"✅ Incremented {counter_name} for {user_id}: {memory.counters[counter_name]}",
             )
         return success
 
@@ -395,7 +395,7 @@ class MemoryServicePostgres:
                 category_lower = category.lower()
                 facts = [f for f in facts if category_lower in f.lower()]
                 logger.info(
-                    f"Filtered {len(memory.profile_facts)} facts to {len(facts)} for category '{category}'"
+                    f"Filtered {len(memory.profile_facts)} facts to {len(facts)} for category '{category}'",
                 )
 
             # Determine if user has any data
@@ -413,7 +413,7 @@ class MemoryServicePostgres:
             }
 
             logger.info(
-                f"✅ Retrieved memory for {user_id}: {len(facts)} facts, has_data={has_data}"
+                f"✅ Retrieved memory for {user_id}: {len(facts)} facts, has_data={has_data}",
             )
             return result
 
@@ -495,7 +495,7 @@ class MemoryServicePostgres:
                                     if row["created_at"]
                                     else datetime.now(tz=timezone.utc).isoformat()
                                 ),
-                            }
+                            },
                         )
 
                     logger.info(f"✅ PostgreSQL search for '{query}' found {len(results)} results")
@@ -528,7 +528,7 @@ class MemoryServicePostgres:
                                     if isinstance(memory.updated_at, datetime)
                                     else memory.updated_at
                                 ),
-                            }
+                            },
                         )
                         if len(results) >= limit:
                             break
@@ -549,7 +549,7 @@ class MemoryServicePostgres:
                                 if isinstance(memory.updated_at, datetime)
                                 else memory.updated_at
                             ),
-                        }
+                        },
                     )
 
                 if len(results) >= limit:
@@ -622,7 +622,7 @@ class MemoryServicePostgres:
                             (SELECT COUNT(*) FROM memory_facts) as total_facts,
                             (SELECT COUNT(*) FROM conversations) as total_conversations,
                             (SELECT SUM(conversations_count) FROM user_stats) as total_conv_count
-                        """
+                        """,
                     )
 
                     postgres_stats = {

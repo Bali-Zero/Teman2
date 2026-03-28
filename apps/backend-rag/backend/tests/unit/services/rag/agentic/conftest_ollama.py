@@ -63,7 +63,7 @@ def ollama_available():
         try:
             # Run ensure script (non-blocking check)
             result = subprocess.run(
-                [str(ensure_script)], capture_output=True, timeout=10, cwd=str(script_dir.parent)
+                [str(ensure_script)], capture_output=True, timeout=10, cwd=str(script_dir.parent),
             )
             if result.returncode == 0:
                 # Ollama is ready
@@ -125,7 +125,7 @@ def llm_gateway_with_ollama(ollama_available, ollama_provider):
                 "gemini-3-flash",
                 MagicMock(),
                 MagicMock(total_tokens=100),
-            )
+            ),
         )
         return gateway
 

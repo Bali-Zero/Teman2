@@ -125,7 +125,7 @@ class LLMGateway:
 
         logger.info(
             "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, "
-            "gemini-2.0-flash fallback)"
+            "gemini-2.0-flash fallback)",
         )
         self.model_name_fallback = "gemini-2.0-flash"  # Fallback: older but stable
 
@@ -135,7 +135,7 @@ class LLMGateway:
 
         logger.info(
             "✅ LLMGateway: Model configuration ready (gemini-2.5-flash primary, "
-            "gemini-2.0-flash fallback)"
+            "gemini-2.0-flash fallback)",
         )
 
         # Lazy-loaded OpenRouter client (fallback)
@@ -396,7 +396,7 @@ class LLMGateway:
                 from backend.app.metrics import llm_circuit_breaker_opened_total
 
                 llm_circuit_breaker_opened_total.labels(
-                    model=model_name, error_type=error_type
+                    model=model_name, error_type=error_type,
                 ).inc()
             except ImportError:
                 pass
@@ -477,7 +477,7 @@ class LLMGateway:
             if query_cost_tracker["cost"] >= self._max_fallback_cost_usd:
                 logger.warning(
                     f"Cost limit reached ({query_cost_tracker['cost']:.4f} USD), "
-                    f"stopping fallback cascade"
+                    f"stopping fallback cascade",
                 )
                 try:
                     from backend.app.metrics import llm_cost_limit_reached_total
@@ -490,7 +490,7 @@ class LLMGateway:
             # Check fallback depth
             if query_cost_tracker["depth"] >= self._max_fallback_depth:
                 logger.warning(
-                    f"Max fallback depth reached ({query_cost_tracker['depth']}), stopping cascade"
+                    f"Max fallback depth reached ({query_cost_tracker['depth']}), stopping cascade",
                 )
                 try:
                     from backend.app.metrics import llm_max_depth_reached_total
@@ -578,7 +578,7 @@ class LLMGateway:
             openrouter_messages = conversation_messages or [{"role": "user", "content": message}]
 
             openrouter_response, token_usage = await self._call_openrouter(
-                openrouter_messages, system_prompt
+                openrouter_messages, system_prompt,
             )
 
             # Record cost
@@ -590,7 +590,7 @@ class LLMGateway:
             logger.error(f"❌ LLMGateway: OpenRouter fallback also failed: {openrouter_error}")
             # All fallbacks exhausted
             raise RuntimeError(
-                "All models in fallback chain failed (including OpenRouter)"
+                "All models in fallback chain failed (including OpenRouter)",
             ) from None
 
     async def _call_model(
@@ -638,7 +638,7 @@ class LLMGateway:
                             Part.from_data(
                                 data=image_data,
                                 mime_type=mime_type,
-                            )
+                            ),
                         )
                     except Exception as img_err:
                         logger.warning(f"⚠️ Failed to process image: {img_err}")
@@ -681,7 +681,7 @@ class LLMGateway:
 
                 with contextlib.suppress(AttributeError, TypeError):
                     config_args["tool_config"] = types.ToolConfig(
-                        function_calling_config=types.FunctionCallingConfig(mode="AUTO")
+                        function_calling_config=types.FunctionCallingConfig(mode="AUTO"),
                     )
 
             # Inject system instruction if present
@@ -769,7 +769,7 @@ class LLMGateway:
                     finish_reason = getattr(response.candidates[0], "finish_reason", None)
                 logger.warning(
                     f"⚠️ LLMGateway: Empty response from {model_name}. "
-                    f"Finish reason: {finish_reason}. Possible safety block or content filter."
+                    f"Finish reason: {finish_reason}. Possible safety block or content filter.",
                 )
 
             # Add user message to history
@@ -849,7 +849,7 @@ class LLMGateway:
             # Log token usage for monitoring
             logger.debug(
                 f"📊 [LLMGateway] Token usage: {prompt_tokens} prompt + {completion_tokens} completion "
-                f"= {token_usage.total_tokens} total (${token_usage.cost_usd:.6f})"
+                f"= {token_usage.total_tokens} total (${token_usage.cost_usd:.6f})",
             )
             set_span_attribute("prompt_tokens", prompt_tokens)
             set_span_attribute("completion_tokens", completion_tokens)
@@ -895,7 +895,7 @@ class LLMGateway:
                         )
                         logger.warning(
                             f"⚠️ LLMGateway: Empty text response from {model_name}. "
-                            f"Finish reason: {finish_reason}. Possible safety block."
+                            f"Finish reason: {finish_reason}. Possible safety block.",
                         )
                 else:
                     set_span_attribute("has_function_call", "false")
@@ -912,7 +912,7 @@ class LLMGateway:
             return text_content, response, token_usage
 
     async def _call_openrouter(
-        self, messages: list[dict], system_prompt: str
+        self, messages: list[dict], system_prompt: str,
     ) -> tuple[str, TokenUsage]:
         """Call OpenRouter as final fallback when Gemini models are unavailable.
 

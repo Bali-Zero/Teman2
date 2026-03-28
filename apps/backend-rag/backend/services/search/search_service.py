@@ -150,7 +150,7 @@ class SearchService:
 
         self.embedder = create_embeddings_generator()
         logger.info(
-            f"✅ EmbeddingsGenerator ready: {self.embedder.provider} ({self.embedder.dimensions} dims)"
+            f"✅ EmbeddingsGenerator ready: {self.embedder.provider} ({self.embedder.dimensions} dims)",
         )
 
         # Initialize BM25 vectorizer for hybrid search with retry and fallback
@@ -178,13 +178,13 @@ class SearchService:
                 logger.error(f"❌ BM25Vectorizer import failed: {e}")
                 if metrics_collector:
                     metrics_collector.bm25_initialization_failed_total.labels(
-                        error_type="import_error"
+                        error_type="import_error",
                     ).inc()
             except Exception as e:
                 logger.warning(f"⚠️ Failed to initialize BM25Vectorizer: {e}")
                 if metrics_collector:
                     metrics_collector.bm25_initialization_failed_total.labels(
-                        error_type=type(e).__name__
+                        error_type=type(e).__name__,
                     ).inc()
 
         # Get Qdrant URL from centralized config
@@ -203,7 +203,7 @@ class SearchService:
 
         # Initialize cultural insights service (requires embedder)
         self._cultural_insights = cultural_insights or CulturalInsightsService(
-            collection_manager=self.collection_manager, embedder=self.embedder
+            collection_manager=self.collection_manager, embedder=self.embedder,
         )
 
         # Initialize collection health monitor
@@ -213,7 +213,7 @@ class SearchService:
 
         # Initialize collection warmup service
         self.warmup_service = CollectionWarmupService(
-            collection_manager=self.collection_manager, embedder=self.embedder
+            collection_manager=self.collection_manager, embedder=self.embedder,
         )
 
         # Initialize query expander for multilingual support
@@ -265,7 +265,7 @@ class SearchService:
                 )
                 if metrics_collector:
                     metrics_collector.bm25_initialization_failed_total.labels(
-                        error_type="import_error"
+                        error_type="import_error",
                     ).inc()
                 # Import errors are permanent - don't retry
                 return False
@@ -282,7 +282,7 @@ class SearchService:
                 )
                 if metrics_collector:
                     metrics_collector.bm25_initialization_failed_total.labels(
-                        error_type=type(e).__name__
+                        error_type=type(e).__name__,
                     ).inc()
 
                 if attempt < self._max_bm25_init_attempts - 1:
@@ -399,7 +399,7 @@ class SearchService:
 
         # Route to appropriate collection
         routing_info = self.query_router.route_query(
-            query=query, collection_override=collection_override, enable_fallbacks=False
+            query=query, collection_override=collection_override, enable_fallbacks=False,
         )
         collection_name = routing_info["collection_name"]
 
@@ -492,17 +492,17 @@ class SearchService:
                 chroma_filter,
                 tier_values,
             ) = await self._prepare_search_context(
-                search_query, user_level, tier_filter, collection_override, apply_filters
+                search_query, user_level, tier_filter, collection_override, apply_filters,
             )
             if METRICS_AVAILABLE and embedding_start:
                 rag_embedding_duration.observe(time.time() - embedding_start)
 
             # Debug logging (only in debug mode)
             logger.debug(
-                f"Query: '{query[:50]}...', embedding_dim={len(query_embedding)}, provider={self.embedder.provider}"
+                f"Query: '{query[:50]}...', embedding_dim={len(query_embedding)}, provider={self.embedder.provider}",
             )
             logger.debug(
-                f"Parameters: collection_override={collection_override}, user_level={user_level}, limit={limit}"
+                f"Parameters: collection_override={collection_override}, user_level={user_level}, limit={limit}",
             )
             logger.debug(f"Final collection: {collection_name}")
             if chroma_filter:
@@ -564,7 +564,7 @@ class SearchService:
 
             # Format results using helper method
             formatted_results = format_search_results(
-                raw_results, collection_name, primary_collection=None
+                raw_results, collection_name, primary_collection=None,
             )
 
             # Record query for health monitoring
@@ -739,7 +739,7 @@ class SearchService:
             rag_vector_search_duration.observe(time.time() - search_start)
 
         formatted_results = format_search_results(
-            raw_results, collection_name, primary_collection=None
+            raw_results, collection_name, primary_collection=None,
         )
         return {
             "query": query,
@@ -749,7 +749,7 @@ class SearchService:
 
     @staticmethod
     def _rrf_fuse_multi(
-        result_sets: list[list[dict[str, Any]]], k: int = 60
+        result_sets: list[list[dict[str, Any]]], k: int = 60,
     ) -> list[dict[str, Any]]:
         """
         Reciprocal Rank Fusion across multiple result sets.
@@ -791,7 +791,7 @@ class SearchService:
                 self._reranker = CrossEncoderReranker()
                 logger.info(
                     f"🔧 CrossEncoderReranker initialized: enabled={self._reranker.enabled}, "
-                    f"model={self._reranker.model_name}"
+                    f"model={self._reranker.model_name}",
                 )
             else:
                 from backend.core.reranker import ReRanker
@@ -842,7 +842,7 @@ class SearchService:
         if results["results"] and results["results"][0].get("score", 0) > 0.9:
             logger.info(
                 f"⚡ Early exit: Top result score {results['results'][0]['score']:.3f} > 0.9, "
-                f"skipping reranking for query: '{query}'"
+                f"skipping reranking for query: '{query}'",
             )
             if METRICS_AVAILABLE:
                 rag_early_exit_total.inc()
@@ -910,7 +910,7 @@ class SearchService:
                 chroma_filter,
                 tier_values,
             ) = await self._prepare_search_context(
-                query, user_level, tier_filter, collection_override, apply_filters
+                query, user_level, tier_filter, collection_override, apply_filters,
             )
             if METRICS_AVAILABLE and embedding_start:
                 rag_embedding_duration.observe(time.time() - embedding_start)
@@ -920,7 +920,7 @@ class SearchService:
             if self._bm25_vectorizer:
                 query_sparse = self._bm25_vectorizer.generate_query_sparse_vector(query)
                 logger.debug(
-                    f"Generated BM25 sparse vector: {len(query_sparse.get('indices', []))} tokens"
+                    f"Generated BM25 sparse vector: {len(query_sparse.get('indices', []))} tokens",
                 )
 
             # Try hybrid search if available
@@ -950,7 +950,7 @@ class SearchService:
 
             # Format results
             formatted_results = format_search_results(
-                raw_results, collection_name, primary_collection=None
+                raw_results, collection_name, primary_collection=None,
             )
 
             # Record query for health monitoring
@@ -1030,7 +1030,7 @@ class SearchService:
         # 2. Early exit for high-confidence results
         if results["results"] and results["results"][0].get("score", 0) > 0.9:
             logger.info(
-                f"⚡ Early exit: Top result score {results['results'][0]['score']:.3f} > 0.9"
+                f"⚡ Early exit: Top result score {results['results'][0]['score']:.3f} > 0.9",
             )
             if METRICS_AVAILABLE:
                 rag_early_exit_total.inc()
@@ -1043,7 +1043,7 @@ class SearchService:
         reranker = self._init_reranker()
         if reranker.enabled:
             logger.info(
-                f"🔍 Re-ranking {len(results['results'])} hybrid candidates for: '{query[:50]}'"
+                f"🔍 Re-ranking {len(results['results'])} hybrid candidates for: '{query[:50]}'",
             )
             rerank_start = time.time() if METRICS_AVAILABLE else None
             reranked_docs = await reranker.rerank(query, results["results"], top_k=limit)
@@ -1134,7 +1134,7 @@ class SearchService:
 
             # Route query with fallbacks (using QueryRouterIntegration)
             routing_info = self.query_router.route_query(
-                query=query, collection_override=None, enable_fallbacks=enable_fallbacks
+                query=query, collection_override=None, enable_fallbacks=enable_fallbacks,
             )
             primary_collection = routing_info["collection_name"]
             collections_to_search = routing_info["collections"]
@@ -1142,13 +1142,13 @@ class SearchService:
 
             if routing_info["is_pricing"]:
                 logger.info(
-                    "💰 PRICING QUERY → Routing to Fallback (legal_unified_hybrid + visa_oracle)"
+                    "💰 PRICING QUERY → Routing to Fallback (legal_unified_hybrid + visa_oracle)",
                 )
             else:
                 logger.info(
                     f"🎯 [Conflict Resolution] Primary: {primary_collection} "
                     f"(confidence={confidence:.2f}), "
-                    f"Total collections: {len(collections_to_search)}"
+                    f"Total collections: {len(collections_to_search)}",
                 )
 
             # Search all collections in parallel using asyncio.gather
@@ -1176,7 +1176,7 @@ class SearchService:
 
                 # Build combined filter with default exclusion of repealed laws
                 chroma_filter = build_search_filter(
-                    tier_filter=tier_filter_dict, exclude_repealed=True
+                    tier_filter=tier_filter_dict, exclude_repealed=True,
                 )
 
                 # Search this collection (async) - track duration
@@ -1193,7 +1193,7 @@ class SearchService:
 
                 # Format results using helper method
                 formatted_results = format_search_results(
-                    raw_results, collection_name, primary_collection=primary_collection
+                    raw_results, collection_name, primary_collection=primary_collection,
                 )
 
                 return collection_name, formatted_results
@@ -1217,7 +1217,7 @@ class SearchService:
                 if formatted_results:
                     results_by_collection[collection_name] = formatted_results
                     logger.info(
-                        f"   ✓ {collection_name}: {len(formatted_results)} results (top score: {formatted_results[0]['score']:.2f})"
+                        f"   ✓ {collection_name}: {len(formatted_results)} results (top score: {formatted_results[0]['score']:.2f})",
                     )
 
                     # Collect health metrics for batch recording
@@ -1228,7 +1228,7 @@ class SearchService:
                             "had_results": True,
                             "result_count": len(formatted_results),
                             "avg_score": avg_score,
-                        }
+                        },
                     )
                 else:
                     # Collect zero-result query metrics
@@ -1238,7 +1238,7 @@ class SearchService:
                             "had_results": False,
                             "result_count": 0,
                             "avg_score": 0.0,
-                        }
+                        },
                     )
 
             # Batch record health metrics (performance optimization)
@@ -1252,7 +1252,7 @@ class SearchService:
             conflict_reports = []
             if conflicts:
                 resolved_results, conflict_reports = self.conflict_resolver.resolve_conflicts(
-                    results_by_collection, conflicts
+                    results_by_collection, conflicts,
                 )
             else:
                 # No conflicts - just merge all results
@@ -1362,17 +1362,17 @@ class SearchService:
                 from backend.core.qdrant_db import QdrantClient
 
                 client = QdrantClient(
-                    qdrant_url=settings.qdrant_url, collection_name=collection_name
+                    qdrant_url=settings.qdrant_url, collection_name=collection_name,
                 )
 
             # Search (async)
             raw_results = await client.search(
-                query_embedding=query_embedding, filter=filter, limit=limit
+                query_embedding=query_embedding, filter=filter, limit=limit,
             )
 
             # Format results using helper method
             formatted_results = format_search_results(
-                raw_results, collection_name, primary_collection=None
+                raw_results, collection_name, primary_collection=None,
             )
 
             return {"query": query, "results": formatted_results, "collection": collection_name}

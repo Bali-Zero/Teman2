@@ -71,7 +71,7 @@ def mock_response_error():
             "message": "Invalid OAuth access token",
             "code": 190,
             "type": "OAuthException",
-        }
+        },
     }
     return response
 
@@ -170,7 +170,7 @@ class TestSendMessage:
 
     @pytest.mark.asyncio
     async def test_send_message_truncates_at_1000(
-        self, instagram_service, mock_response_success
+        self, instagram_service, mock_response_success,
     ) -> None:
         """Messages are truncated to 1000 chars."""
         mock_client = AsyncMock()
@@ -190,7 +190,7 @@ class TestSendMessage:
         """ValueError raised when token not configured."""
         instagram_service._token = None
         with patch.object(
-            type(instagram_service), "token", new_callable=lambda: property(lambda self: None)
+            type(instagram_service), "token", new_callable=lambda: property(lambda self: None),
         ):
             service = instagram_service
             service._token = None
@@ -222,7 +222,7 @@ class TestSendMessage:
 
     @pytest.mark.asyncio
     async def test_send_message_correct_headers(
-        self, instagram_service, mock_response_success
+        self, instagram_service, mock_response_success,
     ) -> None:
         """Correct authorization headers are sent."""
         mock_client = AsyncMock()
@@ -277,7 +277,7 @@ class TestMarkMessageSeen:
         """Returns False when token not configured."""
         instagram_service._token = None
         with patch.object(
-            type(instagram_service), "token", new_callable=lambda: property(lambda self: None)
+            type(instagram_service), "token", new_callable=lambda: property(lambda self: None),
         ):
             result = await instagram_service.mark_message_seen("sender_123")
             assert result is False

@@ -84,7 +84,7 @@ class LKPMValidator:
                     severity=ValidationSeverity.RED,
                     message="No KBLI codes registered for this client",
                     details="LKPM requires at least one registered KBLI code",
-                )
+                ),
             )
             return alerts
 
@@ -110,7 +110,7 @@ class LKPMValidator:
                         field=f"kbli_{code}",
                         severity=ValidationSeverity.GREEN,
                         message=f"KBLI {code} verified",
-                    )
+                    ),
                 )
             else:
                 alerts.append(
@@ -119,7 +119,7 @@ class LKPMValidator:
                         severity=ValidationSeverity.YELLOW,
                         message=f"KBLI {code} not found in knowledge base",
                         details="Code may be valid but not in our database — verify manually",
-                    )
+                    ),
                 )
 
         return alerts
@@ -157,7 +157,7 @@ class LKPMValidator:
                     severity=ValidationSeverity.YELLOW,
                     message="Could not verify TKA count against CRM",
                     details="Database query failed — verify manually",
-                )
+                ),
             )
         elif reported_tka == crm_kitas_count:
             alerts.append(
@@ -165,7 +165,7 @@ class LKPMValidator:
                     field="tka_count",
                     severity=ValidationSeverity.GREEN,
                     message=f"TKA count matches CRM ({reported_tka})",
-                )
+                ),
             )
         else:
             alerts.append(
@@ -174,7 +174,7 @@ class LKPMValidator:
                     severity=ValidationSeverity.YELLOW,
                     message=f"TKA count mismatch: reported={reported_tka}, CRM KITAS={crm_kitas_count}",
                     details="Verify foreign worker count before submission",
-                )
+                ),
             )
 
         return alerts
@@ -220,7 +220,7 @@ class LKPMValidator:
                         "BKPM may require explanation for prolonged zero realization. "
                         "Consider adding narrative_obstacles."
                     ),
-                )
+                ),
             )
         elif consecutive_zero >= 2:
             alerts.append(
@@ -229,7 +229,7 @@ class LKPMValidator:
                     severity=ValidationSeverity.YELLOW,
                     message=f"{consecutive_zero} consecutive quarters with zero realization",
                     details="Consider adding explanation in narrative_obstacles",
-                )
+                ),
             )
 
         return alerts
@@ -284,7 +284,7 @@ class LKPMValidator:
                             f"exceeds plan (Rp {planned:,})"
                         ),
                         details="Over-realization is allowed but should be noted in narrative",
-                    )
+                    ),
                 )
             elif planned > 0:
                 pct = (realized / planned) * 100
@@ -293,7 +293,7 @@ class LKPMValidator:
                         field=field_name,
                         severity=ValidationSeverity.GREEN,
                         message=f"{field_name}: {pct:.1f}% of plan realized",
-                    )
+                    ),
                 )
 
         return alerts
@@ -310,7 +310,7 @@ class LKPMValidator:
                     severity=ValidationSeverity.YELLOW,
                     message="Zero investment realization but non-zero revenue",
                     details="Company is generating revenue without investment — verify this is correct",
-                )
+                ),
             )
 
         # Check AI-categorized items
@@ -321,7 +321,7 @@ class LKPMValidator:
                     severity=ValidationSeverity.YELLOW,
                     message=f"{draft.ai_categorized_count} transactions categorized by AI",
                     details="Review AI-categorized items before submission",
-                )
+                ),
             )
 
         # Check employment totals
@@ -332,7 +332,7 @@ class LKPMValidator:
                     severity=ValidationSeverity.YELLOW,
                     message="Foreign workers reported but zero local workers",
                     details="PT PMA must employ local workers — verify employment data",
-                )
+                ),
             )
 
         return alerts

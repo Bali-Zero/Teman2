@@ -188,7 +188,7 @@ class SendGridProvider(EmailProvider):
                 {
                     "to": [{"email": to_email}],
                     "subject": subject,
-                }
+                },
             ],
             "from": {"email": from_email, "name": from_name},
             "content": [
@@ -330,14 +330,14 @@ class NotificationService:
             if not client_email:
                 logger.warning(f"No email found for client {alert.client_id}")
                 await self._update_alert_status(
-                    alert, AlertStatus.SUPPRESSED, "No email address found"
+                    alert, AlertStatus.SUPPRESSED, "No email address found",
                 )
                 results.append(
                     NotificationResult(
                         success=False,
                         alert_id=alert.id,
                         error_message="No email address found",
-                    )
+                    ),
                 )
                 continue
 
@@ -422,6 +422,6 @@ class NotificationService:
                 WHERE status = 'pending'
                 AND created_at > NOW() - INTERVAL '7 days'
                 ORDER BY created_at ASC
-                """
+                """,
             )
             return [ClientAlert(**dict(row)) for row in rows]

@@ -145,7 +145,7 @@ class SpecializedServiceRouter:
         logger.info("🛣️ [SpecializedServiceRouter] Initialized")
         logger.info(f"   Autonomous Research: {'✅' if autonomous_research_service else '❌'}")
         logger.info(
-            f"   Cross-Oracle Synthesis: {'✅' if cross_oracle_synthesis_service else '❌'}"
+            f"   Cross-Oracle Synthesis: {'✅' if cross_oracle_synthesis_service else '❌'}",
         )
         logger.info(f"   Client Journey: {'✅' if client_journey_orchestrator else '❌'}")
 
@@ -180,13 +180,13 @@ class SpecializedServiceRouter:
         if needs_research:
             logger.info("🛣️ [SpecializedServiceRouter] AUTONOMOUS RESEARCH detected")
             logger.info(
-                f"   Ambiguous: {has_ambiguous_term}, Long: {is_long_query}, How-to: {has_how_to}"
+                f"   Ambiguous: {has_ambiguous_term}, Long: {is_long_query}, How-to: {has_how_to}",
             )
 
         return needs_research
 
     async def route_autonomous_research(
-        self, query: str, user_level: int = 3
+        self, query: str, user_level: int = 3,
     ) -> dict[str, Any] | None:
         """
         Route to autonomous research service
@@ -204,11 +204,11 @@ class SpecializedServiceRouter:
         try:
             # Perform autonomous research
             research_result = await self.autonomous_research.research(
-                query=query, user_level=user_level
+                query=query, user_level=user_level,
             )
 
             logger.info(
-                f"🛣️ [SpecializedServiceRouter] AUTONOMOUS RESEARCH Complete: {research_result.total_steps} steps"
+                f"🛣️ [SpecializedServiceRouter] AUTONOMOUS RESEARCH Complete: {research_result.total_steps} steps",
             )
 
             return {
@@ -264,13 +264,13 @@ class SpecializedServiceRouter:
         if needs_cross_oracle:
             logger.info("🛣️ [SpecializedServiceRouter] CROSS-ORACLE SYNTHESIS detected")
             logger.info(
-                f"   Business setup: {has_business_setup_term}, Comprehensive: {wants_comprehensive_plan}"
+                f"   Business setup: {has_business_setup_term}, Comprehensive: {wants_comprehensive_plan}",
             )
 
         return needs_cross_oracle
 
     async def route_cross_oracle(
-        self, query: str, user_level: int = 3, use_cache: bool = True
+        self, query: str, user_level: int = 3, use_cache: bool = True,
     ) -> dict[str, Any] | None:
         """
         Route to cross-oracle synthesis service
@@ -289,11 +289,11 @@ class SpecializedServiceRouter:
         try:
             # Perform cross-oracle synthesis
             synthesis_result = await self.cross_oracle.synthesize(
-                query=query, user_level=user_level, use_cache=use_cache
+                query=query, user_level=user_level, use_cache=use_cache,
             )
 
             logger.info(
-                f"🛣️ [SpecializedServiceRouter] CROSS-ORACLE SYNTHESIS Complete: {synthesis_result.scenario_type}"
+                f"🛣️ [SpecializedServiceRouter] CROSS-ORACLE SYNTHESIS Complete: {synthesis_result.scenario_type}",
             )
 
             return {
@@ -365,7 +365,7 @@ class SpecializedServiceRouter:
 
             # Create the journey
             journey = self.client_journey.create_journey(
-                journey_type=journey_type, client_id=user_id
+                journey_type=journey_type, client_id=user_id,
             )
 
             response_text = (

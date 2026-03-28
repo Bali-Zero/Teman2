@@ -61,7 +61,7 @@ async def get_migration_status(
                 COUNT(*) FILTER (WHERE client_type = 'individual') as individuals,
                 COUNT(*) FILTER (WHERE client_type = 'company') as companies
             FROM clients
-            """
+            """,
         )
 
         # Document statistics
@@ -78,7 +78,7 @@ async def get_migration_status(
                 COUNT(*) FILTER (WHERE storage_type = 'dropbox') as dropbox,
                 COUNT(*) FILTER (WHERE storage_type = 'local') as local_storage
             FROM documents
-            """
+            """,
         )
 
         # Recently created clients (migration activity indicator)
@@ -87,7 +87,7 @@ async def get_migration_status(
             SELECT COUNT(*)
             FROM clients
             WHERE created_at >= NOW() - INTERVAL '24 hours'
-            """
+            """,
         )
 
         # Recently uploaded documents (migration activity indicator)
@@ -96,7 +96,7 @@ async def get_migration_status(
             SELECT COUNT(*)
             FROM documents
             WHERE uploaded_at >= NOW() - INTERVAL '24 hours'
-            """
+            """,
         )
 
         # Clients awaiting folder creation
@@ -105,7 +105,7 @@ async def get_migration_status(
             SELECT COUNT(*)
             FROM clients
             WHERE google_drive_folder_id IS NULL
-            """
+            """,
         )
 
     return {
@@ -197,7 +197,7 @@ async def get_clients_migration_summary(
             LEFT JOIN documents d ON d.client_id = c.id
             GROUP BY c.id, c.full_name, c.client_type, c.google_drive_folder_id, c.updated_at
             ORDER BY c.full_name
-            """
+            """,
         )
 
     clients_list = []
@@ -223,7 +223,7 @@ async def get_clients_migration_summary(
                 "last_updated": (
                     client["updated_at"].isoformat() if client["updated_at"] else None
                 ),
-            }
+            },
         )
 
     return {

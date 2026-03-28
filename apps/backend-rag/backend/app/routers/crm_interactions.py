@@ -215,7 +215,7 @@ async def create_interaction(
                 team_member=interaction.team_member,
             )
             log_database_operation(
-                logger, "CREATE", "interactions", record_id=new_interaction["id"]
+                logger, "CREATE", "interactions", record_id=new_interaction["id"],
             )
 
             await invalidate_cache("zantara:crm_interactions_stats:*")
@@ -265,7 +265,7 @@ async def list_interactions(
                    i.duration_minutes, i.extracted_entities, i.action_items, i.interaction_date, i.created_at
                    FROM interactions i
                    LEFT JOIN clients c ON i.client_id = c.id
-                   WHERE 1=1"""
+                   WHERE 1=1""",
             ]
             params: list[Any] = []
             param_index = 1
@@ -273,7 +273,7 @@ async def list_interactions(
             # RBAC: Non-admins can only see interactions for their assigned clients or their own interactions
             if not user_is_admin:
                 query_parts.append(
-                    f" AND (LOWER(c.assigned_to) = ${param_index} OR LOWER(i.team_member) = ${param_index})"
+                    f" AND (LOWER(c.assigned_to) = ${param_index} OR LOWER(i.team_member) = ${param_index})",
                 )
                 params.append(user_email)
                 param_index += 1
@@ -304,7 +304,7 @@ async def list_interactions(
                 param_index += 1
 
             query_parts.append(
-                f" ORDER BY interaction_date DESC LIMIT ${param_index} OFFSET ${param_index + 1}"
+                f" ORDER BY interaction_date DESC LIMIT ${param_index} OFFSET ${param_index + 1}",
             )
             params.extend([limit, offset])
 
@@ -352,7 +352,7 @@ async def get_interaction(
                     row["team_member"] or ""
                 ).lower() != user_email:
                     raise HTTPException(
-                        status_code=403, detail="You don't have access to this interaction"
+                        status_code=403, detail="You don't have access to this interaction",
                     )
 
             return dict(row)
@@ -554,7 +554,7 @@ async def get_interactions_stats(
                     FROM interactions
                     GROUP BY team_member
                     ORDER BY count DESC
-                    """
+                    """,
                 )
             else:
                 by_team_member_rows = []
@@ -617,7 +617,7 @@ async def create_interaction_from_conversation(
         async with db_pool.acquire() as conn:
             # Get or create client by email
             client_row = await conn.fetchrow(
-                "SELECT id FROM clients WHERE email = $1", client_email
+                "SELECT id FROM clients WHERE email = $1", client_email,
             )
 
             if not client_row:
@@ -657,13 +657,13 @@ async def create_interaction_from_conversation(
                     [
                         f"{msg.get('role', 'unknown').upper()}: {msg.get('content', '')}"
                         for msg in messages
-                    ]
+                    ],
                 )
 
             # Auto-generate summary if not provided (take first user message)
             if not summary and conv_row and conv_row.get("messages"):
                 first_user_msg = next(
-                    (m for m in conv_row["messages"] if m.get("role") == "user"), None
+                    (m for m in conv_row["messages"] if m.get("role") == "user"), None,
                 )
                 if first_user_msg:
                     summary = first_user_msg.get("content", "")[:SUMMARY_MAX_LENGTH]
@@ -754,7 +754,7 @@ async def delete_interaction(
                 created_by = (existing.get("created_by") or "").lower()
                 if created_by != user_email:
                     raise HTTPException(
-                        status_code=403, detail="You can only delete interactions you created"
+                        status_code=403, detail="You can only delete interactions you created",
                     )
 
             # Delete the interaction

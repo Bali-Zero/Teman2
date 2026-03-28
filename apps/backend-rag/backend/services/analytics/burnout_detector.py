@@ -136,7 +136,7 @@ class BurnoutDetectorService:
                         "warning_signals": warnings,
                         "warning_count": len(warnings),
                         "total_sessions_analyzed": len(user_sess),
-                    }
+                    },
                 )
 
         # Sort by risk score descending

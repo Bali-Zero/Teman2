@@ -69,7 +69,7 @@ def setup_observability(app: FastAPI) -> None:
                     "service.name": settings.otel_service_name,
                     "service.namespace": "nuzantara",
                     "deployment.environment": settings.environment,
-                }
+                },
             )
             trace.set_tracer_provider(TracerProvider(resource=resource))
 
@@ -79,7 +79,7 @@ def setup_observability(app: FastAPI) -> None:
                 if not OTEL_HTTP_AVAILABLE:
                     logger.warning(
                         "⚠️ OTEL_EXPORTER_HEADERS set but HTTP exporter not available. "
-                        "Install: pip install opentelemetry-exporter-otlp-proto-http"
+                        "Install: pip install opentelemetry-exporter-otlp-proto-http",
                     )
                 else:
                     # Parse headers (format: "Key=Value" or "Key=Value,Key2=Value2")
@@ -94,16 +94,16 @@ def setup_observability(app: FastAPI) -> None:
                         headers=headers,
                     )
                     trace.get_tracer_provider().add_span_processor(
-                        BatchSpanProcessor(otlp_exporter)
+                        BatchSpanProcessor(otlp_exporter),
                     )
                     # Skip FastAPIInstrumentor to avoid conflicts with @app.on_event handlers
                     # The instrumentation can cause infinite loops when combined with event handlers
                     # Tracing will still work for manual spans, but automatic FastAPI instrumentation is disabled
                     logger.warning(
-                        "⚠️ Skipping FastAPIInstrumentor.instrument_app() to avoid conflicts with @app.on_event handlers"
+                        "⚠️ Skipping FastAPIInstrumentor.instrument_app() to avoid conflicts with @app.on_event handlers",
                     )
                     logger.info(
-                        f"✅ OpenTelemetry tracing enabled (Grafana Cloud) → {settings.otel_exporter_endpoint} (manual spans only)"
+                        f"✅ OpenTelemetry tracing enabled (Grafana Cloud) → {settings.otel_exporter_endpoint} (manual spans only)",
                     )
             else:
                 # Local Jaeger mode: gRPC without authentication
@@ -116,10 +116,10 @@ def setup_observability(app: FastAPI) -> None:
                 # The instrumentation can cause infinite loops when combined with event handlers
                 # Tracing will still work for manual spans, but automatic FastAPI instrumentation is disabled
                 logger.warning(
-                    "⚠️ Skipping FastAPIInstrumentor.instrument_app() to avoid conflicts with @app.on_event handlers"
+                    "⚠️ Skipping FastAPIInstrumentor.instrument_app() to avoid conflicts with @app.on_event handlers",
                 )
                 logger.info(
-                    f"✅ OpenTelemetry tracing enabled (Jaeger) → {settings.otel_exporter_endpoint} (manual spans only)"
+                    f"✅ OpenTelemetry tracing enabled (Jaeger) → {settings.otel_exporter_endpoint} (manual spans only)",
                 )
 
         except Exception as e:
@@ -130,10 +130,10 @@ def setup_observability(app: FastAPI) -> None:
             "⚠️ OTEL_ENABLED=true but OpenTelemetry packages not installed. "
             "Install with: pip install opentelemetry-api opentelemetry-sdk "
             "opentelemetry-instrumentation-fastapi opentelemetry-exporter-otlp-proto-grpc "
-            "opentelemetry-exporter-otlp-proto-http"
+            "opentelemetry-exporter-otlp-proto-http",
         )
 
     logger.info(
         "✅ Observability: Prometheus metrics enabled"
-        + (" + OpenTelemetry tracing" if (OTEL_AVAILABLE and settings.otel_enabled) else "")
+        + (" + OpenTelemetry tracing" if (OTEL_AVAILABLE and settings.otel_enabled) else ""),
     )

@@ -113,7 +113,7 @@ async def generate_fast_response(
                     {
                         "role": msg["role"],
                         "content": msg["content"][:500],  # Truncate long messages
-                    }
+                    },
                 )
 
     # Add current query with context
@@ -242,7 +242,7 @@ async def elevenlabs_kbli_audit(
 
     if not match:
         return {
-            "result": "Non ho trovato un codice KBLI a 5 cifre nella tua domanda. Puoi ripetere il codice?"
+            "result": "Non ho trovato un codice KBLI a 5 cifre nella tua domanda. Puoi ripetere il codice?",
         }
 
     code = match.group(1)
@@ -250,7 +250,7 @@ async def elevenlabs_kbli_audit(
 
     if decision["state"] == "ERROR":
         return {
-            "result": f"Mi dispiace, non ho trovato informazioni sul codice {code} nel database 2025."
+            "result": f"Mi dispiace, non ho trovato informazioni sul codice {code} nel database 2025.",
         }
 
     state = decision["audit"]["state"]

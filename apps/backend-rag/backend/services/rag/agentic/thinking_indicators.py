@@ -88,7 +88,7 @@ class ThinkingIndicatorService:
             return template
 
     def create_thinking_event(
-        self, phase: ThinkingPhase, message_override: str | None = None, **kwargs
+        self, phase: ThinkingPhase, message_override: str | None = None, **kwargs,
     ) -> dict[str, Any]:
         """
         Create a thinking event for streaming.

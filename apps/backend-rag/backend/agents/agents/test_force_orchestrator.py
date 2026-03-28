@@ -90,7 +90,7 @@ class TestForceOrchestrator:
                     coverage_target=self.coverage_target,
                 ),
                 "maintainer": TestMaintainerAgent(
-                    repo_path=self.repo_path, llm_provider=self.llm_provider
+                    repo_path=self.repo_path, llm_provider=self.llm_provider,
                 ),
                 "cleaner": TestCleanerAgent(
                     repo_path=self.repo_path,
@@ -165,10 +165,10 @@ class TestForceOrchestrator:
                             run_with_semaphore(
                                 "creator",
                                 self.agents["creator"].scan_and_generate(
-                                    max_files=options.get("max_files", 10)
+                                    max_files=options.get("max_files", 10),
                                 ),
                             ),
-                        )
+                        ),
                     )
 
                 # Phase 3: Maintain existing tests (TestMaintainer)
@@ -180,10 +180,10 @@ class TestForceOrchestrator:
                             run_with_semaphore(
                                 "maintainer",
                                 self.agents["maintainer"].scan_and_maintain(
-                                    check_git=options.get("check_git", True)
+                                    check_git=options.get("check_git", True),
                                 ),
                             ),
-                        )
+                        ),
                     )
 
                 # Phase 4: Clean up problematic tests (TestCleaner)
@@ -195,16 +195,16 @@ class TestForceOrchestrator:
                             run_with_semaphore(
                                 "cleaner",
                                 self.agents["cleaner"].scan_and_clean(
-                                    aggressive=options.get("aggressive_cleanup", False)
+                                    aggressive=options.get("aggressive_cleanup", False),
                                 ),
                             ),
-                        )
+                        ),
                     )
 
                 # Execute all tasks in parallel
                 if tasks:
                     task_results = await asyncio.gather(
-                        *[task[1] for task in tasks], return_exceptions=True
+                        *[task[1] for task in tasks], return_exceptions=True,
                     )
                     for (agent_name, _), result in zip(tasks, task_results, strict=False):
                         if isinstance(result, Exception):
@@ -232,7 +232,7 @@ class TestForceOrchestrator:
                 logger.info("🎯 Phase 2: Test creation...")
                 if "creator" in self.agents and options.get("run_creator", True):
                     creator_result = await self.agents["creator"].scan_and_generate(
-                        max_files=options.get("max_files", 10)
+                        max_files=options.get("max_files", 10),
                     )
                     results["agent_results"]["creator"] = creator_result
 
@@ -240,7 +240,7 @@ class TestForceOrchestrator:
                 logger.info("🔧 Phase 3: Test maintenance...")
                 if "maintainer" in self.agents and options.get("run_maintainer", True):
                     maintainer_result = await self.agents["maintainer"].scan_and_maintain(
-                        check_git=options.get("check_git", True)
+                        check_git=options.get("check_git", True),
                     )
                     results["agent_results"]["maintainer"] = maintainer_result
 
@@ -248,7 +248,7 @@ class TestForceOrchestrator:
                 logger.info("🧹 Phase 4: Test cleanup...")
                 if "cleaner" in self.agents and options.get("run_cleaner", True):
                     cleaner_result = await self.agents["cleaner"].scan_and_clean(
-                        aggressive=options.get("aggressive_cleanup", False)
+                        aggressive=options.get("aggressive_cleanup", False),
                     )
                     results["agent_results"]["cleaner"] = cleaner_result
 
@@ -272,7 +272,7 @@ class TestForceOrchestrator:
             logger.error(f"❌ {error_msg}")
             if self.orchestrator_metrics:
                 self.orchestrator_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg
+                    time.time() - start_time, success=False, error=error_msg,
                 )
             return {"success": False, "error": error_msg}
 
@@ -307,7 +307,7 @@ class TestForceOrchestrator:
         return await self.agents["maintainer"].scan_and_maintain(check_git=check_git)
 
     async def run_test_cleanup(
-        self, aggressive: bool = False, dry_run: bool = True
+        self, aggressive: bool = False, dry_run: bool = True,
     ) -> dict[str, Any]:
         """Run test cleanup only."""
         if "cleaner" not in self.agents:
@@ -348,7 +348,7 @@ class TestForceOrchestrator:
                         "run_cleaner": False,  # Skip cleanup in watch mode
                         "max_files": 5,  # Limit in watch mode
                         "check_git": True,
-                    }
+                    },
                 )
 
                 if result.get("success"):
@@ -508,7 +508,7 @@ async def main():
         help="LLM Provider (local=Qwen, mock=Mock)",
     )
     parser.add_argument(
-        "--coverage-target", type=float, default=99.0, help="Coverage target percentage"
+        "--coverage-target", type=float, default=99.0, help="Coverage target percentage",
     )
 
     # Mode selection
@@ -530,7 +530,7 @@ async def main():
     parser.add_argument("--no-dry-run", action="store_true", help="Perform actual cleanup")
     # Parallel execution options
     parser.add_argument(
-        "--no-parallel", action="store_true", help="Disable parallel execution (use sequential)"
+        "--no-parallel", action="store_true", help="Disable parallel execution (use sequential)",
     )
     parser.add_argument(
         "--max-concurrent",
@@ -544,7 +544,7 @@ async def main():
 
     # Output options
     parser.add_argument(
-        "--report", choices=["markdown", "json", "html"], default="markdown", help="Report format"
+        "--report", choices=["markdown", "json", "html"], default="markdown", help="Report format",
     )
     parser.add_argument("--output", help="Output file for report")
     parser.add_argument("--save-metrics", action="store_true", help="Save metrics snapshot")
@@ -553,12 +553,12 @@ async def main():
 
     # Configure logging
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s [%(levelname)s] 🎭 TestForce: %(message)s"
+        level=logging.INFO, format="%(asctime)s [%(levelname)s] 🎭 TestForce: %(message)s",
     )
 
     # Create orchestrator
     orchestrator = TestForceOrchestrator(
-        repo_path=Path(args.repo), llm_provider=args.provider, coverage_target=args.coverage_target
+        repo_path=Path(args.repo), llm_provider=args.provider, coverage_target=args.coverage_target,
     )
 
     try:
@@ -588,7 +588,7 @@ async def main():
 
         elif args.mode == "clean":
             result = await orchestrator.run_test_cleanup(
-                aggressive=args.aggressive_cleanup, dry_run=not args.no_dry_run
+                aggressive=args.aggressive_cleanup, dry_run=not args.no_dry_run,
             )
 
         elif args.mode == "watch":

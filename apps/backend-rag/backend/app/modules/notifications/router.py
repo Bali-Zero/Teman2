@@ -121,7 +121,7 @@ async def get_clients_from_db(pool, client_id: int | None = None) -> list[Client
                     ORDER BY client_id, expiry_date DESC
                 ) v ON v.client_id = c.id
                 WHERE c.is_active = true
-                """
+                """,
             )
 
         clients = []
@@ -215,7 +215,7 @@ async def get_notification_status(
 
         async with pool.acquire() as conn:
             pending_count = await conn.fetchval(
-                "SELECT COUNT(*) FROM notification_alerts WHERE status = 'pending'"
+                "SELECT COUNT(*) FROM notification_alerts WHERE status = 'pending'",
             )
             last_check = await conn.fetchval("SELECT MAX(created_at) FROM notification_alerts")
 
@@ -294,7 +294,7 @@ async def send_direct_email(
 
     try:
         msg_obj = __import__("email.mime.multipart", fromlist=["MIMEMultipart"]).MIMEMultipart(
-            "alternative"
+            "alternative",
         )
         msg_obj["Subject"] = request.subject
         msg_obj["From"] = f"Bali Zero Team <{smtp.from_email or smtp.user}>"

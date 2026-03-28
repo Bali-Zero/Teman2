@@ -113,7 +113,7 @@ def set_auth_cookies(
     )
 
     logger.debug(
-        f"Auth cookies set: domain={domain}, secure={secure}, samesite={samesite}, max_age={max_age}s"
+        f"Auth cookies set: domain={domain}, secure={secure}, samesite={samesite}, max_age={max_age}s",
     )
 
     return csrf_token
@@ -187,7 +187,7 @@ def validate_csrf(request: Request) -> bool:
 
     if not cookie_csrf or not header_csrf:
         logger.debug(
-            f"CSRF validation failed: cookie={bool(cookie_csrf)}, header={bool(header_csrf)}"
+            f"CSRF validation failed: cookie={bool(cookie_csrf)}, header={bool(header_csrf)}",
         )
         return False
 

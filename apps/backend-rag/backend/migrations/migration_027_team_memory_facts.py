@@ -37,7 +37,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
     if member.get("location"):
         identity += f", lavora da {member['location']}"
     facts.append(
-        {"content": identity, "fact_type": "identity", "confidence": 1.0, "source": "team_database"}
+        {"content": identity, "fact_type": "identity", "confidence": 1.0, "source": "team_database"},
     )
 
     # 2. Language preferences
@@ -60,7 +60,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
                 "fact_type": "preference",
                 "confidence": 1.0,
                 "source": "team_database",
-            }
+            },
         )
 
     # 3. Emotional preferences / communication style
@@ -96,7 +96,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
                     "fact_type": "communication_style",
                     "confidence": 0.95,
                     "source": "team_database",
-                }
+                },
             )
 
     # 4. Personal traits
@@ -151,7 +151,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
                 "fact_type": "personality",
                 "confidence": 0.9,
                 "source": "team_database",
-            }
+            },
         )
 
     # 5. Notes / special info
@@ -164,7 +164,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
                 "fact_type": "background",
                 "confidence": 0.85,
                 "source": "team_database",
-            }
+            },
         )
 
     # 6. Relationships (if any)
@@ -179,7 +179,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
                     "fact_type": "relationship",
                     "confidence": 0.8,
                     "source": "team_database",
-                }
+                },
             )
 
     # 7. Expertise level
@@ -197,7 +197,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
                 "fact_type": "expertise",
                 "confidence": 0.9,
                 "source": "team_database",
-            }
+            },
         )
 
     # 8. Religion (for cultural awareness)
@@ -209,7 +209,7 @@ def generate_facts_for_member(member: dict) -> list[dict]:
                 "fact_type": "cultural",
                 "confidence": 0.9,
                 "source": "team_database",
-            }
+            },
         )
 
     return facts
@@ -257,7 +257,7 @@ async def apply_migration(database_url: str = None):
 
             # Delete existing facts for this user (clean slate)
             await conn.execute(
-                "DELETE FROM memory_facts WHERE user_id = $1 AND source = 'team_database'", email
+                "DELETE FROM memory_facts WHERE user_id = $1 AND source = 'team_database'", email,
             )
 
             # Insert new facts

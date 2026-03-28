@@ -68,7 +68,7 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> A
                     "status": "completed",
                     "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
                     "result": {"message": "No high-rated conversations found"},
-                }
+                },
             )
             return
 
@@ -88,7 +88,7 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> A
                     "pr_branch": pr_branch,
                     "message": "Conversation analysis complete, PR created",
                 },
-            }
+            },
         )
 
         logger.info(f"✅ Conversation Trainer completed (execution_id: {execution_id})")
@@ -100,7 +100,7 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> A
                 "status": "failed",
                 "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
                 "error": str(e),
-            }
+            },
         )
 
 
@@ -173,7 +173,7 @@ async def _run_client_value_predictor_task(execution_id: str) -> None:
                     "errors": len(results["errors"]),
                     "message": "Client nurturing complete",
                 },
-            }
+            },
         )
 
         logger.info(f"✅ Client Value Predictor completed (execution_id: {execution_id})")
@@ -185,7 +185,7 @@ async def _run_client_value_predictor_task(execution_id: str) -> None:
                 "status": "failed",
                 "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
                 "error": str(e),
-            }
+            },
         )
 
 
@@ -226,7 +226,7 @@ async def run_client_value_predictor(background_tasks: BackgroundTasks) -> Agent
 
 
 async def _run_knowledge_graph_builder_task(
-    execution_id: str, days_back: int, init_schema: bool
+    execution_id: str, days_back: int, init_schema: bool,
 ) -> None:
     """Background task for knowledge graph builder execution"""
     try:
@@ -264,7 +264,7 @@ async def _run_knowledge_graph_builder_task(
                     "top_hubs": insights["hubs"][:5],
                     "message": "Knowledge graph updated",
                 },
-            }
+            },
         )
 
         logger.info(f"✅ Knowledge Graph Builder completed (execution_id: {execution_id})")
@@ -276,7 +276,7 @@ async def _run_knowledge_graph_builder_task(
                 "status": "failed",
                 "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
                 "error": str(e),
-            }
+            },
         )
 
 
@@ -311,7 +311,7 @@ async def run_knowledge_graph_builder(
 
     # Run agent in background
     background_tasks.add_task(
-        _run_knowledge_graph_builder_task, execution_id, days_back, init_schema
+        _run_knowledge_graph_builder_task, execution_id, days_back, init_schema,
     )
 
     # Return immediately
@@ -382,7 +382,7 @@ async def extract_kg_sample(
     try:
         # Scroll chunks
         results = qdrant.scroll(
-            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False
+            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False,
         )
         chunks = results[0]
 
@@ -433,7 +433,7 @@ async def extract_kg_sample(
                                             "target": e2,
                                             "type": rel_type,
                                             "confidence": 0.7,
-                                        }
+                                        },
                                     )
 
         # Sort by mentions
@@ -518,7 +518,7 @@ async def persist_kg_sample(
 
     try:
         results = qdrant.scroll(
-            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False
+            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False,
         )
         chunks = results[0]
 
@@ -722,7 +722,7 @@ async def list_executions(limit: int = 20) -> dict[str, Any]:
         List of recent executions
     """
     executions = sorted(
-        agent_executions.items(), key=lambda x: x[1].get("started_at", ""), reverse=True
+        agent_executions.items(), key=lambda x: x[1].get("started_at", ""), reverse=True,
     )[:limit]
 
     return {

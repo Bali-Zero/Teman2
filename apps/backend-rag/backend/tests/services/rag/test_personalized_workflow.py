@@ -13,10 +13,10 @@ from backend.services.rag.personalized_workflow import personalize_workflow
 def mock_crm_service():
     service = MagicMock()
     service.search_clients = AsyncMock(
-        return_value=([{"id": 1, "full_name": "Test User", "custom_fields": {"has_npwp": True}}], 1)
+        return_value=([{"id": 1, "full_name": "Test User", "custom_fields": {"has_npwp": True}}], 1),
     )
     service.get_client = AsyncMock(
-        return_value={"id": 1, "full_name": "Test User", "practices": []}
+        return_value={"id": 1, "full_name": "Test User", "practices": []},
     )
     return service
 
@@ -52,11 +52,11 @@ def base_workflow():
 
 @pytest.mark.asyncio
 async def test_personalize_workflow_skips_npwp(
-    mock_crm_service, mock_memory_orchestrator, base_workflow
+    mock_crm_service, mock_memory_orchestrator, base_workflow,
 ):
     # Setup: User has NPWP in CRM
     result = await personalize_workflow(
-        "test@example.com", base_workflow, mock_crm_service, mock_memory_orchestrator
+        "test@example.com", base_workflow, mock_crm_service, mock_memory_orchestrator,
     )
 
     # Verify NPWP registration step is skipped
@@ -67,15 +67,15 @@ async def test_personalize_workflow_skips_npwp(
 
 @pytest.mark.asyncio
 async def test_personalize_workflow_completes_passport(
-    mock_crm_service, mock_memory_orchestrator, base_workflow
+    mock_crm_service, mock_memory_orchestrator, base_workflow,
 ):
     # Setup: User has passport number
     mock_crm_service.search_clients = AsyncMock(
-        return_value=([{"id": 1, "passport_number": "A1234567"}], 1)
+        return_value=([{"id": 1, "passport_number": "A1234567"}], 1),
     )
 
     result = await personalize_workflow(
-        "test@example.com", base_workflow, mock_crm_service, mock_memory_orchestrator
+        "test@example.com", base_workflow, mock_crm_service, mock_memory_orchestrator,
     )
 
     # Verify submit_passport is marked completed
@@ -85,13 +85,13 @@ async def test_personalize_workflow_completes_passport(
 
 @pytest.mark.asyncio
 async def test_personalize_workflow_urgency_compression(
-    mock_crm_service, mock_memory_orchestrator, base_workflow
+    mock_crm_service, mock_memory_orchestrator, base_workflow,
 ):
     # Setup: Memory fact contains "urgent"
     mock_crm_service.search_clients = AsyncMock(return_value=([{"id": 1}], 1))
 
     result = await personalize_workflow(
-        "test@example.com", base_workflow, mock_crm_service, mock_memory_orchestrator
+        "test@example.com", base_workflow, mock_crm_service, mock_memory_orchestrator,
     )
 
     # Verify duration is compressed

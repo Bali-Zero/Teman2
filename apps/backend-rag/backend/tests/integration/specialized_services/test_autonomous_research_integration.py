@@ -37,7 +37,7 @@ def mock_search_service():
                 {"id": "doc2", "text": "Test result 2", "score": 0.85},
             ],
             "total": 2,
-        }
+        },
     )
     return service
 
@@ -55,10 +55,10 @@ def autonomous_research_service(mock_search_service, mock_db_pool):
     # Mock the service instead of importing it directly
     service = MagicMock()
     service.research = AsyncMock(
-        return_value={"success": True, "results": [], "synthesis": "Test synthesis"}
+        return_value={"success": True, "results": [], "synthesis": "Test synthesis"},
     )
     service.synthesize_results = AsyncMock(
-        return_value={"synthesis": "Test synthesis", "key_differences": []}
+        return_value={"synthesis": "Test synthesis", "key_differences": []},
     )
     return service
 
@@ -68,7 +68,7 @@ class TestAutonomousResearchIntegration:
 
     @pytest.mark.asyncio
     async def test_complex_multi_collection_research(
-        self, autonomous_research_service, mock_search_service
+        self, autonomous_research_service, mock_search_service,
     ):
         """Test research across multiple collections"""
         query = "Analizza le ultime modifiche alle leggi su visto e tasse"
@@ -79,7 +79,7 @@ class TestAutonomousResearchIntegration:
             side_effect=[
                 {"results": [{"id": f"doc{i}", "text": f"Result {i}"}], "total": 1}
                 for i in range(len(collections))
-            ]
+            ],
         )
 
         # Execute research
@@ -95,7 +95,7 @@ class TestAutonomousResearchIntegration:
             }
 
             result = await autonomous_research_service.research(
-                query=query, collections=collections, limit_per_collection=5
+                query=query, collections=collections, limit_per_collection=5,
             )
 
             # Verify research executed
@@ -110,7 +110,7 @@ class TestAutonomousResearchIntegration:
 
         # Mock specialized router
         with patch(
-            "backend.services.routing.specialized_service_router.SpecializedServiceRouter"
+            "backend.services.routing.specialized_service_router.SpecializedServiceRouter",
         ) as mock_router:
             mock_router_instance = MagicMock()
             mock_router_instance.should_route_to_autonomous_research = MagicMock(return_value=True)
@@ -126,7 +126,7 @@ class TestAutonomousResearchIntegration:
 
     @pytest.mark.asyncio
     async def test_research_result_synthesis(
-        self, autonomous_research_service, mock_search_service
+        self, autonomous_research_service, mock_search_service,
     ):
         """Test that research results are properly synthesized"""
         query = "Quali sono le differenze tra PT PMA e PT Lokal?"
@@ -151,7 +151,7 @@ class TestAutonomousResearchIntegration:
             }
 
             synthesis = await autonomous_research_service.synthesize_results(
-                query=query, results=research_results
+                query=query, results=research_results,
             )
 
             # Verify synthesis
@@ -160,7 +160,7 @@ class TestAutonomousResearchIntegration:
 
     @pytest.mark.asyncio
     async def test_research_with_memory_context(
-        self, autonomous_research_service, mock_search_service, mock_db_pool
+        self, autonomous_research_service, mock_search_service, mock_db_pool,
     ):
         """Test research using Memory context for personalization"""
         query = "Qual è il miglior visto per me?"
@@ -180,7 +180,7 @@ class TestAutonomousResearchIntegration:
             }
 
             result = await autonomous_research_service.research(
-                query=query, user_context=memory_context
+                query=query, user_context=memory_context,
             )
 
             # Verify personalized research

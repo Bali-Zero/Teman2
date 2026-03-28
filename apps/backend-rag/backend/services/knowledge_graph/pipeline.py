@@ -446,7 +446,7 @@ class KGPipeline:
                 logger.info(
                     f"Progress: {self.stats.chunks_processed}/{total} chunks, "
                     f"{self.stats.entities_persisted} entities, "
-                    f"{self.stats.relations_persisted} relations"
+                    f"{self.stats.relations_persisted} relations",
                 )
 
         self.stats.end_time = datetime.now(tz=timezone.utc)
@@ -455,7 +455,7 @@ class KGPipeline:
             f"Pipeline completed: {self.stats.chunks_processed} chunks, "
             f"{self.stats.entities_persisted} entities, "
             f"{self.stats.relations_persisted} relations, "
-            f"{self.stats.errors} errors"
+            f"{self.stats.errors} errors",
         )
 
         return self.stats
@@ -526,7 +526,7 @@ class KGPipeline:
                 for point in points:
                     chunk_id = str(point.get("id", ""))
                     text = point.get("payload", {}).get("text", "") or point.get("payload", {}).get(
-                        "content", ""
+                        "content", "",
                     )
                     if text and len(text.strip()) > 20:
                         chunks.append((chunk_id, text))
@@ -550,7 +550,7 @@ class KGPipeline:
                     logger.info(
                         f"Progress: {processed}/{total_docs} chunks, "
                         f"{self.stats.entities_persisted} entities, "
-                        f"{self.stats.relations_persisted} relations"
+                        f"{self.stats.relations_persisted} relations",
                     )
 
                 if not offset or (limit and processed >= limit):
@@ -564,7 +564,7 @@ class KGPipeline:
         logger.info(
             f"Pipeline completed: {self.stats.chunks_processed} chunks, "
             f"{self.stats.entities_persisted} entities, "
-            f"{self.stats.relations_persisted} relations"
+            f"{self.stats.relations_persisted} relations",
         )
 
         return self.stats

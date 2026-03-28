@@ -117,17 +117,17 @@ class TestClientValuePredictor:
         mock_score = {"client_id": "123", "ltv_score": 75.0, "interaction_count": 10}
         enriched_score = {**mock_score, "segment": "HIGH_VALUE", "risk_level": "LOW_RISK"}
         client_value_predictor.scoring_service.calculate_client_score = AsyncMock(
-            return_value=mock_score
+            return_value=mock_score,
         )
         client_value_predictor.segmentation_service.enrich_client_data = MagicMock(
-            return_value=enriched_score
+            return_value=enriched_score,
         )
 
         result = await client_value_predictor.calculate_client_score("123")
         assert result == enriched_score
         client_value_predictor.scoring_service.calculate_client_score.assert_called_once_with("123")
         client_value_predictor.segmentation_service.enrich_client_data.assert_called_once_with(
-            mock_score
+            mock_score,
         )
 
     @pytest.mark.asyncio

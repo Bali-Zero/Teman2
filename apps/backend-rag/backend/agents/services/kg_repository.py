@@ -285,7 +285,7 @@ class KnowledgeGraphRepository:
                     FROM kg_edges
                     GROUP BY relationship_type
                     ORDER BY count DESC
-                    """
+                    """,
                 )
 
                 rel_types = {row["relationship_type"]: row["count"] for row in rel_rows}
@@ -315,7 +315,7 @@ class KnowledgeGraphRepository:
             }
 
     async def get_user_related_entities(
-        self, user_id: str, limit: int = 10
+        self, user_id: str, limit: int = 10,
     ) -> list[dict[str, Any]]:
         """
         Get entities related to a user's memories.
@@ -366,7 +366,7 @@ class KnowledgeGraphRepository:
             return []
 
     async def get_entity_context_for_query(
-        self, query: str, limit: int = 5
+        self, query: str, limit: int = 5,
     ) -> list[dict[str, Any]]:
         """
         Get relevant entities for a query to enrich AI context.
@@ -427,7 +427,7 @@ class KnowledgeGraphRepository:
             return []
 
     async def semantic_search_entities(
-        self, query: str, top_k: int = DEFAULT_TOP_K
+        self, query: str, top_k: int = DEFAULT_TOP_K,
     ) -> list[dict[str, Any]]:
         """
         Search entities semantically.
@@ -538,7 +538,7 @@ class KnowledgeGraphRepository:
             return None
 
     async def get_entity_relationships(
-        self, entity_id: str, limit: int = 20
+        self, entity_id: str, limit: int = 20,
     ) -> list[dict[str, Any]]:
         """
         Get relationships for an entity.
@@ -627,7 +627,7 @@ class KnowledgeGraphRepository:
                     FROM kg_nodes
                     GROUP BY entity_type
                     ORDER BY count DESC
-                    """
+                    """,
                 )
 
                 edge_types = await conn.fetch(
@@ -636,7 +636,7 @@ class KnowledgeGraphRepository:
                     FROM kg_edges
                     GROUP BY relationship_type
                     ORDER BY count DESC
-                    """
+                    """,
                 )
 
                 return {

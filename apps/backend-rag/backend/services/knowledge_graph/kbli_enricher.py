@@ -37,14 +37,14 @@ class KBLIEnricher:
                 models.FieldCondition(
                     key="kode_kbli",
                     match=models.MatchValue(
-                        value=section_prefix
+                        value=section_prefix,
                     ),  # This is a simplified logic, we might need MatchText or Range
-                )
+                ),
             ],
             must_not=[
                 models.HasIdCondition(
-                    has_id=[]
-                )  # Placeholder for logic to find "not yet processed"
+                    has_id=[],
+                ),  # Placeholder for logic to find "not yet processed"
             ],
         )
 
@@ -54,9 +54,9 @@ class KBLIEnricher:
             scroll_filter=models.Filter(
                 must=[
                     models.FieldCondition(
-                        key="kode_kbli", match=models.MatchText(any=[section_prefix])
-                    )
-                ]
+                        key="kode_kbli", match=models.MatchText(any=[section_prefix]),
+                    ),
+                ],
             ),
             limit=1000,
             with_payload=True,
@@ -66,7 +66,7 @@ class KBLIEnricher:
         return [p.payload for p in points if not p.payload.get("is_enriched")]
 
     async def enrich_single_code(
-        self, kbli_payload: dict, external_research: str | None = None
+        self, kbli_payload: dict, external_research: str | None = None,
     ) -> bool:
         """Process a single KBLI code with retry logic."""
         code = kbli_payload.get("kode_kbli")
@@ -76,7 +76,7 @@ class KBLIEnricher:
             async with self.semaphore:
                 try:
                     logger.info(
-                        f"[KBLI:{code}] - [STEP:ENRICH] - [ATTEMPT:{attempt + 1}] - Starting..."
+                        f"[KBLI:{code}] - [STEP:ENRICH] - [ATTEMPT:{attempt + 1}] - Starting...",
                     )
 
                     # 1. Technical Retrieval (Simulated call to search_kbli logic)
@@ -105,7 +105,7 @@ class KBLIEnricher:
                     )
 
                     logger.info(
-                        f"[KBLI:{code}] - [STEP:FUSION] - [STATUS:OK] - Successfully enriched"
+                        f"[KBLI:{code}] - [STEP:FUSION] - [STATUS:OK] - Successfully enriched",
                     )
                     return True
 

@@ -101,7 +101,7 @@ class ProductivityScorerService:
                         "total_hours": round(total_hours, 2),
                         "sessions": s["session_count"],
                     },
-                }
+                },
             )
 
         # Sort by score descending

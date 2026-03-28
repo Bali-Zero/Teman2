@@ -33,7 +33,7 @@ class CRMAuditLogger:
             # Try to get it from backend.app.state if we can't find it
             # But in a service, it should be initialized
             raise RuntimeError(
-                "CRMAuditLogger not initialized with pool. Call .initialize(pool) first."
+                "CRMAuditLogger not initialized with pool. Call .initialize(pool) first.",
             )
         return self.pool
 
@@ -109,7 +109,7 @@ class CRMAuditLogger:
             return False
 
     def _detect_changes(
-        self, old_state: dict[str, Any], new_state: dict[str, Any]
+        self, old_state: dict[str, Any], new_state: dict[str, Any],
     ) -> dict[str, Any]:
         """Detect what changed between old and new state"""
         changes = {}
@@ -225,7 +225,7 @@ class CRMAuditLogger:
                            old_state, new_state, changes, metadata, timestamp
                     FROM crm_audit_log
                     WHERE 1=1
-                    """
+                    """,
                 ]
                 params = []
                 param_index = 1
@@ -304,7 +304,7 @@ def audit_change(entity_type: str, change_type: str = "update") -> Any:
                     if pool:
                         async with pool.acquire() as conn:
                             row = await conn.fetchrow(
-                                "SELECT * FROM clients WHERE id = $1", entity_id
+                                "SELECT * FROM clients WHERE id = $1", entity_id,
                             )
                             if row and hasattr(row, "items"):
                                 old_state = dict(row)

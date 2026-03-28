@@ -162,7 +162,7 @@ class TestGuardian:
         logger.info(f"🛡️ TestGuardian ready with provider: {provider}")
 
     async def _generate_text(
-        self, prompt: str, max_tokens: int = 4000, temperature: float = 0.2
+        self, prompt: str, max_tokens: int = 4000, temperature: float = 0.2,
     ) -> str:
         """
         Generate text using LLM with metrics tracking.
@@ -197,14 +197,14 @@ class TestGuardian:
                 # Record metrics
                 if self.agent_metrics:
                     self.agent_metrics.record_operation(
-                        duration=response.response_time, success=True
+                        duration=response.response_time, success=True,
                     )
                     self.metrics_collector.record_test_generation(
-                        duration=response.response_time, success=True
+                        duration=response.response_time, success=True,
                     )
 
                 logger.info(
-                    f"✅ LLM generation: {len(response.text)} chars, {response.response_time:.2f}s"
+                    f"✅ LLM generation: {len(response.text)} chars, {response.response_time:.2f}s",
                 )
                 return response.text
 
@@ -216,10 +216,10 @@ class TestGuardian:
             # Record failure
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    duration=time.time() - start_time, success=False, error=str(e)
+                    duration=time.time() - start_time, success=False, error=str(e),
                 )
                 self.metrics_collector.record_test_generation(
-                    duration=time.time() - start_time, success=False
+                    duration=time.time() - start_time, success=False,
                 )
 
             logger.error(f"❌ LLM generation failed: {e}")
@@ -296,7 +296,7 @@ class TestGuardian:
                 logger.error("❌ Coverage report not found!")
                 if self.agent_metrics:
                     self.agent_metrics.record_operation(
-                        time.time() - start_time, success=False, error="Coverage report not found"
+                        time.time() - start_time, success=False, error="Coverage report not found",
                     )
                 return []
 
@@ -322,7 +322,7 @@ class TestGuardian:
                             "missing_lines": data["missing_lines"],
                             "missing_lines_count": len(data["missing_lines"]),
                             "priority": "high" if pct < 80 else "medium" if pct < 95 else "low",
-                        }
+                        },
                     )
 
             # Sort by lowest coverage first, then by missing lines count
@@ -348,7 +348,7 @@ class TestGuardian:
             # Log comprehensive results
             logger.info(f"📊 Coverage analysis completed in {duration:.2f}s:")
             logger.info(
-                f"   Overall coverage: {overall_coverage:.1f}% (target: {COVERAGE_THRESHOLD}%)"
+                f"   Overall coverage: {overall_coverage:.1f}% (target: {COVERAGE_THRESHOLD}%)",
             )
             logger.info(f"   Files analyzed: {total_files}")
             logger.info(f"   Files below threshold: {files_below_threshold}")
@@ -358,7 +358,7 @@ class TestGuardian:
                 logger.info("🎯 Top 5 coverage gaps:")
                 for i, gap in enumerate(gaps[:5], 1):
                     logger.info(
-                        f"   {i}. {gap['file']} - {gap['percent']:.1f}% ({gap['missing_lines_count']} missing lines)"
+                        f"   {i}. {gap['file']} - {gap['percent']:.1f}% ({gap['missing_lines_count']} missing lines)",
                     )
 
             # Check alerts
@@ -376,7 +376,7 @@ class TestGuardian:
             logger.error(f"❌ {error_msg}")
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg
+                    time.time() - start_time, success=False, error=error_msg,
                 )
             return []
 
@@ -385,7 +385,7 @@ class TestGuardian:
             logger.error(f"❌ {error_msg}")
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg
+                    time.time() - start_time, success=False, error=error_msg,
                 )
             return []
 
@@ -469,7 +469,7 @@ REQUIREMENTS:
 
             # 2. Run
             result = subprocess.run(
-                ["pytest", str(test_path)], cwd=PROJECT_ROOT.parent, capture_output=True, text=True
+                ["pytest", str(test_path)], cwd=PROJECT_ROOT.parent, capture_output=True, text=True,
             )
 
             # 3. Check

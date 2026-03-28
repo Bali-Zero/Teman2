@@ -64,7 +64,7 @@ class TestToolExecutor:
                 "id": "toolu_123",
                 "name": "get_pricing",
                 "input": {"service_type": "visa"},
-            }
+            },
         ]
         results = await tool_executor.execute_tool_calls(tool_uses)
         assert len(results) == 1
@@ -80,7 +80,7 @@ class TestToolExecutor:
                 "id": "toolu_456",
                 "name": "mcp_test_tool",
                 "input": {"param": "value"},
-            }
+            },
         ]
         results = await tool_executor.execute_tool_calls(tool_uses)
         assert len(results) == 1
@@ -111,7 +111,7 @@ class TestToolExecutor:
     async def test_execute_tool_calls_zantara_tool_error(self, tool_executor, mock_zantara_tools):
         """Test executing ZantaraTools with error"""
         mock_zantara_tools.execute_tool = AsyncMock(
-            return_value={"success": False, "error": "Test error"}
+            return_value={"success": False, "error": "Test error"},
         )
         tool_uses = [{"type": "tool_use", "id": "toolu_123", "name": "get_pricing", "input": {}}]
         results = await tool_executor.execute_tool_calls(tool_uses)
@@ -122,7 +122,7 @@ class TestToolExecutor:
     async def test_execute_tool_calls_mcp_tool_error(self, tool_executor, mock_mcp_client):
         """Test executing MCP tool with error"""
         mock_mcp_client.execute_tool = AsyncMock(
-            return_value={"success": False, "error": "MCP error"}
+            return_value={"success": False, "error": "MCP error"},
         )
         tool_uses = [{"type": "tool_use", "id": "toolu_456", "name": "mcp_test_tool", "input": {}}]
         results = await tool_executor.execute_tool_calls(tool_uses)
@@ -161,7 +161,7 @@ class TestToolExecutor:
     async def test_execute_tool_error(self, tool_executor, mock_zantara_tools):
         """Test execute_tool with error"""
         mock_zantara_tools.execute_tool = AsyncMock(
-            return_value={"success": False, "error": "Error"}
+            return_value={"success": False, "error": "Error"},
         )
         result = await tool_executor.execute_tool("get_pricing", {})
         assert result["success"] is False
@@ -213,7 +213,7 @@ class TestToolExecutor:
         assert len(results) == 1
         # Should return error because tool is not available
         assert results[0].get("is_error") is True or "not available" in str(
-            results[0].get("content", "")
+            results[0].get("content", ""),
         )
 
     @pytest.mark.asyncio

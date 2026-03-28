@@ -253,7 +253,7 @@ class LLMAdapter:
                     return True
                 logger.debug(
                     f"🚫 Circuit breaker OPEN - rejecting request "
-                    f"({self.circuit_breaker_timeout - (current_time - self.circuit_breaker.opened_at):.1f}s remaining)"
+                    f"({self.circuit_breaker_timeout - (current_time - self.circuit_breaker.opened_at):.1f}s remaining)",
                 )
                 return False
 
@@ -291,7 +291,7 @@ class LLMAdapter:
                 # Too many failures - open circuit
                 logger.warning(
                     f"🚨 Circuit breaker: CLOSED → OPEN "
-                    f"({self.circuit_breaker.failure_count} failures)"
+                    f"({self.circuit_breaker.failure_count} failures)",
                 )
                 self.circuit_breaker.state = CircuitState.OPEN
                 self.circuit_breaker.opened_at = time.time()
@@ -371,12 +371,12 @@ class LLMAdapter:
                 if attempt > 1:
                     logger.info(
                         f"✅ Qwen succeeded after {attempt} attempts: {len(response.text)} chars, "
-                        f"{response.response_time:.2f}s, {response.tokens_used} tokens"
+                        f"{response.response_time:.2f}s, {response.tokens_used} tokens",
                     )
                 else:
                     logger.info(
                         f"✅ Qwen response: {len(response.text)} chars, "
-                        f"{response.response_time:.2f}s, {response.tokens_used} tokens"
+                        f"{response.response_time:.2f}s, {response.tokens_used} tokens",
                     )
 
                 return response
@@ -412,7 +412,7 @@ class LLMAdapter:
 
                     logger.warning(
                         f"🔄 Qwen attempt {attempt}/{self.max_retries} failed ({last_error_type.value}): {e}. "
-                        f"Retrying in {wait_time:.1f}s..."
+                        f"Retrying in {wait_time:.1f}s...",
                     )
                     await asyncio.sleep(wait_time)
                 else:
@@ -422,7 +422,7 @@ class LLMAdapter:
         logger.error(
             f"🚨 Qwen failed after {self.max_retries} attempts. "
             f"Last error ({last_error_type.value if last_error_type else 'unknown'}): {last_error}. "
-            f"Returning mock response."
+            f"Returning mock response.",
         )
         self.metrics.total_requests += 1
 

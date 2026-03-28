@@ -66,7 +66,7 @@ class TwitterChannelAdapter(BaseChannel):
         import base64
 
         signature = base64.b64encode(
-            hmac.new(signing_key.encode(), base_string.encode(), hashlib.sha256).digest()
+            hmac.new(signing_key.encode(), base_string.encode(), hashlib.sha256).digest(),
         ).decode()
 
         oauth_params["oauth_signature"] = signature
@@ -84,7 +84,7 @@ class TwitterChannelAdapter(BaseChannel):
             dm_events = raw_event.get("direct_message_events", [])
             if not dm_events:
                 return ChannelMessage(
-                    user_id="unknown", session_id="unknown", text="", channel="twitter"
+                    user_id="unknown", session_id="unknown", text="", channel="twitter",
                 )
 
             dm = dm_events[0]
@@ -110,7 +110,7 @@ class TwitterChannelAdapter(BaseChannel):
         formatted_text = self.formatter.format_response(response)
         if len(formatted_text) > self.twitter_config.max_message_length:
             formatted_text = self.truncate_message(
-                formatted_text, self.twitter_config.max_message_length
+                formatted_text, self.twitter_config.max_message_length,
             )
 
         url = f"https://api.x.com/2/dm_conversations/with/{channel_id}/messages"
@@ -128,7 +128,7 @@ class TwitterChannelAdapter(BaseChannel):
                 logger.info(f"✅ Sent X DM to {channel_id}")
             else:
                 logger.error(
-                    f"X API error {resp.status_code}: {resp.text} (channel_id={channel_id})"
+                    f"X API error {resp.status_code}: {resp.text} (channel_id={channel_id})",
                 )
         except Exception as e:
             logger.error(f"X DM send failed: {e}")
@@ -138,7 +138,7 @@ class TwitterChannelAdapter(BaseChannel):
         pass
 
     async def stream_response(
-        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse]
+        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
     ) -> None:
         """Accumulate and send complete message."""
         text = ""

@@ -96,7 +96,7 @@ def get_llm_for_reasoning() -> Any:
         raise ValueError(
             "No LLM available for KG reasoning. "
             f"OPENAI_API_KEY={'set' if openai_key else 'missing'} (lib={'ok' if ChatOpenAI else 'missing'}), "
-            f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} (lib={'ok' if ChatAnthropic else 'missing'})"
+            f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} (lib={'ok' if ChatAnthropic else 'missing'})",
         )
 
     return _cached_reasoning_llm
@@ -175,7 +175,7 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     query_lower = state.get("query", "").lower()
 
     logger.info(
-        f"🔀 [Router] After understand_query: intent={intent}, domain={domain}, entities={entities_count}"
+        f"🔀 [Router] After understand_query: intent={intent}, domain={domain}, entities={entities_count}",
     )
 
     # PHASE 1: Domain-based routing (highest priority)
@@ -515,7 +515,7 @@ def build_kg_langgraph_workflow(
     workflow.add_edge("tax_subgraph", END)
 
     logger.info(
-        "✅ [Build Workflow] StateGraph constructed with 10 nodes (6 core + 4 subgraphs) and routing logic"
+        "✅ [Build Workflow] StateGraph constructed with 10 nodes (6 core + 4 subgraphs) and routing logic",
     )
 
     return workflow
@@ -556,7 +556,7 @@ async def compile_kg_workflow(
         except Exception as e:
             logger.warning(
                 f"⚠️ [Compile] PostgresSaver setup failed ({type(e).__name__}: {e}), "
-                f"compiling without checkpointer (no state persistence)"
+                f"compiling without checkpointer (no state persistence)",
             )
             checkpointer = None
 
@@ -565,7 +565,7 @@ async def compile_kg_workflow(
 
     logger.info(
         f"✅ [Compile] KG workflow compiled successfully "
-        f"(checkpointer={'postgres' if checkpointer else 'none'})"
+        f"(checkpointer={'postgres' if checkpointer else 'none'})",
     )
 
     return app
@@ -617,7 +617,7 @@ class KGLangGraphOrchestrator:
             self.app = await compile_kg_workflow(self.db_pool, self._compiled_subgraphs)
 
             logger.info(
-                "✅ [Orchestrator] KG LangGraph workflow initialized (4 subgraphs pre-compiled)"
+                "✅ [Orchestrator] KG LangGraph workflow initialized (4 subgraphs pre-compiled)",
             )
 
     async def query(

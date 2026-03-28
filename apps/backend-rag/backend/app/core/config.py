@@ -96,7 +96,7 @@ class Settings(BaseSettings):
                 logger = logging.getLogger(__name__)
                 logger.warning(
                     "⚠️ OPENAI_API_KEY not set - embeddings may fail. "
-                    "Set OPENAI_API_KEY env var for production."
+                    "Set OPENAI_API_KEY env var for production.",
                 )
         elif v and not v.startswith("sk-"):
             logger = logging.getLogger(__name__)
@@ -149,12 +149,12 @@ class Settings(BaseSettings):
             if is_production:
                 raise ValueError(
                     "QDRANT_URL must be set in production. "
-                    "Set QDRANT_URL env var to your Qdrant instance URL."
+                    "Set QDRANT_URL env var to your Qdrant instance URL.",
                 )
             logger = logging.getLogger(__name__)
             logger.warning(
                 "⚠️ QDRANT_URL not set - using default localhost. "
-                "Set QDRANT_URL env var for production."
+                "Set QDRANT_URL env var for production.",
             )
             return "http://localhost:6333"
 
@@ -213,7 +213,7 @@ class Settings(BaseSettings):
 
     # ZeroEntropy Re-ranker Configuration (External API)
     zerank_api_key: str | None = Field(
-        default=None, description="ZeroEntropy API Key - Set via ZERANK_API_KEY env var"
+        default=None, description="ZeroEntropy API Key - Set via ZERANK_API_KEY env var",
     )
     zerank_api_url: str = Field(
         default="https://api.zeroentropy.dev/v1/models/rerank",
@@ -405,14 +405,14 @@ class Settings(BaseSettings):
             if is_production:
                 raise ValueError(
                     "SECURITY ERROR: JWT_SECRET_KEY must be set in production environment. "
-                    "Set ENVIRONMENT=production and provide JWT_SECRET_KEY secret."
+                    "Set ENVIRONMENT=production and provide JWT_SECRET_KEY secret.",
                 )
             # SECURITY: Only allow default dev key in development/testing
             # This prevents accidental use of weak keys in production
             logger = logging.getLogger(__name__)
             logger.warning(
                 "⚠️ Using default JWT secret key for development. "
-                "Set JWT_SECRET_KEY env var for production."
+                "Set JWT_SECRET_KEY env var for production.",
             )
             return "zantara_dev_secret_key_change_in_production_min_32_chars"
 
@@ -422,7 +422,7 @@ class Settings(BaseSettings):
         if is_production and v == "zantara_dev_secret_key_change_in_production_min_32_chars":
             raise ValueError(
                 "SECURITY ERROR: Cannot use default JWT secret key in production. "
-                "Set JWT_SECRET_KEY to a secure random string (min 32 chars)."
+                "Set JWT_SECRET_KEY to a secure random string (min 32 chars).",
             )
 
         return v
@@ -459,19 +459,19 @@ class Settings(BaseSettings):
             if is_production:
                 raise ValueError(
                     "SECURITY ERROR: API_KEYS must be set in production environment. "
-                    "Provide comma-separated list of secure API keys."
+                    "Provide comma-separated list of secure API keys.",
                 )
             # SECURITY: Only allow default dev key in development/testing
             logger = logging.getLogger(__name__)
             logger.warning(
-                "⚠️ Using default API key for development. Set API_KEYS env var for production."
+                "⚠️ Using default API key for development. Set API_KEYS env var for production.",
             )
             return "dev_api_key_for_testing_only"
 
         if is_production and v == "dev_api_key_for_testing_only":
             raise ValueError(
                 "SECURITY ERROR: Cannot use default API key in production. "
-                "Set API_KEYS to secure comma-separated keys."
+                "Set API_KEYS to secure comma-separated keys.",
             )
 
         return v
@@ -573,14 +573,14 @@ class Settings(BaseSettings):
             if is_production:
                 raise ValueError(
                     "WHATSAPP_VERIFY_TOKEN must be set in production. "
-                    "Provide a secure random token."
+                    "Provide a secure random token.",
                 )
             return "dev_whatsapp_token_for_testing"
 
         if is_production and v == "dev_whatsapp_token_for_testing":
             raise ValueError(
                 "Cannot use default WhatsApp verify token in production. "
-                "Set WHATSAPP_VERIFY_TOKEN to a secure random string."
+                "Set WHATSAPP_VERIFY_TOKEN to a secure random string.",
             )
 
         return v
@@ -650,14 +650,14 @@ class Settings(BaseSettings):
             if is_production:
                 raise ValueError(
                     "INSTAGRAM_VERIFY_TOKEN must be set in production. "
-                    "Provide a secure random token."
+                    "Provide a secure random token.",
                 )
             return "dev_instagram_token_for_testing"
 
         if is_production and v == "dev_instagram_token_for_testing":
             raise ValueError(
                 "Cannot use default Instagram verify token in production. "
-                "Set INSTAGRAM_VERIFY_TOKEN to a secure random string."
+                "Set INSTAGRAM_VERIFY_TOKEN to a secure random string.",
             )
 
         return v

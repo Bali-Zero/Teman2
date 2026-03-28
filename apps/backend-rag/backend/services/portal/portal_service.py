@@ -108,7 +108,7 @@ class VirusScanner:
         for pattern in cls.SUSPICIOUS_PATTERNS:
             if pattern in content_sample.lower():
                 threats.append(
-                    f"Suspicious pattern detected: {pattern.decode('utf-8', errors='ignore')}"
+                    f"Suspicious pattern detected: {pattern.decode('utf-8', errors='ignore')}",
                 )
 
         # Check for executable magic bytes
@@ -133,7 +133,7 @@ class DocumentOCR:
 
     @classmethod
     async def extract_text(
-        cls, file_content: bytes, file_name: str, mime_type: str | None = None
+        cls, file_content: bytes, file_name: str, mime_type: str | None = None,
     ) -> dict[str, Any]:
         """
         Extract text from PDF or image using Gemini Vision (same as passport box).
@@ -172,8 +172,8 @@ class DocumentOCR:
         if MAGIC_AVAILABLE:
             try:
                 return magic.from_buffer(file_content, mime=True)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"libmagic MIME detection failed, using extension fallback: {e}")
 
         # Fallback to extension-based detection
         import mimetypes
@@ -228,7 +228,7 @@ class DocumentOCR:
 
     @classmethod
     async def _extract_pdf_via_vision(
-        cls, pdf_content: bytes, vision_service: Any
+        cls, pdf_content: bytes, vision_service: Any,
     ) -> dict[str, Any]:
         """Extract text by rendering PDF pages to images and using Gemini Vision."""
         result = {"text": "", "pages": 0, "success": False, "error": None}
@@ -471,8 +471,8 @@ class ExpiryDetector:
                         day, month = b, a
 
                 return f"{year:04d}-{month:02d}-{day:02d}"
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Date normalization skipped for value: {e}")
         return None
 
 
@@ -582,7 +582,7 @@ class PortalService:
 
             # Get primary company name
             primary_company = next(
-                (c for c in companies if c["is_primary"]), companies[0] if companies else None
+                (c for c in companies if c["is_primary"]), companies[0] if companies else None,
             )
 
             # Get upcoming tax deadlines (next 30 days)
@@ -745,7 +745,7 @@ class PortalService:
                     "priority": "high" if visa_data["daysRemaining"] <= 30 else "medium",
                     "type": "visa_renewal",
                     "href": "/portal/visa",
-                }
+                },
             )
             action_id += 1
 
@@ -761,7 +761,7 @@ class PortalService:
                         "priority": "high" if item["status"] == "waiting_documents" else "medium",
                         "type": "missing_documents",
                         "href": "/portal/documents",
-                    }
+                    },
                 )
                 action_id += 1
                 if action_id > 5:  # Max 5 actions
@@ -936,7 +936,7 @@ class PortalService:
                         "type": f"{v['code']} - {v['name']}" if v["code"] else v["name"],
                         "period": period,
                         "status": hist_status,
-                    }
+                    },
                 )
 
             # Build documents response (matching frontend PortalDocument)
@@ -981,7 +981,7 @@ class PortalService:
                         "downloadUrl": d["file_url"]
                         if d["status"] in ("verified", "issued")
                         else None,
-                    }
+                    },
                 )
 
             return {
@@ -1264,7 +1264,7 @@ class PortalService:
                         "dueDate": d["due_date"],
                         "status": "overdue" if d["days_until"] < 0 else "pending",
                         "amount": None,
-                    }
+                    },
                 )
 
             # Build history from completed tax practices
@@ -1280,7 +1280,7 @@ class PortalService:
                             else "N/A",
                             "filedDate": p["created_at"].isoformat() if p["created_at"] else None,
                             "amount": 0,  # No amount stored in practices
-                        }
+                        },
                     )
 
             # Calculate summary
@@ -1314,7 +1314,7 @@ class PortalService:
     # ================================================
 
     async def get_documents(
-        self, client_id: int, document_type: str | None = None
+        self, client_id: int, document_type: str | None = None,
     ) -> list[dict[str, Any]]:
         """Get all client-visible documents."""
         async with self.pool.acquire() as conn:
@@ -1388,11 +1388,11 @@ class PortalService:
         if not scan_result["clean"]:
             logger.warning(
                 f"🚨 THREAT DETECTED in upload from client {client_id}: "
-                f"{file_name} - Threats: {scan_result['threats']}"
+                f"{file_name} - Threats: {scan_result['threats']}",
             )
             raise ValueError(
                 f"Security threat detected in file: {', '.join(scan_result['threats'])}. "
-                "Upload blocked for security reasons."
+                "Upload blocked for security reasons.",
             )
 
         logger.info(f"✅ Virus scan passed for {file_name}")
@@ -1419,7 +1419,7 @@ class PortalService:
         client_uploads = [t for t in client_uploads if now - t < self.RATE_WINDOW_SECONDS]
         if len(client_uploads) >= self.MAX_UPLOADS_PER_WINDOW:
             raise ValueError(
-                f"Rate limit exceeded: max {self.MAX_UPLOADS_PER_WINDOW} uploads per 15 minutes"
+                f"Rate limit exceeded: max {self.MAX_UPLOADS_PER_WINDOW} uploads per 15 minutes",
             )
         client_uploads.append(now)
         self._upload_rate_limits[client_id] = client_uploads
@@ -1448,7 +1448,7 @@ class PortalService:
             )
             if duplicate:
                 logger.info(
-                    f"Duplicate file detected: {file_name} uploaded at {duplicate['created_at']}"
+                    f"Duplicate file detected: {file_name} uploaded at {duplicate['created_at']}",
                 )
                 raise ValueError(f"File already uploaded recently at {duplicate['created_at']}")
 
@@ -1497,14 +1497,14 @@ class PortalService:
                 }
             else:
                 ocr_result = await DocumentOCR.extract_text(
-                    file_content=file_content, file_name=file_name, mime_type=mime_type
+                    file_content=file_content, file_name=file_name, mime_type=mime_type,
                 )
             processing_results["ocr"] = ocr_result
 
             if ocr_result["success"]:
                 logger.info(
                     f"📄 OCR extracted {len(ocr_result['text'])} chars "
-                    f"from {file_name} ({ocr_result['pages']} pages)"
+                    f"from {file_name} ({ocr_result['pages']} pages)",
                 )
             else:
                 logger.warning(f"⚠️ OCR failed for {file_name}: {ocr_result.get('error')}")
@@ -1513,14 +1513,14 @@ class PortalService:
             # STEP 4: EXPIRY DATE DETECTION
             # =========================================================================
             expiry_result = ExpiryDetector.detect_expiry(
-                text=ocr_result.get("text", ""), document_type=document_type
+                text=ocr_result.get("text", ""), document_type=document_type,
             )
             processing_results["expiry_detection"] = expiry_result
 
             if expiry_result["expiry_date"]:
                 logger.info(
                     f"📅 Expiry date detected for {document_type}: "
-                    f"{expiry_result['expiry_date']} (confidence: {expiry_result['confidence']})"
+                    f"{expiry_result['expiry_date']} (confidence: {expiry_result['confidence']})",
                 )
 
             # =========================================================================
@@ -1612,7 +1612,7 @@ class PortalService:
             logger.info(
                 f"✅ Document processed and stored: {file_name} for client {client_id}, "
                 f"size: {file_size_kb}KB, type: {document_type}, "
-                f"drive_id: {drive_result.get('file_id', 'N/A')}"
+                f"drive_id: {drive_result.get('file_id', 'N/A')}",
             )
 
             # =========================================================================
@@ -1625,7 +1625,7 @@ class PortalService:
                     document_type=document_type,
                     expiry_date=expiry_result.get("expiry_date"),
                     drive_url=drive_result.get("file_url"),
-                )
+                ),
             )
 
             # Update metrics
@@ -1752,7 +1752,7 @@ class PortalService:
             client_folder_name = f"{client_id}_{safe_client_name[:30]}"  # Limit name length
 
             client_folder_id = await self._get_or_create_drive_folder(
-                drive_service, user_id, folder_name=client_folder_name, parent_id=root_folder_id
+                drive_service, user_id, folder_name=client_folder_name, parent_id=root_folder_id,
             )
 
             if not client_folder_id:
@@ -1762,7 +1762,7 @@ class PortalService:
             # Create/get document type folder
             type_folder_name = document_type.replace("_", " ").title()
             type_folder_id = await self._get_or_create_drive_folder(
-                drive_service, user_id, folder_name=type_folder_name, parent_id=client_folder_id
+                drive_service, user_id, folder_name=type_folder_name, parent_id=client_folder_id,
             )
 
             if not type_folder_id:
@@ -1791,7 +1791,7 @@ class PortalService:
                     if attempt < max_retries - 1:
                         wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
                         logger.warning(
-                            f"Drive upload attempt {attempt + 1} failed, retrying in {wait_time}s: {e}"
+                            f"Drive upload attempt {attempt + 1} failed, retrying in {wait_time}s: {e}",
                         )
                         await asyncio.sleep(wait_time)
                     else:
@@ -1809,7 +1809,7 @@ class PortalService:
                 )
 
                 logger.info(
-                    f"📁 File uploaded to Drive: {drive_file_name} (ID: {upload_result.get('id')})"
+                    f"📁 File uploaded to Drive: {drive_file_name} (ID: {upload_result.get('id')})",
                 )
             else:
                 result["error"] = "Upload failed after all retries"
@@ -1870,13 +1870,13 @@ class PortalService:
             result["success"] = True
             result["file_id"] = uploaded_file.get("id")
             result["file_url"] = uploaded_file.get(
-                "webViewLink", f"https://drive.google.com/file/d/{uploaded_file.get('id')}/view"
+                "webViewLink", f"https://drive.google.com/file/d/{uploaded_file.get('id')}/view",
             )
             result["folder_path"] = folder_path
             result["method"] = "service_account"
 
             logger.info(
-                f"📁 File uploaded via Service Account: {drive_file_name} (ID: {uploaded_file.get('id')})"
+                f"📁 File uploaded via Service Account: {drive_file_name} (ID: {uploaded_file.get('id')})",
             )
 
         except Exception as e:
@@ -1886,7 +1886,7 @@ class PortalService:
         return result
 
     async def _get_or_create_drive_folder(
-        self, drive_service: Any, user_id: str, folder_name: str, parent_id: str = "root"
+        self, drive_service: Any, user_id: str, folder_name: str, parent_id: str = "root",
     ) -> str | None:
         """
         Get existing folder or create new one in Google Drive.
@@ -1897,7 +1897,7 @@ class PortalService:
         try:
             # Search for existing folder using list_files with filter
             files_result = await drive_service.list_files(
-                user_id=user_id, folder_id=parent_id, page_size=100
+                user_id=user_id, folder_id=parent_id, page_size=100,
             )
 
             for file in files_result.get("files", []):
@@ -1910,7 +1910,7 @@ class PortalService:
 
             # Create new folder
             new_folder = await drive_service.create_folder(
-                user_id=user_id, name=folder_name, parent_id=parent_id
+                user_id=user_id, name=folder_name, parent_id=parent_id,
             )
 
             logger.info(f"Created new folder '{folder_name}' with ID: {new_folder.get('id')}")
@@ -1992,7 +1992,7 @@ Questa è una notifica automatica da Bali Zero CRM.
 
                 logger.info(
                     f"📧 Document upload notification sent to {lead_email} "
-                    f"for client {client['full_name']}"
+                    f"for client {client['full_name']}",
                 )
 
         except Exception as e:
@@ -2254,7 +2254,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                             "entity": {"practiceId": ev["practice_id"]}
                             if ev["practice_id"]
                             else {},
-                        }
+                        },
                     )
             except Exception as e:
                 if not self._is_undefined_table_error(e):
@@ -2289,7 +2289,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                             and msg["read_at"] is None,
                             "isFuture": False,
                             "entity": {"messageId": str(msg["id"])},
-                        }
+                        },
                     )
             except Exception as e:
                 logger.warning(f"Could not fetch messages for timeline: {e}")
@@ -2319,7 +2319,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                             "unread": False,
                             "isFuture": False,
                             "entity": {"documentId": str(doc["id"])},
-                        }
+                        },
                     )
             except Exception as e:
                 logger.warning(f"Could not fetch documents for timeline: {e}")
@@ -2356,7 +2356,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                                 "practiceId": p["id"],
                                 "practiceCategory": p["category"],
                             },
-                        }
+                        },
                     )
             except Exception as e:
                 logger.warning(f"Could not fetch practices for timeline: {e}")
@@ -2375,7 +2375,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                         "status": deadline["urgency"],
                         "unread": False,
                         "isFuture": True,
-                    }
+                    },
                 )
 
         # Sort by date descending
@@ -2481,7 +2481,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                 else "warning"
                 if days_until <= 30
                 else "normal",
-            }
+            },
         )
 
         # PPN (VAT) - End of following month
@@ -2492,7 +2492,7 @@ Questa è una notifica automatica da Bali Zero CRM.
             ppn_date = datetime(next_year, 12, 31, tzinfo=timezone.utc)
         else:
             ppn_date = datetime(next_year, next_month + 1, 1, tzinfo=timezone.utc) - timedelta(
-                days=1
+                days=1,
             )
 
         days_until = (ppn_date.date() - today.date()).days
@@ -2507,7 +2507,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                 else "warning"
                 if days_until <= 30
                 else "normal",
-            }
+            },
         )
 
         # Annual SPT - March 31
@@ -2526,7 +2526,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                 else "warning"
                 if days_until <= 30
                 else "normal",
-            }
+            },
         )
 
         # Sort by days_until
@@ -2596,7 +2596,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                 FROM documents
                 WHERE uploaded_source = 'client'
                 AND created_at > NOW() - INTERVAL '24 hours'
-                """
+                """,
             )
 
             metrics["last_24h"] = {
@@ -2627,8 +2627,8 @@ Questa è una notifica automatica da Bali Zero CRM.
         try:
             result = VirusScanner.scan(b"test", "test.pdf")
             checks["virus_scanner"] = result.get("clean") is not None
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Virus scanner check failed (non-critical): {e}")
 
         # Check Drive configuration
         try:
@@ -2640,8 +2640,8 @@ Questa è una notifica automatica da Bali Zero CRM.
             if checks["drive_configured"]:
                 token = await drive_service.get_valid_token("SYSTEM")
                 checks["drive_token"] = token is not None
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Drive config check failed (non-critical): {e}")
 
         # Check OCR availability
         checks["ocr_available"] = PDF_VISION_AVAILABLE or PYMUPDF_AVAILABLE
@@ -2651,8 +2651,8 @@ Questa è una notifica automatica da Bali Zero CRM.
             async with self.pool.acquire() as conn:
                 await conn.fetchval("SELECT 1")
                 checks["database"] = True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Database health check failed: {e}")
 
         all_healthy = all(checks.values())
 

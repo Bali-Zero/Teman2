@@ -47,7 +47,7 @@ class LeadAssignmentState(TypedDict):
 
 
 async def check_duplicates(
-    state: LeadAssignmentState, db_pool: "asyncpg.Pool"
+    state: LeadAssignmentState, db_pool: "asyncpg.Pool",
 ) -> LeadAssignmentState:
     """
     Step 1: Entity resolution - check for duplicate clients
@@ -77,7 +77,7 @@ async def check_duplicates(
                 state["matched_client_id"] = existing["id"]
                 state["assigned_lead"] = existing["assigned_to"]
                 logger.info(
-                    f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (email)"
+                    f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (email)",
                 )
                 return state
 
@@ -98,7 +98,7 @@ async def check_duplicates(
                 state["matched_client_id"] = existing["id"]
                 state["assigned_lead"] = existing["assigned_to"]
                 logger.info(
-                    f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (phone)"
+                    f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (phone)",
                 )
                 return state
 
@@ -115,7 +115,7 @@ async def check_duplicates(
                     state["matched_client_id"] = existing["id"]
                     state["assigned_lead"] = existing["assigned_to"]
                     logger.info(
-                        f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (telegram)"
+                        f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (telegram)",
                     )
                     return state
 
@@ -132,7 +132,7 @@ async def check_duplicates(
                     state["matched_client_id"] = existing["id"]
                     state["assigned_lead"] = existing["assigned_to"]
                     logger.info(
-                        f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (whatsapp)"
+                        f"🔍 Duplicate detected: client_id={client_id} matches existing client_id={existing['id']} (whatsapp)",
                     )
                     return state
 
@@ -238,7 +238,7 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
             )
             logger.info(
                 f"✅ Assigned client #{state['client_id']} to {lead['email']} "
-                f"(dept={lead['department']}, workload={lead['active_practices']})"
+                f"(dept={lead['department']}, workload={lead['active_practices']})",
             )
         else:
             # Fallback: any assignable team member with least workload
@@ -271,19 +271,19 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
                 )
                 logger.info(
                     f"✅ Assigned (fallback) client #{state['client_id']} to {lead['email']} "
-                    f"(dept={lead['department']})"
+                    f"(dept={lead['department']})",
                 )
             else:
                 state["errors"].append("No active team members available for assignment")
                 logger.warning(
-                    f"❌ No team members available to assign client #{state['client_id']}"
+                    f"❌ No team members available to assign client #{state['client_id']}",
                 )
 
     return state
 
 
 async def send_telegram_notification(
-    state: LeadAssignmentState, db_pool: "asyncpg.Pool", telegram_service
+    state: LeadAssignmentState, db_pool: "asyncpg.Pool", telegram_service,
 ) -> LeadAssignmentState:
     """
     Step 3: Send Telegram notification to assigned lead
@@ -320,7 +320,7 @@ async def send_telegram_notification(
             state["errors"].append(f"No Telegram chat_id for {state['assigned_lead']}")
             logger.warning(
                 f"⚠️ Cannot notify {state['assigned_lead']}: no Telegram chat_id found. "
-                "Team member needs to link Telegram account."
+                "Team member needs to link Telegram account.",
             )
             state["notification_sent"] = False
             return state
@@ -359,7 +359,7 @@ async def send_telegram_notification(
                 },
             ],
             [{"text": "👁️ Vedi Dettagli CRM", "url": crm_url}],
-        ]
+        ],
     }
 
     try:
@@ -371,7 +371,7 @@ async def send_telegram_notification(
         )
         state["notification_sent"] = True
         logger.info(
-            f"📨 Telegram notification sent to {state['assigned_lead']} (chat_id: {state['telegram_chat_id']})"
+            f"📨 Telegram notification sent to {state['assigned_lead']} (chat_id: {state['telegram_chat_id']})",
         )
     except Exception as e:
         state["errors"].append(f"Telegram notification failed: {str(e)}")
@@ -464,14 +464,14 @@ async def trigger_lead_assignment(
         logger.info(
             f"🎯 Lead assignment completed for client #{client_id}: "
             f"assigned_to={final_state.get('assigned_lead')}, "
-            f"notified={final_state.get('notification_sent')}"
+            f"notified={final_state.get('notification_sent')}",
         )
 
         return final_state
 
     except Exception as e:
         logger.error(
-            f"❌ Lead assignment workflow failed for client #{client_id}: {e}", exc_info=True
+            f"❌ Lead assignment workflow failed for client #{client_id}: {e}", exc_info=True,
         )
         return {
             "client_id": client_id,

@@ -61,7 +61,7 @@ class AlertGeneratorService:
         }
 
     def generate_alert(
-        self, item: ComplianceItem, severity: AlertSeverity, days_until: int
+        self, item: ComplianceItem, severity: AlertSeverity, days_until: int,
     ) -> ComplianceAlert:
         """
         Generate alert from compliance item.
@@ -119,7 +119,7 @@ class AlertGeneratorService:
         return alert
 
     def find_existing_alert(
-        self, compliance_item_id: str, severity: AlertSeverity
+        self, compliance_item_id: str, severity: AlertSeverity,
     ) -> ComplianceAlert | None:
         """
         Find existing alert for item at severity level.
@@ -141,7 +141,7 @@ class AlertGeneratorService:
         return None
 
     def get_alerts_for_client(
-        self, client_id: str, status_filter: AlertStatus | None = None
+        self, client_id: str, status_filter: AlertStatus | None = None,
     ) -> list[ComplianceAlert]:
         """
         Get alerts for a specific client.

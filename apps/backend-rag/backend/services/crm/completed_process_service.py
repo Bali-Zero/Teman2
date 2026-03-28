@@ -139,7 +139,7 @@ class CompletedProcessService:
                         {
                             "filename": doc["filename"],
                             "file_url": result["file_url"],
-                        }
+                        },
                     )
 
                     # Save to database

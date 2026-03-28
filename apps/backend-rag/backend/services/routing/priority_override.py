@@ -145,7 +145,7 @@ class PriorityOverrideService:
         # Return None to let Agentic RAG use TeamKnowledgeTool instead
         if any(pattern in query_lower for pattern in self.identity_patterns):
             logger.info(
-                "🧭 Route: TeamKnowledgeTool (IDENTITY QUERY - bali_zero_team collection removed)"
+                "🧭 Route: TeamKnowledgeTool (IDENTITY QUERY - bali_zero_team collection removed)",
             )
             return None  # Let Agentic RAG handle via TeamKnowledgeTool
 
@@ -153,7 +153,7 @@ class PriorityOverrideService:
         # FIXED 2026-01-10: bali_zero_team doesn't exist, TeamKnowledgeTool handles this
         if any(pattern in query_lower for pattern in self.team_patterns):
             logger.info(
-                "🧭 Route: TeamKnowledgeTool (TEAM ENUMERATION - bali_zero_team collection removed)"
+                "🧭 Route: TeamKnowledgeTool (TEAM ENUMERATION - bali_zero_team collection removed)",
             )
             return None  # Let Agentic RAG handle via TeamKnowledgeTool
 
@@ -161,7 +161,7 @@ class PriorityOverrideService:
         # FIXED 2026-01-10: bali_zero_team doesn't exist, TeamKnowledgeTool handles this
         if "fondatore" in query_lower or "founder" in query_lower:
             logger.info(
-                "🧭 Route: TeamKnowledgeTool (FOUNDER QUERY - bali_zero_team collection removed)"
+                "🧭 Route: TeamKnowledgeTool (FOUNDER QUERY - bali_zero_team collection removed)",
             )
             return None  # Let Agentic RAG handle via TeamKnowledgeTool
 
@@ -171,7 +171,7 @@ class PriorityOverrideService:
         )
         if backend_services_score > 0:
             logger.info(
-                f"🧭 Route: zantara_books (BACKEND SERVICES QUERY: score={backend_services_score})"
+                f"🧭 Route: zantara_books (BACKEND SERVICES QUERY: score={backend_services_score})",
             )
             return "zantara_books"
 

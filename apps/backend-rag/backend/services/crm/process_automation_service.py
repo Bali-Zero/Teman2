@@ -95,7 +95,7 @@ class ProcessAutomationService:
                     )
                     results["team_leader_notified"] = True
                     logger.info(
-                        f"Process start notification sent to team leader {team_leader_email}"
+                        f"Process start notification sent to team leader {team_leader_email}",
                     )
                 except Exception as e:
                     logger.error(f"Failed to send notification to team leader: {e}")

@@ -21,7 +21,7 @@ def mock_ai_client():
     """Mock AI client"""
     client = MagicMock()
     client.generate_text = AsyncMock(
-        return_value='[{"type": "law", "name": "UU No. 1", "canonical_name": "UU No. 1 Tahun 2020", "context": "test"}]'
+        return_value='[{"type": "law", "name": "UU No. 1", "canonical_name": "UU No. 1 Tahun 2020", "context": "test"}]',
     )
     return client
 
@@ -136,7 +136,7 @@ class TestRelationshipExtractor:
         text = "UU No. 1 Tahun 2020 tentang Ketenagakerjaan"
 
         mock_ai_client.generate_text = AsyncMock(
-            return_value='[{"source": "UU No. 1", "target": "Ketenagakerjaan", "relationship": "regulates", "strength": 0.9}]'
+            return_value='[{"source": "UU No. 1", "target": "Ketenagakerjaan", "relationship": "regulates", "strength": 0.9}]',
         )
 
         result = await relationship_extractor.extract_relationships(entities, text)
@@ -155,7 +155,7 @@ class TestRelationshipExtractor:
         with patch("backend.agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
             extractor = RelationshipExtractor()
             result = await extractor.extract_relationships(
-                [{"type": "law", "name": "Test"}], "Test text"
+                [{"type": "law", "name": "Test"}], "Test text",
             )
             assert result == []
 
@@ -168,7 +168,7 @@ class TestRelationshipExtractor:
 
         entities = [{"type": "law", "name": "Test"}]
         result = await relationship_extractor.extract_relationships(
-            entities, "Test text", timeout=0.1
+            entities, "Test text", timeout=0.1,
         )
         assert result == []
 

@@ -96,7 +96,7 @@ class ChannelRouter:
         if not adapter:
             raise ValueError(
                 f"Channel '{channel}' not registered. "
-                f"Available channels: {list(self.adapters.keys())}"
+                f"Available channels: {list(self.adapters.keys())}",
             )
 
         logger.info(f"🔀 Routing message from {channel}")
@@ -106,15 +106,15 @@ class ChannelRouter:
             message = await adapter.receive_message(raw_event)
             logger.info(
                 f"📨 Received message from {message.channel} "
-                f"(user={message.user_id}, text_length={len(message.text)})"
+                f"(user={message.user_id}, text_length={len(message.text)})",
             )
 
             # 3. Deduplication check (prevents webhook retries, read receipts, etc.)
             if message_deduplicator and await message_deduplicator.is_duplicate(
-                channel, message.user_id, message.text
+                channel, message.user_id, message.text,
             ):
                 logger.warning(
-                    f"🔁 Duplicate message dropped: channel={channel}, user={message.user_id}"
+                    f"🔁 Duplicate message dropped: channel={channel}, user={message.user_id}",
                 )
                 return
 
@@ -135,7 +135,7 @@ class ChannelRouter:
 
             # 7. Process through conversation engine
             response_stream = self.conversation_engine.process_message(
-                message=message, channel_config=channel_config
+                message=message, channel_config=channel_config,
             )
 
             # 8. Stream response via adapter

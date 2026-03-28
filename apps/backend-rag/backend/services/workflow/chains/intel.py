@@ -123,7 +123,7 @@ async def _assess_items(state: IntelReviewState, app_state: Any) -> IntelReviewS
                     "confidence": 0.0,
                     "significant": False,
                     "reason": "no_llm_key",
-                }
+                },
             )
             continue
 
@@ -162,7 +162,7 @@ async def _assess_items(state: IntelReviewState, app_state: Any) -> IntelReviewS
                     "confidence": float(result.get("confidence", 0)),
                     "significant": bool(result.get("significant", False)),
                     "reason": result.get("reason", ""),
-                }
+                },
             )
         except Exception as e:
             logger.warning(f"intel.review: assessment failed for {item_id}: {e}")
@@ -173,7 +173,7 @@ async def _assess_items(state: IntelReviewState, app_state: Any) -> IntelReviewS
                     "confidence": 0.0,
                     "significant": False,
                     "reason": f"error: {e}",
-                }
+                },
             )
 
     state["assessments"] = assessments
@@ -255,7 +255,7 @@ async def _summarize(state: IntelReviewState, app_state: Any) -> IntelReviewStat
 
     logger.info(
         f"intel.review: complete — reviewed={total} significant={significant} "
-        f"notified={notified} errors={errors}"
+        f"notified={notified} errors={errors}",
     )
     return state
 

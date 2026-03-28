@@ -90,7 +90,7 @@ class ZantaraAIClient:
         has_service_account = bool(
             os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
             or os.environ.get("GOOGLE_CREDENTIALS_JSON")
-            or getattr(settings, "google_credentials_json", None)
+            or getattr(settings, "google_credentials_json", None),
         )
 
         # Initialize GenAI client using new SDK wrapper
@@ -112,14 +112,14 @@ class ZantaraAIClient:
         else:
             if settings.environment == "production":
                 logger.critical(
-                    "❌ CRITICAL: No Gemini credentials found in PRODUCTION environment"
+                    "❌ CRITICAL: No Gemini credentials found in PRODUCTION environment",
                 )
                 raise ValueError(
-                    "GOOGLE_API_KEY or GOOGLE_CREDENTIALS_JSON is required in production"
+                    "GOOGLE_API_KEY or GOOGLE_CREDENTIALS_JSON is required in production",
                 )
 
             logger.warning(
-                "⚠️ No Gemini credentials found - defaulting to MOCK MODE (Development only)"
+                "⚠️ No Gemini credentials found - defaulting to MOCK MODE (Development only)",
             )
             self.mock_mode = True
             self._genai_client = None
@@ -147,7 +147,7 @@ class ZantaraAIClient:
         logger.debug(f"   Model: {self.model}")
         logger.debug(f"   Mock Mode: {self.mock_mode}")
         logger.debug(
-            f"   System Prompt: {len(self.prompt_manager._base_system_prompt)} chars loaded"
+            f"   System Prompt: {len(self.prompt_manager._base_system_prompt)} chars loaded",
         )
 
         logger.info("✅ ZantaraAIClient initialized")
@@ -238,11 +238,11 @@ class ZantaraAIClient:
         if temperature is not None:
             if temperature < ZantaraAIClientConstants.MIN_TEMPERATURE:
                 raise ValueError(
-                    f"temperature must be >= {ZantaraAIClientConstants.MIN_TEMPERATURE}"
+                    f"temperature must be >= {ZantaraAIClientConstants.MIN_TEMPERATURE}",
                 )
             if temperature > ZantaraAIClientConstants.MAX_TEMPERATURE:
                 raise ValueError(
-                    f"temperature must be <= {ZantaraAIClientConstants.MAX_TEMPERATURE}"
+                    f"temperature must be <= {ZantaraAIClientConstants.MAX_TEMPERATURE}",
                 )
 
         if messages is not None:
@@ -318,7 +318,7 @@ class ZantaraAIClient:
                         return candidate.content.parts[0].text
                     else:
                         raise ValueError(
-                            "Response blocked by safety filters and no content available"
+                            "Response blocked by safety filters and no content available",
                         )
                 else:
                     raise ValueError("Response blocked by safety filters")
@@ -326,7 +326,7 @@ class ZantaraAIClient:
         return response.text
 
     def _estimate_tokens(
-        self, messages: list[dict[str, str]], response_text: str
+        self, messages: list[dict[str, str]], response_text: str,
     ) -> dict[str, int]:
         """
         Estimate token counts for input and output.
@@ -448,12 +448,12 @@ class ZantaraAIClient:
             if "403" in error_msg or "leaked" in error_msg or "api key" in error_msg:
                 logger.critical(
                     "🚨 CRITICAL: API key leaked or invalid (403). "
-                    "Please replace GOOGLE_API_KEY in environment variables."
+                    "Please replace GOOGLE_API_KEY in environment variables.",
                 )
                 # Raise a specific exception that can be caught and handled gracefully
                 raise ValueError(
                     "API key was reported as leaked. Please use another API key. "
-                    "Contact the technical team to update GOOGLE_API_KEY."
+                    "Contact the technical team to update GOOGLE_API_KEY.",
                 ) from e
             logger.error(f"❌ GenAI Error: {e}", exc_info=True)
             raise
@@ -487,7 +487,7 @@ class ZantaraAIClient:
 
         # Validate inputs
         self._validate_inputs(
-            max_tokens=max_tokens, messages=[{"role": "user", "content": message}]
+            max_tokens=max_tokens, messages=[{"role": "user", "content": message}],
         )
 
         # Build system prompt
@@ -551,7 +551,7 @@ class ZantaraAIClient:
                             {
                                 "role": msg.get("role", "user"),
                                 "content": msg.get("content", ""),
-                            }
+                            },
                         )
 
                 # Create chat session with new SDK wrapper
@@ -611,12 +611,12 @@ class ZantaraAIClient:
             if attempt < self.retry_handler.max_retries - 1:
                 delay = self.retry_handler.base_delay * (self.retry_handler.backoff_factor**attempt)
                 logger.warning(
-                    f"⚠️ Stream failed (attempt {attempt + 1}/{self.retry_handler.max_retries}): {last_exception}. Retrying in {delay}s..."
+                    f"⚠️ Stream failed (attempt {attempt + 1}/{self.retry_handler.max_retries}): {last_exception}. Retrying in {delay}s...",
                 )
                 await asyncio.sleep(delay)
             else:
                 logger.error(
-                    f"❌ [ZantaraAI] All streaming attempts failed for user {user_id}: {last_exception}"
+                    f"❌ [ZantaraAI] All streaming attempts failed for user {user_id}: {last_exception}",
                 )
 
         # If all retries failed, send fallback
@@ -705,7 +705,7 @@ class ZantaraAIClient:
         # So we just use standard conversational
         if tools:
             logger.info(
-                "🔧 [ZantaraAI] Tool use requested but not supported in Gemini native mode, using standard conversational"
+                "🔧 [ZantaraAI] Tool use requested but not supported in Gemini native mode, using standard conversational",
             )
 
         result = await self.conversational(

@@ -212,12 +212,12 @@ class CollectiveMemoryService:
                             )
                             logger.info(
                                 f"🎉 [Collective] Fact #{memory_id} promoted to collective "
-                                f"(sources: {actual_source_count})"
+                                f"(sources: {actual_source_count})",
                             )
 
                         logger.info(
                             f"🧠 [Collective] User {user_id} confirmed fact #{memory_id} "
-                            f"(sources: {actual_source_count}, promoted: {updated['is_promoted']})"
+                            f"(sources: {actual_source_count}, promoted: {updated['is_promoted']})",
                         )
 
                         return {
@@ -257,7 +257,7 @@ class CollectiveMemoryService:
                     # Qdrant collection was empty and not needed for current use case
 
                     logger.info(
-                        f"🧠 [Collective] New fact #{memory_id} from {user_id}: {content[:50]}..."
+                        f"🧠 [Collective] New fact #{memory_id} from {user_id}: {content[:50]}...",
                     )
 
                     return {
@@ -320,7 +320,7 @@ class CollectiveMemoryService:
                 )
 
                 logger.info(
-                    f"⚠️ [Collective] Fact #{memory_id} refuted by {user_id} (conf: {updated['confidence']:.2f})"
+                    f"⚠️ [Collective] Fact #{memory_id} refuted by {user_id} (conf: {updated['confidence']:.2f})",
                 )
 
                 # Auto-remove if confidence too low
@@ -512,7 +512,7 @@ class CollectiveMemoryService:
         async with self.pool.acquire() as conn:
             total = await conn.fetchval("SELECT COUNT(*) FROM collective_memories")
             promoted = await conn.fetchval(
-                "SELECT COUNT(*) FROM collective_memories WHERE is_promoted = TRUE"
+                "SELECT COUNT(*) FROM collective_memories WHERE is_promoted = TRUE",
             )
             by_category = await conn.fetch(
                 """
@@ -521,7 +521,7 @@ class CollectiveMemoryService:
                 WHERE is_promoted = TRUE
                 GROUP BY category
                 ORDER BY count DESC
-                """
+                """,
             )
 
             return {

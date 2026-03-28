@@ -151,7 +151,7 @@ def print_result(result: dict[str, Any], index: int):
     print(f"KBLI Code: {payload.get('kbli_code', 'N/A')}")
     print(f"Title: {payload.get('kbli_title', 'N/A')}")
     print(
-        f"Category: {payload.get('category_name', 'N/A')} (ID: {payload.get('category_id', 'N/A')})"
+        f"Category: {payload.get('category_name', 'N/A')} (ID: {payload.get('category_id', 'N/A')})",
     )
     print(f"Total Positions: {payload.get('total_positions', 0)}")
     print(f"Selected Positions: {payload.get('selected_positions', 0)}")
@@ -162,7 +162,7 @@ def print_result(result: dict[str, Any], index: int):
         print(f"\nTop Positions ({min(5, len(positions))} of {len(positions)}):")
         for i, pos in enumerate(positions[:5]):
             print(
-                f"  {i + 1}. {pos.get('title_en', 'N/A')} ({pos.get('title_id', 'N/A')}) - ISCO {pos.get('isco', 'N/A')}"
+                f"  {i + 1}. {pos.get('title_en', 'N/A')} ({pos.get('title_id', 'N/A')}) - ISCO {pos.get('isco', 'N/A')}",
             )
 
 
@@ -213,7 +213,7 @@ async def main():
             print(f"\n  Point {i + 1}:")
             print(f"    ID: {point.get('id', 'N/A')}")
             print(
-                f"    KBLI: {payload.get('kbli_code', 'N/A')} - {payload.get('kbli_title', 'N/A')}"
+                f"    KBLI: {payload.get('kbli_code', 'N/A')} - {payload.get('kbli_title', 'N/A')}",
             )
             print(f"    Positions count: {len(payload.get('positions', []))}")
     else:

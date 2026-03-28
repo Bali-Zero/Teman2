@@ -40,7 +40,7 @@ class Migration026(BaseMigration):
                 SELECT 1 FROM information_schema.tables
                 WHERE table_name = 'review_queue'
             )
-            """
+            """,
         )
 
         if not table_exists:
@@ -74,7 +74,7 @@ class Migration026(BaseMigration):
             """
             SELECT indexname FROM pg_indexes
             WHERE tablename = 'review_queue'
-            """
+            """,
         )
         index_names = [idx["indexname"] for idx in indexes]
         required_indexes = [
@@ -97,7 +97,7 @@ class Migration026(BaseMigration):
                     AND tc.constraint_type = 'FOREIGN KEY'
                     AND kcu.column_name = 'source_feedback_id'
             )
-            """
+            """,
         )
 
         if not fk_exists:

@@ -154,7 +154,7 @@ class HybridSearchService:
         try:
             sparse_vector = self._bm25_vectorizer.generate_query_sparse_vector(query)
             logger.debug(
-                f"Generated BM25 query vector with {len(sparse_vector.get('indices', []))} tokens"
+                f"Generated BM25 query vector with {len(sparse_vector.get('indices', []))} tokens",
             )
             return sparse_vector
         except Exception as e:
@@ -241,7 +241,7 @@ class HybridSearchService:
                     "fusion_score": round(rrf_score, 6),
                     "dense_rank": dense_rank,
                     "sparse_rank": sparse_rank,
-                }
+                },
             )
 
         # Sort by fusion score (descending)
@@ -249,7 +249,7 @@ class HybridSearchService:
 
         logger.debug(
             f"RRF fusion: {len(dense_results)} dense + {len(sparse_results)} sparse "
-            f"= {len(fused_results)} fused results"
+            f"= {len(fused_results)} fused results",
         )
 
         return fused_results
@@ -346,12 +346,12 @@ class HybridSearchService:
                     bm25_used = True
 
                     logger.info(
-                        f"Native hybrid search completed: {raw_results.get('total_found', 0)} results"
+                        f"Native hybrid search completed: {raw_results.get('total_found', 0)} results",
                     )
 
                 except Exception as e:
                     logger.warning(
-                        f"Native hybrid search failed: {e}, falling back to manual fusion"
+                        f"Native hybrid search failed: {e}, falling back to manual fusion",
                     )
                     has_native_hybrid = False
 
@@ -373,7 +373,7 @@ class HybridSearchService:
             elapsed = time.time() - start_time
             logger.info(
                 f"Hybrid search completed in {elapsed * 1000:.1f}ms: "
-                f"{len(formatted_results)} results from {collection}"
+                f"{len(formatted_results)} results from {collection}",
             )
 
             return {
@@ -509,7 +509,7 @@ class HybridSearchService:
                     "text": documents[i] if i < len(documents) else "",
                     "metadata": metadatas[i] if i < len(metadatas) else {},
                     "score": float(scores[i]) if i < len(scores) else 0.0,
-                }
+                },
             )
 
         return formatted

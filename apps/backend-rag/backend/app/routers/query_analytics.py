@@ -26,7 +26,7 @@ def _verify_founder_access(current_user=Depends(get_current_user)) -> Any:
     """Verify that the user has founder or admin level access."""
     if current_user.get("role") not in ["Founder", "admin"]:
         raise HTTPException(
-            status_code=403, detail="Access denied. This dashboard is for founders/admins only."
+            status_code=403, detail="Access denied. This dashboard is for founders/admins only.",
         )
     return current_user
 

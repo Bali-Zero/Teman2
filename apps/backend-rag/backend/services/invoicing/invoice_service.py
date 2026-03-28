@@ -264,7 +264,7 @@ For support: support@balizero.com | WhatsApp: +62 859 0436 9574
                             "filename": filename,
                             "content": pdf_bytes,
                             "content_type": "application/pdf",
-                        }
+                        },
                     ],
                 )
                 if success:
@@ -355,7 +355,7 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
                             "filename": filename,
                             "content": pdf_bytes,
                             "content_type": "application/pdf",
-                        }
+                        },
                     ],
                 )
                 if success:

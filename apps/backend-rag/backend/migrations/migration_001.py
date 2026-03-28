@@ -35,7 +35,7 @@ class Migration001(BaseMigration):
                 SELECT 1 FROM information_schema.tables
                 WHERE table_name = 'cultural_knowledge'
             )
-        """
+        """,
         )
 
         # Check query_clusters
@@ -45,7 +45,7 @@ class Migration001(BaseMigration):
                 SELECT 1 FROM information_schema.tables
                 WHERE table_name = 'query_clusters'
             )
-        """
+        """,
         )
 
         return bool(cultural_exists) and bool(clusters_exists)

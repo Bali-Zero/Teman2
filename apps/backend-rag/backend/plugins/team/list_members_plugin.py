@@ -19,7 +19,7 @@ class TeamListInput(PluginInput):
     """Input schema for team list"""
 
     department: str | None = Field(
-        None, description="Optional: filter by department (technology, operations, creative, etc.)"
+        None, description="Optional: filter by department (technology, operations, creative, etc.)",
     )
 
 
@@ -28,7 +28,7 @@ class TeamListOutput(PluginOutput):
 
     total_members: int | None = Field(None, description="Total number of team members")
     by_department: dict[str, list[dict[str, Any]]] | None = Field(
-        None, description="Team members grouped by department"
+        None, description="Team members grouped by department",
     )
     roster: list[dict[str, Any]] | None = Field(None, description="Full team roster")
     stats: dict[str, Any] | None = Field(None, description="Team statistics")

@@ -204,7 +204,7 @@ async def get_team_performance(
             else:
                 # Get all team members who have clients
                 member_rows = await conn.fetch(
-                    "SELECT DISTINCT assigned_to FROM clients WHERE assigned_to IS NOT NULL"
+                    "SELECT DISTINCT assigned_to FROM clients WHERE assigned_to IS NOT NULL",
                 )
                 members = [row["assigned_to"] for row in member_rows if row["assigned_to"]]
 
@@ -215,7 +215,7 @@ async def get_team_performance(
                 # Total clients
                 total = (
                     await conn.fetchval(
-                        "SELECT COUNT(*) FROM clients WHERE assigned_to = $1", member
+                        "SELECT COUNT(*) FROM clients WHERE assigned_to = $1", member,
                     )
                     or 0
                 )
@@ -266,7 +266,7 @@ async def get_team_performance(
                         "completed_cases": completed,
                         "conversion_rate": round(conversion_rate, 1),
                         "revenue_generated": float(revenue),
-                    }
+                    },
                 )
 
             # Sort by revenue
@@ -322,7 +322,7 @@ async def get_revenue_summary(
             months = []
             for i in range(5, -1, -1):
                 month_start = (datetime.now(tz=timezone.utc).replace(day=1) - timedelta(days=i * 30)).replace(
-                    day=1
+                    day=1,
                 )
                 month_end = (month_start + timedelta(days=32)).replace(day=1)
                 month_label = month_start.strftime("%Y-%m")
@@ -346,7 +346,7 @@ async def get_revenue_summary(
                         "period": month_label,
                         "revenue": float(month_row["revenue"] or 0),
                         "paid": float(month_row["paid"] or 0),
-                    }
+                    },
                 )
 
             # Average per client
@@ -420,7 +420,7 @@ async def get_processes_by_type(
                         "active_cases": row["active_cases"],
                         "completed_cases": row["completed_cases"],
                         "total_revenue": float(row["total_revenue"] or 0),
-                    }
+                    },
                 )
 
             return results
@@ -462,7 +462,7 @@ async def get_client_trend(
             results = []
             for i in range(months - 1, -1, -1):
                 month_start = (datetime.now(tz=timezone.utc).replace(day=1) - timedelta(days=i * 30)).replace(
-                    day=1
+                    day=1,
                 )
                 month_end = (month_start + timedelta(days=32)).replace(day=1)
                 month_label = month_start.strftime("%b %Y")
@@ -500,7 +500,7 @@ async def get_client_trend(
                         "period": month_label,
                         "new_clients": new_clients,
                         "revenue": float(revenue),
-                    }
+                    },
                 )
 
             return results

@@ -158,7 +158,7 @@ def analyze(
                 "is_router": is_router_file(filepath),
                 "is_service": is_service_file(filepath),
                 "priority_score": round(priority_score, 1),
-            }
+            },
         )
 
     # Sort by priority score (lowest = most important)

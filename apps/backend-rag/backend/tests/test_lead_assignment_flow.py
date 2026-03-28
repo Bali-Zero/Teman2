@@ -165,7 +165,7 @@ async def test_assign_lead_department_match(db_pool):
             "full_name": "KITAS Specialist",
             "department": "setup",
             "active_practices": 3,
-        }
+        },
     )
     conn.execute = AsyncMock()
 
@@ -229,7 +229,7 @@ async def test_send_telegram_notification_success(db_pool, telegram_service):
     # Mock: telegram chat_id found
     conn = await db_pool.acquire().__aenter__()
     conn.fetchrow = AsyncMock(
-        return_value={"telegram_chat_id": 123456789, "full_name": "Lead Agent"}
+        return_value={"telegram_chat_id": 123456789, "full_name": "Lead Agent"},
     )
 
     result = await send_telegram_notification(state, db_pool, telegram_service)
@@ -300,7 +300,7 @@ async def test_full_lead_assignment_workflow(db_pool, telegram_service, sample_c
                 "telegram_chat_id": 987654321,
                 "full_name": "KITAS Specialist",
             },  # get telegram chat_id
-        ]
+        ],
     )
     conn.execute = AsyncMock()
 
@@ -347,7 +347,7 @@ async def run_manual_tests():
 
     telegram_service = AsyncMock()
     telegram_service.send_message = AsyncMock(
-        return_value={"ok": True, "result": {"message_id": 123}}
+        return_value={"ok": True, "result": {"message_id": 123}},
     )
 
     sample_client_data = {

@@ -100,7 +100,7 @@ async def identify_tax_type_node(state: TaxState, llm) -> TaxState:
     logger.info(
         f"✅ [Tax Subgraph] Entity: {entity_type}, "
         f"NPWP required: {state['npwp_required']}, "
-        f"VAT applicable: {state['vat_applicable']}"
+        f"VAT applicable: {state['vat_applicable']}",
     )
 
     return state
@@ -216,7 +216,7 @@ async def get_tax_obligations_node(state: TaxState, db_pool: asyncpg.Pool) -> Ta
             "obligation_type": "tax_overview",
             "entity_type": entity_type,
             "details": obligations,
-        }
+        },
     )
 
     logger.info(f"✅ [Tax Subgraph] Added {len(obligations)} tax obligations for {entity_type}")
@@ -296,7 +296,7 @@ async def calculate_tax_requirements_node(state: TaxState) -> TaxState:
             "revenue": revenue,
             "currency": "IDR",
             "calculations": tax_summary,
-        }
+        },
     )
 
     logger.info(f"✅ [Tax Subgraph] Tax calculations: {len(tax_summary)} items")
@@ -344,7 +344,7 @@ async def synthesize_tax_workflow_node(state: TaxState) -> TaxState:
                 "registration": "Online via DJP (Direktorat Jenderal Pajak)",
                 "processing_time": "1-3 days",
             },
-        }
+        },
     )
 
     # Step 2: VAT registration (if applicable)
@@ -359,7 +359,7 @@ async def synthesize_tax_workflow_node(state: TaxState) -> TaxState:
                     "registration": "Online via DJP",
                     "processing_time": "7-14 days",
                 },
-            }
+            },
         )
 
     # Step 3: Bookkeeping
@@ -372,7 +372,7 @@ async def synthesize_tax_workflow_node(state: TaxState) -> TaxState:
                 "requirement": "Required for all business entities",
                 "software": "E.g., Jurnal, Accurate, or custom",
             },
-        }
+        },
     )
 
     # Step 4: Monthly filings
@@ -392,7 +392,7 @@ async def synthesize_tax_workflow_node(state: TaxState) -> TaxState:
                     "filings": monthly_filings,
                     "deadline": "20th of following month (withholding), end of month (VAT)",
                 },
-            }
+            },
         )
 
     # Step 5: Annual return
@@ -405,7 +405,7 @@ async def synthesize_tax_workflow_node(state: TaxState) -> TaxState:
                 "deadline": "4 months after fiscal year end (corporate), March 31 (personal)",
                 "requirement": "Audited financial statements for revenue > 50B IDR",
             },
-        }
+        },
     )
 
     from dataclasses import asdict

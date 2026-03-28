@@ -70,7 +70,7 @@ async def run(conn: asyncpg.Connection) -> bool:
         )
 
         logger.info(
-            f"✅ Migration {MIGRATION_ID} completed: dropped kg_entities, kg_relationships, kg_entity_mentions"
+            f"✅ Migration {MIGRATION_ID} completed: dropped kg_entities, kg_relationships, kg_entity_mentions",
         )
         return True
 

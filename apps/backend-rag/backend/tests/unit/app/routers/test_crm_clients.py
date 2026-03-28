@@ -371,15 +371,15 @@ class TestGetClientsStats:
 
         mock_status_row = TestCreateClient._create_mock_row({"status": "active", "count": 10})
         mock_team_row = TestCreateClient._create_mock_row(
-            {"assigned_to": "team@example.com", "count": 5}
+            {"assigned_to": "team@example.com", "count": 5},
         )
         mock_practice_type_row = TestCreateClient._create_mock_row(
-            {"practice_type": "KITAS", "count": 7}
+            {"practice_type": "KITAS", "count": 7},
         )
         mock_count_row = TestCreateClient._create_mock_row({"count": 3})
 
         conn.fetch = AsyncMock(
-            side_effect=[[mock_status_row], [mock_team_row], [mock_practice_type_row]]
+            side_effect=[[mock_status_row], [mock_team_row], [mock_practice_type_row]],
         )
         conn.fetchrow = AsyncMock(return_value=mock_count_row)
 
@@ -524,8 +524,8 @@ class TestExtractNpwpRBAC:
         mock_genai_instance.is_available = True
         mock_genai_instance.generate_content = AsyncMock(
             return_value={
-                "text": '{"npwp": "123456789012345", "address": "Jl. Raya No. 1", "city": "Denpasar", "confidence": 0.95}'
-            }
+                "text": '{"npwp": "123456789012345", "address": "Jl. Raya No. 1", "city": "Denpasar", "confidence": 0.95}',
+            },
         )
 
         with (
@@ -651,8 +651,8 @@ class TestExtractNibRBAC:
         mock_genai_instance.is_available = True
         mock_genai_instance.generate_content = AsyncMock(
             return_value={
-                "text": '{"nib": "1234567890123", "company_name": "PT Test Indo", "kbli_code": "56101", "confidence": 0.95}'
-            }
+                "text": '{"nib": "1234567890123", "company_name": "PT Test Indo", "kbli_code": "56101", "confidence": 0.95}',
+            },
         )
 
         with (

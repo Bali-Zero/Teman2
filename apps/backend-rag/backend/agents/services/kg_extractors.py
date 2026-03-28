@@ -119,7 +119,7 @@ class RelationshipExtractor:
         self.ai_client = ai_client or (ZantaraAIClient() if ZANTARA_AVAILABLE else None)
 
     async def extract_relationships(
-        self, entities: list[dict[str, Any]], text: str, timeout: float = 30.0
+        self, entities: list[dict[str, Any]], text: str, timeout: float = 30.0,
     ) -> list[dict[str, Any]]:
         """
         Extract relationships between entities.

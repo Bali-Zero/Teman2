@@ -34,7 +34,7 @@ class IdentityService:
             or self.jwt_secret == "zantara_default_secret_key_2025_change_in_production"
         ):
             logger.warning(
-                "⚠️  Using default or empty JWT secret key. This is insecure for production!"
+                "⚠️  Using default or empty JWT secret key. This is insecure for production!",
             )
 
     def get_password_hash(self, password: str) -> str:
@@ -128,7 +128,7 @@ class IdentityService:
             # Verify PIN
             pin_hash_from_db = row["pin_hash"]
             logger.info(
-                f"🔍 Verifying PIN for {email}, hash length: {len(pin_hash_from_db)}, hash prefix: {pin_hash_from_db[:20] if pin_hash_from_db else 'None'}"
+                f"🔍 Verifying PIN for {email}, hash length: {len(pin_hash_from_db)}, hash prefix: {pin_hash_from_db[:20] if pin_hash_from_db else 'None'}",
             )
 
             if not self.verify_password(pin, pin_hash_from_db):

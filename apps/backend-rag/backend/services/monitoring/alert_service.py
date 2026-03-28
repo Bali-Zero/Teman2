@@ -80,13 +80,13 @@ class AlertService:
 
         logger.info("✅ AlertService initialized")
         logger.info(
-            f"   Telegram: {'✅ enabled' if self.enable_telegram else '❌ disabled (need TELEGRAM_BOT_TOKEN + ADMIN_TELEGRAM_CHAT_ID)'}"
+            f"   Telegram: {'✅ enabled' if self.enable_telegram else '❌ disabled (need TELEGRAM_BOT_TOKEN + ADMIN_TELEGRAM_CHAT_ID)'}",
         )
         logger.info(
-            f"   Slack: {'✅ enabled' if self.enable_slack else '❌ disabled (no SLACK_WEBHOOK_URL)'}"
+            f"   Slack: {'✅ enabled' if self.enable_slack else '❌ disabled (no SLACK_WEBHOOK_URL)'}",
         )
         logger.info(
-            f"   Discord: {'✅ enabled' if self.enable_discord else '❌ disabled (no DISCORD_WEBHOOK_URL)'}"
+            f"   Discord: {'✅ enabled' if self.enable_discord else '❌ disabled (no DISCORD_WEBHOOK_URL)'}",
         )
         logger.info("   Logging: ✅ enabled")
 
@@ -139,7 +139,7 @@ class AlertService:
         last_sent = self._last_alert_time.get(rate_key, 0.0)
         if now - last_sent < self._alert_cooldown_seconds:
             logger.debug(
-                f"[alert] Rate limited '{title}' — {int(self._alert_cooldown_seconds - (now - last_sent))}s remaining"
+                f"[alert] Rate limited '{title}' — {int(self._alert_cooldown_seconds - (now - last_sent))}s remaining",
             )
             return results
 
@@ -149,7 +149,7 @@ class AlertService:
         ]
         if len(self._global_send_times) >= self._global_max_per_minute:
             logger.debug(
-                f"[alert] Global rate limited — {len(self._global_send_times)} alerts in last {int(self._global_cooldown_seconds)}s"
+                f"[alert] Global rate limited — {len(self._global_send_times)} alerts in last {int(self._global_cooldown_seconds)}s",
             )
             return results
         self._global_send_times.append(now)
@@ -183,7 +183,7 @@ class AlertService:
         return results
 
     def _log_alert(
-        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None
+        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None,
     ) -> None:
         """Log alert to application logs"""
         log_message = f"[{level.value.upper()}] {title}: {message}"
@@ -200,7 +200,7 @@ class AlertService:
             logger.info(log_message)
 
     async def _send_telegram_alert(
-        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None
+        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None,
     ) -> None:
         """Send alert to admin Telegram chat"""
         if not self.telegram_bot_token or not self.telegram_admin_chat_id:
@@ -242,7 +242,7 @@ class AlertService:
         response.raise_for_status()
 
     async def _send_slack_alert(
-        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None
+        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None,
     ) -> None:
         """Send alert to Slack"""
         if not self.slack_webhook:
@@ -274,7 +274,7 @@ class AlertService:
                         "title": key.replace("_", " ").title(),
                         "value": str(value),
                         "short": len(str(value)) < 50,
-                    }
+                    },
                 )
 
         payload = {
@@ -286,8 +286,8 @@ class AlertService:
                     "fields": fields,
                     "footer": "ZANTARA RAG Backend",
                     "ts": int(datetime.now(timezone.utc).timestamp()),
-                }
-            ]
+                },
+            ],
         }
 
         client = self._get_client()
@@ -295,7 +295,7 @@ class AlertService:
         response.raise_for_status()
 
     async def _send_discord_alert(
-        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None
+        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None,
     ) -> None:
         """Send alert to Discord"""
         if not self.discord_webhook:
@@ -334,7 +334,7 @@ class AlertService:
                         "name": key.replace("_", " ").title(),
                         "value": str(value),
                         "inline": len(str(value)) < 50,
-                    }
+                    },
                 )
 
         payload = {"embeds": [embed]}
@@ -399,11 +399,11 @@ class AlertService:
                 "threshold_ms": round(threshold_ms),
                 "request_id": request_id or "",
                 "user_agent": (user_agent or "")[:60],
-            }
+            },
         )
         logger.warning(
             f"[WARNING] High Latency: {duration_ms:.0f}ms: "
-            f"{method} {path} took {duration_ms:.0f}ms (buffered for hourly digest)"
+            f"{method} {path} took {duration_ms:.0f}ms (buffered for hourly digest)",
         )
         return {"telegram": False, "slack": False, "discord": False, "logging": True}
 
@@ -428,14 +428,14 @@ class AlertService:
         ]
 
         for path, evts in sorted(
-            by_path.items(), key=lambda x: -max(e["duration_ms"] for e in x[1])
+            by_path.items(), key=lambda x: -max(e["duration_ms"] for e in x[1]),
         ):
             worst = max(e["duration_ms"] for e in evts)
             avg = round(sum(e["duration_ms"] for e in evts) / len(evts))
             times = ", ".join(e["ts"] for e in evts[:5])
             lines.append(
                 f"• <code>{evts[0]['method']} {path}</code>\n"
-                f"  {len(evts)}x — max <b>{worst}ms</b> avg {avg}ms — [{times}]"
+                f"  {len(evts)}x — max <b>{worst}ms</b> avg {avg}ms — [{times}]",
             )
 
         lines.append(f"\n<i>Zantara RAG — {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}</i>")
@@ -452,7 +452,7 @@ class AlertService:
             client = self._get_client()
             await client.post(url, json=payload, timeout=10.0)
             logger.info(
-                f"[digest] Hourly digest inviato: {len(events)} eventi, {len(by_path)} path"
+                f"[digest] Hourly digest inviato: {len(events)} eventi, {len(by_path)} path",
             )
 
     async def _digest_loop(self) -> None:

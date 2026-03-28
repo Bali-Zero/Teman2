@@ -115,7 +115,7 @@ class KGCache:
         return None
 
     async def set_traversal(
-        self, entity_ids: list[str], max_depth: int, chains: list[list[dict]]
+        self, entity_ids: list[str], max_depth: int, chains: list[list[dict]],
     ) -> None:
         """Cache BFS traversal result."""
         cache = self._get_cache()

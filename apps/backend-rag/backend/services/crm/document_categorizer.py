@@ -423,7 +423,7 @@ def extract_person_name(filename: str) -> str | None:
 
     # Remove extension
     name_without_ext = re.sub(
-        r"\.(pdf|jpg|jpeg|png|doc|docx|xlsx)$", "", filename, flags=re.IGNORECASE
+        r"\.(pdf|jpg|jpeg|png|doc|docx|xlsx)$", "", filename, flags=re.IGNORECASE,
     )
 
     # Split by underscore

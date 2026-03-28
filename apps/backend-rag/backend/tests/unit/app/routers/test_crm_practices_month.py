@@ -80,7 +80,7 @@ class TestBuildStatusTransitions:
                 "entity_id": 10,
                 "changes": {"status": "on_process"},
                 "performed_at": datetime(2026, 3, 5, 12, 0, 0, tzinfo=timezone.utc),
-            }
+            },
         ]
         result = _build_status_transitions(rows)
         assert result == {10: [{"status": "on_process", "at": "2026-03-05 12:00:00+00:00"}]}
@@ -92,7 +92,7 @@ class TestBuildStatusTransitions:
                 "entity_id": 20,
                 "changes": '{"status": "completed"}',
                 "performed_at": datetime(2026, 3, 10, 9, 30, 0, tzinfo=timezone.utc),
-            }
+            },
         ]
         result = _build_status_transitions(rows)
         assert result == {20: [{"status": "completed", "at": "2026-03-10 09:30:00+00:00"}]}

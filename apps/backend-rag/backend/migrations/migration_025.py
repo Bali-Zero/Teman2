@@ -40,7 +40,7 @@ class Migration025(BaseMigration):
                 SELECT 1 FROM information_schema.tables
                 WHERE table_name = 'conversation_ratings'
             )
-            """
+            """,
         )
 
         if not table_exists:
@@ -75,7 +75,7 @@ class Migration025(BaseMigration):
             """
             SELECT indexname FROM pg_indexes
             WHERE tablename = 'conversation_ratings'
-            """
+            """,
         )
         index_names = [idx["indexname"] for idx in indexes]
         required_indexes = [
@@ -94,7 +94,7 @@ class Migration025(BaseMigration):
                 SELECT 1 FROM information_schema.views
                 WHERE table_name = 'v_rated_conversations'
             )
-            """
+            """,
         )
 
         if not view_exists:
@@ -102,7 +102,7 @@ class Migration025(BaseMigration):
             return False
 
         logger.info(
-            "✅ Migration 025 verified: conversation_ratings table and v_rated_conversations view created"
+            "✅ Migration 025 verified: conversation_ratings table and v_rated_conversations view created",
         )
         return True
 

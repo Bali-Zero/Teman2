@@ -101,7 +101,7 @@ async def submit_feedback(
 
             logger.info(
                 f"✅ Conversation rated: session_id={request.session_id}, "
-                f"rating={request.rating}, rating_id={rating_id}"
+                f"rating={request.rating}, rating_id={rating_id}",
             )
 
             # CRITICAL LOGIC: Create review_queue entry if rating <= 2 OR correction_text provided
@@ -132,7 +132,7 @@ async def submit_feedback(
 
                 logger.info(
                     f"📋 Review queue entry created: review_queue_id={review_queue_id}, "
-                    f"rating={request.rating}, has_correction={bool(request.correction_text)}"
+                    f"rating={request.rating}, has_correction={bool(request.correction_text)}",
                 )
 
             return FeedbackResponse(
@@ -232,7 +232,7 @@ async def get_feedback_stats(
                     COUNT(*) FILTER (WHERE status = 'ignored') as total_ignored,
                     COUNT(*) as total_reviews
                 FROM review_queue
-                """
+                """,
             )
 
             # Get low ratings count (ratings <= 2)
@@ -241,7 +241,7 @@ async def get_feedback_stats(
                 SELECT COUNT(*)
                 FROM conversation_ratings
                 WHERE rating <= 2
-                """
+                """,
             )
 
             # Get corrections count (feedbacks with correction_text)
@@ -253,7 +253,7 @@ async def get_feedback_stats(
                 FROM review_queue rq
                 JOIN conversation_ratings cr ON rq.source_feedback_id = cr.id
                 WHERE cr.feedback_text IS NOT NULL AND cr.feedback_text != ''
-                """
+                """,
             )
 
             return ReviewQueueStatsResponse(

@@ -55,7 +55,7 @@ class InstagramChannelAdapter(BaseChannel):
         formatted_text = self.formatter.format_response(response)
         if len(formatted_text) > self.instagram_config.max_message_length:
             formatted_text = self.truncate_message(
-                formatted_text, self.instagram_config.max_message_length
+                formatted_text, self.instagram_config.max_message_length,
             )
 
         account_id = self.instagram_config.instagram_account_id
@@ -75,8 +75,8 @@ class InstagramChannelAdapter(BaseChannel):
             }
             try:
                 await self.client.post(seen_url, json=seen_payload, headers=headers)
-            except Exception:
-                pass  # Non-critical, best effort
+            except Exception as e:
+                logger.debug(f"mark_seen non-critical failure: {e}")
         except Exception as e:
             logger.error(f"Instagram send failed: {e}")
 
@@ -85,7 +85,7 @@ class InstagramChannelAdapter(BaseChannel):
         pass
 
     async def stream_response(
-        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse]
+        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
     ) -> None:
         """Accumulate and send complete message."""
         text = ""

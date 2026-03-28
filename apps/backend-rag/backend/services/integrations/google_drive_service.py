@@ -155,14 +155,14 @@ class GoogleDriveService:
             error_data = response.json()
             logger.error(f"[GDRIVE] Token exchange failed: {error_data}")
             raise ValueError(
-                f"Token exchange failed: {error_data.get('error_description', 'Unknown error')}"
+                f"Token exchange failed: {error_data.get('error_description', 'Unknown error')}",
             )
 
         token_data = response.json()
 
         # Calculate expiry time
         expires_at = datetime.now(timezone.utc) + timedelta(
-            seconds=token_data.get("expires_in", 3600)
+            seconds=token_data.get("expires_in", 3600),
         )
 
         # Store tokens in database
@@ -256,7 +256,7 @@ class GoogleDriveService:
         token_data = response.json()
 
         expires_at = datetime.now(timezone.utc) + timedelta(
-            seconds=token_data.get("expires_in", 3600)
+            seconds=token_data.get("expires_in", 3600),
         )
 
         await self._store_tokens(
@@ -358,7 +358,7 @@ class GoogleDriveService:
             error = response.json()
             logger.error(f"[GDRIVE] List files failed: {error}")
             raise ValueError(
-                f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}"
+                f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}",
             )
 
         data = response.json()
@@ -395,7 +395,7 @@ class GoogleDriveService:
         if response.status_code != 200:
             error = response.json()
             raise ValueError(
-                f"Failed to get file: {error.get('error', {}).get('message', 'Unknown error')}"
+                f"Failed to get file: {error.get('error', {}).get('message', 'Unknown error')}",
             )
 
         return response.json()
@@ -577,7 +577,7 @@ class GoogleDriveService:
             error = response.json()
             logger.error(f"[GDRIVE] Create folder failed: {error}")
             raise ValueError(
-                f"Failed to create folder: {error.get('error', {}).get('message', 'Unknown error')}"
+                f"Failed to create folder: {error.get('error', {}).get('message', 'Unknown error')}",
             )
 
         folder_data = response.json()
@@ -681,7 +681,7 @@ class GoogleDriveService:
                     continue
 
             logger.info(
-                f"[GDRIVE] Created client folder structure for {client_name}: {root_folder_id}"
+                f"[GDRIVE] Created client folder structure for {client_name}: {root_folder_id}",
             )
 
             return {
@@ -758,7 +758,7 @@ class GoogleDriveService:
             error = response.json()
             logger.error(f"[GDRIVE] List folder files failed: {error}")
             raise ValueError(
-                f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}"
+                f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}",
             )
 
         data = response.json()
@@ -784,7 +784,7 @@ class GoogleDriveService:
                     else None,
                     "download_url": f"/api/documents/proxy/{file_id}",
                     "is_folder": file_info.get("mimeType") == "application/vnd.google-apps.folder",
-                }
+                },
             )
 
         return {
@@ -846,7 +846,7 @@ class GoogleDriveService:
             error = response.json()
             logger.error(f"[GDRIVE] Get folder structure failed: {error}")
             raise ValueError(
-                f"Failed to get folder structure: {error.get('error', {}).get('message', 'Unknown error')}"
+                f"Failed to get folder structure: {error.get('error', {}).get('message', 'Unknown error')}",
             )
 
         data = response.json()
@@ -878,7 +878,7 @@ class GoogleDriveService:
                 files_data = files_response.json()
                 files = files_data.get("files", [])
                 file_count = len(
-                    [f for f in files if f.get("mimeType") != "application/vnd.google-apps.folder"]
+                    [f for f in files if f.get("mimeType") != "application/vnd.google-apps.folder"],
                 )
 
                 # Calculate total size
@@ -902,7 +902,7 @@ class GoogleDriveService:
                         "file_count": file_count,
                         "total_size_bytes": folder_size,
                         "last_modified": last_modified,
-                    }
+                    },
                 )
 
                 total_files += file_count
@@ -975,7 +975,7 @@ class GoogleDriveService:
             error = metadata_response.json()
             logger.error(f"[GDRIVE] Upload file metadata failed: {error}")
             raise ValueError(
-                f"Failed to upload file: {error.get('error', {}).get('message', 'Unknown error')}"
+                f"Failed to upload file: {error.get('error', {}).get('message', 'Unknown error')}",
             )
 
         file_id = metadata_response.json().get("id")
@@ -1000,7 +1000,7 @@ class GoogleDriveService:
             )
             logger.error(f"[GDRIVE] Upload file content failed: {error}")
             raise ValueError(
-                f"Failed to upload file content: {error.get('error', {}).get('message', 'Unknown error')}"
+                f"Failed to upload file content: {error.get('error', {}).get('message', 'Unknown error')}",
             )
 
         # Get final file info
@@ -1008,7 +1008,7 @@ class GoogleDriveService:
         size_bytes = int(file_info.get("size", 0)) if file_info.get("size") else len(file_content)
 
         logger.info(
-            f"[GDRIVE] Uploaded file '{file_name}' ({size_bytes} bytes) to folder {folder_id}"
+            f"[GDRIVE] Uploaded file '{file_name}' ({size_bytes} bytes) to folder {folder_id}",
         )
 
         return {

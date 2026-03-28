@@ -211,7 +211,7 @@ class EmotionalAttunementService:
         logger.info("✅ EmotionalAttunementService initialized")
 
     def analyze_message(
-        self, message: str, collaborator_preferences: dict | None = None
+        self, message: str, collaborator_preferences: dict | None = None,
     ) -> EmotionalProfile:
         """
         Analyze message to detect emotional state.
@@ -305,7 +305,7 @@ class EmotionalAttunementService:
 
         logger.info(
             f"🎭 Emotional Analysis: {detected_state.value} "
-            f"(conf: {confidence:.2f}) → Tone: {suggested_tone.value}"
+            f"(conf: {confidence:.2f}) → Tone: {suggested_tone.value}",
         )
 
         return EmotionalProfile(

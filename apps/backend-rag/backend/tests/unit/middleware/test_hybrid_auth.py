@@ -179,7 +179,7 @@ async def test_dispatch_auth_fail(middleware, mock_request):
     mock_request.url.path = "/api/protected"
     middleware.api_auth_enabled = True
     with patch.object(
-        middleware, "authenticate_request", new_callable=AsyncMock, return_value=None
+        middleware, "authenticate_request", new_callable=AsyncMock, return_value=None,
     ):
         response = await middleware.dispatch(mock_request, AsyncMock())
         assert response.status_code == 401
@@ -191,7 +191,7 @@ async def test_dispatch_http_exception(middleware, mock_request):
     mock_request.url.path = "/api/protected"
     middleware.api_auth_enabled = True
     with patch.object(
-        middleware, "authenticate_request", new_callable=AsyncMock, return_value={"email": "test"}
+        middleware, "authenticate_request", new_callable=AsyncMock, return_value={"email": "test"},
     ):
         call_next = AsyncMock(side_effect=HTTPException(status_code=400, detail="Bad Request"))
         response = await middleware.dispatch(mock_request, call_next)
@@ -204,7 +204,7 @@ async def test_dispatch_http_exception_complex_detail(middleware, mock_request):
     middleware.api_auth_enabled = True
     detail = {"msg": "Error", "obj": object()}
     with patch.object(
-        middleware, "authenticate_request", new_callable=AsyncMock, return_value={"email": "test"}
+        middleware, "authenticate_request", new_callable=AsyncMock, return_value={"email": "test"},
     ):
         call_next = AsyncMock(side_effect=HTTPException(status_code=400, detail=detail))
         response = await middleware.dispatch(mock_request, call_next)

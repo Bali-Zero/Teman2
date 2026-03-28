@@ -73,7 +73,7 @@ class IntelApprovalService:
 
         # Build notification content
         caption = self._build_notification_caption(
-            intel_type, item_id, item_data, enriched_data, team_config
+            intel_type, item_id, item_data, enriched_data, team_config,
         )
         keyboard = self._build_approval_keyboard(intel_type, item_id)
 
@@ -201,7 +201,7 @@ class IntelApprovalService:
         return caption
 
     def _build_approval_keyboard(
-        self, intel_type: Literal["visa", "news"], item_id: str
+        self, intel_type: Literal["visa", "news"], item_id: str,
     ) -> dict[str, Any]:
         """
         Build inline keyboard for approval/rejection buttons.
@@ -225,7 +225,7 @@ class IntelApprovalService:
                         "callback_data": f"intel:reject:{intel_type}:{item_id}",
                     },
                 ],
-            ]
+            ],
         }
 
     def _save_voting_status(

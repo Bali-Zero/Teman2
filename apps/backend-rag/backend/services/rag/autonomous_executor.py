@@ -329,7 +329,7 @@ class AutonomousExecutor:
         if not steps:
             raise ValueError(
                 f"Unknown task type '{task_type}' for query: {query}. "
-                "Supported: npwp_registration, kitas_application, pt_pma_incorporation"
+                "Supported: npwp_registration, kitas_application, pt_pma_incorporation",
             )
 
         plan_id = f"plan_{uuid.uuid4().hex[:12]}"
@@ -357,7 +357,7 @@ class AutonomousExecutor:
 
         logger.info(
             f"Created plan {plan_id}: {task_type} ({len(steps)} steps, "
-            f"priority={plan_priority}) for {user_email}"
+            f"priority={plan_priority}) for {user_email}",
         )
         return plan
 
@@ -459,7 +459,7 @@ class AutonomousExecutor:
                 await self._persist_step_update(plan, step)
                 logger.info(
                     f"Plan {plan['plan_id']} step {step['step_id']} completed"
-                    + (f" (attempt {attempt + 1})" if attempt > 0 else "")
+                    + (f" (attempt {attempt + 1})" if attempt > 0 else ""),
                 )
                 return True
 
@@ -467,7 +467,7 @@ class AutonomousExecutor:
                 step["error"] = str(e)
                 logger.warning(
                     f"Plan {plan['plan_id']} step {step['step_id']} "
-                    f"attempt {attempt + 1}/{max_retries + 1} failed: {e}"
+                    f"attempt {attempt + 1}/{max_retries + 1} failed: {e}",
                 )
 
                 if attempt < max_retries:
@@ -481,7 +481,7 @@ class AutonomousExecutor:
                     await self._persist_step_update(plan, step)
                     logger.error(
                         f"Plan {plan['plan_id']} step {step['step_id']} "
-                        f"failed after {max_retries + 1} attempts: {e}"
+                        f"failed after {max_retries + 1} attempts: {e}",
                     )
                     return False
 
@@ -557,7 +557,7 @@ class AutonomousExecutor:
                         [
                             {"text": "✅ Approve", "callback_data": f"approve_{approval_key}"},
                             {"text": "❌ Reject", "callback_data": f"reject_{approval_key}"},
-                        ]
+                        ],
                     ],
                 )
             except Exception as e:
@@ -596,7 +596,7 @@ class AutonomousExecutor:
                                 "step_id": step_id,
                                 "approved": True,
                                 "approved_at": datetime.now(UTC).isoformat(),
-                            }
+                            },
                         )
                 return approved
 
@@ -758,7 +758,7 @@ class AutonomousExecutor:
                         rollback_action=sr["rollback_action"],
                         retry_count=sr["retry_count"],
                         max_retries=sr["max_retries"],
-                    )
+                    ),
                 )
 
             approvals = [

@@ -30,7 +30,7 @@ def mock_qdrant_client():
     client.get_collection_stats = AsyncMock(return_value={"total_documents": 0})
     client.upsert_documents = AsyncMock()
     client.search = AsyncMock(
-        return_value={"results": [], "ids": [], "distances": [], "total_found": 0}
+        return_value={"results": [], "ids": [], "distances": [], "total_found": 0},
     )
     client.get_similar = AsyncMock(return_value={"results": [], "ids": [], "distances": []})
     return client
@@ -56,7 +56,7 @@ class TestMemoryVectorRouter:
     @patch("backend.app.routers.memory_vector.QdrantClient")
     @patch("backend.app.routers.memory_vector.settings")
     def test_initialize_memory_vector_db(
-        self, mock_settings, mock_qdrant_client_class, mock_qdrant_client
+        self, mock_settings, mock_qdrant_client_class, mock_qdrant_client,
     ):
         """Test initializing memory vector DB"""
         mock_settings.qdrant_url = "http://localhost:6333"
@@ -115,7 +115,7 @@ class TestMemoryVectorRouter:
                 "distances": [0.1],
                 "metadatas": [{}],
                 "total_found": 1,
-            }
+            },
         )
         with patch(
             "backend.app.routers.memory_vector.get_memory_vector_db",
@@ -123,7 +123,7 @@ class TestMemoryVectorRouter:
             return_value=mock_qdrant_client,
         ):
             response = client.post(
-                "/api/memory/search", json={"query_embedding": [0.1] * 384, "limit": 10}
+                "/api/memory/search", json={"query_embedding": [0.1] * 384, "limit": 10},
             )
             assert response.status_code == 200
             data = response.json()
@@ -139,7 +139,7 @@ class TestMemoryVectorRouter:
                 "distances": [0.1],
                 "metadatas": [{}],
                 "total_found": 1,
-            }
+            },
         )
         with patch(
             "backend.app.routers.memory_vector.get_memory_vector_db",

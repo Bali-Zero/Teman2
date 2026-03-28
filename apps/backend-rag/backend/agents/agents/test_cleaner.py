@@ -98,7 +98,7 @@ class TestAnalyzer:
                         "line_count": node.end_lineno - node.lineno + 1
                         if hasattr(node, "end_lineno")
                         else 0,
-                    }
+                    },
                 )
         return functions
 
@@ -117,7 +117,7 @@ class TestAnalyzer:
                             base.id if isinstance(base, ast.Name) else str(base)
                             for base in node.bases
                         ],
-                    }
+                    },
                 )
         return classes
 
@@ -244,7 +244,7 @@ class DuplicateDetector:
                         "files": [str(f) for f in group],
                         "similarity_type": "heuristic",
                         "reason": "Similar structure and assertions",
-                    }
+                    },
                 )
 
         # LLM-based semantic duplicate detection (if available)
@@ -313,7 +313,7 @@ class DuplicateDetector:
                                 "similarity_type": "semantic",
                                 "similarity_score": similarity,
                                 "reason": f"Semantic similarity: {similarity:.2f}",
-                            }
+                            },
                         )
 
                 except Exception as e:
@@ -345,7 +345,7 @@ Consider: test purpose, assertions, structure, and functionality.
 """
 
             request = LLMRequest(
-                prompt=prompt, max_tokens=50, temperature=0.1, provider=LLMProvider.OLLAMA
+                prompt=prompt, max_tokens=50, temperature=0.1, provider=LLMProvider.OLLAMA,
             )
 
             response = await self.llm_adapter.generate(request)
@@ -560,7 +560,7 @@ class TestCleanerAgent:
 
             # Generate cleanup recommendations
             recommendations = self._generate_recommendations(
-                analyses, orphans, duplicates, useless_tests
+                analyses, orphans, duplicates, useless_tests,
             )
 
             # Perform cleanup (if not dry run)
@@ -604,12 +604,12 @@ class TestCleanerAgent:
             logger.error(f"❌ {error_msg}")
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg
+                    time.time() - start_time, success=False, error=error_msg,
                 )
             return {"success": False, "error": error_msg}
 
     def _identify_useless_tests(
-        self, analyses: list[dict[str, Any]], aggressive: bool
+        self, analyses: list[dict[str, Any]], aggressive: bool,
     ) -> list[dict[str, Any]]:
         """Identify useless or low-value tests."""
         useless = []
@@ -654,7 +654,7 @@ class TestCleanerAgent:
                         "reason": ", ".join(reason),
                         "issues": issues,
                         "analysis": analysis,
-                    }
+                    },
                 )
 
         return useless
@@ -678,7 +678,7 @@ class TestCleanerAgent:
                     "file": orphan["test_file"],
                     "reason": f"Orphaned test: {orphan['orphan_reason']}",
                     "category": "orphan",
-                }
+                },
             )
 
         # Useless tests - medium priority removal
@@ -690,7 +690,7 @@ class TestCleanerAgent:
                     "file": useless["file"],
                     "reason": f"Useless test: {useless['reason']}",
                     "category": "useless",
-                }
+                },
             )
 
         # Duplicates - keep one, remove others
@@ -708,7 +708,7 @@ class TestCleanerAgent:
                             "reason": f"Duplicate of {files[0]}",
                             "category": "duplicate",
                             "duplicate_group": duplicate_group["group_id"],
-                        }
+                        },
                     )
 
         # Sort by priority
@@ -797,7 +797,7 @@ class TestCleanerAgent:
                     "avg_operation_time": self.agent_metrics.avg_operation_time,
                     "total_operations": self.agent_metrics.operations_completed
                     + self.agent_metrics.operations_failed,
-                }
+                },
             )
         return stats
 
@@ -829,12 +829,12 @@ async def main():
 
     # Configure logging
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s [%(levelname)s] 🧹 TestCleaner: %(message)s"
+        level=logging.INFO, format="%(asctime)s [%(levelname)s] 🧹 TestCleaner: %(message)s",
     )
 
     # Create and run agent
     agent = TestCleanerAgent(
-        repo_path=Path(args.repo), llm_provider=args.provider, dry_run=not args.no_dry_run
+        repo_path=Path(args.repo), llm_provider=args.provider, dry_run=not args.no_dry_run,
     )
 
     try:

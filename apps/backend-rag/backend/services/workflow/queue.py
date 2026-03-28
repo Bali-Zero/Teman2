@@ -101,7 +101,7 @@ async def _ack_job(conn: asyncpg.Connection, job_id: uuid.UUID) -> None:
 
 
 async def _fail_job(
-    conn: asyncpg.Connection, job_id: uuid.UUID, error: str, retry_count: int
+    conn: asyncpg.Connection, job_id: uuid.UUID, error: str, retry_count: int,
 ) -> None:
     new_status = "failed" if retry_count >= MAX_RETRIES else "pending"
     # If retrying: reset visible_at to now + 1 min backoff

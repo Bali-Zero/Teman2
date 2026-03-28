@@ -228,7 +228,7 @@ async def get_user_allowed_folders(
             allowed.update(SHARED_FOLDERS)
 
             logger.info(
-                f"[TEAM_DRIVE] Permissions for {user_email} in context={context_folder}: {list(allowed)}"
+                f"[TEAM_DRIVE] Permissions for {user_email} in context={context_folder}: {list(allowed)}",
             )
 
             return list(allowed), False
@@ -263,7 +263,7 @@ def folder_matches_allowed(folder_name: str, allowed_folders: list[str]) -> bool
         # 2. Word boundary match - folder name starts with allowed pattern
         # e.g., "Legal Documents" matches "Legal" but "Illegal" does not
         if folder_lower.startswith(allowed_lower + " ") or folder_lower.startswith(
-            allowed_lower + "_"
+            allowed_lower + "_",
         ):
             return True
 
@@ -309,7 +309,7 @@ async def drive_status(
         except Exception as e2:
             logger.error(
                 f"[TEAM_DRIVE] BZ root folder also failed: {e2}. "
-                "Returning connected=true anyway (SA is configured)."
+                "Returning connected=true anyway (SA is configured).",
             )
             files_accessible = False
 
@@ -382,7 +382,7 @@ async def list_files(
             if len(filtered_files) != len(files):
                 logger.info(
                     f"[TEAM_DRIVE] Filtered {len(files)} -> {len(filtered_files)} for {user_email} "
-                    f"(context={context_folder})"
+                    f"(context={context_folder})",
                 )
 
             files = filtered_files
@@ -477,7 +477,7 @@ async def search_files(
     current_user: Annotated[dict, Depends(get_current_user)],
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     file_type: str | None = Query(
-        None, description="Filter by type: folder, document, spreadsheet, pdf"
+        None, description="Filter by type: folder, document, spreadsheet, pdf",
     ),
     page_size: int = Query(20, ge=1, le=50),
 ) -> dict[str, Any]:
@@ -551,7 +551,7 @@ async def upload_file(
     # Check write permission
     if not await check_write_permission(user_email, parent_id, pool, drive):
         raise HTTPException(
-            status_code=403, detail="Non hai i permessi per caricare file in questa cartella"
+            status_code=403, detail="Non hai i permessi per caricare file in questa cartella",
         )
 
     try:
@@ -601,7 +601,7 @@ async def create_folder(
         logger.info(f"[TEAM_DRIVE] {user_email} created folder: {request.name}")
 
         return OperationResponse(
-            success=True, file=FileItem(**result), message=f"Cartella '{request.name}' creata"
+            success=True, file=FileItem(**result), message=f"Cartella '{request.name}' creata",
         )
 
     except Exception as e:
@@ -674,7 +674,7 @@ async def rename_file(
         logger.info(f"[TEAM_DRIVE] {user_email} renamed {file_id} to: {request.new_name}")
 
         return OperationResponse(
-            success=True, file=FileItem(**result), message=f"Rinominato in '{request.new_name}'"
+            success=True, file=FileItem(**result), message=f"Rinominato in '{request.new_name}'",
         )
 
     except Exception as e:
@@ -726,7 +726,7 @@ async def move_file(
     # Check write permission on destination
     if not await check_write_permission(user_email, request.new_parent_id, pool, drive):
         raise HTTPException(
-            status_code=403, detail="Non hai i permessi per spostare file in questa cartella"
+            status_code=403, detail="Non hai i permessi per spostare file in questa cartella",
         )
 
     try:
@@ -762,7 +762,7 @@ async def copy_file(
     if request.parent_id:
         if not await check_write_permission(user_email, request.parent_id, pool, drive):
             raise HTTPException(
-                status_code=403, detail="Non hai i permessi per copiare file in questa cartella"
+                status_code=403, detail="Non hai i permessi per copiare file in questa cartella",
             )
 
     try:
@@ -878,7 +878,7 @@ async def add_permission(
         )
 
         logger.info(
-            f"[TEAM_DRIVE] {user_email} added {request.role} for {request.email} on {file_id}"
+            f"[TEAM_DRIVE] {user_email} added {request.role} for {request.email} on {file_id}",
         )
 
         return PermissionItem(**permission)
@@ -909,7 +909,7 @@ async def update_permission(
         )
 
         logger.info(
-            f"[TEAM_DRIVE] {user_email} updated permission {permission_id} to {request.role}"
+            f"[TEAM_DRIVE] {user_email} updated permission {permission_id} to {request.role}",
         )
 
         return PermissionItem(**permission)

@@ -144,7 +144,7 @@ class AttendanceMonitor:
                         "full_name": member["full_name"],
                         "absent_days": None,  # "unknown / never clocked in"
                         "last_seen": "mai",
-                    }
+                    },
                 )
                 logger.debug("check_absent_members: %s has never clocked in", member_email)
                 continue
@@ -158,7 +158,7 @@ class AttendanceMonitor:
                         "full_name": member["full_name"],
                         "absent_days": working_days_absent,
                         "last_seen": last_date.strftime("%d/%m/%Y"),
-                    }
+                    },
                 )
                 logger.info(
                     "check_absent_members: %s absent for %d working day(s) (last seen %s)",
@@ -193,7 +193,7 @@ class AttendanceMonitor:
                 FROM team_members
                 WHERE is_active = TRUE
                 ORDER BY full_name
-                """
+                """,
             )
         return [{"email": row["email"], "full_name": row["full_name"]} for row in rows]
 

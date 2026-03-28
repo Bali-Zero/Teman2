@@ -33,7 +33,7 @@ class IntelAnalyticsService:
         self.staging_service = staging_service
 
     def get_intelligence_analytics(
-        self, days: int = IntelConstants.TRENDS_ANALYSIS_DAYS
+        self, days: int = IntelConstants.TRENDS_ANALYSIS_DAYS,
     ) -> dict[str, Any]:
         """
         Get historical analytics and trends for Intelligence Center.
@@ -85,7 +85,7 @@ class IntelAnalyticsService:
                             ingested_at = data.get("ingested_at")
                             if ingested_at:
                                 ingested_dt = datetime.fromisoformat(
-                                    ingested_at.replace("Z", "+00:00")
+                                    ingested_at.replace("Z", "+00:00"),
                                 )
                                 if ingested_dt >= cutoff_date:
                                     analytics["summary"]["total_approved"] += 1
@@ -105,7 +105,7 @@ class IntelAnalyticsService:
                             rejected_at = data.get("rejected_at") or data.get("ingested_at")
                             if rejected_at:
                                 rejected_dt = datetime.fromisoformat(
-                                    rejected_at.replace("Z", "+00:00")
+                                    rejected_at.replace("Z", "+00:00"),
                                 )
                                 if rejected_dt >= cutoff_date:
                                     analytics["summary"]["total_rejected"] += 1
@@ -126,7 +126,7 @@ class IntelAnalyticsService:
                                 published_at = data.get("published_at")
                                 if published_at:
                                     published_dt = datetime.fromisoformat(
-                                        published_at.replace("Z", "+00:00")
+                                        published_at.replace("Z", "+00:00"),
                                     )
                                     if published_dt >= cutoff_date:
                                         analytics["summary"]["total_published"] += 1
@@ -202,7 +202,7 @@ class IntelAnalyticsService:
                                     item_date = data.get("ingested_at") or data.get("rejected_at")
                                     if item_date:
                                         item_dt = datetime.fromisoformat(
-                                            item_date.replace("Z", "+00:00")
+                                            item_date.replace("Z", "+00:00"),
                                         )
                                         if item_dt.strftime("%Y-%m-%d") == date_str:
                                             daily["processed"] += 1
@@ -212,7 +212,7 @@ class IntelAnalyticsService:
                                                 daily["rejected"] += 1
                             except Exception as e:
                                 logger.warning(
-                                    f"Failed to process daily trend file {file_path}: {e}"
+                                    f"Failed to process daily trend file {file_path}: {e}",
                                 )
                                 continue
 
@@ -227,13 +227,13 @@ class IntelAnalyticsService:
                                     published_at = data.get("published_at")
                                     if published_at:
                                         published_dt = datetime.fromisoformat(
-                                            published_at.replace("Z", "+00:00")
+                                            published_at.replace("Z", "+00:00"),
                                         )
                                         if published_dt.strftime("%Y-%m-%d") == date_str:
                                             daily["published"] += 1
                             except Exception as e:
                                 logger.warning(
-                                    f"Failed to process daily published file {file_path}: {e}"
+                                    f"Failed to process daily published file {file_path}: {e}",
                                 )
                                 continue
 

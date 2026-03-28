@@ -123,7 +123,7 @@ class TestKnowledgeGraphRepository:
                 "source_chunk_ids": [],
                 "created_at": None,
                 "updated_at": None,
-            }
+            },
         )
 
         @asynccontextmanager
@@ -153,8 +153,8 @@ class TestKnowledgeGraphRepository:
                     "connected_entity_id": "entity2",
                     "connected_entity_name": "Entity 2",
                     "connected_entity_type": "Organization",
-                }
-            ]
+                },
+            ],
         )
 
         @asynccontextmanager

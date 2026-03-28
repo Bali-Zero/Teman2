@@ -67,7 +67,7 @@ class KnowledgeGraphBuilder:
 
         if not self.db_pool:
             raise RuntimeError(
-                "Database pool not available. Provide db_pool in __init__ or ensure app.state.db_pool is set."
+                "Database pool not available. Provide db_pool in __init__ or ensure app.state.db_pool is set.",
             )
 
         # Initialize services
@@ -85,7 +85,7 @@ class KnowledgeGraphBuilder:
         await self.schema_service.init_schema()
 
     async def extract_entities_from_text(
-        self, text: str, timeout: float = 30.0
+        self, text: str, timeout: float = 30.0,
     ) -> list[dict[str, Any]]:
         """
         Extract entities from text using AI.
@@ -100,7 +100,7 @@ class KnowledgeGraphBuilder:
         return await self.entity_extractor.extract_entities(text, timeout)
 
     async def extract_relationships(
-        self, entities: list[dict[str, Any]], text: str, timeout: float = 30.0
+        self, entities: list[dict[str, Any]], text: str, timeout: float = 30.0,
     ) -> list[dict[str, Any]]:
         """
         Extract relationships between entities.
@@ -137,7 +137,7 @@ class KnowledgeGraphBuilder:
             Entity ID
         """
         return await self.repository.upsert_entity(
-            entity_type, name, canonical_name, metadata, conn
+            entity_type, name, canonical_name, metadata, conn,
         )
 
     async def upsert_relationship(
@@ -163,7 +163,7 @@ class KnowledgeGraphBuilder:
             conn: Database connection (must be in transaction)
         """
         await self.repository.upsert_relationship(
-            source_id, target_id, rel_type, strength, evidence, source_ref, conn
+            source_id, target_id, rel_type, strength, evidence, source_ref, conn,
         )
 
     async def process_conversation(self, conversation_id: str):
@@ -202,7 +202,7 @@ class KnowledgeGraphBuilder:
                             [
                                 f"{msg.get('role', 'user')}: {msg.get('content', '')}"
                                 for msg in messages
-                            ]
+                            ],
                         )
                     else:
                         full_text = str(messages_json)
@@ -266,16 +266,16 @@ class KnowledgeGraphBuilder:
                                 relationships_count += 1
 
                 logger.info(
-                    f"✅ Processed conversation {conversation_id}: {len(entities)} entities, {relationships_count} relationships"
+                    f"✅ Processed conversation {conversation_id}: {len(entities)} entities, {relationships_count} relationships",
                 )
 
         except asyncpg.PostgresError as e:
             logger.error(
-                f"Database error processing conversation {conversation_id}: {e}", exc_info=True
+                f"Database error processing conversation {conversation_id}: {e}", exc_info=True,
             )
         except Exception as e:
             logger.error(
-                f"Unexpected error processing conversation {conversation_id}: {e}", exc_info=True
+                f"Unexpected error processing conversation {conversation_id}: {e}", exc_info=True,
             )
 
     async def build_graph_from_all_conversations(self, days_back: int = 30):

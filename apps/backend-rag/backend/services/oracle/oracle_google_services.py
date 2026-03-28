@@ -44,7 +44,7 @@ class GoogleServices:
                         logger.info("✅ Google Gemini AI initialized successfully (new SDK)")
                 else:
                     logger.warning(
-                        "⚠️ GOOGLE_API_KEY not set or SDK unavailable - Gemini AI services disabled"
+                        "⚠️ GOOGLE_API_KEY not set or SDK unavailable - Gemini AI services disabled",
                     )
                     self._gemini_initialized = False
 
@@ -54,7 +54,7 @@ class GoogleServices:
             except Exception as e:
                 logger.error(f"❌ Failed to initialize Google services: {e}")
                 logger.warning(
-                    "⚠️ Continuing without Google services - some Oracle features may be unavailable"
+                    "⚠️ Continuing without Google services - some Oracle features may be unavailable",
                 )
                 self._gemini_initialized = False
                 self._drive_service = None
@@ -85,7 +85,7 @@ class GoogleServices:
             # Create credentials from dict or fallback to file
             if creds_dict and creds_dict.get("type") == "service_account":
                 credentials = service_account.Credentials.from_service_account_info(
-                    creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"]
+                    creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"],
                 )
             elif os.path.exists("google_credentials.json"):
                 logger.info("ℹ️ Using google_credentials.json file for Drive credentials")
@@ -96,7 +96,7 @@ class GoogleServices:
             else:
                 logger.warning(
                     "⚠️ No Google credentials found - Drive service disabled. "
-                    "Set GOOGLE_SERVICE_ACCOUNT_JSON or add google_credentials.json"
+                    "Set GOOGLE_SERVICE_ACCOUNT_JSON or add google_credentials.json",
                 )
                 self._drive_service = None
                 return

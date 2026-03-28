@@ -50,7 +50,7 @@ async def get_taxes(
 
 @router.get("/summary", response_model=TaxSummary)
 async def get_tax_summary(
-    current_client=Depends(get_current_portal_client), db_pool=Depends(get_database_pool)
+    current_client=Depends(get_current_portal_client), db_pool=Depends(get_database_pool),
 ) -> Any:
     """Get tax summary for dashboard card."""
     service = TaxService(db_pool)

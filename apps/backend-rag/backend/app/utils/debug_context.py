@@ -61,7 +61,7 @@ class DebugContext:
 
             logger.info(
                 f"🔍 Debug context enabled (request_id={self.request_id}, "
-                f"verbose_logging={self.enable_verbose_logging})"
+                f"verbose_logging={self.enable_verbose_logging})",
             )
 
         return self
@@ -78,7 +78,7 @@ class DebugContext:
 
             logger.info(
                 f"🔍 Debug context disabled (request_id={self.request_id}, "
-                f"api_calls_captured={len(self.api_calls)})"
+                f"api_calls_captured={len(self.api_calls)})",
             )
 
         return False  # Don't suppress exceptions
@@ -99,12 +99,12 @@ class DebugContext:
                     "url": url,
                     "timestamp": logging.Formatter().formatTime(
                         logging.LogRecord(
-                            name="", level=0, pathname="", lineno=0, msg="", args=(), exc_info=None
+                            name="", level=0, pathname="", lineno=0, msg="", args=(), exc_info=None,
                         ),
                         datefmt=None,
                     ),
                     **kwargs,
-                }
+                },
             )
 
     def get_state_snapshot(self) -> dict[str, Any]:

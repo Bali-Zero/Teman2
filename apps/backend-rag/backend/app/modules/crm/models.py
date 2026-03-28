@@ -58,7 +58,7 @@ class Client(SQLModel, table=True):
     practices: list["Practice"] = Relationship(back_populates="client")
     interactions: list["Interaction"] = Relationship(back_populates="client")
     company_links: list["ClientCompanyLink"] = Relationship(
-        back_populates="client", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="client", sa_relationship_kwargs={"lazy": "selectin"},
     )
 
 
@@ -77,7 +77,7 @@ class PracticeType(SQLModel, table=True):
     category: str | None = Field(default=None, max_length=100, index=True)
     description: str | None = Field(default=None, sa_column=Column(Text))
     base_price: float | None = Field(
-        default=None, sa_column=Column("base_price", type_=DECIMAL(12, 2))
+        default=None, sa_column=Column("base_price", type_=DECIMAL(12, 2)),
     )
     currency: str = Field(default="IDR", max_length=10)
     duration_days: int | None = Field(default=None)
@@ -122,10 +122,10 @@ class Practice(SQLModel, table=True):
 
     # Financial
     quoted_price: float | None = Field(
-        default=None, sa_column=Column("quoted_price", type_=DECIMAL(12, 2))
+        default=None, sa_column=Column("quoted_price", type_=DECIMAL(12, 2)),
     )
     actual_price: float | None = Field(
-        default=None, sa_column=Column("actual_price", type_=DECIMAL(12, 2))
+        default=None, sa_column=Column("actual_price", type_=DECIMAL(12, 2)),
     )
     currency: str = Field(default="IDR", max_length=10)
     payment_status: str = Field(default="unpaid", max_length=50)
@@ -172,7 +172,7 @@ class Interaction(SQLModel, table=True):
 
     # Interaction Details
     interaction_type: str = Field(
-        max_length=50, nullable=False
+        max_length=50, nullable=False,
     )  # 'chat', 'email', 'whatsapp', etc.
     channel: str | None = Field(default=None, max_length=50)  # 'web_chat', 'gmail', etc.
 
@@ -181,7 +181,7 @@ class Interaction(SQLModel, table=True):
     summary: str | None = Field(default=None, sa_column=Column(Text))
     full_content: str | None = Field(default=None, sa_column=Column(Text))
     sentiment: str | None = Field(
-        default=None, max_length=20
+        default=None, max_length=20,
     )  # 'positive', 'neutral', 'negative', 'urgent'
 
     # Participants

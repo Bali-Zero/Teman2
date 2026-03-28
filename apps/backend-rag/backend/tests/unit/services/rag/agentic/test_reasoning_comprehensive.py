@@ -71,7 +71,7 @@ class TestReasoningEngine:
                 "gemini-3-flash",
                 mock_response_obj,
                 MagicMock(total_tokens=100),
-            )
+            ),
         )
 
         state = AgentState(query="What is 2+2?", max_steps=5)

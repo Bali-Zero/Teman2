@@ -168,7 +168,7 @@ async def benchmark_stats_queries(pool: asyncpg.Pool, n: int = 10) -> dict:
                 SELECT
                     (SELECT COUNT(*) FROM kg_nodes) as total_nodes,
                     (SELECT COUNT(*) FROM kg_edges) as total_edges
-                """
+                """,
             )
             await conn.fetch(
                 """
@@ -176,7 +176,7 @@ async def benchmark_stats_queries(pool: asyncpg.Pool, n: int = 10) -> dict:
                 FROM kg_nodes
                 GROUP BY entity_type
                 ORDER BY count DESC
-                """
+                """,
             )
             await conn.fetch(
                 """
@@ -184,7 +184,7 @@ async def benchmark_stats_queries(pool: asyncpg.Pool, n: int = 10) -> dict:
                 FROM kg_edges
                 GROUP BY relationship_type
                 ORDER BY count DESC
-                """
+                """,
             )
             timings.append((time.perf_counter() - t0) * 1000)
 
@@ -200,7 +200,7 @@ async def check_indexes(pool: asyncpg.Pool) -> dict:
             FROM pg_indexes
             WHERE tablename IN ('kg_nodes', 'kg_edges')
             ORDER BY tablename, indexname
-            """
+            """,
         )
     return {r["indexname"]: r["indexdef"] for r in rows}
 
@@ -264,7 +264,7 @@ async def main() -> None:
                 f"p50={result.get('p50_ms', 0):7.2f}ms  "
                 f"p95={result.get('p95_ms', 0):7.2f}ms  "
                 f"avg={result.get('avg_ms', 0):7.2f}ms  "
-                f"n={result.get('n', 0)}"
+                f"n={result.get('n', 0)}",
             )
             if "avg_chains" in result:
                 print(f"  {'':35s}  avg_chains={result['avg_chains']}")

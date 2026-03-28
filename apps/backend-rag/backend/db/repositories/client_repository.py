@@ -21,7 +21,7 @@ class ClientRepository:
         self.db_pool = db_pool
 
     async def search_clients_dynamic(
-        self, filters: dict[str, Any], limit: int = 50, offset: int = 0
+        self, filters: dict[str, Any], limit: int = 50, offset: int = 0,
     ) -> list[asyncpg.Record]:
         """
         1) USO DI QUERYBUILDER: Previene SQL Injection nelle ricerche dinamiche.
@@ -51,7 +51,7 @@ class ClientRepository:
             raise
 
     async def create_client_with_details(
-        self, client_data: dict[str, Any], company_data: dict[str, Any] | None = None
+        self, client_data: dict[str, Any], company_data: dict[str, Any] | None = None,
     ) -> asyncpg.Record:
         """
         2) ATOMICITÀ: Crea un cliente e, opzionalmente, la sua azienda associata.

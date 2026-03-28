@@ -121,7 +121,7 @@ class ClientCreate(BaseModel):
             if age < 18:
                 raise ValueError(
                     f"MINORE ({age} anni): i clienti under 18 non possono avere profilo singolo. "
-                    "Collegare al profilo del genitore tramite family members."
+                    "Collegare al profilo del genitore tramite family members.",
                 )
         except ValueError as e:
             if "MINORE" in str(e):
@@ -201,7 +201,7 @@ class ClientUpdate(BaseModel):
             if age < 18:
                 raise ValueError(
                     f"MINORE ({age} anni): i clienti under 18 non possono avere profilo singolo. "
-                    "Collegare al profilo del genitore tramite family members."
+                    "Collegare al profilo del genitore tramite family members.",
                 )
         except ValueError as e:
             if "MINORE" in str(e):
@@ -301,7 +301,7 @@ async def create_client(
 
         # Chiama il Business Logic Layer (gestisce transazioni e Domain Errors)
         created_record = await client_service.create_client(
-            client_data=client_data, company_data=company_data
+            client_data=client_data, company_data=company_data,
         )
 
         new_client = dict(created_record)
@@ -393,7 +393,7 @@ async def list_clients(
 
         logger.info(
             f"📋 [CRM Clients] User {current_user_email} requesting clients list "
-            f"(assigned_to_filter={assigned_to})"
+            f"(assigned_to_filter={assigned_to})",
         )
 
         async with db_pool.acquire() as conn:
@@ -416,7 +416,7 @@ async def list_clients(
                     LIMIT 1
                 ) i ON true
                 WHERE 1=1
-                """
+                """,
             ]
             params: list[Any] = []
             param_index = 1
@@ -435,7 +435,7 @@ async def list_clients(
             if search:
                 search_pattern = f"%{search}%"
                 query_parts.append(
-                    f" AND (c.full_name ILIKE ${param_index} OR c.email ILIKE ${param_index + 1} OR c.phone ILIKE ${param_index + 2})"
+                    f" AND (c.full_name ILIKE ${param_index} OR c.email ILIKE ${param_index + 1} OR c.phone ILIKE ${param_index + 2})",
                 )
                 params.extend([search_pattern, search_pattern, search_pattern])
                 param_index += 3
@@ -449,16 +449,16 @@ async def list_clients(
                 if passport_expiring_days == 0:
                     # Already expired
                     query_parts.append(
-                        " AND c.passport_expiry IS NOT NULL AND c.passport_expiry < CURRENT_DATE"
+                        " AND c.passport_expiry IS NOT NULL AND c.passport_expiry < CURRENT_DATE",
                     )
                 else:
                     query_parts.append(
                         f" AND c.passport_expiry IS NOT NULL"
-                        f" AND c.passport_expiry <= CURRENT_DATE + INTERVAL '{passport_expiring_days} days'"
+                        f" AND c.passport_expiry <= CURRENT_DATE + INTERVAL '{passport_expiring_days} days'",
                     )
 
             query_parts.append(
-                f" ORDER BY c.created_at DESC LIMIT ${param_index} OFFSET ${param_index + 1}"
+                f" ORDER BY c.created_at DESC LIMIT ${param_index} OFFSET ${param_index + 1}",
             )
             params.extend([limit, offset])
 
@@ -467,7 +467,7 @@ async def list_clients(
 
             clients = [ClientResponse(**dict(row)) for row in rows]
             logger.info(
-                f"📋 [CRM Clients] Returning {len(clients)} clients for {current_user_email}"
+                f"📋 [CRM Clients] Returning {len(clients)} clients for {current_user_email}",
             )
             return clients
 
@@ -572,7 +572,7 @@ async def get_client_by_email(
                 if not assigned_to or assigned_to.lower() != user_email:
                     logger.warning(
                         f"RBAC: User {user_email} denied access to client by email "
-                        f"(assigned_to: {assigned_to})"
+                        f"(assigned_to: {assigned_to})",
                     )
                     raise HTTPException(
                         status_code=403,
@@ -864,7 +864,7 @@ async def get_client_summary(
                             for p in practices
                             if p["status"]
                             in ["inquiry", "waiting_documents", "sending_invoice", "on_process"]
-                        ]
+                        ],
                     ),
                     "completed": len([p for p in practices if p["status"] == "completed"]),
                     "list": practices,
@@ -901,7 +901,7 @@ async def get_clients_stats(
                 SELECT status, COUNT(*) as count
                 FROM clients
                 GROUP BY status
-                """
+                """,
             )
 
             # Clients by assigned team member
@@ -912,7 +912,7 @@ async def get_clients_stats(
                 WHERE assigned_to IS NOT NULL
                 GROUP BY assigned_to
                 ORDER BY count DESC
-                """
+                """,
             )
 
             # New clients last N days
@@ -933,7 +933,7 @@ async def get_clients_stats(
                 JOIN practice_types pt ON p.practice_type_id = pt.id
                 GROUP BY pt.name
                 ORDER BY count DESC
-                """
+                """,
             )
 
             by_status = {row["status"]: row["count"] for row in by_status_rows}
@@ -976,7 +976,7 @@ async def get_client_audit_trail(
             await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
             client = await conn.fetchrow(
-                "SELECT id, full_name, assigned_to FROM clients WHERE id = $1", client_id
+                "SELECT id, full_name, assigned_to FROM clients WHERE id = $1", client_id,
             )
 
             if not client:
@@ -984,7 +984,7 @@ async def get_client_audit_trail(
 
         # Get audit trail
         trail = await audit_logger.get_audit_trail(
-            entity_type="client", entity_id=client_id, limit=limit
+            entity_type="client", entity_id=client_id, limit=limit,
         )
 
         return {
@@ -1118,7 +1118,7 @@ async def extract_passport_data(
             response = await http_client.get(image_url, timeout=30.0)
             if response.status_code != 200:
                 return PassportExtractResponse(
-                    success=False, message=f"Failed to download image: HTTP {response.status_code}"
+                    success=False, message=f"Failed to download image: HTTP {response.status_code}",
                 )
             image_data = response.content
 
@@ -1289,11 +1289,11 @@ async def extract_passport_enhanced(
             await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
 
             client = await conn.fetchrow(
-                "SELECT full_name FROM clients WHERE id = $1", request.client_id
+                "SELECT full_name FROM clients WHERE id = $1", request.client_id,
             )
             if not client:
                 return PassportEnhancedResponse(
-                    success=False, message=f"Client {request.client_id} not found"
+                    success=False, message=f"Client {request.client_id} not found",
                 )
             existing_name = client["full_name"]
 
@@ -1303,7 +1303,7 @@ async def extract_passport_enhanced(
 
         if not access_token:
             return PassportEnhancedResponse(
-                success=False, message="Google Drive not connected. Please connect via Settings."
+                success=False, message="Google Drive not connected. Please connect via Settings.",
             )
 
         import httpx
@@ -1361,7 +1361,7 @@ Use null for unclear fields. Return ONLY JSON."""
                 "inline_data": {
                     "mime_type": mime_type,
                     "data": base64.b64encode(image_data).decode(),
-                }
+                },
             },
         ]
 
@@ -1545,7 +1545,7 @@ async def delete_client_document(
             )
 
             logger.info(
-                f"Soft deleted document {document_id} (client {doc['client_id']}, type: {doc['document_type']}) by {user_email}"
+                f"Soft deleted document {document_id} (client {doc['client_id']}, type: {doc['document_type']}) by {user_email}",
             )
             return {
                 "success": True,
@@ -1658,7 +1658,7 @@ Rules:
                 "inline_data": {
                     "mime_type": mime_type,
                     "data": base64.b64encode(file_data).decode(),
-                }
+                },
             },
         ]
 
@@ -1812,7 +1812,7 @@ Rules:
                 "inline_data": {
                     "mime_type": mime_type,
                     "data": base64.b64encode(file_data).decode(),
-                }
+                },
             },
         ]
 
@@ -1879,7 +1879,7 @@ async def get_client_required_documents(
         async with db_pool.acquire() as conn:
             # Verify client is viewing their own data
             client = await conn.fetchrow(
-                "SELECT id FROM clients WHERE email = $1", current_user["email"]
+                "SELECT id FROM clients WHERE email = $1", current_user["email"],
             )
 
             if not client or client["id"] != client_id:

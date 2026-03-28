@@ -318,7 +318,7 @@ async def run_crm_migration():
         migration_duration = (datetime.now(tz=timezone.utc) - migration_start).total_seconds()
 
         logger.info(
-            f"🎉 [CRM MIGRATION] Migration completed successfully in {migration_duration:.2f}s"
+            f"🎉 [CRM MIGRATION] Migration completed successfully in {migration_duration:.2f}s",
         )
 
         return {

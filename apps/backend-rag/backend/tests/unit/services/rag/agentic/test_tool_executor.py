@@ -263,7 +263,7 @@ class TestExecuteTool:
         tool_map = {"test_tool": MockTool("test_tool")}
         counter = {"count": 9}  # One before limit
         result, duration = await execute_tool(
-            tool_map, "test_tool", {}, tool_execution_counter=counter
+            tool_map, "test_tool", {}, tool_execution_counter=counter,
         )
         assert result == "success"
         assert counter["count"] == 10
@@ -393,7 +393,7 @@ class TestExecuteTool:
         """Test execution without counter (should not limit)"""
         tool_map = {"test_tool": MockTool("test_tool")}
         result, duration = await execute_tool(
-            tool_map, "test_tool", {}, tool_execution_counter=None
+            tool_map, "test_tool", {}, tool_execution_counter=None,
         )
         assert result == "success"
 

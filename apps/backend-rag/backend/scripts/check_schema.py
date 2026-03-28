@@ -25,7 +25,7 @@ async def check_schema():
             FROM information_schema.columns
             WHERE table_name = 'team_members'
             ORDER BY ordinal_position
-            """
+            """,
         )
         logger.info("=== team_members table schema ===")
         for row in rows:

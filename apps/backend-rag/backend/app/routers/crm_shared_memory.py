@@ -160,7 +160,7 @@ async def search_shared_memory(
 
                 if name_parts:
                     results["interpretation"].append(
-                        f"Detected: Client search for '{' '.join(name_parts)}'"
+                        f"Detected: Client search for '{' '.join(name_parts)}'",
                     )
 
                     search_pattern = f"%{' '.join(name_parts)}%"
@@ -239,7 +239,7 @@ async def search_shared_memory(
 
             if detected_practice_type and not results["practices"]:
                 results["interpretation"].append(
-                    f"Detected: Practice type search for '{detected_practice_type}'"
+                    f"Detected: Practice type search for '{detected_practice_type}'",
                 )
 
                 # Determine status filter
@@ -623,7 +623,7 @@ async def get_client_full_context(
                             for p in practices
                             if p["status"]
                             in ["inquiry", "waiting_documents", "sending_invoice", "on_process"]
-                        ]
+                        ],
                     ),
                     "completed": len([p for p in practices if p["status"] == "completed"]),
                     "list": practices,
@@ -670,7 +670,7 @@ async def get_team_overview(
 
             # Total clients
             total_clients_row = await conn.fetchrow(
-                "SELECT COUNT(*) as count FROM clients WHERE status = 'active'"
+                "SELECT COUNT(*) as count FROM clients WHERE status = 'active'",
             )
             overview["total_active_clients"] = (
                 total_clients_row["count"] if total_clients_row else 0
@@ -700,7 +700,7 @@ async def get_team_overview(
                 AND status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
                 GROUP BY assigned_to
                 ORDER BY count DESC
-                """
+                """,
             )
             overview["active_practices_by_team_member"] = [dict(row) for row in team_member_rows]
 
@@ -742,7 +742,7 @@ async def get_team_overview(
                 WHERE p.status IN ('inquiry', 'waiting_documents', 'sending_invoice', 'on_process')
                 GROUP BY pt.code, pt.name
                 ORDER BY count DESC
-                """
+                """,
             )
             overview["active_practices_by_type"] = [dict(row) for row in type_rows]
 

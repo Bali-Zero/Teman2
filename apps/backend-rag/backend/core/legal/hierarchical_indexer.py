@@ -51,7 +51,7 @@ class HierarchicalIndexer:
     """
 
     def __init__(
-        self, structure_parser, qdrant_client, embeddings, chunker=None, sparse_vectorizer=None
+        self, structure_parser, qdrant_client, embeddings, chunker=None, sparse_vectorizer=None,
     ) -> None:
         self.parser = structure_parser
         self.qdrant = qdrant_client
@@ -68,7 +68,7 @@ class HierarchicalIndexer:
                 return None
             try:
                 self.db_pool = await asyncpg.create_pool(
-                    settings.database_url, min_size=1, max_size=5
+                    settings.database_url, min_size=1, max_size=5,
                 )
             except Exception as e:
                 logger.warning(f"⚠️ Failed to create DB pool (non-blocking): {e}")
@@ -76,7 +76,7 @@ class HierarchicalIndexer:
         return self.db_pool
 
     async def index_legal_document(
-        self, document_text: str, document_id: str, metadata: dict
+        self, document_text: str, document_id: str, metadata: dict,
     ) -> dict[str, Any]:
         """
         Indicizza documento con struttura gerarchica completa.
@@ -102,7 +102,7 @@ class HierarchicalIndexer:
                 # If text is empty, try to reconstruct from pasals
                 if not bab_full_text and bab.get("pasal"):
                     bab_full_text = f"{bab_title}\n\n" + "\n\n".join(
-                        [p["text"] for p in bab["pasal"]]
+                        [p["text"] for p in bab["pasal"]],
                     )
 
                 # Quality assessment for BAB
@@ -124,7 +124,7 @@ class HierarchicalIndexer:
                         "is_incomplete": bab_quality["is_incomplete"],
                         "ocr_quality_score": bab_quality["ocr_quality_score"],
                         "needs_reextract": bab_quality["needs_reextract"],
-                    }
+                    },
                 )
 
                 # 3. Processa ogni Pasal nel BAB
@@ -141,7 +141,7 @@ class HierarchicalIndexer:
         # 4. Fallback per documenti senza BAB ma con Pasal (es: leggi di modifica)
         elif structure.get("pasal_list"):
             logger.info(
-                f"No BAB found for {document_id}, but found {len(structure['pasal_list'])} Pasals. Processing as root Pasals."
+                f"No BAB found for {document_id}, but found {len(structure['pasal_list'])} Pasals. Processing as root Pasals.",
             )
             for pasal in structure.get("pasal_list", []):
                 await self._add_pasal_to_chunks(
@@ -204,7 +204,7 @@ class HierarchicalIndexer:
         }
 
     async def _add_pasal_to_chunks(
-        self, pasal, document_id, bab_id, bab_title, metadata, chunks_to_index
+        self, pasal, document_id, bab_id, bab_title, metadata, chunks_to_index,
     ):
         """Helper to process a single Pasal and add it to chunks list"""
         pasal_id = f"{document_id}_Pasal_{pasal['number']}"
@@ -222,7 +222,7 @@ class HierarchicalIndexer:
 
         if len(pasal_text) > char_limit and self.chunker:
             logger.info(
-                f"Pasal {pasal['number']} is too large ({len(pasal_text)} chars). Splitting..."
+                f"Pasal {pasal['number']} is too large ({len(pasal_text)} chars). Splitting...",
             )
             # Create sub-metadata for chunker
             sub_metadata = {**metadata, "pasal_number": pasal["number"]}
@@ -279,7 +279,7 @@ class HierarchicalIndexer:
         chunks_to_index.append(chunk)
 
     async def _upsert_hierarchical_chunks(
-        self, chunks: list[HierarchicalChunk], embeddings, sparse_vectors=None
+        self, chunks: list[HierarchicalChunk], embeddings, sparse_vectors=None,
     ):
         """Upsert chunks con payload gerarchico"""
         import uuid
@@ -328,7 +328,7 @@ class HierarchicalIndexer:
         else:
             logger.info(f"Upserting {len(ids)} chunks with Dense vectors only")
             res = await self.qdrant.upsert_documents(
-                chunks=chunk_texts, embeddings=embeddings, metadatas=metadatas, ids=ids
+                chunks=chunk_texts, embeddings=embeddings, metadatas=metadatas, ids=ids,
             )
             if not res.get("success"):
                 raise RuntimeError(f"Qdrant dense upsert failed: {res.get('error')}")
@@ -341,7 +341,7 @@ class HierarchicalIndexer:
         pool = await self._get_db_pool()
         if not pool:
             logger.warning(
-                f"⚠️ Database pool not available - skipping {len(parent_docs)} parent documents"
+                f"⚠️ Database pool not available - skipping {len(parent_docs)} parent documents",
             )
             return
 
@@ -388,7 +388,7 @@ class HierarchicalIndexer:
                         # Fall back to basic INSERT without quality columns
                         if "does not exist" in str(e):
                             logger.warning(
-                                f"Quality columns not yet migrated, using basic INSERT: {e}"
+                                f"Quality columns not yet migrated, using basic INSERT: {e}",
                             )
                             await conn.execute(
                                 """

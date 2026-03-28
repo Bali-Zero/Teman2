@@ -188,7 +188,7 @@ class TestTeamDriveServiceIntegration:
     def test_service_import(self):
         """Test that TeamDriveService can be imported."""
         TeamDriveService, error = safe_import(
-            "backend.services.integrations.team_drive_service", "TeamDriveService"
+            "backend.services.integrations.team_drive_service", "TeamDriveService",
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -197,7 +197,7 @@ class TestTeamDriveServiceIntegration:
     def test_get_service_function(self):
         """Test that get_team_drive_service function exists."""
         get_fn, error = safe_import(
-            "backend.services.integrations.team_drive_service", "get_team_drive_service"
+            "backend.services.integrations.team_drive_service", "get_team_drive_service",
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -206,7 +206,7 @@ class TestTeamDriveServiceIntegration:
     def test_audit_logger_import(self):
         """Test that DriveAuditLogger can be imported."""
         DriveAuditLogger, error = safe_import(
-            "backend.services.integrations.team_drive_service", "DriveAuditLogger"
+            "backend.services.integrations.team_drive_service", "DriveAuditLogger",
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -215,7 +215,7 @@ class TestTeamDriveServiceIntegration:
     def test_drive_operation_decorator_import(self):
         """Test that drive_operation decorator can be imported."""
         decorator, error = safe_import(
-            "backend.services.integrations.team_drive_service", "drive_operation"
+            "backend.services.integrations.team_drive_service", "drive_operation",
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -224,7 +224,7 @@ class TestTeamDriveServiceIntegration:
     def test_metrics_enabled_flag(self):
         """Test that METRICS_ENABLED flag exists."""
         flag, error = safe_import(
-            "backend.services.integrations.team_drive_service", "METRICS_ENABLED"
+            "backend.services.integrations.team_drive_service", "METRICS_ENABLED",
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -242,7 +242,7 @@ class TestErrorClassification:
     def test_error_types_classification(self):
         """Test that various error types are correctly classified."""
         DriveAuditLogger, error = safe_import(
-            "backend.services.integrations.team_drive_service", "DriveAuditLogger"
+            "backend.services.integrations.team_drive_service", "DriveAuditLogger",
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -279,7 +279,7 @@ class TestOAuthConfiguration:
     def test_oauth_scopes_defined(self):
         """Test that OAuth scopes are properly defined."""
         TeamDriveService, error = safe_import(
-            "backend.services.integrations.team_drive_service", "TeamDriveService"
+            "backend.services.integrations.team_drive_service", "TeamDriveService",
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -293,7 +293,7 @@ class TestOAuthConfiguration:
     def test_system_user_id_defined(self):
         """Test that SYSTEM user ID is defined."""
         TeamDriveService, error = safe_import(
-            "backend.services.integrations.team_drive_service", "TeamDriveService"
+            "backend.services.integrations.team_drive_service", "TeamDriveService",
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -306,7 +306,7 @@ class TestOAuthConfiguration:
     def test_export_mimetypes_defined(self):
         """Test that export MIME types are defined."""
         TeamDriveService, error = safe_import(
-            "backend.services.integrations.team_drive_service", "TeamDriveService"
+            "backend.services.integrations.team_drive_service", "TeamDriveService",
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")

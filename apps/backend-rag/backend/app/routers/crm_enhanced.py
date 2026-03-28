@@ -105,7 +105,7 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
                                 "role": "user",
                                 "content": ollama_prompt,
                                 "images": [image_b64],
-                            }
+                            },
                         ],
                         "stream": False,
                         "options": {"temperature": 0.1, "num_predict": 512},
@@ -115,7 +115,7 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
                 content = resp.json().get("message", {}).get("content", "").strip()
                 if content:
                     logger.info(
-                        f"OCR via Ollama {_OLLAMA_VISION_MODEL} (local): {len(content)} chars"
+                        f"OCR via Ollama {_OLLAMA_VISION_MODEL} (local): {len(content)} chars",
                     )
                     return content
                 logger.warning("Ollama vision returned empty, falling back to Gemini")
@@ -184,8 +184,8 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
                 import os
 
                 os.unlink(tmp_path)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not remove temp file {tmp_path}: {e}")
         except Exception as e:
             logger.warning(f"Gemini CLI error: {e}, falling back to API")
 
@@ -205,7 +205,7 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
             "inline_data": {
                 "mime_type": mime_type,
                 "data": base64.b64encode(image_data).decode(),
-            }
+            },
         },
     ]
 
@@ -254,7 +254,7 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
         extracted = extract_json_from_llm_response(response_text)
         if not extracted:
             logger.error(
-                f"Auto OCR JSON parsing failed for client {client_id}. Raw: {response_text[:300]}"
+                f"Auto OCR JSON parsing failed for client {client_id}. Raw: {response_text[:300]}",
             )
             return {"success": False, "error": "Could not parse OCR response"}
 
@@ -312,8 +312,8 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
                     update_parts.append(f"passport_expiry = ${param_idx}")
                     params.append(expiry)
                     param_idx += 1
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(f"Skipping invalid date format: {e}")
 
             if extracted.get("gender"):
                 update_parts.append(f"gender = ${param_idx}")
@@ -326,8 +326,8 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
                     update_parts.append(f"date_of_birth = ${param_idx}")
                     params.append(dob)
                     param_idx += 1
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(f"Skipping invalid date format: {e}")
 
             if extracted.get("birthplace"):
                 update_parts.append(f"birthplace = ${param_idx}")
@@ -347,7 +347,7 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
             await conn.execute(update_sql, *params)
 
         logger.info(
-            f"Auto OCR completed for client {client_id}: {extracted.get('passport_number', 'N/A')}"
+            f"Auto OCR completed for client {client_id}: {extracted.get('passport_number', 'N/A')}",
         )
         return {"success": True, "extracted": extracted}
 
@@ -417,8 +417,8 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
                     update_parts.append(f"expiry_date = ${param_idx}")
                     params.append(expiry)
                     param_idx += 1
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(f"Skipping invalid date format: {e}")
 
             if extracted.get("issue_date"):
                 try:
@@ -426,8 +426,8 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
                     update_parts.append(f"issue_date = ${param_idx}")
                     params.append(issue)
                     param_idx += 1
-                except ValueError:
-                    pass
+                except ValueError as e:
+                    logger.debug(f"Skipping invalid date format: {e}")
 
             if doc_id:
                 params.append(doc_id)
@@ -437,7 +437,7 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
                 )
 
         logger.info(
-            f"Auto OCR visa completed for client {client_id}: {extracted.get('visa_type', 'N/A')}"
+            f"Auto OCR visa completed for client {client_id}: {extracted.get('visa_type', 'N/A')}",
         )
         return {"success": True, "extracted": extracted}
 
@@ -523,7 +523,7 @@ async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None)
                         )
 
         logger.info(
-            f"Auto OCR NIB completed for client {client_id}: {extracted.get('nib_number', 'N/A')}"
+            f"Auto OCR NIB completed for client {client_id}: {extracted.get('nib_number', 'N/A')}",
         )
         return {"success": True, "extracted": extracted}
 
@@ -611,13 +611,13 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
                             updated_at = NOW()
                         WHERE id = $2""",
                         to_jsonb(
-                            {"npwp": extracted["npwp_number"], "kpp": extracted.get("kpp_name")}
+                            {"npwp": extracted["npwp_number"], "kpp": extracted.get("kpp_name")},
                         ),
                         client_id,
                     )
 
         logger.info(
-            f"Auto OCR NPWP completed for client {client_id}: {extracted.get('npwp_number', 'N/A')}"
+            f"Auto OCR NPWP completed for client {client_id}: {extracted.get('npwp_number', 'N/A')}",
         )
         return {"success": True, "extracted": extracted}
 
@@ -1316,7 +1316,7 @@ async def delete_family_member(
 async def get_client_documents(
     client_id: int,
     category: str | None = Query(
-        None, description="Filter by category: immigration, pma, tax, personal"
+        None, description="Filter by category: immigration, pma, tax, personal",
     ),
     include_archived: bool = Query(False, description="Include archived documents"),
     pool: Any = Depends(get_database_pool),
@@ -1508,7 +1508,7 @@ async def create_documents_bulk(
                             expiry_date = datetime.strptime(doc.expiry_date, "%Y-%m-%d").date()
                         except ValueError:
                             logger.warning(
-                                f"Invalid expiry_date format for {doc.file_name}: {doc.expiry_date}"
+                                f"Invalid expiry_date format for {doc.file_name}: {doc.expiry_date}",
                             )
                             expiry_date = None
 
@@ -1570,7 +1570,7 @@ async def create_documents_bulk(
 
         logger.info(
             f"Bulk inserted {len(inserted_ids)} documents for client {client_id}. "
-            f"OCR queued: {ocr_count}, Failed: {failed_count}"
+            f"OCR queued: {ocr_count}, Failed: {failed_count}",
         )
 
         return {
@@ -1654,7 +1654,7 @@ async def archive_document(
     async with pool.acquire() as conn:
         if permanent:
             result = await conn.execute(
-                "DELETE FROM documents WHERE id = $1 AND client_id = $2", doc_id, client_id
+                "DELETE FROM documents WHERE id = $1 AND client_id = $2", doc_id, client_id,
             )
             action = "deleted"
         else:
@@ -1686,7 +1686,7 @@ async def get_document_categories(pool: Any = Depends(get_database_pool)) -> lis
             FROM document_categories
             WHERE active = true
             ORDER BY sort_order, name
-            """
+            """,
         )
         return [dict(c) for c in categories]
 
@@ -1815,7 +1815,7 @@ async def get_expiry_alerts_summary(pool: Any = Depends(get_database_pool)) -> d
                 COUNT(*) FILTER (WHERE alert_color = 'yellow') as yellow,
                 COUNT(*) FILTER (WHERE alert_color = 'green') as green
             FROM client_expiry_alerts_view
-            """
+            """,
         )
 
         # Get top 5 urgent alerts
@@ -1828,7 +1828,7 @@ async def get_expiry_alerts_summary(pool: Any = Depends(get_database_pool)) -> d
             WHERE alert_color IN ('expired', 'red')
             ORDER BY expiry_date
             LIMIT 5
-            """
+            """,
         )
 
         return {"counts": dict(summary), "urgent_alerts": [dict(a) for a in urgent]}
@@ -1891,11 +1891,11 @@ async def upload_document_base64(
                 # If specific settings exist for types, use them (simplified from crm_drive_folders)
                 # But to avoid circular imports or config issues, we fall back to root or simple logic
                 if client["client_type"] == "individual" and hasattr(
-                    settings, "gdrive_individuals_folder_id"
+                    settings, "gdrive_individuals_folder_id",
                 ):
                     parent_id = settings.gdrive_individuals_folder_id or parent_id
                 elif client["client_type"] == "company" and hasattr(
-                    settings, "gdrive_companies_folder_id"
+                    settings, "gdrive_companies_folder_id",
                 ):
                     parent_id = settings.gdrive_companies_folder_id or parent_id
 
@@ -1915,7 +1915,7 @@ async def upload_document_base64(
                 except Exception as e:
                     logger.error(f"Failed to create root folder: {e}")
                     raise HTTPException(
-                        status_code=500, detail=f"Failed to create root folder: {e}"
+                        status_code=500, detail=f"Failed to create root folder: {e}",
                     ) from e
 
             # Ensure Subfolder Exists (Find or Create)
@@ -1927,7 +1927,7 @@ async def upload_document_base64(
                 # If structure fetch fails, maybe root folder is missing/deleted?
                 # We'll just fail for now, or could try to recreate
                 raise HTTPException(
-                    status_code=500, detail=f"Failed to access folder structure: {e}"
+                    status_code=500, detail=f"Failed to access folder structure: {e}",
                 ) from e
 
             subfolder = next((f for f in structure["folders"] if f["name"] == folder_name), None)

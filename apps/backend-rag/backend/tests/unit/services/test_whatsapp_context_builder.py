@@ -66,7 +66,7 @@ def sample_conversation_row():
                 {"role": "user", "content": "Ciao, vorrei informazioni sul KITAS"},
                 {"role": "assistant", "content": "Buongiorno! Certamente..."},
                 {"role": "user", "content": "Quanto costa la PT PMA?"},
-            ]
+            ],
         ),
         "metadata": json.dumps(
             {
@@ -78,7 +78,7 @@ def sample_conversation_row():
                 "visa_discussed": ["KITAS"],
                 "interests": ["company_setup"],
                 "client_type": "entrepreneur",
-            }
+            },
         ),
     }
 
@@ -495,7 +495,7 @@ class TestBuildContext:
                     "visa_discussed": ["KITAS"],
                     "interests": ["company_setup"],
                     "message_count": 5,
-                }
+                },
             ),
         }
 
@@ -644,7 +644,7 @@ class TestBuildContextIntegration:
                     "interests": ["investment"],
                     "visa_discussed": [],
                     "message_count": 1,
-                }
+                },
             ),
         }
 

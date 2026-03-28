@@ -37,7 +37,7 @@ def require_auth(auth_type: str = "any", permissions: list = None) -> Any:
             if not hasattr(request.state, "user") or not request.state.user:
                 logger.warning(f"Authentication required for {request.url.path}")
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required",
                 )
 
             user_context = request.state.user
@@ -46,7 +46,7 @@ def require_auth(auth_type: str = "any", permissions: list = None) -> Any:
             # Validate authentication type
             if auth_type == "api_key" and auth_method != "api_key":
                 logger.warning(
-                    f"API Key authentication required for {request.url.path}, got {auth_method}"
+                    f"API Key authentication required for {request.url.path}, got {auth_method}",
                 )
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -55,10 +55,10 @@ def require_auth(auth_type: str = "any", permissions: list = None) -> Any:
 
             if auth_type == "jwt" and auth_method != "jwt":
                 logger.warning(
-                    f"JWT authentication required for {request.url.path}, got {auth_method}"
+                    f"JWT authentication required for {request.url.path}, got {auth_method}",
                 )
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT authentication required"
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT authentication required",
                 )
 
             # Check permissions (for API key users)
@@ -68,14 +68,14 @@ def require_auth(auth_type: str = "any", permissions: list = None) -> Any:
                 if "*" not in user_permissions:
                     if not all(perm in user_permissions for perm in permissions if perm != "*"):
                         logger.warning(
-                            f"Insufficient permissions for {request.url.path}: {user_permissions}"
+                            f"Insufficient permissions for {request.url.path}: {user_permissions}",
                         )
                         raise HTTPException(
-                            status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
+                            status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions",
                         )
 
             logger.debug(
-                f"Access granted to {request.url.path} for user: {user_context.get('role', 'unknown')}"
+                f"Access granted to {request.url.path} for user: {user_context.get('role', 'unknown')}",
             )
             return await func(request, *args, **kwargs)
 
@@ -133,7 +133,7 @@ def role_required(allowed_roles: list) -> Any:
         async def wrapper(request: Request, *args, **kwargs):
             if not hasattr(request.state, "user") or not request.state.user:
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required",
                 )
 
             user_context = request.state.user

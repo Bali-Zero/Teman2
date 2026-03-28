@@ -55,7 +55,7 @@ class EnhancedCRMService:
             "custom_fields",
             "tags",
             "notes",
-        }
+        },
     )
 
     def __init__(self, db_pool: asyncpg.Pool) -> None:
@@ -76,7 +76,7 @@ class EnhancedCRMService:
             # Precarica practice types in cache
             async with self.db_pool.acquire() as conn:
                 types = await conn.fetch(
-                    "SELECT id, code, name FROM practice_types WHERE active = true"
+                    "SELECT id, code, name FROM practice_types WHERE active = true",
                 )
                 await query_cache.set_practice_types([dict(t) for t in types])
 
@@ -114,7 +114,7 @@ class EnhancedCRMService:
             existing = await self._find_duplicate_client(validated.model_dump())
             if existing:
                 raise ValidationError(
-                    "Client already exists with email or phone", {"existing_id": existing}
+                    "Client already exists with email or phone", {"existing_id": existing},
                 )
 
             # Insert
@@ -236,7 +236,7 @@ class EnhancedCRMService:
             raise DatabaseError("Failed to update client", operation="update")
 
     async def get_client(
-        self, client_id: int, include_practices: bool = False
+        self, client_id: int, include_practices: bool = False,
     ) -> dict[str, Any] | None:
         """
         Recupera cliente con caching.
@@ -269,7 +269,7 @@ class EnhancedCRMService:
             raise DatabaseError("Failed to retrieve client", operation="select")
 
     async def search_clients(
-        self, query: str, limit: int = 20, offset: int = 0
+        self, query: str, limit: int = 20, offset: int = 0,
     ) -> tuple[list[dict], int]:
         """
         Ricerca clienti ottimizzata.
@@ -347,7 +347,7 @@ class EnhancedCRMService:
             async with self.db_pool.acquire() as conn:
                 # Get current status
                 old = await conn.fetchrow(
-                    "SELECT status, client_id FROM practices WHERE id = $1", practice_id
+                    "SELECT status, client_id FROM practices WHERE id = $1", practice_id,
                 )
 
                 if not old:
@@ -390,7 +390,7 @@ class EnhancedCRMService:
     # ==================== BATCH OPERATIONS ====================
 
     async def batch_create_clients(
-        self, clients: list[dict[str, Any]], user_id: str | None = None
+        self, clients: list[dict[str, Any]], user_id: str | None = None,
     ) -> list[int]:
         """
         Creazione batch clienti.

@@ -48,7 +48,7 @@ class GeminiJakselService:
                 {
                     "role": ex["role"],
                     "content": ex["content"],
-                }
+                },
             )
 
         # OpenRouter client for fallback (lazy loaded)
@@ -64,7 +64,7 @@ class GeminiJakselService:
                         self._genai_client = client
                         auth_method = getattr(self._genai_client, "_auth_method", "unknown")
                         logger.info(
-                            f"✅ Gemini Jaksel Service client loaded (model: {self.model_name}, auth: {auth_method})"
+                            f"✅ Gemini Jaksel Service client loaded (model: {self.model_name}, auth: {auth_method})",
                         )
                 except Exception as e:
                     logger.warning(f"Failed to initialize Gemini client: {e}")
@@ -91,7 +91,7 @@ class GeminiJakselService:
         return self._openrouter_client
 
     def _convert_to_openai_messages(
-        self, message: str, history: list[dict] | None, context: str
+        self, message: str, history: list[dict] | None, context: str,
     ) -> list[dict]:
         """Convert Gemini-style inputs to OpenAI message format for OpenRouter"""
         messages = []
@@ -123,7 +123,7 @@ class GeminiJakselService:
         return messages
 
     async def _fallback_to_openrouter(
-        self, message: str, history: list[dict] | None, context: str
+        self, message: str, history: list[dict] | None, context: str,
     ) -> str:
         """Fallback to OpenRouter when Gemini fails"""
         client = self._get_openrouter_client()
@@ -143,7 +143,7 @@ class GeminiJakselService:
             raise
 
     async def _fallback_to_openrouter_stream(
-        self, message: str, history: list[dict] | None, context: str
+        self, message: str, history: list[dict] | None, context: str,
     ) -> AsyncGenerator[str, None]:
         """Streaming fallback to OpenRouter"""
         client = self._get_openrouter_client()
@@ -163,7 +163,7 @@ class GeminiJakselService:
             raise
 
     async def generate_response_stream(
-        self, message: str, history: list[dict] | None = None, context: str = ""
+        self, message: str, history: list[dict] | None = None, context: str = "",
     ) -> AsyncGenerator[str, None]:
         """
         Generate streaming response in Jaksel style with automatic fallback.
@@ -196,7 +196,7 @@ class GeminiJakselService:
                             {
                                 "role": msg.get("role", "user"),
                                 "content": content,
-                            }
+                            },
                         )
 
                 # Build final message
@@ -237,7 +237,7 @@ class GeminiJakselService:
             yield chunk
 
     async def generate_response(
-        self, message: str, history: list[dict] | None = None, context: str = ""
+        self, message: str, history: list[dict] | None = None, context: str = "",
     ) -> str:
         """
         Generate full response (non-streaming) with automatic fallback.
@@ -293,7 +293,7 @@ class GeminiService:
         self._service = GeminiJakselService()
 
     async def generate_response(
-        self, prompt: str, context: list[str] | None = None, **kwargs
+        self, prompt: str, context: list[str] | None = None, **kwargs,
     ) -> str:
         """
         Generate response from Gemini.
@@ -331,7 +331,7 @@ if __name__ == "__main__":
         logger.info("🚀 Testing Gemini Jaksel Service with OpenRouter Fallback...")
         logger.info(f"   Gemini API Key: {'✅ Set' if settings.google_api_key else '❌ Not set'}")
         logger.info(
-            f"   OpenRouter API Key: {'✅ Set' if settings.openrouter_api_key else '❌ Not set'}"
+            f"   OpenRouter API Key: {'✅ Set' if settings.openrouter_api_key else '❌ Not set'}",
         )
 
         # Test Query

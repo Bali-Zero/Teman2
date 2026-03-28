@@ -163,7 +163,7 @@ class AgenticRAGOrchestrator:
         logger.debug("AgenticRAGOrchestrator: Initializing LLMGateway...")
         # self.llm_gateway = LLMGateway(gemini_tools=self.gemini_tools) # Moved above
         self.llm_gateway.set_gemini_tools(
-            self.gemini_tools
+            self.gemini_tools,
         )  # Set tools after LLMGateway is initialized
         logger.debug("AgenticRAGOrchestrator: LLMGateway initialized")
 
@@ -178,14 +178,14 @@ class AgenticRAGOrchestrator:
         # Initialize Reasoning Engine (manages ReAct loop)
         logger.debug("AgenticRAGOrchestrator: Initializing ReasoningEngine...")
         self.reasoning_engine = ReasoningEngine(
-            tool_map=self.tools, response_pipeline=self.response_pipeline
+            tool_map=self.tools, response_pipeline=self.response_pipeline,
         )
         logger.debug("AgenticRAGOrchestrator: ReasoningEngine initialized")
 
         # Initialize Entity Extraction Service
         logger.debug("AgenticRAGOrchestrator: Initializing EntityExtractionService...")
         self.entity_extractor = entity_extractor or EntityExtractionService(
-            llm_gateway=self.llm_gateway
+            llm_gateway=self.llm_gateway,
         )
         logger.debug("AgenticRAGOrchestrator: EntityExtractionService initialized")
 
@@ -209,20 +209,20 @@ class AgenticRAGOrchestrator:
 
                 self.kg_langgraph_orchestrator = KGLangGraphOrchestrator(db_pool)
                 logger.info(
-                    "✅ KG LangGraph Orchestrator initialized (Phase 3 - ENABLE_KG_LANGGRAPH=true)"
+                    "✅ KG LangGraph Orchestrator initialized (Phase 3 - ENABLE_KG_LANGGRAPH=true)",
                 )
             except ImportError as e:
                 logger.warning(f"⚠️ KG LangGraph Orchestrator not available: {e}")
             except Exception as e:
                 logger.error(
-                    f"❌ Failed to initialize KG LangGraph Orchestrator: {e}", exc_info=True
+                    f"❌ Failed to initialize KG LangGraph Orchestrator: {e}", exc_info=True,
                 )
         else:
             if not db_pool:
                 logger.warning("⚠️ KG LangGraph Orchestrator DISABLED: db_pool not available")
             elif not kg_langgraph_enabled:
                 logger.warning(
-                    "⚠️ KG LangGraph Orchestrator DISABLED: ENABLE_KG_LANGGRAPH not set to 'true'"
+                    "⚠️ KG LangGraph Orchestrator DISABLED: ENABLE_KG_LANGGRAPH not set to 'true'",
                 )
 
         # Initialize Follow-up & Golden Answer services
@@ -285,7 +285,7 @@ class AgenticRAGOrchestrator:
             streaming_manager=streaming_manager,
         )
         logger.info(
-            "✅ OrchestratorCore and OrchestratorStreamingCore initialized (Refactored Architecture)"
+            "✅ OrchestratorCore and OrchestratorStreamingCore initialized (Refactored Architecture)",
         )
 
     async def process_query(

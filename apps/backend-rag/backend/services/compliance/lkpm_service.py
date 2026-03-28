@@ -191,7 +191,7 @@ class LKPMService:
         """Auto-create lkpm_client_config from CRM company data if missing."""
         async with self.db_pool.acquire() as conn:
             existing = await conn.fetchval(
-                "SELECT id FROM lkpm_client_config WHERE client_id = $1", client_id
+                "SELECT id FROM lkpm_client_config WHERE client_id = $1", client_id,
             )
             if existing:
                 return
@@ -224,11 +224,11 @@ class LKPMService:
                     kbli,
                 )
                 logger.info(
-                    f"Auto-created lkpm_client_config for client {client_id}: {row['company_name']}"
+                    f"Auto-created lkpm_client_config for client {client_id}: {row['company_name']}",
                 )
             else:
                 logger.warning(
-                    f"No active company found for client {client_id}, cannot auto-create config"
+                    f"No active company found for client {client_id}, cannot auto-create config",
                 )
 
     async def get_history_for_portal_client(self, client_id: int) -> list[LKPMBatchItem]:
@@ -259,7 +259,7 @@ class LKPMService:
         """Process client form submission into a draft."""
         logger.info(
             f"Processing form submission: client={submission.client_id}, "
-            f"{submission.quarter} {submission.year}"
+            f"{submission.quarter} {submission.year}",
         )
 
         # Auto-create config from CRM if missing
@@ -269,7 +269,7 @@ class LKPMService:
 
         # Calculate cumulative
         cumulative = await self._calculate_cumulative(
-            submission.client_id, submission.quarter, submission.year
+            submission.client_id, submission.quarter, submission.year,
         )
         draft.cumulative = InvestmentRealization(
             equipment_domestic=cumulative.equipment_domestic + draft.realized.equipment_domestic,
@@ -359,7 +359,7 @@ class LKPMService:
 
         logger.info(
             f"Draft {draft_id} validated: valid={result.is_valid}, "
-            f"red={result.red_count}, yellow={result.yellow_count}"
+            f"red={result.red_count}, yellow={result.yellow_count}",
         )
         return result
 
@@ -522,7 +522,7 @@ class LKPMService:
                 WHERE r.validation_status = 'invalid'
                   AND r.status NOT IN ('submitted', 'archived')
                 ORDER BY r.year DESC, r.quarter DESC
-                """
+                """,
             )
 
         alerts = []
@@ -543,7 +543,7 @@ class LKPMService:
                     "red_alerts": red_count,
                     "total_alerts": len(validation_alerts),
                     "status": row["status"],
-                }
+                },
             )
         return alerts
 
@@ -569,7 +569,7 @@ class LKPMService:
                         deadline=deadline_dt,
                         days_remaining=days_remaining,
                         is_overdue=days_remaining < 0,
-                    )
+                    ),
                 )
 
         return sorted(deadlines, key=lambda d: d.days_remaining)
@@ -702,7 +702,7 @@ class LKPMService:
         return row["id"]
 
     async def _calculate_cumulative(
-        self, client_id: int, quarter: str, year: int
+        self, client_id: int, quarter: str, year: int,
     ) -> InvestmentRealization:
         """Sum all previous quarters' realization for cumulative total."""
         # Quarter ordering for comparison
@@ -834,7 +834,7 @@ class LKPMService:
                 row.get("realized_land", 0) or 0,
                 row.get("realized_working_capital", 0) or 0,
                 row.get("realized_other", 0) or 0,
-            ]
+            ],
         )
 
         return LKPMBatchItem(

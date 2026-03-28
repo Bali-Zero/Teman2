@@ -255,7 +255,7 @@ class AutoIngestionOrchestrator:
             # PRODUCTION: Scraper service is required - fail fast instead of simulating
             logger.error(
                 f"❌ Scraper service not configured for source {source.name}. "
-                "Cannot scrape without scraper service. Set scraper service in AutoIngestionOrchestrator initialization."
+                "Cannot scrape without scraper service. Set scraper service in AutoIngestionOrchestrator initialization.",
             )
             raise ValueError(f"Scraper service not configured. Cannot scrape source: {source.name}")
 
@@ -372,7 +372,7 @@ Answer with YES or NO and a brief reason."""
                 tier2_filtered.append(content)
 
         logger.info(
-            f"   Tier 2: {len(tier2_filtered)}/{len(tier1_filtered)} passed ZANTARA AI filter"
+            f"   Tier 2: {len(tier2_filtered)}/{len(tier1_filtered)} passed ZANTARA AI filter",
         )
 
         return tier2_filtered
@@ -419,7 +419,7 @@ Answer with YES or NO and a brief reason."""
                 logger.warning(
                     f"⚠️ Ingestion not fully implemented for {content.title[:50]}... "
                     f"Target collection: {target_collection}. "
-                    "Implement search_service.add_document() for production ingestion."
+                    "Implement search_service.add_document() for production ingestion.",
                 )
 
                 # Add to deduplication set
@@ -496,7 +496,7 @@ Answer with YES or NO and a brief reason."""
                 f"✅ Job completed: {job_id} - "
                 f"scraped={job.items_scraped}, "
                 f"filtered={job.items_filtered}, "
-                f"ingested={job.items_ingested}"
+                f"ingested={job.items_ingested}",
             )
 
         except Exception as e:

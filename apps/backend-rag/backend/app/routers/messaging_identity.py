@@ -37,7 +37,7 @@ class CreateMappingRequest(BaseModel):
     channel: str = Field(..., description="Channel type: 'whatsapp' or 'telegram'")
     phone: str | None = Field(None, description="WhatsApp phone (for whatsapp channel)")
     telegram_chat_id: int | None = Field(
-        None, description="Telegram chat ID (for telegram channel)"
+        None, description="Telegram chat ID (for telegram channel)",
     )
     display_name: str | None = Field(None, description="Display name from profile")
     verified: bool = Field(False, description="Whether association is verified")
@@ -205,7 +205,7 @@ async def list_all_mappings(
                     COUNT(*) as total_count
                 FROM messaging_users
                 WHERE active = TRUE
-                """
+                """,
             )
 
             # Get recent mappings (last 50)
@@ -221,7 +221,7 @@ async def list_all_mappings(
                 WHERE mu.active = TRUE
                 ORDER BY mu.created_at DESC
                 LIMIT 50
-                """
+                """,
             )
 
             return {

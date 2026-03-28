@@ -30,7 +30,7 @@ class DriveAuditLogger:
     """
 
     def log_operation(
-        self, user_email: str, operation: str, status: str, details: dict = None
+        self, user_email: str, operation: str, status: str, details: dict = None,
     ) -> None:
         """Registra un'operazione su Drive con formato strutturato JSON-ready."""
         log_data = {
@@ -47,7 +47,7 @@ class DriveAuditLogger:
             logger.error(f"Drive Operation Failed: {log_data}")
 
     def log_error(
-        self, user_email: str, operation: str, error_type: str, error_msg: str, details: dict = None
+        self, user_email: str, operation: str, error_type: str, error_msg: str, details: dict = None,
     ) -> None:
         """Registra un errore specifico di Drive per l'audit trail."""
         self.log_operation(
@@ -140,10 +140,10 @@ def drive_operation(operation_name: str) -> Callable:
                 # Aggiornamento delle metriche Prometheus
                 if METRICS_ENABLED:
                     drive_operations_total.labels(
-                        operation=operation_name, user_email=user_email, status=status
+                        operation=operation_name, user_email=user_email, status=status,
                     ).inc()
                     drive_operation_duration_seconds.labels(operation=operation_name).observe(
-                        duration
+                        duration,
                     )
 
                 # Log di audit per operazioni completate con successo

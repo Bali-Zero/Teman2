@@ -36,7 +36,7 @@ def _compute_crc_response(crc_token: str, consumer_secret: str) -> str:
 
 
 def _verify_webhook_signature(
-    payload_body: bytes, signature_header: str | None, consumer_secret: str
+    payload_body: bytes, signature_header: str | None, consumer_secret: str,
 ) -> bool:
     """Verify the X-Twitter-Webhooks-Signature header on POST requests.
 
@@ -51,7 +51,7 @@ def _verify_webhook_signature(
     if not signature_header:
         return False
     expected = _compute_crc_response(
-        payload_body.decode("utf-8", errors="replace"), consumer_secret
+        payload_body.decode("utf-8", errors="replace"), consumer_secret,
     )
     return hmac.compare_digest(f"sha256={signature_header.removeprefix('sha256=')}", expected)
 

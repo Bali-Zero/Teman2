@@ -139,7 +139,7 @@ async def run_stress_test():
                     "duration": duration,
                     "route": route,
                     "tools": tools_used,
-                }
+                },
             )
 
         except Exception as e:
@@ -149,14 +149,14 @@ async def run_stress_test():
             logger.error(f"ERROR: {e}")  # Replaced print with logger.error
 
             results.append(
-                {"id": step_id, "status": "error", "error": str(e), "duration": duration}
+                {"id": step_id, "status": "error", "error": str(e), "duration": duration},
             )
 
             if consecutive_errors >= 4:
                 logger.critical("🚨 CIRCUIT BREAKER TRIPPED: 4 Consecutive Errors. Stopping Test.")
                 logger.critical("\n" + "!" * 60)  # Replaced print with logger.critical
                 logger.critical(
-                    "🚨 STOPPING TEST: TOO MANY ERRORS"
+                    "🚨 STOPPING TEST: TOO MANY ERRORS",
                 )  # Replaced print with logger.critical
                 logger.critical("!" * 60 + "\n")  # Replaced print with logger.critical
                 break
@@ -174,7 +174,7 @@ async def run_stress_test():
     logger.info("=" * 60)  # Replaced print with logger.info
     logger.info(f"Total Steps: {len(results)}/{len(scenarios)}")  # Replaced print with logger.info
     logger.info(
-        f"Success Rate: {success_count}/{len(results)} ({success_count / len(results) * 100:.1f}%)"
+        f"Success Rate: {success_count}/{len(results)} ({success_count / len(results) * 100:.1f}%)",
     )  # Replaced print with logger.info
     logger.info(f"Total Time: {total_duration:.1f}s")  # Replaced print with logger.info
     logger.info(f"Avg Latency: {avg_latency:.2f}s")  # Replaced print with logger.info

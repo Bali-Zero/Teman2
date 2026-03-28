@@ -30,7 +30,7 @@ class TestBM25Vectorizer:
     def test_init_custom(self):
         """Test BM25Vectorizer initialization with custom parameters"""
         vectorizer = BM25Vectorizer(
-            vocab_size=10000, k1=2.0, b=0.8, min_token_length=3, max_token_length=40
+            vocab_size=10000, k1=2.0, b=0.8, min_token_length=3, max_token_length=40,
         )
         assert vectorizer.vocab_size == 10000
         assert vectorizer.k1 == 2.0

@@ -463,7 +463,7 @@ def calculate_investment_score(
     if zone_kbli_tier == "tolerated":
         modifiers.append(
             "⚠️ Gray zone: attività comune in questa zona ma non normativamente ideale. "
-            "Verificare IMB/PBG specifico per conferma."
+            "Verificare IMB/PBG specifico per conferma.",
         )
 
     # W-2 villa height cap warning
@@ -472,7 +472,7 @@ def calculate_investment_score(
     if zone_code and zone_code.startswith("W-2") and kbli_code and kbli_code.startswith("55"):
         tb_raw = zone_data.get("tb", "N/A") if zone_data else "N/A"
         modifiers.append(
-            f"⚠️ W-2: villa limitata a 8m/2 piani (hotel fino a 15m/4 piani). TB zona: {tb_raw}"
+            f"⚠️ W-2: villa limitata a 8m/2 piani (hotel fino a 15m/4 piani). TB zona: {tb_raw}",
         )
         score -= 3  # Minor penalty for height limitation
 
@@ -558,7 +558,7 @@ async def _gistaru_rdtr_lookup(lat: float, lon: float) -> dict[str, Any] | None:
                 else cities_body
             )
             logger.info(
-                "GISTARU: %d kabupaten found", len(cities) if isinstance(cities, list) else 0
+                "GISTARU: %d kabupaten found", len(cities) if isinstance(cities, list) else 0,
             )
 
             # For each kabupaten, get RDTR list and try spatial query
@@ -608,7 +608,7 @@ async def _gistaru_rdtr_lookup(lat: float, lon: float) -> dict[str, Any] | None:
                             "outFields": "*",
                             "returnGeometry": "false",
                             "f": "json",
-                        }
+                        },
                     )
                     inner_url = f"{arcgis_base}/{mapserver_path}/0/query?{qs}"
                     proxied = f"{GISTARU_PROXY}{inner_url}"
@@ -674,7 +674,7 @@ async def _gistaru_rdtr_lookup(lat: float, lon: float) -> dict[str, Any] | None:
 
 
 async def _gistaru_rdtr_direct_query(
-    lat: float, lon: float, service_path: str
+    lat: float, lon: float, service_path: str,
 ) -> dict[str, Any] | None:
     """
     Direct spatial query to a known GISTARU MapServer service.
@@ -688,7 +688,7 @@ async def _gistaru_rdtr_direct_query(
             "outFields": "*",
             "returnGeometry": "false",
             "f": "json",
-        }
+        },
     )
     inner_url = f"{GISTARU_MAPSERVER_BASE}/{service_path}/MapServer/0/query?{qs}"
     proxied = f"{GISTARU_PROXY}{inner_url}"
@@ -817,7 +817,7 @@ async def get_clients_geo(request: Request) -> dict[str, Any]:
                 WHERE status = 'active'
                 ORDER BY full_name
                 LIMIT 500
-                """
+                """,
             )
             clients: list[dict[str, Any]] = [
                 {
@@ -869,7 +869,7 @@ async def get_risk_zones() -> dict[str, list[dict[str, Any]]]:
                 "example_kbli_codes": ["55203", "62011", "70201"],
                 "criteria": "pma_status == TERBUKA, no location-specific restrictions",
             },
-        ]
+        ],
     }
 
 
@@ -900,7 +900,7 @@ async def log_lookup(req: LogLookupRequest, request: Request) -> dict[str, Any]:
                     notes TEXT,
                     created_at TIMESTAMPTZ DEFAULT NOW()
                 )
-                """
+                """,
             )
             await conn.execute(
                 """
@@ -952,7 +952,7 @@ async def get_stats(request: Request) -> dict[str, Any]:
                     """
                 SELECT COUNT(*) FROM practices
                 WHERE status NOT IN ('cancelled', 'archived')
-                """
+                """,
                 )
                 or 0
             )
@@ -965,7 +965,7 @@ async def get_stats(request: Request) -> dict[str, Any]:
                         """
                     SELECT COUNT(*) FROM analytics_map_lookups
                     WHERE created_at > NOW() - INTERVAL '24 hours'
-                    """
+                    """,
                     )
                     or 0
                 )
@@ -1172,7 +1172,7 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
         k = result["kbli"]
         parts.append(
             f"KBLI {k.get('code', '?')} {k.get('title', '')} "
-            f"{k.get('state', '?')} per {'PMA' if req.is_pma else 'locale'}"
+            f"{k.get('state', '?')} per {'PMA' if req.is_pma else 'locale'}",
         )
     roi_gs = result.get("roi", {}).get("golden_strategy", {})
     if roi_gs.get("roi"):

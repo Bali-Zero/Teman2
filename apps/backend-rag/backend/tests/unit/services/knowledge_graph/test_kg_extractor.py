@@ -47,8 +47,8 @@ class TestKGExtractor:
             mock_create = AsyncMock()
             mock_create.create.return_value = MagicMock(
                 content=[
-                    MagicMock(text='{"entities": [{"name": "PT PMA", "type": "Organization"}]}')
-                ]
+                    MagicMock(text='{"entities": [{"name": "PT PMA", "type": "Organization"}]}'),
+                ],
             )
             mock_messages.create = mock_create
 
@@ -65,9 +65,9 @@ class TestKGExtractor:
             mock_create.create.return_value = MagicMock(
                 content=[
                     MagicMock(
-                        text='{"relations": [{"source": "PT PMA", "target": "Investment", "type": "REQUIRES"}]}'
-                    )
-                ]
+                        text='{"relations": [{"source": "PT PMA", "target": "Investment", "type": "REQUIRES"}]}',
+                    ),
+                ],
             )
             mock_messages.create = mock_create
 
@@ -95,7 +95,7 @@ class TestExtractedEntity:
         from backend.services.knowledge_graph.ontology import EntityType
 
         entity = ExtractedEntity(
-            id="e1", name="PT PMA", type=EntityType.ORGANIZATION, mention="PT PMA", confidence=0.9
+            id="e1", name="PT PMA", type=EntityType.ORGANIZATION, mention="PT PMA", confidence=0.9,
         )
         assert entity.name == "PT PMA"
         assert entity.type == EntityType.ORGANIZATION
@@ -129,12 +129,12 @@ class TestExtractionResult:
         from backend.services.knowledge_graph.ontology import EntityType, RelationType
 
         entities = [
-            ExtractedEntity(id="e1", name="PT PMA", type=EntityType.ORGANIZATION, mention="PT PMA")
+            ExtractedEntity(id="e1", name="PT PMA", type=EntityType.ORGANIZATION, mention="PT PMA"),
         ]
         relations = [
             ExtractedRelation(
-                source_id="e1", target_id="e2", type=RelationType.REQUIRES, evidence="requires"
-            )
+                source_id="e1", target_id="e2", type=RelationType.REQUIRES, evidence="requires",
+            ),
         ]
 
         result = ExtractionResult(chunk_id="chunk1", entities=entities, relations=relations)
