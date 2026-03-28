@@ -119,6 +119,13 @@ export function EmailList({
               onChange={(e) => setLocalSearch(e.target.value)}
               placeholder="Search emails..."
               aria-label="Cerca email"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setLocalSearch('');
+                  onSearch('');
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
               className={cn(
                 'w-full pl-9 pr-3 py-2 text-sm rounded-lg transition-colors',
                 'bg-[var(--background-elevated)] border border-[var(--border)]',
