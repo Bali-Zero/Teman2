@@ -74,6 +74,10 @@ SERVIZI CREATIVI E DIGITALI:
 - KBLI 62020 — Konsultasi Komputer dan Manajemen TI
 - KBLI 62099 — Aktivitas TI Lainnya
 - KBLI 73100 — Periklanan (agenzia pubblicitaria)
+  ⚠️ TERBATAS: max 49% WNA — kemitraan con ente locale obbligatoria
+  (Fonte: BPS 7/2025 + Perpres 14/2024 — non confondere con Perpres 10/2021
+   che classificava TERBUKA: superato da aggiornamento 2024-2025)
+- KBLI 73201 — Penelitian Pasar (ricerche di mercato) — TERBUKA 100%
 - KBLI 74100 — Aktivitas Desain Khusus
 - KBLI 90001 — Seni Pertunjukan (performing arts)
 
@@ -97,6 +101,10 @@ Questi settori permettono investimento straniero fino alla percentuale
 indicata. La quota rimanente deve essere detenuta da soci WNI. [COM-025]
 
 MAX 49% WNA:
+- KBLI 73100 — Aktivitas Periklanan (agenzia pubblicitaria / advertising)
+  ⚠️ ERRORE COMUNE: spesso citato come TERBUKA per confusione con Perpres 10/2021.
+  La fonte primaria aggiornata (BPS 7/2025 + Perpres 14/2024) classifica TERBATAS.
+  Obbligo kemitraan (partnership) con soggetto locale. [COM-025b]
 - KBLI 74200 — Aktivitas Fotografi (fotografia commerciale)
 - KBLI 47120 — Perdagangan Eceran Serbaguna Kecil
   (piccolo retail — supera soglia investimento)
