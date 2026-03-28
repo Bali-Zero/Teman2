@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   Grid,
@@ -12,15 +12,15 @@ import {
   ChevronDown,
   X,
   Info,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useState, useRef, useEffect } from "react";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useState, useRef, useEffect } from 'react';
 
 interface DriveToolbarProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
-  viewMode: "grid" | "list";
-  onViewModeChange: (mode: "grid" | "list") => void;
+  viewMode: 'grid' | 'list';
+  onViewModeChange: (mode: 'grid' | 'list') => void;
   onUploadClick: () => void;
   onCreateClick: (e: React.MouseEvent) => void;
   isConnected: boolean;
@@ -51,17 +51,17 @@ export function DriveToolbar({
   // Keyboard shortcut for search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
-      if (e.key === "Escape" && isSearchFocused) {
+      if (e.key === 'Escape' && isSearchFocused) {
         searchInputRef.current?.blur();
-        onSearchChange("");
+        onSearchChange('');
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isSearchFocused, onSearchChange]);
 
   return (
@@ -70,8 +70,8 @@ export function DriveToolbar({
         {/* Search Bar - Elegant minimal */}
         <motion.div
           animate={{
-            width: isSearchFocused ? "100%" : "auto",
-            maxWidth: isSearchFocused ? "520px" : "280px",
+            width: isSearchFocused ? '100%' : 'auto',
+            maxWidth: isSearchFocused ? '520px' : '280px',
           }}
           transition={{ duration: 0.2 }}
           className="relative flex-1"
@@ -81,15 +81,15 @@ export function DriveToolbar({
               relative flex items-center rounded-xl border bg-slate-50/80 dark:bg-slate-800/50 transition-all duration-200
               ${
                 isSearchFocused
-                  ? "border-[var(--bz-accent)]/40 shadow-sm shadow-[var(--bz-accent)]/10 bg-white dark:bg-slate-800"
-                  : "border-slate-200/60 dark:border-slate-700/40 hover:border-slate-300 dark:hover:border-slate-600"
+                  ? 'border-[var(--bz-accent)]/40 shadow-sm shadow-[var(--bz-accent)]/10 bg-white dark:bg-slate-800'
+                  : 'border-slate-200/60 dark:border-slate-700/40 hover:border-slate-300 dark:hover:border-slate-600'
               }
             `}
           >
             <Search
               className={`
               ml-3.5 h-4 w-4 transition-colors
-              ${isSearchFocused ? "text-[var(--bz-accent)]" : "text-slate-400"}
+              ${isSearchFocused ? 'text-[var(--bz-accent)]' : 'text-slate-400'}
             `}
             />
             <input
@@ -110,8 +110,9 @@ export function DriveToolbar({
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
-                  onClick={() => onSearchChange("")}
+                  onClick={() => onSearchChange('')}
                   className="mr-2.5 rounded-full p-1 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  aria-label="Cancella ricerca"
                 >
                   <X className="h-3.5 w-3.5 text-slate-400" />
                 </motion.button>
@@ -134,10 +135,7 @@ export function DriveToolbar({
         <div className="flex items-center gap-1.5">
           {/* Connection status */}
           {!isConnected && onConnect && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
               <Button
                 variant="outline"
                 size="sm"
@@ -158,43 +156,45 @@ export function DriveToolbar({
           {/* View mode toggle - Elegant pill */}
           <div className="flex rounded-lg bg-slate-100/80 dark:bg-slate-800/50 p-0.5">
             <button
-              onClick={() => onViewModeChange("grid")}
+              onClick={() => onViewModeChange('grid')}
               className={`
                 relative flex items-center justify-center rounded-md px-2.5 py-1.5 transition-all duration-200
                 ${
-                  viewMode === "grid"
-                    ? "text-[var(--bz-accent)]"
-                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  viewMode === 'grid'
+                    ? 'text-[var(--bz-accent)]'
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                 }
               `}
               title="Vista griglia"
+              aria-label="Vista griglia"
             >
-              {viewMode === "grid" && (
+              {viewMode === 'grid' && (
                 <motion.div
                   layoutId="viewModeIndicator"
                   className="absolute inset-0 rounded-md bg-white dark:bg-slate-700 shadow-sm"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
               <Grid className="relative z-10 h-4 w-4" />
             </button>
             <button
-              onClick={() => onViewModeChange("list")}
+              onClick={() => onViewModeChange('list')}
               className={`
                 relative flex items-center justify-center rounded-md px-2.5 py-1.5 transition-all duration-200
                 ${
-                  viewMode === "list"
-                    ? "text-[var(--bz-accent)]"
-                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  viewMode === 'list'
+                    ? 'text-[var(--bz-accent)]'
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                 }
               `}
               title="Vista lista"
+              aria-label="Vista lista"
             >
-              {viewMode === "list" && (
+              {viewMode === 'list' && (
                 <motion.div
                   layoutId="viewModeIndicator"
                   className="absolute inset-0 rounded-md bg-white dark:bg-slate-700 shadow-sm"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
               <List className="relative z-10 h-4 w-4" />
@@ -209,12 +209,13 @@ export function DriveToolbar({
                 flex items-center justify-center rounded-lg p-2 transition-all duration-200
                 ${
                   showInfoPanel
-                    ? "bg-[var(--bz-accent)]/10 text-[var(--bz-accent)]"
-                    : "text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
+                    ? 'bg-[var(--bz-accent)]/10 text-[var(--bz-accent)]'
+                    : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300'
                 }
-                ${!hasSelection ? "opacity-40 cursor-not-allowed" : ""}
+                ${!hasSelection ? 'opacity-40 cursor-not-allowed' : ''}
               `}
-              title={showInfoPanel ? "Nascondi dettagli" : "Mostra dettagli"}
+              title={showInfoPanel ? 'Nascondi dettagli' : 'Mostra dettagli'}
+              aria-label={showInfoPanel ? 'Nascondi dettagli' : 'Mostra dettagli'}
               disabled={!hasSelection}
             >
               <Info className="h-4 w-4" />
@@ -239,12 +240,10 @@ export function DriveToolbar({
             size="sm"
             onClick={onCreateClick}
             className="h-9 text-white shadow-sm hover:shadow-md transition-all"
-            style={{ background: "var(--bz-accent)" }}
+            style={{ background: 'var(--bz-accent)' }}
           >
             <Plus className="h-3.5 w-3.5 sm:mr-1.5" />
-            <span className="hidden sm:inline text-[13px] font-medium">
-              Nuovo
-            </span>
+            <span className="hidden sm:inline text-[13px] font-medium">Nuovo</span>
             <ChevronDown className="ml-0.5 h-3 w-3 opacity-70" />
           </Button>
         </div>

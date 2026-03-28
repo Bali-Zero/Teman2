@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import React from "react";
-import { motion } from "framer-motion";
-import type { FileItem } from "@/lib/api/drive/drive.types";
-import { getFileIcon, getDepartmentInfo, DEPARTMENT_COLORS } from "./file-icon";
-import { MoreVertical, Clock, Users } from "lucide-react";
-import { usePrefetchFolder } from "@/hooks/useDrive";
+import React from 'react';
+import { motion } from 'framer-motion';
+import type { FileItem } from '@/lib/api/drive/drive.types';
+import { getFileIcon, getDepartmentInfo, DEPARTMENT_COLORS } from './file-icon';
+import { MoreVertical, Clock, Users } from 'lucide-react';
+import { usePrefetchFolder } from '@/hooks/useDrive';
 
 interface FileGridProps {
   files: FileItem[];
@@ -37,7 +37,7 @@ const itemVariants = {
     y: 0,
     scale: 1,
     transition: {
-      type: "spring" as const,
+      type: 'spring' as const,
       stiffness: 300,
       damping: 24,
     },
@@ -68,7 +68,7 @@ export function FileGrid({
           onLoadMore();
         }
       },
-      { rootMargin: "200px", threshold: 0 },
+      { rootMargin: '200px', threshold: 0 }
     );
 
     observer.observe(sentinelRef.current);
@@ -220,8 +220,8 @@ function FileCard({
         transition-all duration-200 ease-out
         ${
           isSelected
-            ? "bg-blue-50/80 dark:bg-blue-950/40 ring-1 ring-blue-400/50 dark:ring-blue-500/40"
-            : "bg-white/60 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/30 hover:border-slate-300/60 dark:hover:border-slate-600/50"
+            ? 'bg-blue-50/80 dark:bg-blue-950/40 ring-1 ring-blue-400/50 dark:ring-blue-500/40'
+            : 'bg-white/60 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200/40 dark:border-slate-700/30 hover:border-slate-300/60 dark:hover:border-slate-600/50'
         }
       `}
     >
@@ -233,6 +233,7 @@ function FileCard({
             onContextMenu(file, e);
           }}
           className="rounded-lg bg-white/80 dark:bg-slate-700/80 p-1.5 text-slate-400 backdrop-blur-sm transition-colors hover:bg-white hover:text-slate-600 dark:hover:bg-slate-600 dark:hover:text-slate-200"
+          aria-label={`Azioni per ${file.name}`}
         >
           <MoreVertical className="h-3.5 w-3.5" />
         </button>
@@ -240,7 +241,7 @@ function FileCard({
 
       {/* Icon container - Clean and minimal */}
       <div className="relative mb-3 transition-transform duration-200 group-hover:scale-[1.02]">
-        {getFileIcon(file, "lg")}
+        {getFileIcon(file, 'lg')}
       </div>
 
       {/* File name - Clean typography */}
@@ -285,11 +286,7 @@ function FileCard({
             stroke="currentColor"
             strokeWidth={3}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5 13l4 4L19 7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </motion.div>
       )}
@@ -298,8 +295,8 @@ function FileCard({
 }
 
 const formatSize = (bytes: number | undefined) => {
-  if (!bytes) return "--";
-  const units = ["B", "KB", "MB", "GB"];
+  if (!bytes) return '--';
+  const units = ['B', 'KB', 'MB', 'GB'];
   let size = bytes;
   let unitIndex = 0;
   while (size >= 1024 && unitIndex < units.length - 1) {
@@ -315,8 +312,8 @@ const formatRelativeTime = (dateStr: string) => {
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays}d ago`;
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
   if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
