@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useCallback, memo } from 'react';
-import { User, Building2, Calendar, FileText, Upload, X } from 'lucide-react';
+import { User, Building2, Calendar, FileText, Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fileToBase64 } from '@/lib/utils';
+import type { Client } from '@/lib/api/crm/crm.types';
 
 // ============================================
 // TAX TYPES AND INTERFACES
@@ -410,14 +411,39 @@ const SideWorkspace = memo(function SideWorkspace({
 });
 
 // ============================================
+// TAX ID BADGE
+// ============================================
+function TaxIdBadge({ label, value }: { label: string; value?: string }) {
+  if (!value) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]">
+        <AlertCircle className="w-3.5 h-3.5 text-[var(--bz-text-2)]" />
+        <span className="text-xs text-[var(--bz-text-2)]">{label}: not registered</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
+      <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+      <div className="min-w-0">
+        <p className="text-[10px] text-emerald-400/70 font-medium uppercase tracking-wide">{label}</p>
+        <p className="text-xs font-mono text-emerald-300 truncate">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
 // TAX TAB COMPONENT
 // ============================================
 export function TaxTab({
   clientId,
   formatDate,
+  client,
 }: {
   clientId: number;
   formatDate: (d: string) => string;
+  client: Client | null;
 }) {
   const [selectedYear, setSelectedYear] = useState<TaxYear>(new Date().getFullYear());
   const [activeSection, setActiveSection] = useState<TaxSection>('personal');
@@ -463,6 +489,12 @@ export function TaxTab({
           <p className="text-sm text-[var(--bz-text-2)]">Manage tax obligations and filings</p>
         </div>
         <YearSelector selectedYear={selectedYear} onYearChange={setSelectedYear} />
+      </div>
+
+      {/* Tax identifiers from CRM */}
+      <div className="flex flex-wrap gap-2">
+        <TaxIdBadge label="NPWP" value={client?.npwp ?? client?.tax_id ?? undefined} />
+        <TaxIdBadge label="NIB" value={client?.nib ?? undefined} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
