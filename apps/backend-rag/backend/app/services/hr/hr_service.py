@@ -157,7 +157,7 @@ class HRService:
         async with self.db_pool.acquire() as conn:
             query = """
                 SELECT bl.*, tm.full_name as employee_name, tm.email as employee_email,
-                       p.status as practice_status, c.name as client_name
+                       p.status as practice_status, c.full_name as client_name
                 FROM hr_bonus_ledger bl
                 JOIN hr_employees e ON e.id = bl.employee_id
                 JOIN team_members tm ON tm.id = e.team_member_id
