@@ -216,7 +216,7 @@ async def save_conversation(
     user_email = current_user["email"]
 
     # Generate session_id if not provided
-    session_id = request.session_id or f"session-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    session_id = request.session_id or f"session-{datetime.now(tz=timezone.utc).strftime('%Y%m%d-%H%M%S')}"
 
     # RACE CONDITION PROTECTION: Two-phase commit pattern
     # Phase 1: Save to cache (fast, always succeeds)
@@ -253,7 +253,7 @@ async def save_conversation(
                             # Use to_jsonb for asyncpg JSONB compatibility (handles Decimal, datetime, UUID)
                             to_jsonb(request.messages),
                             to_jsonb(request.metadata or {}),
-                            datetime.now(),
+                            datetime.now(tz=timezone.utc),
                         )
 
                         if row:

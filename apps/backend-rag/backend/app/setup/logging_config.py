@@ -97,7 +97,7 @@ class DevelopmentFormatter(logging.Formatter):
         color = self.COLORS.get(record.levelname, self.RESET)
 
         # Format timestamp
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%H:%M:%S")
 
         # Build base message
         message = f"{color}{timestamp} [{record.levelname:8}]{self.RESET} {record.name}: {record.getMessage()}"

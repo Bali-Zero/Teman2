@@ -424,7 +424,7 @@ class KGPipeline:
         Returns:
             Pipeline statistics
         """
-        self.stats = PipelineStats(start_time=datetime.now())
+        self.stats = PipelineStats(start_time=datetime.now(tz=timezone.utc))
 
         total = len(chunks)
         logger.info(f"Starting KG Pipeline for {total} chunks")
@@ -449,7 +449,7 @@ class KGPipeline:
                     f"{self.stats.relations_persisted} relations"
                 )
 
-        self.stats.end_time = datetime.now()
+        self.stats.end_time = datetime.now(tz=timezone.utc)
 
         logger.info(
             f"Pipeline completed: {self.stats.chunks_processed} chunks, "
@@ -479,7 +479,7 @@ class KGPipeline:
         """
         from backend.core.qdrant_db import QdrantClient
 
-        self.stats = PipelineStats(start_time=datetime.now())
+        self.stats = PipelineStats(start_time=datetime.now(tz=timezone.utc))
 
         logger.info(f"Starting KG Pipeline from Qdrant collection '{collection_name}'")
 
@@ -559,7 +559,7 @@ class KGPipeline:
         finally:
             await qdrant.close()
 
-        self.stats.end_time = datetime.now()
+        self.stats.end_time = datetime.now(tz=timezone.utc)
 
         logger.info(
             f"Pipeline completed: {self.stats.chunks_processed} chunks, "

@@ -185,7 +185,7 @@ class PerformanceMonitor:
 
     async def _collect_metrics(self) -> None:
         """Collect current performance metrics"""
-        current_time = datetime.now()
+        current_time = datetime.now(tz=timezone.utc)
 
         # Simulate collecting metrics from Prometheus
         metrics_to_collect = [
@@ -233,7 +233,7 @@ class PerformanceMonitor:
         if len(self.metrics_history) < 10:
             return
 
-        current_time = datetime.now()
+        current_time = datetime.now(tz=timezone.utc)
         recent_metrics = [
             m for m in self.metrics_history if current_time - m.timestamp < timedelta(minutes=5)
         ]
@@ -261,7 +261,7 @@ class PerformanceMonitor:
 
     async def _check_alerts(self) -> None:
         """Check for threshold breaches and create alerts"""
-        current_time = datetime.now()
+        current_time = datetime.now(tz=timezone.utc)
         recent_metrics = [
             m for m in self.metrics_history if current_time - m.timestamp < timedelta(minutes=1)
         ]
@@ -300,7 +300,7 @@ class PerformanceMonitor:
             current_value=current_value,
             threshold=threshold,
             message=f"{metric_name} exceeded threshold: {current_value:.2f} > {threshold:.2f}",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(tz=timezone.utc),
         )
 
         self.active_alerts[alert_id] = alert
@@ -331,7 +331,7 @@ class PerformanceMonitor:
             current_value=max(anomalies),
             threshold=avg_value,
             message=f"Anomaly detected in {metric_name}: {len(anomalies)} anomalous values",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(tz=timezone.utc),
         )
 
         self.active_alerts[alert_id] = alert
@@ -340,7 +340,7 @@ class PerformanceMonitor:
     async def _generate_recommendations(self) -> None:
         """Generate performance optimization recommendations"""
         recent_metrics = [
-            m for m in self.metrics_history if datetime.now() - m.timestamp < timedelta(hours=1)
+            m for m in self.metrics_history if datetime.now(tz=timezone.utc) - m.timestamp < timedelta(hours=1)
         ]
 
         recommendations = []
@@ -370,7 +370,7 @@ class PerformanceMonitor:
         if not self.metrics_history:
             return {"status": "No data available"}
 
-        current_time = datetime.now()
+        current_time = datetime.now(tz=timezone.utc)
         recent_metrics = [
             m for m in self.metrics_history if current_time - m.timestamp < timedelta(hours=1)
         ]
@@ -409,7 +409,7 @@ class PerformanceMonitor:
         if alert_id in self.active_alerts:
             alert = self.active_alerts[alert_id]
             alert.resolved = True
-            alert.resolved_at = datetime.now()
+            alert.resolved_at = datetime.now(tz=timezone.utc)
             del self.active_alerts[alert_id]
 
             logger.info(f"Alert resolved: {alert_id}")

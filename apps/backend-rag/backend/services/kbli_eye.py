@@ -110,7 +110,7 @@ class KBLIEye:
                 "max_foreign_ownership": 100 if is_open_pma else 0,
                 "is_umkm_reserved": not is_open_pma,
             },
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         }
 
     def _resolve_kbli(self, code: str) -> dict | None:

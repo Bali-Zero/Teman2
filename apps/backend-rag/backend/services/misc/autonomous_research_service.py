@@ -37,7 +37,7 @@ class ResearchStep:
     results_found: int
     confidence: float
     key_findings: list[str]
-    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(tz=timezone.utc).isoformat())
 
 
 @dataclass

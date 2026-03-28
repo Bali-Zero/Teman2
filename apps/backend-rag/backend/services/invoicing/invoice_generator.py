@@ -129,7 +129,7 @@ class InvoiceGenerator:
 
     def generate_invoice_number(self, practice_id: int) -> str:
         """Generate invoice number: INV-YYYYMM-XXXXX."""
-        date_str = datetime.now().strftime("%Y%m")
+        date_str = datetime.now(tz=timezone.utc).strftime("%Y%m")
         return f"INV-{date_str}-{practice_id:05d}"
 
     def generate(
@@ -158,7 +158,7 @@ class InvoiceGenerator:
         )
 
         invoice_number = self.generate_invoice_number(practice_id)
-        issue_date = datetime.now()
+        issue_date = datetime.now(tz=timezone.utc)
         due_date = issue_date + timedelta(days=self.PAYMENT_TERMS_DAYS)
 
         elements = []

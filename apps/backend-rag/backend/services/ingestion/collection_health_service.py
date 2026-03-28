@@ -135,7 +135,7 @@ class CollectionHealthService:
 
         metrics = self.metrics[canonical_name]
         metrics["query_count"] += 1
-        metrics["last_queried"] = datetime.now().isoformat()
+        metrics["last_queried"] = datetime.now(tz=timezone.utc).isoformat()
 
         if had_results:
             metrics["hit_count"] += 1
@@ -159,7 +159,7 @@ class CollectionHealthService:
         if not health_metrics:
             return
 
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.now(tz=timezone.utc).isoformat()
 
         for metric in health_metrics:
             collection_name = metric.get("collection_name")
@@ -196,7 +196,7 @@ class CollectionHealthService:
 
         try:
             last_update_date = datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
-            days_old = (datetime.now() - last_update_date).days
+            days_old = (datetime.now(tz=timezone.utc) - last_update_date).days
 
             if days_old < self.staleness_thresholds[StalenessSeverity.FRESH]:
                 return StalenessSeverity.FRESH
@@ -487,7 +487,7 @@ class CollectionHealthService:
         overall_hit_rate = total_hits / total_queries if total_queries > 0 else 0.0
 
         return {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             "total_collections": len(all_health),
             "health_distribution": {status.value: count for status, count in status_counts.items()},
             "staleness_distribution": {

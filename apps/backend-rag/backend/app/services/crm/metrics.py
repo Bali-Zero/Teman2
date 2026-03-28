@@ -87,7 +87,7 @@ class CRMMetrics:
             {
                 "version": "1.0.0",
                 "environment": "production",
-                "last_updated": datetime.now().isoformat(),
+                "last_updated": datetime.now(tz=timezone.utc).isoformat(),
             }
         )
 
@@ -121,7 +121,7 @@ class CRMMetricsCollector:
 
         try:
             results = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                 "metrics_updated": [],
                 "errors": [],
                 "success": True,
@@ -148,7 +148,7 @@ class CRMMetricsCollector:
 
         except Exception as e:
             logger.error(f"Failed to update CRM metrics: {e}", exc_info=True)
-            return {"error": str(e), "timestamp": datetime.now().isoformat(), "success": False}
+            return {"error": str(e), "timestamp": datetime.now(tz=timezone.utc).isoformat(), "success": False}
 
     async def update_client_metrics(self, results: dict[str, Any]) -> None:
         """Update client-related metrics"""
@@ -379,7 +379,7 @@ class CRMMetricsCollector:
                 """)
 
                 return {
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                     "clients": {
                         "active": int(summary["active_clients"]),
                         "prospects": int(summary["prospects"]),
@@ -398,7 +398,7 @@ class CRMMetricsCollector:
 
         except Exception as e:
             logger.error(f"Failed to get metrics summary: {e}")
-            return {"error": str(e), "timestamp": datetime.now().isoformat()}
+            return {"error": str(e), "timestamp": datetime.now(tz=timezone.utc).isoformat()}
 
 
 # Global metrics collector instance

@@ -32,7 +32,7 @@ class CollectiveMemoryEmitter:
                 "content": content,
                 "members": members,
                 "importance": importance,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             }
 
             await self._send_sse_event(event_source, event_data)
@@ -56,7 +56,7 @@ class CollectiveMemoryEmitter:
                 "preference": preference,
                 "category": category,
                 "context": context,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             }
 
             await self._send_sse_event(event_source, event_data)
@@ -82,7 +82,7 @@ class CollectiveMemoryEmitter:
                 "date": date,
                 "message": message,
                 "recurring": recurring,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             }
 
             await self._send_sse_event(event_source, event_data)
@@ -108,7 +108,7 @@ class CollectiveMemoryEmitter:
                 "relationship_type": relationship_type,
                 "strength": strength,
                 "context": context,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             }
 
             await self._send_sse_event(event_source, event_data)
@@ -127,7 +127,7 @@ class CollectiveMemoryEmitter:
                 "original_memories": original_memories,
                 "new_memory": new_memory,
                 "reason": reason,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             }
 
             await self._send_sse_event(event_source, event_data)

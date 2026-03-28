@@ -221,7 +221,7 @@ class QualityCheckService:
         n = self.validation_stats["total_checked"]
         current_avg = self.validation_stats["avg_score"]
         self.validation_stats["avg_score"] = (current_avg * (n - 1) + overall_score) / n
-        self.validation_stats["last_run"] = datetime.now().isoformat()
+        self.validation_stats["last_run"] = datetime.now(tz=timezone.utc).isoformat()
 
         return QualityReport(
             document_id=document_id,
@@ -231,7 +231,7 @@ class QualityCheckService:
             issues=all_issues,
             recommendations=recommendations,
             is_acceptable=is_acceptable,
-            checked_at=datetime.now().isoformat(),
+            checked_at=datetime.now(tz=timezone.utc).isoformat(),
         )
 
     def _check_completeness(self, doc) -> DimensionScore:

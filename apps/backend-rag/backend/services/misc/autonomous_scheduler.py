@@ -193,7 +193,7 @@ class AutonomousScheduler:
                     continue
 
                 logger.info(f"⏰ Running scheduled task: {task.name}")
-                task.last_run = datetime.now()
+                task.last_run = datetime.now(tz=timezone.utc)
 
                 # Run with timeout (max 30 minutes per task)
                 await asyncio.wait_for(task.task_func(), timeout=1800)
@@ -546,7 +546,7 @@ async def create_and_start_scheduler(
                 logger.info("📅 Running Renewal Alerts Checker...")
 
                 async with db_pool.acquire() as conn:
-                    today = datetime.now().date()
+                    today = datetime.now(tz=timezone.utc).date()
                     alert_days = [90, 60, 30]  # Days before expiry to alert
 
                     for days in alert_days:

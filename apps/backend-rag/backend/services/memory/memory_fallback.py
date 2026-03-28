@@ -35,9 +35,9 @@ class InMemoryConversationCache:
     def add_message(self, conversation_id: str, role: str, content: str) -> None:
         """Add a message to the in-memory cache."""
         self._cache[conversation_id].append(
-            {"role": role, "content": content, "timestamp": datetime.now().isoformat()}
+            {"role": role, "content": content, "timestamp": datetime.now(tz=timezone.utc).isoformat()}
         )
-        self._timestamps[conversation_id] = datetime.now()
+        self._timestamps[conversation_id] = datetime.now(tz=timezone.utc)
 
         # Extract entities from user messages
         if role == "user":
@@ -112,7 +112,7 @@ class InMemoryConversationCache:
 
     def _cleanup_old(self) -> None:
         """Remove expired conversations to prevent memory leaks."""
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         expired = [cid for cid, ts in self._timestamps.items() if now - ts > self._ttl]
 
         for cid in expired:

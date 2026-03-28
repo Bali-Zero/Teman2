@@ -246,7 +246,7 @@ Return ONLY the JSON object, no other text."""
         Returns:
             IngestionResult with status and details
         """
-        start_time = datetime.now()
+        start_time = datetime.now(tz=timezone.utc)
         result = IngestionResult(
             document_id=scraped_doc.document_id,
             status=IngestionStatus.PENDING,
@@ -279,7 +279,7 @@ Return ONLY the JSON object, no other text."""
 
             # Complete
             result.status = IngestionStatus.COMPLETED
-            result.completed_at = datetime.now()
+            result.completed_at = datetime.now(tz=timezone.utc)
             result.processing_time_ms = (result.completed_at - start_time).total_seconds() * 1000
 
             self.ingestion_stats["successful"] += 1
@@ -290,14 +290,14 @@ Return ONLY the JSON object, no other text."""
         except Exception as e:
             result.status = IngestionStatus.FAILED
             result.error_message = str(e)
-            result.completed_at = datetime.now()
+            result.completed_at = datetime.now(tz=timezone.utc)
             result.processing_time_ms = (result.completed_at - start_time).total_seconds() * 1000
 
             self.ingestion_stats["failed"] += 1
             logger.error(f"❌ Ingestion failed for {scraped_doc.document_id}: {e}")
 
         self.ingestion_stats["total_processed"] += 1
-        self.ingestion_stats["last_run"] = datetime.now().isoformat()
+        self.ingestion_stats["last_run"] = datetime.now(tz=timezone.utc).isoformat()
 
         await self._save_result(result)
         return result
@@ -330,8 +330,8 @@ Return ONLY the JSON object, no other text."""
                     IngestionResult(
                         document_id=doc.document_id,
                         status=IngestionStatus.FAILED,
-                        started_at=datetime.now(),
-                        completed_at=datetime.now(),
+                        started_at=datetime.now(tz=timezone.utc),
+                        completed_at=datetime.now(tz=timezone.utc),
                         error_message=str(e),
                     )
                 )

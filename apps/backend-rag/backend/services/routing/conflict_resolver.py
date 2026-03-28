@@ -67,7 +67,7 @@ class ConflictResolver:
                         "collection2_results": len(results2),
                         "collection1_top_score": results1[0]["score"] if results1 else 0,
                         "collection2_top_score": results2[0]["score"] if results2 else 0,
-                        "detected_at": datetime.now().isoformat(),
+                        "detected_at": datetime.now(tz=timezone.utc).isoformat(),
                     }
 
                     # Check for timestamp metadata

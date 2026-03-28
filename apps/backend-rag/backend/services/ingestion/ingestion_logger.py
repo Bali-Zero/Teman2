@@ -149,7 +149,7 @@ class IngestionLogger:
                 pass  # Ignore file system errors in logging
 
         return IngestionLogEvent(
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(tz=timezone.utc).isoformat(),
             level=level.value,
             stage=stage.value,
             document_id=document_id,

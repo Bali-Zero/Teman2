@@ -40,7 +40,7 @@ class ComplianceAlert:
     action_required: str
     estimated_cost: float | None = None
     status: AlertStatus = AlertStatus.PENDING
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(tz=timezone.utc).isoformat())
     sent_at: str | None = None
     acknowledged_at: str | None = None
 
@@ -74,7 +74,7 @@ class AlertGeneratorService:
         Returns:
             ComplianceAlert instance
         """
-        alert_id = f"alert_{item.item_id}_{severity.value}_{int(datetime.now().timestamp())}"
+        alert_id = f"alert_{item.item_id}_{severity.value}_{int(datetime.now(tz=timezone.utc).timestamp())}"
 
         # Generate message based on severity
         if severity == AlertSeverity.CRITICAL:
@@ -184,7 +184,7 @@ class AlertGeneratorService:
             return False
 
         alert.status = AlertStatus.ACKNOWLEDGED
-        alert.acknowledged_at = datetime.now().isoformat()
+        alert.acknowledged_at = datetime.now(tz=timezone.utc).isoformat()
 
         logger.info(f"✅ Alert acknowledged: {alert_id}")
         return True
@@ -204,7 +204,7 @@ class AlertGeneratorService:
             return False
 
         alert.status = AlertStatus.SENT
-        alert.sent_at = datetime.now().isoformat()
+        alert.sent_at = datetime.now(tz=timezone.utc).isoformat()
         self.generator_stats["alerts_sent"] += 1
 
         return True

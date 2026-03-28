@@ -235,7 +235,7 @@ async def create_practice(
                 practice.assigned_to,
                 practice.notes,
                 practice.internal_notes,
-                datetime.now(),
+                datetime.now(tz=timezone.utc),
                 created_by,
             )
 
@@ -1075,7 +1075,7 @@ async def add_document_to_practice(
             new_doc = {
                 "name": document_name,
                 "drive_file_id": drive_file_id,
-                "uploaded_at": datetime.now().isoformat(),
+                "uploaded_at": datetime.now(tz=timezone.utc).isoformat(),
                 "uploaded_by": uploaded_by,
                 "status": "received",
             }

@@ -121,7 +121,7 @@ class SemanticCache:
             result_data = {
                 "query": query,
                 "result": result,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                 "embedding_key": embedding_key,
             }
             await self.redis.setex(cache_key, ttl, json.dumps(result_data))
@@ -132,7 +132,7 @@ class SemanticCache:
 
             # Add to embeddings index (sorted set by timestamp for LRU)
             await self.redis.zadd(
-                f"{self.cache_prefix}index", {embedding_key: datetime.now().timestamp()}
+                f"{self.cache_prefix}index", {embedding_key: datetime.now(tz=timezone.utc).timestamp()}
             )
 
             # Enforce max cache size (LRU eviction)

@@ -1520,7 +1520,7 @@ async def get_system_metrics() -> Any:
                     task
                     for task in autonomous_scheduler.tasks.values()
                     if task.last_run
-                    and (datetime.now() - task.last_run)
+                    and (datetime.now(tz=timezone.utc) - task.last_run)
                     < timedelta(hours=IntelConstants.RECENT_TASK_THRESHOLD_HOURS)
                 ]
                 if recent_runs:
@@ -1667,7 +1667,7 @@ async def search_intel(request: IntelSearchRequest) -> dict[str, Any]:
                         "last_90_days": 90,
                     }
                     days = days_map.get(request.date_range, IntelConstants.DUPLICATE_CHECK_DAYS)
-                    cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+                    cutoff_date = (datetime.now(tz=timezone.utc) - timedelta(days=days)).isoformat()
                     where_filter["published_date"] = {"$gte": cutoff_date}
 
                 # Add impact level filter
@@ -1760,7 +1760,7 @@ async def get_critical_items(
             collection_names = list(INTEL_COLLECTIONS.values())
 
         critical_items = []
-        cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+        cutoff_date = (datetime.now(tz=timezone.utc) - timedelta(days=days)).isoformat()
 
         for collection_name in collection_names:
             if not collection_name:
@@ -1924,7 +1924,7 @@ async def get_collection_stats(collection: str) -> dict[str, Any]:
         return {
             "collection_name": collection_name,
             "total_documents": stats.get("total_documents", 0),
-            "last_updated": datetime.now().isoformat(),
+            "last_updated": datetime.now(tz=timezone.utc).isoformat(),
         }
 
     except Exception as e:

@@ -144,7 +144,7 @@ class CollaboratorService:
             return self._anonymous_profile()
 
         email = email.lower().strip()
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
 
         if email in self.cache:
             profile, cached_at = self.cache[email]

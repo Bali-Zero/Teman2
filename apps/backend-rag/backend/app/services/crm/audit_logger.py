@@ -86,7 +86,7 @@ class CRMAuditLogger:
                     json.dumps(new_state, default=str),
                     json.dumps(changes, default=str),
                     json.dumps(metadata or {}, default=str),
-                    datetime.now(),
+                    datetime.now(tz=timezone.utc),
                 )
 
             # Log structured message
@@ -98,7 +98,7 @@ class CRMAuditLogger:
                     "change_type": change_type,
                     "user_email": user_email,
                     "changes": changes,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                 },
             )
 
@@ -122,7 +122,7 @@ class CRMAuditLogger:
                 changes[key] = {
                     "old": str(old_value) if old_value is not None else None,
                     "new": str(new_value) if new_value is not None else None,
-                    "changed_at": datetime.now().isoformat(),
+                    "changed_at": datetime.now(tz=timezone.utc).isoformat(),
                 }
 
         # Check for removed fields
@@ -132,7 +132,7 @@ class CRMAuditLogger:
                     "old": str(old_state[key]) if old_state[key] is not None else None,
                     "new": None,
                     "removed": True,
-                    "changed_at": datetime.now().isoformat(),
+                    "changed_at": datetime.now(tz=timezone.utc).isoformat(),
                 }
 
         return changes
