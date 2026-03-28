@@ -1,6 +1,6 @@
 """Visa records service for Portal."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import structlog
 from asyncpg import Pool
