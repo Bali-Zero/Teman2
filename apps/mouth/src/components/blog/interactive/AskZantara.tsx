@@ -427,6 +427,7 @@ function AskZantaraContent({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder={placeholder}
+              aria-label="Ask Zantara a question"
               disabled={isLoading}
               className={cn(
                 'w-full px-4 py-2.5 pr-12 rounded-xl',

@@ -256,6 +256,7 @@ function CommentForm({
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
             placeholder="Your name"
+            aria-label="Your name"
             className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-[#2251ff]/50 focus:ring-1 focus:ring-[#2251ff]/50 transition-colors text-sm"
           />
           <textarea

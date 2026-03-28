@@ -84,6 +84,7 @@ export function SearchBar({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
+            aria-label="Search articles"
             className={cn(
               "w-full h-12 pl-12 pr-24 rounded-xl",
               "bg-white/5 border border-white/10",
