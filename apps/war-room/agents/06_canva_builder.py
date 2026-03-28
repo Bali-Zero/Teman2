@@ -57,15 +57,6 @@ TEMPLATE_SLOTS = [
     (11, "PBxns7m6jJJm3BKT-LBtXZ6mvNj5TH3n0",  None),                                    # slide 11 (heading only)
 ]
 
-# ── Image element IDs per le slide che hanno immagini (slot Canva) ───────────
-# Recuperare tramite start-editing-transaction se non noti — per ora marcati come None
-# Format: slide_index (0-based) → image_element_id
-IMAGE_ELEMENT_IDS: dict = {
-    0: None,  # cover (slide 1) — image element ID da recuperare da Canva
-    3: None,  # slide 4 — image element ID da recuperare
-    8: None,  # slide 9 — image element ID da recuperare
-}
-
 MIN_SLIDES = 6
 MAX_SLIDES = 11
 
@@ -128,7 +119,7 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
         elif body:
             body_parts.append(body)
 
-        # Annotazione image prompt (solo testo per designer)
+        # Annotazione image prompt (solo testo per designer nel body)
         if image_prompt:
             note = f"\n(IMAGE PROMPT: {image_prompt}"
             if image_placement:
@@ -145,30 +136,29 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
                 "page_index": page_index,
             })
 
-    # ── Aggiungi operazioni upload_image per slide con immagini generate ──
-    for i, slide in enumerate(slides):
-        if i >= len(TEMPLATE_SLOTS):
-            break
-        img_path = slide.get("generated_image_path", "")
-        if not img_path:
-            continue
-        img_elem_id = IMAGE_ELEMENT_IDS.get(i)
-        page_index = TEMPLATE_SLOTS[i][0]
-        if img_elem_id:
-            # Element ID noto → operazione upload_image diretta
-            ops.append({
-                "type": "upload_image",
-                "element_id": img_elem_id,
-                "file_path": img_path,
-                "page_index": page_index,
-            })
-        else:
-            # Element ID non noto → annotazione per applicazione manuale
+        # BUG5 FIX: se la slide ha generated_image_path (iniettato da FASE 3),
+        # aggiunge operazione pending_image per applicazione manuale/futura.
+        # Non usiamo "upload_image" diretto perché gli element_id dei placeholder
+        # immagine nel template DAHE6lx1lf8 non sono noti staticamente.
+        # L'operazione viene marcata "pending_image" come segnale per il designer
+        # o per un futuro executor che conosce gli image element_id.
+        generated_image_path = slide.get("generated_image_path") or ""
+        if generated_image_path:
             ops.append({
                 "type": "pending_image",
-                "file_path": img_path,
+                "file_path": generated_image_path,
                 "page_index": page_index,
-                "note": f"Image generated: {img_path} — aggiungere manualmente alla slide {page_index}",
+                "slide_index": i,
+                "image_placement": image_placement,
+                # element_id non noto: da recuperare via start-editing-transaction
+                # filtrando elementi di tipo "image" sulla pagina corrispondente
+                "element_id": None,
+                "_note": (
+                    "Image element_id unknown for this template slot. "
+                    "Retrieve via start-editing-transaction filtering "
+                    f"page {page_index} elements of type 'image', "
+                    "then apply upload_image manually."
+                ),
             })
 
     return ops

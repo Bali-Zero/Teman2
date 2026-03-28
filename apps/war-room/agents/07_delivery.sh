@@ -23,7 +23,9 @@ PYTHON="$WAR_ROOM/.venv/bin/python3"
 BRAND_FILE="$WAR_ROOM/config/brand.json"
 DRIVE_FOLDER=$("$PYTHON" -c "import json; print(json.load(open('$BRAND_FILE'))['delivery']['google_drive_folder'])")
 TONE=$(cat "$WAR_ROOM/output/strategy/claude_slides.json" 2>/dev/null | "$PYTHON" -c "import json,sys; print(json.load(sys.stdin).get('tone', 'N/A'))" 2>/dev/null || echo "N/A")
-CANVA_URL=""  # populated after executor (line ~215)
+# BUG2 FIX: CANVA_URL letta qui solo come valore iniziale (potrebbe essere vuota).
+# Verrà aggiornata dopo l'executor (FASE 4b) se carousel_canva.json viene creato lì.
+CANVA_URL=$("$PYTHON" -c "import json; d=json.load(open('$WAR_ROOM/output/canva/carousel_canva.json')); print(d.get('design_url',''))" 2>/dev/null || echo "")
 
 echo "📦 Comprimo master archive..."
 ARCHIVE="$WAR_ROOM/output/balizero_warroom_$(date +%Y%m%d_%H%M%S).zip"
@@ -43,21 +45,27 @@ echo "   Drive link: $DRIVE_LINK"
 echo "📱 Invio notifica Telegram..."
 CAPTION=$(cat "$MASTER_DIR/instagram_caption.txt" 2>/dev/null | head -c 500 || echo "")
 
-# Notifica: Telegram Bot API diretta (affidabile, no middleware)
+# BUG3 FIX: rimosso :? operator — con set -euo pipefail usciva prima delle notifiche.
+# Ora fa check graceful: se token mancante, salta le notifiche senza killare lo script.
 BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
-[[ -z "$BOT_TOKEN" ]] && { echo "⚠️  TELEGRAM_BOT_TOKEN not set — skip notifications"; exit 0; }
-CHAT_IDS="${TELEGRAM_GROUP_ID:-1125336968}"
+CHAT_IDS="${TELEGRAM_GROUP_ID:-}"
+if [[ -z "$BOT_TOKEN" || -z "$CHAT_IDS" ]]; then
+  echo "⚠️  TELEGRAM_BOT_TOKEN o TELEGRAM_GROUP_ID non settati — skip notifiche Telegram"
+  BOT_TOKEN=""
+fi
 
 # Bilingual notifications: Italian for owner, Indonesian for Damar
 DAMAR_CHAT_ID="1813875994"
 
-CHAT_ID_ARRAY=("${(@s:,:)CHAT_IDS}")
-for CID in "${CHAT_ID_ARRAY[@]}"; do
-  CID=$(echo "$CID" | xargs)  # trim whitespace
-  [[ -z "$CID" ]] && continue
+# BUG3 FIX: wrappa tutto il loop nel check token
+if [[ -n "$BOT_TOKEN" && -n "$CHAT_IDS" ]]; then
+  CHAT_ID_ARRAY=("${(@s:,:)CHAT_IDS}")
+  for CID in "${CHAT_ID_ARRAY[@]}"; do
+    CID=$(echo "$CID" | xargs)  # trim whitespace
+    [[ -z "$CID" ]] && continue
 
-  if [[ "$CID" == "$DAMAR_CHAT_ID" ]]; then
-    MSG="🚨 *Bali Zero War Room selesai.*
+    if [[ "$CID" == "$DAMAR_CHAT_ID" ]]; then
+      MSG="🚨 *Bali Zero War Room selesai.*
 | Topik: $TOPIC.
 | Nada: $TONE.
 | Konten disetujui, tidak ada halusinasi AI.
@@ -65,8 +73,8 @@ for CID in "${CHAT_ID_ARRAY[@]}"; do
 ${CANVA_URL:+| Canva carousel: $CANVA_URL.}
 | Menunggu review untuk publikasi.
 ${CAPTION:+| Caption: $CAPTION}"
-  else
-    MSG="🚨 *Bali Zero War Room conclusa.*
+    else
+      MSG="🚨 *Bali Zero War Room conclusa.*
 | Argomento: $TOPIC.
 | Tono: $TONE.
 | Creatività approvata, zero allucinazioni lette.
@@ -74,18 +82,19 @@ ${CAPTION:+| Caption: $CAPTION}"
 ${CANVA_URL:+| Canva carousel: $CANVA_URL.}
 | In attesa di review per la pubblicazione.
 ${CAPTION:+| Caption: $CAPTION}"
-  fi
+    fi
 
-  TG_TOKEN="$BOT_TOKEN" TG_CHAT="$CID" "$PYTHON" -c "
-import urllib.request, urllib.parse, json, sys, os
-token=os.environ['TG_TOKEN']; chat=os.environ['TG_CHAT']
+    "$PYTHON" -c "
+import urllib.request, urllib.parse, json, sys
+token='$BOT_TOKEN'; chat='$CID'
 msg=sys.stdin.read()
-data=urllib.parse.urlencode({'chat_id':chat,'text':msg,'parse_mode':'Markdown'}).encode()
+data=urllib.parse.urlencode({'chat_id':chat,'text':msg}).encode()
 req=urllib.request.Request(f'https://api.telegram.org/bot{token}/sendMessage',data=data)
 resp=urllib.request.urlopen(req,timeout=10)
 print(f'✅ Telegram inviato a {chat}' if json.loads(resp.read()).get('ok') else f'⚠️ Telegram ko per {chat}')
 " <<< "$MSG" || echo "⚠️  Telegram fallito per $CID"
-done
+  done
+fi
 
 # WhatsApp opzionale
 if [[ -n "${WHATSAPP_TEAM_NUMBER:-}" ]]; then
@@ -178,16 +187,20 @@ APPLIED_FILE="$WAR_ROOM/output/canva/carousel_canva.json"
 
 if [[ -f "$PENDING_FILE" ]]; then
     PENDING_STATUS=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('status',''))" 2>/dev/null)
+    # BUG4 FIX: PENDING_TOPIC letto come variabile bash, NON interpolato inline nel prompt Python.
+    # Passato via env var CANVA_TOPIC per evitare injection nei blocchi python -c.
     PENDING_TOPIC=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('topic',''))" 2>/dev/null)
-    # sanitize: rimuovi caratteri shell-pericolosi
-    PENDING_TOPIC=$(printf '%s' "$PENDING_TOPIC" | tr -cd 'a-zA-Z0-9 ._-' | cut -c1-80)
+    # Sanitize: rimuovi caratteri pericolosi (apici, backslash, newline)
+    PENDING_TOPIC=$(echo "$PENDING_TOPIC" | tr -d "'\`\\\n\r" | head -c 200)
     PENDING_OPS=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('operations_count',0))" 2>/dev/null)
 
     if [[ "$PENDING_STATUS" == "pending" ]]; then
         echo ""
         echo "🎨 Avvio Canva executor via claude -p..."
 
-        # Prompt per claude -p: legge il file e applica le operazioni
+        # Prompt per claude -p: legge il file e applica le operazioni.
+        # BUG4 FIX: il topic viene inserito via PENDING_FILE (già validato JSON),
+        # non interpolato nel prompt. Il prompt fa riferimento al file, non al valore raw.
         CANVA_PROMPT="Hai un file canva_pending.json in $PENDING_FILE con $PENDING_OPS operazioni replace_text da applicare al design Canva.
 
 Leggi il file con Read tool, poi per ogni operazione nella lista 'operations':
@@ -197,7 +210,7 @@ Leggi il file con Read tool, poi per ogni operazione nella lista 'operations':
 4. Aggiorna il campo 'status' da 'pending' a 'applied' nel file JSON
 5. Scrivi output/canva/carousel_canva.json con design_url e status applied
 
-Topic: $PENDING_TOPIC. Procedi senza chiedere conferma."
+Il topic si trova nel file JSON al campo 'topic'. Procedi senza chiedere conferma."
 
         # Esegui senza ANTHROPIC_API_KEY (usa ~/.claude/token OAuth Max)
         CANVA_RESULT=$(env -i \
@@ -213,26 +226,37 @@ Topic: $PENDING_TOPIC. Procedi senza chiedere conferma."
         CLAUDE_EXIT=$?
         echo "   claude -p exit: $CLAUDE_EXIT"
 
-        # Verifica se applicato
+        # BUG2 FIX: leggi CANVA_URL DOPO che l'executor ha (eventualmente) creato il file
         if [[ -f "$APPLIED_FILE" ]]; then
-            CANVA_URL=$("$PYTHON" -c "import json; print(json.load(open('$APPLIED_FILE')).get('design_url',''))" 2>/dev/null)
+            CANVA_URL=$("$PYTHON" -c "import json; print(json.load(open('$APPLIED_FILE')).get('design_url',''))" 2>/dev/null || echo "")
             echo "   ✅ Canva applicato: $CANVA_URL"
-            # Aggiorna il messaggio Telegram con il link Canva
-            "$PYTHON" -c "
-import urllib.request, urllib.parse
-msg = '🎨 Canva carousel aggiornato automaticamente!\nTopic: $PENDING_TOPIC\nLink: $CANVA_URL'
+            # Notifica Telegram con il link Canva aggiornato
+            if [[ -n "$BOT_TOKEN" && -n "$CHAT_IDS" ]]; then
+              # BUG4 FIX: topic e url passati via env var al processo Python, non interpolati inline
+              CANVA_TOPIC="$PENDING_TOPIC" CANVA_LINK="$CANVA_URL" \
+              "$PYTHON" -c "
+import urllib.request, urllib.parse, os
+topic = os.environ.get('CANVA_TOPIC', '')
+link  = os.environ.get('CANVA_LINK', '')
+msg = f'Canva carousel aggiornato automaticamente!\nTopic: {topic}\nLink: {link}'
 data = urllib.parse.urlencode({'chat_id': '$CHAT_IDS', 'text': msg}).encode()
 urllib.request.urlopen('https://api.telegram.org/bot${BOT_TOKEN}/sendMessage', data=data, timeout=10)
 " 2>/dev/null && echo "   📱 Notifica Canva inviata"
+            fi
         else
             echo "   ⚠️  Canva non applicato (claude -p output: ${CANVA_RESULT:0:200})"
             # Notifica fallimento con istruzioni manuali
-            "$PYTHON" -c "
-import urllib.request, urllib.parse
-msg = '⚠️ Canva auto-executor fallito.\nApri Claude Code e digita:\napplica canva pending per: $PENDING_TOPIC\n\nFile: $PENDING_FILE'
+            if [[ -n "$BOT_TOKEN" && -n "$CHAT_IDS" ]]; then
+              CANVA_TOPIC="$PENDING_TOPIC" CANVA_FILE="$PENDING_FILE" \
+              "$PYTHON" -c "
+import urllib.request, urllib.parse, os
+topic = os.environ.get('CANVA_TOPIC', '')
+fpath = os.environ.get('CANVA_FILE', '')
+msg = f'Canva auto-executor fallito.\nApri Claude Code e digita:\napplica canva pending per: {topic}\n\nFile: {fpath}'
 data = urllib.parse.urlencode({'chat_id': '$CHAT_IDS', 'text': msg}).encode()
 urllib.request.urlopen('https://api.telegram.org/bot${BOT_TOKEN}/sendMessage', data=data, timeout=10)
 " 2>/dev/null
+            fi
         fi
     fi
 fi

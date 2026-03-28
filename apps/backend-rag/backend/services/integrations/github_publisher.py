@@ -345,7 +345,7 @@ class GitHubPublisher:
         client = self._get_client()
         # Step 1: Get the current commit SHA of the branch
         logger.debug(f"Step 1/6: Getting branch ref for '{branch}'")
-        ref_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/ref/heads/{branch}"
+        ref_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/refs/heads/{branch}"
         ref_response = await client.get(
             ref_url,
             headers=self._get_headers(),

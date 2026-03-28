@@ -329,6 +329,7 @@ export default function NewsRoomPage() {
           />
           <input
             placeholder="Search articles..."
+            aria-label="Search articles"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-xl text-[12px] outline-none transition-all"

@@ -510,6 +510,7 @@ export default function AnalyticsDashboard() {
             onClick={handleExport}
             className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--bz-border)] hover:bg-[var(--bz-card)] text-sm"
             title="Export analytics data"
+            aria-label="Export analytics data"
           >
             <Download className="w-4 h-4" />
             Export
@@ -522,6 +523,7 @@ export default function AnalyticsDashboard() {
               isLoading && 'opacity-50'
             )}
             title="Refresh data"
+            aria-label="Refresh data"
           >
             <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
           </button>
@@ -532,6 +534,7 @@ export default function AnalyticsDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           title="Conversations Today"
+          aria-label="Conversations Today"
           value={data.overview.conversations_today}
           subtitle={`${data.overview.conversations_week} this week`}
           icon={MessageSquare}
@@ -540,6 +543,7 @@ export default function AnalyticsDashboard() {
         />
         <StatCard
           title="Active Users"
+          aria-label="Active Users"
           value={data.overview.users_active}
           icon={Users}
           onClick={() => toggleSection('team')}
@@ -547,6 +551,7 @@ export default function AnalyticsDashboard() {
         />
         <StatCard
           title="System Uptime"
+          aria-label="System Uptime"
           value={formatDuration(data.overview.uptime_seconds)}
           icon={Clock}
           onClick={() => toggleSection('system')}
@@ -554,6 +559,7 @@ export default function AnalyticsDashboard() {
         />
         <StatCard
           title="Services Health"
+          aria-label="Services Health"
           value={`${data.overview.services_healthy}/${data.overview.services_total}`}
           variant={
             data.overview.services_healthy === data.overview.services_total ? 'success' : 'warning'
@@ -569,6 +575,7 @@ export default function AnalyticsDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             title="Total Tokens"
+            aria-label="Total Tokens"
             value={formatNumber(llmUsage.total_tokens)}
             subtitle={`${formatNumber(llmUsage.total_prompt_tokens)} prompt / ${formatNumber(llmUsage.total_completion_tokens)} completion`}
             icon={Coins}
@@ -577,6 +584,7 @@ export default function AnalyticsDashboard() {
           />
           <StatCard
             title="LLM Cost"
+            aria-label="LLM Cost"
             value={formatUSD(llmUsage.total_cost_usd)}
             subtitle="Since last restart"
             icon={DollarSign}
@@ -586,6 +594,7 @@ export default function AnalyticsDashboard() {
           />
           <StatCard
             title="Models Used"
+            aria-label="Models Used"
             value={llmUsage.usage_by_model.length}
             icon={Brain}
             onClick={() => toggleSection('llm')}
@@ -593,6 +602,7 @@ export default function AnalyticsDashboard() {
           />
           <StatCard
             title="Endpoints Active"
+            aria-label="Endpoints Active"
             value={llmUsage.usage_by_endpoint.length}
             icon={Server}
             onClick={() => toggleSection('llm')}
@@ -607,6 +617,7 @@ export default function AnalyticsDashboard() {
         {llmUsage && (
           <ExpandableSection
             title="LLM Token Usage & Costs"
+            aria-label="LLM Token Usage & Costs"
             icon={Coins}
             isExpanded={expandedSection === 'llm'}
             onToggle={() => toggleSection('llm')}
@@ -692,6 +703,7 @@ export default function AnalyticsDashboard() {
         {/* RAG Pipeline */}
         <ExpandableSection
           title="RAG Pipeline"
+          aria-label="RAG Pipeline"
           icon={Brain}
           isExpanded={expandedSection === 'rag'}
           onToggle={() => toggleSection('rag')}
@@ -798,6 +810,7 @@ export default function AnalyticsDashboard() {
         {queryInsights && (
           <ExpandableSection
             title="Query Insights"
+            aria-label="Query Insights"
             icon={Search}
             isExpanded={expandedSection === 'query-insights'}
             onToggle={() => toggleSection('query-insights')}
@@ -982,6 +995,7 @@ export default function AnalyticsDashboard() {
         {/* System Health */}
         <ExpandableSection
           title="System Health"
+          aria-label="System Health"
           icon={Server}
           isExpanded={expandedSection === 'system'}
           onToggle={() => toggleSection('system')}
@@ -1139,6 +1153,7 @@ export default function AnalyticsDashboard() {
         {/* Qdrant */}
         <ExpandableSection
           title="Vector Database (Qdrant)"
+          aria-label="Vector Database (Qdrant)"
           icon={Database}
           isExpanded={expandedSection === 'qdrant'}
           onToggle={() => toggleSection('qdrant')}
@@ -1222,6 +1237,7 @@ export default function AnalyticsDashboard() {
         {/* CRM */}
         <ExpandableSection
           title="CRM Analytics"
+          aria-label="CRM Analytics"
           icon={UserCog}
           isExpanded={expandedSection === 'crm'}
           onToggle={() => toggleSection('crm')}
@@ -1411,6 +1427,7 @@ export default function AnalyticsDashboard() {
         {/* Team */}
         <ExpandableSection
           title="Team Productivity"
+          aria-label="Team Productivity"
           icon={Users}
           isExpanded={expandedSection === 'team'}
           onToggle={() => toggleSection('team')}
@@ -1493,6 +1510,7 @@ export default function AnalyticsDashboard() {
         {/* Feedback */}
         <ExpandableSection
           title="Quality & Feedback"
+          aria-label="Quality & Feedback"
           icon={TrendingUp}
           isExpanded={expandedSection === 'feedback'}
           onToggle={() => toggleSection('feedback')}
@@ -1648,6 +1666,7 @@ export default function AnalyticsDashboard() {
         {/* Alerts */}
         <ExpandableSection
           title="Alerts & Errors"
+          aria-label="Alerts & Errors"
           icon={AlertTriangle}
           isExpanded={expandedSection === 'alerts'}
           onToggle={() => toggleSection('alerts')}

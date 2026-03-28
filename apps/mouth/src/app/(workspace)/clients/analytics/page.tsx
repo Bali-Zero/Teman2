@@ -594,6 +594,7 @@ export default function ClientAnalyticsPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <StatCard
               title="Total Clients"
+              aria-label="Total Clients"
               value={isLoading ? '-' : formatCompact(overview?.total_clients || 0)}
               subtitle={`+${overview?.new_this_month || 0} this month`}
               trend={overview?.growth_rate}
@@ -603,6 +604,7 @@ export default function ClientAnalyticsPage() {
             />
             <StatCard
               title="New This Week"
+              aria-label="New This Week"
               value={isLoading ? '-' : overview?.new_this_week || 0}
               subtitle="Active acquisition"
               icon={TrendingUp}
@@ -611,6 +613,7 @@ export default function ClientAnalyticsPage() {
             />
             <StatCard
               title="Active Clients"
+              aria-label="Active Clients"
               value={isLoading ? '-' : overview?.by_status?.active || 0}
               subtitle="Currently managed"
               icon={Activity}
@@ -619,6 +622,7 @@ export default function ClientAnalyticsPage() {
             />
             <StatCard
               title="Conversion Rate"
+              aria-label="Conversion Rate"
               value={
                 isLoading
                   ? '-'
@@ -629,6 +633,7 @@ export default function ClientAnalyticsPage() {
                     }%`
               }
               subtitle="Active / Total"
+              aria-label="Conversion Rate"
               icon={Target}
               color="purple"
               loading={isLoading}
@@ -685,6 +690,7 @@ export default function ClientAnalyticsPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
             <StatCard
               title="Total Revenue"
+              aria-label="Total Revenue"
               value={isLoading ? '-' : formatCurrency(revenue?.total_actual || 0)}
               subtitle="Actual collected"
               icon={DollarSign}
@@ -693,6 +699,7 @@ export default function ClientAnalyticsPage() {
             />
             <StatCard
               title="Paid"
+              aria-label="Paid"
               value={isLoading ? '-' : formatCurrency(revenue?.total_paid || 0)}
               subtitle={`${revenue?.total_actual ? Math.round((revenue.total_paid / revenue.total_actual) * 100) : 0}% collection rate`}
               icon={Activity}
@@ -701,6 +708,7 @@ export default function ClientAnalyticsPage() {
             />
             <StatCard
               title="Outstanding"
+              aria-label="Outstanding"
               value={isLoading ? '-' : formatCurrency(revenue?.total_outstanding || 0)}
               subtitle="Pending payment"
               icon={Clock}
@@ -709,6 +717,7 @@ export default function ClientAnalyticsPage() {
             />
             <StatCard
               title="Avg per Client"
+              aria-label="Avg per Client"
               value={isLoading ? '-' : formatCurrency(revenue?.avg_per_client || 0)}
               subtitle="Revenue average"
               icon={BarChart3}

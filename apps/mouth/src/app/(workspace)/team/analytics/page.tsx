@@ -364,6 +364,7 @@ export default function TeamAnalyticsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Total Revenue"
+            aria-label="Total Revenue"
             value={isLoading ? '-' : formatCurrency(totalRevenue)}
             trend={18.3}
             icon={TrendingUp}
@@ -372,6 +373,7 @@ export default function TeamAnalyticsPage() {
           />
           <StatCard
             title="Active Clients"
+            aria-label="Active Clients"
             value={isLoading ? '-' : totalClients}
             trend={12.5}
             icon={Users}
@@ -380,6 +382,7 @@ export default function TeamAnalyticsPage() {
           />
           <StatCard
             title="Avg Conversion"
+            aria-label="Avg Conversion"
             value={isLoading ? '-' : `${avgConversion.toFixed(1)}%`}
             trend={5.2}
             icon={Target}
@@ -388,6 +391,7 @@ export default function TeamAnalyticsPage() {
           />
           <StatCard
             title="Satisfaction"
+            aria-label="Satisfaction"
             value={isLoading ? '-' : `${avgSatisfaction.toFixed(1)}/5.0`}
             trend={2.1}
             icon={Star}
