@@ -612,6 +612,74 @@ async def get_upcoming_renewals(
         raise handle_database_error(e)
 
 
+# ================================================
+# PRACTICE TYPES CATALOG (must be before {practice_id} routes)
+# ================================================
+
+CATEGORY_LABELS = {
+    "single_entry_visa": "Single Entry Visa",
+    "visa_extension": "Visa Extension",
+    "multiple_entry_visa": "Multiple Entry Visa",
+    "kitas": "KITAS Permits",
+    "kitap": "KITAP Permits",
+    "company": "Company Services",
+    "tax": "Tax Services",
+    "other": "Other Process",
+    "urgent": "Urgent Services",
+}
+
+CATEGORY_ORDER = list(CATEGORY_LABELS.keys())
+
+
+@router.get("/types/catalog")
+async def get_practice_types_catalog(
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Get all active practice types grouped by category for the process creation form."""
+    try:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, code, name, description, category, base_price,
+                       typical_duration_days
+                FROM practice_types
+                WHERE is_active = true
+                ORDER BY category, name
+                """
+            )
+
+            categories: dict[str, list[dict[str, Any]]] = {}
+            for row in rows:
+                cat = row["category"] or "other"
+                if cat not in categories:
+                    categories[cat] = []
+                categories[cat].append({
+                    "code": row["code"],
+                    "name": row["name"],
+                    "description": row["description"],
+                    "base_price": float(row["base_price"]) if row["base_price"] else None,
+                    "typical_duration_days": row["typical_duration_days"],
+                })
+
+            result = []
+            for cat_code in CATEGORY_ORDER:
+                if cat_code in categories:
+                    result.append({
+                        "code": cat_code,
+                        "label": CATEGORY_LABELS.get(cat_code, cat_code),
+                        "services": categories[cat_code],
+                    })
+
+            return {
+                "categories": result,
+                "total_services": len(rows),
+            }
+
+    except Exception as e:
+        raise handle_database_error(e)
+
+
 @router.get("/{practice_id}")
 async def get_practice(
     request: Request,
