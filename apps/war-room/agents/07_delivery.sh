@@ -183,85 +183,31 @@ print('✅ Image prompts inviati al gruppo')
   fi
 fi
 
-# ── FASE 4b: Canva auto-executor via claude -p ──────────────────────────────
-# claude -p headless usa ~/.claude/token (Max OAuth) senza ANTHROPIC_API_KEY
-# Il MCP Canva è disponibile solo in sessione interattiva → usiamo claude -p
-# con un prompt che legge canva_pending.json e applica via MCP tools
+# ── Notifica Canva pronto per applicazione manuale ──────────────────────────
+# MCP Canva è disponibile solo in Claude app desktop (OAuth browser-bound).
+# Il claude -p headless non può accedere → notifica diretta all'utente.
 PENDING_FILE="$WAR_ROOM/output/canva/canva_pending.json"
-APPLIED_FILE="$WAR_ROOM/output/canva/carousel_canva.json"
 
-if [[ -f "$PENDING_FILE" ]]; then
-    PENDING_STATUS=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('status',''))" 2>/dev/null)
-    # BUG4 FIX: PENDING_TOPIC letto come variabile bash, NON interpolato inline nel prompt Python.
-    # Passato via env var CANVA_TOPIC per evitare injection nei blocchi python -c.
-    PENDING_TOPIC=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('topic',''))" 2>/dev/null)
-    # Sanitize: rimuovi caratteri pericolosi (apici, backslash, newline)
-    PENDING_TOPIC=$(echo "$PENDING_TOPIC" | tr -d "'\`\\\n\r" | head -c 200)
-    PENDING_OPS=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('operations_count',0))" 2>/dev/null)
+if [[ -f "$PENDING_FILE" && -n "$BOT_TOKEN" && -n "$CHAT_IDS" ]]; then
+    PENDING_TOPIC=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('topic',''))" 2>/dev/null || echo "")
+    PENDING_OPS=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('operations_count',0))" 2>/dev/null || echo "0")
+    PENDING_DESIGN=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('design_url',''))" 2>/dev/null || echo "")
 
-    if [[ "$PENDING_STATUS" == "pending" ]]; then
-        echo ""
-        echo "🎨 Avvio Canva executor via claude -p..."
-
-        # Prompt per claude -p: legge il file e applica le operazioni.
-        # BUG4 FIX: il topic viene inserito via PENDING_FILE (già validato JSON),
-        # non interpolato nel prompt. Il prompt fa riferimento al file, non al valore raw.
-        CANVA_PROMPT="Hai un file canva_pending.json in $PENDING_FILE con $PENDING_OPS operazioni replace_text da applicare al design Canva.
-
-Leggi il file con Read tool, poi per ogni operazione nella lista 'operations':
-1. Usa mcp__claude_ai_Canva__start-editing-transaction sul design_id del file
-2. Usa mcp__claude_ai_Canva__perform-editing-operations con le operazioni
-3. Usa mcp__claude_ai_Canva__commit-editing-transaction
-4. Aggiorna il campo 'status' da 'pending' a 'applied' nel file JSON
-5. Scrivi output/canva/carousel_canva.json con design_url e status applied
-
-Il topic si trova nel file JSON al campo 'topic'. Procedi senza chiedere conferma."
-
-        # Esegui senza ANTHROPIC_API_KEY (usa ~/.claude/token OAuth Max)
-        CANVA_RESULT=$(env -i \
-            HOME="$HOME" \
-            PATH="$PATH" \
-            USER="$USER" \
-            TERM="xterm-256color" \
-            claude -p "$CANVA_PROMPT" \
-            --allowedTools "mcp__claude_ai_Canva__start-editing-transaction,mcp__claude_ai_Canva__perform-editing-operations,mcp__claude_ai_Canva__commit-editing-transaction,Read,Write,Edit" \
-            --dangerously-skip-permissions \
-            2>&1)
-
-        CLAUDE_EXIT=$?
-        echo "   claude -p exit: $CLAUDE_EXIT"
-
-        # BUG2 FIX: leggi CANVA_URL DOPO che l'executor ha (eventualmente) creato il file
-        if [[ -f "$APPLIED_FILE" ]]; then
-            CANVA_URL=$("$PYTHON" -c "import json; print(json.load(open('$APPLIED_FILE')).get('design_url',''))" 2>/dev/null || echo "")
-            echo "   ✅ Canva applicato: $CANVA_URL"
-            # Notifica Telegram con il link Canva aggiornato
-            if [[ -n "$BOT_TOKEN" && -n "$CHAT_IDS" ]]; then
-              # BUG4 FIX: topic e url passati via env var al processo Python, non interpolati inline
-              CANVA_TOPIC="$PENDING_TOPIC" CANVA_LINK="$CANVA_URL" \
-              "$PYTHON" -c "
+    CANVA_TOPIC="$PENDING_TOPIC" CANVA_OPS="$PENDING_OPS" CANVA_DESIGN="$PENDING_DESIGN" \
+    "$PYTHON" -c "
 import urllib.request, urllib.parse, os
-topic = os.environ.get('CANVA_TOPIC', '')
-link  = os.environ.get('CANVA_LINK', '')
-msg = f'Canva carousel aggiornato automaticamente!\nTopic: {topic}\nLink: {link}'
+topic  = os.environ.get('CANVA_TOPIC', '')
+ops    = os.environ.get('CANVA_OPS', '0')
+design = os.environ.get('CANVA_DESIGN', '')
+msg = (
+    f'🎨 Canva pronto.\n'
+    f'Topic: {topic}\n'
+    f'{ops} operazioni in canva_pending.json\n'
+    f'Apri Claude app desktop su Pro e usa APPLICA_WAR_ROOM.md'
+    + (f'\nDesign: {design}' if design else '')
+)
 data = urllib.parse.urlencode({'chat_id': '$CHAT_IDS', 'text': msg}).encode()
 urllib.request.urlopen('https://api.telegram.org/bot${BOT_TOKEN}/sendMessage', data=data, timeout=10)
-" 2>/dev/null && echo "   📱 Notifica Canva inviata"
-            fi
-        else
-            echo "   ⚠️  Canva non applicato (claude -p output: ${CANVA_RESULT:0:200})"
-            # Notifica fallimento con istruzioni manuali
-            if [[ -n "$BOT_TOKEN" && -n "$CHAT_IDS" ]]; then
-              CANVA_TOPIC="$PENDING_TOPIC" CANVA_FILE="$PENDING_FILE" \
-              "$PYTHON" -c "
-import urllib.request, urllib.parse, os
-topic = os.environ.get('CANVA_TOPIC', '')
-fpath = os.environ.get('CANVA_FILE', '')
-msg = f'⚠️ Canva auto-executor fallito.\nApri Claude app desktop su Pro → APPLICA_WAR_ROOM.md sul Desktop.\nTopic: {topic}'
-data = urllib.parse.urlencode({'chat_id': '$CHAT_IDS', 'text': msg}).encode()
-urllib.request.urlopen('https://api.telegram.org/bot${BOT_TOKEN}/sendMessage', data=data, timeout=10)
-" 2>/dev/null
-            fi
-        fi
-    fi
+print('📱 Notifica Canva inviata')
+" 2>/dev/null || echo "⚠️  Notifica Canva fallita"
 fi
