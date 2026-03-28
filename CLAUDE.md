@@ -513,7 +513,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   } catch (error) {
-    console.error("KBLI fetch failed:", error);
+    console.error('KBLI fetch failed:', error);
     return null;
   }
 }
@@ -913,14 +913,14 @@ tools = [{"name": "kbli_search", "eager_input_streaming": True, ...}]
 - Mutation senza invalidation → dati stale → confusione clienti
 - Core Guardian AST audit: `apps/evaluator/core_guardian/checks/cache_invalidation_audit.py`
 
-### KG Subgraph Status (2026-03-26)
+### KG Subgraph Status (2026-03-28)
 
-| Subgraph | Stato             | Note                                                    |
-| -------- | ----------------- | ------------------------------------------------------- |
-| Company  | ✅ wired KG reale | Query asyncpg su kg_nodes/kg_edges                      |
-| Visa     | ⚠️ parziale       | Sezione RPTKA ancora hardcoded in `kg_subgraph_visa.py` |
-| Property | ❓ da verificare  |                                                         |
-| Tax      | ❓ da verificare  |                                                         |
+| Subgraph | Stato             | Note                                                        |
+| -------- | ----------------- | ----------------------------------------------------------- |
+| Company  | ✅ wired KG reale | Query asyncpg su kg_nodes/kg_edges                          |
+| Visa     | ✅ wired KG reale | All 4 nodes query KG; hardcoded only as safety-net fallback |
+| Property | ❓ da verificare  |                                                             |
+| Tax      | ❓ da verificare  |                                                             |
 
 ### Cron Air (aggiornato 2026-03-26)
 
