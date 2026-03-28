@@ -125,7 +125,7 @@ async def verify_client_access(
     if is_crm_admin(current_user):
         # Still fetch assigned_to for audit purposes
         row = await conn.fetchrow(
-            "SELECT assigned_to FROM clients WHERE id = $1",
+            "SELECT assigned_to FROM clients WHERE id = $1 AND deleted_at IS NULL",
             client_id,
         )
         if not row:
@@ -134,7 +134,7 @@ async def verify_client_access(
 
     # Non-admins: fetch client and check assignment
     row = await conn.fetchrow(
-        "SELECT id, assigned_to FROM clients WHERE id = $1",
+        "SELECT id, assigned_to FROM clients WHERE id = $1 AND deleted_at IS NULL",
         client_id,
     )
 

@@ -538,7 +538,7 @@ class PortalService:
         async with self.pool.acquire() as conn:
             # Get client info
             client = await conn.fetchrow(
-                "SELECT id, full_name, email FROM clients WHERE id = $1",
+                "SELECT id, full_name, email FROM clients WHERE id = $1 AND deleted_at IS NULL",
                 client_id,
             )
             if not client:
@@ -785,7 +785,7 @@ class PortalService:
         async with self.pool.acquire() as conn:
             # Verify client exists
             client = await conn.fetchrow(
-                "SELECT id FROM clients WHERE id = $1",
+                "SELECT id FROM clients WHERE id = $1 AND deleted_at IS NULL",
                 client_id,
             )
             if not client:
@@ -1464,7 +1464,7 @@ class PortalService:
 
             # Get client info
             client = await conn.fetchrow(
-                "SELECT email, full_name, assigned_to FROM clients WHERE id = $1",
+                "SELECT email, full_name, assigned_to FROM clients WHERE id = $1 AND deleted_at IS NULL",
                 client_id,
             )
 
@@ -2073,7 +2073,7 @@ Questa è una notifica automatica da Bali Zero CRM.
         async with self.pool.acquire() as conn:
             # Get client email for sent_by
             client = await conn.fetchrow(
-                "SELECT email FROM clients WHERE id = $1",
+                "SELECT email FROM clients WHERE id = $1 AND deleted_at IS NULL",
                 client_id,
             )
 
