@@ -228,6 +228,8 @@ function ProcessCard({
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
+        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${process.processName}`}
         className="w-full p-4 flex items-center justify-between transition-colors"
         style={{ background: 'transparent' }}
         onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(45,45,50,0.5)')}
