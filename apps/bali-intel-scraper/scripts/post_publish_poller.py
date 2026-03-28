@@ -242,7 +242,7 @@ def run_image(slug: str, category: str) -> bool:
     Genera copertina e committa su GitHub.
     1. Legge title dall'MDX via GitHub API
     2. Costruisce prompt con bz_image_style
-    3. Genera con ComfyUI → Fireworks.ai Flux → Pollinations → Picsum → Unsplash
+    3. Genera con Fireworks.ai Flux → ComfyUI → Pollinations → Picsum → Unsplash
     4. Committa il JPG su GitHub in public/static/news/
     """
     import base64
@@ -302,60 +302,60 @@ def run_image(slug: str, category: str) -> bool:
         img_path = Path(tmpdir) / f"{slug}.jpg"
         generated = False
 
-        # --- 1. ComfyUI (locale, qualità massima) ---
-        try:
-            resp = urllib.request.urlopen(f"{COMFYUI_URL}/system_stats", timeout=5)
-            if resp.status == 200:
-                log("  ComfyUI disponibile — uso Flux locale")
-                state = {"articles": [{"_published_item_id": slug, "enrichment": {"headline": title}, "category": category, "image_path": str(img_path)}]}
-                state_file = Path(tmpdir) / "state.json"
-                state_file.write_text(json.dumps(state))
-                r = subprocess.run(
-                    [str(VENV_PYTHON), str(SCRIPT_DIR / "comfyui_image_generator.py"), str(state_file)],
-                    capture_output=True, text=True, timeout=10 * 60
-                )
-                generated = r.returncode == 0 and img_path.exists() and img_path.stat().st_size > 5000
-        except Exception:
-            pass
+        # --- 1. Fireworks.ai Flux (cloud, veloce e alta qualità) ---
+        fireworks_key = os.environ.get("FIREWORKS_API_KEY", "")
+        if fireworks_key:
+            log("  Provo Fireworks.ai Flux")
+            fw_url = "https://api.fireworks.ai/inference/v1/image_generation/accounts/fireworks/models/flux-1-schnell-fp8"
+            fw_payload = json.dumps({
+                "prompt": prompt,
+                "width": 1200,
+                "height": 630,
+                "num_inference_steps": 4,
+            }).encode()
+            fw_req = urllib.request.Request(
+                fw_url,
+                data=fw_payload,
+                headers={
+                    "Authorization": f"Bearer {fireworks_key}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(fw_req, timeout=60) as fw_resp:
+                    fw_data = json.loads(fw_resp.read())
+                    fw_image_url = fw_data.get("output", [{}])[0].get("url", "")
+                    if fw_image_url:
+                        img_req = urllib.request.Request(fw_image_url, headers={"User-Agent": "BaliZero/1.0"})
+                        with urllib.request.urlopen(img_req, timeout=30) as img_resp:
+                            img_bytes_fw = img_resp.read()
+                            if len(img_bytes_fw) > 5000:
+                                img_path.write_bytes(img_bytes_fw)
+                                generated = True
+                                log("  Immagine generata via Fireworks.ai Flux")
+            except Exception as e:
+                log(f"  Fireworks.ai error: {e}")
+        else:
+            log("  FIREWORKS_API_KEY non impostata — skip Fireworks")
 
-        # --- 2. Fireworks.ai Flux (cloud, alta qualità) ---
+        # --- 2. ComfyUI (locale, qualità massima) ---
         if not generated:
-            fireworks_key = os.environ.get("FIREWORKS_API_KEY", "")
-            if fireworks_key:
-                log("  ComfyUI offline — provo Fireworks.ai Flux")
-                fw_url = "https://api.fireworks.ai/inference/v1/image_generation/accounts/fireworks/models/flux-1-schnell-fp8"
-                fw_payload = json.dumps({
-                    "prompt": prompt,
-                    "width": 1200,
-                    "height": 630,
-                    "num_inference_steps": 4,
-                }).encode()
-                fw_req = urllib.request.Request(
-                    fw_url,
-                    data=fw_payload,
-                    headers={
-                        "Authorization": f"Bearer {fireworks_key}",
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                    },
-                    method="POST",
-                )
-                try:
-                    with urllib.request.urlopen(fw_req, timeout=60) as fw_resp:
-                        fw_data = json.loads(fw_resp.read())
-                        fw_image_url = fw_data.get("output", [{}])[0].get("url", "")
-                        if fw_image_url:
-                            img_req = urllib.request.Request(fw_image_url, headers={"User-Agent": "BaliZero/1.0"})
-                            with urllib.request.urlopen(img_req, timeout=30) as img_resp:
-                                img_bytes_fw = img_resp.read()
-                                if len(img_bytes_fw) > 5000:
-                                    img_path.write_bytes(img_bytes_fw)
-                                    generated = True
-                                    log("  Immagine generata via Fireworks.ai Flux")
-                except Exception as e:
-                    log(f"  Fireworks.ai error: {e}")
-            else:
-                log("  FIREWORKS_API_KEY non impostata — skip Fireworks")
+            try:
+                resp = urllib.request.urlopen(f"{COMFYUI_URL}/system_stats", timeout=5)
+                if resp.status == 200:
+                    log("  Fireworks non disponibile — uso ComfyUI locale")
+                    state = {"articles": [{"_published_item_id": slug, "enrichment": {"headline": title}, "category": category, "image_path": str(img_path)}]}
+                    state_file = Path(tmpdir) / "state.json"
+                    state_file.write_text(json.dumps(state))
+                    r = subprocess.run(
+                        [str(VENV_PYTHON), str(SCRIPT_DIR / "comfyui_image_generator.py"), str(state_file)],
+                        capture_output=True, text=True, timeout=10 * 60
+                    )
+                    generated = r.returncode == 0 and img_path.exists() and img_path.stat().st_size > 5000
+            except Exception:
+                pass
 
         # --- 3. Pollinations.ai fallback ---
         if not generated:
