@@ -113,8 +113,30 @@ export default function VaultPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--bz-accent-warm)' }} />
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <section>
+          <div
+            className="h-7 w-44 rounded animate-pulse"
+            style={{ background: 'var(--bz-border)' }}
+          />
+          <div
+            className="h-4 w-56 rounded mt-2 animate-pulse"
+            style={{ background: 'var(--bz-border)', opacity: 0.5 }}
+          />
+        </section>
+        <div
+          className="rounded-lg border border-dashed p-6 h-28 animate-pulse"
+          style={{ borderColor: 'rgba(201,169,110,0.4)', background: 'rgba(201,169,110,0.05)' }}
+        />
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="rounded-lg border p-4 h-20 animate-pulse"
+              style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+            />
+          ))}
+        </div>
       </div>
     );
   }
