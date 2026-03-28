@@ -428,6 +428,7 @@ export interface ClientCompanyLink {
   company_type: string;
   brand_name?: string;
   role: string;
+  client_name?: string;
   is_primary: boolean;
   ownership_percentage?: number;
   shares_count?: number;

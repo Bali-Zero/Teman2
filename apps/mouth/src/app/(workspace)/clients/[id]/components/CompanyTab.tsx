@@ -721,24 +721,54 @@ export function CompanyTab({
             setup_progress: co.setup_progress,
             company_id: co.company_id,
           });
-          setAssociates(
-            linked.map((l) => ({
-              client_name: client.full_name,
-              role: l.role,
-              ownership_percentage: l.ownership_percentage,
-              shares_count: l.shares_count,
-            })),
-          );
-          // Load company documents if we have a company_id
+          // Load full company data (all shareholders + docs) via company_id
           if (co.company_id) {
             api.crm
-              .getCompanyDocuments(co.company_id)
-              .then((docs) => !cancelled && setCompanyDocs(docs))
-              .catch((err) => {
-                toast.error("Failed to load company documents", {
-                  description: (err as Error).message,
-                });
+              .getCompany(co.company_id)
+              .then((full) => {
+                if (cancelled) return;
+                if (full.associates?.length) {
+                  setAssociates(
+                    full.associates.map((a) => ({
+                      client_name: a.client_name,
+                      role: a.role,
+                      ownership_percentage: a.ownership_percentage,
+                      shares_count: a.shares_count,
+                    })),
+                  );
+                } else {
+                  // Fallback: at least show the current client
+                  setAssociates([
+                    {
+                      client_name: client.full_name,
+                      role: co.role,
+                      ownership_percentage: co.ownership_percentage,
+                      shares_count: co.shares_count,
+                    },
+                  ]);
+                }
+                if (full.documents?.length) setCompanyDocs(full.documents);
+              })
+              .catch(() => {
+                // Fallback to current client only
+                setAssociates([
+                  {
+                    client_name: client.full_name,
+                    role: co.role,
+                    ownership_percentage: co.ownership_percentage,
+                    shares_count: co.shares_count,
+                  },
+                ]);
               });
+          } else {
+            setAssociates([
+              {
+                client_name: client.full_name,
+                role: co.role,
+                ownership_percentage: co.ownership_percentage,
+                shares_count: co.shares_count,
+              },
+            ]);
           }
           return;
         }
