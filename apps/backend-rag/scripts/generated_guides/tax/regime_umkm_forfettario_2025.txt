@@ -1,0 +1,195 @@
+REGIME UMKM E PPH FINAL 0,5%
+REGIMI FISCALI ALTERNATIVI E TRANSIZIONE PT PMA
+INDONESIA 2024-2025
+
+Guida normativa verificata | Basata su UU 7/2021 (HPP), PP 23/2018, PP 55/2022
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. PPH FINAL 0,5% — REGIME UMKM
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il PP 23/2018 (modificato da HPP 2021) introduce un regime forfettario
+per le UMKM (Usaha Mikro Kecil Menengah): [TAX-013]
+
+CARATTERISTICHE:
+- Aliquota: 0,5% SUL FATTURATO LORDO (omzet) — NON sull'utile
+- Applicabile se omzet ≤ Rp 4.800.000.000/anno (4,8 miliardi)
+- È un'imposta FINALE (tidak dapat dikreditkan)
+- Scelta facoltativa, non obbligatoria
+
+DURATA MASSIMA (PP 55/2022): [TAX-074]
+- Wajib pajak orang pribadi (persone fisiche): 7 tahun
+- CV/Firma (persekutuan): 4 tahun
+- PT (Perseroan Terbatas): 3 tahun dalla data costituzione
+
+NOTA CRITICA PER PT PMA:
+Le PT PMA RARAMENTE rientrano in questo regime perché:
+1. Il capitale minimo (Rp 10 miliardi) è incompatibile con una
+   microimpresa da 4,8 miliardi di omzet
+2. Il BKPM/OSS richiede dimostrazione di attività economica proporzionale
+   al capitale — una villa di lusso o ristorante premium solitamente
+   supera rapidamente il threshold UMKM
+
+QUANDO POTREBBE APPLICARSI:
+- Una PT PMA in fase di avvio con omzet molto basso nel primo anno
+- Attività di consulenza/IT con omzet < 4,8 miliardi
+- Ma è consigliato verificare con un konsultan pajak
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. CONFRONTO REGIMI FISCALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REGIME NORMALE PPH BADAN 22%:
+Base: 22% sull'utile netto (PKP = omzet - biaya deducibili)
+Adatto per: PT PMA con margini elevati E costi documentabili
+Vantaggio: se omzet/costi elevati, il 22% sul PROFITTO può essere
+inferiore al 0,5% sull'OMZET
+Svantaggio: necessità di pembukuan formale completa
+
+REGIME UMKM PPH FINAL 0,5%:
+Base: 0,5% sull'omzet lordo
+Adatto per: attività con margini bassi o con difficoltà di dokumentasi
+Vantaggio: semplice da calcolare, non richiede pembukuan completa
+Svantaggio: si paga anche in perdita
+
+ESEMPIO COMPARATIVO:
+
+Ristorante con omzet Rp 3 miliardi/anno:
+- Scenario A (PPh Badan 22%): utile 10% = Rp 300 juta → PPh 22% = Rp 66 juta
+- Scenario B (PPh Final 0,5%): 0,5% × Rp 3 miliardi = Rp 15 juta
+  → Risparmio: Rp 51 juta → REGIME UMKM CONVIENE
+
+Ristorante con omzet Rp 3 miliardi/anno ma utile 30%:
+- Scenario A (PPh Badan 22%): utile 30% = Rp 900 juta → PPh 22% = Rp 198 juta
+- Scenario B (PPh Final 0,5%): Rp 15 juta
+  → Risparmio enorme → REGIME UMKM CONVIENE ANCORA
+
+In generale: il regime 0,5% è quasi sempre più conveniente per UMKM
+sotto la soglia, MA è limitato a 3 anni per le PT. [TAX-075]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. TRANSIZIONE DA PT LOKAL A PT PMA — IMPATTO FISCALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quando una PT Lokal si converte in PT PMA (inserimento socio WNA):
+[TAX-076]
+
+IMPATTO FISCALE DELLA CONVERSIONE:
+1. La PT mantiene il suo NPWP Badan (non cambia)
+2. La struttura fiscale non cambia (rimane PPh Badan 22%)
+3. Se la PT Lokal era in regime 0,5% UMKM, la conversione in PT PMA
+   NON fa decadere automaticamente il regime — ma l'aumento del
+   capitale a Rp 10 miliardi potrebbe rendere il regime UMKM
+   incongruente con la dimensione dell'impresa
+4. Gli eventuali riporti di perdita (kompensasi kerugian) si mantengono
+
+STEPUP BASIS SULLE AZIONI:
+L'inserimento del socio WNA crea un nuovo valore delle azioni.
+Se il socio WNA acquista azioni sopra il valore nominale (premium):
+- Il premium ricevuto dalla PT (bukan dagli azionisti uscenti) non è
+  soggetto a PPh Badan se versato come agio (contributo in conto capitale)
+- Se invece è corrisposto agli azionisti uscenti come prezzo di
+  compravendita → i venditori pagano PPh atas pengalihan saham (2,5%)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. PEMBUBARAN E LIKUIDASI — ASPETTI FISCALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Alla chiusura della PT PMA (pembubaran): [TAX-072]
+
+OBBLIGHI FISCALI PRE-CHIUSURA:
+1. Ultimo SPT Tahunan Badan (anno della chiusura — non attende il 30 aprile
+   dell'anno successivo ma va presentato entro 3 bulan dopo pembubaran)
+2. Pembayaran semua kewajiban pajak (tutti i debiti fiscali devono essere saldati)
+3. Richiesta SURAT KETERANGAN NIHIL al KPP (certifica zero debiti)
+4. Penghapusan NPWP (cancellazione del codice fiscale)
+
+LIQUIDAZIONE DEL PATRIMONIO:
+- Cessione di cespiti (tanah/bangunan) soggetta a PPh Final 2,5% sulle plus-value
+- Distribuzione ai soci del residuo di liquidazione:
+  La parte eccedente il capitale investito è tassata come dividendo [TAX-041]
+  (PPh 26 per soci WNA non penduduk, o tassazione normal WNI)
+
+PERDITE FISCALI NON UTILIZZATE:
+Le perdite riportabili (kompensasi kerugian) non utilizzate al momento
+della pembubaran NON sono rimborsabili né trasferibili. Vanno perdute. [TAX-024]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. INCENTIVI FISKAL SPECIALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 Tax Holiday (PP 78/2019)
+
+Per investimenti strategici di grande scala in settori industria pionir:
+- Pengurangan PPh Badan: 50%-100% per 5-20 anni [TAX-077]
+- Soglia minima investimento: Rp 100 miliardi (100 miliardi IDR)
+- Settori: industria farmaceutica, petrokimia, elektronik, teknologi tinggi
+- NON applicabile alla maggior parte delle PT PMA a Bali (turismo, F&B, servizi)
+
+5.2 Tax Allowance (PP 78/2019)
+
+Per investitori in settori prioritari o regioni terpencil:
+- Pengurangan PKP del 30% sugli investimenti
+- Penyusutan dipercepat (ammortamento accelerato)
+- Pengenaan PPh atas deviden 10% (fisso, non progressivo)
+- Kompensasi kerugian 5-10 anni (esteso da normale 5 anni)
+NON richiede soglia minima come il Tax Holiday.
+
+5.3 Super Deduction (PP 45/2019)
+
+Per investimenti in R&D e vokasi (formazione professionale):
+- Deduction 200-300% dei costi R&D
+- Deduction 200% dei costi per vokasi dipendenti
+Rilevante per PT PMA nel settore tecnologia/istruzione.
+
+5.4 KEK (Kawasan Ekonomi Khusus)
+
+Nelle KEK (Zone Economiche Speciali), le PT PMA possono beneficiare:
+- Tax holiday automatico senza soglie di investimento
+- Kemudahan kepabeanan (procedure doganali facilitate)
+- Keringanan PPh Karyawan (riduzione PPh 21 per dipendenti)
+Bali non ha una KEK al momento (2025), ma aree come Mandalika (Lombok)
+e Nusa Dua sono in discussione.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SCELTA DEL REGIME:
+Per una PT PMA di nuova costituzione nel primo anno, è spesso
+vantaggioso valutare la scelta del regime 0,5% (se applicabile)
+con un konsultan pajak. Il risparmio fiscale nei primi 3 anni
+può essere significativo.
+
+PIANIFICAZIONE USCITA DAL REGIME UMKM:
+Alla fine dei 3 anni (PT) o al superamento della soglia Rp 4,8 miliardi,
+il passaggio al regime PPh Badan 22% richiede:
+- Allestimento completo della pembukuan formale
+- Prima SPT Tahunan 1771 (più complessa)
+- Eventuale registrazione PKP se soglia PPN superata
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+TAX-013, TAX-024, TAX-041, TAX-072, TAX-073, TAX-074, TAX-075,
+TAX-076, TAX-077
+
+Base normativa: PP 23/2018 (PPh Final 0,5%), PP 55/2022 (durasi PPh Final),
+PP 78/2019 (Tax Holiday dan Tax Allowance), PP 45/2019 (Super Deduction),
+UU 7/2021 (HPP).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
