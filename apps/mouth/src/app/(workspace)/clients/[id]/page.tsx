@@ -781,7 +781,7 @@ export default function ClientDetailPage() {
           { key: "overview", label: "Overview", icon: User },
           {
             key: "documents",
-            label: `Documents (${stats.documents_count})`,
+            label: `Documents (${generalDocuments.length})`,
             icon: FileText,
           },
           {

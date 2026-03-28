@@ -97,7 +97,7 @@ async def _fetch_pending(state: IntelReviewState, app_state: Any) -> IntelReview
     return state
 
 
-async def _assess_items(state: IntelReviewState, app_state: Any) -> IntelReviewState:
+async def _assess_items(state: IntelReviewState, _app_state: Any) -> IntelReviewState:
     """Score each item's significance using Gemini Flash — cheap, fast."""
     import os
 
@@ -183,7 +183,7 @@ async def _assess_items(state: IntelReviewState, app_state: Any) -> IntelReviewS
     return state
 
 
-async def _notify_team(state: IntelReviewState, app_state: Any) -> IntelReviewState:
+async def _notify_team(state: IntelReviewState, _app_state: Any) -> IntelReviewState:
     """Send Telegram approval notifications for high-confidence items."""
     min_conf = state["min_confidence"]
     to_notify = [
@@ -227,7 +227,7 @@ async def _notify_team(state: IntelReviewState, app_state: Any) -> IntelReviewSt
     return state
 
 
-async def _summarize(state: IntelReviewState, app_state: Any) -> IntelReviewState:
+async def _summarize(state: IntelReviewState, _app_state: Any) -> IntelReviewState:
     """Build and persist final summary."""
     assessments = state["assessments"]
     total = len(assessments)
@@ -271,8 +271,8 @@ def _register() -> None:
     @register_chain("intel.review")
     async def _execute_intel_review(
         payload: dict[str, Any],
-        thread_id: str,
-        app_state: Any,
+        _thread_id: str,
+        _app_state: Any,
     ) -> dict[str, Any]:
         """
         Intel review chain: assess pending staging items and notify team.
@@ -297,7 +297,7 @@ def _register() -> None:
         # Run steps sequentially — LangGraph adds checkpointing but is optional
         state = initial_state
         for step_fn in (_fetch_pending, _assess_items, _notify_team, _summarize):
-            state = await step_fn(state, app_state)  # type: ignore[assignment]
+            state = await step_fn(state, _app_state)  # type: ignore[assignment]
 
         return state["summary"]
 

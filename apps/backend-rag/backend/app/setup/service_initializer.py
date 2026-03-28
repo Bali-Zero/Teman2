@@ -11,11 +11,14 @@ If any critical service fails, the application will raise RuntimeError to preven
 Non-critical services will log errors and continue with degraded functionality.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
 import os
 import random
+from typing import Any
 
 import asyncpg
 from fastapi import FastAPI
@@ -28,7 +31,7 @@ logger = logging.getLogger("zantara.backend")
 
 async def _init_critical_services(
     app: FastAPI,
-) -> tuple:
+) -> tuple[Any, Any]:
     """
     Initialize critical services: SearchService and ZantaraAIClient.
 
@@ -113,7 +116,7 @@ async def _init_critical_services(
     return search_service, ai_client
 
 
-async def _init_tool_stack(app: FastAPI):
+async def _init_tool_stack(app: FastAPI) -> Any:
     """
     Initialize tool stack: Python-native tools and MCP client.
 
@@ -154,7 +157,7 @@ async def _init_tool_stack(app: FastAPI):
     return tool_executor
 
 
-async def _init_rag_components(app: FastAPI, search_service):
+async def _init_rag_components(app: FastAPI, search_service: Any) -> Any:
     """
     Initialize RAG components: CulturalRAGService and QueryRouter.
 
@@ -189,10 +192,10 @@ async def _init_rag_components(app: FastAPI, search_service):
 
 async def _init_specialized_agents(
     _app: FastAPI,
-    search_service,
-    ai_client,
-    query_router,
-) -> tuple:
+    search_service: Any,
+    ai_client: Any,
+    query_router: Any,
+) -> tuple[Any, Any, Any]:
     """
     Initialize specialized agents: AutonomousResearch, CrossOracle, ClientJourney.
 
@@ -291,7 +294,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 pass
 
             # Create asyncpg pool for team timesheet service
-            async def init_db_connection(conn) -> None:
+            async def init_db_connection(conn: asyncpg.Connection) -> None:
                 await conn.set_type_codec(
                     "jsonb",
                     encoder=json.dumps,
@@ -548,7 +551,7 @@ async def initialize_faq_cache_service(app: FastAPI) -> None:
         if not enable_cache:
             logger.info("ℹ️  FAQ cache disabled (ENABLE_FAQ_CACHE=false)")
             app.state.faq_cache = None
-            service_registry.register("faq_cache", ServiceStatus.DISABLED)
+            service_registry.register("faq_cache", ServiceStatus.UNAVAILABLE)
             return
 
         cache_service = NotebookLMCacheService()
@@ -572,7 +575,7 @@ async def initialize_faq_cache_service(app: FastAPI) -> None:
 
 
 async def initialize_crm_and_memory_services(
-    app: FastAPI, ai_client, db_pool: asyncpg.Pool | None,
+    app: FastAPI, ai_client: Any, db_pool: asyncpg.Pool | None,
 ) -> None:
     """
     Initialize CRM and Memory services: MemoryService, ConversationService.
@@ -630,14 +633,14 @@ async def initialize_crm_and_memory_services(
 
 async def initialize_intelligent_router(
     app: FastAPI,
-    ai_client,
-    search_service,
-    tool_executor,
-    cultural_rag_service,
-    autonomous_research_service,
-    cross_oracle_synthesis_service,
-    client_journey_orchestrator,
-    collaborator_service,
+    ai_client: Any,
+    search_service: Any,
+    tool_executor: Any,
+    cultural_rag_service: Any,
+    autonomous_research_service: Any,
+    cross_oracle_synthesis_service: Any,
+    client_journey_orchestrator: Any,
+    collaborator_service: Any,
     db_pool: asyncpg.Pool | None,
 ) -> None:
     """
@@ -693,8 +696,8 @@ async def initialize_intelligent_router(
 
 async def _init_background_services(
     app: FastAPI,
-    search_service,
-    ai_client,
+    search_service: Any,
+    ai_client: Any,
     db_pool: asyncpg.Pool | None,
 ) -> None:
     """
@@ -837,7 +840,7 @@ async def _init_generals(app: FastAPI, db_pool: asyncpg.Pool | None) -> None:
 
 async def initialize_channel_router(
     app: FastAPI,
-    ai_client,
+    ai_client: Any,
     db_pool: asyncpg.Pool | None,
 ) -> None:
     """

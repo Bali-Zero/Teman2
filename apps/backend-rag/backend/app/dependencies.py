@@ -19,7 +19,7 @@ Note: main_cloud.py still exports initialize_services() for backward compatibili
 """
 
 import logging
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import asyncpg
 from fastapi import Depends, HTTPException, Request
@@ -70,7 +70,7 @@ def get_search_service(request: Request) -> SearchService:
                 ],
             },
         )
-    return service
+    return cast(SearchService, service)
 
 
 def get_ai_client(request: Request) -> ZantaraAIClient:
@@ -102,7 +102,7 @@ def get_ai_client(request: Request) -> ZantaraAIClient:
                 ],
             },
         )
-    return ai_client
+    return cast(ZantaraAIClient, ai_client)
 
 
 def get_intelligent_router(request: Request) -> IntelligentRouter:
@@ -133,7 +133,7 @@ def get_intelligent_router(request: Request) -> IntelligentRouter:
                 ],
             },
         )
-    return router
+    return cast(IntelligentRouter, router)
 
 
 def get_memory_service(request: Request) -> MemoryServicePostgres:
@@ -165,7 +165,7 @@ def get_memory_service(request: Request) -> MemoryServicePostgres:
                 ],
             },
         )
-    return memory_service
+    return cast(MemoryServicePostgres, memory_service)
 
 
 def get_database_pool(request: Request) -> asyncpg.Pool | None:
@@ -215,7 +215,7 @@ get_db = get_database_pool
 def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
-) -> dict:
+) -> dict[str, Any]:
     """
     Validate JWT token and return current user.
 
@@ -286,7 +286,7 @@ def get_current_user(
 def get_current_user_optional(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
-) -> dict | None:
+) -> dict[str, Any] | None:
     """
     Optional version of get_current_user that returns None instead of raising 401.
     """
@@ -300,7 +300,7 @@ def get_current_user_optional(
         return None
 
 
-def get_current_user_email(user: Annotated[dict, Depends(get_current_user)]) -> str:
+def get_current_user_email(user: Annotated[dict[str, Any], Depends(get_current_user)]) -> str:
     """
     Extract email from authenticated user.
 
@@ -313,10 +313,10 @@ def get_current_user_email(user: Annotated[dict, Depends(get_current_user)]) -> 
     Returns:
         str: User's email address
     """
-    return user["email"]
+    return str(user["email"])
 
 
-def require_team_member(user: dict = Depends(get_current_user)) -> dict:
+def require_team_member(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
     """
     Dependency that ensures the current user is a team member (not a client).
 
@@ -363,7 +363,7 @@ def get_cache(request: Request) -> CacheService:
     # Try to get from backend.app.state first (if initialized there)
     cache_service = getattr(request.app.state, "cache_service", None)
     if cache_service is not None:
-        return cache_service
+        return cast(CacheService, cache_service)
 
     # Fallback to singleton (for backward compatibility)
     return get_cache_service()
@@ -480,7 +480,7 @@ def get_retriever(request: Request) -> Any:
 async def get_current_portal_client(
     request: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-) -> dict:
+) -> dict[str, Any]:
     """
     Get current authenticated client from JWT token for Portal endpoints.
 
@@ -547,9 +547,7 @@ async def get_current_portal_client(
 
         if not client_row:
             logger.warning(
-                "Portal client lookup failed",
-                user_id=user.get("user_id"),
-                email=user.get("email"),
+                f"Portal client lookup failed for user_id={user.get('user_id')} email={user.get('email')}",
             )
             raise HTTPException(
                 status_code=404,
