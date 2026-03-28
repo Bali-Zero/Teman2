@@ -388,7 +388,6 @@ async def list_clients(
     try:
         # Get current user from dependency
         current_user_email = current_user.get("email", "") if current_user else ""
-        current_user_email.lower().split("@")[0] if current_user_email else ""
 
         # SECURITY: Require authentication for client list
         if not current_user_email:
@@ -811,7 +810,7 @@ async def get_client_summary(
             client_row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
                    client_type, assigned_to, avatar_url, first_contact_date, last_interaction_date,
-                   tags, created_at, updated_at FROM clients WHERE id = $1""",
+                   tags, created_at, updated_at FROM clients WHERE id = $1 AND deleted_at IS NULL""",
                 client_id,
             )
 
@@ -982,7 +981,7 @@ async def get_client_audit_trail(
             await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
             client = await conn.fetchrow(
-                "SELECT id, full_name, assigned_to FROM clients WHERE id = $1", client_id,
+                "SELECT id, full_name, assigned_to FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id,
             )
 
             if not client:
@@ -1295,7 +1294,7 @@ async def extract_passport_enhanced(
             await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
 
             client = await conn.fetchrow(
-                "SELECT full_name FROM clients WHERE id = $1", request.client_id,
+                "SELECT full_name FROM clients WHERE id = $1 AND deleted_at IS NULL", request.client_id,
             )
             if not client:
                 return PassportEnhancedResponse(

@@ -237,7 +237,7 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
 
         # Get client name for verification
         async with db_pool.acquire() as conn:
-            client = await conn.fetchrow("SELECT full_name FROM clients WHERE id = $1", client_id)
+            client = await conn.fetchrow("SELECT full_name FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id)
             if not client:
                 return {"success": False, "error": "Client not found"}
             existing_name = client["full_name"]
@@ -802,7 +802,7 @@ async def get_client_profile(
                 first_contact_date, last_interaction_date,
                 created_at, updated_at
             FROM clients
-            WHERE id = $1
+            WHERE id = $1 AND deleted_at IS NULL
             """,
             client_id,
         )
@@ -1175,8 +1175,8 @@ async def create_family_member(
     RBAC REMOVED: All authenticated users can create family members.
     """
     async with pool.acquire() as conn:
-        # Verify client exists
-        client = await conn.fetchrow("SELECT id FROM clients WHERE id = $1", client_id)
+        # Verify client exists (exclude soft-deleted)
+        client = await conn.fetchrow("SELECT id FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id)
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
 
@@ -1488,8 +1488,8 @@ async def create_documents_bulk(
         raise HTTPException(status_code=400, detail="No documents provided")
 
     async with pool.acquire() as conn:
-        # Check client exists
-        check = await conn.fetchrow("SELECT id FROM clients WHERE id = $1", client_id)
+        # Check client exists (exclude soft-deleted)
+        check = await conn.fetchrow("SELECT id FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id)
         if not check:
             raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
 
@@ -1873,7 +1873,7 @@ async def upload_document_base64(
 
         async with pool.acquire() as conn:
             client = await conn.fetchrow(
-                "SELECT id, full_name, google_drive_folder_id, client_type FROM clients WHERE id = $1",
+                "SELECT id, full_name, google_drive_folder_id, client_type FROM clients WHERE id = $1 AND deleted_at IS NULL",
                 client_id,
             )
 
