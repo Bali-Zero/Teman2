@@ -1187,95 +1187,245 @@ export function CompanyTab({
         </div>
       </div>
 
-      {/* ── KPI TILES ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Status tile */}
-        <div style={{ ...crystalCard, padding: "1.25rem" }}>
-          <h4
-            className="text-[9px] uppercase tracking-widest font-bold mb-2"
-            style={{ color: "rgba(148,163,184,0.8)" }}
+      {/* ── COMPANY IDENTITY BLOCK ──────────────────────────────────────── */}
+      <div
+        style={{
+          ...crystalCard,
+          padding: "1.5rem 1.75rem",
+          borderLeft: "3px solid rgba(212,132,90,0.35)",
+        }}
+      >
+        {/* Row 1: status strip */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {/* Status badge */}
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              padding: "0.2rem 0.65rem",
+              borderRadius: "999px",
+              fontSize: "0.65rem",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              background:
+                co?.company_status === "in_setup"
+                  ? "rgba(251,191,36,0.1)"
+                  : "rgba(52,211,153,0.1)",
+              border:
+                co?.company_status === "in_setup"
+                  ? "1px solid rgba(251,191,36,0.25)"
+                  : "1px solid rgba(52,211,153,0.25)",
+              color: co?.company_status === "in_setup" ? "#fbbf24" : "#34d399",
+            }}
           >
-            Company Status
-          </h4>
-          <p className="text-lg font-medium mb-1" style={{ color: "#f1f5f9" }}>
+            <CheckCircle2 className="w-2.5 h-2.5" />
             {co?.company_status
               ? co.company_status.replace(/_/g, " ")
               : "Active"}
-          </p>
-          <p
-            className="text-[10px] font-mono tracking-wide uppercase flex items-center gap-1"
-            style={{ color: "#34d399" }}
+          </span>
+          {/* OSS verified */}
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              padding: "0.2rem 0.65rem",
+              borderRadius: "999px",
+              fontSize: "0.65rem",
+              fontWeight: 600,
+              background: "rgba(96,165,250,0.07)",
+              border: "1px solid rgba(96,165,250,0.2)",
+              color: "#60a5fa",
+            }}
           >
-            <Shield className="w-3 h-3" /> OSS Verified
-          </p>
+            <Shield className="w-2.5 h-2.5" />
+            OSS Verified
+          </span>
+          {/* Type */}
+          {companyType && (
+            <span
+              style={{
+                padding: "0.2rem 0.65rem",
+                borderRadius: "999px",
+                fontSize: "0.65rem",
+                fontWeight: 600,
+                background: "rgba(212,132,90,0.08)",
+                border: "1px solid rgba(212,132,90,0.2)",
+                color: "#d4845a",
+              }}
+            >
+              {companyType}
+            </span>
+          )}
+          {/* Vault count */}
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              marginLeft: "auto",
+              padding: "0.2rem 0.65rem",
+              borderRadius: "999px",
+              fontSize: "0.65rem",
+              fontWeight: 600,
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              color: "rgba(148,163,184,0.7)",
+            }}
+          >
+            <FolderOpen className="w-2.5 h-2.5" />
+            {allDocs.length} docs in vault
+          </span>
         </div>
 
-        {/* Capital tile */}
-        <div style={{ ...crystalCard, padding: "1.25rem" }}>
-          <h4
-            className="text-[9px] uppercase tracking-widest font-bold mb-2"
-            style={{ color: "rgba(148,163,184,0.8)" }}
-          >
-            Capital
-          </h4>
-          <p
-            className="text-lg font-medium font-mono mb-1"
-            style={{ color: "#f1f5f9" }}
-          >
-            {capital || "—"}
-          </p>
-          {co?.shares_count && (
-            <p
-              className="text-[10px] font-mono tracking-wide uppercase"
-              style={{ color: "rgba(148,163,184,0.6)" }}
-            >
-              {co.shares_count.toLocaleString()} shares
-            </p>
+        {/* Row 2: data grid — 6 cols on desktop, 3 on tablet, 2 on mobile */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-4">
+          {/* Authorized Capital */}
+          {capital && (
+            <div>
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold mb-1"
+                style={{ color: "rgba(100,116,139,0.9)" }}
+              >
+                Authorized Capital
+              </p>
+              <p
+                className="text-base font-mono font-semibold"
+                style={{ color: "#c9a96e" }}
+              >
+                {capital}
+              </p>
+              {co?.shares_count && (
+                <p
+                  className="text-[10px] font-mono mt-0.5"
+                  style={{ color: "rgba(100,116,139,0.8)" }}
+                >
+                  {co.shares_count.toLocaleString()} sh ·{" "}
+                  {co?.share_nominal_value
+                    ? `Rp ${(co.share_nominal_value / 1e6).toFixed(0)}M/sh`
+                    : ""}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* KBLI */}
+          {co?.kbli_code && (
+            <div className="lg:col-span-2">
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold mb-1"
+                style={{ color: "#60a5fa" }}
+              >
+                Business Activity (KBLI)
+              </p>
+              <p
+                className="font-mono text-sm font-semibold"
+                style={{ color: "#60a5fa" }}
+              >
+                {co.kbli_code}
+              </p>
+              {co.kbli_description && (
+                <p
+                  className="text-[10px] mt-0.5 leading-tight"
+                  style={{ color: "rgba(148,163,184,0.7)" }}
+                >
+                  {co.kbli_description.length > 55
+                    ? co.kbli_description.slice(0, 55) + "…"
+                    : co.kbli_description}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Registered city */}
+          {(co?.city || co?.province) && (
+            <div>
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold mb-1"
+                style={{ color: "rgba(100,116,139,0.9)" }}
+              >
+                Registered In
+              </p>
+              <p className="text-sm font-medium" style={{ color: "#f1f5f9" }}>
+                {co.city || co.province}
+              </p>
+              {co.province && co.city && co.city !== co.province && (
+                <p
+                  className="text-[10px] mt-0.5"
+                  style={{ color: "rgba(100,116,139,0.8)" }}
+                >
+                  {co.province}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* NIB */}
+          {co?.nib && (
+            <div>
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold mb-1"
+                style={{ color: "rgba(100,116,139,0.9)" }}
+              >
+                NIB
+              </p>
+              <p
+                className="font-mono text-xs font-medium"
+                style={{ color: "#f1f5f9" }}
+              >
+                {co.nib}
+              </p>
+            </div>
+          )}
+
+          {/* Founded */}
+          {foundingYear && (
+            <div>
+              <p
+                className="text-[9px] uppercase tracking-widest font-bold mb-1"
+                style={{ color: "rgba(100,116,139,0.9)" }}
+              >
+                Founded
+              </p>
+              <p className="text-sm font-medium" style={{ color: "#f1f5f9" }}>
+                {foundingYear}
+              </p>
+              {co?.akta_pendirian_no && (
+                <p
+                  className="text-[10px] mt-0.5"
+                  style={{ color: "rgba(100,116,139,0.8)" }}
+                >
+                  Akta #{co.akta_pendirian_no}
+                </p>
+              )}
+            </div>
           )}
         </div>
 
-        {/* KBLI tile */}
-        <div style={{ ...crystalCard, padding: "1.25rem" }}>
-          <h4
-            className="text-[9px] uppercase tracking-widest font-bold mb-2"
-            style={{ color: "#60a5fa" }}
+        {/* Row 3: full address if present */}
+        {addressStr && (
+          <div
+            className="mt-4 pt-4 flex items-start gap-2"
+            style={{
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+            }}
           >
-            Sector Focus
-          </h4>
-          <p
-            className="text-lg font-medium font-mono mb-1"
-            style={{ color: "#f1f5f9" }}
-          >
-            {co?.kbli_code || "—"}
-          </p>
-          {co?.kbli_description && (
             <p
-              className="text-[10px] tracking-wide truncate"
-              style={{ color: "rgba(148,163,184,0.6)" }}
+              className="text-[9px] uppercase tracking-widest font-bold shrink-0 mt-0.5"
+              style={{ color: "rgba(100,116,139,0.9)" }}
             >
-              {co.kbli_description}
+              Address
             </p>
-          )}
-        </div>
-
-        {/* Docs tile */}
-        <div style={{ ...crystalCard, padding: "1.25rem" }}>
-          <h4
-            className="text-[9px] uppercase tracking-widest font-bold mb-2"
-            style={{ color: "rgba(148,163,184,0.8)" }}
-          >
-            Vault Docs
-          </h4>
-          <p className="text-lg font-medium mb-1" style={{ color: "#f1f5f9" }}>
-            {allDocs.length} Files
-          </p>
-          <p
-            className="text-[10px] font-mono tracking-wide uppercase flex items-center gap-1"
-            style={{ color: "#d4845a" }}
-          >
-            <FolderOpen className="w-3 h-3" /> In Drive
-          </p>
-        </div>
+            <p
+              className="text-xs ml-4 leading-relaxed"
+              style={{ color: "rgba(148,163,184,0.8)" }}
+            >
+              {addressStr}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── MAIN GRID: Ledger + Vault (LEFT) / Registry (RIGHT) ─────────── */}

@@ -120,7 +120,7 @@ kind: CronJob
 metadata:
   name: notification-check
 spec:
-  schedule: '0 9 * * *' # 9 AM daily
+  schedule: "0 9 * * *" # 9 AM daily
   jobTemplate:
     spec:
       template:
@@ -128,7 +128,7 @@ spec:
           containers:
             - name: notifier
               image: balizero-backend
-              command: ['python', '-m', 'notifications.cli', 'check']
+              command: ["python", "-m", "notifications.cli", "check"]
 ```
 
 ## Adding New Languages

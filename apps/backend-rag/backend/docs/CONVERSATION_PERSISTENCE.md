@@ -142,25 +142,25 @@ Admin endpoint to cleanup old conversations.
 
 ```typescript
 // Send message with session persistence
-const response = await fetch('/webhook/chat', {
-  method: 'POST',
+const response = await fetch("/webhook/chat", {
+  method: "POST",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
   },
   body: JSON.stringify({
     query: userMessage,
     session_id: sessionId, // Generate once per session
     metadata: {
-      source: 'webapp',
+      source: "webapp",
       timestamp: new Date().toISOString(),
     },
   }),
 });
 
 const data = await response.json();
-console.log('Conversation ID:', data.conversation_id);
-console.log('Persisted:', data.persisted);
+console.log("Conversation ID:", data.conversation_id);
+console.log("Persisted:", data.persisted);
 
 // After page refresh, conversation history is automatically loaded
 // when you send the next message with the same session_id

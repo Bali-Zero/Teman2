@@ -1,0 +1,223 @@
+NPWP — NOMOR POKOK WAJIB PAJAK
+REGISTRAZIONE E OBBLIGHI FISCALI PER PT PMA IN INDONESIA
+GUIDA NORMATIVA 2024-2025
+
+Guida normativa verificata | Basata su UU 28/2007 (KUP), UU 7/2021 (HPP), PMK 112/2022
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CHE COS'È IL NPWP
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il NPWP (Nomor Pokok Wajib Pajak) è il numero identificativo fiscale
+assegnato dal Direktorat Jenderal Pajak (DJP) a ogni soggetto obbligato
+al pagamento delle imposte in Indonesia. [TAX-001]
+
+È l'equivalente indonesiano del Codice Fiscale/Partita IVA italiano
+e della Tax ID number anglosassone.
+
+SOGGETTI OBBLIGATI AL NPWP:
+- Tutte le PT (Perseroan Terbatas), incluse PT PMA [TAX-001]
+- Persone fisiche residenti con reddito superiore al PTKP
+- Direttori stranieri (WNA) che lavorano in Indonesia con KITAS lavorativo
+- Qualsiasi entità commerciale registrata in Indonesia
+
+FORMATO NPWP:
+- 16 cifre (formato nuovo dal 2024, PMK 112/2022) [TAX-002]
+- Formato precedente: XX.XXX.XXX.X-XXX.XXX (15 cifre)
+- Formato nuovo: corrisponde al NIK per persone fisiche, codice univoco per badan
+- I vecchi NPWP restano validi per un periodo di transizione
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. NPWP BADAN — REGISTRAZIONE PER PT PMA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1 Quando registrarsi
+
+La PT PMA deve ottenere il NPWP Badan (NPWP societario) entro 1 mese
+dall'ottenimento del NIB (Nomor Induk Berusaha). [TAX-003]
+
+In pratica, il NPWP Badan viene spesso richiesto contestualmente
+o subito dopo la registrazione OSS.
+
+2.2 Come registrarsi
+
+METODO A — Via OSS (Online Single Submission):
+Dall'introduzione del sistema OSS RBA, la registrazione NPWP per le
+nuove imprese è integrata nel flusso OSS. Compilare il modulo NIB
+include automaticamente la registrazione NPWP Badan. [TAX-004]
+
+METODO B — Diretta al KPP (Kantor Pelayanan Pajak):
+Il direktur utama può recarsi personalmente al KPP competente
+(Kantor Pajak nella stessa kota/kabupaten della sede legale).
+Documenti richiesti:
+- Akta pendirian + SK Kemenkumham
+- NIB
+- Identità direktur (paspor per WNA)
+- Bukti alamat (prova indirizzo sede)
+
+METODO C — Online via DJP Online:
+Accesso a ereg.pajak.go.id → registrazione badan usaha.
+
+2.3 KPP Competente (Bali)
+
+Per PT PMA con sede a Bali:
+- KPP Pratama Denpasar Barat (per Denpasar Barat, Kuta, Kuta Selatan)
+- KPP Pratama Denpasar Timur (per Denpasar Timur, Gianyar)
+- KPP Pratama Badung Utara (per Badung Utara, Ubud)
+- KPP Pratama Badung Selatan (per Nusa Dua, Uluwatu)
+
+Bali Zero gestisce la registrazione NPWP come parte del pacchetto
+di costituzione PT PMA.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. NPWP PRIBADI — REGISTRAZIONE PER DIREKTUR WNA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 Obbligo del direktur WNA
+
+Il direktur straniero (WNA) con KITAS lavorativo sponsorizzato dalla PT PMA
+è considerato WAJIB PAJAK (soggetto fiscale) indonesiano per i redditi
+percepiti in Indonesia. [TAX-005]
+
+Deve quindi ottenere anche un NPWP Pribadi (NPWP personale).
+
+3.2 Documenti per NPWP Pribadi WNA
+
+- Paspor + KITAS attivo
+- NPWP Badan della PT PMA sponsor
+- Surat keterangan kerja (lettera di impiego) dalla PT PMA
+- Indirizzo di residenza in Indonesia (affitto, hotel, ecc.)
+- Foto (spesso richiesta al KPP)
+
+3.3 NPWP WNA e obblighi fiscali
+
+Con NPWP Pribadi, il direktur WNA è soggetto a:
+- PPh 26 sullo stipendio percepito dalla PT PMA (ritenuta alla fonte)
+- SPT Tahunan Pribadi (dichiarazione annuale personale) — entro 31 marzo
+- Se percepisce redditi anche all'estero: obbligo di dichiarazione globale
+  ma agevolazione per evitare doppia imposizione (tax treaty)
+
+IMPORTANTE: Il direktur WNA con KITAP è considerato PENDUDUK TETAP
+e segue le stesse regole fiscali dei WNI residenti.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. OBBLIGHI FISCALI POST-NPWP
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Una volta ottenuto il NPWP Badan, la PT PMA ha i seguenti obblighi fiscali
+ricorrenti: [TAX-006]
+
+MENSILI (scadenza il 15 del mese successivo):
+- PPh 21: Ritenuta sugli stipendi dipendenti WNI/WNA
+- PPh 25: Acconto mensile PPh Badan
+- PPh 23: Ritenuta su servizi, royalties, sewa
+- PPN: Dichiarazione IVA (se PKP registrato)
+- e-SPT/e-Filing obbligatorio per tutti i report [TAX-007]
+
+TRIMESTRALI:
+- Tidak ada SPT trimestrale obbligatoria per badan
+  (ma PPh 25 è mensile, non trimestrale)
+
+ANNUALI (scadenza 30 aprile):
+- SPT Tahunan Badan (PPh Badan): dichiarazione redditi societaria
+  Allegati obbligatori: laporan keuangan (bilancio certificato/non)
+- TP Doc (Transfer Pricing Documentation) se transazioni intercompany
+
+4.1 Registri obbligatori
+
+La PT PMA deve tenere:
+- Pembukuan (contabilità formale) secondo PSAK (standard indonesiani)
+- Faktur pajak (fatture fiscali) per ogni transazione imponibile
+- Buku besar (libro mastro) per 10 anni
+- Dokumen perpajakan (documenti fiscali) per 5 anni [TAX-008]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. DJP ONLINE E E-FILING
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tutti i report fiscali sono obbligatoriamente elettronici (e-Filing):
+
+PORTALI DJP:
+- pajak.go.id — Portale principale DJP [TAX-007]
+- efin.pajak.go.id — Attivazione EFIN (Electronic Filing Identification Number)
+- coretax.pajak.go.id — Nuovo sistema CoreTax (2025 → obbligatorio)
+
+EFIN (Electronic Filing Identification Number):
+L'EFIN è il codice di autenticazione per il filing elettronico.
+Deve essere richiesto al KPP competente dalla PT PMA.
+Senza EFIN non è possibile presentare SPT online. [TAX-009]
+
+CORETAX (2025):
+Il DJP ha introdotto il sistema CoreTax che unifica tutte le funzioni:
+- NPWP registration
+- e-SPT (tutti i tipi)
+- e-Faktur (fatture IVA)
+- Pembayaran pajak (pagamento imposte)
+- Monitoring rimborsivo
+
+La migrazione a CoreTax è stata graduale nel 2024-2025.
+Bali Zero assiste nella configurazione di CoreTax per i propri clienti.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. PENALITÀ E SANZIONI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mancata registrazione NPWP: multa Rp 100.000 - Rp 1.000.000 [TAX-010]
+
+Ritardo presentazione SPT:
+- SPT Masa (mensile): Rp 100.000 per mese di ritardo
+- SPT Tahunan Badan: Rp 1.000.000 per anno di ritardo
+
+Omessa dichiarazione: sanzione del 200% dell'imposta non dichiarata
+
+Omesso pagamento: interessi del 2% al mese + sanzione del 50%
+
+Investigazione tributaria: possibile per mancato filing ripetuto.
+Blocco del NIB in casi estremi.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TIMING: Il NPWP Badan viene incluso nel pacchetto PT PMA Bali Zero.
+Solitamente ottenuto entro 2-3 giorni dalla registrazione OSS.
+
+GESTIONE CORRENTE: Bali Zero offre servizi di tax compliance ricorrenti
+(monthly reporting PPh 21/23/25, annual SPT Tahunan Badan).
+Consultare il PricingTool per i costi dei servizi fiscali.
+
+COMMERCIALISTA: Si raccomanda di affidare la gestione fiscale corrente
+a un consulente fiscale (konsultan pajak) certificato.
+Bali Zero collabora con partner fiscali di fiducia a Bali.
+
+TAX TREATY: L'Indonesia ha trattati contro la doppia imposizione con
+50+ paesi. I cittadini europei (Italia, Francia, Germania, ecc.)
+beneficiano di riduzione delle aliquote di ritenuta alla fonte.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+TAX-001, TAX-002, TAX-003, TAX-004, TAX-005, TAX-006, TAX-007,
+TAX-008, TAX-009, TAX-010
+
+Base normativa: UU 28/2007 (KUP — Ketentuan Umum Perpajakan),
+UU 7/2021 (HPP — Harmonisasi Peraturan Perpajakan),
+PMK 112/2022 (NPWP format), PMK 243/2014 (e-Filing).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
