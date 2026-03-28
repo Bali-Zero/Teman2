@@ -1,0 +1,3247 @@
+[
+  {
+    "claim_id": "IMM-001",
+    "claim": "Ogni straniero che entra in Indonesia deve essere in possesso di un visto valido appropriato al tipo di attività che intende svolgere.",
+    "verbatim": "Pasal 8 ayat (1): Setiap Orang Asing yang masuk Wilayah Indonesia wajib memiliki Visa yang sah dan masih berlaku.",
+    "pasal_ref": "UU 6/2011 Pasal 8 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "rule"
+  },
+  {
+    "claim_id": "IMM-002",
+    "claim": "Il KITAS (Izin Tinggal Terbatas) può essere rilasciato per un massimo di 2 anni.",
+    "verbatim": "Pasal 52: Izin Tinggal Terbatas diberikan kepada Orang Asing untuk paling lama 2 (dua) tahun.",
+    "pasal_ref": "UU 6/2011 Pasal 52",
+    "instrument_id": "UU-6-2011",
+    "category": "duration"
+  },
+  {
+    "claim_id": "IMM-003",
+    "claim": "Il rinnovo del KITAS deve essere richiesto prima della scadenza del permesso attuale.",
+    "verbatim": "Pasal 71 ayat (1): Orang Asing yang masa berlaku Izin Tinggal Terbatasnya berakhir dan masih berada di Wilayah Indonesia harus mengurus perpanjangan.",
+    "pasal_ref": "UU 6/2011 Pasal 71 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "procedure"
+  },
+  {
+    "claim_id": "IMM-004",
+    "claim": "Il Visa E28A (investor) richiede un investimento minimo di 10 miliardi di rupiah o il possesso di obbligazioni statali.",
+    "verbatim": "Pasal 16 ayat (2) huruf a: Memiliki investasi di Indonesia paling sedikit Rp10.000.000.000 atau memiliki Surat Berharga Negara.",
+    "pasal_ref": "Permenkumham 22/2023 Pasal 16 Ayat 2 Huruf A",
+    "instrument_id": "Permenkumham-22-2023",
+    "category": "fee"
+  },
+  {
+    "claim_id": "IMM-005",
+    "claim": "Il datore di lavoro che intende assumere lavoratori stranieri (TKA) deve ottenere preventivamente l'approvazione del Piano di Utilizzo TKA (RPTKA) dal Ministro.",
+    "verbatim": "Pasal 3: Pemberi Kerja TKA wajib memiliki Rencana Penggunaan Tenaga Kerja Asing yang disahkan oleh Menteri.",
+    "pasal_ref": "SE Kemnaker SE-3/836/2026 Pasal 3",
+    "instrument_id": "SE-Kemnaker-3-836-2026",
+    "category": "document"
+  },
+  {
+    "claim": "L'immigrazione riguarda il transito delle persone che entrano o escono dal territorio dell'Indonesia e la sua sorveglianza al fine di mantenere la sovranità dello stato.",
+    "verbatim": "Keimigrasian adalah hal ihwal lalu lintas orang yang masuk atau keluar Wilayah Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-006"
+  },
+  {
+    "claim": "Gli stranieri sono persone che non sono cittadini dell'Indonesia.",
+    "verbatim": "Orang Asing adalah orang yang bukan warga negara Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 3",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-007"
+  },
+  {
+    "claim": "I luoghi di controllo dell'immigrazione includono porti marittimi, aeroporti, posti di frontiera e altri luoghi designati come ingressi e uscite dal territorio indonesiano.",
+    "verbatim": "Tempat Pemeriksaan Imigrasi adalah tempat pemeriksaan di pelabuhan laut, bandar udara, pos lintas batas",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 4",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-008"
+  },
+  {
+    "claim": "Il marchio di ingresso è un timbro apposto dai funzionari dell'immigrazione su documenti di viaggio per indicare l'ingresso nel territorio indonesiano.",
+    "verbatim": "Tanda Masuk adalah tanda tertentu berupa cap yang dibubuhkan pada Dokumen Perjalanan",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 8",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-009"
+  },
+  {
+    "claim": "Il marchio di uscita è un timbro apposto dai funzionari dell'immigrazione su documenti di viaggio per indicare l'uscita dal territorio indonesiano.",
+    "verbatim": "Tanda Keluar adalah tanda tertentu berupa cap yang dibubuhkan pada Dokumen Perjalanan",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 9",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-010"
+  },
+  {
+    "claim": "L'autorizzazione di rientro è un permesso scritto rilasciato dai funzionari dell'immigrazione agli stranieri titolari di permessi di soggiorno limitato o permanente.",
+    "verbatim": "Izin Masuk Kembali adalah izin tertulis yang diberikan oleh Pejabat Imigrasi",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 10",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-011"
+  },
+  {
+    "claim": "Un documento di viaggio è un documento ufficiale rilasciato da autorità competenti che contiene l'identità del titolare per i viaggi internazionali.",
+    "verbatim": "Dokumen Perjalanan adalah dokumen resmi yang dikeluarkan oleh pejabat yang berwenang",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 11",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-012"
+  },
+  {
+    "claim": "Il passaporto indonesiano è un documento rilasciato dal governo indonesiano ai cittadini indonesiani per i viaggi internazionali con validità determinata.",
+    "verbatim": "Paspor adalah dokumen yang dikeluarkan oleh Pemerintah Republik Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 15",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-013"
+  },
+  {
+    "claim": "Il visto indonesiano è un'autorizzazione scritta rilasciata da funzionari autorizzati che consente agli stranieri di entrare nel territorio indonesiano.",
+    "verbatim": "Visa adalah keterangan tertulis yang diberikan oleh pejabat yang berwenang",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 17",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-014"
+  },
+  {
+    "claim": "Il permesso di soggiorno è un'autorizzazione rilasciata ai stranieri che consente loro di rimanere nel territorio indonesiano.",
+    "verbatim": "Izin Tinggal adalah izin yang diberikan kepada Orang Asing oleh Pejabat Imigrasi",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 18",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-015"
+  },
+  {
+    "claim": "Il permesso di soggiorno permanente è un'autorizzazione rilasciata agli stranieri per risiedere e stabilirsi nel territorio indonesiano come residenti indonesiani.",
+    "verbatim": "Izin Tinggal Tetap adalah izin yang diberikan kepada Orang Asing tertentu untuk bertempat tinggal",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 19",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-016"
+  },
+  {
+    "claim": "Un garante è una persona o una corporazione responsabile della presenza e delle attività degli stranieri nel territorio indonesiano.",
+    "verbatim": "Penjamin adalah orang atau Korporasi yang bertanggung jawab atas keberadaan dan kegiatan Orang Asing",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 20",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-017"
+  },
+  {
+    "claim": "Un'azione amministrativa dell'immigrazione è una sanzione amministrativa imposta dai funzionari dell'immigrazione agli stranieri al di fuori dei procedimenti giudiziari.",
+    "verbatim": "Tindakan Administratif Keimigrasian adalah sanksi administratif yang ditetapkan Pejabat Imigrasi",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 23",
+    "instrument_id": "PP-31-2013",
+    "category": "sanction",
+    "claim_id": "IMM-018"
+  },
+  {
+    "claim": "La Casa di Detenzione dell'Immigrazione è un'unità tecnica esecutiva che funge da struttura di detenzione temporanea per stranieri sottoposti ad azioni amministrative.",
+    "verbatim": "Rumah Detensi Imigrasi adalah unit pelaksana teknis yang menjalankan Fungsi Keimigrasian",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 24",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-019"
+  },
+  {
+    "claim": "La prevenzione è un divieto temporaneo per una persona di lasciare il territorio indonesiano basato su motivi di immigrazione.",
+    "verbatim": "Pencegahan adalah larangan sementara terhadap orang untuk keluar dari Wilayah Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 27",
+    "instrument_id": "PP-31-2013",
+    "category": "prohibition",
+    "claim_id": "IMM-020"
+  },
+  {
+    "claim": "Il respingimento è un divieto per gli stranieri di entrare nel territorio indonesiano basato su motivi di immigrazione.",
+    "verbatim": "Penangkalan adalah larangan terhadap Orang Asing untuk masuk Wilayah Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 28",
+    "instrument_id": "PP-31-2013",
+    "category": "prohibition",
+    "claim_id": "IMM-021"
+  },
+  {
+    "claim": "La deportazione è l'azione forzata di espulsione di uno straniero dal territorio indonesiano.",
+    "verbatim": "Deportasi adalah tindakan paksa mengeluarkan Orang Asing dari Wilayah Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 1 Ayat 30",
+    "instrument_id": "PP-31-2013",
+    "category": "sanction",
+    "claim_id": "IMM-022"
+  },
+  {
+    "claim": "Ogni persona che entra o esce dal territorio dell'Indonesia deve possedere un Documento di Viaggio valido e ancora in vigore.",
+    "verbatim": "Setiap Orang yang masuk atau keluar Wilayah Indonesia wajib memiliki Dokumen Perjalanan yang sah",
+    "pasal_ref": "PP-31-2013 Pasal 2 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-023"
+  },
+  {
+    "claim": "Ogni straniero che entra nel territorio dell'Indonesia deve possedere un visto valido e ancora in vigore, salvo diversamente stabilito.",
+    "verbatim": "Setiap Orang Asing yang masuk Wilayah Indonesia wajib memiliki Visa yang sah dan masih berlaku",
+    "pasal_ref": "PP-31-2013 Pasal 2 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-024"
+  },
+  {
+    "claim": "Ogni straniero che entra nel territorio dell'Indonesia deve avere un visto valido, un Documento di Viaggio valido e non essere incluso nella lista di esclusione.",
+    "verbatim": "Setiap Orang Asing yang masuk Wilayah Indonesia harus memenuhi persyaratan: a. memiliki Visa yang sah",
+    "pasal_ref": "PP-31-2013 Pasal 3",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-025"
+  },
+  {
+    "claim": "Lo straniero esentato dall'obbligo di visto deve possedere un biglietto di ritorno o di proseguimento verso un altro paese.",
+    "verbatim": "juga harus memiliki tiket kembali atau tiket terusan ke negara lain",
+    "pasal_ref": "PP-31-2013 Pasal 4",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-026"
+  },
+  {
+    "claim": "Lo straniero titolare di Permesso di Soggiorno temporaneo o permanente deve possedere un valido Permesso di Rientro nel territorio dell'Indonesia.",
+    "verbatim": "juga harus memiliki Izin Masuk Kembali ke Wilayah Indonesia yang sah dan masih berlaku",
+    "pasal_ref": "PP-31-2013 Pasal 5",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-027"
+  },
+  {
+    "claim": "Ogni straniero che esce dal territorio dell'Indonesia deve possedere un Documento di Viaggio valido, non essere in lista di prevenzione e avere il permesso di imbarco.",
+    "verbatim": "Setiap Orang Asing yang keluar Wilayah Indonesia harus memenuhi persyaratan: a. memiliki Dokumen Perjalanan",
+    "pasal_ref": "PP-31-2013 Pasal 6",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-028"
+  },
+  {
+    "claim": "Lo straniero sottoposto a misure amministrative sull'immigrazione deve avere il permesso di uscita.",
+    "verbatim": "memiliki izin keluar bagi Orang Asing yang dikenai Tindakan Administratif Keimigrasian",
+    "pasal_ref": "PP-31-2013 Pasal 6 Huruf d",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-029"
+  },
+  {
+    "claim": "Ogni cittadino indonesiano che entra nel territorio dell'Indonesia deve possedere un valido Documento di Viaggio della Repubblica dell'Indonesia ancora in vigore.",
+    "verbatim": "Setiap warga negara Indonesia yang masuk Wilayah Indonesia harus memiliki Dokumen Perjalanan Republik Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 7",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-030"
+  },
+  {
+    "claim": "Ogni cittadino indonesiano che esce dal territorio dell'Indonesia deve possedere un valido Documento di Viaggio, non essere in lista di prevenzione e risultare nell'elenco dei passeggeri.",
+    "verbatim": "Setiap warga negara Indonesia yang keluar Wilayah Indonesia harus memenuhi persyaratan: a. memiliki Dokumen Perjalanan",
+    "pasal_ref": "PP-31-2013 Pasal 8",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-031"
+  },
+  {
+    "claim": "Il minore con cittadinanza doppia che entra o esce dal territorio dell'Indonesia deve possedere un valido Documento di Viaggio e non essere in liste di prevenzione o esclusione.",
+    "verbatim": "Anak berkewarganegaraan ganda yang masuk atau keluar Wilayah Indonesia harus memenuhi persyaratan: a. memiliki Dokumen Perjalanan",
+    "pasal_ref": "PP-31-2013 Pasal 9",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-032"
+  },
+  {
+    "claim": "Il minore con cittadinanza doppia deve utilizzare lo stesso passaporto sia per l'ingresso che per l'uscita dal territorio dell'Indonesia.",
+    "verbatim": "Anak berkewarganegaraan ganda yang masuk atau keluar Wilayah Indonesia harus menggunakan paspor yang sama",
+    "pasal_ref": "PP-31-2013 Pasal 10 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-033"
+  },
+  {
+    "claim": "Il minore con cittadinanza doppia che entra nel territorio con passaporto nazionale ed è munito di agevolazioni sull'immigrazione è equiparato a cittadino indonesiano.",
+    "verbatim": "diperlakukan sebagai warga negara Indonesia jika memiliki fasilitas Keimigrasian",
+    "pasal_ref": "PP-31-2013 Pasal 10 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-034"
+  },
+  {
+    "claim": "Il minore con cittadinanza doppia che entra con passaporto nazionale è esentato dall'obbligo di visto, permesso di soggiorno e permesso di rientro.",
+    "verbatim": "dibebaskan dari kewajiban memiliki Visa, Izin Tinggal, dan Izin Masuk Kembali",
+    "pasal_ref": "PP-31-2013 Pasal 11 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "right",
+    "claim_id": "IMM-035"
+  },
+  {
+    "claim": "L'esenzione dall'obbligo di visto, permesso di soggiorno e permesso di rientro è concessa solo se il minore con cittadinanza doppia è munito di agevolazioni sull'immigrazione.",
+    "verbatim": "diberikan bagi anak berkewarganegaraan ganda yang memiliki fasilitas Keimigrasian sesuai dengan ketentuan",
+    "pasal_ref": "PP-31-2013 Pasal 11 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-036"
+  },
+  {
+    "claim": "L'equipaggio di navi che entra o esce dal territorio dell'Indonesia deve possedere un valido Documento di Viaggio e/o libretto di mare e deve essere registrato nell'elenco dell'equipaggio.",
+    "verbatim": "Awak Alat Angkut laut yang masuk atau keluar Wilayah Indonesia harus memenuhi persyaratan: a. memiliki Dokumen Perjalanan",
+    "pasal_ref": "PP-31-2013 Pasal 12",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-037"
+  },
+  {
+    "claim": "L'equipaggio di aeromobili deve possedere un valido Documento di Viaggio e/o certificato di membro dell'equipaggio ed essere registrato nell'elenco dell'equipaggio.",
+    "verbatim": "Awak Alat Angkut udara yang masuk atau keluar Wilayah Indonesia harus memenuhi persyaratan: a. memiliki Dokumen Perjalanan",
+    "pasal_ref": "PP-31-2013 Pasal 13",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-038"
+  },
+  {
+    "claim": "L'equipaggio di altri mezzi di trasporto deve possedere un valido Documento di Viaggio ed essere registrato nell'elenco dell'equipaggio, salvo per veicoli privati e di carico.",
+    "verbatim": "Awak Alat Angkut transportasi lainnya harus memenuhi persyaratan: a. memiliki Dokumen Perjalanan yang sah",
+    "pasal_ref": "PP-31-2013 Pasal 14",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-039"
+  },
+  {
+    "claim": "Il comandante, l'equipaggio o l'esperto tecnico straniero che entra nel territorio dell'Indonesia deve possedere un valido Documento di Viaggio e/o libretto di mare e non essere in lista di esclusione.",
+    "verbatim": "Nakhoda, awak kapal, atau tenaga ahli asing harus memenuhi persyaratan: a. memiliki Dokumen Perjalanan dan/atau buku pelaut",
+    "pasal_ref": "PP-31-2013 Pasal 15 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-040"
+  },
+  {
+    "claim": "Il comandante, l'equipaggio o l'esperto tecnico straniero che ha soddisfatto i requisiti di ingresso può entrare nel territorio dell'Indonesia dopo aver ricevuto il contrassegno di ingresso dall'Ufficiale dell'Immigrazione.",
+    "verbatim": "dapat masuk Wilayah Indonesia setelah mendapatkan Tanda Masuk dari Pejabat Imigrasi",
+    "pasal_ref": "PP-31-2013 Pasal 15 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-041"
+  },
+  {
+    "claim": "Il comandante, l'equipaggio o l'esperto tecnico straniero che esce dal territorio dell'Indonesia deve possedere un valido Documento di Viaggio, non essere in lista di prevenzione e avere un valido Permesso di Soggiorno temporaneo.",
+    "verbatim": "yang keluar Wilayah Indonesia harus memenuhi persyaratan: a. memiliki Dokumen Perjalanan dan/atau buku pelaut",
+    "pasal_ref": "PP-31-2013 Pasal 16 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-042"
+  },
+  {
+    "claim": "Il passaporto diplomatico deve essere emesso entro un massimo di 4 giorni lavorativi.",
+    "verbatim": "menerbitkan Paspor diplomatik dalam waktu paling lama 4 (empat) hari kerja",
+    "pasal_ref": "PP-31-2013 Pasal 41",
+    "instrument_id": "PP-31-2013",
+    "category": "duration",
+    "claim_id": "IMM-043"
+  },
+  {
+    "claim": "Il passaporto diplomatico ha una validità massima di 5 anni dalla data di emissione.",
+    "verbatim": "Masa berlaku Paspor diplomatik paling lama 5 (lima) tahun sejak tanggal diterbitkan",
+    "pasal_ref": "PP-31-2013 Pasal 42",
+    "instrument_id": "PP-31-2013",
+    "category": "duration",
+    "claim_id": "IMM-044"
+  },
+  {
+    "claim": "Il passaporto di servizio è concesso ai cittadini indonesiani per viaggi ufficiali all'estero di natura non diplomatica.",
+    "verbatim": "Paspor dinas diberikan untuk warga negara Indonesia yang akan melakukan perjalanan keluar Wilayah Indonesia dalam rangka penempatan atau perjalanan dinas yang tidak bersifat diplomatik",
+    "pasal_ref": "PP-31-2013 Pasal 43 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "right",
+    "claim_id": "IMM-045"
+  },
+  {
+    "claim": "Il passaporto di servizio è concesso ai dipendenti pubblici, membri delle Forze Armate e della Polizia Nazionale.",
+    "verbatim": "Pegawai Negeri Sipil, anggota Tentara Nasional Indonesia, dan anggota Kepolisian Negara Republik Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 43 Ayat 2 Huruf a",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-046"
+  },
+  {
+    "claim": "Il passaporto di servizio può essere concesso ai coniugi di dipendenti pubblici collocati all'estero e ai loro figli di età massima 25 anni, non coniugati e ancora a carico.",
+    "verbatim": "isteri atau suami dari warga negara Indonesia sebagaimana dimaksud pada ayat (2) huruf a yang ditempatkan di luar Wilayah Indonesia beserta anaknya yang berusia paling tinggi 25 (dua puluh lima) tahun, belum kawin, belum bekerja",
+    "pasal_ref": "PP-31-2013 Pasal 43 Ayat 3 Huruf a",
+    "instrument_id": "PP-31-2013",
+    "category": "right",
+    "claim_id": "IMM-047"
+  },
+  {
+    "claim": "L'uso del passaporto di servizio per viaggi ufficiali richiede un ordine di missione o un'approvazione governativa.",
+    "verbatim": "Penggunaan Paspor dinas untuk perjalanan dinas yang tidak bersifat diplomatik diberikan dengan perintah penugasan dari instansi terkait atau persetujuan Pemerintah",
+    "pasal_ref": "PP-31-2013 Pasal 44 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-048"
+  },
+  {
+    "claim": "La richiesta di passaporto di servizio deve includere una lettera dell'ente o istituzione governativa dove si lavora.",
+    "verbatim": "surat permohonan dari instansi atau lembaga pemerintahan tempat bekerja dan/atau instansi atau lembaga pemerintahan pengusul",
+    "pasal_ref": "PP-31-2013 Pasal 45 Huruf a",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-049"
+  },
+  {
+    "claim": "Per il passaporto di servizio è richiesto un ordine di missione o un'approvazione governativa.",
+    "verbatim": "surat perintah penugasan bagi anggota Tentara Nasional Indonesia, anggota Kepolisian Negara Republik Indonesia, dan Pegawai Negeri Sipil tertentu atau surat persetujuan Pemerintah",
+    "pasal_ref": "PP-31-2013 Pasal 45 Huruf b",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-050"
+  },
+  {
+    "claim": "Per i coniugi è richiesta una copia certificata dell'atto di matrimonio nel richiedere il passaporto di servizio.",
+    "verbatim": "fotokopi akta perkawinan atau buku nikah yang disahkan oleh pejabat yang berwenang, bagi isteri atau suami yang mendampingi",
+    "pasal_ref": "PP-31-2013 Pasal 45 Huruf c",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-051"
+  },
+  {
+    "claim": "Per i figli è richiesta una copia certificata dell'atto di nascita nel richiedere il passaporto di servizio.",
+    "verbatim": "fotokopi akta kelahiran atau surat yang membuktikan kelahiran yang disahkan oleh pejabat yang berwenang, bagi anak-anaknya",
+    "pasal_ref": "PP-31-2013 Pasal 45 Huruf d",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-052"
+  },
+  {
+    "claim": "Il passaporto di servizio deve essere emesso entro un massimo di 4 giorni lavorativi dalla verifica dei requisiti.",
+    "verbatim": "Menteri Luar Negeri atau pejabat yang ditunjuk menerbitkan Paspor dinas dalam waktu paling lama 4 (empat) hari kerja",
+    "pasal_ref": "PP-31-2013 Pasal 46 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "duration",
+    "claim_id": "IMM-053"
+  },
+  {
+    "claim": "Il passaporto di servizio ha una validità massima di 5 anni dalla data di emissione.",
+    "verbatim": "Masa berlaku Paspor dinas paling lama 5 (lima) tahun sejak tanggal diterbitkan",
+    "pasal_ref": "PP-31-2013 Pasal 47",
+    "instrument_id": "PP-31-2013",
+    "category": "duration",
+    "claim_id": "IMM-054"
+  },
+  {
+    "claim": "Il passaporto ordinario esiste in versione elettronica e non elettronica.",
+    "verbatim": "Paspor biasa terdiri atas: a. Paspor biasa elektronik; dan b. Paspor biasa nonelektronik",
+    "pasal_ref": "PP-31-2013 Pasal 48 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-055"
+  },
+  {
+    "claim": "Per richiedere un passaporto ordinario è necessaria una carta d'identità valida.",
+    "verbatim": "kartu tanda penduduk yang masih berlaku",
+    "pasal_ref": "PP-31-2013 Pasal 49 Huruf a",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-056"
+  },
+  {
+    "claim": "Per richiedere un passaporto ordinario è necessario fornire il certificato di famiglia.",
+    "verbatim": "kartu keluarga",
+    "pasal_ref": "PP-31-2013 Pasal 49 Huruf b",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-057"
+  },
+  {
+    "claim": "Per richiedere un passaporto ordinario è necessario fornire un atto di nascita, di matrimonio, diploma o certificato battesimale.",
+    "verbatim": "akta kelahiran, akta perkawinan atau buku nikah, ijazah, atau surat baptis",
+    "pasal_ref": "PP-31-2013 Pasal 49 Huruf c",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-058"
+  },
+  {
+    "claim": "Per richiedere un passaporto ordinario, gli stranieri naturalizzati devono fornire un certificato di naturalizzazione.",
+    "verbatim": "surat pewarganegaraan Indonesia bagi Orang Asing yang memperoleh kewarganegaraan Indonesia melalui pewarganegaraan",
+    "pasal_ref": "PP-31-2013 Pasal 49 Huruf d",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-059"
+  },
+  {
+    "claim": "Per chi ha cambiato nome è necessario fornire un certificato di cambio nome emesso dall'autorità competente.",
+    "verbatim": "surat penetapan ganti nama dari pejabat yang berwenang bagi yang telah mengganti nama",
+    "pasal_ref": "PP-31-2013 Pasal 49 Huruf e",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-060"
+  },
+  {
+    "claim": "Chi possiede già un passaporto deve fornire il passaporto precedente quando richiede un nuovo passaporto ordinario.",
+    "verbatim": "Paspor lama bagi yang telah memiliki Paspor",
+    "pasal_ref": "PP-31-2013 Pasal 49 Huruf f",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-061"
+  },
+  {
+    "claim": "I cittadini indonesiani residenti all'estero devono presentare la richiesta di passaporto ordinario presso la rappresentanza indonesiana.",
+    "verbatim": "permohonan Paspor biasa diajukan kepada Menteri atau Pejabat Imigrasi yang ditunjuk pada Perwakilan Republik Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 50 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-062"
+  },
+  {
+    "claim": "I cittadini indonesiani residenti all'estero devono fornire un documento di residenza nel paese e il passaporto precedente.",
+    "verbatim": "kartu penduduk negara setempat, bukti, petunjuk, atau keterangan yang menunjukkan bahwa pemohon bertempat tinggal di negara tersebut; dan Paspor lama",
+    "pasal_ref": "PP-31-2013 Pasal 50 Ayat 1 Huruf a-b",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-063"
+  },
+  {
+    "claim": "Il passaporto ordinario ha una validità massima di 5 anni dalla data di emissione.",
+    "verbatim": "Masa berlaku Paspor biasa paling lama 5 (lima) tahun sejak tanggal diterbitkan",
+    "pasal_ref": "PP-31-2013 Pasal 51 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "duration",
+    "claim_id": "IMM-064"
+  },
+  {
+    "claim": "Il passaporto ordinario emesso per figli con cittadinanza doppia non può superare l'età in cui il bambino deve scegliere la cittadinanza.",
+    "verbatim": "Masa berlaku Paspor biasa yang diterbitkan bagi anak berkewarganegaraan ganda tidak boleh melebihi batas usia anak tersebut untuk menyatakan memilih kewarganegaraannya",
+    "pasal_ref": "PP-31-2013 Pasal 51 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-065"
+  },
+  {
+    "claim": "L'emissione del passaporto ordinario comprende la verifica della completezza dei requisiti.",
+    "verbatim": "pemeriksaan kelengkapan dan keabsahan persyaratan sebagaimana dimaksud dalam Pasal 49 dan Pasal 50 ayat (1)",
+    "pasal_ref": "PP-31-2013 Pasal 52 Ayat 1 Huruf a",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-066"
+  },
+  {
+    "claim": "Per il passaporto ordinario è necessario pagare una tassa.",
+    "verbatim": "pembayaran biaya Paspor",
+    "pasal_ref": "PP-31-2013 Pasal 52 Ayat 1 Huruf b",
+    "instrument_id": "PP-31-2013",
+    "category": "fee",
+    "claim_id": "IMM-067"
+  },
+  {
+    "claim": "L'emissione del passaporto ordinario comprende la raccolta di fotografia e impronte digitali.",
+    "verbatim": "pengambilan foto dan sidik jari",
+    "pasal_ref": "PP-31-2013 Pasal 52 Ayat 1 Huruf c",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-068"
+  },
+  {
+    "claim": "L'emissione del passaporto ordinario comprende un colloquio con il richiedente.",
+    "verbatim": "wawancara",
+    "pasal_ref": "PP-31-2013 Pasal 52 Ayat 1 Huruf d",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-069"
+  },
+  {
+    "claim": "L'emissione del passaporto ordinario include anche verifica e adjudicazione.",
+    "verbatim": "verifikasi; dan b. adjudikasi",
+    "pasal_ref": "PP-31-2013 Pasal 52 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-070"
+  },
+  {
+    "claim": "Il passaporto ordinario deve essere emesso entro un massimo di 4 giorni lavorativi dal colloquio.",
+    "verbatim": "menerbitkan Paspor biasa dalam waktu paling lama 4 (empat) hari kerja sejak dilakukan wawancara",
+    "pasal_ref": "PP-31-2013 Pasal 53 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "duration",
+    "claim_id": "IMM-071"
+  },
+  {
+    "claim": "Il richiedente deve allegare una lettera di raccomandazione dall'agenzia e/o ente governativo competente secondo le disposizioni della legge applicabile.",
+    "verbatim": "melampirkan surat rekomendasi dari instansi dan/atau lembaga pemerintahan terkait",
+    "pasal_ref": "PP-31-2013 Pasal 167 Ayat 4",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-072"
+  },
+  {
+    "claim": "La richiesta di cambio stato di soggiorno è esclusa per coloro che detengono un Permesso di soggiorno per visita basato su visto di visita al momento dell'arrivo o visto di visita esente.",
+    "verbatim": "Permohonan Alih status sebagaimana dimaksud pada ayat (1) dikecualikan bagi: a. pemegang Izin Tinggal kunjungan",
+    "pasal_ref": "PP-31-2013 Pasal Ayat 5 Huruf a",
+    "instrument_id": "PP-31-2013",
+    "category": "prohibition",
+    "claim_id": "IMM-073"
+  },
+  {
+    "claim": "La richiesta di cambio stato di soggiorno è esclusa per l'equipaggio di mezzi di trasporto.",
+    "verbatim": "Permohonan Alih status sebagaimana dimaksud pada ayat (1) dikecualikan bagi: b. awak Alat Angkut",
+    "pasal_ref": "PP-31-2013 Pasal Ayat 5 Huruf b",
+    "instrument_id": "PP-31-2013",
+    "category": "prohibition",
+    "claim_id": "IMM-074"
+  },
+  {
+    "claim": "La richiesta di cambio di stato da Permesso di soggiorno limitato a Permesso di soggiorno permanente deve essere presentata dal Garante all'Ufficio Immigrazione competente per la residenza dello Straniero.",
+    "verbatim": "Permohonan alih status Izin Tinggal terbatas menjadi Izin Tinggal Tetap diajukan oleh Penjamin",
+    "pasal_ref": "PP-31-2013 Pasal 167 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-075"
+  },
+  {
+    "claim": "Lo Straniero deve aver soggiornato continuamente nel Territorio dell'Indonesia per un minimo di 3 anni dalla data di rilascio del Permesso di soggiorno limitato.",
+    "verbatim": "telah berada di Wilayah Indonesia paling singkat 3 (tiga) tahun berturut-turut sejak tanggal diberikannya Izin Tinggal terbatas",
+    "pasal_ref": "PP-31-2013 Pasal 167 Ayat 3",
+    "instrument_id": "PP-31-2013",
+    "category": "duration",
+    "claim_id": "IMM-076"
+  },
+  {
+    "claim": "Il cambio di stato è disponibile per religiosi, lavoratori, investitori, turisti anziani stranieri, coniugi di titolari di Permesso permanente, figli minori non sposati e ex cittadini indonesiani.",
+    "verbatim": "Orang Asing sebagaimana dimaksud pada ayat (1) meliputi: a. rohaniawan; b. pekerja; c. investor; d. wisatawan lanjut usia",
+    "pasal_ref": "PP-31-2013 Pasal 167 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-077"
+  },
+  {
+    "claim": "Il cambio di stato per Stranieri in qualità di coniuge di cittadino indonesiano è consentito quando il matrimonio ha una durata minima di 2 anni.",
+    "verbatim": "usia perkawinannya telah mencapai paling singkat 2 (dua) tahun",
+    "pasal_ref": "PP-31-2013 Pasal 168 Ayat 1 Huruf a",
+    "instrument_id": "PP-31-2013",
+    "category": "duration",
+    "claim_id": "IMM-078"
+  },
+  {
+    "claim": "Il cambio di stato deve considerare aspetti di utilità per il benessere della comunità e/o l'umanità.",
+    "verbatim": "harus memperhatikan aspek kemanfaatan untuk kesejahteraan masyarakat dan/atau kemanusiaan",
+    "pasal_ref": "PP-31-2013 Pasal 168 Ayat 3",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-079"
+  },
+  {
+    "claim": "Le procedure tecniche dettagliate per il cambio di stato tra Permessi di soggiorno sono disciplinate da Regolamento Ministeriale.",
+    "verbatim": "Ketentuan lebih lanjut mengenai prosedur teknis alih status Izin Tinggal diatur dengan Peraturan Menteri",
+    "pasal_ref": "PP-31-2013 Pasal 169",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-080"
+  },
+  {
+    "claim": "La richiesta di cambio di stato a Permesso di soggiorno ufficiale deve essere presentata da rappresentanze diplomatiche, consolari o organizzazioni internazionali al Ministero degli Affari Esteri per l'approvazione scritta.",
+    "verbatim": "Permohonan alih status Izin Tinggal kunjungan dan Izin Tinggal terbatas menjadi Izin Tinggal dinas diajukan oleh perwakilan diplomatik",
+    "pasal_ref": "PP-31-2013 Pasal 170 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-081"
+  },
+  {
+    "claim": "Il Ministero degli Affari Esteri deve trasmettere l'approvazione scritta al Ministero per la decisione finale sul cambio di stato.",
+    "verbatim": "Menteri Luar Negeri atau pejabat yang ditunjuk menyampaikan persetujuan tertulis",
+    "pasal_ref": "PP-31-2013 Pasal 170 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-082"
+  },
+  {
+    "claim": "Il Ministero deve emettere il Permesso di soggiorno ufficiale e inserirlo nel Sistema Informativo di Gestione dell'Immigrazione.",
+    "verbatim": "menerbitkan Izin Tinggal dinas dan menyampaikan kepada Menteri atau pejabat yang ditunjuk untuk dimasukan ke dalam Sistem Informasi Manajemen Keimigrasian",
+    "pasal_ref": "PP-31-2013 Pasal 170 Ayat 4",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-083"
+  },
+  {
+    "claim": "Il Ministero effettua la sorveglianza sull'immigrazione che comprende il controllo dei cittadini indonesiani e degli Stranieri.",
+    "verbatim": "Menteri melakukan pengawasan Keimigrasian. (2) Pengawasan Keimigrasian sebagaimana dimaksud pada ayat (1) meliputi: a. pengawasan terhadap warga negara Indonesia; dan b. pengawasan terhadap Orang Asing",
+    "pasal_ref": "PP-31-2013 Pasal 172 Ayat 1-2",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-084"
+  },
+  {
+    "claim": "La sorveglianza sull'immigrazione nei confronti dei cittadini indonesiani avviene durante la richiesta di Documento di Viaggio, l'ingresso/uscita dal Territorio e la permanenza all'estero.",
+    "verbatim": "Pengawasan Keimigrasian terhadap warga negara Indonesia dilakukan pada saat: a. permohonan Dokumen Perjalanan Republik Indonesia; b. keluar atau masuk Wilayah Indonesia; dan c. berada di luar Wilayah Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 172 Ayat 3",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-085"
+  },
+  {
+    "claim": "La sorveglianza sull'immigrazione nei confronti degli Stranieri avviene durante la richiesta di visto, ingresso/uscita dal Territorio, rilascio di Permesso di soggiorno e attività nel Territorio.",
+    "verbatim": "Pengawasan Keimigrasian terhadap Orang Asing dilakukan pada saat: a. permohonan Visa; b. masuk atau keluar Wilayah Indonesia; c. pemberian Izin Tinggal; dan d. berada dan melakukan kegiatan di Wilayah Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 172 Ayat 4",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-086"
+  },
+  {
+    "claim": "La sorveglianza amministrativa sui cittadini indonesiani comprende la raccolta e l'elaborazione di dati sui servizi di immigrazione, richieste di Documenti di Viaggio e movimento transfrontaliero.",
+    "verbatim": "Pengawasan administratif terhadap warga negara Indonesia dilakukan dengan: a. pengumpulan, pengolahan, serta penyajian data dan informasi",
+    "pasal_ref": "PP-31-2013 Pasal 175 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-087"
+  },
+  {
+    "claim": "La sorveglianza amministrativa comprende la compilazione di un elenco di cittadini indonesiani sottoposti a Prevenzione dell'uscita dal Territorio.",
+    "verbatim": "penyusunan daftar nama warga negara Indonesia yang dikenai Pencegahan keluar Wilayah Indonesia",
+    "pasal_ref": "PP-31-2013 Pasal 175 Ayat 1 Huruf b",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-088"
+  },
+  {
+    "claim": "I dati della sorveglianza amministrativa devono essere accessibili alle agenzie competenti secondo le loro funzioni attraverso il Sistema Informativo di Gestione dell'Immigrazione.",
+    "verbatim": "Data dan informasi yang tercantum dalam Sistem Informasi Manajemen Keimigrasian harus dapat di akses oleh instansi dan/atau lembaga pemerintahan terkait",
+    "pasal_ref": "PP-31-2013 Pasal 175 Ayat 3",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-089"
+  },
+  {
+    "claim": "La sorveglianza sul campo nei confronti dei cittadini indonesiani può essere effettuata mediante ricerca della loro ubicazione all'estero, interviste al momento della richiesta di Documento di Viaggio o coordinamento con i governi esteri.",
+    "verbatim": "Pengawasan lapangan terhadap warga negara Indonesia dapat dilakukan dengan: a. mencari dan mendapatkan keterangan mengenai keberadaan warga negara Indonesia; b. melakukan wawancara pada saat memohon Dokumen Perjalanan Republik Indonesia; atau c. melakukan koordinasi dengan pemerintah negara setempat",
+    "pasal_ref": "PP-31-2013 Pasal 176 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-090"
+  },
+  {
+    "claim": "Il controllo amministrativo degli stranieri deve includere la raccolta, l'elaborazione e la presentazione di dati e informazioni riguardanti i servizi di immigrazione, il movimento degli stranieri e le decisioni di detenzione.",
+    "verbatim": "Pengawasan administratif terhadap Orang Asing dilakukan dengan: a. pengumpulan, pengolahan, serta penyajian data",
+    "pasal_ref": "PP-31-2013 Pasal 180 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-091"
+  },
+  {
+    "claim": "Il controllo sul campo degli stranieri comprende la verifica della loro presenza, attività e completezza dei documenti di viaggio o permessi di soggiorno.",
+    "verbatim": "pengawasan terhadap keberadaan dan kegiatan Orang Asing di Wilayah Indonesia, meliputi pengecekan",
+    "pasal_ref": "PP-31-2013 Pasal 181 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-092"
+  },
+  {
+    "claim": "L'ufficiale di immigrazione o il designato che effettuano controlli sul campo devono ottenere un ordine scritto firmato da un ufficiale competente.",
+    "verbatim": "Pejabat Imigrasi atau yang ditunjuk harus mendapat perintah tertulis yang ditandatangani oleh Pejabat Imigrasi",
+    "pasal_ref": "PP-31-2013 Pasal 182 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-093"
+  },
+  {
+    "claim": "In circostanze particolari, il controllo sul campo può essere effettuato senza un ordine scritto preventivo.",
+    "verbatim": "Dalam keadaan tertentu Pejabat Imigrasi atau yang ditunjuk dapat melakukan pengawasan lapangan tanpa dilengkapi perintah tertulis",
+    "pasal_ref": "PP-31-2013 Pasal 182 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-094"
+  },
+  {
+    "claim": "L'ufficiale di immigrazione che effettua controlli senza ordine scritto deve segnalare al funzionario competente entro un giorno per approvazione.",
+    "verbatim": "dalam waktu paling lama 1 (satu) hari setelah melaksanakan pengawasan harus melaporkan kepada pejabat yang berwenang",
+    "pasal_ref": "PP-31-2013 Pasal 182 Ayat 3",
+    "instrument_id": "PP-31-2013",
+    "category": "duration",
+    "claim_id": "IMM-095"
+  },
+  {
+    "claim": "L'ufficiale di immigrazione può richiedere informazioni a coloro che consentono il soggiorno agli stranieri riguardanti i dati dello straniero.",
+    "verbatim": "Pejabat Imigrasi yang bertugas dapat meminta keterangan dari setiap orang yang memberi kesempatan menginap kepada Orang Asing",
+    "pasal_ref": "PP-31-2013 Pasal 187 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "right",
+    "claim_id": "IMM-096"
+  },
+  {
+    "claim": "I proprietari o gestori di strutture di alloggio sono obbligati a fornire dati sugli stranieri ospitati su richiesta dell'ufficiale di immigrazione.",
+    "verbatim": "Pemilik atau pengurus tempat penginapan wajib memberikan data mengenai Orang Asing yang menginap di tempat penginapannya",
+    "pasal_ref": "PP-31-2013 Pasal 187 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "obligation",
+    "claim_id": "IMM-097"
+  },
+  {
+    "claim": "I dati degli stranieri ospitati devono includere nome completo, luogo e data di nascita, genere, numero di telefono, nazionalità e numero di passaporto.",
+    "verbatim": "Data mengenai Orang Asing yang menginap paling sedikit memuat: a. nama lengkap; b. tempat dan tanggal lahir",
+    "pasal_ref": "PP-31-2013 Pasal 188 Ayat 1",
+    "instrument_id": "PP-31-2013",
+    "category": "document",
+    "claim_id": "IMM-098"
+  },
+  {
+    "claim": "I dati degli stranieri ospitati devono essere consegnati all'ufficiale di immigrazione ai fini della sorveglianza dell'immigrazione.",
+    "verbatim": "Data sebagaimana dimaksud pada ayat (1) wajib diserahkan kepada Pejabat Imigrasi dalam rangka pengawasan Keimigrasian",
+    "pasal_ref": "PP-31-2013 Pasal 188 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "obligation",
+    "claim_id": "IMM-099"
+  },
+  {
+    "claim": "La sorveglianza dell'immigrazione nei confronti dei garanti è effettuata solo per i garanti di stranieri titolari di permesso di soggiorno temporaneo o permanente.",
+    "verbatim": "Pengawasan Keimigrasian terhadap Penjamin dilakukan hanya bagi Penjamin dari Orang Asing pemegang Izin Tinggal terbatas atau Izin Tinggal Tetap",
+    "pasal_ref": "PP-31-2013 Pasal 189 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-100"
+  },
+  {
+    "claim": "La sorveglianza dei garanti persone giuridiche verifica la documentazione, la presenza e l'attività dello straniero, il domicilio e la capacità di responsabilità.",
+    "verbatim": "Pengawasan Keimigrasian terhadap Penjamin yang berbentuk Korporasi dilakukan untuk mendapatkan kebenaran mengenai:",
+    "pasal_ref": "PP-31-2013 Pasal 190",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-101"
+  },
+  {
+    "claim": "Il controllo sul campo può essere effettuato periodicamente o quando necessario.",
+    "verbatim": "Pengawasan lapangan dapat dilaksanakan secara periodik atau sewaktu-waktu jika diperlukan",
+    "pasal_ref": "PP-31-2013 Pasal 176 Ayat 2",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-102"
+  },
+  {
+    "claim": "La sorveglianza dell'immigrazione sui cittadini indonesiani che richiedono documenti di viaggio è effettuata dalla presentazione della richiesta all'uso del documento.",
+    "verbatim": "Pengawasan Keimigrasian terhadap warga negara Indonesia yang memohon Dokumen Perjalanan dilakukan sejak proses pengajuan permohonan sampai dengan digunakannya",
+    "pasal_ref": "PP-31-2013 Pasal 177",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-103"
+  },
+  {
+    "claim": "La sorveglianza dell'immigrazione su stranieri che richiedono visti è effettuata dalla presentazione della richiesta all'uso del visto per il viaggio.",
+    "verbatim": "Pengawasan Keimigrasian terhadap Orang Asing yang mengajukan permohonan Visa dilakukan sejak proses pengajuan permohonan sampai dengan digunakannya Visa",
+    "pasal_ref": "PP-31-2013 Pasal 183",
+    "instrument_id": "PP-31-2013",
+    "category": "procedure",
+    "claim_id": "IMM-104"
+  },
+  {
+    "claim": "I regolamenti di attuazione dei PP 30/1994, 31/1994, 32/1994 e 36/1994 rimangono in vigore nella misura in cui non contrastino con le disposizioni del presente Regolamento.",
+    "verbatim": "dinyatakan masih tetap berlaku sepanjang tidak bertentangan dengan ketentuan dalam Peraturan Pemerintah ini",
+    "pasal_ref": "PP-31-2013 Pasal 257",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-105"
+  },
+  {
+    "claim": "Il PP 30/1994 relativo alle procedure di prevenzione e allontanamento è abrogato e non è più applicabile.",
+    "verbatim": "Peraturan Pemerintah Nomor 30 Tahun 1994 tentang Tata Cara Pelaksanaan Pencegahan dan Penangkalan dicabut dan dinyatakan tidak berlaku",
+    "pasal_ref": "PP-31-2013 Pasal 257 Huruf a",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-106"
+  },
+  {
+    "claim": "Il PP 31/1994 sulla sorveglianza degli stranieri e sui provvedimenti di immigrazione è abrogato e non è più applicabile.",
+    "verbatim": "Peraturan Pemerintah Nomor 31 Tahun 1994 tentang Pengawasan Orang Asing dan Tindakan Keimigrasian dicabut dan dinyatakan tidak berlaku",
+    "pasal_ref": "PP-31-2013 Pasal 257 Huruf b",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-107"
+  },
+  {
+    "claim": "Il PP 32/1994 su visti, permessi di ingresso e permessi di immigrazione è abrogato e non è più applicabile.",
+    "verbatim": "Peraturan Pemerintah Nomor 32 Tahun 1994 tentang Visa, Izin Masuk, dan Izin Keimigrasian dicabut dan dinyatakan tidak berlaku",
+    "pasal_ref": "PP-31-2013 Pasal 257 Huruf c",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-108"
+  },
+  {
+    "claim": "Il PP 36/1994 sui documenti di viaggio della Repubblica dell'Indonesia è abrogato e non è più applicabile.",
+    "verbatim": "Peraturan Pemerintah Nomor 36 Tahun 1994 tentang Surat Perjalanan Republik Indonesia dicabut dan dinyatakan tidak berlaku",
+    "pasal_ref": "PP-31-2013 Pasal 257 Huruf d",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-109"
+  },
+  {
+    "claim": "Il Decreto Presidenziale 31/1998 sulle agevolazioni per i turisti anziani stranieri è abrogato e non è più applicabile.",
+    "verbatim": "Keputusan Presiden Nomor 31 Tahun 1998 tentang Kemudahan bagi Wisatawan Lanjut usia Manca Negara dicabut dan dinyatakan tidak berlaku",
+    "pasal_ref": "PP-31-2013 Pasal 257 Huruf e",
+    "instrument_id": "PP-31-2013",
+    "category": "rule",
+    "claim_id": "IMM-110"
+  },
+  {
+    "claim": "Il presente Regolamento entra in vigore a partire dalla data della sua pubblicazione nella Gazzetta Ufficiale.",
+    "verbatim": "Peraturan Pemerintah ini mulai berlaku pada tanggal diundangkan",
+    "pasal_ref": "PP-31-2013 Pasal 258",
+    "instrument_id": "PP-31-2013",
+    "category": "duration",
+    "claim_id": "IMM-111"
+  },
+  {
+    "claim": "Un passaporto straniero deve essere valido e rilasciato da un'autorità competente con validità residua di almeno sei mesi.",
+    "verbatim": "paspor yang dikeluarkan oleh pejabat yang berwenang dan berlaku sekurang-kurangnya selama 6 (enam) bulan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 14",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-112"
+  },
+  {
+    "claim": "Un visto è una dichiarazione scritta che autorizza il viaggio verso il territorio dell'Indonesia e costituisce la base per il rilascio del permesso di soggiorno.",
+    "verbatim": "keterangan tertulis, baik secara manual maupun elektronik yang diberikan oleh pejabat yang berwenang untuk melakukan perjalanan ke Wilayah Indonesia dan menjadi dasar untuk pemberian Izin Tinggal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 15",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-113"
+  },
+  {
+    "claim": "Il permesso di soggiorno è un'autorizzazione rilasciata da un ufficiale dell'immigrazione o da un ufficiale del ministero degli esteri per risiedere nel territorio dell'Indonesia.",
+    "verbatim": "izin yang diberikan kepada Orang Asing oleh Pejabat Imigrasi atau Pejabat Dinas Luar Negeri baik secara manual maupun elektronik untuk berada di Wilayah Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 16",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-114"
+  },
+  {
+    "claim": "Il permesso di soggiorno per visitatori è concesso agli stranieri per soggiorni brevi a scopo di visita nel territorio dell'Indonesia.",
+    "verbatim": "izin yang diberikan kepada Orang Asing untuk tinggal dan berada di Wilayah Indonesia untuk waktu singkat dalam rangka kunjungan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 17",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-115"
+  },
+  {
+    "claim": "Il permesso di soggiorno permanente è concesso a determinati stranieri per stabilirsi e risiedere nel territorio dell'Indonesia come residenti dell'Indonesia.",
+    "verbatim": "izin yang diberikan kepada Orang Asing tertentu untuk bertempat tinggal dan menetap di Wilayah Indonesia sebagai penduduk Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 19",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-116"
+  },
+  {
+    "claim": "Il permesso di soggiorno temporaneo per le acque territoriali è concesso a comandanti di navi, equipaggi o esperti stranieri che lavorano su navi o piattaforme nelle acque territoriali dell'Indonesia.",
+    "verbatim": "Izin Tinggal Terbatas yang diberikan kepada nakhoda, awak kapal, atau tenaga ahli asing yang bekerja di atas kapal laut atau alat apung, instalasi yang beroperasi di wilayah perairan dan wilayah yurisdiksi Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 20",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-117"
+  },
+  {
+    "claim": "Una dichiarazione di integrazione è una dichiarazione dello straniero al governo della Repubblica dell'Indonesia come uno dei requisiti per ottenere il permesso di soggiorno permanente.",
+    "verbatim": "pernyataan Orang Asing kepada Pemerintah Republik Indonesia sebagai salah satu syarat memperoleh Izin Tinggal Tetap",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 1 Ayat 21",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-118"
+  },
+  {
+    "claim": "I documenti ufficiali rilasciati da istituzioni governative indonesiane o enti riconosciuti dal governo, come certificati di nascita, carta d'identità, passaporto o diploma, possono provare lo status di ex cittadino indonesiano.",
+    "verbatim": "bukti berupa dokumen resmi yang dikeluarkan oleh instansi pemerintah Republik Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 92 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-119"
+  },
+  {
+    "claim": "Chi lavora presso un'istituzione governativa deve allegare una raccomandazione dal ministero competente o dall'ente governativo competente.",
+    "verbatim": "bagi yang bekerja pada instansi pemerintah juga melampirkan rekomendasi dari kementerian terkait",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 93",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-120"
+  },
+  {
+    "claim": "Chi lavora come esperto tecnico in cooperazione tecnica governativa deve allegare una raccomandazione dal ministero competente o dall'ente governativo competente.",
+    "verbatim": "bagi yang bekerja sebagai tenaga ahli juga melampirkan rekomendasi dari kementerian terkait",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 94",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-121"
+  },
+  {
+    "claim": "La procedura per l'Autorizzazione di Soggiorno Limitato comprende: verifica dei requisiti, inserimento dati, scansione, pagamento, colloquio, identificazione, acquisizione dati biometrici, approvazione, emissione e consegna.",
+    "verbatim": "menyelesaikan permohonan pemberian Izin Tinggal Terbatas melalui: pemeriksaan kelengkapan persyaratan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 95 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-122"
+  },
+  {
+    "claim": "Il pagamento delle spese di immigrazione è obbligatorio secondo le disposizioni normative applicabili.",
+    "verbatim": "pembayaran biaya imigrasi sesuai ketentuan peraturan perundang-undangan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 95 Ayat 1 Huruf C",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "fee",
+    "claim_id": "IMM-123"
+  },
+  {
+    "claim": "Il colloquio, l'identificazione e la verifica dei dati nonché l'acquisizione di dati biometrici possono essere esclusi per stranieri specifici su approvazione del Direttore Generale.",
+    "verbatim": "dapat dikecualikan terhadap Orang Asing tertentu berdasarkan persetujuan dari Direktur Jenderal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 95 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-124"
+  },
+  {
+    "claim": "Il colloquio deve essere effettuato entro 3 giorni lavorativi dal ricevimento della domanda.",
+    "verbatim": "Wawancara dilaksanakan dalam jangka waktu paling lama 3 (tiga) hari kerja terhitung sejak permohonan diterima",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 95 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-125"
+  },
+  {
+    "claim": "La domanda di Autorizzazione di Soggiorno Limitato deve essere completata entro 3 giorni lavorativi dal colloquio.",
+    "verbatim": "Penyelesaian permohonan pemberian Izin Tinggal Terbatas dilaksanakan dalam jangka waktu paling lama 3 (tiga) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 95 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-126"
+  },
+  {
+    "claim": "L'Autorizzazione di Soggiorno Limitato può essere concessa a cittadini di determinate entità che lavorano presso camere di commercio in Indonesia, incluse le loro famiglie.",
+    "verbatim": "Izin Tinggal Terbatas dapat diberikan bagi warga negara dari entitas tertentu yang bekerja sebagai staf atau pejabat pada kamar dagang",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-127"
+  },
+  {
+    "claim": "Per le richieste di Autorizzazione di Soggiorno Limitato, deve essere fornita una lettera di garanzia dal garante, passaporto valido e raccomandazione dall'Agenzia di Intelligenza di Stato.",
+    "verbatim": "diajukan melalui aplikasi dengan melampirkan: surat penjaminan dari Penjamin; Paspor Kebangsaan yang Sah dan Masih Berlaku",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-128"
+  },
+  {
+    "claim": "Cittadini di determinate entità che si uniscono al coniuge con Autorizzazione di Soggiorno Limitato devono allegare l'atto di matrimonio tradotto in indonesiano.",
+    "verbatim": "akta perkawinan yang telah diterjemahkan ke dalam Bahasa Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-129"
+  },
+  {
+    "claim": "Figli minori di 18 anni non coniugati di dipendenti della camera di commercio devono allegare atto di matrimonio e certificato di nascita dei genitori tradotti in indonesiano.",
+    "verbatim": "akta perkawinan orang tua yang telah diterjemahkan ke dalam Bahasa Indonesia; akta kelahiran yang telah diterjemahkan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-130"
+  },
+  {
+    "claim": "I figli nati in Indonesia di genitori stranieri devono allegare certificato di nascita, passaporti dei genitori e certificato di notifica di nascita emesso dalla Direzione Generale dell'Immigrazione.",
+    "verbatim": "surat keterangan kelahiran anak dari rumah sakit atau akta kelahiran; surat keterangan lapor lahir yang dikeluarkan oleh Direktorat Jenderal Imigrasi",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 5",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-131"
+  },
+  {
+    "claim": "L'Autorizzazione di Soggiorno Limitato per dipendenti di camere di commercio è concessa secondo il principio della reciprocità.",
+    "verbatim": "Izin Tinggal Terbatas sebagaimana dimaksud diberikan berdasarkan asas timbal balik",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 6",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-132"
+  },
+  {
+    "claim": "L'Autorizzazione di Soggiorno Limitato per dipendenti di camere di commercio è concessa per un massimo di 1 anno.",
+    "verbatim": "Jangka waktu Izin Tinggal Terbatas diberikan paling lama 1 (satu) tahun",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 96 Ayat 8",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-133"
+  },
+  {
+    "claim": "La procedura per l'Autorizzazione di Soggiorno Limitato per dipendenti di camere di commercio comprende: verifica requisiti, inserimento dati, pagamento, colloquio, identificazione, approvazione, emissione e consegna.",
+    "verbatim": "menyelesaikan permohonan pemberian Izin Tinggal Terbatas melalui tahapan: pemeriksaan kelengkapan persyaratan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 97 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-134"
+  },
+  {
+    "claim": "L'Autorizzazione di Soggiorno Limitato può essere prorogata, ad eccezione di quella originaria da visto di soggiorno limitato al momento dell'arrivo.",
+    "verbatim": "Izin Tinggal Terbatas dapat diperpanjang, kecuali Izin Tinggal Terbatas yang berasal dari Visa tinggal terbatas saat kedatangan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 98 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-135"
+  },
+  {
+    "claim": "La proroga dell'Autorizzazione di Soggiorno Limitato è effettuata dal Capo dell'Ufficio Immigrazione secondo la giurisdizione del luogo di residenza dello straniero.",
+    "verbatim": "Perpanjangan Izin Tinggal Terbatas dilaksanakan oleh Kepala Kantor Imigrasi yang wilayah kerjanya meliputi tempat tinggal Orang Asing",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 98 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-136"
+  },
+  {
+    "claim": "Per i cittadini di determinate entità, la proroga dell'Autorizzazione di Soggiorno Limitato è effettuata dal Direttore Generale dell'Immigrazione.",
+    "verbatim": "Bagi warga negara entitas tertentu, perpanjangan Izin Tinggal Terbatas dilaksanakan oleh Direktur Jenderal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 98 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-137"
+  },
+  {
+    "claim": "Gli stranieri come specificato in Pasal 72 Ayat 2 Huruf A possono prolungare l'Autorizzazione di Soggiorno Limitato fino a 5 anni per volta, con un totale non superiore a 10 anni.",
+    "verbatim": "diberikan perpanjangan Izin Tinggal Terbatas untuk jangka waktu paling lama 5 (lima) tahun, dengan ketentuan keseluruhan tidak lebih dari 10 tahun",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 99 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-138"
+  },
+  {
+    "claim": "Gli stranieri come specificati in Pasal 72 Ayat 2 Huruf B-I possono prolungare l'Autorizzazione di Soggiorno Limitato fino a 2 anni per volta, con un totale non superiore a 6 anni.",
+    "verbatim": "diberikan perpanjangan Izin Tinggal Terbatas untuk jangka waktu paling lama 2 (dua) tahun, dengan ketentuan keseluruhan tidak lebih dari 6 tahun",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 99 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-139"
+  },
+  {
+    "claim": "L'approvazione o il rifiuto della richiesta deve essere comunicato al Capo dell'Ufficio Immigrazione con copia al Capo dell'Ufficio Regionale entro massimo 5 giorni lavorativi dalla ricezione della richiesta.",
+    "verbatim": "disampaikan kepada Kepala Kantor Imigrasi dengan tembusan Kepala Kantor Wilayah dalam jangka waktu paling lama 5 (lima) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 106 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-140"
+  },
+  {
+    "claim": "Il Capo dell'Ufficio Immigrazione o l'ufficiale designato deve completare il timbro del Permesso di Soggiorno Limitato entro massimo 3 giorni lavorativi dalla ricezione dell'approvazione.",
+    "verbatim": "dilaksanakan dalam jangka waktu paling lama 3 (tiga) hari kerja terhitung sejak tanggal persetujuan perpanjangan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 107 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-141"
+  },
+  {
+    "claim": "Il Capo dell'Ufficio Immigrazione deve rilasciare una ricevuta della richiesta come prova quando la richiesta e i requisiti sono stati ricevuti completamente.",
+    "verbatim": "memberikan tanda terima permohonan sebagai bukti permohonan pemberian atau perpanjangan Izin Tinggal Terbatas",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 108 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-142"
+  },
+  {
+    "claim": "Se i requisiti sono incompleti, il Capo dell'Ufficio Immigrazione deve restituire il fascicolo al Garante con ricevuta indicante le ragioni al primo opportuno.",
+    "verbatim": "mengembalikan berkas permohonan kepada Penjamin atau Penanggung Jawab pada kesempatan pertama dengan bukti tanda pengembalian",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 108 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-143"
+  },
+  {
+    "claim": "Il Permesso di Soggiorno Limitato Acque è concesso agli Stranieri che lavorano come capitano, membro dell'equipaggio o esperto tecnico.",
+    "verbatim": "diberikan kepada Orang Asing yang bekerja sebagai: a. nakhoda; b. awak kapal; atau c. tenaga ahli",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 109 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-144"
+  },
+  {
+    "claim": "Il Permesso di Soggiorno Limitato Acque è concesso per il lavoro su navi, piattaforme galleggianti o installazioni che operano nelle acque territoriali indonesiane.",
+    "verbatim": "diberikan dalam rangka bekerja di atas kapal, alat apung, atau instalasi yang beroperasi di wilayah perairan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 109 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-145"
+  },
+  {
+    "claim": "Il Capo dell'Ufficio Immigrazione può autorizzare il titolare del Permesso di Soggiorno Limitato Acque a stare a terra per massimo 7 giorni per motivi amministrativi, cura medica, o altre ragioni specifiche.",
+    "verbatim": "dapat memberikan persetujuan untuk berada di darat paling lama 7 (tujuh) hari dalam rangka",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 109 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-146"
+  },
+  {
+    "claim": "L'autorizzazione a stare a terra è concessa in forma di lettera di autorizzazione, timbro di rimpatrio, o timbro di deportazione a seconda dei motivi.",
+    "verbatim": "diberikan dalam bentuk: a. surat keterangan izin berada di darat; b. peneraan cap pemulangan; c. peneraan cap deportasi",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 109 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-147"
+  },
+  {
+    "claim": "Gli Stranieri che lavorano in acque territoriali possono entrare direttamente con la nave o senza di essa.",
+    "verbatim": "dapat masuk ke Wilayah Indonesia dengan cara: a. datang langsung bersama kapal atau alat apungnya; atau b. tidak dengan kapal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 110 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-148"
+  },
+  {
+    "claim": "I capitani e i membri dell'equipaggio che entrano direttamente con la nave sono esentati dall'obbligo di possedere un Visto.",
+    "verbatim": "dibebaskan dari kewajiban memiliki Visa",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 110 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "right",
+    "claim_id": "IMM-149"
+  },
+  {
+    "claim": "I capitani e i membri dell'equipaggio che entrano senza la nave sono obbligati a possedere un Visto.",
+    "verbatim": "wajib memiliki Visa",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 110 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-150"
+  },
+  {
+    "claim": "Il Permesso di Soggiorno Limitato Acque è concesso per una durata massima di 1 anno o 180 giorni secondo la decisione del Direttore Generale.",
+    "verbatim": "diberikan untuk jangka waktu: a. paling lama 1 (satu) tahun; atau b. paling lama 180 (seratus delapan puluh) hari",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 111 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-151"
+  },
+  {
+    "claim": "La durata del Permesso di Soggiorno Limitato Acque non può superare la validità del Passaporto o del Documento di Viaggio dello Straniero.",
+    "verbatim": "tidak melebihi masa berlaku Paspor Kebangsaan atau Dokumen Perjalanan Orang Asing",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 111 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-152"
+  },
+  {
+    "claim": "Il Permesso di Soggiorno Limitato Acque è rilasciato come timbro sul Passaporto o sul Documento di Viaggio dello Straniero.",
+    "verbatim": "diberikan dalam bentuk teraan pada Paspor Kebangsaan atau Dokumen Perjalanan Orang Asing",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 111 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-153"
+  },
+  {
+    "claim": "La concessione del Permesso di Soggiorno Limitato Acque è attuata mediante decisione del Direttore Generale e timbro da parte del Capo dell'Ufficio Immigrazione.",
+    "verbatim": "dilaksanakan melalui: a. penerbitan Keputusan Direktur Jenderal; b. peneraan Izin Tinggal Terbatas Perairan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-154"
+  },
+  {
+    "claim": "La richiesta di decisione del Direttore Generale deve essere presentata prima dell'entrata del mezzo di trasporto nel territorio indonesiano.",
+    "verbatim": "diajukan sebelum Alat Angkut masuk ke Wilayah Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-155"
+  },
+  {
+    "claim": "In caso di sostituzione o aggiunta di capitani o equipaggio estero, la richiesta deve essere presentata dopo l'entrata del mezzo nel territorio indonesiano.",
+    "verbatim": "diajukan setelah Alat Angkut masuk ke Wilayah Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-156"
+  },
+  {
+    "claim": "La richiesta deve essere accompagnata da lettera di agenzia navale, elenco dell'equipaggio, lettera di garanzia, passaporto valido, e raccomandazione dell'ente competente.",
+    "verbatim": "diajukan oleh Penjamin kepada Direktur Jenderal atau Pejabat Imigrasi yang ditunjuk melalui aplikasi dengan melampirkan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 5",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "document",
+    "claim_id": "IMM-157"
+  },
+  {
+    "claim": "La decisione del Direttore Generale deve essere trasmessa al Capo dell'Ufficio Immigrazione competente, al Capo dell'Ufficio Regionale, e ad altri enti interessati.",
+    "verbatim": "disampaikan secara manual dan/atau melalui Sistem Informasi Manajemen Keimigrasian kepada Kepala Kantor Imigrasi",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 7",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-158"
+  },
+  {
+    "claim": "La decisione del Direttore Generale deve essere emanata entro massimo 3 giorni lavorativi dalla ricezione della richiesta.",
+    "verbatim": "ditetapkan dalam jangka waktu paling lama 3 (tiga) hari kerja terhitung sejak tanggal permohonan diterima",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 112 Ayat 8",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-159"
+  },
+  {
+    "claim": "Il Capo dell'Ufficio Immigrazione deve trasmettere la richiesta al Capo dell'Ufficio Regionale entro un massimo di 7 giorni lavorativi dalla data della richiesta.",
+    "verbatim": "dalam jangka waktu paling lama 7 (tujuh) hari kerja terhitung sejak tanggal permohonan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 131 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-160"
+  },
+  {
+    "claim": "Il Capo dell'Ufficio Regionale deve trasmettere la richiesta al Direttore Generale entro un massimo di 3 giorni lavorativi dalla ricezione della richiesta.",
+    "verbatim": "dalam jangka waktu 3 (tiga) hari kerja terhitung sejak tangga l permohonan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 131 Ayat 5",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-161"
+  },
+  {
+    "claim": "Il Direttore Generale deve rilasciare l'approvazione o il rifiuto del Permesso di Soggiorno Permanente entro un massimo di 5 giorni lavorativi dalla ricezione della richiesta.",
+    "verbatim": "dalam jangka waktu paling lama 5 (lima) hari kerja terhitung sejak tanggal surat permohonan diterima",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 131 Ayat 8",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-162"
+  },
+  {
+    "claim": "Il Capo dell'Ufficio Immigrazione deve completare il rilascio del Permesso di Soggiorno Permanente entro un massimo di 3 giorni lavorativi dalla ricezione dell'approvazione o del rifiuto.",
+    "verbatim": "dalam jangka waktu paling lama 3 (tiga) hari kerja terhitung sejak diterima persetujuan atau penolakan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 132 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-163"
+  },
+  {
+    "claim": "Il Permesso di Soggiorno Permanente può essere prorogato per una durata illimitata.",
+    "verbatim": "Izin Tinggal Tetap dapat diperpanjang untuk jangka waktu tidak terbatas",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 133 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-164"
+  },
+  {
+    "claim": "La proroga del Permesso di Soggiorno Permanente deve essere richiesta per iscritto.",
+    "verbatim": "Perpanjangan jangka waktu Izin Tinggal Tetap dilaksanakan berdasarkan permohonan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 133 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-165"
+  },
+  {
+    "claim": "La richiesta di proroga del Permesso di Soggiorno Permanente può essere presentata al più presto 3 mesi prima e al più tardi il giorno lavorativo antecedente la data di scadenza.",
+    "verbatim": "dapat diajukan paling cepat 3 (tiga) bulan dan paling lama pada hari kerja sebelum tanggal jangka waktu Izin Tingga l Tetap berakhir",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 133 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-166"
+  },
+  {
+    "claim": "Una richiesta di proroga registrata prima della scadenza del Permesso di Soggiorno Permanente non costituisce violazione del soggiorno anche se completata dopo la data di scadenza.",
+    "verbatim": "tidak diperhitungkan sebagai overstay apabila penyelesaiannya melewati jangka waktu Izin Tinggalnya",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 133 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-167"
+  },
+  {
+    "claim": "La proroga del Permesso di Soggiorno Permanente decorre dalla data di scadenza del permesso precedente.",
+    "verbatim": "diberikan terhitung sejak tanggal Izin Tinggal Tetap berakhir",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 133 Ayat 5",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-168"
+  },
+  {
+    "claim": "La richiesta di proroga del Permesso di Soggiorno Permanente deve essere presentata dallo Straniero, dal Garante o dal Responsabile tramite applicazione allegando la documentazione prevista.",
+    "verbatim": "Permohonan perpanjangan Izin Tinggal Tetap diajukan oleh Orang Asing, Penjamin, atau Penanggung Jawab melalui aplikasi",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 134 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-169"
+  },
+  {
+    "claim": "Il Capo dell'Ufficio Regionale deve trasmettere la richiesta di proroga al Direttore Generale entro un massimo di 3 giorni lavorativi dalla ricezione della richiesta.",
+    "verbatim": "dalam jangka waktu paling lama 3 (tiga) hari kerja terhitung sejak tanggal surat permohonan Kepala Kantor Imigrasi diterima",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 134 Ayat 5",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-170"
+  },
+  {
+    "claim": "Se la documentazione è incompleta, il Capo dell'Ufficio Immigrazione deve restituire i documenti al primo ricevimento.",
+    "verbatim": "mengembalikan berkas permohonan kepada Orang Asing, Penjamin, atau Penanggung Jawab pada kesempatan pertama",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 136 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-171"
+  },
+  {
+    "claim": "Il rifiuto del Permesso di Soggiorno Permanente è disposto dal Capo dell'Ufficio Immigrazione o dall'Ufficiale designato.",
+    "verbatim": "Penolakan pemberian atau perpanjangan Izin Tinggal Tetap dilaksanakan oleh Kepala Kantor Imigrasi atau Pejabat Imigrasi yang ditunjuk",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 137 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-172"
+  },
+  {
+    "claim": "Il rifiuto del Permesso di Soggiorno Permanente è disposto quando la richiesta non soddisfa i requisiti previsti.",
+    "verbatim": "dilakukan terhadap permohonan yang tidak memenuhi persyaratan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 137 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-173"
+  },
+  {
+    "claim": "Il garante o responsabile di uno straniero che desidera terminare la garanzia deve segnalare all'ufficio immigrazione che ha emesso il permesso di soggiorno permanente per estinguerlo.",
+    "verbatim": "harus melapor ke Kantor Imigrasi yang menerbitkan untuk mengakhiri Izin Tinggal Tetap",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 142 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-174"
+  },
+  {
+    "claim": "Il garante o responsabile è obbligato a far uscire lo straniero dal territorio indonesiano e a restituire il permesso di soggiorno permanente.",
+    "verbatim": "Penjamin atau Penanggung Jawab wajib mengeluarkan Orang Asing...dari Wilayah Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 142 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-175"
+  },
+  {
+    "claim": "Lo straniero è obbligato a lasciare il territorio indonesiano, restituire il permesso di soggiorno permanente e effettuare lo scioglimento della garanzia immigratoria.",
+    "verbatim": "wajib keluar dari Wilayah Indonesia dan mengembalikan Izin Tinggal Tetap",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 142 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-176"
+  },
+  {
+    "claim": "Lo straniero titolare di permesso di soggiorno permanente a durata illimitata è obbligato a segnalare ogni 5 anni all'ufficio immigrazione senza alcun costo.",
+    "verbatim": "wajib melapor setiap 5 (lima) tahun sekali kepada Kepala Kantor Imigrasi...dan tidak dikenai biaya",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 144 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-177"
+  },
+  {
+    "claim": "La segnalazione del permesso di soggiorno permanente deve essere effettuata attraverso applicazione allegando il passaporto valido e il permesso di soggiorno permanente.",
+    "verbatim": "dilakukan oleh Orang Asing, Penjamin atau Penanggung Jawab melalui aplikasi dengan melampirkan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 144 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-178"
+  },
+  {
+    "claim": "La segnalazione del permesso di soggiorno permanente deve essere effettuata non prima di 3 mesi e non oltre il giorno lavorativo prima della data di scadenza.",
+    "verbatim": "paling cepat 3 (tiga) bulan dan paling lama pada hari kerja sebelum tanggal pelaporan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 145 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-179"
+  },
+  {
+    "claim": "La segnalazione presentata oltre la scadenza della data di segnalazione del permesso di soggiorno permanente richiede l'approvazione del Direttore Generale.",
+    "verbatim": "diajukan melebihi berakhirnya tanggal pelaporan Izin Tinggal Tetap dilaksanakan setelah mendapat persetujuan Direktur Jenderal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 145 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-180"
+  },
+  {
+    "claim": "La segnalazione del permesso di soggiorno permanente comprende verifiche sulla completezza dei requisiti, inserimento dati, biometria e rilascio di un numero di registrazione.",
+    "verbatim": "diselesaikan melalui tahapan: a. pemeriksaan kelengkapan persyaratan; b. pengisian data, pemindaian berkas",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 146 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-181"
+  },
+  {
+    "claim": "Il capo dell'ufficio immigrazione deve trasmettere la segnalazione con considerazioni e raccomandazioni al capo ufficio regionale secondo procedure specifiche.",
+    "verbatim": "menyampaikan pelaporan disertai pertimbangan dan saran kepada Kepala Kantor Wilayah melalui tahapan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-182"
+  },
+  {
+    "claim": "La segnalazione deve essere trasmessa al capo ufficio regionale entro massimo 7 giorni lavorativi dalla ricezione.",
+    "verbatim": "disampaikan...dalam jangka waktu paling lama 7 (tujuh) hari kerja terhitung sejak tanggal pelaporan diterima",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-183"
+  },
+  {
+    "claim": "Il capo ufficio regionale deve trasmettere la segnalazione al Direttore Generale con considerazioni secondo procedure specifiche.",
+    "verbatim": "menyampaikan pelaporan...kepada Direktur Jenderal disertai pertimbangan dan saran melalui tahapan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-184"
+  },
+  {
+    "claim": "La segnalazione deve essere trasmessa al Direttore Generale entro massimo 3 giorni lavorativi dalla ricezione della lettera di segnalazione.",
+    "verbatim": "disampaikan...dalam jangka waktu paling lama 3 (tiga) hari kerja terhitung sejak tanggal surat pelaporan diterima",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 5",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-185"
+  },
+  {
+    "claim": "Il Direttore Generale deve approvare o rifiutare la segnalazione del permesso di soggiorno permanente secondo procedure specifiche.",
+    "verbatim": "memberikan persetujuan atau penolakan pelaporan Izin Tinggal Tetap melalui tahapan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 6",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-186"
+  },
+  {
+    "claim": "L'approvazione o il rifiuto della segnalazione deve essere comunicato al capo ufficio immigrazione entro massimo 5 giorni lavorativi dalla ricezione della richiesta.",
+    "verbatim": "disampaikan kepada Kepala Kantor Imigrasi dalam jangka waktu paling lama 5 (lima) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 7",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-187"
+  },
+  {
+    "claim": "Il capo ufficio immigrazione deve completare la segnalazione approvata dal Direttore Generale attraverso l'emissione di numero di registrazione e il timbro di segnalazione.",
+    "verbatim": "menyelesaikan laporan yang telah disetujui oleh Direktur Jenderal melalui tahapan: a. penerbitan nomor register",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 8",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-188"
+  },
+  {
+    "claim": "In caso di rifiuto della segnalazione, il capo ufficio immigrazione deve apporre un timbro di rimpatrio sul passaporto e ordinare allo straniero di lasciare l'Indonesia entro massimo 7 giorni.",
+    "verbatim": "menerakan cap pemulangan pada paspor Orang Asing dan memerintahkan Orang Asing yang bersangkutan meninggalkan wilayah Indonesia dalam waktu paling lama 7 (tujuh) hari",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 147 Ayat 10",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "sanction",
+    "claim_id": "IMM-189"
+  },
+  {
+    "claim": "Quando la documentazione della segnalazione è completa, il capo ufficio immigrazione deve rilasciare una ricevuta di segnalazione.",
+    "verbatim": "diberikan tanda terima pelaporan oleh Kepala Kantor Imigrasi atau Pejabat Imigrasi yang ditunjuk",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 148 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-190"
+  },
+  {
+    "claim": "Se la documentazione della segnalazione è incompleta, il capo ufficio immigrazione deve restituirla immediatamente allo straniero con le motivazioni indicate.",
+    "verbatim": "mengembalikan berkas pelaporan pada kesempatan pertama kepada Orang Asing...untuk dilengkapi disertai alasan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 148 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-191"
+  },
+  {
+    "claim": "Lo straniero può essere escluso dall'obbligo di possedere un permesso di soggiorno in determinate circostanze.",
+    "verbatim": "Orang Asing dapat dikecualikan dari kewajiban memiliki Izin Tinggal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 149 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-192"
+  },
+  {
+    "claim": "Lo straniero è escluso dall'obbligo di avere un permesso di soggiorno se sottoposto a detenzione per procedimenti investigativi, processuali o giudiziari, o detenuto in un carcere quando il permesso di soggiorno è scaduto.",
+    "verbatim": "menjalani penahanan untuk kepentingan proses penyidikan, penuntutan, dan pemeriksaan di sidang pengadilan...Izin Tinggalnya telah habis",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 149 Ayat 2 Huruf a",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-193"
+  },
+  {
+    "claim": "Lo straniero può ottenere il permesso di soggiorno se vittima di tratta di persone nel territorio indonesiano.",
+    "verbatim": "berada di Wilayah Indonesia karena menjadi korban tindak pidana perdagangan orang",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 149 Ayat 2 Huruf c",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "right",
+    "claim_id": "IMM-194"
+  },
+  {
+    "claim": "Lo straniero assolto o non colpevole di reato può ricevere il ripristino del permesso di soggiorno precedente secondo i termini della normativa applicabile.",
+    "verbatim": "Orang Asing dapat diberikan kembali Izin Tinggal sesuai dengan Izin Tinggal sebelumnya dengan jangka waktu sesuai ketentuan peraturan perundang-undangan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 150 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "right",
+    "claim_id": "IMM-195"
+  },
+  {
+    "claim": "Lo straniero senza permesso di soggiorno deve lasciare l'Indonesia entro massimo 7 giorni dal timbro di deportazione sul documento di viaggio.",
+    "verbatim": "harus meninggalkan Wilayah Indonesia paling lama 7 (tujuh) hari terhitung sejak diterakannya cap Deportasi",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 150 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-196"
+  },
+  {
+    "claim": "Lo straniero in libertà condizionata o assimilazione deve ottenere una decisione del Direttore Generale per l'esenzione dall'obbligo del permesso di soggiorno.",
+    "verbatim": "harus memperoleh Keputusan Direktur Jenderal mengenai pengecualian dari kewajiban memiliki Izin Tinggal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 151 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-197"
+  },
+  {
+    "claim": "La richiesta scritta per l'esenzione dal permesso di soggiorno deve includere passaporto, sentenza finale, documento d'identità del garante e lettere di garanzia.",
+    "verbatim": "permintaan secara tertulis memuat jangka waktu pengecualian dengan melampirkan Paspor, putusan pengadilan, kartu tanda penduduk Penjamin, surat keterangan jaminan dan surat jaminan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 151 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-198"
+  },
+  {
+    "claim": "La decisione del Direttore Generale deve essere emessa entro massimo 7 giorni lavorativi dalla ricezione della richiesta completa.",
+    "verbatim": "Keputusan Direktur Jenderal ditetapkan dalam waktu paling lama 7 (tujuh) hari kerja terhitung sejak tanggal permintaan diterima secara lengkap",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 151 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-199"
+  },
+  {
+    "claim": "Lo straniero detenuto per 10 anni o più può ottenere permesso di risiedere fuori dal centro di detenzione e l'esenzione dal permesso di soggiorno su richiesta.",
+    "verbatim": "telah berada di Rumah Detensi Imigrasi untuk waktu 10 (sepuluh) tahun atau lebih dapat diberikan izin berada di luar Rumah Detensi Imigrasi",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "right",
+    "claim_id": "IMM-200"
+  },
+  {
+    "claim": "La richiesta deve contenere l'indirizzo del detenuto, dichiarazione di obbligo di rendicontazione mensile e certificato di residenza dal capo del quartiere.",
+    "verbatim": "diajukan dengan melampirkan alamat Deteni, surat pernyataan kesediaan wajib melapor setiap 1 (satu) bulan, dan surat keterangan bertempat tinggal dari rukun tetangga",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-201"
+  },
+  {
+    "claim": "Il detenuto deve rendicontare la propria ubicazione mensilmente e eventuali cambiamenti nello stato civile, lavoro o indirizzo.",
+    "verbatim": "kesediaan wajib melapor keberadaannya secara periodik setiap 1 (satu) bulan dan perubahan status sipil, pekerjaan, atau alamat",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 2 Huruf b",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-202"
+  },
+  {
+    "claim": "Il capo del centro di detenzione deve esaminare la richiesta entro massimo 3 giorni lavorativi dalla ricezione.",
+    "verbatim": "melakukan penelitian terhadap permohonan dalam jangka waktu paling lama 3 (tiga) hari kerja terhitung sejak tanggal permohonan diterima",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-203"
+  },
+  {
+    "claim": "Il capo dell'ufficio regionale deve presentare i risultati dell'esame al Direttore Generale entro massimo 7 giorni lavorativi.",
+    "verbatim": "menyampaikan hasil penelitian dan pengkajian disertai dengan pertimbangan kepada Direktur Jenderal dalam jangka waktu paling lama 7 (tujuh) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 6",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-204"
+  },
+  {
+    "claim": "Il Direttore Generale deve esaminare e decidere entro massimo 5 giorni lavorativi dalla ricezione dei risultati dell'esame.",
+    "verbatim": "menyampaikan kepada Kepala Rumah Detensi Imigrasi dalam jangka waktu 5 (lima) hari kerja terhitung sejak tanggal hasil penelitian diterima",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 7",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-205"
+  },
+  {
+    "claim": "Il capo del centro di detenzione deve emettere il permesso di risiedere fuori entro massimo 3 giorni lavorativi e aggiornare i dati.",
+    "verbatim": "memberikan izin berada di luar Rumah Detensi Imigrasi dalam waktu paling lama 3 (tiga) hari kerja dan melakukan pemutakhiran data",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 152 Ayat 8",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-206"
+  },
+  {
+    "claim": "Lo straniero può ricevere un permesso di soggiorno di emergenza quando il suo permesso scade per ragioni umanitarie, calamità naturali o ordine governativo.",
+    "verbatim": "Dalam keadaan tertentu, Orang Asing dapat diberikan Izin Tinggal keadaan terpaksa meliputi alasan kemanusiaan, bencana alam dan nonalam, atau kepentingan pemerintah",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 153 Ayat 1 e 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "right",
+    "claim_id": "IMM-207"
+  },
+  {
+    "claim": "Il permesso di soggiorno di emergenza è valido per massimo 30 giorni e può essere prorogato per altri 30 giorni.",
+    "verbatim": "diberikan untuk jangka waktu paling lama 30 (tiga puluh) hari dan dapat diperpanjang paling lama 30 (tiga puluh) hari untuk setiap kali perpanjangan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 154",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-208"
+  },
+  {
+    "claim": "Per motivi umanitari, il permesso di soggiorno di emergenza si richiede fornendo il passaporto e certificato medico ospedaliero o di un medico.",
+    "verbatim": "diajukan dengan melampirkan Paspor yang sah dan masih berlaku dan surat keterangan rawat inap dari rumah sakit atau surat keterangan dokter",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 155 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-209"
+  },
+  {
+    "claim": "Il capo dell'ufficio immigrazione deve timbrare il permesso di soggiorno di emergenza sul documento di viaggio dello straniero.",
+    "verbatim": "memberikan Izin Tinggal keadaan terpaksa dengan menerakan cap Izin Tinggal keadaan terpaksa pada Dokumen Perjalanan Orang Asing",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 155 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-210"
+  },
+  {
+    "claim": "Il capo dell'ufficio immigrazione deve aggiornare i dati dello straniero che ha ricevuto il permesso di soggiorno di emergenza.",
+    "verbatim": "melakukan pemutakhiran data terhadap Orang Asing yang telah diberikan Izin Tinggal keadaan terpaksa",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 155 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-211"
+  },
+  {
+    "claim": "Per calamità naturali e non naturali, il permesso di soggiorno di emergenza è concesso per decisione del Direttore Generale.",
+    "verbatim": "Izin Tinggal keadaan terpaksa dalam keadaan bencana alam dan nonalam diberikan berdasarkan Keputusan Direktur Jenderal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 156 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-212"
+  },
+  {
+    "claim": "Il capo dell'ufficio immigrazione deve registrare i dati degli stranieri per il permesso di soggiorno in caso di calamità.",
+    "verbatim": "Kepala Kantor Imigrasi melakukan pendataan Orang Asing yang akan diberikan Izin Tinggal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 156 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-213"
+  },
+  {
+    "claim": "La registrazione dei dati per calamità include passaporto, visto e permesso di soggiorno in possesso dello straniero.",
+    "verbatim": "Pendataan dilakukan terhadap Paspor Kebangsaan atau Dokumen Perjalanan yang sah dan masih berlaku, Visa, dan/atau Izin Tinggal yang dimiliki",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 156 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-214"
+  },
+  {
+    "claim": "L'ufficio immigrazione deve completare la richiesta attraverso il controllo della completezza dei requisiti, l'inserimento dati, la scansione dei fascicoli e la stampa del ricevimento.",
+    "verbatim": "pemeriksaan kelengkapan persyaratan; pengisian data, pemindaian berkas, dan cetak tanda permohonan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-215"
+  },
+  {
+    "claim": "Lo straniero deve versare le spese di immigrazione secondo le norme vigenti.",
+    "verbatim": "pembayaran biaya Keimigrasian sesuai dengan ketentuan peraturan perundang-undangan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "fee",
+    "claim_id": "IMM-216"
+  },
+  {
+    "claim": "L'ufficio immigrazione deve condurre interviste, identificazione, verifica dati e raccolta dati biometrici foto e impronte digitali.",
+    "verbatim": "wawancara, identifikasi dan verifikasi data serta pengambilan data biometrik foto dan sidik jari",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-217"
+  },
+  {
+    "claim": "Il controllo di immigrazione sul campo è facoltativo e può essere effettuato secondo la valutazione del Capo Ufficio Immigrazione.",
+    "verbatim": "pengawasan Keimigrasian lapangan, jika diperlukan sesuai dengan pertimbangan Kepala Kantor Imigrasi",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-218"
+  },
+  {
+    "claim": "Se non è richiesto il controllo di immigrazione sul campo, la richiesta deve essere presentata entro un massimo di 3 giorni lavorativi dalla ricezione completa della richiesta.",
+    "verbatim": "jangka waktu paling lama 3 (tiga) hari kerja terhitung sejak tanggal diterima permohonan secara lengkap",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-219"
+  },
+  {
+    "claim": "Se è richiesto il controllo di immigrazione sul campo, la richiesta deve essere presentata entro un massimo di 4 giorni lavorativi dalla ricezione completa della richiesta.",
+    "verbatim": "jangka waktu paling lama 4 (empat) hari kerja terhitung sejak tanggal diterima permohonan secara lengkap",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-220"
+  },
+  {
+    "claim": "Il controllo di immigrazione sul campo è obbligatorio se la richiesta si basa su matrimonio misto.",
+    "verbatim": "Pengawasan Keimigrasian lapangan sebagaimana dimaksud pada ayat (3) wajib dilaksanakan jika permohonan berdasarkan atas perkawinan campuran",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 183 Ayat 4",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-221"
+  },
+  {
+    "claim": "Il Capo Ufficio Regionale deve verificare la completezza e valutare i requisiti della richiesta di cambio di status del Permesso di Soggiorno Visitatori.",
+    "verbatim": "pemeriksaan kelengkapan dan pengkajian persyaratan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 184 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-222"
+  },
+  {
+    "claim": "La richiesta di approvazione del cambio di status deve essere presentata entro un massimo di 3 giorni lavorativi dalla ricezione della richiesta tramite il Sistema di Gestione delle Informazioni Immigrazione.",
+    "verbatim": "jangka waktu paling lama 3 (tiga) hari kerja terhitung sejak tanggal permohonan diterima secara elektronik",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 184 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-223"
+  },
+  {
+    "claim": "Se la richiesta non può essere presa in considerazione, il Capo Divisione Immigrazione deve respingere la richiesta.",
+    "verbatim": "permohonan tidak dapat dipertimbangkan, Kepala Divisi Keimigrasian menolak permohonan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 185 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-224"
+  },
+  {
+    "claim": "Il rigetto deve essere comunicato al Capo Ufficio Immigrazione con le ragioni del rigetto entro un massimo di 3 giorni lavorativi dalla ricezione della richiesta.",
+    "verbatim": "disampaikan kepada Kepala Kantor Imigrasi disertai dengan alasan penolakan dalam jangka waktu paling lama 3 (tiga) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 185 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-225"
+  },
+  {
+    "claim": "Il Direttore Generale deve completare la richiesta di cambio di status entro un massimo di 5 giorni lavorativi.",
+    "verbatim": "disampaikan dalam jangka waktu paling lama 5 (lima) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 186 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-226"
+  },
+  {
+    "claim": "Se la richiesta non può essere presa in considerazione, il Direttore Generale deve respingere la richiesta.",
+    "verbatim": "permohonan tidak dapat dipertimbangkan, Direktur Jenderal menolak permohonan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 187 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-227"
+  },
+  {
+    "claim": "Il Capo Ufficio Immigrazione deve consegnare il Passaporto e la Decisione del Direttore Generale allo straniero entro un massimo di 3 giorni lavorativi.",
+    "verbatim": "menyerahkan Paspor Kebangsaan dan Keputusan Direktur Jenderal kepada Orang Asing dalam jangka waktu paling lama 3 (tiga) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 188",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-228"
+  },
+  {
+    "claim": "Se la richiesta è rigettata, il Capo Ufficio Immigrazione deve applicare il timbro di rimpatrio e ordinare allo straniero di lasciare l'Indonesia entro un massimo di 7 giorni.",
+    "verbatim": "menerakan cap pemulangan dan mewajibkan Orang Asing yang bersangkutan meninggalkan Wilayah Indonesia dalam jangka waktu paling lama 7 (tujuh) hari",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 189",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "sanction",
+    "claim_id": "IMM-229"
+  },
+  {
+    "claim": "La durata del Permesso di Soggiorno Limitato è determinata secondo la Decisione del Direttore Generale.",
+    "verbatim": "Jangka waktu Izin Tinggal Terbatas diberikan sesuai dengan Keputusan Direktur Jenderal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 190 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-230"
+  },
+  {
+    "claim": "La durata del Permesso di Soggiorno Limitato non può superare la validità del Passaporto nazionale dello straniero.",
+    "verbatim": "Jangka waktu Izin Tinggal Terbatas diberikan tidak dapat melampaui masa berlaku Paspor Kebangsaannya",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 190 Ayat 3",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-231"
+  },
+  {
+    "claim": "La durata del Permesso di Soggiorno Limitato per un bambino nato in Indonesia è determinata secondo la durata del Permesso di Soggiorno Limitato del padre e/o della madre.",
+    "verbatim": "Jangka waktu Izin Tinggal Terbatas bagi anak yang baru lahir diberikan sesuai dengan jangka waktu Izin Tinggal Terbatas ayah dan/atau ibunya",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 191",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-232"
+  },
+  {
+    "claim": "Il cambio di status da Permesso di Soggiorno Limitato a Permesso di Soggiorno Permanente può essere concesso al titolare del Permesso di Soggiorno Limitato.",
+    "verbatim": "Alih status Izin Tinggal Terbatas menjadi Izin Tinggal Tetap dapat diberikan kepada Orang Asing yang memenuhi syarat",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 192 Ayat 1",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "right",
+    "claim_id": "IMM-233"
+  },
+  {
+    "claim": "Il cambio di status è escluso per i titolari di Permesso di Soggiorno Limitato concesso per attività nel settore acqueo, per motivi di pubblica utilità, per massimo 90 giorni o all'arrivo per massimo 180 giorni.",
+    "verbatim": "dikecualikan bagi pemegang Izin Tinggal Terbatas untuk kegiatan di bidang perairan; alasan kemanfaatan untuk kesejahteraan masyarakat; untuk jangka waktu paling lama 90 (sembilan puluh) hari; dan/atau saat kedatangan untuk jangka waktu paling lama 180 (seratus delapan puluh) hari",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 192 Ayat 2",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "prohibition",
+    "claim_id": "IMM-234"
+  },
+  {
+    "claim": "Il cambio di status include religiosi, lavoratori, investitori, titolari di strutture per casa vacanzionale, coniugi che si uniscono al titolare del Permesso Permanente, minori non coniugati che si uniscono ai genitori titolari del Permesso Permanente.",
+    "verbatim": "rohaniwan; pekerja; penanam modal; pemegang fasilitas dalam rangka rumah kedua; suami atau istri yang menggabungkan diri; anak yang berusia di bawah 18 (delapan belas) tahun",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 193",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-235"
+  },
+  {
+    "claim": "La lettera e deve essere eseguita.",
+    "verbatim": "huruf e wajib dilaksanakan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 215 Ayat (1)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-236"
+  },
+  {
+    "claim": "Il Capo della Divisione Immigrazione deve elaborare la richiesta entro un massimo di 3 giorni lavorativi.",
+    "verbatim": "harus menindaklanjutinya dalam jangka waktu paling lama 3 (tiga) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 215 Ayat (1)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-237"
+  },
+  {
+    "claim": "La richiesta conforme deve essere sottoposta al Direttore Generale attraverso fasi specifiche di verifica e trasmissione.",
+    "verbatim": "ditindaklanjuti dengan meneruskan permohonan disertai pertimbangan dan saran",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 215 Ayat (2)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-238"
+  },
+  {
+    "claim": "Se la richiesta non è idonea, deve essere emesso un rifiuto motivato dal Capo della Divisione Immigrazione.",
+    "verbatim": "ditindaklanjuti dengan mengeluarkan penolakan yang memuat alasan penolakannya",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 216",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-239"
+  },
+  {
+    "claim": "Il Direttore Generale deve elaborare la richiesta entro un massimo di 5 giorni lavorativi.",
+    "verbatim": "menindaklanjuti dalam jangka waktu paling lama 5 (lima) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 217 Ayat (1)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-240"
+  },
+  {
+    "claim": "Se conforme, il Direttore Generale deve emettere un decreto di approvazione del cambio di status da Permesso Temporaneo a Permesso Permanente.",
+    "verbatim": "menetapkan Keputusan Direktur Jenderal mengenai persetujuan alih status",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 217 Ayat (2)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-241"
+  },
+  {
+    "claim": "Se la richiesta non è idonea, il Direttore Generale deve emettere un rifiuto motivato al Capo Ufficio Immigrazione.",
+    "verbatim": "mengeluarkan penolakan yang memuat alasan penolakannya dari Direktur Jenderal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 218",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-242"
+  },
+  {
+    "claim": "Il Capo Ufficio Immigrazione deve notificare la decisione al richiedente entro 3 giorni lavorativi.",
+    "verbatim": "memberitahukan kepada pemohon dalam jangka waktu paling lama 3 (tiga) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 219 Ayat (1)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-243"
+  },
+  {
+    "claim": "Il richiedente deve presentarsi in Ufficio Immigrazione entro un massimo di 5 giorni lavorativi dalla ricezione della notifica.",
+    "verbatim": "wajib datang ke Kantor Imigrasi dalam jangka waktu paling lama 5 (lima) hari kerja",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 219 Ayat (2)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-244"
+  },
+  {
+    "claim": "Se approvato, il cambio di status da Permesso Temporaneo a Permanente deve completarsi entro 3 giorni lavorativi.",
+    "verbatim": "diselesaikan dalam jangka waktu paling lama 3 (tiga) hari kerja terhitung sejak dilakukan wawancara",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 219 Ayat (4)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-245"
+  },
+  {
+    "claim": "L'estero rifiutato con ordine di rimpatrio deve lasciare il territorio indonesiano entro 7 giorni.",
+    "verbatim": "meninggalkan Wilayah Indonesia dalam waktu paling lama 7 (tujuh) hari",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 220 Ayat (2)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-246"
+  },
+  {
+    "claim": "Alcuni stranieri devono avere un Garante che garantisca la loro permanenza nel territorio indonesiano.",
+    "verbatim": "Orang Asing tertentu yang berada di Wilayah Indonesia wajib memiliki Penjamin",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 221 Ayat (1)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-247"
+  },
+  {
+    "claim": "Non è richiesto un Garante per stranieri coniugati con cittadini indonesiani.",
+    "verbatim": "Orang Asing yang kawin secara sah dengan Warga Negara Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 221 Ayat (2) Huruf a",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "prohibition",
+    "claim_id": "IMM-248"
+  },
+  {
+    "claim": "Non è richiesto un Garante per investitori stranieri che investono in Indonesia.",
+    "verbatim": "pelaku usaha dengan kewarganegaraan asing yang menanamkan modal",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 221 Ayat (2) Huruf b",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "prohibition",
+    "claim_id": "IMM-249"
+  },
+  {
+    "claim": "Lo straniero coniugato con cittadino indonesiano deve avere un Responsabile, che sia il coniuge o un genitore.",
+    "verbatim": "wajib memiliki Penanggung Jawab yang terdiri atas: a. suami atau istri Warga Negara Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 222",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-250"
+  },
+  {
+    "claim": "L'investitore straniero deve versare una garanzia finanziaria in sostituzione del Garante.",
+    "verbatim": "menyetorkan jaminan Keimigrasian sebagai pengganti Penjamin",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 224 Ayat (1)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-251"
+  },
+  {
+    "claim": "La garanzia immigratoria deve essere versata su un conto di deposito presso la Direzione Generale.",
+    "verbatim": "penyetoran sejumlah dana pada rekening penampungan dana jaminan Keimigrasian",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 224 Ayat (2)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-252"
+  },
+  {
+    "claim": "La garanzia immigratoria deve essere versata prima che lo straniero entri nel territorio indonesiano.",
+    "verbatim": "dibayarkan sebelum Orang Asing masuk ke Wilayah Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (1)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "obligation",
+    "claim_id": "IMM-253"
+  },
+  {
+    "claim": "La garanzia immigratoria può essere utilizzata per il rimpatrio dello straniero.",
+    "verbatim": "pembayaran biaya yang timbul untuk memulangkan atau mengeluarkan Orang Asing",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (2) Huruf a",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-254"
+  },
+  {
+    "claim": "La garanzia immigratoria può essere utilizzata per i costi dello straniero che rimane dopo la scadenza del permesso, fino a 60 giorni.",
+    "verbatim": "pembayaran biaya beban Orang Asing yang telah berakhir masa berlaku Izin Tinggalnya, kurang dari 60 hari",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (2) Huruf b",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-255"
+  },
+  {
+    "claim": "La garanzia immigratoria può essere utilizzata per il pagamento di altri costi relativi agli obblighi immigrativi.",
+    "verbatim": "pembayaran biaya lain yang menjadi kewajiban Orang Asing yang berhubungan dengan kewajiban Keimigrasian",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (2) Huruf c",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-256"
+  },
+  {
+    "claim": "La durata della garanzia immigratoria coincide con la durata del permesso di soggiorno dello straniero.",
+    "verbatim": "Jangka waktu jaminan Keimigrasian sesuai dengan jangka waktu Izin Tinggal Orang Asing",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (3)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-257"
+  },
+  {
+    "claim": "Se il permesso scade e la garanzia non è utilizzata, deve essere restituita allo straniero.",
+    "verbatim": "jaminan Keimigrasian dikembalikan kepada Orang Asing sejumlah uang yang disetorkan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (4)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-258"
+  },
+  {
+    "claim": "Lo straniero può richiedere il prelievo della garanzia dopo aver ottenuto il permesso di lasciare l'Indonesia.",
+    "verbatim": "dapat dilakukan setelah mendapatkan izin meninggalkan wilayah Indonesia",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 225 Ayat (5)",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-259"
+  },
+  {
+    "claim": "Lo straniero versare la garanzia immigratoria su un conto designato.",
+    "verbatim": "Penyetoran jaminan Keimigrasian dilakukan oleh Orang Asing ke rekening jaminan Keimigrasian",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 226",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "procedure",
+    "claim_id": "IMM-260"
+  },
+  {
+    "claim": "L'importo della garanzia immigratoria è fissato dal Ministro.",
+    "verbatim": "Jumlah jaminan Keimigrasian ditetapkan Menteri",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 227",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "fee",
+    "claim_id": "IMM-261"
+  },
+  {
+    "claim": "I permessi di soggiorno temporaneo e permanente non per motivi di lavoro come turista anziano straniero già emessi rimangono validi come permessi di soggiorno per stranieri nel contesto di seconda casa.",
+    "verbatim": "Izin Tinggal Terbatas dan Izin Tinggal Tetap tidak dalam rangka bekerja sebagai wisatawan lanjut usia mancanegara yang telah diterbitkan, dinyatakan tetap berlaku",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 229",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-262"
+  },
+  {
+    "claim": "Diversi regolamenti ministeriali precedenti relativi a visti e permessi di soggiorno sono abrogati e cessano di avere effetto.",
+    "verbatim": "dicabut dan dinyatakan tidak berlaku",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 230",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "rule",
+    "claim_id": "IMM-263"
+  },
+  {
+    "claim": "Questo regolamento ministeriale entra in vigore alla data della sua pubblicazione nella Gazzetta Ufficiale della Repubblica Indonesiana.",
+    "verbatim": "Peraturan Menteri ini mulai berlaku pada tanggal diundangkan",
+    "pasal_ref": "Permenkumham-29-2021 Pasal 231",
+    "instrument_id": "Permenkumham-29-2021",
+    "category": "duration",
+    "claim_id": "IMM-264"
+  },
+  {
+    "claim": "Lo straniero è definito come qualsiasi persona che non possiede la cittadinanza indonesiana.",
+    "verbatim": "Orang Asing adalah orang yang bukan warga negara Indonesia.",
+    "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 3 (sebagaimana diubah oleh Permenkumham-11-2024)",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-265"
+  },
+  {
+    "claim": "L'autorizzazione di rientro è un permesso scritto rilasciato dall'ufficiale dell'immigrazione agli stranieri titolari di permesso di soggiorno temporaneo o permanente.",
+    "verbatim": "Izin Masuk Kembali adalah izin tertulis yang diberikan oleh Pejabat Imigrasi kepada Orang Asing",
+    "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 7 (sebagaimana diubah oleh Permenkumham-11-2024)",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-266"
+  },
+  {
+    "claim": "Il visto è una comunicazione scritta rilasciata da funzionari autorizzati che consente i viaggi verso il territorio indonesiano e costituisce il fondamento per l'autorizzazione di soggiorno.",
+    "verbatim": "Visa Republik Indonesia yang selanjutnya disebut Visa adalah keterangan tertulis",
+    "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 12 (sebagaimana diubah oleh Permenkumham-11-2024)",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-267"
+  },
+  {
+    "claim": "L'autorizzazione di soggiorno per visita è un permesso concesso agli stranieri per soggiorni di breve durata nel territorio indonesiano per motivi di visita.",
+    "verbatim": "Izin Tinggal Kunjungan adalah izin yang diberikan kepada Orang Asing untuk tinggal",
+    "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 14 (sebagaimana diubah oleh Permenkumham-11-2024)",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-268"
+  },
+  {
+    "claim": "L'autorizzazione di soggiorno temporaneo è un permesso rilasciato agli stranieri per soggiorni di durata limitata nel territorio indonesiano.",
+    "verbatim": "Izin Tinggal Terbatas adalah izin yang diberikan kepada Orang Asing untuk tinggal dan berada",
+    "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 15 (sebagaimana diubah oleh Permenkumham-11-2024)",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-269"
+  },
+  {
+    "claim": "L'autorizzazione di soggiorno temporaneo per acque è un permesso rilasciato a capitani, marinai o esperti stranieri che lavorano su navi o installazioni nel territorio indonesiano.",
+    "verbatim": "Izin Tinggal Terbatas Perairan adalah Izin Tinggal Terbatas yang diberikan kepada nakhoda",
+    "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 17 (sebagaimana diubah oleh Permenkumham-11-2024)",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-270"
+  },
+  {
+    "claim": "Un garante è una persona o una società responsabile della permanenza e delle attività dello straniero nel territorio indonesiano.",
+    "verbatim": "Penjamin adalah orang atau korporasi yang bertanggung jawab atas keberadaan dan kegiatan Orang Asing",
+    "pasal_ref": "Permenkumham-22-2023 Pasal 1 Ayat 18 (sebagaimana diubah oleh Permenkumham-11-2024)",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-271"
+  },
+  {
+    "claim": "La garanzia di immigrazione è denaro o altra forma come sostituto del garante.",
+    "verbatim": "Jaminan Keimigrasian adalah dana atau bentuk lain sebagai pengganti Penjamin.",
+    "pasal_ref": "Permenkumham-11-2024 Definisi 19",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-272"
+  },
+  {
+    "claim": "Il responsabile deve essere coniuge, genitore o figlio di età pari o superiore a 21 anni, cittadino indonesiano.",
+    "verbatim": "suami, istri, ayah, ibu, atau anak yang sudah berusia 21 tahun atau lebih, warga negara Indonesia.",
+    "pasal_ref": "Permenkumham-11-2024 Definisi 21",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-273"
+  },
+  {
+    "claim": "La dichiarazione di integrazione è una dichiarazione dello straniero al Governo per ottenere il permesso di soggiorno permanente.",
+    "verbatim": "Pernyataan Integrasi adalah pernyataan Orang Asing kepada Pemerintah sebagai syarat memperoleh Izin Tinggal Tetap.",
+    "pasal_ref": "Permenkumham-11-2024 Definisi 22",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-274"
+  },
+  {
+    "claim": "Il visto di visita deve essere utilizzato entro 90 giorni dalla data di emissione.",
+    "verbatim": "Visa sebagaimana dimaksud dalam Pasal 3 ayat (1) harus dipergunakan dalam jangka waktu paling lama 90 Hari.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 7 Ayat 1",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-275"
+  },
+  {
+    "claim": "Il visto non utilizzato entro il termine prescritto è dichiarato non valido.",
+    "verbatim": "Visa tidak digunakan dalam jangka waktu sebagaimana dimaksud, Visa dinyatakan tidak berlaku.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 7 Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "sanction",
+    "claim_id": "IMM-276"
+  },
+  {
+    "claim": "Il visto di visita pluriennale ha una validità massima di 10 anni dalla data di emissione.",
+    "verbatim": "Jangka waktu penggunaan Visa kunjungan beberapa kali perjalanan berlaku paling lama 10 tahun.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 7 Ayat 4",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-277"
+  },
+  {
+    "claim": "Il visto di visita pluriennale è disponibile in 6 durate: 60 giorni, 180 giorni, 1 anno, 2 anni, 5 anni, 10 anni.",
+    "verbatim": "Jangka waktu penggunaan Visa kunjungan beberapa kali perjalanan dibagi menjadi 6 jenis: 60 hari, 180 hari, 1 tahun, 2 tahun, 5 tahun, 10 tahun.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 7 Ayat 5",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-278"
+  },
+  {
+    "claim": "Il visto di visita adesivo è emesso per visti di una sola volta richiesti presso rappresentanze estere.",
+    "verbatim": "Stiker Visa diterbitkan dalam hal pemberian Visa kunjungan 1 kali perjalanan pada Perwakilan Republik Indonesia.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 5B Ayat 1 Huruf a",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-279"
+  },
+  {
+    "claim": "Il visto adesivo all'arrivo è emesso dopo l'ottenimento del buono visto.",
+    "verbatim": "Stiker Visa dalam pemberian Visa Kunjungan Saat Kedatangan diterbitkan setelah pemohon memperoleh Vaucer Visa.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 5B Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-280"
+  },
+  {
+    "claim": "Il visto elettronico è emesso per richieste presso la Direzione generale dell'immigrazione o al controllo all'arrivo.",
+    "verbatim": "Visa elektronik diterbitkan dalam hal pemberian Visa diajukan pada Direktorat Jenderal Imigrasi.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 5C",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-281"
+  },
+  {
+    "claim": "Il visto di visita pluriennale per la prima volta è rilasciato per durate massime di 5 anni.",
+    "verbatim": "Visa kunjungan beberapa kali perjalanan untuk pertama kali dapat diberikan untuk jangka waktu 60 hari hingga 5 tahun.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 16 Ayat 1",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-282"
+  },
+  {
+    "claim": "Per ottenere il visto pluriennale di 10 anni, lo straniero deve aver precedentemente entrato l'Indonesia con visto di visita.",
+    "verbatim": "Untuk memperoleh Visa kunjungan beberapa kali perjalanan dengan jangka waktu 10 tahun, Orang Asing harus pernah masuk Wilayah Indonesia.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 16 Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-283"
+  },
+  {
+    "claim": "Il visto e il buono visto devono avere specifiche tecniche di sicurezza generale e speciale.",
+    "verbatim": "Visa dan Vaucer Visa memiliki format dengan spesifikasi teknis pengaman umum dan pengaman khusus.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 5D Ayat 1",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-284"
+  },
+  {
+    "claim": "Le specifiche di sicurezza generale devono contenere standard di dimensioni, materiale, stampa, design e caratteristiche visibili ad occhio nudo.",
+    "verbatim": "Spesifikasi teknis pengaman umum memuat standar ukuran, bahan, cetakan, desain, dan Fitur Pengaman Visa diketahui kasat mata.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 5D Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-285"
+  },
+  {
+    "claim": "Le specifiche di sicurezza speciale sono riconoscibili solo da ufficiali autorizzati con strumenti ausiliari.",
+    "verbatim": "Spesifikasi teknis pengaman khusus dapat diketahui oleh Pejabat Imigrasi berwenang dengan menggunakan alat bantu tertentu.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 5D Ayat 3",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-286"
+  },
+  {
+    "claim": "Il visto di visita in forma adesiva è emesso al punto di controllo dell'immigrazione per visti all'arrivo.",
+    "verbatim": "pemberian Visa kunjungan saat kedatangan pada Tempat Pemeriksaan Imigrasi atau tempat difungsikan pemeriksaan Keimigrasian.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 5B Ayat 1 Huruf b",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-287"
+  },
+  {
+    "claim": "Il visto di visita pluriennale può essere concesso per attività turistiche, familiari, commerciali, mediche e altre specifiche.",
+    "verbatim": "Visa kunjungan beberapa kali perjalanan dapat diberikan untuk kegiatan wisata, keluarga, bisnis, pengobatan, dan lainnya.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 15 Ayat 1",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-288"
+  },
+  {
+    "claim": "Il rilascio del visto di visita pluriennale è effettuato da ufficiali autorizzati della Direzione generale dell'immigrazione.",
+    "verbatim": "Pemberian Visa kunjungan beberapa kali perjalanan dilakukan oleh Pejabat Imigrasi pada Direktorat Jenderal Imigrasi.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 15 Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-289"
+  },
+  {
+    "claim": "Gli stranieri che investono capitale estero possono soggiornare per un massimo di 2 anni.",
+    "verbatim": "tinggal paling lama 2 (dua) tahun",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf e Angka 1",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-290"
+  },
+  {
+    "claim": "Gli stranieri nella categoria investimento estero possono soggiornare per un massimo di 5 anni.",
+    "verbatim": "tinggal paling lama 5 (lima) tahun",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf e Angka 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-291"
+  },
+  {
+    "claim": "Gli stranieri nella categoria investimento estero possono soggiornare per un massimo di 10 anni.",
+    "verbatim": "paling lama 10 (sepuluh) tahun",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf e Angka 3",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-292"
+  },
+  {
+    "claim": "I figli biologici non sposati sotto i 18 anni devono riunirsi con genitori titolari di Permesso Soggiorno Limitato o Permanente.",
+    "verbatim": "anak kandung yang belum berusia 18 tahun dan belum kawin",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf h Angka 5",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-293"
+  },
+  {
+    "claim": "I genitori stranieri possono riunirsi con figli cittadini indonesiani di 21 anni o più.",
+    "verbatim": "ayah dan/atau ibu berkewarganegaraan Indonesia berusia 21 tahun atau lebih",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf h Angka 7",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-294"
+  },
+  {
+    "claim": "I rientri dei discendenti di ex cittadini indonesiani fino al secondo grado sono consentiti.",
+    "verbatim": "keturunan eks warga negara Indonesia paling banyak derajat kedua",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf i Angka 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-295"
+  },
+  {
+    "claim": "Stranieri classificati come casa vacanza devono avere almeno 55 anni di età.",
+    "verbatim": "lanjut usia berusia 55 (lima puluh) tahun atau lebih",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 2 Huruf j Angka 4",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-296"
+  },
+  {
+    "claim": "Il visto per lavoro-vacanza è concesso solo da Paesi con accordi bilaterali con l'Indonesia.",
+    "verbatim": "negara tertentu yang memiliki perjanjian kerja sama dengan negara Republik Indonesia",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 3",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-297"
+  },
+  {
+    "claim": "La domanda di visto per soggiorno limitato funge contemporaneamente da domanda di Permesso Soggiorno Limitato e Rientro.",
+    "verbatim": "Permohonan Visa tinggal terbatas sekaligus berlaku sebagai permohonan Izin Tinggal Terbatas dan Izin Masuk Kembali",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 6",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-298"
+  },
+  {
+    "claim": "Determinati visti per riunificazione familiare non sono concedibili per la riunificazione con titolari di visto famiglia.",
+    "verbatim": "tidak dapat diajukan untuk penyatuan kepada pemegang Izin Tinggal Penyatuan Keluarga",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 33 Ayat 7",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "prohibition",
+    "claim_id": "IMM-299"
+  },
+  {
+    "claim": "Il passaporto deve essere valido per almeno 6 mesi al momento della domanda.",
+    "verbatim": "Paspor Kebangsaan yang sah dan masih berlaku paling singkat 6 (enam) bulan",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 1 Huruf a",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-300"
+  },
+  {
+    "claim": "È richiesta prova di disponibilità fondi di sussistenza per il richiedente e la sua famiglia.",
+    "verbatim": "bukti memiliki biaya hidup bagi dirinya dan/atau keluarganya",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 1 Huruf c",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-301"
+  },
+  {
+    "claim": "È richiesta una fotografia colore recente per la domanda.",
+    "verbatim": "pasfoto berwarna terbaru",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 1 Huruf d",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-302"
+  },
+  {
+    "claim": "Per investitori di capitale estero è richiesta proprietà di azioni di almeno 10 miliardi di rupiah.",
+    "verbatim": "bukti kepemilikan saham paling sedikit Rp10.000.000.000,00",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 2 Huruf a",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-303"
+  },
+  {
+    "claim": "È richiesta Decisione Ministeriale per l'approvazione della costituzione di una società a responsabilità limitata.",
+    "verbatim": "Keputusan Menteri mengenai pengesahan pendirian badan hukum perseroan terbatas",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 2 Huruf b",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-304"
+  },
+  {
+    "claim": "È richiesto l'estratto conto della società degli ultimi 2 mesi.",
+    "verbatim": "rekening koran perusahaan 2 (dua) bulan terakhir",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 2 Huruf c",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-305"
+  },
+  {
+    "claim": "L'importo dei fondi di sussistenza è stabilito dal Direttore Generale.",
+    "verbatim": "besaran biaya hidup ditetapkan oleh Direktur Jenderal",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 3",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-306"
+  },
+  {
+    "claim": "L'importo minimo di proprietà azionaria è stabilito dal Direttore Generale previa consultazione.",
+    "verbatim": "Perubahan besaran nilai kepemilikan saham ditetapkan oleh Direktur Jenderal",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 4",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-307"
+  },
+  {
+    "claim": "Se il requisito di proprietà azionaria non è soddisfatto, lo straniero può richiedere il visto per lavoro secondo la normativa sul lavoro.",
+    "verbatim": "dapat mengajukan permohonan Visa tinggal terbatas dalam rangka bekerja",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 5",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-308"
+  },
+  {
+    "claim": "Se la società è costituita da meno di 2 mesi, l'estratto conto deve essere presentato entro 90 giorni dal rilascio del permesso.",
+    "verbatim": "dalam waktu 90 (sembilan puluh) Hari setelah Izin Tinggal Terbatas terbit",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 38 Ayat 6",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-309"
+  },
+  {
+    "claim": "Per il visto di soggiorno limitato di 5 anni è richiesta prova di garanzia immigratoria.",
+    "verbatim": "bukti Jaminan Keimigrasian",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 39 Ayat 1 Huruf b",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-310"
+  },
+  {
+    "claim": "Gli investitori stranieri devono impegnare investimenti di almeno 2,5 milioni di dollari entro 90 giorni.",
+    "verbatim": "modal ditempatkan (saham) atau nilai investasi paling sedikit US$2.500.000 dalam waktu paling lama 90 (sembilan puluh) Hari",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 39 Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-311"
+  },
+  {
+    "claim": "Lo straniero investor individuale che intende costituire una società in Indonesia deve impegnarvisi con un capitale minimo di USD 5.000.000, da realizzarsi entro 90 giorni dalla concessione del Permesso di Soggiorno Limitato.",
+    "verbatim": "modal ditempatkan (saham) atau nilai investasi paling sedikit US$5.000.000",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-312"
+  },
+  {
+    "claim": "Lo straniero investor individuale che non intende costituire una società in Indonesia deve impegnarsi a comprare obbligazioni governative indonesiane per almeno USD 700.000.",
+    "verbatim": "pernyataan komitmen akan membeli obligasi pemerintah Indonesia paling sedikit US$700.000",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 3 Huruf a",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-313"
+  },
+  {
+    "claim": "Lo straniero investor individuale che non intende costituire una società in Indonesia deve impegnarsi a comprare azioni in una società pubblica indonesiana per almeno USD 700.000.",
+    "verbatim": "pernyataan komitmen akan membeli saham pada perusahaan terbuka di Indonesia paling sedikit US$700.000",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 3 Huruf b",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-314"
+  },
+  {
+    "claim": "Lo straniero investor individuale che non intende costituire una società in Indonesia deve impegnarsi a comprare fondi comuni di investimento in una società pubblica indonesiana per almeno USD 700.000.",
+    "verbatim": "pernyataan komitmen akan membeli reksadana pada perusahaan terbuka di Indonesia paling sedikit US$700.000",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 3 Huruf c",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-315"
+  },
+  {
+    "claim": "Lo straniero investor individuale che non intende costituire una società in Indonesia deve impegnarsi a comprare un edificio residenziale o appartamento del valore minimo di USD 1.000.000.",
+    "verbatim": "pernyataan komitmen akan membeli rumah susun atau apartemen senilai harga paling sedikit US$1.000.000",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 3 Huruf d",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-316"
+  },
+  {
+    "claim": "Gli impegni di investimento di cui agli articoli 40(2), 40(3) e relativi devono essere adempiuti entro il termine massimo di 90 giorni dal rilascio del Permesso di Soggiorno Limitato.",
+    "verbatim": "yang harus dipenuhi dalam jangka waktu paling lama 90 (sembilan puluh) Hari",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 3",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-317"
+  },
+  {
+    "claim": "Lo straniero che ricopre una carica di amministratore o consigliere in una filiale o società controllata straniera in Indonesia deve impegnarsi a un investimento minimo di USD 50.000.000.",
+    "verbatim": "nilai investasi paling sedikit US$50.000.000 (lima puluh juta dolar Amerika)",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 4",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-318"
+  },
+  {
+    "claim": "Lo straniero deve fornire prova di disporre di mezzi di sussistenza per sé e per la propria famiglia durante il soggiorno in Indonesia.",
+    "verbatim": "bukti memiliki biaya hidup bagi dirinya dan/atau keluarganya selama berada di Wilayah Indonesia",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 1 Huruf c",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-319"
+  },
+  {
+    "claim": "Lo straniero deve fornire documenti che spieghino il motivo e lo scopo del suo arrivo in Indonesia.",
+    "verbatim": "dokumen lain untuk menerangkan maksud/tujuan kedatangan Orang Asing",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 1 Huruf e",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-320"
+  },
+  {
+    "claim": "La domanda di visto di soggiorno limitato per investitori stranieri deve essere presentata tramite applicazione al Direttore Generale dell'Immigrazione.",
+    "verbatim": "diajukan oleh Orang Asing melalui aplikasi kepada Pejabat Imigrasi yang ditunjuk pada Direktorat Jenderal Imigrasi",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 1",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-321"
+  },
+  {
+    "claim": "Lo straniero investor individuale che intende costituire una società in Indonesia deve presentare prova di garanzia immobiliare sotto forma di dichiarazione di impegno.",
+    "verbatim": "berupa pernyataan komitmen Orang Asing akan mendirikan perusahaan di Indonesia",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "document",
+    "claim_id": "IMM-322"
+  },
+  {
+    "claim": "Lo straniero che ricopre una carica di amministratore o consigliere deve impegnarsi entro 90 giorni dal rilascio del Permesso di Soggiorno Limitato.",
+    "verbatim": "yang harus dipenuhi dalam jangka waktu paling lama 90 (sembilan puluh) Hari terhitung sejak tanggal diberikannya Izin Tinggal Terbatas",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 40 Ayat 4",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-323"
+  },
+  {
+    "claim": "La richiesta di permesso di soggiorno per visitatori può essere presentata da stranieri titolari di permesso di soggiorno per visitatori derivante da visto di ingresso, permesso di soggiorno limitato, o permesso di soggiorno permanente.",
+    "verbatim": "Permohonan sebagaimana dimaksud pada ayat (1) dapat diajukan bagi: a. Orang Asing pemegang Izin Tinggal Kunjungan",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 94A Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-324"
+  },
+  {
+    "claim": "La richiesta deve essere presentata tramite applicazione allegando passaporto valido, permesso di soggiorno, prova di garanzia se applicabile, e dichiarazione dei motivi.",
+    "verbatim": "Permohonan sebagaimana dimaksud pada ayat (1) diajukan melalui aplikasi dengan melampirkan: a. Paspor kebangsaan",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 94A Ayat 3",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-325"
+  },
+  {
+    "claim": "La richiesta deve essere presentata entro 3 giorni prima della scadenza del permesso di soggiorno attuale.",
+    "verbatim": "Permohonan sebagaimana dimaksud pada ayat (1) diajukan dalam jangka waktu paling lama 3 (tiga) hari",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 94A Ayat 4",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-326"
+  },
+  {
+    "claim": "Se la richiesta è presentata e il pagamento effettuato prima della scadenza, non è considerato overstay anche se il processo si conclude dopo la scadenza.",
+    "verbatim": "tidak diperhitungkan overstay jika penyelesaiannya melebihi jangka waktu Izin Tinggalnya",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 94A Ayat 5",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-327"
+  },
+  {
+    "claim": "Il procedimento di concessione del permesso di soggiorno per visitatori comprende ricezione della domanda, verifica del pagamento, approvazione e rilascio del permesso.",
+    "verbatim": "a. penerimaan pengajuan permohonan; b. verifikasi pembayaran biaya Imigrasi",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 94B Ayat 1",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-328"
+  },
+  {
+    "claim": "Il permesso di soggiorno deve essere completato entro 3 giorni lavorativi dal ricevimento del pagamento.",
+    "verbatim": "Pemberian Izin Tinggal Kunjungan sebagaimana dimaksud pada ayat (1) diselesaikan dalam waktu paling lama 3 (tiga) hari kerja",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 94B Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-329"
+  },
+  {
+    "claim": "Il permesso di soggiorno è inviato elettronicamente allo straniero, garante o responsabile.",
+    "verbatim": "Izin Tinggal Kunjungan sebagaimana dimaksud pada ayat (1) dikirimkan secara elektronik kepada Orang Asing",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 94B Ayat 3",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-330"
+  },
+  {
+    "claim": "Il rinnovo del permesso di soggiorno per visitatori può essere concesso a stranieri con visto per una sola entrata, più entrate, o ingresso al momento dell'arrivo.",
+    "verbatim": "Perpanjangan Izin Tinggal Kunjungan dapat diberikan kepada: a. Orang Asing pemegang Izin Tinggal Kunjungan",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 1",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-331"
+  },
+  {
+    "claim": "Il rinnovo per cittadini di paesi con visto di chiamata richiede l'approvazione del Direttore Generale o ufficiale immigrazione designato.",
+    "verbatim": "dapat diberikan setelah mendapatkan persetujuan Direktur Jenderal atau Pejabat Imigrasi yang ditunjuk",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-332"
+  },
+  {
+    "claim": "Il rinnovo per visto singolo o multiplo è concesso per massimo 60 giorni per rinnovo, con permanenza totale massima di 180 giorni in Indonesia.",
+    "verbatim": "diberikan untuk jangka waktu paling lama 60 (enam puluh) Hari setiap kali perpanjangan dengan ketentuan keseluruhan Izin Tinggal",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 3",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-333"
+  },
+  {
+    "claim": "Il rinnovo per pre-investimento è concesso per 180 giorni per rinnovo, con permanenza totale massima di 12 mesi in Indonesia.",
+    "verbatim": "dalam rangka prainvestasi diberikan dengan jangka waktu 180 (seratus delapan puluh) Hari dengan ketentuan keseluruhan Izin Tinggal",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 4",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-334"
+  },
+  {
+    "claim": "Il rinnovo per incarico governativo è concesso per 60 giorni per rinnovo, con permanenza totale massima di 12 mesi in Indonesia.",
+    "verbatim": "dalam rangka tugas pemerintahan diberikan dengan jangka waktu 60 (enam puluh) Hari dengan ketentuan keseluruhan Izin Tinggal",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 5",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-335"
+  },
+  {
+    "claim": "Il rinnovo per tirocinio è concesso per 180 giorni per rinnovo, con permanenza totale massima di 12 mesi in Indonesia.",
+    "verbatim": "dalam rangka pemagangan diberikan dengan jangka waktu 180 (seratus delapan puluh) Hari dengan ketentuan keseluruhan Izin Tinggal",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 6",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-336"
+  },
+  {
+    "claim": "Il rinnovo per visto di ingresso al momento dell'arrivo è concesso per massimo 30 giorni per rinnovo, con permanenza totale massima di 60 giorni in Indonesia.",
+    "verbatim": "diberikan untuk jangka waktu paling lama 30 (tiga puluh) Hari dengan ketentuan keseluruhan Izin Tinggal tidak lebih dari 60",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 7",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-337"
+  },
+  {
+    "claim": "In applicazione di reciprocità basata su accordo scritto, il rinnovo può essere concesso per massimo 180 giorni con permanenza totale massima di 12 mesi.",
+    "verbatim": "dapat diberikan untuk jangka waktu paling lama 180 (seratus delapan puluh) hari dengan ketentuan keseluruhan Izin Tinggal tidak lebih dari 12",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 95 Ayat 8",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-338"
+  },
+  {
+    "claim": "Il rinnovo del permesso di soggiorno per visitatori è gestito dal Capo Ufficio Immigrazione o ufficiale designato sulla base di richiesta.",
+    "verbatim": "dilaksanakan oleh Kepala Kantor Imigrasi atau Pejabat Imigrasi yang ditunjuk berdasarkan permohonan",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 97 Ayat 1",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-339"
+  },
+  {
+    "claim": "La richiesta di rinnovo può essere presentata al più presto 14 giorni e al più tardi prima della scadenza del permesso.",
+    "verbatim": "dapat diajukan paling cepat 14 (empat belas) Hari dan paling lama sebelum Izin Tinggal Kunjungan berakhir",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 97 Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-340"
+  },
+  {
+    "claim": "Il rinnovo decorre dal primo giorno successivo alla data di scadenza del permesso di soggiorno per visitatori.",
+    "verbatim": "diberikan terhitung 1 (satu) Hari setelah tanggal Izin Tinggal Kunjungan berakhir",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 97 Ayat 4",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-341"
+  },
+  {
+    "claim": "In applicazione di reciprocità basata su accordo, la richiesta di rinnovo può essere presentata al più presto dal giorno di rilascio del timbro di ingresso e al più tardi prima della scadenza.",
+    "verbatim": "diajukan paling cepat pada hari diberikannya Tanda Masuk dan paling lama sebelum Izin Tinggalnya berakhir",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 97 Ayat 5",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-342"
+  },
+  {
+    "claim": "Il permesso di soggiorno limitato è concesso a stranieri che entrano in Indonesia con visto di soggiorno limitato.",
+    "verbatim": "Izin Tinggal Terbatas diberikan kepada Orang Asing yang masuk ke Wilayah Indonesia dengan Visa tinggal terbatas",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 101 Ayat 1",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-343"
+  },
+  {
+    "claim": "Il permesso di soggiorno limitato può anche essere concesso a figli nati in Indonesia da genitori titolari di permesso di soggiorno limitato, e a comandanti, equipaggi, esperti stranieri su navi.",
+    "verbatim": "Izin Tinggal Terbatas juga dapat diberikan kepada: a. anak yang pada saat lahir di Wilayah Indonesia",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 101 Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-344"
+  },
+  {
+    "claim": "Il permesso di soggiorno limitato può essere concesso anche mediante cambio di status dal permesso di soggiorno per visitatori.",
+    "verbatim": "Izin Tinggal Terbatas juga diberikan kepada Orang Asing melalui alih status dari Izin Tinggal Kunjungan menjadi Izin Tinggal Terbatas",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 101 Ayat 3",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-345"
+  },
+  {
+    "claim": "Il permesso di soggiorno limitato è concesso per attività quali: esperto, lavoratore, lavoro su navi/installazioni, religioso, investimento estero per 2 o 5 anni.",
+    "verbatim": "Izin Tinggal Terbatas diberikan kepada Orang Asing untuk melakukan kegiatan: a. sebagai tenaga ahli; b. sebagai pekerja",
+    "pasal_ref": "Permenkumham-11-2024 Pasal 101 Ayat 4",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-346"
+  },
+  {
+    "claim": "Un garante individuale di una persona straniera deve essere un cittadino indonesiano.",
+    "verbatim": "Penjamin perrorangan sebagaimana dimaksud pada ayat (2) huruf a merupakan Warga Negara Indonesia.",
+    "pasal_ref": "Permenkumham-11-2024 Pasal (3)",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-347"
+  },
+  {
+    "claim": "L'obbligo di avere un garante è esentato per persone straniere coniugate con cittadini indonesiani.",
+    "verbatim": "Orang Asing yang kawin secara sah dengan warga negara Indonesia",
+    "pasal_ref": "Permenkumham-11-2024 Pasal (4) huruf a",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "exemption",
+    "claim_id": "IMM-348"
+  },
+  {
+    "claim": "L'obbligo di avere un garante è esentato per imprenditori stranieri che investono in Indonesia secondo le normative sulla pianificazione modale.",
+    "verbatim": "pelaku usaha dengan kewarganegaraan asing yang menanamkan modal sebagai investasinya di Indonesia",
+    "pasal_ref": "Permenkumham-11-2024 Pasal (4) huruf b",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "exemption",
+    "claim_id": "IMM-349"
+  },
+  {
+    "claim": "L'obbligo di avere un garante è esentato per cittadini di paesi che forniscono reciprocamente l'esenzione dalla garanzia.",
+    "verbatim": "warga dari suatu negara yang secara resiprokal memberikan pembebasan penjaminan",
+    "pasal_ref": "Permenkumham-11-2024 Pasal (4) huruf c",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "exemption",
+    "claim_id": "IMM-350"
+  },
+  {
+    "claim": "L'esenzione dall'obbligo di garante può applicarsi ai permessi di soggiorno per repatriazione.",
+    "verbatim": "Pengecualian kewajiban memiliki Penjamin dapat diberlakukan bagi Izin Tinggal dalam rangka repatriasi",
+    "pasal_ref": "Permenkumham-11-2024 Pasal (5) huruf a",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "exemption",
+    "claim_id": "IMM-351"
+  },
+  {
+    "claim": "Le esenzioni dall'obbligo di garante possono essere sostituite da una Garanzia Immigrazione.",
+    "verbatim": "Pengecualian sebagaimana dimaksud pada ayat (4) dan ayat (5) dapat digantikan dengan Jaminan Keimigrasian",
+    "pasal_ref": "Permenkumham-11-2024 Pasal (6)",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-352"
+  },
+  {
+    "claim": "La Garanzia Immigrazione è uno strumento dell'Ufficiale Immigrazione per valutare selettivamente l'idoneità e l'utilità della presenza di stranieri in Indonesia.",
+    "verbatim": "Jaminan Keimigrasian merupakan instrumen Pejabat Imigrasi dalam menilai kelayakan secara selektif",
+    "pasal_ref": "Permenkumham-11-2024 Pasal (7)",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-353"
+  },
+  {
+    "claim": "Le domande di visto, permesso di soggiorno e permesso di rientro presentate prima dell'entrata in vigore della presente regolamentazione rimangono elaborate secondo la regolamentazione precedente.",
+    "verbatim": "permohonan Visa, Izin Tinggal, dan Izin Masuk Kembali yang telah diajukan sebelumnya tetap diproses",
+    "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 1 huruf a",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-354"
+  },
+  {
+    "claim": "Gli adesivi visto e voucher visto acquisiti secondo la regolamentazione precedente rimangono in uso fino all'esaurimento delle scorte.",
+    "verbatim": "Stiker Visa dan Vaucer Visa tetap digunakan sampai persediaan tersebut habis",
+    "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 1 huruf b",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "procedure",
+    "claim_id": "IMM-355"
+  },
+  {
+    "claim": "I visti emessi prima dell'entrata in vigore della presente regolamentazione rimangono validi fino alla scadenza.",
+    "verbatim": "Visa yang telah diterbitkan sebelum Peraturan Menteri ini mulai berlaku, dinyatakan tetap berlaku",
+    "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 1 huruf c",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-356"
+  },
+  {
+    "claim": "Il Sistema Informativo di Gestione Immigrazione deve essere adattato alla presente regolamentazione entro 30 giorni dalla pubblicazione.",
+    "verbatim": "Sistem Informasi Manajemen Keimigrasian harus disesuaikan dalam jangka waktu paling lama 30 hari",
+    "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 1 huruf d",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-357"
+  },
+  {
+    "claim": "La Regolamentazione Ministeriale Numero 11 del 2015 sulla forma e formato del visto è abrogata e cessa di essere in vigore.",
+    "verbatim": "Peraturan Menteri Nomor 11 Tahun 2015 dicabut dan dinyatakan tidak berlaku",
+    "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 2",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "rule",
+    "claim_id": "IMM-358"
+  },
+  {
+    "claim": "La presente regolamentazione ministeriale entra in vigore 30 giorni dopo la data di pubblicazione.",
+    "verbatim": "Peraturan Menteri ini mulai berlaku 30 hari sejak tanggal diundangkan",
+    "pasal_ref": "Permenkumham-11-2024 Pasal II Ayat 3",
+    "instrument_id": "Permenkumham-11-2024",
+    "category": "duration",
+    "claim_id": "IMM-359"
+  },
+  {
+    "claim": "Il documento IMTA come documento fisico separato e' stato abolito da PP 34/2021. Il sostituto e' l'approvazione del RPTKA combinata con il pagamento della tassa DKP-TKA.",
+    "verbatim": "IMTA dihapuskan, digantikan dengan pengesahan RPTKA dan pembayaran DKP-TKA",
+    "pasal_ref": "PP 34/2021",
+    "instrument_id": "PP-34-2021",
+    "category": "rule",
+    "claim_id": "IMM-360"
+  },
+  {
+    "claim": "Il datore di lavoro che utilizza lavoratori stranieri (TKA) e' obbligato a pagare la tassa DKP-TKA pari a USD 100 per lavoratore per mese.",
+    "verbatim": "Pemberi Kerja TKA wajib membayar DKP-TKA sebesar USD 100 per TKA per bulan",
+    "pasal_ref": "PP 34/2021 Pasal 32",
+    "instrument_id": "PP-34-2021",
+    "category": "fee",
+    "claim_id": "IMM-361"
+  },
+  {
+    "claim": "Con la UU 63/2024 il Multiple Exit Re-entry Permit (MERP) non e' piu' un documento separato: la sua validita' e' automaticamente allineata alla validita' del KITAS o KITAP.",
+    "verbatim": "MERP berlaku sesuai dengan masa berlaku Izin Tinggal Terbatas atau Izin Tinggal Tetap",
+    "pasal_ref": "UU 63/2024 (Perubahan Ketiga UU 6/2011)",
+    "instrument_id": "UU-63-2024",
+    "category": "rule",
+    "claim_id": "IMM-362"
+  },
+  {
+    "claim": "Il sistema degli indici visa e' stato rinnovato da Permenkumham 22/2023. Il KITAS per lavoratore straniero usa ora l'indice E23. Il vecchio indice E31 e' obsoleto.",
+    "verbatim": "Indeks Visa dan Izin Tinggal diatur ulang dalam Permenkumham 22/2023, indeks E23 untuk TKA",
+    "pasal_ref": "Permenkumham 22/2023",
+    "instrument_id": "Permenkumham-22-2023",
+    "category": "rule",
+    "claim_id": "IMM-363"
+  },
+  {
+    "claim": "Il KITAS per lavoratori da remoto (digital nomad) utilizza l'indice E33G, introdotto da PP 40/2023 e PP 63/2023. Il titolare deve avere un datore di lavoro registrato fuori dall'Indonesia e un salario minimo di USD 60.000 annui. E' vietato lavorare per aziende indonesiane o generare reddito locale.",
+    "verbatim": "KITAS untuk pekerja remote/digital nomad menggunakan indeks E33G, diatur PP 40/2023 dan PP 63/2023",
+    "pasal_ref": "PP 40/2023 Pasal 1",
+    "instrument_id": "PP-40-2023",
+    "category": "rule",
+    "claim_id": "IMM-364"
+  },
+  {
+    "claim": "Il ministero competente per l'immigrazione e' ora il Kementerian Imigrasi dan Pemasyarakatan (Kemenimipas), separato dal Kemenkumham a partire dalla fine del 2024.",
+    "verbatim": "Kementerian Imigrasi dan Pemasyarakatan (Kemenimipas) dibentuk akhir 2024",
+    "pasal_ref": "Perpres pembentukan Kemenimipas 2024",
+    "instrument_id": "Kemenimipas-2024",
+    "category": "rule",
+    "claim_id": "IMM-365"
+  },
+  {
+    "claim": "Le regole sui garanti (penjamin) per visti e permessi di soggiorno sono ora disciplinate da Permenimipas 5/2025, che ha abrogato Permenkumham 36/2021.",
+    "verbatim": "Permenimipas 5/2025 mencabut Permenkumham 36/2021 tentang Penjamin",
+    "pasal_ref": "Permenimipas 5/2025 Pasal 1",
+    "instrument_id": "Permenimipas-5-2025",
+    "category": "rule",
+    "claim_id": "IMM-366"
+  },
+  {
+    "claim": "Il bando di uscita (cekal) per stranieri puo' essere applicato solo durante indagini formali (penyidikan) o procedimenti penali, non durante indagini preliminari (penyelidikan).",
+    "verbatim": "Pencegahan hanya dapat dilakukan pada tahap penyidikan atau penuntutan, bukan penyelidikan",
+    "pasal_ref": "UU 63/2024 (Perubahan Ketiga UU 6/2011)",
+    "instrument_id": "UU-63-2024",
+    "category": "rule",
+    "claim_id": "IMM-367"
+  },
+  {
+    "claim_id": "IMM-368",
+    "claim": "Il Visa on Arrival (VOA / e-VOA) è un visto di visita emesso al punto di ingresso con validità 30 giorni, rinnovabile una volta per ulteriori 30 giorni. Usa gli indici B1 (turismo/famiglia/transit), B2 (bisnis), B3 (cure mediche), B4 (missione governativa), introdotti da Permenkumham 22/2023.",
+    "verbatim": "Visa on Arrival diberikan di tempat pemeriksaan imigrasi, berlaku 30 hari, dapat diperpanjang satu kali 30 hari, indeks B1/B2/B3/B4 sesuai Permenkumham 22/2023",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "VOA",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-369",
+    "claim": "Il VOA B1 è per turismo/famiglia/transit; B2 per attività bisnis (riunioni, trattative); B3 per cure mediche; B4 per missioni governative. Nessun VOA può essere convertito in KITAS: occorre uscire e rientrare con visto idoneo.",
+    "verbatim": "B1: wisata/keluarga/transit; B2: bisnis/rapat/negosiasi; B3: pengobatan; B4: tugas pemerintahan. VoA tidak dapat dialihstatuskan menjadi KITAS.",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "VOA",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-370",
+    "claim": "Il visto C1 è il visto kunjungan single entry per turismo. Sostituisce il vecchio B211A dal Permenkumham 22/2023. Ha validità 60 giorni per ingresso, prorogabile fino a un massimo di 180 giorni totali di permanenza.",
+    "verbatim": "C1 menggantikan B211A sejak Permenkumham 22/2023, visa kunjungan sekali perjalanan tujuan wisata, berlaku 60 hari, dapat diperpanjang hingga 180 hari total",
+    "pasal_ref": "Permenkumham 22/2023; IMM-333",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C1",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-371",
+    "claim": "Il visto C2 è il visto kunjungan single entry per attività bisnis: riunioni, audit, ispezioni, servizi post-vendita. Ha validità 60 giorni per ingresso, prorogabile fino a 180 giorni totali di permanenza in Indonesia.",
+    "verbatim": "C2 visa kunjungan sekali perjalanan untuk bisnis, audit, inspeksi, purna jual, berlaku 60 hari, dapat diperpanjang hingga 180 hari total",
+    "pasal_ref": "Permenkumham 22/2023; IMM-333",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C2",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-372",
+    "claim": "Il visto C7 è il visto kunjungan single entry per spettacoli artistici e culturali non commerciali (musica, teatro, danza, arti visive). Richiede sponsorizzazione da ente culturale indonesiano riconosciuto dal Kemenimipas.",
+    "verbatim": "C7 visa kunjungan untuk pertunjukan seni budaya non-komersial, memerlukan sponsor lembaga kebudayaan yang diakui Kemenimipas",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C7",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-373",
+    "claim": "Il visto C8 è il visto kunjungan single entry per attività sportive non commerciali (competizioni, allenamenti, tornei internazionali). Non consente attività lavorative remunerate in Indonesia.",
+    "verbatim": "C8 visa kunjungan untuk kegiatan olahraga non-komersial, tidak boleh melakukan kegiatan kerja berbayar",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C8",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-374",
+    "claim": "Il visto C12 è il visto kunjungan single entry per pra-investimento. Ha validità 180 giorni per ingresso (non 60 giorni come C1/C2) e consente al titolare di valutare opportunità di investimento senza ancora costituire una società. Il rinnovo è concesso per 180 giorni con permanenza massima 360 giorni.",
+    "verbatim": "C12 visa pra-investasi berlaku 180 hari per kedatangan, perpanjangan 180 hari, total maksimum 360 hari — Permenkumham 22/2023; IMM-334",
+    "pasal_ref": "Permenkumham 22/2023; IMM-334",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C12",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-375",
+    "claim": "Il visto C18 è il visto kunjungan single entry per prova di competenza lavorativa (work trial / uji coba keahlian). Consente a lavoratori stranieri di dimostrare le proprie competenze a un potenziale datore di lavoro indonesiano prima di ottenere il KITAS E23.",
+    "verbatim": "C18 visa uji coba keahlian tenaga kerja asing, digunakan sebagai tahap awal sebelum mendapatkan KITAS E23 — Permenkumham 22/2023",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C18",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-376",
+    "claim": "Il visto C22 è il visto kunjungan single entry per tirocinio / stage (magang). Consente a studenti e giovani professionisti stranieri di svolgere programmi di internship presso aziende o istituzioni indonesiane. Il rinnovo è concesso per 180 giorni con permanenza totale massima di 12 mesi.",
+    "verbatim": "C22 visa magang/internship, perpanjangan 180 hari per perpanjangan, total maksimum 12 bulan — Permenkumham 22/2023; IMM-336",
+    "pasal_ref": "Permenkumham 22/2023; IMM-336",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "C22",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-377",
+    "claim": "Il visto D2 è il visto kunjungan multiple entry per attività bisnis. Disponibile in durate 1, 2 o 5 anni. Consente soggiorni massimi di 60 giorni per ingresso con rinnovo per 60 giorni aggiuntivi. Sostituisce il vecchio B212 per uso bisnis.",
+    "verbatim": "D2 visa kunjungan beberapa kali perjalanan untuk bisnis, tersedia 1/2/5 tahun, maksimal 60 hari per kedatangan, dapat diperpanjang 60 hari — Permenkumham 22/2023; IMM-278",
+    "pasal_ref": "Permenkumham 22/2023; IMM-278; IMM-333",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "D2",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-378",
+    "claim": "Il visto D12 è il visto kunjungan multiple entry per pra-investimento a lungo termine. Consente soggiorni di 180 giorni per ingresso (non 60 giorni come D2). Disponibile in durate 1, 2 o 5 anni. Rinnovo concesso per 180 giorni per rinnovo.",
+    "verbatim": "D12 visa pra-investasi multiple entry, izin tinggal 180 hari per kedatangan, tersedia 1/2/5 tahun, perpanjangan 180 hari — Permenkumham 22/2023; IMM-334",
+    "pasal_ref": "Permenkumham 22/2023; IMM-334",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "D12",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-379",
+    "claim": "Il KITAS E28B è il Golden Visa per investitori stranieri che costituiscono o partecipano in una società in Indonesia con impegno di capitale elevato. Ha durata 5 o 10 anni. L'investitore che costituisce una società deve impegnarsi a investire almeno 2,5 milioni di USD entro 90 giorni dall'ingresso.",
+    "verbatim": "E28B Golden Visa untuk investor yang mendirikan perusahaan di Indonesia, berlaku 5 atau 10 tahun, komitmen investasi minimal USD 2,5 juta dalam 90 hari — PP 31/2013 Pasal 40; IMM-311",
+    "pasal_ref": "Permenkumham 22/2023; PP 31/2013 Pasal 40; IMM-311; IMM-312",
+    "source_law": "Permenkumham 22/2023; PP 31/2013",
+    "permit_type": "E28B",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-380",
+    "claim": "Per il Golden Visa E28B di 5 anni è richiesta prova di garanzia immigratoria. Per il Golden Visa di 10 anni lo straniero deve aver precedentemente soggiornato in Indonesia con visto di durata inferiore.",
+    "verbatim": "KITAS 5 tahun memerlukan jaminan keimigrasian; KITAS 10 tahun memerlukan riwayat tinggal sebelumnya — PP 31/2013; IMM-310; IMM-283",
+    "pasal_ref": "PP 31/2013; IMM-310; IMM-283",
+    "source_law": "PP 31/2013",
+    "permit_type": "E28B",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-381",
+    "claim": "Il KITAS E28C è il Golden Visa per investitori individuali che NON costituiscono una società in Indonesia ma investono in strumenti finanziari statali: titoli di stato (SBN), obbligazioni governative o depositi bancari presso banche statali indonesiane (BUMN). Durata 5 o 10 anni.",
+    "verbatim": "E28C Golden Visa untuk investor individu yang tidak mendirikan perusahaan, berinvestasi di SBN/obligasi pemerintah/deposito bank BUMN, berlaku 5 atau 10 tahun — PP 31/2013 Pasal 40(3); IMM-313",
+    "pasal_ref": "Permenkumham 22/2023; PP 31/2013 Pasal 40(3); IMM-313; IMM-314; IMM-315; IMM-316",
+    "source_law": "Permenkumham 22/2023; PP 31/2013",
+    "permit_type": "E28C",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-382",
+    "claim": "Lo straniero investitore E28C deve impegnarsi entro 90 giorni dall'ingresso a depositare fondi in banca statale, acquistare SBN o obbligazioni governative. Gli impegni devono essere adempiuti entro il termine previsto pena revoca del permesso.",
+    "verbatim": "Investor E28C wajib berkomitmen dalam 90 hari: deposito bank BUMN, SBN, atau obligasi pemerintah — PP 31/2013 Pasal 40(3); IMM-317",
+    "pasal_ref": "PP 31/2013 Pasal 40(3); IMM-317",
+    "source_law": "PP 31/2013",
+    "permit_type": "E28C",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-383",
+    "claim": "Il KITAS E31 è il permesso di soggiorno per ricongiungimento familiare. Consente al coniuge straniero e ai figli minori di 18 anni non sposati di un titolare di KITAS (o di un cittadino indonesiano WNI) di risiedere in Indonesia. Il titolare principale funge da garante.",
+    "verbatim": "E31 izin tinggal penyatuan keluarga untuk pasangan asing dan anak di bawah 18 tahun belum menikah dari pemegang KITAS atau WNI — Permenkumham 22/2023; PP 31/2013; IMM-293",
+    "pasal_ref": "Permenkumham 22/2023; PP 31/2013; IMM-293; IMM-294",
+    "source_law": "Permenkumham 22/2023; PP 31/2013",
+    "permit_type": "E31",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-384",
+    "claim": "I genitori stranieri possono ottenere il KITAS E31 per ricongiungimento con figli cittadini indonesiani (WNI) di almeno 21 anni. Determinati visti per riunificazione familiare non sono concedibili per la riunificazione con titolari di specifici permessi temporanei.",
+    "verbatim": "Orang tua asing dapat bersatu dengan anak WNI berusia 21 tahun ke atas; beberapa jenis visa penyatuan keluarga tidak dapat diberikan untuk bergabung dengan pemegang izin tinggal tertentu — PP 31/2013; IMM-294; IMM-299",
+    "pasal_ref": "PP 31/2013; IMM-294; IMM-299",
+    "source_law": "PP 31/2013",
+    "permit_type": "E31",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-385",
+    "claim": "Il KITAS E33F è il permesso di soggiorno per pensionati stranieri (lansia). È riservato a stranieri di almeno 55 anni che vogliono risiedere in Indonesia senza svolgere attività lavorativa. Richiede sponsorizzazione tramite un'agenzia autorizzata dal Kemenimipas.",
+    "verbatim": "E33F izin tinggal untuk pensiunan asing (lansia), usia minimal 55 tahun, tidak boleh bekerja, memerlukan sponsor agen resmi yang ditunjuk Kemenimipas — Permenkumham 22/2023; IMM-296",
+    "pasal_ref": "Permenkumham 22/2023; IMM-296",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "E33F",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-386",
+    "claim": "Il titolare di KITAS E33F deve dimostrare disponibilità di fondi di sussistenza mensili sufficienti per sé e la propria famiglia, possedere assicurazione sanitaria valida per l'Indonesia e non può svolgere alcuna attività lavorativa o commerciale.",
+    "verbatim": "Pemegang E33F wajib membuktikan dana hidup bulanan, asuransi kesehatan, tidak boleh bekerja atau berbisnis — PP 31/2013; IMM-301; IMM-306",
+    "pasal_ref": "PP 31/2013; IMM-301; IMM-306",
+    "source_law": "PP 31/2013",
+    "permit_type": "E33F",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-387",
+    "claim": "Il KITAS E33E (Silver Hair Visa) è una variante Golden Visa per stranieri anziani di almeno 60 anni. Ha durata 5 anni. Richiede un deposito bancario vincolato presso banca statale indonesiana di circa 50.000 USD come prova di disponibilità economica. Non richiede necessariamente lo sponsor di un'agenzia.",
+    "verbatim": "E33E Silver Hair Visa untuk lansia 60+ tahun, berlaku 5 tahun, deposito bank BUMN sekitar USD 50.000, tidak wajib agen sponsor — Permenkumham 22/2023",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "E33E",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-388",
+    "claim": "Il Silver Hair Visa E33E, come il pensionato E33F, non consente lavoro subordinato o attività commerciale in Indonesia. La differenza principale è che E33E si basa su deposito vincolato (prova economica autonoma) mentre E33F richiede lo sponsor agenzia.",
+    "verbatim": "E33E e E33F entrambi melarang kerja/kegiatan komersial; E33E berbeda dari E33F: cukup bukti deposito tanpa agen sponsor wajib — Permenkumham 22/2023",
+    "pasal_ref": "Permenkumham 22/2023",
+    "source_law": "Permenkumham 22/2023",
+    "permit_type": "E33E",
+    "verified": true
+  },
+  {
+    "claim_id": "IMM-389",
+    "claim": "Il Kepmenaker 228/2019 elenca i settori KBLI in cui e ammesso impiegare Tenaga Kerja Asing (TKA).",
+    "verbatim": "Kepmenaker RI No. 228 Tahun 2019 tentang Jabatan Tertentu yang Dapat Diduduki oleh Tenaga Kerja Asing",
+    "pasal_ref": "Kepmenaker 228/2019",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-390",
+    "claim": "Il Kepmenaker 228/2019 individua 20 settori KBLI in cui determinate jabatan possono essere ricoperte da lavoratori stranieri.",
+    "verbatim": "20 sektor yang diizinkan TKA berdasarkan Kepmenaker 228/2019",
+    "pasal_ref": "Kepmenaker 228/2019 Diktum PERTAMA",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-391",
+    "claim": "Il settore Penyediaan Akomodasi dan Makan Minum (KBLI 55-56, sezione I) ammette 12 jabatan per TKA, tra cui General Manager, Executive Chef, F&B Manager.",
+    "verbatim": "Sektor I: 12 jabatan termasuk General Manager, Executive Chef",
+    "pasal_ref": "Kepmenaker 228/2019 Lampiran Sektor 8",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-392",
+    "claim": "Il settore Real Estate (KBLI 68, sezione L) ammette 6 jabatan per TKA.",
+    "verbatim": "Sektor L Real Estate: 6 jabatan diizinkan TKA",
+    "pasal_ref": "Kepmenaker 228/2019 Lampiran Sektor 2",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-393",
+    "claim": "Il settore Kesenian, Hiburan e Rekreasi (KBLI 90-93, sezione R) ammette 57 jabatan per TKA.",
+    "verbatim": "Sektor R: 57 jabatan diizinkan TKA",
+    "pasal_ref": "Kepmenaker 228/2019 Lampiran Sektor 7",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-394",
+    "claim": "Il settore Konstruksi (KBLI 41-43, sezione F) ammette 181 jabatan per TKA, il piu ampio dopo pertambangan.",
+    "verbatim": "Sektor F Konstruksi: 181 jabatan",
+    "pasal_ref": "Kepmenaker 228/2019 Lampiran Sektor 1",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-395",
+    "claim": "Il settore Pertambangan Minyak & Gas (KBLI 06, sezione B) e il solo che permette al TKA di essere Direktur Utama, con S1 e 15 anni di esperienza.",
+    "verbatim": "Satu-satunya sektor yang membolehkan TKA sebagai Direktur Utama: S1 + 15 tahun pengalaman",
+    "pasal_ref": "Kepmenaker 228/2019 Lampiran Sektor 14",
+    "instrument_id": "KEPMENAKER-228-2019",
+    "category": "tka_jabatan"
+  },
+  {
+    "claim_id": "IMM-396",
+    "claim": "Il Kepmenaker 349/2019 elenca 19 jabatan assolutamente vietate ai TKA in tutti i settori, prevalentemente nellarea HR e relazioni industriali.",
+    "verbatim": "Kepmenaker RI No. 349 Tahun 2019 tentang Jabatan Tertentu yang Dilarang Diduduki oleh Tenaga Kerja Asing",
+    "pasal_ref": "Kepmenaker 349/2019",
+    "instrument_id": "KEPMENAKER-349-2019",
+    "category": "tka_jabatan_vietate"
+  },
+  {
+    "claim_id": "IMM-397",
+    "claim": "Le 19 jabatan vietate ai TKA includono: Direktur Personalia, Manajer Hubungan Industrial, Manajer Personalia, e tutti i ruoli HR/personale/relazioni industriali.",
+    "verbatim": "19 jabatan dilarang: Direktur Personalia, Manajer Hubungan Industrial, Manajer Personalia, dst.",
+    "pasal_ref": "Kepmenaker 349/2019 Lampiran",
+    "instrument_id": "KEPMENAKER-349-2019",
+    "category": "tka_jabatan_vietate"
+  },
+  {
+    "claim_id": "IMM-398",
+    "claim": "La posizione di Kepala Eksekutif Kantor (CEO) e classificata come jabatan condizionale: vietata se la funzione principale e la gestione del personale.",
+    "verbatim": "Kepala Eksekutif Kantor: kondisional - tergantung fungsi",
+    "pasal_ref": "Kepmenaker 349/2019",
+    "instrument_id": "KEPMENAKER-349-2019",
+    "category": "tka_jabatan_vietate"
+  },
+  {
+    "claim_id": "IMM-399",
+    "claim": "Il PP 34/2021 disciplina le condizioni generali di impiego dei TKA in Indonesia, incluso obbligo di RPTKA e pagamento del DKP-TKA.",
+    "verbatim": "PP No. 34 Tahun 2021 tentang Penggunaan Tenaga Kerja Asing",
+    "pasal_ref": "PP 34/2021",
+    "instrument_id": "PP-34-2021",
+    "category": "tka_normativa"
+  },
+  {
+    "claim_id": "IMM-400",
+    "claim": "Il DKP-TKA e fissato a USD 100 per jabatan per mese, da versare al Kemnaker prima del rilascio del visto E23.",
+    "verbatim": "DKP-TKA: USD 100 per jabatan per bulan",
+    "pasal_ref": "PP 34/2021 Pasal 32",
+    "instrument_id": "PP-34-2021",
+    "category": "tka_normativa"
+  },
+  {
+    "claim_id": "IMM-401",
+    "claim": "Il datore di lavoro deve presentare il RPTKA tramite il portale Molina (molina.kemnaker.go.id) prima di assumere un TKA.",
+    "verbatim": "RPTKA wajib diajukan melalui portal Molina sebelum mempekerjakan TKA",
+    "pasal_ref": "PP 34/2021 Pasal 10",
+    "instrument_id": "PP-34-2021",
+    "category": "tka_normativa"
+  },
+  {
+    "claim_id": "IMM-402",
+    "claim": "L'IMTA come documento fisico separato e stato abolito: l'approvazione RPTKA sostituisce l'IMTA e abilita il rilascio del visto E23.",
+    "verbatim": "IMTA fisik dihapuskan: RPTKA yang disetujui menggantikan IMTA",
+    "pasal_ref": "PP 34/2021 Pasal 20",
+    "instrument_id": "PP-34-2021",
+    "category": "tka_normativa"
+  },
+  {
+    "claim_id": "IMM-403",
+    "claim": "Il TKA deve avere una jabatan corrispondente alla propria qualifica e il KBLI del datore deve rientrare nei settori ammessi da Kepmenaker 228/2019.",
+    "verbatim": "Jabatan TKA harus sesuai kualifikasi dan KBLI perusahaan harus termasuk dalam sektor yang diizinkan",
+    "pasal_ref": "PP 34/2021 Pasal 7",
+    "instrument_id": "PP-34-2021",
+    "category": "tka_normativa"
+  }
+]
