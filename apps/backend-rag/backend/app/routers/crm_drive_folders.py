@@ -140,7 +140,7 @@ async def create_client_drive_folder(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to create root folder: {str(e)}",
-        )
+        ) from e
 
     logger.info(f"[CRM] Created root folder: {root_folder['id']} for client {client_id}")
 
@@ -381,7 +381,7 @@ async def get_client_drive_folder_structure(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get folder structure: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/clients/{client_id}/drive-folder/{folder_name}/files")
@@ -446,7 +446,7 @@ async def list_folder_files(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get folder structure: {str(e)}",
-        )
+        ) from e
 
     # Find the subfolder
     subfolder = next((f for f in structure["folders"] if f["name"] == folder_name), None)
@@ -454,7 +454,7 @@ async def list_folder_files(
         raise HTTPException(
             status_code=404,
             detail=f"Subfolder '{folder_name}' not found",
-        )
+        ) from e
 
     # List files in the subfolder
     try:
@@ -476,7 +476,7 @@ async def list_folder_files(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to list files: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/clients/{client_id}/drive-folder/{folder_name}/upload")
@@ -537,7 +537,7 @@ async def upload_file_to_folder(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get folder structure: {str(e)}",
-        )
+        ) from e
 
     # Find the subfolder
     subfolder = next((f for f in structure["folders"] if f["name"] == folder_name), None)
@@ -545,7 +545,7 @@ async def upload_file_to_folder(
         raise HTTPException(
             status_code=404,
             detail=f"Subfolder '{folder_name}' not found",
-        )
+        ) from e
 
     # Read file content
     file_content = await file.read()
@@ -588,7 +588,7 @@ async def upload_file_to_folder(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to upload file: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/clients/{client_id}/drive-folder/stats")
@@ -645,4 +645,4 @@ async def get_client_drive_folder_stats(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get folder stats: {str(e)}",
-        )
+        ) from e

@@ -119,7 +119,7 @@ async def ingest_legal_document(request: LegalIngestRequest) -> LegalIngestRespo
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to ingest legal document: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/upload", response_model=LegalIngestResponse, status_code=status.HTTP_200_OK)
@@ -205,7 +205,7 @@ async def upload_legal_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to ingest legal document: {str(e)}",
-        )
+        ) from e
     finally:
         # Clean up temp file
         if temp_path and temp_path.exists():
@@ -286,7 +286,7 @@ async def get_collection_stats(collection_name: str = "legal_unified") -> dict[s
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get collection stats: {str(e)}",
-        )
+        ) from e
 
 
 class RegisterParentDocRequest(BaseModel):
@@ -364,7 +364,7 @@ async def register_parent_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to register parent document: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/parent-documents/{document_id}", status_code=status.HTTP_200_OK)
@@ -427,7 +427,7 @@ async def get_parent_documents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to query parent documents: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/parent-documents/{document_id}/{bab_id}/text", status_code=status.HTTP_200_OK)
@@ -488,4 +488,4 @@ async def get_bab_full_text(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to query BAB text: {str(e)}",
-        )
+        ) from e
