@@ -1,0 +1,11 @@
+{
+  "seen_ids": [],
+  "active_t4_sources": [],
+  "last_run_at": "2026-03-28T16:29:08.084932+00:00",
+  "cb_status": "CLOSED",
+  "cb_failure_count": 0,
+  "cb_last_failure": null,
+  "x_enabled": true,
+  "x_enabled_until": null,
+  "run_lock_pid": null
+}
