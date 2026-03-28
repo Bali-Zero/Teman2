@@ -37,7 +37,8 @@ from typing import Optional
 
 
 # ── Canva Design ──────────────────────────────────────────────────────────────
-DEFAULT_DESIGN_ID = "DAHE6lx1lf8"
+DEFAULT_DESIGN_ID    = "DAHE6lx1lf8"   # "X CLAUDE" template — MAI modificare direttamente
+CAROUSEL_FOLDER_ID   = "FAHEwkTYduI"   # Folder Canva dove spostare il nuovo design
 
 # ── Template element IDs (CLAUDE IN CANVA — design DAHE6lx1lf8) ───────────────
 # Struttura: 1 slide per pagina, ogni pagina ha heading + body distinti
@@ -60,6 +61,24 @@ TEMPLATE_SLOTS = [
 MIN_SLIDES = 6
 MAX_SLIDES = 11
 
+# ── Image placeholder element IDs per pagina ──────────────────────────────────
+# Recuperati via Get Design Pages / Start Editing Transaction sul template DAHE6lx1lf8
+# None = non ancora mappato (Claude li recupera dinamicamente via Get Design Pages)
+# page_index → image_element_id
+IMAGE_ELEMENT_IDS: dict[int, str | None] = {
+    1:  None,   # cover — placeholder da mappare
+    2:  None,
+    3:  None,
+    4:  None,   # slide 4 — immagine aerial villa
+    5:  None,
+    6:  None,
+    7:  None,
+    8:  None,
+    9:  None,   # slide 9 — immagine notarial seal
+    10: None,
+    11: None,
+}
+
 
 # ── Slide → operations list ───────────────────────────────────────────────────
 
@@ -72,7 +91,7 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
     - page_index viene preso dallo slot, non dal parametro `page` (ignorato)
     - Slide in eccesso (>MAX_SLIDES): troncate con warning
     - Slot in eccesso rispetto alle slide: saltati (non si toccano)
-    - image_prompt: annotazione testuale nel body, non generazione immagini
+    - image_prompt con generated_image_url → operazione upload-asset-from-url
     """
     if len(slides) > MAX_SLIDES:
         print(f"  ⚠️  {len(slides)} slide > MAX {MAX_SLIDES} — troncate",
@@ -119,14 +138,6 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
         elif body:
             body_parts.append(body)
 
-        # Annotazione image prompt (solo testo per designer nel body)
-        if image_prompt:
-            note = f"\n(IMAGE PROMPT: {image_prompt}"
-            if image_placement:
-                note += f" — PLACEMENT: {image_placement}"
-            note += ")"
-            body_parts.append(note)
-
         body_text = "\n".join(body_parts) if body_parts else ""
         if body_text:
             ops.append({
@@ -145,7 +156,7 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
         # Se disponibile URL pubblico (Tigris) → operazione completa per MCP Canva
         generated_image_url = slide.get("generated_image_url") or ""
         generated_image_path = slide.get("generated_image_path") or ""
-        img_elem_id = IMAGE_ELEMENT_IDS.get(i)
+        img_elem_id = IMAGE_ELEMENT_IDS.get(page_index)
 
         if generated_image_url:
             if img_elem_id:
@@ -248,11 +259,13 @@ def main() -> None:
             print(f"  [{op['page_index']}] {op['element_id'][-12:]} → '{txt}'",
                   file=sys.stderr)
         dry = {
-            "design_id": args.design_id,
-            "topic": topic,
-            "operations_count": len(operations),
-            "dry_run": True,
-            "slides": slides,
+            "template_design_id": args.design_id,
+            "folder_id":          CAROUSEL_FOLDER_ID,
+            "design_id":          None,
+            "topic":              topic,
+            "operations_count":   len(operations),
+            "dry_run":            True,
+            "slides":             slides,
         }
         (out_dir / "canva_dryrun.json").write_text(
             json.dumps(dry, ensure_ascii=False, indent=2))
@@ -261,18 +274,20 @@ def main() -> None:
 
     # ── Write canva_pending.json ──
     pending = {
-        "design_id":         args.design_id,
-        "design_url":        f"https://www.canva.com/design/{args.design_id}/edit",
-        "topic":             topic,
-        "tone":              data.get("tone", ""),
-        "page_index":        args.page,
-        "slides_count":      len(slides),
-        "operations_count":  len(operations),
-        "operations":        operations,
-        "instagram_caption": data.get("instagram_caption", ""),
-        "slides":            slides,
-        "created_at":        time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "status":            "pending",  # → "applied" dopo MCP commit
+        "template_design_id": args.design_id,          # "X CLAUDE" — da duplicare, NON modificare
+        "folder_id":          CAROUSEL_FOLDER_ID,       # folder dove spostare il duplicato
+        "design_id":          None,                     # popolato da Claude dopo Create Design From Candidate
+        "design_url":         None,                     # popolato da Claude dopo duplicazione
+        "topic":              topic,
+        "tone":               data.get("tone", ""),
+        "page_index":         args.page,
+        "slides_count":       len(slides),
+        "operations_count":   len(operations),
+        "operations":         operations,
+        "instagram_caption":  data.get("instagram_caption", ""),
+        "slides":             slides,
+        "created_at":         time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "status":             "pending",  # → "applied" dopo MCP commit
     }
 
     pending_file = out_dir / "canva_pending.json"
