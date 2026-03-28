@@ -1,12 +1,36 @@
 # NLM Deep Research Pipeline — Brainstorm Progress
 
-> Last updated: 2026-03-28 — **GREEN: GO FOR PRODUCTION** (8/8 phases pass, 0 blockers)
-> Session: brainstorm with Gemini + Codex GPT-5.4 + DeepSeek R1
+> Last updated: 2026-03-28 22:40 — **IMPLEMENTATION COMPLETE** (8 modules, 3677 lines, dry-run ✅)
+> Session: brainstorm (Gemini+Codex+DeepSeek) → implementation (Claude Opus 4.6)
+> Code: `apps/evaluator/nlm_deep_research/` (9 modules)
+> Cron: OpenClaw `10 1 * * 1-5` (01:10 WITA Mon-Fri)
 
 ## Target
 
 Design automated NLM Deep Research pipeline for NB-2 (Immigration & Visa Indonesia).
 Then replicate pattern across all 10 notebooks.
+
+## Implementation (2026-03-28 22:00-22:40)
+
+**Code: `apps/evaluator/nlm_deep_research/` — 9 modules, 3,677 lines Python**
+
+| Module                 | Lines | Purpose                                                    |
+| ---------------------- | ----- | ---------------------------------------------------------- |
+| pipeline.py            | 690   | Orchestrator: preflight → L1 → L2 → consolidate → handoff  |
+| source_management.py   | 750   | SVS, NHS, staleness, pre-import 6-gate, lifecycle          |
+| circuit_breaker.py     | 520   | FSM 3 breaker + cascade + persistence                      |
+| invariants.py          | 470   | 10 invariants with CRITICAL/WARNING severity               |
+| claim_extractor.py     | 280   | 6-factor confidence, category classification, JSONL append |
+| handoff.py             | 260   | TRS scoring, handoff JSON, latest.json symlink             |
+| registry.py            | 220   | SourceRegistry load/save/query                             |
+| scraper_integration.py | 170   | NLMEnricher adapter, convergence boost                     |
+| nlm_bridge.py          | 110   | nlm CLI subprocess wrapper                                 |
+
+**Dry-run: ✅ PASS** — 9/9 preflight, L1+L2 simulated, handoff generated, NHS 0.665
+
+**Cron: OpenClaw** `10 1 * * 1-5` (01:10 WITA Mon-Fri) via `scripts/nlm_pipeline_run.sh`
+
+**NB-2 State: 56 sources, 36 claims, 5 MDs, NHS 0.801**
 
 ## Architecture Decision (CRITICAL)
 
