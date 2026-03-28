@@ -1,8 +1,8 @@
-import Link from "next/link";
-import { PMABadge } from "./PMABadge";
-import { RiskBadge } from "./RiskBadge";
-import { TransitionBadge } from "./TransitionBadge";
-import type { KBLICode } from "@/lib/kbli-types";
+import Link from 'next/link';
+import { PMABadge } from './PMABadge';
+import { RiskBadge } from './RiskBadge';
+import { TransitionBadge } from './TransitionBadge';
+import type { KBLICode } from '@/lib/kbli-types';
 
 interface KBLICardProps {
   code: KBLICode;
@@ -10,7 +10,7 @@ interface KBLICardProps {
 }
 
 export function KBLICard({ code, showTransition = false }: KBLICardProps) {
-  const isGold = code.tier === "gold";
+  const isGold = code.tier === 'gold';
   return (
     <Link
       href={`/kbli/${code.code}`}
@@ -19,16 +19,15 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
                  hover:shadow-[0_8px_32px_rgba(220,38,38,0.15)]
                  ${
                    isGold
-                     ? "border-[rgba(212,132,90,0.2)] bg-[rgba(255,255,255,0.03)]"
-                     : "border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]"
+                     ? 'border-[rgba(212,132,90,0.2)] bg-[rgba(255,255,255,0.03)]'
+                     : 'border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]'
                  }`}
       style={
         isGold
           ? {
-              boxShadow:
-                "inset 0 1px 0 0 rgba(212,132,90,0.12), 0 4px 24px rgba(0,0,0,0.2)",
+              boxShadow: 'inset 0 1px 0 0 rgba(212,132,90,0.12), 0 4px 24px rgba(0,0,0,0.2)',
             }
-          : { boxShadow: "0 4px 24px rgba(0,0,0,0.2)" }
+          : { boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }
       }
     >
       <div className="flex items-start justify-between gap-3">
@@ -38,13 +37,12 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
             <span className="font-mono text-sm font-bold text-[var(--kbli-accent)]">
               {code.code}
             </span>
-            <span className="text-xs text-[var(--foreground-muted)]">
-              Section {code.section}
-            </span>
-            {code.tier === "gold" && (
+            <span className="text-xs text-[var(--foreground-muted)]">Section {code.section}</span>
+            {code.tier === 'gold' && (
               <span
                 className="text-xs text-[var(--kbli-accent)]"
                 title="Curated content available"
+                aria-label="Gold tier: curated content available"
               >
                 ★
               </span>
@@ -58,9 +56,7 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
           >
             {code.titleEn}
           </h3>
-          <p className="mt-0.5 text-sm text-[var(--foreground-muted)]">
-            {code.titleId}
-          </p>
+          <p className="mt-0.5 text-sm text-[var(--foreground-muted)]">{code.titleId}</p>
         </div>
 
         {/* Arrow */}
@@ -74,14 +70,8 @@ export function KBLICard({ code, showTransition = false }: KBLICardProps) {
 
       {/* Badges */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <PMABadge
-          status={code.pma.status}
-          maxForeign={code.pma.maxForeign}
-          size="sm"
-        />
-        {code.licensing[0] && (
-          <RiskBadge riskCategory={code.licensing[0].riskCategory} size="sm" />
-        )}
+        <PMABadge status={code.pma.status} maxForeign={code.pma.maxForeign} size="sm" />
+        {code.licensing[0] && <RiskBadge riskCategory={code.licensing[0].riskCategory} size="sm" />}
         {showTransition && code.transition.mappingStatus && (
           <TransitionBadge status={code.transition.mappingStatus} />
         )}

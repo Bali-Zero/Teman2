@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Mail — Bali Zero",
-  description: "Bali Zero Mail Client",
-  icons: { icon: "/favicon.ico" },
+  title: 'Mail — Bali Zero',
+  description: 'Bali Zero Mail Client',
+  icons: { icon: '/favicon.ico' },
 };
 
 /**
@@ -25,30 +25,24 @@ export const metadata: Metadata = {
 async function isAuthenticated(): Promise<boolean> {
   const cookieStore = await cookies();
 
-  const nzToken = cookieStore.get("nz_access_token");
+  const nzToken = cookieStore.get('nz_access_token');
   if (nzToken?.value) return true;
 
   // Legacy fallbacks
-  const bzSession = cookieStore.get("bz_session");
+  const bzSession = cookieStore.get('bz_session');
   if (bzSession?.value) return true;
 
-  const accessToken = cookieStore.get("access_token");
+  const accessToken = cookieStore.get('access_token');
   if (accessToken?.value) return true;
 
   return false;
 }
 
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const authenticated = await isAuthenticated();
 
   if (!authenticated) {
-    redirect(
-      "https://kita.balizero.com/login?redirect=https://mail.balizero.com",
-    );
+    redirect('https://kita.balizero.com/login?redirect=https://mail.balizero.com');
   }
 
   return (
@@ -57,14 +51,14 @@ export default async function RootLayout({
         {/* Top bar */}
         <header
           style={{
-            height: "48px",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 16px",
-            gap: "8px",
-            borderBottom: "1px solid var(--bz-border)",
-            background: "var(--bz-elevated)",
-            position: "sticky",
+            height: '48px',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 16px',
+            gap: '8px',
+            borderBottom: '1px solid var(--bz-border)',
+            background: 'var(--bz-elevated)',
+            position: 'sticky',
             top: 0,
             zIndex: 40,
           }}
@@ -73,10 +67,10 @@ export default async function RootLayout({
           <a
             href="https://kita.balizero.com"
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              textDecoration: "none",
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              textDecoration: 'none',
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -85,14 +79,14 @@ export default async function RootLayout({
               alt="Bali Zero"
               width={22}
               height={22}
-              style={{ borderRadius: "50%", flexShrink: 0 }}
+              style={{ borderRadius: '50%', flexShrink: 0 }}
             />
-            <span style={{ color: "var(--bz-text-3)", fontSize: 14 }}>/</span>
+            <span style={{ color: 'var(--bz-text-3)', fontSize: 14 }}>/</span>
             <span
               style={{
-                fontSize: "13px",
+                fontSize: '13px',
                 fontWeight: 500,
-                color: "var(--bz-text-1)",
+                color: 'var(--bz-text-1)',
               }}
             >
               Mail
@@ -105,6 +99,7 @@ export default async function RootLayout({
             <button
               className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)] transition-colors"
               title="Switch app"
+              aria-label="Cambia applicazione"
             >
               {/* 3x3 grid icon */}
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -127,29 +122,29 @@ export default async function RootLayout({
             >
               {[
                 {
-                  name: "Kita",
-                  href: "https://kita.balizero.com",
-                  emoji: "🏠",
+                  name: 'Kita',
+                  href: 'https://kita.balizero.com',
+                  emoji: '🏠',
                 },
                 {
-                  name: "Mail",
-                  href: "https://mail.balizero.com",
-                  emoji: "✉️",
+                  name: 'Mail',
+                  href: 'https://mail.balizero.com',
+                  emoji: '✉️',
                 },
                 {
-                  name: "Calendar",
-                  href: "https://calendar.balizero.com",
-                  emoji: "📅",
+                  name: 'Calendar',
+                  href: 'https://calendar.balizero.com',
+                  emoji: '📅',
                 },
                 {
-                  name: "Drive",
-                  href: "https://drive.balizero.com",
-                  emoji: "💾",
+                  name: 'Drive',
+                  href: 'https://drive.balizero.com',
+                  emoji: '💾',
                 },
                 {
-                  name: "Knowledge",
-                  href: "https://knowledge.balizero.com",
-                  emoji: "📚",
+                  name: 'Knowledge',
+                  href: 'https://knowledge.balizero.com',
+                  emoji: '📚',
                 },
               ].map((app) => (
                 <a

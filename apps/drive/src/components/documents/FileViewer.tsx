@@ -158,6 +158,7 @@ export function FileViewer({ file, isOpen, onClose, onDownload }: FileViewerProp
           <div className="flex items-center gap-3">
             <FileIcon className="h-5 w-5 text-gray-300" />
             <h2 className="max-w-md truncate text-lg font-medium text-white">{file.name}</h2>
+            <kbd className="ml-3 hidden rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-gray-400 sm:inline">Esc</kbd>
           </div>
 
           <div className="flex items-center gap-2">
