@@ -1016,8 +1016,7 @@ async def get_crm_metrics_summary(
         if not user_email:
             raise HTTPException(status_code=401, detail="Authentication required")
 
-        summary = await metrics_collector.get_metrics_summary()
-        return summary
+        return await metrics_collector.get_metrics_summary()
 
     except HTTPException:
         raise

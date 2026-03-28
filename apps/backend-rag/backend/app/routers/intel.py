@@ -380,7 +380,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         suggested_components.append("comparison-table")
 
     # Build EnrichedArticle structure
-    enriched_article = {
+    return {
         "title": title,
         "headline": title,
         "tldr": {
@@ -412,7 +412,6 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         "enriched_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    return enriched_article
 
 
 # --- SCRAPER INTEGRATION ENDPOINTS ---
@@ -612,8 +611,7 @@ async def list_pending_items(
         },
     )
 
-    result = staging_service.list_pending_items(type, filter_type, sort_type, search)
-    return result
+    return staging_service.list_pending_items(type, filter_type, sort_type, search)
 
 
 @router.get("/api/intel/staging/preview/{type}/{item_id}")
@@ -1900,8 +1898,7 @@ async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_
     logger.info("Analytics requested", extra={"endpoint": "/api/intel/analytics", "days": days})
 
     try:
-        analytics = analytics_service.get_intelligence_analytics(days)
-        return analytics
+        return analytics_service.get_intelligence_analytics(days)
 
     except Exception as e:
         logger.error(f"Failed to calculate analytics: {e}", exc_info=True)

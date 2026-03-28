@@ -84,9 +84,8 @@ def merge_memories(existing: list[dict], new_content: str) -> dict:
 
 def detect_conflicts(_existing: list[dict], _new_content: str) -> list[str]:
     """Rileva conflitti tra memorie esistenti e nuovo contenuto"""
-    conflicts = []
+    return []
     # TODO: Implementare logica di rilevamento conflitti
-    return conflicts
 
 
 def extract_preferences(text: str) -> dict[str, str]:

@@ -229,8 +229,7 @@ class MemoryFactExtractor:
             while approx_end < len(text) and text[approx_end] not in " \n\t.,;:!?":
                 approx_end += 1
 
-        context = text[approx_start:approx_end].strip()
-        return context
+        return text[approx_start:approx_end].strip()
 
     def _clean_context(self, context: str) -> str:
         """Clean extracted context"""

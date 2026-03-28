@@ -61,7 +61,7 @@ class ClientIdentityResolver:
             client_id if found, None otherwise
         """
         async with self.db_pool.acquire() as conn:
-            client_id = await conn.fetchval(
+            return await conn.fetchval(
                 """
                 SELECT client_id
                 FROM messaging_users
@@ -71,7 +71,6 @@ class ClientIdentityResolver:
                 str(telegram_chat_id),
             )
 
-            return client_id
 
     async def find_client_by_whatsapp(self, phone: str) -> int | None:
         """
@@ -103,7 +102,7 @@ class ClientIdentityResolver:
                 return client_id
 
             # Fallback: search clients table by whatsapp/phone
-            client_id = await conn.fetchval(
+            return await conn.fetchval(
                 """
                 SELECT id
                 FROM clients
@@ -113,7 +112,6 @@ class ClientIdentityResolver:
                 normalized,
             )
 
-            return client_id
 
     async def find_client_by_email(self, email: str) -> int | None:
         """
@@ -129,7 +127,7 @@ class ClientIdentityResolver:
             return None
 
         async with self.db_pool.acquire() as conn:
-            client_id = await conn.fetchval(
+            return await conn.fetchval(
                 """
                 SELECT id
                 FROM clients
@@ -138,7 +136,6 @@ class ClientIdentityResolver:
                 email,
             )
 
-            return client_id
 
     async def link_messaging_user_to_client(
         self, channel: str, identifier: str, client_id: int

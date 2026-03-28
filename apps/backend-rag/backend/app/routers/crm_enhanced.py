@@ -1749,8 +1749,7 @@ async def extract_visa_data(
     if not file_id:
         raise HTTPException(status_code=400, detail="file_id required")
 
-    result = await _auto_ocr_visa(client_id, file_id, doc_id)
-    return result
+    return await _auto_ocr_visa(client_id, file_id, doc_id)
 
 
 # ============================================

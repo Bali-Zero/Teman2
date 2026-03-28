@@ -291,7 +291,7 @@ class ScraperDataNormalizer:
         # Generate content hash for duplicate detection
         content_hash = self._generate_content_hash(title + content)
 
-        normalized = {
+        return {
             "id": document_id,
             "title": title,
             "content": content,
@@ -314,7 +314,6 @@ class ScraperDataNormalizer:
             "confidence_score": raw_data.get("confidence_score", 0.0),
         }
 
-        return normalized
 
     async def _normalize_visa_data(
         self, raw_data: dict[str, Any], document_id: str
@@ -344,7 +343,7 @@ class ScraperDataNormalizer:
         # Generate content hash
         content_hash = self._generate_content_hash(visa_type + description + str(requirements))
 
-        normalized = {
+        return {
             "id": document_id,
             "visa_type": visa_type,
             "description": description,
@@ -364,7 +363,6 @@ class ScraperDataNormalizer:
             "data_quality": raw_data.get("data_quality", "unknown"),
         }
 
-        return normalized
 
     def _validate_required_fields(self, data: dict[str, Any], required_fields: list[str]) -> None:
         """Validate that required fields are present and not empty"""

@@ -132,7 +132,7 @@ class ContextWindowManager:
 
         conversation_text = "\n\n".join(formatted_messages)
 
-        prompt = f"""Summarize the following conversation history concisely (2-3 sentences):
+        return f"""Summarize the following conversation history concisely (2-3 sentences):
 
 {conversation_text}
 
@@ -143,7 +143,6 @@ Focus on:
 
 Summary:"""
 
-        return prompt
 
     def get_context_status(self, conversation_history: list[dict]) -> dict:
         """

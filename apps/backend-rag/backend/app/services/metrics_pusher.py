@@ -147,8 +147,7 @@ class MetricsPusher:
 
     def _encode_label(self, name: str, value: str) -> bytes:
         """Encode a Label message (name=1, value=2)."""
-        content = self._encode_string(1, name) + self._encode_string(2, value)
-        return content
+        return self._encode_string(1, name) + self._encode_string(2, value)
 
     def _encode_sample(self, value: float, timestamp: int) -> bytes:
         """Encode a Sample message (value=1, timestamp=2)."""

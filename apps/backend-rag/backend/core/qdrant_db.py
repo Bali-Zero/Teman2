@@ -993,13 +993,12 @@ class QdrantClient:
                 points = data.get("points", [])
 
                 # Transform to Qdrant format
-                formatted = {
+                return {
                     "ids": [str(p["id"]) for p in points],
                     "documents": [p.get("payload", {}).get("text", "") for p in points],
                     "metadatas": [p.get("payload", {}).get("metadata", {}) for p in points],
                 }
 
-                return formatted
             except httpx.HTTPStatusError as e:
                 logger.error(f"Qdrant peek failed: {e.response.status_code}")
                 return {"ids": [], "documents": [], "metadatas": []}

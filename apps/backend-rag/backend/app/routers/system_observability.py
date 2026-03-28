@@ -39,8 +39,7 @@ async def get_system_health(
         if not service.http_client:
             await service.initialize()
 
-        report = await service.run_all_checks(use_cache=True)
-        return report
+        return await service.run_all_checks(use_cache=True)
 
     except Exception as e:
         logger.error(f"❌ System health check failed: {e}")
