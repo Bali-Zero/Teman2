@@ -302,16 +302,17 @@ def run_image(slug: str, category: str) -> bool:
         img_path = Path(tmpdir) / f"{slug}.jpg"
         generated = False
 
-        # --- 1. Fireworks.ai Flux (cloud, veloce e alta qualità) ---
+        # --- 1. Fireworks.ai Flux Dev (cloud, alta qualità) ---
         fireworks_key = os.environ.get("FIREWORKS_API_KEY", "")
         if fireworks_key:
-            log("  Provo Fireworks.ai Flux")
-            fw_url = "https://api.fireworks.ai/inference/v1/image_generation/accounts/fireworks/models/flux-1-schnell-fp8"
+            log("  Provo Fireworks.ai Flux Dev")
+            fw_url = "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-dev-fp8/text_to_image"
             fw_payload = json.dumps({
                 "prompt": prompt,
-                "width": 1200,
-                "height": 630,
-                "num_inference_steps": 4,
+                "width": 1344,
+                "height": 768,
+                "steps": 28,
+                "cfg_scale": 3.5,
             }).encode()
             fw_req = urllib.request.Request(
                 fw_url,
@@ -319,22 +320,17 @@ def run_image(slug: str, category: str) -> bool:
                 headers={
                     "Authorization": f"Bearer {fireworks_key}",
                     "Content-Type": "application/json",
-                    "Accept": "application/json",
+                    "Accept": "image/jpeg",
                 },
                 method="POST",
             )
             try:
-                with urllib.request.urlopen(fw_req, timeout=60) as fw_resp:
-                    fw_data = json.loads(fw_resp.read())
-                    fw_image_url = fw_data.get("output", [{}])[0].get("url", "")
-                    if fw_image_url:
-                        img_req = urllib.request.Request(fw_image_url, headers={"User-Agent": "BaliZero/1.0"})
-                        with urllib.request.urlopen(img_req, timeout=30) as img_resp:
-                            img_bytes_fw = img_resp.read()
-                            if len(img_bytes_fw) > 5000:
-                                img_path.write_bytes(img_bytes_fw)
-                                generated = True
-                                log("  Immagine generata via Fireworks.ai Flux")
+                with urllib.request.urlopen(fw_req, timeout=90) as fw_resp:
+                    img_bytes_fw = fw_resp.read()
+                    if len(img_bytes_fw) > 5000:
+                        img_path.write_bytes(img_bytes_fw)
+                        generated = True
+                        log(f"  Immagine generata via Fireworks.ai Flux Dev ({len(img_bytes_fw)} bytes)")
             except Exception as e:
                 log(f"  Fireworks.ai error: {e}")
         else:
