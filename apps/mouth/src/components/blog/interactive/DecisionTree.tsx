@@ -203,6 +203,7 @@ export function DecisionTree({
                 onClick={handleBack}
                 className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
                 title="Go back"
+                aria-label="Go back"
               >
                 <ChevronRight className="w-4 h-4 rotate-180" />
               </button>
@@ -211,6 +212,7 @@ export function DecisionTree({
               onClick={handleRestart}
               className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
               title="Start over"
+              aria-label="Start over"
             >
               <RotateCcw className="w-4 h-4" />
             </button>

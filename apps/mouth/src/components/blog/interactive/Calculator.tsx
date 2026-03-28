@@ -185,6 +185,7 @@ export function Calculator({
             onClick={handleReset}
             className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
             title="Reset"
+            aria-label="Reset calculator"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
