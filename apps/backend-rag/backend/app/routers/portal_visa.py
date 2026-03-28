@@ -48,7 +48,7 @@ async def get_visa_status(
         }
     except Exception as e:
         visa_requests.labels(endpoint="get_visa", status="error").inc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/summary", response_model=VisaSummary)

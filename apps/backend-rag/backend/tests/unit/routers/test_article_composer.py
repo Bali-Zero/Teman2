@@ -10,7 +10,7 @@ Tests cover:
 
 import base64
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -87,7 +87,7 @@ def sample_enriched_article():
         cover_image=None,
         source="Test Author",
         source_url="https://example.com/news",
-        enriched_at=datetime.utcnow().isoformat(),
+        enriched_at=datetime.now(timezone.utc).isoformat(),
     )
 
 

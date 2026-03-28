@@ -45,7 +45,7 @@ async def get_taxes(
         }
     except Exception as e:
         tax_requests.labels(endpoint="get_taxes", status="error").inc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/summary", response_model=TaxSummary)

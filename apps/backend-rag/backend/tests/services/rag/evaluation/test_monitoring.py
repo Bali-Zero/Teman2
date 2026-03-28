@@ -11,7 +11,7 @@ Test coverage:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -92,7 +92,7 @@ class TestQueryMetricsRecord:
     def test_create_record(self) -> None:
         """Test creating a metrics record."""
         record = QueryMetricsRecord(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             query_hash="test123",
             query_text="test query",
             retrieval_score=0.85,

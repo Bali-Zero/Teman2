@@ -7,7 +7,7 @@ Author: Windsurf (QA Engineer)
 Created: 2026-02-09
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -336,20 +336,20 @@ class TestKGMaintenanceTasks:
 
     def test_schedule_cleanup_task(self):
         """Test scheduling cleanup task"""
-        last_cleanup = datetime.utcnow() - timedelta(days=8)
+        last_cleanup = datetime.now(timezone.utc) - timedelta(days=8)
         cleanup_interval_days = 7
 
-        days_since_cleanup = (datetime.utcnow() - last_cleanup).days
+        days_since_cleanup = (datetime.now(timezone.utc) - last_cleanup).days
         should_cleanup = days_since_cleanup >= cleanup_interval_days
 
         assert should_cleanup is True
 
     def test_schedule_backup_task(self):
         """Test scheduling backup task"""
-        last_backup = datetime.utcnow() - timedelta(hours=25)
+        last_backup = datetime.now(timezone.utc) - timedelta(hours=25)
         backup_interval_hours = 24
 
-        hours_since_backup = (datetime.utcnow() - last_backup).total_seconds() / 3600
+        hours_since_backup = (datetime.now(timezone.utc) - last_backup).total_seconds() / 3600
         should_backup = hours_since_backup >= backup_interval_hours
 
         assert should_backup is True
@@ -357,10 +357,10 @@ class TestKGMaintenanceTasks:
     def test_schedule_optimization_task(self):
         """Test scheduling optimization task"""
         query_performance_degraded = True
-        last_optimization = datetime.utcnow() - timedelta(days=31)
+        last_optimization = datetime.now(timezone.utc) - timedelta(days=31)
         optimization_interval_days = 30
 
-        days_since_optimization = (datetime.utcnow() - last_optimization).days
+        days_since_optimization = (datetime.now(timezone.utc) - last_optimization).days
         should_optimize = (
             query_performance_degraded or days_since_optimization >= optimization_interval_days
         )

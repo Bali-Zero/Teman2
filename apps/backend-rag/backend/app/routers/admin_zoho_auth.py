@@ -99,7 +99,7 @@ async def admin_zoho_callback(
         }
     except Exception as e:
         logger.error(f"Zoho OAuth callback failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Zoho OAuth failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Zoho OAuth failed: {str(e)}") from e
     finally:
         if pool:
             await pool.close()

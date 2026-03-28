@@ -79,7 +79,7 @@ async def get_response_times(
     try:
         return await calculate_response_times(db_pool, practice_type, start_date, end_date)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to calculate response times: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to calculate response times: {str(e)}") from e
 
 
 @router.get("/sla-compliance")
@@ -100,7 +100,7 @@ async def get_sla_compliance(
     try:
         return await calculate_sla_compliance(db_pool, practice_type, start_date, end_date)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to calculate SLA compliance: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to calculate SLA compliance: {str(e)}") from e
 
 
 @router.get("/revenue")
@@ -148,4 +148,4 @@ async def get_monthly_report(
     try:
         return await generate_monthly_report(db_pool, year, month)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate monthly report: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate monthly report: {str(e)}") from e

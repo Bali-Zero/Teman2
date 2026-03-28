@@ -96,7 +96,7 @@ async def add_event(
         raise
     except Exception as e:
         logger.error(f"Error adding episodic event: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/extract")
@@ -135,7 +135,7 @@ async def extract_and_save_event(
         return {"success": True, "message": "Event extracted and saved", "data": result}
     except Exception as e:
         logger.error(f"Error extracting episodic event: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/timeline")
@@ -173,7 +173,7 @@ async def get_timeline(
         return {"success": True, "events": events, "count": len(events)}
     except Exception as e:
         logger.error(f"Error getting timeline: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/context")
@@ -199,7 +199,7 @@ async def get_context_summary(
         return {"success": True, "summary": summary, "has_events": bool(summary)}
     except Exception as e:
         logger.error(f"Error getting context summary: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/stats")
@@ -220,7 +220,7 @@ async def get_stats(
         return {"success": True, "data": stats}
     except Exception as e:
         logger.error(f"Error getting stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.delete("/events/{event_id}")
@@ -250,4 +250,4 @@ async def delete_event(
         raise
     except Exception as e:
         logger.error(f"Error deleting event: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

@@ -27,7 +27,7 @@ async def get_performance_metrics() -> dict[str, Any]:
         return {"success": True, "metrics": metrics}
     except Exception as e:
         logger.error(f"Failed to get performance metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/clear-cache")
@@ -39,7 +39,7 @@ async def clear_caches() -> dict[str, Any]:
         return {"success": True, "status": "caches_cleared"}
     except Exception as e:
         logger.error(f"Failed to clear caches: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/clear-cache/embedding")
@@ -50,7 +50,7 @@ async def clear_embedding_cache() -> dict[str, Any]:
         return {"success": True, "status": "embedding_cache_cleared"}
     except Exception as e:
         logger.error(f"Failed to clear embedding cache: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/clear-cache/search")
@@ -61,7 +61,7 @@ async def clear_search_cache() -> dict[str, Any]:
         return {"success": True, "status": "search_cache_cleared"}
     except Exception as e:
         logger.error(f"Failed to clear search cache: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/cache/stats")
@@ -85,4 +85,4 @@ async def get_cache_stats() -> dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"Failed to get cache stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

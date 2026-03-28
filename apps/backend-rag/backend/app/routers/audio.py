@@ -39,7 +39,7 @@ async def transcribe_audio(
         return {"text": text}
     except Exception as e:
         logger.error(f"Transcribe endpoint error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/speech")
@@ -61,4 +61,4 @@ async def generate_speech(
         return StreamingResponse(io.BytesIO(audio_content), media_type="audio/mpeg")
     except Exception as e:
         logger.error(f"Speech endpoint error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

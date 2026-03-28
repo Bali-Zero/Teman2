@@ -1941,7 +1941,7 @@ async def upload_document_base64(
                     )
                     subfolder_id = subfolder_data["id"]
                 except Exception as e:
-                    raise HTTPException(status_code=500, detail=f"Failed to create subfolder: {e}")
+                    raise HTTPException(status_code=500, detail=f"Failed to create subfolder: {e}") from e
             else:
                 subfolder_id = subfolder["id"]
 
@@ -1954,7 +1954,7 @@ async def upload_document_base64(
                     mime_type=data.mime_type,
                 )
             except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Failed to upload to drive: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to upload to drive: {e}") from e
 
             # Create Document Record
             doc_id = await conn.fetchval(
@@ -2001,7 +2001,7 @@ async def upload_document_base64(
         raise
     except Exception as e:
         logger.error(f"Upload failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.delete("/documents/{doc_id}")

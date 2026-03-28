@@ -56,7 +56,7 @@ async def create_session(service: SessionService = Depends(get_session_service))
         return {"success": True, "session_id": session_id}
     except Exception as e:
         logger.error(f"Failed to create session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{session_id}")
@@ -73,7 +73,7 @@ async def get_session(
         raise
     except Exception as e:
         logger.error(f"Failed to get session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.put("/{session_id}")
@@ -92,7 +92,7 @@ async def update_session(
         raise
     except Exception as e:
         logger.error(f"Failed to update session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.put("/{session_id}/ttl")
@@ -113,7 +113,7 @@ async def update_session_with_ttl(
         raise
     except Exception as e:
         logger.error(f"Failed to update session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.delete("/{session_id}")
@@ -126,7 +126,7 @@ async def delete_session(
         return {"success": success, "session_id": session_id}
     except Exception as e:
         logger.error(f"Failed to delete session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/{session_id}/extend")
@@ -140,7 +140,7 @@ async def extend_session_ttl(
         return {"success": success, "session_id": session_id}
     except Exception as e:
         logger.error(f"Failed to extend TTL: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/{session_id}/extend-custom")
@@ -155,7 +155,7 @@ async def extend_session_ttl_custom(
         return {"success": success, "session_id": session_id}
     except Exception as e:
         logger.error(f"Failed to extend TTL: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{session_id}/info")
@@ -172,7 +172,7 @@ async def get_session_info(
         raise
     except Exception as e:
         logger.error(f"Failed to get session info: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{session_id}/export")
@@ -191,7 +191,7 @@ async def export_session(
         raise
     except Exception as e:
         logger.error(f"Failed to export session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/analytics/overview")
@@ -202,7 +202,7 @@ async def get_analytics(service: SessionService = Depends(get_session_service)) 
         return {"success": True, "analytics": analytics}
     except Exception as e:
         logger.error(f"Failed to get analytics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/cleanup")
@@ -215,7 +215,7 @@ async def cleanup_sessions(
         return {"success": True, "cleaned": cleaned}
     except Exception as e:
         logger.error(f"Failed to cleanup sessions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/health")
