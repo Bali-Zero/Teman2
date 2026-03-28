@@ -181,11 +181,16 @@ function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
+      aria-label={`${visa.visa_type} — ${visa.category}`}
       className={`
         group relative overflow-hidden rounded-xl border cursor-pointer
         bg-gradient-to-br ${getCategoryColor(visa.category)}
         hover:scale-[1.02] hover:shadow-lg hover:shadow-[var(--accent)]/10
+        focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:outline-none
         transition-all duration-300 ease-out
         ${hasBaliZeroPrice ? "scale-110 z-10 ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/20" : ""}
       `}
