@@ -5,7 +5,7 @@ Query ottimizzate e batch operations per massima performance.
 """
 
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
