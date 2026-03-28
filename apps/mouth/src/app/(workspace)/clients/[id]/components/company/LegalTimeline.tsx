@@ -53,12 +53,12 @@ export function LegalTimeline({
     entries.push({
       year: getYear(aktaPerubahanDate),
       month: getMonth(aktaPerubahanDate),
-      typeLabel: "Amendment \u00B7 Capital Restructuring",
-      title: `Akta Notaris #${aktaPerubahanNo}${capital ? ` \u2014 Capital ${capital}` : ""}`,
+      typeLabel: "Akta Perubahan \u00B7 Corporate Amendment",
+      title: `Revision #${aktaPerubahanNo}${capital ? ` \u2014 Capital ${capital}` : ""}`,
       body: capital
-        ? `Capital restructuring formalized. Authorized capital updated to ${capital}.`
-        : `Corporate amendment recorded under Akta #${aktaPerubahanNo}.`,
-      refText: `Akta #${aktaPerubahanNo} \u00B7 ${formatDate(aktaPerubahanDate)}`,
+        ? `Notarial deed of amendment (akta perubahan) no. ${aktaPerubahanNo} — authorized capital updated to ${capital}.`
+        : `Notarial deed of amendment (akta perubahan) no. ${aktaPerubahanNo} filed with Kemenkumham.`,
+      refText: `Akta Perubahan #${aktaPerubahanNo} \u00B7 ${formatDate(aktaPerubahanDate)}`,
       refColor: "var(--kbli-amber)",
       accentYear: true,
     });
