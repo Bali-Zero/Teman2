@@ -190,7 +190,7 @@ async def invoke_agent(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to invoke agent workflow: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/health", response_model=AgentHealthResponse)

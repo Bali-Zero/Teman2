@@ -105,4 +105,4 @@ async def openclaw_crm_logging(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to store message log: {str(e)}",
-        )
+        ) from e
