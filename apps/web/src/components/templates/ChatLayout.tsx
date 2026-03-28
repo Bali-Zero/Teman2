@@ -25,6 +25,7 @@ export function ChatLayout({ children, onNewChat }: ChatLayoutProps) {
           <Button
             variant="ghost"
             onClick={onNewChat}
+            aria-label="Nuova chat"
             className="h-8 gap-1.5 text-xs"
           >
             <Plus className="h-3.5 w-3.5" />

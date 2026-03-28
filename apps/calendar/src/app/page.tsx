@@ -36,7 +36,15 @@ interface CalendarInfo {
   role: string;
 }
 
-const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+const WEEKDAYS = [
+  { short: 'Dom', full: 'Domenica' },
+  { short: 'Lun', full: 'Lunedì' },
+  { short: 'Mar', full: 'Martedì' },
+  { short: 'Mer', full: 'Mercoledì' },
+  { short: 'Gio', full: 'Giovedì' },
+  { short: 'Ven', full: 'Venerdì' },
+  { short: 'Sab', full: 'Sabato' },
+];
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -153,10 +161,10 @@ export default function CalendarPage() {
         });
         fetchEvents();
       } else {
-        alert('Errore: ' + data.error);
+        setError(data.error || 'Errore nella creazione evento');
       }
     } catch (err: unknown) {
-      alert('Errore: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setError(err instanceof Error ? err.message : 'Errore nella creazione evento');
     } finally {
       setCreating(false);
     }
@@ -175,7 +183,7 @@ export default function CalendarPage() {
         fetchEvents();
       }
     } catch (err: unknown) {
-      alert('Errore: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setError(err instanceof Error ? err.message : 'Errore nella cancellazione evento');
     }
   };
 
@@ -391,14 +399,14 @@ export default function CalendarPage() {
                 <div className="grid grid-cols-7 mb-2">
                   {WEEKDAYS.map((day, i) => (
                     <div
-                      key={day}
+                      key={day.short}
                       className={cn(
                         'text-center text-xs font-medium py-2',
                         i === 0 && 'text-[#d4845a]',
                         i !== 0 && 'text-[#9AA0AE]'
                       )}
                     >
-                      {day}
+                      <abbr title={day.full} className="no-underline">{day.short}</abbr>
                     </div>
                   ))}
                 </div>
@@ -465,7 +473,7 @@ export default function CalendarPage() {
               /* List View */
               <div className="flex-1 overflow-auto">
                 {loading ? (
-                  <div className="flex items-center justify-center h-full text-[#9AA0AE]">
+                  <div role="status" aria-live="polite" className="flex items-center justify-center h-full text-[#9AA0AE]">
                     <RefreshCw className="h-5 w-5 animate-spin mr-2" />
                     Caricamento...
                   </div>
@@ -517,7 +525,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Right Sidebar - Event Details */}
-          <div className="w-80 border-l border-white/5 bg-[#1A1D24]/50 flex flex-col overflow-hidden">
+          <aside aria-label="Dettagli evento" className="w-80 border-l border-white/5 bg-[#1A1D24]/50 flex flex-col overflow-hidden">
             {showCreateForm ? (
               <div className="flex-1 overflow-auto p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -627,6 +635,7 @@ export default function CalendarPage() {
                       checked={newEvent.withMeet}
                       onChange={(e) => setNewEvent({ ...newEvent, withMeet: e.target.checked })}
                       className="w-4 h-4 rounded bg-[#242424] border-white/10"
+                      aria-label="Aggiungi Google Meet"
                     />
                     <Video className="h-4 w-4 text-[#34D399]" />
                     <span className="text-sm text-[#9AA0AE]">Aggiungi Google Meet</span>
@@ -770,7 +779,7 @@ export default function CalendarPage() {
                 )}
               </div>
             )}
-          </div>
+          </aside>
         </div>
       </div>
 

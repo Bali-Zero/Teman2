@@ -96,6 +96,7 @@ export function DriveToolbar({
               ref={searchInputRef}
               type="text"
               placeholder="Cerca file e cartelle..."
+              aria-label="Cerca file e cartelle"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               onFocus={() => setIsSearchFocused(true)}
