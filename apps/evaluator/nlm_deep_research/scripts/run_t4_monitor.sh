@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../../.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 # Air uses venv (not .venv). Pro uses .venv — detect at runtime.
 if [ -d "$PROJECT_ROOT/apps/backend-rag/venv" ]; then
