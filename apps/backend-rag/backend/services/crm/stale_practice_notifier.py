@@ -10,7 +10,7 @@ Runs as a scheduled task (daily recommended).
 """
 
 import os
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg

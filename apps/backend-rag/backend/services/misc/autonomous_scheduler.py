@@ -32,7 +32,7 @@ import os
 import uuid
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -541,7 +541,7 @@ async def create_and_start_scheduler(
 
             async def run_renewal_alerts_checker() -> None:
                 """Check for upcoming practice expirations and create alerts."""
-                from datetime import datetime, timedelta
+                from datetime import datetime, timedelta, timezone
 
                 logger.info("📅 Running Renewal Alerts Checker...")
 

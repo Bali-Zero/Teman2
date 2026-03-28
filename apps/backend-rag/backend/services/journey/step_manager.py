@@ -4,7 +4,7 @@ Responsibility: Manage step lifecycle
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)

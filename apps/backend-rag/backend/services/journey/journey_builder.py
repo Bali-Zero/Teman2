@@ -4,7 +4,7 @@ Responsibility: Build journeys from templates
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from backend.services.journey.journey_templates import JourneyTemplatesService

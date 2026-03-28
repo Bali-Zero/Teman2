@@ -6,7 +6,7 @@ Provides comprehensive logging with Document ID, Source, and Parsing Errors
 import logging
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
