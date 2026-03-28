@@ -453,7 +453,7 @@ async def list_folder_files(
         raise HTTPException(
             status_code=404,
             detail=f"Subfolder '{folder_name}' not found",
-        ) from e
+        )
 
     # List files in the subfolder
     try:
@@ -544,7 +544,7 @@ async def upload_file_to_folder(
         raise HTTPException(
             status_code=404,
             detail=f"Subfolder '{folder_name}' not found",
-        ) from e
+        )
 
     # Read file content
     file_content = await file.read()
