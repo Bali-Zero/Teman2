@@ -728,12 +728,52 @@ export function CompanyTab({
               .then((full) => {
                 if (cancelled) return;
                 if (full.associates?.length) {
+                  // Group by client_name — each person may have multiple role links
+                  const grouped = new Map<
+                    string,
+                    {
+                      client_name?: string;
+                      roles: string[];
+                      ownership_percentage?: number;
+                      shares_count?: number;
+                    }
+                  >();
+                  for (const a of full.associates) {
+                    const key = a.client_name || "unknown";
+                    if (!grouped.has(key)) {
+                      grouped.set(key, {
+                        client_name: a.client_name,
+                        roles: [],
+                        ownership_percentage: a.ownership_percentage,
+                        shares_count: a.shares_count,
+                      });
+                    }
+                    const entry = grouped.get(key)!;
+                    if (a.role && !entry.roles.includes(a.role)) {
+                      entry.roles.push(a.role);
+                    }
+                    // Take the highest shares_count / ownership across links
+                    if (
+                      a.shares_count &&
+                      (!entry.shares_count ||
+                        a.shares_count > entry.shares_count)
+                    ) {
+                      entry.shares_count = a.shares_count;
+                    }
+                    if (
+                      a.ownership_percentage &&
+                      (!entry.ownership_percentage ||
+                        a.ownership_percentage > entry.ownership_percentage)
+                    ) {
+                      entry.ownership_percentage = a.ownership_percentage;
+                    }
+                  }
                   setAssociates(
-                    full.associates.map((a) => ({
-                      client_name: a.client_name,
-                      role: a.role,
-                      ownership_percentage: a.ownership_percentage,
-                      shares_count: a.shares_count,
+                    Array.from(grouped.values()).map((g) => ({
+                      client_name: g.client_name,
+                      role: g.roles.join(" / "),
+                      ownership_percentage: g.ownership_percentage,
+                      shares_count: g.shares_count,
                     })),
                   );
                 } else {
@@ -798,12 +838,49 @@ export function CompanyTab({
               company_id: found.id,
             });
             if (found.associates?.length) {
+              const grouped2 = new Map<
+                string,
+                {
+                  client_name?: string;
+                  roles: string[];
+                  ownership_percentage?: number;
+                  shares_count?: number;
+                }
+              >();
+              for (const a of found.associates) {
+                const key = a.client_name || "unknown";
+                if (!grouped2.has(key)) {
+                  grouped2.set(key, {
+                    client_name: a.client_name,
+                    roles: [],
+                    ownership_percentage: a.ownership_percentage,
+                    shares_count: a.shares_count,
+                  });
+                }
+                const entry = grouped2.get(key)!;
+                if (a.role && !entry.roles.includes(a.role)) {
+                  entry.roles.push(a.role);
+                }
+                if (
+                  a.shares_count &&
+                  (!entry.shares_count || a.shares_count > entry.shares_count)
+                ) {
+                  entry.shares_count = a.shares_count;
+                }
+                if (
+                  a.ownership_percentage &&
+                  (!entry.ownership_percentage ||
+                    a.ownership_percentage > entry.ownership_percentage)
+                ) {
+                  entry.ownership_percentage = a.ownership_percentage;
+                }
+              }
               setAssociates(
-                found.associates.map((a) => ({
-                  client_name: a.client_name,
-                  role: a.role,
-                  ownership_percentage: a.ownership_percentage,
-                  shares_count: a.shares_count,
+                Array.from(grouped2.values()).map((g) => ({
+                  client_name: g.client_name,
+                  role: g.roles.join(" / "),
+                  ownership_percentage: g.ownership_percentage,
+                  shares_count: g.shares_count,
                 })),
               );
             }
