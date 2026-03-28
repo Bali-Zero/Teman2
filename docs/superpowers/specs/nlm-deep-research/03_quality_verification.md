@@ -49,8 +49,10 @@ In Indonesia, government offices routinely announce operational changes on Insta
 ### Merged Formula
 
 ```
-Confidence = W_auth * S_auth + W_type * S_type + W_recency * S_recency
-           + W_corr * S_corr + W_spec * S_spec + W_geo * S_geo - Penalty
+Confidence = max(0, min(1.0,
+    W_auth * S_auth + W_type * S_type + W_recency * S_recency
+  + W_corr * S_corr + W_spec * S_spec + W_geo * S_geo - Penalty
+))
 ```
 
 ### Weights (consensus across 3 AI)
@@ -180,7 +182,17 @@ Single, independently verifiable assertion with: one predicate, temporal bound, 
 3. Overall confidence = **minimum** of sub-assertions (conservative: weakest link)
 4. Tag which parts verified, which not
 
-### Claim Metadata (merged from all 3)
+### Claim Metadata — CANONICAL SCHEMA (merged from all 3)
+
+> **CANONICAL CLAIM SCHEMA (review fix 2026-03-28):**
+> This is the single source of truth for claim structure. All other files (04 source_registry,
+> 05 handoff, 06 recovery, 07 tests) MUST use these field names:
+>
+> - `source_ids` (array of source IDs, NOT `source_id` singular)
+> - `regulation_ref` (string|null — regulation number if applicable)
+> - `assertion_direction` (string — controlled vocabulary: requirement_added, requirement_removed,
+>   fee_increased, fee_decreased, deadline_extended, deadline_shortened, scope_expanded, scope_narrowed,
+>   process_changed, enforcement_increased, enforcement_decreased, status_changed)
 
 ```json
 {
@@ -220,6 +232,9 @@ Single, independently verifiable assertion with: one predicate, temporal bound, 
     "specificity": 0.7,
     "geographic": 1.0
   },
+  "source_ids": ["src_abc123", "src_def456"],
+  "regulation_ref": "Permenkumham 22/2023",
+  "assertion_direction": "requirement_added",
   "verification_gaps": [
     "No backing Surat Edaran found",
     "Other Bali offices not confirmed"

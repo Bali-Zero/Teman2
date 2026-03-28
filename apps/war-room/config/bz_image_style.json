@@ -1,0 +1,43 @@
+{
+  "pillars": [
+    "Realismo cinematico, non AI art — fotogrammi di film, mai illustrazioni o rendering",
+    "Color grading teal & amber — ombre teal/ciano, luci ambra/dorato (stile Villeneuve/Deakins)",
+    "Anacronismo surreale giocato serio — personaggi iconici in contesti balinesi, zero ironia visiva",
+    "Scala monumentale + golden hour — grandiosità, templi in controluce, panoramiche aeree, luce epica",
+    "Dualismo tonale — opportunità: toni caldi dorati / rischio: toni freddi, ombre marcate, claustrofobico"
+  ],
+  "prompt_formula": "[SUBJECT], [ACTION/POSE], wearing [WARDROBE], in [BALI LOCATION], [TIME OF DAY], shot on [CAMERA], [LENS], cinematic color grading, teal and amber tones, shallow depth of field, volumetric golden light, hyper-realistic, editorial photography, film grain, [MOOD]",
+  "cameras": [
+    "ARRI Alexa Mini LF",
+    "Hasselblad X2D",
+    "RED V-Raptor",
+    "DJI Inspire 3"
+  ],
+  "lenses": ["85mm f/1.4", "35mm anamorphic", "50mm prime", "35mm prime"],
+  "golden_rules": {
+    "no_text_in_image": "Mai testo, loghi o titoli nel prompt — tutto il testo va aggiunto in post su Canva",
+    "no_cartoon": "Sempre: hyper-realistic, editorial photography, cinematic",
+    "always_camera_lens": "ARRI Alexa / Hasselblad / RED + focale specifica — ancora il look al fotorealismo",
+    "always_teal_amber": "Cinematic teal and amber color grading — firma cromatica BZ, non cambiare mai",
+    "always_style_raw": "--style raw su Midjourney — riduce estetica AI-pretty, mantiene realismo",
+    "aspect_ratio": "4:5 — formato Instagram, sempre",
+    "seriousness": "Serietà assoluta — anche Dalì a Ubud deve sembrare National Geographic, non un meme",
+    "light": "Golden hour 80% / moody overcast 20% (solo slide di crisi)"
+  },
+  "mood_by_slide_type": {
+    "opportunity": "warm golden tones, volumetric light, serene authority, epic grandeur",
+    "risk_alert": "cold tones, deep shadows, tight composition, surveillance aesthetic, tense overwhelming atmosphere",
+    "cover": "maximum cinematic impact, dramatic backlit, film grain, editorial authority",
+    "cta": "aspirational warmth, clean, trustworthy"
+  },
+  "fireworks": {
+    "endpoint": "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-dev-fp8/text_to_image",
+    "params": {
+      "width": 1024,
+      "height": 1280,
+      "steps": 28,
+      "cfg_scale": 3.5
+    },
+    "note": "Returns raw JPEG bytes directly — no JSON wrapper"
+  }
+}

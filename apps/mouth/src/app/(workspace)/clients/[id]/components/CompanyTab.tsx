@@ -768,14 +768,25 @@ export function CompanyTab({
                       entry.ownership_percentage = a.ownership_percentage;
                     }
                   }
-                  setAssociates(
-                    Array.from(grouped.values()).map((g) => ({
+                  const groupedAssociates = Array.from(grouped.values()).map(
+                    (g) => ({
                       client_name: g.client_name,
                       role: g.roles.join(" / "),
                       ownership_percentage: g.ownership_percentage,
                       shares_count: g.shares_count,
-                    })),
+                    }),
                   );
+                  setAssociates(groupedAssociates);
+                  // Sum shares across all shareholders for accurate company total
+                  const totalShares = groupedAssociates.reduce(
+                    (sum, a) => sum + (a.shares_count || 0),
+                    0,
+                  );
+                  if (totalShares > 0) {
+                    setCompanyData((prev) =>
+                      prev ? { ...prev, shares_count: totalShares } : prev,
+                    );
+                  }
                 } else {
                   // Fallback: at least show the current client
                   setAssociates([
@@ -875,14 +886,25 @@ export function CompanyTab({
                   entry.ownership_percentage = a.ownership_percentage;
                 }
               }
-              setAssociates(
-                Array.from(grouped2.values()).map((g) => ({
+              const groupedAssociates2 = Array.from(grouped2.values()).map(
+                (g) => ({
                   client_name: g.client_name,
                   role: g.roles.join(" / "),
                   ownership_percentage: g.ownership_percentage,
                   shares_count: g.shares_count,
-                })),
+                }),
               );
+              setAssociates(groupedAssociates2);
+              // Sum shares across all shareholders for accurate company total
+              const totalShares2 = groupedAssociates2.reduce(
+                (sum, a) => sum + (a.shares_count || 0),
+                0,
+              );
+              if (totalShares2 > 0) {
+                setCompanyData((prev) =>
+                  prev ? { ...prev, shares_count: totalShares2 } : prev,
+                );
+              }
             }
             // Load company documents
             api.crm
@@ -1056,9 +1078,26 @@ export function CompanyTab({
       "inset 0 1px 0 0 rgba(255,255,255,0.06), inset 0 0 0 1px rgba(255,255,255,0.03)",
   };
 
+  // ── EDITORIAL DESIGN TOKENS ──────────────────────────────────────────
+  const glassCard: React.CSSProperties = {
+    background: "rgba(29,39,59,0.85)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    boxShadow:
+      "inset 0 1px 0 0 rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.12)",
+  };
+  const idCell: React.CSSProperties = {
+    padding: "20px 22px",
+    borderRight: "1px solid rgba(255,255,255,0.08)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  };
+
   return (
-    <div className="space-y-4">
-      {/* ── HEADER CARD ─────────────────────────────────────────────────── */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+      {/* ── EDITORIAL HERO ──────────────────────────────────────────────── */}
       <div style={crystalCard} className="p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
           <div className="flex items-center gap-5">
