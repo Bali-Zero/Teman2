@@ -105,6 +105,9 @@ export interface Client {
   last_interaction_summary?: string;
   tags?: string[];
   active_practices?: number;
+  tax_id?: string;
+  npwp?: string;
+  nib?: string;
   created_at: string;
   updated_at: string;
 }
