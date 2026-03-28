@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Building2,
   CreditCard,
@@ -361,11 +361,19 @@ export function AddCompanyModal({ clientId, onClose, onSuccess }: AddCompanyModa
     onClose();
   }, [reset, onClose]);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [handleClose]);
+
   const inputClass =
     'w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 text-sm';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-[var(--bz-border)] bg-[var(--bz-base)] p-6 shadow-xl">
         <div className="flex items-center justify-between mb-6">
           <div>
