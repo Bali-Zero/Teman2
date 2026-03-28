@@ -33,6 +33,78 @@ BALI ZERO VISUAL IDENTITY — MANDATORY RULES:
 
 FIREWORKS_URL = "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-dev-fp8/text_to_image"
 
+TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
+TIGRIS_BUCKET = "nuzantara-warroom-images"
+
+
+def upload_to_tigris(file_path: Path, key: str) -> str:
+    """Upload image to Tigris S3 → return public URL. Returns "" on failure."""
+    import os
+    access_key = os.environ.get("AWS_ACCESS_KEY_ID", "tid_sZQYyrgouAXAdQDuvsfPlLIIUMMvEDNhfMWmzCdeouELsPMn_U")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "tsec_5knItu7FoHkkv2P5qaEMSRdHxXDNb6ZD0+mgDfLsLF-lLntRwDUgrH4qmzhJX+3OI4XYTc")
+    if not access_key or not secret_key:
+        return ""
+    try:
+        img_bytes = file_path.read_bytes()
+        # Build S3 PUT request manually (no boto3 dependency)
+        import hmac, hashlib, datetime
+        now = datetime.datetime.utcnow()
+        date_str = now.strftime("%Y%m%d")
+        ts_str = now.strftime("%Y%m%dT%H%M%SZ")
+        region = "auto"
+        host = "fly.storage.tigris.dev"
+        content_type = "image/jpeg"
+        content_hash = hashlib.sha256(img_bytes).hexdigest()
+
+        canonical = "\n".join([
+            "PUT",
+            f"/{TIGRIS_BUCKET}/{key}",
+            "",
+            f"content-type:{content_type}",
+            f"host:{host}",
+            f"x-amz-content-sha256:{content_hash}",
+            f"x-amz-date:{ts_str}",
+            "",
+            "content-type;host;x-amz-content-sha256;x-amz-date",
+            content_hash,
+        ])
+        string_to_sign = "\n".join([
+            "AWS4-HMAC-SHA256", ts_str,
+            f"{date_str}/{region}/s3/aws4_request",
+            hashlib.sha256(canonical.encode()).hexdigest(),
+        ])
+        def hmac_sha256(key, msg):
+            return hmac.new(key if isinstance(key, bytes) else key.encode(), msg.encode(), hashlib.sha256).digest()
+        signing_key = hmac_sha256(hmac_sha256(hmac_sha256(hmac_sha256(
+            f"AWS4{secret_key}", date_str), region), "s3"), "aws4_request")
+        signature = hmac.new(signing_key, string_to_sign.encode(), hashlib.sha256).hexdigest()
+        auth = (
+            f"AWS4-HMAC-SHA256 Credential={access_key}/{date_str}/{region}/s3/aws4_request,"
+            f"SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date,"
+            f"Signature={signature}"
+        )
+        req = urllib.request.Request(
+            f"{TIGRIS_ENDPOINT}/{TIGRIS_BUCKET}/{key}",
+            data=img_bytes,
+            method="PUT",
+            headers={
+                "Content-Type": content_type,
+                "Authorization": auth,
+                "x-amz-date": ts_str,
+                "x-amz-content-sha256": content_hash,
+                "x-amz-acl": "public-read",
+            }
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            if resp.status in (200, 204):
+                url = f"{TIGRIS_ENDPOINT}/{TIGRIS_BUCKET}/{key}"
+                print(f"   ✅ Tigris upload OK: {url}", file=sys.stderr)
+                return url
+    except Exception as e:
+        print(f"   ⚠️  Tigris upload failed: {e}", file=sys.stderr)
+    return ""
+
+
 
 def call_gemini(prompt: str, timeout: int = 120) -> str:
     """Gemini CLI — visual brainstorming."""
@@ -183,7 +255,7 @@ Return ONLY the final prompt. No explanation, no preamble.
         return variants[0][1] if variants else raw_prompt
 
 
-def generate_image(prompt: str, api_key: str, output_path: Path, width: int = 1024, height: int = 1280) -> bool:
+def generate_image(prompt: str, api_key: str, output_path: Path, width: int = 1024, height: int = 1280):
     """Generate image via Fireworks Flux.1 Dev. Returns True on success."""
     payload = json.dumps({
         "prompt": prompt,
@@ -208,7 +280,10 @@ def generate_image(prompt: str, api_key: str, output_path: Path, width: int = 10
             return False
         output_path.write_bytes(img_bytes)
         print(f"   ✅ Image saved: {output_path} ({len(img_bytes)//1024}KB)", file=sys.stderr)
-        return True
+        # Upload to Tigris for public URL (needed by Canva upload-asset-from-url)
+        tigris_key = f"warroom/{output_path.name}"
+        public_url = upload_to_tigris(output_path, tigris_key)
+        return public_url if public_url else True
     except Exception as e:
         print(f"   ⚠️  Fireworks generation failed: {e}", file=sys.stderr)
         return False
@@ -272,12 +347,16 @@ def main():
         if not args.dry_run:
             print(f"   🚀 Generating via Fireworks...", file=sys.stderr)
             success = generate_image(final_prompt, fireworks_key, output_path)
-            manifest_entry["generated"] = success
+            manifest_entry["generated"] = bool(success)
             if success:
-                # Inject image path back into slides_data for canva_builder
+                # Inject image path + public URL back into slides_data
+                public_url = success if isinstance(success, str) else ""
+                manifest_entry["public_url"] = public_url
                 for s in slides_data["slides"]:
                     if s.get("slide_number") == slide_num:
                         s["generated_image_path"] = str(output_path)
+                        if public_url:
+                            s["generated_image_url"] = public_url
                         break
             time.sleep(1)  # Rate limit courtesy
         else:

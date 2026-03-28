@@ -257,7 +257,7 @@ urllib.request.urlopen('https://api.telegram.org/bot${BOT_TOKEN}/sendMessage', d
 import urllib.request, urllib.parse, os
 topic = os.environ.get('CANVA_TOPIC', '')
 fpath = os.environ.get('CANVA_FILE', '')
-msg = f'Canva auto-executor fallito.\nApri Claude Code e digita:\napplica canva pending per: {topic}\n\nFile: {fpath}'
+msg = f'⚠️ Canva auto-executor fallito.\nApri Claude app desktop su Pro → APPLICA_WAR_ROOM.md sul Desktop.\nTopic: {topic}'
 data = urllib.parse.urlencode({'chat_id': '$CHAT_IDS', 'text': msg}).encode()
 urllib.request.urlopen('https://api.telegram.org/bot${BOT_TOKEN}/sendMessage', data=data, timeout=10)
 " 2>/dev/null
