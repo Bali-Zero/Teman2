@@ -36,7 +36,15 @@ interface CalendarInfo {
   role: string;
 }
 
-const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+const WEEKDAYS = [
+  { short: 'Dom', full: 'Domenica' },
+  { short: 'Lun', full: 'Lunedì' },
+  { short: 'Mar', full: 'Martedì' },
+  { short: 'Mer', full: 'Mercoledì' },
+  { short: 'Gio', full: 'Giovedì' },
+  { short: 'Ven', full: 'Venerdì' },
+  { short: 'Sab', full: 'Sabato' },
+];
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -391,14 +399,14 @@ export default function CalendarPage() {
                 <div className="grid grid-cols-7 mb-2">
                   {WEEKDAYS.map((day, i) => (
                     <div
-                      key={day}
+                      key={day.short}
                       className={cn(
                         'text-center text-xs font-medium py-2',
                         i === 0 && 'text-[#d4845a]',
                         i !== 0 && 'text-[#9AA0AE]'
                       )}
                     >
-                      {day}
+                      <abbr title={day.full} className="no-underline">{day.short}</abbr>
                     </div>
                   ))}
                 </div>
