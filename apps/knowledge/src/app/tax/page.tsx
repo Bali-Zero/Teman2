@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   FileText,
@@ -20,9 +20,9 @@ import {
   AlertTriangle,
   Sparkles,
   ChevronRight,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import api from "@/lib/api";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import api from '@/lib/api';
 
 // =============================================================================
 // Tax Service Data
@@ -33,13 +33,13 @@ interface TaxService {
   code: string;
   title: string;
   title_id: string;
-  category: "Registration" | "Filing" | "Insurance" | "Reporting";
+  category: 'Registration' | 'Filing' | 'Insurance' | 'Reporting';
   price: string;
   price_note?: string;
   processing_time: string;
   frequency: string;
   mandatory: boolean;
-  icon: "calculator" | "receipt" | "users" | "calendar" | "building";
+  icon: 'calculator' | 'receipt' | 'users' | 'calendar' | 'building';
   description: string;
   key_points: string[];
   warning?: string;
@@ -47,194 +47,191 @@ interface TaxService {
 
 const TAX_SERVICES: TaxService[] = [
   {
-    id: "npwp-personal",
-    code: "NPWP",
-    title: "NPWP Personal + Coretax",
-    title_id: "Nomor Pokok Wajib Pajak Pribadi",
-    category: "Registration",
-    price: "IDR 1.000.000",
-    processing_time: "2-3 days",
-    frequency: "One-time",
+    id: 'npwp-personal',
+    code: 'NPWP',
+    title: 'NPWP Personal + Coretax',
+    title_id: 'Nomor Pokok Wajib Pajak Pribadi',
+    category: 'Registration',
+    price: 'IDR 1.000.000',
+    processing_time: '2-3 days',
+    frequency: 'One-time',
     mandatory: true,
-    icon: "calculator",
+    icon: 'calculator',
     description:
-      "Personal Tax ID registration with Coretax system integration. Required for all working individuals in Indonesia.",
+      'Personal Tax ID registration with Coretax system integration. Required for all working individuals in Indonesia.',
     key_points: [
-      "Required for KITAS holders",
-      "Needed for bank accounts",
-      "Permanent validity",
-      "Includes Coretax migration",
+      'Required for KITAS holders',
+      'Needed for bank accounts',
+      'Permanent validity',
+      'Includes Coretax migration',
     ],
   },
   {
-    id: "npwpd-corporate",
-    code: "NPWPD",
-    title: "NPWPD Corporate",
-    title_id: "NPWP Daerah / Badan",
-    category: "Registration",
-    price: "IDR 2.500.000",
-    processing_time: "3-5 days",
-    frequency: "One-time",
+    id: 'npwpd-corporate',
+    code: 'NPWPD',
+    title: 'NPWPD Corporate',
+    title_id: 'NPWP Daerah / Badan',
+    category: 'Registration',
+    price: 'IDR 2.500.000',
+    processing_time: '3-5 days',
+    frequency: 'One-time',
     mandatory: true,
-    icon: "building",
+    icon: 'building',
     description:
-      "Corporate/Regional Tax ID for companies. Required for all PT PMA and local businesses.",
+      'Corporate/Regional Tax ID for companies. Required for all PT PMA and local businesses.',
     key_points: [
-      "Required after company setup",
-      "Enables invoice issuance",
-      "VAT credit eligibility",
-      "Local tax compliance",
+      'Required after company setup',
+      'Enables invoice issuance',
+      'VAT credit eligibility',
+      'Local tax compliance',
     ],
   },
   {
-    id: "spt-personal",
-    code: "SPT",
-    title: "SPT Annual Personal",
-    title_id: "Surat Pemberitahuan Tahunan Pribadi",
-    category: "Filing",
-    price: "IDR 2.000.000",
-    processing_time: "1-2 weeks",
-    frequency: "Annually (by March 31)",
+    id: 'spt-personal',
+    code: 'SPT',
+    title: 'SPT Annual Personal',
+    title_id: 'Surat Pemberitahuan Tahunan Pribadi',
+    category: 'Filing',
+    price: 'IDR 2.000.000',
+    processing_time: '1-2 weeks',
+    frequency: 'Annually (by March 31)',
     mandatory: true,
-    icon: "receipt",
+    icon: 'receipt',
     description:
-      "Individual annual tax return filing. Mandatory for all NPWP holders with Indonesian income.",
+      'Individual annual tax return filing. Mandatory for all NPWP holders with Indonesian income.',
     key_points: [
-      "Deadline: March 31",
-      "Covers worldwide income",
-      "183+ days = tax resident",
-      "Penalties for late filing",
+      'Deadline: March 31',
+      'Covers worldwide income',
+      '183+ days = tax resident',
+      'Penalties for late filing',
     ],
-    warning: "Late filing penalty: IDR 100,000 + 2%/month interest",
+    warning: 'Late filing penalty: IDR 100,000 + 2%/month interest',
   },
   {
-    id: "spt-company-zero",
-    code: "SPT-Z",
-    title: "SPT Annual Company (Zero)",
-    title_id: "SPT Tahunan Badan (Nihil)",
-    category: "Filing",
-    price: "IDR 3.000.000",
-    price_note: "Starting from",
-    processing_time: "1-2 weeks",
-    frequency: "Annually (by April 30)",
+    id: 'spt-company-zero',
+    code: 'SPT-Z',
+    title: 'SPT Annual Company (Zero)',
+    title_id: 'SPT Tahunan Badan (Nihil)',
+    category: 'Filing',
+    price: 'IDR 3.000.000',
+    price_note: 'Starting from',
+    processing_time: '1-2 weeks',
+    frequency: 'Annually (by April 30)',
     mandatory: true,
-    icon: "receipt",
+    icon: 'receipt',
     description:
-      "Annual tax return for dormant or zero-activity companies. Still mandatory even with no revenue.",
+      'Annual tax return for dormant or zero-activity companies. Still mandatory even with no revenue.',
     key_points: [
-      "For dormant companies",
-      "NIL declaration required",
-      "Maintains compliance",
-      "Simpler documentation",
-    ],
-  },
-  {
-    id: "spt-company-operational",
-    code: "SPT-OP",
-    title: "SPT Annual Company (Operational)",
-    title_id: "SPT Tahunan Badan (Operasional)",
-    category: "Filing",
-    price: "IDR 4.000.000",
-    price_note: "Starting from",
-    processing_time: "2-4 weeks",
-    frequency: "Annually (by April 30)",
-    mandatory: true,
-    icon: "receipt",
-    description:
-      "Comprehensive annual tax return for active companies with revenue and expenses.",
-    key_points: [
-      "Full financial statements",
-      "22% corporate tax rate",
-      "Audit-ready documentation",
-      "Professional preparation",
-    ],
-    warning: "Late filing penalty: IDR 1,000,000 + potential audit",
-  },
-  {
-    id: "monthly-tax",
-    code: "MONTHLY",
-    title: "Monthly Tax Report",
-    title_id: "Laporan Pajak Bulanan",
-    category: "Filing",
-    price: "IDR 1.500.000",
-    price_note: "Starting from",
-    processing_time: "Monthly",
-    frequency: "Monthly (by 20th)",
-    mandatory: true,
-    icon: "calendar",
-    description:
-      "Monthly tax compliance including PPh 21, PPh 23, PPh 25, and PPN filing.",
-    key_points: [
-      "PPh 21 employee withholding",
-      "PPh 23 service withholding",
-      "PPN (VAT) reporting",
-      "Payment reminders included",
+      'For dormant companies',
+      'NIL declaration required',
+      'Maintains compliance',
+      'Simpler documentation',
     ],
   },
   {
-    id: "bpjs-health",
-    code: "BPJS-K",
-    title: "BPJS Health Insurance",
-    title_id: "BPJS Kesehatan",
-    category: "Insurance",
-    price: "IDR 2.500.000",
-    price_note: "Per company",
-    processing_time: "2-3 weeks",
-    frequency: "One-time setup",
+    id: 'spt-company-operational',
+    code: 'SPT-OP',
+    title: 'SPT Annual Company (Operational)',
+    title_id: 'SPT Tahunan Badan (Operasional)',
+    category: 'Filing',
+    price: 'IDR 4.000.000',
+    price_note: 'Starting from',
+    processing_time: '2-4 weeks',
+    frequency: 'Annually (by April 30)',
     mandatory: true,
-    icon: "users",
-    description:
-      "National Health Insurance registration. Mandatory for all KITAS holders and PT PMA employees.",
+    icon: 'receipt',
+    description: 'Comprehensive annual tax return for active companies with revenue and expenses.',
     key_points: [
-      "Required for KITAS extension",
-      "Covers medical expenses",
-      "Minimum 2 people/company",
-      "Monthly premium varies by class",
+      'Full financial statements',
+      '22% corporate tax rate',
+      'Audit-ready documentation',
+      'Professional preparation',
     ],
-    warning: "Cannot extend KITAS without BPJS payment proof!",
+    warning: 'Late filing penalty: IDR 1,000,000 + potential audit',
   },
   {
-    id: "bpjs-employment",
-    code: "BPJS-TK",
-    title: "BPJS Employment Insurance",
-    title_id: "BPJS Ketenagakerjaan",
-    category: "Insurance",
-    price: "IDR 1.500.000",
-    price_note: "Per company",
-    processing_time: "2-3 weeks",
-    frequency: "One-time setup",
+    id: 'monthly-tax',
+    code: 'MONTHLY',
+    title: 'Monthly Tax Report',
+    title_id: 'Laporan Pajak Bulanan',
+    category: 'Filing',
+    price: 'IDR 1.500.000',
+    price_note: 'Starting from',
+    processing_time: 'Monthly',
+    frequency: 'Monthly (by 20th)',
     mandatory: true,
-    icon: "users",
-    description:
-      "Employment Insurance covering work accidents, death benefits, and pension.",
+    icon: 'calendar',
+    description: 'Monthly tax compliance including PPh 21, PPh 23, PPh 25, and PPN filing.',
     key_points: [
-      "Work accident coverage (JKK)",
-      "Death benefit (JKM)",
-      "Old age savings (JHT)",
-      "Pension program (JP)",
+      'PPh 21 employee withholding',
+      'PPh 23 service withholding',
+      'PPN (VAT) reporting',
+      'Payment reminders included',
     ],
   },
   {
-    id: "lkpm",
-    code: "LKPM",
-    title: "LKPM Report",
-    title_id: "Laporan Kegiatan Penanaman Modal",
-    category: "Reporting",
-    price: "IDR 1.000.000",
-    price_note: "Per quarter",
-    processing_time: "1 week",
-    frequency: "Quarterly",
+    id: 'bpjs-health',
+    code: 'BPJS-K',
+    title: 'BPJS Health Insurance',
+    title_id: 'BPJS Kesehatan',
+    category: 'Insurance',
+    price: 'IDR 2.500.000',
+    price_note: 'Per company',
+    processing_time: '2-3 weeks',
+    frequency: 'One-time setup',
     mandatory: true,
-    icon: "calendar",
+    icon: 'users',
     description:
-      "Quarterly Investment Activity Report to BKPM. Mandatory for all PT PMA companies.",
+      'National Health Insurance registration. Mandatory for all KITAS holders and PT PMA employees.',
     key_points: [
-      "Due 10th of Q+1 month",
-      "Investment realization",
-      "Employment data",
-      "OSS suspension if late",
+      'Required for KITAS extension',
+      'Covers medical expenses',
+      'Minimum 2 people/company',
+      'Monthly premium varies by class',
     ],
-    warning: "Late submission = OSS access suspended!",
+    warning: 'Cannot extend KITAS without BPJS payment proof!',
+  },
+  {
+    id: 'bpjs-employment',
+    code: 'BPJS-TK',
+    title: 'BPJS Employment Insurance',
+    title_id: 'BPJS Ketenagakerjaan',
+    category: 'Insurance',
+    price: 'IDR 1.500.000',
+    price_note: 'Per company',
+    processing_time: '2-3 weeks',
+    frequency: 'One-time setup',
+    mandatory: true,
+    icon: 'users',
+    description: 'Employment Insurance covering work accidents, death benefits, and pension.',
+    key_points: [
+      'Work accident coverage (JKK)',
+      'Death benefit (JKM)',
+      'Old age savings (JHT)',
+      'Pension program (JP)',
+    ],
+  },
+  {
+    id: 'lkpm',
+    code: 'LKPM',
+    title: 'LKPM Report',
+    title_id: 'Laporan Kegiatan Penanaman Modal',
+    category: 'Reporting',
+    price: 'IDR 1.000.000',
+    price_note: 'Per quarter',
+    processing_time: '1 week',
+    frequency: 'Quarterly',
+    mandatory: true,
+    icon: 'calendar',
+    description:
+      'Quarterly Investment Activity Report to BKPM. Mandatory for all PT PMA companies.',
+    key_points: [
+      'Due 10th of Q+1 month',
+      'Investment realization',
+      'Employment data',
+      'OSS suspension if late',
+    ],
+    warning: 'Late submission = OSS access suspended!',
   },
 ];
 
@@ -244,45 +241,45 @@ const TAX_SERVICES: TaxService[] = [
 
 function getCategoryColor(category: string): string {
   switch (category) {
-    case "Registration":
-      return "from-blue-500/20 to-cyan-500/20 border-blue-500/30";
-    case "Filing":
-      return "from-purple-500/20 to-pink-500/20 border-purple-500/30";
-    case "Insurance":
-      return "from-emerald-500/20 to-teal-500/20 border-emerald-500/30";
-    case "Reporting":
-      return "from-amber-500/20 to-orange-500/20 border-amber-500/30";
+    case 'Registration':
+      return 'from-blue-500/20 to-cyan-500/20 border-blue-500/30';
+    case 'Filing':
+      return 'from-purple-500/20 to-pink-500/20 border-purple-500/30';
+    case 'Insurance':
+      return 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30';
+    case 'Reporting':
+      return 'from-amber-500/20 to-orange-500/20 border-amber-500/30';
     default:
-      return "from-gray-500/20 to-slate-500/20 border-gray-500/30";
+      return 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
   }
 }
 
 function getCategoryBadgeColor(category: string): string {
   switch (category) {
-    case "Registration":
-      return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-    case "Filing":
-      return "bg-purple-500/20 text-purple-400 border-purple-500/30";
-    case "Insurance":
-      return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-    case "Reporting":
-      return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+    case 'Registration':
+      return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+    case 'Filing':
+      return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+    case 'Insurance':
+      return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+    case 'Reporting':
+      return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
     default:
-      return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+      return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
   }
 }
 
 function getIcon(icon: string) {
   switch (icon) {
-    case "calculator":
+    case 'calculator':
       return Calculator;
-    case "receipt":
+    case 'receipt':
       return Receipt;
-    case "users":
+    case 'users':
       return Users;
-    case "calendar":
+    case 'calendar':
       return Calendar;
-    case "building":
+    case 'building':
       return Building2;
     default:
       return FileText;
@@ -353,7 +350,7 @@ function TaxCard({ service, onClick }: TaxCardProps) {
             <DollarSign className="w-2.5 h-2.5 text-emerald-400" />
             <div>
               <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">
-                {service.price_note || "Price"}
+                {service.price_note || 'Price'}
               </p>
               <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight">
                 {service.price}
@@ -363,9 +360,7 @@ function TaxCard({ service, onClick }: TaxCardProps) {
           <div className="flex items-center gap-1 p-1 rounded bg-[var(--background)]/50">
             <Clock className="w-2.5 h-2.5 text-blue-400" />
             <div>
-              <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">
-                Frequency
-              </p>
+              <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">Frequency</p>
               <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight line-clamp-1">
                 {service.frequency}
               </p>
@@ -415,14 +410,14 @@ function TaxCard({ service, onClick }: TaxCardProps) {
 
 export default function TaxPage() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
-    api.kbActivity.logView("tax", undefined, "Tax Services", "tax");
+    api.kbActivity.logView('tax', undefined, 'Tax Services', 'tax');
   }, []);
 
-  const categories = ["Registration", "Filing", "Insurance", "Reporting"];
+  const categories = ['Registration', 'Filing', 'Insurance', 'Reporting'];
 
   const filteredServices = TAX_SERVICES.filter((svc) => {
     const matchesSearch =
@@ -430,8 +425,7 @@ export default function TaxPage() {
       svc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       svc.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       svc.title_id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      !selectedCategory || svc.category === selectedCategory;
+    const matchesCategory = !selectedCategory || svc.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -440,13 +434,13 @@ export default function TaxPage() {
       acc[svc.category] = (acc[svc.category] || 0) + 1;
       return acc;
     },
-    {} as Record<string, number>,
+    {} as Record<string, number>
   );
 
   const handleCardClick = (service: TaxService) => {
     window.open(
       `https://kita.balizero.com/chat?q=${encodeURIComponent(`Tell me about ${service.title} in Indonesia`)}`,
-      "_blank",
+      '_blank'
     );
   };
 
@@ -455,19 +449,16 @@ export default function TaxPage() {
       <div className="flex items-start justify-between">
         <div>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push('/')}
             className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] hover:text-[var(--foreground)] mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Knowledge Base
           </button>
-          <h1 className="text-3xl font-bold text-[var(--foreground)]">
-            Tax &amp; NPWP Guide
-          </h1>
+          <h1 className="text-3xl font-bold text-[var(--foreground)]">Tax &amp; NPWP Guide</h1>
           <p className="text-[var(--foreground-muted)] mt-2 max-w-2xl">
-            Complete guide to Indonesian taxation. NPWP registration, SPT
-            filing, BPJS insurance, and LKPM reporting - all with Bali Zero 2026
-            prices.
+            Complete guide to Indonesian taxation. NPWP registration, SPT filing, BPJS insurance,
+            and LKPM reporting - all with Bali Zero 2026 prices.
           </p>
         </div>
 
@@ -476,12 +467,8 @@ export default function TaxPage() {
             <Calculator className="w-5 h-5 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-[var(--foreground)]">
-              Bali Zero
-            </p>
-            <p className="text-xs text-[var(--foreground-muted)]">
-              Tax Compliance Experts
-            </p>
+            <p className="text-sm font-semibold text-[var(--foreground)]">Bali Zero</p>
+            <p className="text-xs text-[var(--foreground-muted)]">Tax Compliance Experts</p>
           </div>
         </div>
       </div>
@@ -490,27 +477,27 @@ export default function TaxPage() {
         {[
           {
             icon: <FileText className="w-5 h-5 text-indigo-400" />,
-            bg: "bg-indigo-500/10",
+            bg: 'bg-indigo-500/10',
             value: TAX_SERVICES.length.toString(),
-            label: "Services",
+            label: 'Services',
           },
           {
             icon: <Shield className="w-5 h-5 text-emerald-400" />,
-            bg: "bg-emerald-500/10",
-            value: "100%",
-            label: "Compliance",
+            bg: 'bg-emerald-500/10',
+            value: '100%',
+            label: 'Compliance',
           },
           {
             icon: <Star className="w-5 h-5 text-amber-400" />,
-            bg: "bg-amber-500/10",
-            value: "2026",
-            label: "Updated Prices",
+            bg: 'bg-amber-500/10',
+            value: '2026',
+            label: 'Updated Prices',
           },
           {
             icon: <TrendingUp className="w-5 h-5 text-blue-400" />,
-            bg: "bg-blue-500/10",
-            value: "24/7",
-            label: "Support",
+            bg: 'bg-blue-500/10',
+            value: '24/7',
+            label: 'Support',
           },
         ].map((stat, i) => (
           <div
@@ -518,18 +505,12 @@ export default function TaxPage() {
             className="p-4 rounded-xl bg-[var(--background-secondary)] border border-[var(--border)]"
           >
             <div className="flex items-center gap-3">
-              <div
-                className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center`}
-              >
+              <div className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center`}>
                 {stat.icon}
               </div>
               <div>
-                <p className="text-2xl font-bold text-[var(--foreground)]">
-                  {stat.value}
-                </p>
-                <p className="text-xs text-[var(--foreground-muted)]">
-                  {stat.label}
-                </p>
+                <p className="text-2xl font-bold text-[var(--foreground)]">{stat.value}</p>
+                <p className="text-xs text-[var(--foreground-muted)]">{stat.label}</p>
               </div>
             </div>
           </div>
@@ -542,6 +523,7 @@ export default function TaxPage() {
           <input
             type="text"
             placeholder="Search by service name or code..."
+            aria-label="Cerca per nome servizio o codice"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
@@ -553,8 +535,8 @@ export default function TaxPage() {
             onClick={() => setSelectedCategory(null)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
               selectedCategory === null
-                ? "bg-[var(--accent)] text-white"
-                : "bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]"
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
             }`}
           >
             All ({TAX_SERVICES.length})
@@ -565,8 +547,8 @@ export default function TaxPage() {
               onClick={() => setSelectedCategory(cat)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 selectedCategory === cat
-                  ? "bg-[var(--accent)] text-white"
-                  : "bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]"
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'bg-[var(--background-secondary)] text-[var(--foreground-secondary)] hover:bg-[var(--background-elevated)]'
               }`}
             >
               {cat} ({categoryCounts[cat] || 0})
@@ -577,20 +559,14 @@ export default function TaxPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {filteredServices.map((service) => (
-          <TaxCard
-            key={service.id}
-            service={service}
-            onClick={() => handleCardClick(service)}
-          />
+          <TaxCard key={service.id} service={service} onClick={() => handleCardClick(service)} />
         ))}
       </div>
 
       {filteredServices.length === 0 && (
         <div className="p-12 rounded-xl bg-[var(--background-secondary)] border border-[var(--border)] text-center">
           <FileText className="w-16 h-16 text-[var(--foreground-muted)] mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">
-            No services found
-          </h3>
+          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">No services found</h3>
           <p className="text-sm text-[var(--foreground-muted)]">
             Try adjusting your search or filter criteria.
           </p>
@@ -604,17 +580,12 @@ export default function TaxPage() {
         </h3>
         <div className="grid md:grid-cols-3 gap-4">
           {[
-            { title: "SPT Personal", date: "March 31st each year" },
-            { title: "SPT Corporate", date: "April 30th each year" },
-            { title: "LKPM Quarterly", date: "10th of Q+1 month" },
+            { title: 'SPT Personal', date: 'March 31st each year' },
+            { title: 'SPT Corporate', date: 'April 30th each year' },
+            { title: 'LKPM Quarterly', date: '10th of Q+1 month' },
           ].map((d) => (
-            <div
-              key={d.title}
-              className="p-3 rounded-lg bg-[var(--background)]/50"
-            >
-              <p className="text-sm font-semibold text-[var(--foreground)]">
-                {d.title}
-              </p>
+            <div key={d.title} className="p-3 rounded-lg bg-[var(--background)]/50">
+              <p className="text-sm font-semibold text-[var(--foreground)]">{d.title}</p>
               <p className="text-xs text-[var(--foreground-muted)]">{d.date}</p>
             </div>
           ))}
@@ -628,14 +599,12 @@ export default function TaxPage() {
               Need Help with Tax Compliance?
             </h3>
             <p className="text-[var(--foreground-secondary)]">
-              Our tax experts can guide you through registration, filing, and
-              compliance. Free consultation available.
+              Our tax experts can guide you through registration, filing, and compliance. Free
+              consultation available.
             </p>
           </div>
           <Button
-            onClick={() =>
-              window.open("https://kita.balizero.com/chat", "_blank")
-            }
+            onClick={() => window.open('https://kita.balizero.com/chat', '_blank')}
             className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white whitespace-nowrap"
           >
             <Sparkles className="w-4 h-4" />

@@ -93,6 +93,8 @@ export function FolderSidebar({
                   <button
                     key={folder.folder_id}
                     onClick={() => onSelectFolder(folder.folder_id)}
+                    aria-current={isSelected ? 'page' : undefined}
+                    aria-label={hasUnread ? `${folder.folder_name} (${folder.unread_count} non lette)` : folder.folder_name}
                     className={cn(
                       'w-full px-3 py-2 rounded-lg text-sm transition-all',
                       'flex items-center justify-between gap-2',
