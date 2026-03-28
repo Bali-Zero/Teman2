@@ -174,7 +174,7 @@ class StalePracticeNotifier:
         """
         import httpx
 
-        today: str = date.today().isoformat()
+        today: str = datetime.now(tz=timezone.utc).date().isoformat()
         subject = f"\u23f0 {len(stale)} pratiche ferme da {STALE_DAYS}+ giorni \u2014 {today}"
 
         # Group by leader for the table
