@@ -8,7 +8,7 @@ Author: Windsurf (QA Engineer)
 Created: 2026-02-09
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -23,7 +23,7 @@ class TestFeedbackCollection:
             "query_id": "test-query-123",
             "user_id": "user-456",
             "feedback_type": "thumbs_up",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": {},
         }
 
@@ -39,7 +39,7 @@ class TestFeedbackCollection:
             "user_id": "user-456",
             "feedback_type": "thumbs_down",
             "reason": "Incorrect information",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": {},
         }
 
@@ -55,7 +55,7 @@ class TestFeedbackCollection:
             "rating": 3,
             "comment": "Response was partially helpful but missing key details",
             "aspects": {"accuracy": 4, "completeness": 2, "clarity": 4, "relevance": 3},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         assert feedback["feedback_type"] == "detailed"
@@ -185,7 +185,7 @@ class TestFeedbackStorage:
             "query_id": "test-query-123",
             "user_id": "user-456",
             "feedback_type": "thumbs_up",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # Simulate storing feedback
@@ -207,8 +207,8 @@ class TestFeedbackStorage:
         mock_conn = AsyncMock()
         mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
         mock_conn.fetch.return_value = [
-            {"feedback_type": "thumbs_up", "timestamp": datetime.utcnow()},
-            {"feedback_type": "thumbs_down", "timestamp": datetime.utcnow()},
+            {"feedback_type": "thumbs_up", "timestamp": datetime.now(timezone.utc)},
+            {"feedback_type": "thumbs_down", "timestamp": datetime.now(timezone.utc)},
         ]
 
         query_id = "test-query-123"
@@ -227,7 +227,7 @@ class TestFeedbackStorage:
         mock_conn = AsyncMock()
         mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         week_ago = now - timedelta(days=7)
 
         mock_conn.fetch.return_value = [

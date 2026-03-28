@@ -168,7 +168,7 @@ async def get_activity_logs(
 
     except Exception as e:
         logger.error(f"❌ Failed to fetch activity logs: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/interactions")
@@ -262,7 +262,7 @@ async def get_team_interactions(
 
     except Exception as e:
         logger.error(f"❌ Failed to fetch team interactions: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/api-audit")
@@ -353,7 +353,7 @@ async def get_api_audit_trail(
 
     except Exception as e:
         logger.error(f"❌ Failed to fetch API audit trail: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/summary/today")
@@ -384,7 +384,7 @@ async def get_today_summary(
 
     except Exception as e:
         logger.error(f"❌ Failed to fetch today's summary: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/summary/interactions")
@@ -420,4 +420,4 @@ async def get_interactions_summary(
 
     except Exception as e:
         logger.error(f"❌ Failed to fetch interactions summary: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

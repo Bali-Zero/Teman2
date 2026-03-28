@@ -15,7 +15,7 @@ Test Coverage:
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -622,7 +622,7 @@ class TestMetricsTracker:
                     variant="A",
                     metric="ctr",
                     value=1.0,
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(timezone.utc),
                     metadata=None,
                 ),
             ]
@@ -648,7 +648,7 @@ class TestMetricsTracker:
                     variant="A",
                     metric="ctr",
                     value=1.0,
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(timezone.utc),
                     metadata=json.dumps({"source": "web"}),
                 ),
             ]

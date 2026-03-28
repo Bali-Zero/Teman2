@@ -93,7 +93,7 @@ async def upload_preview(
         )
     except Exception as e:
         logger.error(f"Failed to upload preview {payload.article_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to save preview: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save preview: {str(e)}") from e
 
 
 @router.get("/{article_id}.html", response_class=HTMLResponse)

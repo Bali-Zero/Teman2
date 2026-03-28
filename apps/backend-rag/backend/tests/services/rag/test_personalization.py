@@ -8,7 +8,7 @@ Author: Windsurf (QA Engineer)
 Created: 2026-02-09
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -23,7 +23,7 @@ class TestUserContextTracking:
             "preferences": {},
             "history": [],
             "profile": {},
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
         assert "user_id" in user_context
@@ -37,7 +37,7 @@ class TestUserContextTracking:
 
         query = {
             "query_text": "What are visa requirements?",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "response_quality": 0.85,
         }
 
@@ -54,7 +54,7 @@ class TestUserContextTracking:
         # Add 60 queries
         for i in range(60):
             user_context["history"].append(
-                {"query_text": f"Query {i}", "timestamp": datetime.utcnow().isoformat()}
+                {"query_text": f"Query {i}", "timestamp": datetime.now(timezone.utc).isoformat()}
             )
 
         # Keep only last 50
@@ -322,15 +322,15 @@ class TestPrivacyAndSecurity:
     def test_respect_data_retention_policy(self):
         """Test data retention policy compliance"""
         retention_days = 90
-        old_query = {"timestamp": (datetime.utcnow() - timedelta(days=100)).isoformat()}
-        recent_query = {"timestamp": (datetime.utcnow() - timedelta(days=30)).isoformat()}
+        old_query = {"timestamp": (datetime.now(timezone.utc) - timedelta(days=100)).isoformat()}
+        recent_query = {"timestamp": (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()}
 
         # Check if should be deleted
         old_date = datetime.fromisoformat(old_query["timestamp"])
-        should_delete_old = (datetime.utcnow() - old_date).days > retention_days
+        should_delete_old = (datetime.now(timezone.utc) - old_date).days > retention_days
 
         recent_date = datetime.fromisoformat(recent_query["timestamp"])
-        should_delete_recent = (datetime.utcnow() - recent_date).days > retention_days
+        should_delete_recent = (datetime.now(timezone.utc) - recent_date).days > retention_days
 
         assert should_delete_old is True
         assert should_delete_recent is False

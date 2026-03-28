@@ -776,7 +776,7 @@ async def get_postgres_tables(
         }
     except Exception as e:
         logger.error(f"Failed to get tables: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/postgres/schema/table/{table_name}")
@@ -815,7 +815,7 @@ async def get_postgres_table_details(
         }
     except Exception as e:
         logger.error(f"Failed to get table details: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/postgres/schema/indexes")
@@ -846,7 +846,7 @@ async def get_postgres_indexes(
         }
     except Exception as e:
         logger.error(f"Failed to get indexes: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/postgres/stats/tables")
@@ -877,7 +877,7 @@ async def get_postgres_table_stats(
         }
     except Exception as e:
         logger.error(f"Failed to get table stats: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/postgres/stats/database")
@@ -903,7 +903,7 @@ async def get_postgres_database_stats(
         }
     except Exception as e:
         logger.error(f"Failed to get database stats: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/postgres/query")
@@ -950,7 +950,7 @@ async def execute_postgres_query(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Query execution failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/postgres/performance/slow-queries")
@@ -983,7 +983,7 @@ async def get_postgres_slow_queries(
         }
     except Exception as e:
         logger.error(f"Failed to get slow queries: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/postgres/performance/locks")
@@ -1010,7 +1010,7 @@ async def get_postgres_locks(
         }
     except Exception as e:
         logger.error(f"Failed to get locks: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/postgres/performance/connections")
@@ -1036,7 +1036,7 @@ async def get_postgres_connection_stats(
         }
     except Exception as e:
         logger.error(f"Failed to get connection stats: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # --- Sentry Test Endpoint (v1 compatibility) ---

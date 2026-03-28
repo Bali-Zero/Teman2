@@ -155,7 +155,7 @@ async def get_overview(
         }
     except Exception as e:
         logger.error(f"Failed to get overview: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/messages")
@@ -235,7 +235,7 @@ async def get_messages(
         }
     except Exception as e:
         logger.error(f"Failed to get messages: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/team-stats")
@@ -398,7 +398,7 @@ async def get_team_stats(
         }
     except Exception as e:
         logger.error(f"Failed to get team stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/timesheet")
@@ -461,7 +461,7 @@ async def get_timesheet(
         }
     except Exception as e:
         logger.error(f"Failed to get timesheet: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/crm-actions")
@@ -525,7 +525,7 @@ async def get_crm_actions(
         }
     except Exception as e:
         logger.error(f"Failed to get CRM actions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/practice-stats")
@@ -579,7 +579,7 @@ async def get_practice_stats(
         }
     except Exception as e:
         logger.error(f"Failed to get practice stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/export/messages")
@@ -658,4 +658,4 @@ async def export_messages(
 
     except Exception as e:
         logger.error(f"Failed to export messages: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

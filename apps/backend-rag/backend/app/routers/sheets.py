@@ -73,7 +73,7 @@ async def read_range(spreadsheet_id: str, range: str) -> dict[str, Any]:
         return {"status": "success", "rows": rows, "count": len(rows)}
     except Exception as e:
         logger.error(f"[SHEETS] Read failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/read")
@@ -85,7 +85,7 @@ async def read_range_post(req: ReadRequest) -> dict[str, Any]:
         return {"status": "success", "rows": rows, "count": len(rows)}
     except Exception as e:
         logger.error(f"[SHEETS] Read failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/write")
@@ -97,7 +97,7 @@ async def write_range(req: WriteRequest) -> dict[str, Any]:
         return {"status": "success", "updated_cells": result.get("updatedCells", 0)}
     except Exception as e:
         logger.error(f"[SHEETS] Write failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/append")
@@ -112,7 +112,7 @@ async def append_rows(req: WriteRequest) -> dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"[SHEETS] Append failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/find")
@@ -128,7 +128,7 @@ async def find_row(req: FindRequest) -> dict[str, Any]:
         return {"status": "found", "row": row_num}
     except Exception as e:
         logger.error(f"[SHEETS] Find failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/update-row")
@@ -154,4 +154,4 @@ async def update_row(req: UpdateRowRequest) -> dict[str, Any]:
         }
     except Exception as e:
         logger.error(f"[SHEETS] Update row failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
