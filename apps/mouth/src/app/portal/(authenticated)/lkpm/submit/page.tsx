@@ -309,6 +309,7 @@ export default function LKPMSubmitPage() {
                 <input
                   type="text"
                   inputMode="numeric"
+                  aria-label={`${cat.label} — ${t.domestic}`}
                   value={formatNumber(investment[`${cat.key}_domestic`])}
                   onChange={(e) =>
                     updateInvestment(`${cat.key}_domestic`, e.target.value)
@@ -323,6 +324,7 @@ export default function LKPMSubmitPage() {
                 <input
                   type="text"
                   inputMode="numeric"
+                  aria-label={`${cat.label} — ${t.import}`}
                   value={formatNumber(investment[`${cat.key}_import`])}
                   onChange={(e) =>
                     updateInvestment(`${cat.key}_import`, e.target.value)
@@ -354,6 +356,7 @@ export default function LKPMSubmitPage() {
                 <input
                   type="text"
                   inputMode="numeric"
+                  aria-label={field.label}
                   value={formatNumber(investment[field.key])}
                   onChange={(e) => updateInvestment(field.key, e.target.value)}
                   placeholder="0"
@@ -389,6 +392,7 @@ export default function LKPMSubmitPage() {
           <input
             type="text"
             inputMode="numeric"
+            aria-label={t.modalKerja}
             value={formatNumber(investment.working_capital)}
             onChange={(e) =>
               updateInvestment("working_capital", e.target.value)
@@ -415,12 +419,14 @@ export default function LKPMSubmitPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label
+                htmlFor="lkpm-tki"
                 className="block text-xs mb-1"
                 style={{ color: "var(--bz-text-2)" }}
               >
                 {t.tki}
               </label>
               <input
+                id="lkpm-tki"
                 type="number"
                 min="0"
                 value={tki || ""}
@@ -435,12 +441,14 @@ export default function LKPMSubmitPage() {
             </div>
             <div>
               <label
+                htmlFor="lkpm-tka"
                 className="block text-xs mb-1"
                 style={{ color: "var(--bz-text-2)" }}
               >
                 {t.tka}
               </label>
               <input
+                id="lkpm-tka"
                 type="number"
                 min="0"
                 value={tka || ""}
@@ -469,12 +477,14 @@ export default function LKPMSubmitPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label
+                htmlFor="lkpm-revenue-q"
                 className="block text-xs mb-1"
                 style={{ color: "var(--bz-text-2)" }}
               >
                 {t.revenueQ}
               </label>
               <input
+                id="lkpm-revenue-q"
                 type="text"
                 inputMode="numeric"
                 value={formatNumber(revenueQuarterly)}
@@ -493,12 +503,14 @@ export default function LKPMSubmitPage() {
             </div>
             <div>
               <label
+                htmlFor="lkpm-revenue-y"
                 className="block text-xs mb-1"
                 style={{ color: "var(--bz-text-2)" }}
               >
                 {t.revenueY}
               </label>
               <input
+                id="lkpm-revenue-y"
                 type="text"
                 inputMode="numeric"
                 value={formatNumber(revenueAnnual)}
@@ -531,12 +543,14 @@ export default function LKPMSubmitPage() {
           <div className="space-y-4">
             <div>
               <label
+                htmlFor="lkpm-obstacles"
                 className="block text-xs mb-1"
                 style={{ color: "var(--bz-text-2)" }}
               >
                 {t.obstacles}
               </label>
               <textarea
+                id="lkpm-obstacles"
                 value={obstacles}
                 onChange={(e) => setObstacles(e.target.value)}
                 placeholder={t.obstaclesPlaceholder}
@@ -550,12 +564,14 @@ export default function LKPMSubmitPage() {
             </div>
             <div>
               <label
+                htmlFor="lkpm-plans"
                 className="block text-xs mb-1"
                 style={{ color: "var(--bz-text-2)" }}
               >
                 {t.plans}
               </label>
               <textarea
+                id="lkpm-plans"
                 value={plans}
                 onChange={(e) => setPlans(e.target.value)}
                 placeholder={t.plansPlaceholder}
