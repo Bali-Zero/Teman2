@@ -239,12 +239,13 @@ export function ZantaraChat({ codeContext, opener, suggestions }: ZantaraChatPro
             aria-label="Chat with Zantara AI"
           />
           <button
+            type="button"
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || loading}
             className="shrink-0 mb-1 mr-1 flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-[#d4845a] to-[#b36a46] text-white shadow-md transition-all disabled:opacity-30 disabled:grayscale hover:shadow-[0_0_15px_rgba(212,132,90,0.4)] hover:scale-105 active:scale-95"
             aria-label="Send message"
           >
-            <Send className="h-4 w-4 ml-0.5" />
+            <Send className="h-4 w-4 ml-0.5" aria-hidden="true" />
           </button>
         </div>
       </div>
