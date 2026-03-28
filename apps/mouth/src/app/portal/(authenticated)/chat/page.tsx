@@ -198,8 +198,22 @@ export default function ChatPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--bz-accent-warm)' }} />
+      <div className="flex flex-col h-[calc(100vh-180px)] md:h-[calc(100vh-140px)] animate-in fade-in duration-500">
+        <div className="flex-shrink-0 pb-4 border-b" style={{ borderColor: 'var(--bz-border)' }}>
+          <div className="h-6 w-32 rounded animate-pulse" style={{ background: 'var(--bz-border)' }} />
+          <div className="h-4 w-48 rounded mt-1 animate-pulse" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+        </div>
+        <div className="flex-1 py-4 space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className={`flex gap-3 ${i % 2 === 0 ? 'flex-row-reverse' : ''}`}>
+              <div className="w-8 h-8 rounded-full flex-shrink-0 animate-pulse" style={{ background: 'var(--bz-border)' }} />
+              <div className={`h-16 rounded-xl animate-pulse ${i % 2 === 0 ? 'w-2/3' : 'w-3/4'}`} style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+            </div>
+          ))}
+        </div>
+        <div className="flex-shrink-0 pt-3 border-t" style={{ borderColor: 'var(--bz-border)' }}>
+          <div className="h-12 w-full rounded-xl animate-pulse" style={{ background: 'var(--bz-border)', opacity: 0.4 }} />
+        </div>
       </div>
     );
   }

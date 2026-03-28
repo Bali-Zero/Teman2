@@ -78,11 +78,37 @@ export default function LKPMReviewPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2
-          className="w-8 h-8 animate-spin"
-          style={{ color: "var(--bz-accent-warm)" }}
-        />
+      <div className="space-y-6 animate-in fade-in duration-500">
+        {/* Back + header */}
+        <div className="h-5 w-24 rounded animate-pulse" style={{ background: 'var(--bz-border)' }} />
+        <section className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full animate-pulse" style={{ background: 'var(--bz-border)' }} />
+          <div className="space-y-1.5">
+            <div className="h-6 w-48 rounded animate-pulse" style={{ background: 'var(--bz-border)' }} />
+            <div className="h-4 w-32 rounded animate-pulse" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+          </div>
+        </section>
+        {/* Validation alerts skeleton */}
+        <div className="rounded-xl border p-6 space-y-3 animate-pulse" style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="h-5 w-40 rounded" style={{ background: 'var(--bz-border)' }} />
+          {[1, 2].map((i) => (
+            <div key={i} className="h-10 rounded-lg" style={{ background: 'var(--bz-border)', opacity: 0.4 }} />
+          ))}
+        </div>
+        {/* Investment table skeleton */}
+        <div className="rounded-xl border p-6 space-y-4 animate-pulse" style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="h-5 w-36 rounded" style={{ background: 'var(--bz-border)' }} />
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex justify-between">
+                <div className="h-4 w-32 rounded" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+                <div className="h-4 w-24 rounded" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Approve button skeleton */}
+        <div className="h-12 w-full rounded-lg animate-pulse" style={{ background: 'var(--bz-border)' }} />
       </div>
     );
   }
@@ -158,9 +184,9 @@ export default function LKPMReviewPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ color: "var(--bz-text-2)" }}>
-                <th className="text-left py-2">Category</th>
-                <th className="text-right py-2">Domestic</th>
-                <th className="text-right py-2">Import</th>
+                <th scope="col" className="text-left py-2">Category</th>
+                <th scope="col" className="text-right py-2">Domestic</th>
+                <th scope="col" className="text-right py-2">Import</th>
               </tr>
             </thead>
             <tbody
