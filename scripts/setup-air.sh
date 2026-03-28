@@ -125,16 +125,46 @@ else
     ok "Cron path OK (usa venv)"
 fi
 
-# --- 5. Logs directory ---
+# --- 5. Git config (prevent auto-rebase on pull) ---
 echo ""
-echo "--- 5. Logs ---"
+echo "--- 5. Git config ---"
+
+PULL_REBASE=$(cd "$REPO_DIR" && git config --get pull.rebase 2>/dev/null || echo "unset")
+if [ "$PULL_REBASE" != "false" ]; then
+    cd "$REPO_DIR" && git config pull.rebase false && git config pull.ff only
+    ok "Git pull.rebase=false, pull.ff=only (prevents rebase conflicts)"
+else
+    ok "Git pull config OK"
+fi
+
+# Abort stuck rebase if present
+if [ -d "$REPO_DIR/.git/rebase-merge" ] || [ -d "$REPO_DIR/.git/rebase-apply" ]; then
+    cd "$REPO_DIR" && git rebase --abort 2>/dev/null
+    warn "Aborted stuck rebase"
+fi
+
+# Ensure 'pro' remote exists for direct sync
+PRO_REMOTE=$(cd "$REPO_DIR" && git remote get-url pro 2>/dev/null || echo "")
+if [ -z "$PRO_REMOTE" ]; then
+    cd "$REPO_DIR" && git remote add pro "nuzantara@Nuzantara.local:/Users/nuzantara/Desktop/nuzantara"
+    ok "Added 'pro' git remote"
+elif ! echo "$PRO_REMOTE" | grep -q "nuzantara@"; then
+    cd "$REPO_DIR" && git remote set-url pro "nuzantara@Nuzantara.local:/Users/nuzantara/Desktop/nuzantara"
+    ok "Fixed 'pro' git remote URL"
+else
+    ok "Git remote 'pro' OK"
+fi
+
+# --- 6. Logs directory ---
+echo ""
+echo "--- 6. Logs ---"
 
 mkdir -p "$LOG_DIR"
 ok "Logs directory presente"
 
-# --- 6. Verifica finale ---
+# --- 7. Verifica finale ---
 echo ""
-echo "--- 6. Verifica ---"
+echo "--- 7. Verifica ---"
 
 ERRORS=0
 
