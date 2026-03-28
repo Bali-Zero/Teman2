@@ -515,7 +515,7 @@ class RetrievalQualityMonitor:
                 loop = asyncio.get_running_loop()
                 loop.create_task(self._maybe_flush())
             except RuntimeError:
-                pass
+                pass  # No event loop — flush will happen on next async call
 
             logger.info(f"Recorded ABSTAIN: domain={domain}, reason={reason}")
 

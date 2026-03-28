@@ -44,8 +44,8 @@ class GoogleColabAdapter:
             if result.returncode == 0:
                 logger.info("✅ Google Colab package trovato")
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Colab pip check failed (non-critical): {e}")
 
         # Colab è principalmente web-based
         # Per ora, consideralo disponibile se l'utente può accedere via browser

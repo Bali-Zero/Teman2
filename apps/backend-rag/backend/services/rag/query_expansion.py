@@ -426,8 +426,8 @@ Return ONLY a JSON object with language codes as keys:
                         for lang in languages:
                             if lang in translations:
                                 variants.add(translations[lang])
-                    except json.JSONDecodeError:
-                        pass
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"Translation JSON parse skipped: {e}")
 
         except asyncio.TimeoutError:
             logger.debug("LLM translation timeout, using dictionary only")
@@ -519,8 +519,8 @@ Return ONLY a JSON object with language codes as keys:
 
                             # Cache the result
                             await self.cache_service.set(cache_key, variants, ttl=3600)
-                    except json.JSONDecodeError:
-                        pass
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"Query rephrase JSON parse skipped: {e}")
 
         except asyncio.TimeoutError:
             logger.debug("LLM rephrasing timeout")

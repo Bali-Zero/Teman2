@@ -453,7 +453,7 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
                     try:
                         generated_at = datetime.fromisoformat(generated_at_raw)
                     except ValueError:
-                        pass
+                        pass  # invalid ISO date format — generated_at stays None
 
                 await conn.execute(
                     """
