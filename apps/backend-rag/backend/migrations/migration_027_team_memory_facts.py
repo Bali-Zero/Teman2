@@ -11,7 +11,7 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import asyncpg
@@ -273,7 +273,7 @@ async def apply_migration(database_url: str = None):
                     fact["confidence"],
                     fact["source"],
                     json.dumps({"member_id": member.get("id", "")}),
-                    datetime.now(),
+                    datetime.now(tz=timezone.utc),
                 )
                 total_facts += 1
 
