@@ -57,6 +57,15 @@ TEMPLATE_SLOTS = [
     (11, "PBxns7m6jJJm3BKT-LBtXZ6mvNj5TH3n0",  None),                                    # slide 11 (heading only)
 ]
 
+# ── Image element IDs per le slide che hanno immagini (slot Canva) ───────────
+# Recuperare tramite start-editing-transaction se non noti — per ora marcati come None
+# Format: slide_index (0-based) → image_element_id
+IMAGE_ELEMENT_IDS: dict = {
+    0: None,  # cover (slide 1) — image element ID da recuperare da Canva
+    3: None,  # slide 4 — image element ID da recuperare
+    8: None,  # slide 9 — image element ID da recuperare
+}
+
 MIN_SLIDES = 6
 MAX_SLIDES = 11
 
@@ -134,6 +143,32 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
                 "element_id": body_id,
                 "text": body_text,
                 "page_index": page_index,
+            })
+
+    # ── Aggiungi operazioni upload_image per slide con immagini generate ──
+    for i, slide in enumerate(slides):
+        if i >= len(TEMPLATE_SLOTS):
+            break
+        img_path = slide.get("generated_image_path", "")
+        if not img_path:
+            continue
+        img_elem_id = IMAGE_ELEMENT_IDS.get(i)
+        page_index = TEMPLATE_SLOTS[i][0]
+        if img_elem_id:
+            # Element ID noto → operazione upload_image diretta
+            ops.append({
+                "type": "upload_image",
+                "element_id": img_elem_id,
+                "file_path": img_path,
+                "page_index": page_index,
+            })
+        else:
+            # Element ID non noto → annotazione per applicazione manuale
+            ops.append({
+                "type": "pending_image",
+                "file_path": img_path,
+                "page_index": page_index,
+                "note": f"Image generated: {img_path} — aggiungere manualmente alla slide {page_index}",
             })
 
     return ops
