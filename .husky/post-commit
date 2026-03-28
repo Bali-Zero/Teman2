@@ -1,10 +1,7 @@
 #!/bin/sh
 python3 scripts/docs_sync.py --quiet 2>/dev/null &
 
-# Pro→Air sync: tell Air to pull after Pro commits
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-if [ "$BRANCH" = "main" ] && [ "$(whoami)" = "nuzantara" ]; then
-    (ssh -o ConnectTimeout=5 -o BatchMode=yes air \
-      "cd ~/Projects/nuzantara && git stash -q 2>/dev/null; git pull pro main --ff-only 2>&1; git stash pop -q 2>/dev/null || true" \
-      >> ~/.openclaw/logs/git-sync.log 2>&1) &
+if [ "$BRANCH" = "main" ]; then
+    (git push pro main >> ~/.openclaw/logs/git-sync.log 2>&1) &
 fi
