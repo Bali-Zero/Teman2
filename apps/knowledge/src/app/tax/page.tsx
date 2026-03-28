@@ -526,6 +526,12 @@ export default function TaxPage() {
             aria-label="Cerca per nome servizio o codice"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setSearchQuery('');
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
             className="w-full pl-12 pr-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
           />
         </div>
