@@ -1,114 +1,47 @@
 /**
  * HR/Payroll API client module
+ * Uses the centralized api client for auth token management.
  */
+
+import { api } from "@/lib/api";
 
 const BASE = "/api/hr";
 
-async function fetchHR<T>(path: string, options?: RequestInit): Promise<T> {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-  const res = await fetch(`${BASE}${path}`, {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers,
-    },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `HR API error ${res.status}`);
-  }
-  return res.json();
+function qs(params?: Record<string, any>): string {
+  if (!params) return "";
+  const entries = Object.entries(params).filter(([, v]) => v != null);
+  return entries.length ? "?" + new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString() : "";
 }
 
 // Dashboard
-export const getDashboard = () => fetchHR<any>("/dashboard");
-export const getMyDashboard = () => fetchHR<any>("/my-dashboard");
+export const getDashboard = () => api.get<any>(`${BASE}/dashboard`);
+export const getMyDashboard = () => api.get<any>(`${BASE}/my-dashboard`);
 
 // Employees
-export const listEmployees = () => fetchHR<any>("/employees");
-export const getEmployee = (id: number) => fetchHR<any>(`/employees/${id}`);
-export const upsertEmployee = (data: any) =>
-  fetchHR<any>("/employees", { method: "POST", body: JSON.stringify(data) });
+export const listEmployees = () => api.get<any>(`${BASE}/employees`);
+export const getEmployee = (id: number) => api.get<any>(`${BASE}/employees/${id}`);
+export const upsertEmployee = (data: any) => api.post<any>(`${BASE}/employees`, data);
 
 // Bonus Rates
-export const listBonusRates = () => fetchHR<any>("/bonus-rates");
-export const upsertBonusRate = (data: any) =>
-  fetchHR<any>("/bonus-rates", { method: "POST", body: JSON.stringify(data) });
+export const listBonusRates = () => api.get<any>(`${BASE}/bonus-rates`);
+export const upsertBonusRate = (data: any) => api.post<any>(`${BASE}/bonus-rates`, data);
 
 // Bonuses
-export const listBonuses = (params?: Record<string, any>) => {
-  const qs = params
-    ? "?" +
-      new URLSearchParams(
-        Object.entries(params)
-          .filter(([, v]) => v != null)
-          .map(([k, v]) => [k, String(v)]),
-      ).toString()
-    : "";
-  return fetchHR<any>(`/bonuses${qs}`);
-};
-export const approveBonus = (id: number) =>
-  fetchHR<any>(`/bonuses/${id}/approve`, { method: "POST" });
+export const listBonuses = (params?: Record<string, any>) => api.get<any>(`${BASE}/bonuses${qs(params)}`);
+export const approveBonus = (id: number) => api.post<any>(`${BASE}/bonuses/${id}/approve`, {});
 
 // Payroll
 export const calculatePayroll = (month: number, year: number) =>
-  fetchHR<any>("/payroll/calculate", {
-    method: "POST",
-    body: JSON.stringify({ month, year }),
-  });
-export const listPayrollPeriods = () => fetchHR<any>("/payroll/periods");
-export const listPayslips = (params?: Record<string, any>) => {
-  const qs = params
-    ? "?" +
-      new URLSearchParams(
-        Object.entries(params)
-          .filter(([, v]) => v != null)
-          .map(([k, v]) => [k, String(v)]),
-      ).toString()
-    : "";
-  return fetchHR<any>(`/payslips${qs}`);
-};
-export const getPayslipDetail = (id: number) => fetchHR<any>(`/payslips/${id}`);
-export const approvePayroll = (periodId: number) =>
-  fetchHR<any>(`/payroll/${periodId}/approve`, { method: "POST" });
-export const markPayrollPaid = (periodId: number) =>
-  fetchHR<any>(`/payroll/${periodId}/mark-paid`, { method: "POST" });
+  api.post<any>(`${BASE}/payroll/calculate`, { month, year });
+export const listPayrollPeriods = () => api.get<any>(`${BASE}/payroll/periods`);
+export const listPayslips = (params?: Record<string, any>) => api.get<any>(`${BASE}/payslips${qs(params)}`);
+export const getPayslipDetail = (id: number) => api.get<any>(`${BASE}/payslips/${id}`);
+export const approvePayroll = (periodId: number) => api.post<any>(`${BASE}/payroll/${periodId}/approve`, {});
+export const markPayrollPaid = (periodId: number) => api.post<any>(`${BASE}/payroll/${periodId}/mark-paid`, {});
 
 // Leave
-export const requestLeave = (data: any) =>
-  fetchHR<any>("/leave/request", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-export const listLeaveRequests = (params?: Record<string, any>) => {
-  const qs = params
-    ? "?" +
-      new URLSearchParams(
-        Object.entries(params)
-          .filter(([, v]) => v != null)
-          .map(([k, v]) => [k, String(v)]),
-      ).toString()
-    : "";
-  return fetchHR<any>(`/leave/requests${qs}`);
-};
-export const getLeaveBalance = (params?: Record<string, any>) => {
-  const qs = params
-    ? "?" +
-      new URLSearchParams(
-        Object.entries(params)
-          .filter(([, v]) => v != null)
-          .map(([k, v]) => [k, String(v)]),
-      ).toString()
-    : "";
-  return fetchHR<any>(`/leave/balance${qs}`);
-};
-export const approveLeave = (id: number) =>
-  fetchHR<any>(`/leave/${id}/approve`, { method: "POST" });
-export const rejectLeave = (id: number, reason?: string) =>
-  fetchHR<any>(`/leave/${id}/reject`, {
-    method: "POST",
-    body: JSON.stringify({ reason }),
-  });
+export const requestLeave = (data: any) => api.post<any>(`${BASE}/leave/request`, data);
+export const listLeaveRequests = (params?: Record<string, any>) => api.get<any>(`${BASE}/leave/requests${qs(params)}`);
+export const getLeaveBalance = (params?: Record<string, any>) => api.get<any>(`${BASE}/leave/balance${qs(params)}`);
+export const approveLeave = (id: number) => api.post<any>(`${BASE}/leave/${id}/approve`, {});
+export const rejectLeave = (id: number, reason?: string) => api.post<any>(`${BASE}/leave/${id}/reject`, { reason });
