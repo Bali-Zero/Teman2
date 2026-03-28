@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Calculator as CalculatorIcon,
   DollarSign,
@@ -283,7 +284,14 @@ export function Calculator({
 
                 {/* Actions */}
                 {allowDownload && (
-                  <button className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors">
+                  <button
+                    className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
+                    onClick={() =>
+                      toast.info('Coming soon', {
+                        description: 'PDF download will be available in a future update.',
+                      })
+                    }
+                  >
                     <Download className="w-4 h-4" />
                     <span>Download estimate (PDF)</span>
                   </button>
