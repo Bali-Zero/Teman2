@@ -1,37 +1,10 @@
 {
   "daily_spend_usd": 0.0,
-  "daily_spend_date": "2026-03-27",
-  "consecutive_failures": 0,
-  "last_failure_at": "2026-03-27T06:03:45.403182+00:00",
-  "breaker_active_until": null,
+  "daily_spend_date": "2026-03-28",
+  "consecutive_failures": 3,
+  "last_failure_at": "2026-03-28T01:03:49.301972+00:00",
+  "breaker_active_until": "2026-03-29T01:03:49.304375+00:00",
   "runs": [
-    {
-      "run_id": "67970ec6",
-      "timestamp": "2026-03-26T22:30:00.580034+00:00",
-      "ruff_code": "DTZ005",
-      "target_file": "backend/app/modules/notifications/test_endpoint.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "019aee60",
-      "timestamp": "2026-03-26T22:33:08.140771+00:00",
-      "ruff_code": "DTZ005",
-      "target_file": "backend/app/routers/admin_drive_auth.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
-    {
-      "run_id": "77ee058e",
-      "timestamp": "2026-03-27T01:06:00.293820+00:00",
-      "ruff_code": "DTZ005",
-      "target_file": "backend/app/routers/agents.py",
-      "outcome": "success",
-      "cost_usd": 0.0,
-      "error": ""
-    },
     {
       "run_id": "d88affb9",
       "timestamp": "2026-03-27T01:09:08.002116+00:00",
@@ -454,6 +427,33 @@
       "outcome": "success",
       "cost_usd": 0.0,
       "error": ""
+    },
+    {
+      "run_id": "abd268e5",
+      "timestamp": "2026-03-28T01:03:28.939291+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Deterministic fixer produced no changes"
+    },
+    {
+      "run_id": "cfd4a282",
+      "timestamp": "2026-03-28T01:03:41.097610+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Deterministic fixer produced no changes"
+    },
+    {
+      "run_id": "2d765e9f",
+      "timestamp": "2026-03-28T01:03:50.169176+00:00",
+      "ruff_code": "ANN204",
+      "target_file": "",
+      "outcome": "failed",
+      "cost_usd": 0,
+      "error": "Deterministic fixer produced no changes"
     }
   ]
 }
