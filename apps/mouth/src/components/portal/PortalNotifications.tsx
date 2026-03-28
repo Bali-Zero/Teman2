@@ -192,7 +192,7 @@ export function PortalNotificationsPopover() {
               className="w-full text-sm text-[var(--foreground-muted)]"
               onClick={() => {
                 setOpen(false);
-                // Navigate to notifications page if exists
+                window.location.href = '/portal';
               }}
             >
               View all notifications
