@@ -142,23 +142,39 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
         # immagine nel template DAHE6lx1lf8 non sono noti staticamente.
         # L'operazione viene marcata "pending_image" come segnale per il designer
         # o per un futuro executor che conosce gli image element_id.
+        # Se disponibile URL pubblico (Tigris) → operazione completa per MCP Canva
+        generated_image_url = slide.get("generated_image_url") or ""
         generated_image_path = slide.get("generated_image_path") or ""
-        if generated_image_path:
+        img_elem_id = IMAGE_ELEMENT_IDS.get(i)
+
+        if generated_image_url:
+            if img_elem_id:
+                # URL + element_id noto → upload diretto + fill in un passaggio
+                ops.append({
+                    "type": "upload-asset-from-url",
+                    "url": generated_image_url,
+                    "page_index": page_index,
+                    "element_id": img_elem_id,
+                    "placement": image_placement or "full_bleed",
+                })
+            else:
+                # URL disponibile ma element_id non noto → upload asset (Claude recupera l'ID via start-editing-transaction)
+                ops.append({
+                    "type": "upload-asset-from-url",
+                    "url": generated_image_url,
+                    "page_index": page_index,
+                    "element_id": None,
+                    "placement": image_placement or "full_bleed",
+                    "_note": f"element_id unknown for page {page_index} — retrieve from start-editing-transaction",
+                })
+        elif generated_image_path:
+            # Immagine locale senza URL pubblico → manuale (Fireworks OK ma Tigris fallito)
             ops.append({
-                "type": "pending_image",
+                "type": "pending_image_local",
                 "file_path": generated_image_path,
                 "page_index": page_index,
-                "slide_index": i,
-                "image_placement": image_placement,
-                # element_id non noto: da recuperare via start-editing-transaction
-                # filtrando elementi di tipo "image" sulla pagina corrispondente
-                "element_id": None,
-                "_note": (
-                    "Image element_id unknown for this template slot. "
-                    "Retrieve via start-editing-transaction filtering "
-                    f"page {page_index} elements of type 'image', "
-                    "then apply upload_image manually."
-                ),
+                "placement": image_placement or "full_bleed",
+                "_note": "Tigris upload failed — insert manually from local file",
             })
 
     return ops
