@@ -16,6 +16,7 @@ Expected savings: ~80% API calls
 import hashlib
 import json
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class NotebookLMCacheService:
 
     def __init__(self) -> None:
         """Initialize cache service. Redis client obtained from RedisManager."""
-        self.redis_client = None
+        self.redis_client: Any | None = None
         self.ttl_seconds = 30 * 24 * 60 * 60  # 30 days
         self.cache_prefix = "notebooklm:qa:"
 
