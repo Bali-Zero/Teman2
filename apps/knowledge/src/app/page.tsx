@@ -162,6 +162,9 @@ export default function KnowledgePage() {
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               handleSearch();
+            } else if (e.key === 'Escape') {
+              setSearchQuery('');
+              (e.target as HTMLInputElement).blur();
             }
           }}
           className="w-full pl-12 pr-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 text-lg"
