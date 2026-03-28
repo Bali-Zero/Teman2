@@ -45,6 +45,7 @@ TELEGRAM_OWNER_CHAT_ID = "413539912"
 
 VERBOSE = False
 DRY_RUN = False
+USE_RAGAS = False
 
 
 def log(msg: str) -> None:
