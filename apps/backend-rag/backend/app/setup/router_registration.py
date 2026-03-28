@@ -58,6 +58,7 @@ def include_routers(api: FastAPI) -> None:
         google_drive,
         handlers,
         health,
+        hr,  # [NEW] HR/Payroll module
         ingest,
         instagram_chat,
         intel,
@@ -143,6 +144,9 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_shared_memory.router)
     api.include_router(crm_analytics.router)  # [NEW] CRM Analytics dashboard
     api.include_router(crm_portal_integration.router)  # Team ↔ Portal integration
+
+    # HR/Payroll router
+    api.include_router(hr.router)  # [NEW] HR/Payroll module
 
     # Notification router (Automated email alerts)
     from backend.app.modules.notifications.router import router as notifications_router
