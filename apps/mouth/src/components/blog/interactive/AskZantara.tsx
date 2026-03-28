@@ -171,6 +171,16 @@ export function AskZantara({
     }
   };
 
+  // Escape to close floating panel
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
   // Floating variant
   if (variant === 'floating') {
     return (
@@ -178,6 +188,7 @@ export function AskZantara({
         {/* Floating button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
+          aria-label={isOpen ? 'Close Zantara chat' : 'Ask Zantara'}
           className={cn(
             'fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg',
             'bg-gradient-to-r from-[#2251ff] to-[#4d73ff]',
