@@ -155,13 +155,13 @@ else
     ok "Git remote 'pro' OK"
 fi
 
-# Ensure Air is on 'air' branch (not main)
+# Ensure Air is on main
 CURRENT_BRANCH=$(cd "$REPO_DIR" && git branch --show-current)
-if [ "$CURRENT_BRANCH" != "air" ]; then
-    cd "$REPO_DIR" && git fetch pro && git checkout air 2>/dev/null || git checkout -b air pro/main
-    warn "Switched to branch 'air' (was on $CURRENT_BRANCH)"
+if [ "$CURRENT_BRANCH" != "main" ]; then
+    cd "$REPO_DIR" && git checkout main
+    warn "Switched to main (was on $CURRENT_BRANCH)"
 else
-    ok "On branch 'air' ✓"
+    ok "On branch main ✓"
 fi
 
 # --- 6. Logs directory ---
@@ -209,18 +209,20 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-# Git topology check: Air/air should be ahead-of or equal to Pro/main
+# Git sync check
 LOCAL_HEAD=$(git rev-parse --short=8 HEAD 2>/dev/null)
 PRO_MAIN=$(git rev-parse --short=8 pro/main 2>/dev/null || echo "UNREACHABLE")
 if [ "$PRO_MAIN" = "UNREACHABLE" ]; then
     warn "Pro non raggiungibile per sync check"
+elif [ "$LOCAL_HEAD" = "$PRO_MAIN" ]; then
+    ok "Git sync OK ($LOCAL_HEAD)"
 else
     AHEAD=$(git rev-list pro/main..HEAD 2>/dev/null | wc -l | tr -d ' ')
     BEHIND=$(git rev-list HEAD..pro/main 2>/dev/null | wc -l | tr -d ' ')
     if [ "$BEHIND" -eq 0 ]; then
-        ok "Git topology OK — Air/air is $AHEAD commit(s) ahead of Pro/main"
+        ok "Git sync OK — $AHEAD unpushed commit(s)"
     else
-        warn "Air is $BEHIND behind Pro/main — run: git rebase pro/main"
+        warn "Air is $BEHIND behind Pro — run: git pull pro main --ff-only"
         ERRORS=$((ERRORS + 1))
     fi
 fi

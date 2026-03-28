@@ -1,6 +1,6 @@
 # NLM Deep Research Pipeline — Brainstorm Progress
 
-> Last updated: 2026-03-28 (Phase 3 complete — 5 of 8 live phases done)
+> Last updated: 2026-03-28 (Phase 4 complete — 5 of 8 live phases done)
 > Session: brainstorm with Gemini + Codex GPT-5.4 + DeepSeek R1
 
 ## Target
@@ -186,7 +186,38 @@ All 7 steps are now designed. The full pipeline specification covers:
 | 7    | `07_testing_protocol.md`           | 8-phase test, Go/No-Go, production transition            |
 | 7b   | `07b_testing_protocol_deepseek.md` | Baselines, KPIs, statistical tests, cost model, go/no-go |
 
-**Next action:** Phase 4 (L2 cross-query dedup) → Phase 5 (Source lifecycle) → Phase 6 (Handoff) → Phase 7 (Failure/recovery) → Phase 8 (Go/No-Go).
+**Next action:** Phase 5 (Source lifecycle) → Phase 6 (Handoff) → Phase 7 (Failure/recovery) → Phase 8 (Go/No-Go).
+
+## Phase 4: L2 Cross-Query Dedup ✅ COMPLETE (2026-03-28 19:15)
+
+**L2 Query (Cluster A — DKP-TKA/RPTKA procedures sub-topic):**
+
+- Context injection: conversation_id from Phase 1+2+3
+- Response: 20 citations, 7/44 sources used (16%)
+- **MD Change Log cited as first-class source** (citations [5], [13])
+- **Cross-query overlap**: 5 of 7 sources overlap with Phase 1+2 (expected — same cluster)
+- **2 newly activated sources**: `[NB2-MD] Change Log`, `imk_itk_itb_itp_documenti_soggiorno`
+
+**Dedup verification:**
+
+- notebook_query does NOT import new sources → zero import risk ✅
+- Pre/post source count: 44/44 (unchanged) ✅
+- INV-1 ACTIVE ≤ 70: 44 ✅
+- New claims checked for text overlap with existing 14 → 0 duplicates ✅
+
+**5 new claims extracted (19 total):**
+
+| ID     | Claim                                              | Conf | Class       |
+| ------ | -------------------------------------------------- | ---- | ----------- |
+| P4-001 | DKP-TKA billing code expires 3 working days        | 0.80 | VERIFIED    |
+| P4-002 | SIAPKerja auto cross-check BPJS/WLKP (Jan 2026)    | 0.62 | PROVISIONAL |
+| P4-003 | Full TKA process: 3-6 months → 4-10 weeks          | 0.78 | VERIFIED    |
+| P4-004 | Bali KITAS E23 card conversion: 7-14 working days  | 0.65 | PROVISIONAL |
+| P4-005 | UU 63/2024 does NOT change DKP-TKA (clarification) | 0.82 | VERIFIED    |
+
+**SVS improvement:** 4 ESSENTIAL sources (was 3). NHS: **0.801 (EXCELLENT)**, up from 0.798.
+
+**Verdict: PASS — cross-query dedup works, no duplicate imports, claims are additive.**
 
 ## Phase 3: Triage + SVS + Claim Validation ✅ COMPLETE (2026-03-28 19:00)
 
@@ -239,10 +270,10 @@ Top 5 by SVS: `jabatan_tka_kepmen228` (0.624 VALUABLE), `kitas_e23_tka` (0.587),
 
 ## Session Summary (2026-03-28 17:00-19:00)
 
-**Completed:** Phase 0 + Phase 1 + P1 actions + Phase 2 + Phase 3
-**Claims:** 14 in `apps/evaluator/nlm_nb2_claims.jsonl` (6 VERIFIED, 5 PROVISIONAL, 1 LOW, 2 enforcement_divergence)
+**Completed:** Phase 0 + Phase 1 + P1 actions + Phase 2 + Phase 3 + Phase 4
+**Claims:** 19 in `apps/evaluator/nlm_nb2_claims.jsonl` (9 VERIFIED, 7 PROVISIONAL, 1 LOW, 2 enforcement_divergence)
 **NB-2 sources:** 44 (38 seed + 4 MDs + 2 UU 63/2024)
-**NHS:** 0.798 (EXCELLENT), up from 0.668
+**NHS:** 0.801 (EXCELLENT), up from 0.668 baseline
 **Conversation ID for NLM context:** `3e8fe6db-8873-4689-9bff-226ee875c09d`
 **Codebase fix:** `kg_subgraph_visa.py:180-186` IMTA→RPTKA (uncommitted)
 **Open Questions:** OQ-001 (SE 3/836 verify), OQ-003 (UU 1/2026), OQ-004 (Kepmenaker freshness), OQ-005 (Permenimipas vs Permenkumham). OQ-002 RESOLVED (MERP all KITAS).
