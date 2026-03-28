@@ -693,12 +693,13 @@ print(f'Query: {query}')
         TASK="${PROMPT:-$2}"
         [ -z "$TASK" ] && { err "Usage: $0 preflight[-l1|-l2|-l3] \"task description\""; exit 1; }
         # Determine level (strip 'preflight' prefix and leading dash)
-        RAW_CMD="${COMMAND#preflight}"
+        RAW_CMD="${CMD#preflight}"
         LEVEL="${RAW_CMD#-}"
         [ -z "$LEVEL" ] && LEVEL="l2"  # default to L2
-        info "Preflight SDD — level ${LEVEL^^} starting for: ${TASK:0:80}"
+        LEVEL_UPPER=$(echo "$LEVEL" | tr '[:lower:]' '[:upper:]')
+        info "Preflight SDD — level ${LEVEL_UPPER} starting for: ${TASK:0:80}"
         start=$(date +%s)
-        python3 -m apps.federation.workflows run "preflight-${LEVEL}" "$TASK"
+        PYTHONPATH=. python3 apps/federation/workflows.py run "preflight-${LEVEL}" "$TASK"
         ec=$?
         duration=$(( $(date +%s) - start ))
         audit_log "preflight-${LEVEL}" "$(echo "$TASK" | shasum -a 256 | cut -d' ' -f1)" "$duration" "$ec"
