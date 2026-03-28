@@ -190,3 +190,4 @@ else
     warn "Air setup completo — $ERRORS problemi trovati"
 fi
 echo "========================================="
+# Last verified: 2026-03-28 17:56

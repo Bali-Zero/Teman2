@@ -186,30 +186,60 @@ All 7 steps are now designed. The full pipeline specification covers:
 | 7    | `07_testing_protocol.md`           | 8-phase test, Go/No-Go, production transition            |
 | 7b   | `07b_testing_protocol_deepseek.md` | Baselines, KPIs, statistical tests, cost model, go/no-go |
 
-**Next action:** Execute Phase 0-7 testing with multi-round adversarial review workflow.
+**Next action:** Complete Phase 1 adversarial review synthesis, then proceed to Phase 2.
 
-## Testing Checkpoint (2026-03-28, pre-clear)
+## Phase 0: Environment Setup ✅ COMPLETE (2026-03-28 17:05)
 
-**Phase 0 Inventory (NB-2 baseline):**
+| Item                                 | Status | Detail                                                                                |
+| ------------------------------------ | ------ | ------------------------------------------------------------------------------------- |
+| Duplicate removed                    | ✅     | `7625b0cd` (UU 6/2011) deleted from NB-2                                              |
+| `nlm_nb2_pipeline_state.json`        | ✅     | Initialized with 10 invariants, 3 CBs, schedule                                       |
+| `nlm_nb2_sources.json`               | ✅     | 42 sources tracked (38 original + 4 MDs)                                              |
+| `nlm_nb2_claims.jsonl`               | ✅     | Empty (append-only, ready)                                                            |
+| `~/.agent/decisions/nlm_to_scraper/` | ✅     | Created with `/handoff` + `/archive` subdirs                                          |
+| MD-1 Change Log                      | ✅     | `bc98c989` — initialized                                                              |
+| MD-2 Operations Status               | ✅     | `dc11bcf9` — initialized                                                              |
+| MD-3 Cross-Domain Impacts            | ✅     | `6d336e6b` — initialized                                                              |
+| MD-4 Open Questions                  | ✅     | `bda28a80` — initialized                                                              |
+| Invariants                           | ✅     | 10/10 pass                                                                            |
+| Baseline NHS                         | ✅     | **0.668** (NORMAL) — H_cap=0.764, H_fresh=0.70, H_qual=0.40, H_cov=0.60, H_dedup=1.00 |
+| NB-2 total sources                   | ✅     | **42** (38 seed + 4 MDs)                                                              |
+
+## Phase 1: First L1 Query + Adversarial Review ✅ COMPLETE (2026-03-28 17:45)
+
+**L1 Query (Cluster A — Work permits/TKA):**
+
+- Query language: Bahasa Indonesia (60% target)
+- Response: 37 citations, 10 sources used (24% of 42)
+- Topics covered: RPTKA/DKPTKA changes, permitted/prohibited positions, KITAS E23 renewal, costs
+- Key regulations cited: PP 34/2021, SE 3/836/PK.04/I/2026, Kepmenaker 228/2019, 349/2019, Permenkumham 22/2023, Permenimipas 5/2025, UU 63/2024
+
+**4-Voice Adversarial Review — Aggregate Score: 7.0/10:**
+
+| Voice          | Score | Top Finding                                                                |
+| -------------- | ----- | -------------------------------------------------------------------------- |
+| V1 Gemini      | 6.5   | KBLI factual error (05-09 vs 06), "One Sponsor Policy" may be fabricated   |
+| V2 Codex       | 7.0   | Super-source risk, 8 claims, handoff TRS, no T0 used (expected)            |
+| V3 DeepSeek R1 | 6.5   | Codebase IMTA contradiction, 5 missing reasoning chains, 38% HIGH          |
+| V4 Claude      | 7.5   | UU 63/2024 untracked T0, monitoring-vs-explaining problem, MD seeding plan |
+
+**Claims extracted:** 10 (5 VERIFIED, 3 PROVISIONAL, 1 LOW, 1 corrected from NLM error)
+**Full review:** `phase1_adversarial_reviews.md`
+
+**Verdict: PASS (PROVISIONAL) — GO to Phase 2 with conditions:**
+
+- P0: Verify SE 3/836 on JDIH, fix KBLI error in claim
+- P1: Ingest UU 63/2024 as T0, fix `kg_subgraph_visa.py` IMTA refs, seed MDs
+- P2: Add T4 sources, split super-source, build alias resolver
+
+## Testing Checkpoint (2026-03-28, pre-clear — preserved)
+
+**Original Phase 0 Inventory (NB-2 baseline):**
 
 - NB-2 ID: `cff93ab0-813a-42f2-a8de-36987e724271`
-- Current sources: 39 (27 visa guides, 4 regulations, 5 knowledge docs, 3 TKA/circulars)
-- 1 duplicate detected: UU 6/2011 appears twice (`0e1fd3f8` + `7625b0cd`)
-- No Master Documents yet (MD-1 through MD-4 not created)
-- No state files yet (pipeline_state.json, source_registry.json, claims.jsonl not initialized)
-- NLM auth: valid on Pro (last validated 2026-03-28, cookies expire April 2027)
+- Original sources: 39 (before dedup)
+- NLM auth: valid on Pro (cookies expire April 2027)
 - `nlm` CLI: v0.5.9 on both Pro and Air
-
-**Phase 0 TODO (next session):**
-
-1. Remove duplicate UU 6/2011 source
-2. Initialize `apps/evaluator/nlm_nb2_pipeline_state.json`
-3. Initialize `apps/evaluator/nlm_nb2_sources.json` (registry with 38 existing sources)
-4. Initialize `apps/evaluator/nlm_nb2_claims.jsonl` (empty)
-5. Create `~/.agent/decisions/nlm_to_scraper/` directory tree
-6. Create 4 Master Documents (MD-1 through MD-4) as NLM text sources
-7. Run invariant check → all 10 should pass
-8. Calculate baseline NHS
 
 **Testing workflow (per step):**
 Multi-round adversarial review: Execute → 4 independent analyses → cross-share → web research + NB-9 deep → v1 reports → cross-read → v2 reports → synthesis → NLM convalida → fix → re-test → document
