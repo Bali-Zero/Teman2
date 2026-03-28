@@ -1,0 +1,192 @@
+BANKING E FINANZE PER EXPAT IN INDONESIA
+CONTI BANCARI, TRASFERIMENTI, TASSE PERSONALI 2024-2025
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Guida operativa per expat | Prodotta da Bali Zero / Zantara Intelligence
+Basata su UU 7/2011 (Valuta), UU 40/1999 (Banche), OJK regulations
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CONTO CORRENTE IN INDONESIA PER WNA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REQUISITI BASE PER APRIRE UN CONTO: [EXP-030]
+
+KITAS in mano → apertura conto relativamente semplice.
+Senza KITAS → molto difficile (alcune banche rifiutano, altre richiedono depositi minimi alti).
+
+Documenti richiesti standard:
+□ Passaporto valido
+□ KITAS (o KITAP) con timbro masuk terbaru
+□ NPWP (codice fiscale indonesiano) — fortemente consigliato
+□ Indirizzo indonesiano (lettera del landlord o affitto registrato)
+□ Moduli interni della banca
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. BANCHE CONSIGLIATE PER EXPAT
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BCA (Bank Central Asia): [EXP-031]
+- La banca più usata dagli expat a Bali
+- App mobile eccellente, ATM ovunque
+- Prodotti: Tahapan (conto corrente IDR), deposito USD disponibile
+- Apertura con KITAS: possibile nella maggior parte delle filiali
+- Minimo saldo: Rp 10.000 (conto base)
+- Canone mensile: Rp 10.000-17.000/mese (dipende dal piano)
+- Commissione ATM altri circuiti: Rp 7.500
+
+BNI (Bank Negara Indonesia):
+- Banca statale, buona infrastruttura internazionale
+- Conto in valuta estera (USD, EUR) disponibile
+- Apertura con KITAS: generalmente accettata
+- Commissioni più alte rispetto BCA
+
+MANDIRI:
+- Altra banca statale molto diffusa
+- Conveniente per WNA lavoratori (datori di lavoro spesso pagano su Mandiri)
+- Conto Tabungan Bisnis per piccole imprese
+
+HSBC Indonesia:
+- Per expat con patrimonio significativo (premium banking)
+- Premier account: min. Rp 100 juta o equivalente in valuta estera
+- Ideale per trasferimenti internazionali frequenti
+- Accesso alla rete HSBC globale
+
+CITIBANK Indonesia:
+- Semplificato per expat, carta di credito internazionale
+- Meno sportelli, più orientata al banking digitale
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. TRASFERIMENTI DI DENARO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TRASFERIMENTI INTERNAZIONALI VERSO INDONESIA: [EXP-032]
+
+Wise (ex TransferWise):
+- Il più usato dagli expat per transferimenti EUR/USD → IDR
+- Tasso di cambio mid-market, commissioni ~0.5-1%
+- Bonifico in 1-2 giorni lavorativi
+- SWIFT code: usa banca locale come destinazione
+- Limite: verifica annuale $1M, poi KYC aggiuntivo
+
+Revolut:
+- Popolare tra europei per convertire e tenere IDR
+- Conto multi-valuta, buoni tassi
+- Trasferimenti locali via SEPA/Swift
+
+Bank Indonesia Transfer (SWIFT):
+- Trasferimento diretto banca a banca
+- Più lento (3-5 giorni), commissioni banche intermediarie (~$25-50)
+- Necessario per importi > $100.000 (Bank Indonesia reporting obbligatorio)
+
+NOTA BANK INDONESIA: [EXP-033]
+Trasferimenti > USD 100.000 equivalente richiedono:
+- Segnalazione automatica alla Bank Indonesia
+- Documentazione sull'origine dei fondi (underlying transaction)
+- Dichiarazione LLD (Lalu Lintas Devisa) entro 15 giorni
+
+CRIPTOVALUTE:
+- In Indonesia le crypto NON sono valuta legale
+- Exchange locali (Indodax, Tokocrypto): legali per trading
+- Usare crypto per transazioni quotidiane: illegale
+- OJK e Bank Indonesia monitorano sempre più il settore
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. CARTE DI CREDITO E PRELIEVI ATM
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ATM IN INDONESIA: [EXP-034]
+- Circuiti accettati: VISA, Mastercard, Maestro, Plus
+- Limite prelievo tipico: Rp 1.250.000-3.000.000 per transazione
+- ATM fee: Rp 25.000-50.000 per prelievo con carta estera
+- Le banche estere spesso aggiungono il loro "foreign transaction fee" (1-3%)
+
+STRATEGIA OTTIMALE PER EXPAT:
+Aprire conto BCA → avere sempre IDR in conto → pagamenti locali da app BCA
+Mantenere carta Wise o Revolut per emergenze e grossi acquisti in IDR
+
+CONTANTI VS CARTA:
+- Bali molto orientata al contante per piccole spese
+- Mercati, warung, scooter: solo cash
+- Hotel, ristoranti espat, supermercati: carta accettata
+- QRIS (QR Code Indonesia Standard): molto diffuso, accettato ovunque
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. TASSE PERSONALI PER EXPAT
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHI È SOGGETTO ALL'IMPOSTA INDONESIANA: [EXP-035]
+
+PENDUDUK (residente fiscale): soggetto a PPh 21 su reddito mondiale
+- >183 giorni in Indonesia in 12 mesi, OPPURE
+- KITAS/KITAP con intenzione di stabilirsi
+
+NON PENDUDUK: soggetto a PPh 26 solo su redditi da fonte indonesiana
+- Turisti, visti B211 frequenti, < 183 giorni/anno
+
+NOMADI DIGITALI con B211A (Visa Nomade):
+- Non sono automaticamente "penduduk"
+- Se lavorano SOLO per clienti esteri: generalmente nessun obbligo fiscale in Indonesia
+- Se ricevono redditi da fonte indonesiana: PPh 26 si applica
+- Zona grigia legislativa — consultare sempre un konsultan pajak
+
+NPWP PRIBADI (codice fiscale personale): [EXP-036]
+- Non obbligatorio per tutti i WNA, ma necessario per:
+  → Aprire conto bancario in molte banche
+  → Lavorare come direttore di PT PMA
+  → Superare certi limiti su transazioni finanziarie
+- Ottenibile presso KPP (kantor pajak) locale con KITAS
+- Procedura: ~1-2 settimane, documenti: passaporto + KITAS + foto
+
+ALIQUOTE PPh 21 (residente):
+- Rp 0-60 juta/anno: 5%
+- Rp 60-250 juta/anno: 15%
+- Rp 250-500 juta/anno: 25%
+- Rp 500 juta - 5 miliardi/anno: 30%
+- > Rp 5 miliardi/anno: 35%
+
+CONVENZIONE CONTRO LA DOPPIA IMPOSIZIONE (P3B):
+Indonesia ha accordi P3B con 70+ paesi inclusi Italia, Germania, UK, Australia.
+→ Le imposte pagate in Indonesia vengono detratte nel paese di origine.
+→ Consultare un fiscal advisor internazionale per struttura ottimale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. CAMBIO VALUTA E MONEY CHANGER
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MONEY CHANGER AUTORIZZATI: [EXP-037]
+- PT BALI CITRA MANDIRI (BCM): i più usati da expat, tassi competitivi
+- PT BERKAT VALAS BALI: affidabile
+- Evitare money changer non autorizzati (truffatori noti a Kuta)
+
+TASSI INDICATIVI (2025):
+- EUR/IDR: ~17.000-17.500 IDR per 1 EUR
+- USD/IDR: ~15.500-16.000 IDR per 1 USD
+- AUD/IDR: ~10.000-10.500 IDR per 1 AUD
+
+Money changer autorizzati da Bank Indonesia mostrano licenza esposta.
+Verificare sempre il tasso PRIMA di consegnare il denaro.
+Ricevuta scritta: richiederla sempre.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+EXP-030, EXP-031, EXP-032, EXP-033, EXP-034, EXP-035, EXP-036, EXP-037
+
+Base normativa: UU 7/2011 (Valuta), UU 40/1999 (Perbankan),
+UU 36/2008 (PPh), Peraturan BI tentang LLD.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-28 | Generato da Zantara Intelligence
