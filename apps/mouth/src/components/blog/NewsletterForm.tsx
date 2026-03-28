@@ -116,6 +116,7 @@ function InlineForm({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
+                  aria-label="Email address"
                   disabled={status === "loading"}
                   className={cn(
                     "w-full h-12 pl-11 pr-4 rounded-xl",
@@ -289,6 +290,7 @@ function SidebarForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Your name (optional)"
+          aria-label="Your name"
           className={cn(
             "w-full h-11 px-4 rounded-xl",
             "bg-white/5 border border-white/10",
@@ -303,6 +305,7 @@ function SidebarForm({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Your email address"
+          aria-label="Email address"
           required
           className={cn(
             "w-full h-11 px-4 rounded-xl",
