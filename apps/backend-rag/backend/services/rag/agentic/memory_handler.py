@@ -46,6 +46,15 @@ class MemoryHandler:
         self._memory_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._lock_timeout = lock_timeout
 
+    @property
+    def memory_orchestrator(self) -> "MemoryOrchestrator | None":
+        """Public accessor for the lazily-initialized MemoryOrchestrator.
+
+        Returns the cached instance (or None if not yet initialized).
+        For initialization, use ``await get_memory_orchestrator()``.
+        """
+        return self._memory_orchestrator
+
     async def get_memory_orchestrator(self) -> "MemoryOrchestrator | None":
         """
         Lazy load and initialize memory orchestrator for fact extraction.

@@ -42,12 +42,11 @@ class OrchestratorContextManager:
             start_time = time.time()
             try:
                 # 1. Recupero dati utente base (Profile, Facts, Episodic)
+                memory_orch = await self.memory_handler.get_memory_orchestrator()
                 context_data = await _context_manager_module.get_user_context(
                     db_pool=self.db_pool,
                     user_id=user_id,
-                    memory_orchestrator=self.memory_handler.memory_orchestrator
-                    if hasattr(self.memory_handler, "memory_orchestrator")
-                    else self.memory_handler,
+                    memory_orchestrator=memory_orch,
                     query=query,
                     deep_think_mode=deep_think_mode,
                     session_id=session_id,
@@ -174,11 +173,7 @@ class OrchestratorContextManager:
             Enriched context dict
         """
         try:
-            memory_orchestrator = (
-                self.memory_handler.memory_orchestrator
-                if hasattr(self.memory_handler, "memory_orchestrator")
-                else self.memory_handler
-            )
+            memory_orchestrator = await self.memory_handler.get_memory_orchestrator()
             enriched = await _context_manager_module.get_user_context(
                 db_pool=self.db_pool,
                 user_id=user_id,
