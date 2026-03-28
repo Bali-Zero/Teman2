@@ -1299,6 +1299,7 @@ export default function UpgradedLoginPage() {
                         </div>
                         <input
                           type="password"
+                          aria-label="PIN"
                           value={pin}
                           onChange={(e) => {
                             setPin(e.target.value);

@@ -759,6 +759,7 @@ const CommandPalette = ({ open, onClose }: { open: boolean; onClose: () => void 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Cerca comandi..."
+              aria-label="Cerca comandi"
               className="flex-1 bg-transparent text-white placeholder-zinc-500 outline-none"
             />
             <kbd className="px-2 py-1 text-xs text-zinc-500 bg-white/5 rounded">ESC</kbd>
@@ -983,6 +984,7 @@ const ArticleComposer = () => {
           onChange={(e) => setTitle(e.target.value)}
           className="bg-transparent text-4xl font-bold text-white placeholder-zinc-600 outline-none mb-6"
           placeholder="Titolo dell'articolo..."
+          aria-label="Titolo dell'articolo"
         />
 
         {/* Toolbar */}
@@ -1213,6 +1215,7 @@ const ResearchScraper = () => {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="Incolla URL da analizzare..."
+              aria-label="URL da analizzare"
               className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-zinc-500 outline-none focus:border-violet-500/50"
             />
             <button

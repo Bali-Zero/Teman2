@@ -212,6 +212,7 @@ export function EditClientModal({
             </select>
             <input
               type="tel"
+              aria-label="Phone number"
               value={extractCountryCode(formData.phone).localNumber}
               onChange={(e) => {
                 const { countryCode } = extractCountryCode(formData.phone);
@@ -220,7 +221,6 @@ export function EditClientModal({
               }}
               className={`${inputClass} flex-1 min-w-0`}
               placeholder="Phone number"
-              aria-label="Phone number"
             />
           </div>
         </div>

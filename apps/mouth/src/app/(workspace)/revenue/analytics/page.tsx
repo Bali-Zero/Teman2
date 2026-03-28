@@ -354,6 +354,7 @@ export default function RevenueAnalyticsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Total Revenue"
+            aria-label="Total Revenue"
             value={isLoading ? '-' : formatCurrency(revenue?.total_actual || 0)}
             subtitle="Actual collected"
             trend={15.2}
@@ -363,6 +364,7 @@ export default function RevenueAnalyticsPage() {
           />
           <StatCard
             title="Outstanding"
+            aria-label="Outstanding"
             value={isLoading ? '-' : formatCurrency(revenue?.total_outstanding || 0)}
             subtitle={`${outstandingRate.toFixed(1)}% of total`}
             trend={-5.3}
@@ -372,6 +374,7 @@ export default function RevenueAnalyticsPage() {
           />
           <StatCard
             title="Collection Rate"
+            aria-label="Collection Rate"
             value={isLoading ? '-' : `${collectionRate.toFixed(1)}%`}
             subtitle="Paid / Actual"
             trend={3.8}
@@ -381,6 +384,7 @@ export default function RevenueAnalyticsPage() {
           />
           <StatCard
             title="Forecast (Next Month)"
+            aria-label="Forecast (Next Month)"
             value={isLoading ? '-' : formatCurrency(revenue?.forecast_next_month || 0)}
             subtitle="Projected revenue"
             icon={Target}

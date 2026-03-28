@@ -179,30 +179,35 @@ export default function RootLayout({
           type="text/plain"
           href="/llms.txt"
           title="LLM Quick Guide"
+          aria-label="LLM Quick Guide"
         />
         <link
           rel="alternate"
           type="text/plain"
           href="/llms-full.txt"
           title="LLM Full Context (EN)"
+          aria-label="LLM Full Context (EN)"
         />
         <link
           rel="alternate"
           type="text/plain"
           href="/llms-id.txt"
           title="LLM Full Context (ID)"
+          aria-label="LLM Full Context (ID)"
         />
         <link
           rel="alternate"
           type="application/xml"
           href="/sitemap-ai.xml"
           title="AI Sitemap"
+          aria-label="AI Sitemap"
         />
         <link
           rel="alternate"
           type="application/json"
           href="/.well-known/ai-plugin.json"
           title="AI Plugin"
+          aria-label="AI Plugin"
         />
 
         {/* Global JSON-LD for SEO */}

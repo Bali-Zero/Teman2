@@ -166,6 +166,7 @@ export function CoverImageUploader({
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              aria-label="Upload cover image"
               className="hidden"
               onChange={(e) => {
                 const selectedFile = e.target.files?.[0];

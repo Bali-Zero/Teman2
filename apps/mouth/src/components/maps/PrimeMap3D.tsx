@@ -835,6 +835,7 @@ export default function PrimeMap3D() {
                       id="location"
                       icon={IconPin}
                       title="Location"
+                      aria-label="Location"
                       defaultOpen
                       hasContent
                     >
@@ -862,6 +863,7 @@ export default function PrimeMap3D() {
                       id="zone"
                       icon={IconLayers}
                       title="Zone"
+                      aria-label="Zone"
                       defaultOpen
                       hasContent
                     >
@@ -912,6 +914,7 @@ export default function PrimeMap3D() {
                       id="businesses"
                       icon={IconBuilding}
                       title="What you can open"
+                      aria-label="What you can open"
                       defaultOpen
                       hasContent={hasBusinesses || !!zoningResult.is_restricted}
                     >
@@ -949,6 +952,7 @@ export default function PrimeMap3D() {
                       id="building"
                       icon={IconRuler}
                       title="Development Limits"
+                      aria-label="Development Limits"
                       hasContent={hasBuildingCodes}
                     >
                       {zoningResult.building_codes && (
@@ -994,6 +998,7 @@ export default function PrimeMap3D() {
                       id="overlays"
                       icon={IconAlert}
                       title="Overlays & Risks"
+                      aria-label="Overlays & Risks"
                       hasContent={!!hasOverlays}
                     >
                       <div className="space-y-1.5">
@@ -1025,6 +1030,7 @@ export default function PrimeMap3D() {
                       id="price"
                       icon={IconTrend}
                       title="Land Price"
+                      aria-label="Land Price"
                       hasContent={hasPrice}
                     >
                       <div className="rounded-xl bg-white/5 border border-white/8 px-4 py-3 backdrop-blur-sm">
@@ -1042,6 +1048,7 @@ export default function PrimeMap3D() {
                       id="intel"
                       icon={IconNews}
                       title="Latest Intel"
+                      aria-label="Latest Intel"
                       hasContent={hasIntel}
                     >
                       <div className="space-y-1.5">
@@ -1142,6 +1149,7 @@ export default function PrimeMap3D() {
             <input
               ref={searchInputRef}
               type="text"
+              aria-label="Search location by coordinates"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               onKeyDown={(e) => {
@@ -1166,6 +1174,7 @@ export default function PrimeMap3D() {
                 });
               }}
               placeholder="Search location or -8.644, 115.148…"
+              aria-label="Search location by address or coordinates"
               className="w-full pl-9 pr-4 py-2.5 bg-black/85 backdrop-blur-xl text-white placeholder-slate-500 rounded-xl border border-white/15 shadow-2xl focus:outline-none focus:border-[#d4845a]/60 text-sm"
             />
           </div>
@@ -1208,6 +1217,7 @@ export default function PrimeMap3D() {
                     value={kbliSearchQuery}
                     onChange={(e) => setKbliSearchQuery(e.target.value)}
                     placeholder="Search Business (e.g. Gym)"
+                    aria-label="Search business type"
                     className="w-full pl-3 pr-8 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#d4845a]/50"
                   />
                   <button

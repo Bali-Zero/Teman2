@@ -537,6 +537,7 @@ export default function VisaOraclePage() {
           />
           <input
             placeholder="Search by title, ID, or source..."
+            aria-label="Search visa oracle"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-xl text-[12px] outline-none transition-all"

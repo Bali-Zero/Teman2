@@ -757,6 +757,7 @@ export default function ArticleComposerPage() {
                         onFocus={() => setFocusedInput('tldr_who')}
                         onBlur={() => setFocusedInput(null)}
                         placeholder="Who"
+                        aria-label="Who"
                       />
                       <input
                         value={activeArticle.tldr.when}
@@ -766,6 +767,7 @@ export default function ArticleComposerPage() {
                         onFocus={() => setFocusedInput('tldr_when')}
                         onBlur={() => setFocusedInput(null)}
                         placeholder="When"
+                        aria-label="When"
                       />
                     </div>
                   ) : (
@@ -962,6 +964,7 @@ export default function ArticleComposerPage() {
                   {isEditing ? (
                     <input
                       value={activeArticle.ai_tags.join(', ')}
+                      aria-label="AI Tags"
                       onChange={(e) =>
                         updateEditedField(
                           'ai_tags',

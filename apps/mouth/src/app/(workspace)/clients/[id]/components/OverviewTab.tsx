@@ -111,7 +111,7 @@ export function OverviewTab({
               <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
                 Client Info
                 {isClientBirthday && (
-                  <span className="text-base" title="Birthday today!">
+                  <span className="text-base" title="Birthday today!" aria-label="Birthday today!">
                     🎂
                   </span>
                 )}
