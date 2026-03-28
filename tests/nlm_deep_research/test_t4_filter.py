@@ -1,6 +1,7 @@
 """Unit tests for T4 3-layer relevance filter."""
 from __future__ import annotations
 
+import math
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -141,4 +142,39 @@ class TestFilterPipeline:
         ref_vec[1] = 1.0
         with patch.object(f, "_embed", new=AsyncMock(return_value=orth_vec)):
             result = await f.classify(CEREMONY_TEXT, ref_embedding=ref_vec)
+        assert result == FilterResult.REJECT
+
+    @pytest.mark.asyncio
+    async def test_borderline_similarity_invokes_layer3_admit(self):
+        f = T4RelevanceFilter()
+        # L1: passes (timpora keyword)
+        # L2: borderline (0.33 — between 0.30 and 0.40)
+        # L3: scores 0.8 → ADMIT
+        borderline_vec_a = [0.0] * 1536
+        borderline_vec_a[0] = 1.0
+        borderline_vec_b = [0.0] * 1536
+        borderline_vec_b[0] = 0.33  # cosine similarity ≈ 0.33 after normalization
+        borderline_vec_b[1] = math.sqrt(1 - 0.33**2)
+
+        with patch.object(f, "_embed", new=AsyncMock(return_value=borderline_vec_b)):
+            with patch.object(f, "_haiku_classify", new=AsyncMock(return_value=0.8)):
+                result = await f.classify(
+                    "Timpora razia WNA overstay", ref_embedding=borderline_vec_a
+                )
+        assert result == FilterResult.ADMIT
+
+    @pytest.mark.asyncio
+    async def test_borderline_similarity_invokes_layer3_reject(self):
+        f = T4RelevanceFilter()
+        borderline_vec_a = [0.0] * 1536
+        borderline_vec_a[0] = 1.0
+        borderline_vec_b = [0.0] * 1536
+        borderline_vec_b[0] = 0.33
+        borderline_vec_b[1] = math.sqrt(1 - 0.33**2)
+
+        with patch.object(f, "_embed", new=AsyncMock(return_value=borderline_vec_b)):
+            with patch.object(f, "_haiku_classify", new=AsyncMock(return_value=0.3)):
+                result = await f.classify(
+                    "Timpora razia WNA overstay", ref_embedding=borderline_vec_a
+                )
         assert result == FilterResult.REJECT
