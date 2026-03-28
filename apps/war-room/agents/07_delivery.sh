@@ -106,9 +106,14 @@ echo "✅ Delivery completata"
 echo "   Archive: $ARCHIVE"
 echo "   Drive: $DRIVE_LINK"
 
-# ── Send image prompts to Damar (separate message) ──────────────────────────
+# ── Send image prompts to Damar ONLY if Fireworks did NOT generate images ────
 SLIDES_JSON="$WAR_ROOM/output/strategy/claude_slides.json"
-if [[ -f "$SLIDES_JSON" ]]; then
+MANIFEST_JSON="$WAR_ROOM/output/images/image_manifest.json"
+IMGS_GENERATED=0
+if [[ -f "$MANIFEST_JSON" ]]; then
+  IMGS_GENERATED=$("$PYTHON" -c "import json; m=json.load(open('$MANIFEST_JSON')); print(sum(1 for x in m if x.get('generated')))" 2>/dev/null || echo "0")
+fi
+if [[ -f "$SLIDES_JSON" && "$IMGS_GENERATED" -eq 0 ]]; then
   IMAGE_MSG=$("$PYTHON" -c "
 import json, sys
 d = json.load(open('$SLIDES_JSON'))

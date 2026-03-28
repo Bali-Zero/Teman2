@@ -158,6 +158,19 @@ Then replicate pattern across all 10 notebooks.
 - Metric-to-Step traceability: every numeric target traced to its origin in Steps 1-6
 - Key insight: "Claim verification accuracy >= 85% by Week 4" is the single most important metric — everything else is downstream
 
+## NB-1 Oracle Review (2026-03-28)
+
+**Verdict:** APPROVED WITH CONDITIONS (3 conditions).
+**Review validation:** Gemini + Codex + DeepSeek reviewed the 3 conditions independently.
+
+| Condition                      | NB-1 Proposal                       | 3-AI Verdict     | Resolution                                                          |
+| ------------------------------ | ----------------------------------- | ---------------- | ------------------------------------------------------------------- |
+| C1: A2A Routing to Air         | Route nlm_api.py via air.local:8087 | **REJECTED 3/3** | `nlm` CLI on Pro, pipeline on Pro. No routing needed                |
+| C2: Auth Watchdog 23:30        | Daily cookie warmup at night        | **MODIFY 3/3**   | Weekly watchdog (6h check, 5d/10d alerts), CHECK 4 hard gate        |
+| C3: Pydantic on notebook_query | Validate NLM prose with Pydantic    | **MODIFY 3/3**   | Pydantic on ClaimRecord, HandoffPackage, PipelineState, SourceEntry |
+
+C2 + C3 modifications applied to `06_failure_modes.md` §3.3 and §0.
+
 ## Pipeline Design COMPLETE
 
 All 7 steps are now designed. The full pipeline specification covers:
@@ -173,7 +186,33 @@ All 7 steps are now designed. The full pipeline specification covers:
 | 7    | `07_testing_protocol.md`           | 8-phase test, Go/No-Go, production transition            |
 | 7b   | `07b_testing_protocol_deepseek.md` | Baselines, KPIs, statistical tests, cost model, go/no-go |
 
-**Next action:** Execute Phase 0 of the testing protocol.
+**Next action:** Execute Phase 0-7 testing with multi-round adversarial review workflow.
+
+## Testing Checkpoint (2026-03-28, pre-clear)
+
+**Phase 0 Inventory (NB-2 baseline):**
+
+- NB-2 ID: `cff93ab0-813a-42f2-a8de-36987e724271`
+- Current sources: 39 (27 visa guides, 4 regulations, 5 knowledge docs, 3 TKA/circulars)
+- 1 duplicate detected: UU 6/2011 appears twice (`0e1fd3f8` + `7625b0cd`)
+- No Master Documents yet (MD-1 through MD-4 not created)
+- No state files yet (pipeline_state.json, source_registry.json, claims.jsonl not initialized)
+- NLM auth: valid on Pro (last validated 2026-03-28, cookies expire April 2027)
+- `nlm` CLI: v0.5.9 on both Pro and Air
+
+**Phase 0 TODO (next session):**
+
+1. Remove duplicate UU 6/2011 source
+2. Initialize `apps/evaluator/nlm_nb2_pipeline_state.json`
+3. Initialize `apps/evaluator/nlm_nb2_sources.json` (registry with 38 existing sources)
+4. Initialize `apps/evaluator/nlm_nb2_claims.jsonl` (empty)
+5. Create `~/.agent/decisions/nlm_to_scraper/` directory tree
+6. Create 4 Master Documents (MD-1 through MD-4) as NLM text sources
+7. Run invariant check → all 10 should pass
+8. Calculate baseline NHS
+
+**Testing workflow (per step):**
+Multi-round adversarial review: Execute → 4 independent analyses → cross-share → web research + NB-9 deep → v1 reports → cross-read → v2 reports → synthesis → NLM convalida → fix → re-test → document
 
 ## Documents
 

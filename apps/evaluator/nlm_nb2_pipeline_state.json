@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "notebook_id": "cff93ab0-813a-42f2-a8de-36987e724271",
+  "notebook_name": "NB-2: Immigration & Visa — Indonesia 2025",
+  "pipeline_status": "PHASE_0_INIT",
+  "degradation_level": "NOMINAL",
+  "last_run": null,
+  "last_successful_run": null,
+  "current_task_id": null,
+  "created": "2026-03-28T17:00:00+08:00",
+  "updated": "2026-03-28T17:00:00+08:00",
+  "state_machine": {
+    "current_state": "IDLE",
+    "previous_state": null,
+    "transition_log": []
+  },
+  "daily_budget": {
+    "queries_today": 0,
+    "queries_max": 2,
+    "api_calls_today": 0,
+    "api_calls_weekly": 0,
+    "api_calls_weekly_max": 40
+  },
+  "circuit_breakers": {
+    "CB_NLM": {
+      "state": "CLOSED",
+      "failure_count": 0,
+      "last_failure": null,
+      "opened_at": null,
+      "auto_close_after_hours": 4
+    },
+    "CB_SOURCE": {
+      "state": "CLOSED",
+      "failure_count": 0,
+      "last_failure": null,
+      "opened_at": null,
+      "manual_close_only": true
+    },
+    "CB_INTEGRATION": {
+      "state": "CLOSED",
+      "failure_count": 0,
+      "last_failure": null,
+      "opened_at": null,
+      "auto_close_after_hours": 12
+    }
+  },
+  "schedule": {
+    "next_run": "2026-03-29T01:10:00+08:00",
+    "next_cluster": "A",
+    "next_level": "L1",
+    "day_of_week_rotation": {
+      "Mon": "A",
+      "Tue": "B",
+      "Wed": "C",
+      "Thu": "D",
+      "Fri": "E"
+    }
+  },
+  "invariants": {
+    "INV_1_ACTIVE_LE_70": true,
+    "INV_2_ILM_LT_005": true,
+    "INV_3_NO_BALIZERO": true,
+    "INV_4_NO_FEEDBACK_LOOP": true,
+    "INV_5_MASTER_DOCS_GE_4": true,
+    "INV_6_QUARANTINE_LE_30": true,
+    "INV_7_CLAIMS_APPEND_ONLY": true,
+    "INV_8_DEDUP_BEFORE_IMPORT": true,
+    "INV_9_ATOMIC_WRITES": true,
+    "INV_10_AUDIT_EVERY_MUTATION": true
+  },
+  "last_nhs": {
+    "score": 0.668,
+    "timestamp": "2026-03-28T17:05:00+08:00",
+    "breakdown": {
+      "H_capacity": {
+        "value": 0.764,
+        "weight": 0.2,
+        "weighted": 0.153,
+        "N": 42,
+        "target": 55
+      },
+      "H_freshness": {
+        "value": 0.7,
+        "weight": 0.25,
+        "weighted": 0.175,
+        "note": "baseline estimate, no staleness scores computed yet"
+      },
+      "H_quality": {
+        "value": 0.4,
+        "weight": 0.25,
+        "weighted": 0.1,
+        "note": "SVS not computed, zero claims/citations"
+      },
+      "H_coverage": {
+        "value": 0.6,
+        "weight": 0.15,
+        "weighted": 0.09,
+        "clusters": 5,
+        "categories": 0
+      },
+      "H_dedup": {
+        "value": 1.0,
+        "weight": 0.15,
+        "weighted": 0.15,
+        "dedup_week": 0.0
+      }
+    },
+    "classification": "NORMAL"
+  },
+  "nhs_history": [
+    {
+      "date": "2026-03-28",
+      "score": 0.668,
+      "phase": "PHASE_0_INIT",
+      "note": "Baseline after state init + 4 MDs + dedup removal"
+    }
+  ],
+  "phase_0_checklist": {
+    "state_files_initialized": true,
+    "duplicate_removed": true,
+    "master_documents_created": true,
+    "baseline_nhs_calculated": true,
+    "invariants_all_pass": true,
+    "handoff_directory_created": true
+  }
+}
