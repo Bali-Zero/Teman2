@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -33,6 +33,12 @@ export function EditCompanyModal({
   onClose: () => void;
   onSave: () => void;
 }) {
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({
     company_name: initialData.company_name || "",

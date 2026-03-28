@@ -114,7 +114,7 @@ if [ "$TSX_COUNT" -gt 0 ]; then
       title_val=$(echo "$line" | grep -oE 'title="[^"]*"' | head -1)
       add_issue "MEDIUM" "no-aria-label" "$file:$lineno" "Icon button with $title_val but no aria-label"
     fi
-  done < <(grep -rn 'title="' "$TARGET" --include="*.tsx" 2>/dev/null | grep -v "aria-label\|{title}\|articleTitle\|pageTitle\|const \|node_modules\|\.test\.\|__tests__")
+  done < <(grep -rn 'title="' "$TARGET" --include="*.tsx" 2>/dev/null | grep -v "aria-label\|{title}\|articleTitle\|pageTitle\|const \|subtitle=\|node_modules\|\.test\.\|__tests__")
 
   # 7. Inputs without aria-label or associated label
   while IFS= read -r line; do
