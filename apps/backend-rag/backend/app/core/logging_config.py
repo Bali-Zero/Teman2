@@ -12,7 +12,7 @@ Provides configurable logging with:
 import logging
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import structlog
@@ -83,7 +83,7 @@ class StructuredJSONFormatter(jsonlogger.JsonFormatter):
         super().add_fields(log_record, record, message_dict)
 
         # Add standard fields
-        log_record["timestamp"] = datetime.utcnow().isoformat()
+        log_record["timestamp"] = datetime.now(timezone.utc).isoformat()
         log_record["environment"] = ENVIRONMENT
         log_record["service"] = "nuzantara-backend"
 

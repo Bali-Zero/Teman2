@@ -14,7 +14,7 @@ import contextlib
 import logging
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 import httpx
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Track boot time for cold start and restart metrics
 _BOOT_TIME = time.monotonic()
-_BOOT_TIMESTAMP = datetime.utcnow()
+_BOOT_TIMESTAMP = datetime.now(timezone.utc)
 
 # Fly.io VM memory limit (bytes). Default 4GB, override via FLY_VM_MEMORY_MB.
 _VM_MEMORY_MB = int(os.getenv("FLY_VM_MEMORY_MB", "4096"))

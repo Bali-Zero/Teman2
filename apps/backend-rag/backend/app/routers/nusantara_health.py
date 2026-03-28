@@ -3,7 +3,7 @@ ZANTARA - Nusantara Health Map Router
 System health visualization as Indonesian archipelago
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -140,7 +140,7 @@ async def get_nusantara_health(request: Request) -> NusantaraHealth:
             status_counts[island.status] += 1
 
         return NusantaraHealth(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             overall_score=overall_score,
             overall_status=overall_status,
             status_counts=status_counts,
@@ -150,7 +150,7 @@ async def get_nusantara_health(request: Request) -> NusantaraHealth:
     except Exception as e:
         logger.error(f"Failed to get Nusantara health: {e}")
         return NusantaraHealth(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             overall_score=50.0,
             overall_status="degraded",
             status_counts={"healthy": 0, "warning": 0, "degraded": 1, "critical": 0},

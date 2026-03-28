@@ -267,7 +267,7 @@ Update the summary to include both the previous context and new messages."""
                 "timestamp": str
             }
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         return {
             "summary": summary,
@@ -276,7 +276,7 @@ Update the summary to include both the previous context and new messages."""
                 "messages_in_context": stats.get("messages_in_context", 0),
                 "summary_active": bool(summary),
             },
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         }
 
 

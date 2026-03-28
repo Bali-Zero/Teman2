@@ -23,7 +23,7 @@ import logging
 import os
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import anthropic
@@ -437,7 +437,7 @@ async def compose_article(
             cover_image=None,  # Will be provided by frontend during publish
             source=payload.author,
             source_url=payload.source_url,
-            enriched_at=datetime.utcnow().isoformat(),
+            enriched_at=datetime.now(timezone.utc).isoformat(),
         )
 
         # Cache result in background
@@ -676,7 +676,7 @@ coverImage: "{cover_img}"
 coverImageAlt: "{article.headline}"
 category: "{category_slug}"
 tags: [{tags_str}]
-publishedAt: "{datetime.utcnow().strftime("%Y-%m-%d")}"
+publishedAt: "{datetime.now(timezone.utc).strftime("%Y-%m-%d")}"
 author:
   name: "{article.source}"
   avatar: /static/zantara-avatar.png

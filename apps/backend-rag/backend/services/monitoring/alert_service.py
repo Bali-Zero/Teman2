@@ -10,7 +10,7 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -225,7 +225,7 @@ class AlertService:
                 val_str = _esc(str(value)[:200])
                 lines.append(f"• <code>{_esc(key)}</code>: {val_str}")
 
-        lines.append(f"\n<i>Zantara RAG — {datetime.utcnow().strftime('%H:%M:%S UTC')}</i>")
+        lines.append(f"\n<i>Zantara RAG — {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}</i>")
 
         text = "\n".join(lines)
 
@@ -262,7 +262,7 @@ class AlertService:
             {"title": "Level", "value": level.value.upper(), "short": True},
             {
                 "title": "Time",
-                "value": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "value": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "short": True,
             },
         ]
@@ -285,7 +285,7 @@ class AlertService:
                     "text": message,
                     "fields": fields,
                     "footer": "ZANTARA RAG Backend",
-                    "ts": int(datetime.utcnow().timestamp()),
+                    "ts": int(datetime.now(timezone.utc).timestamp()),
                 }
             ]
         }
@@ -319,12 +319,12 @@ class AlertService:
                 {"name": "Level", "value": level.value.upper(), "inline": True},
                 {
                     "name": "Time",
-                    "value": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "value": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
                     "inline": True,
                 },
             ],
             "footer": {"text": "ZANTARA RAG Backend"},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         if metadata:
@@ -392,7 +392,7 @@ class AlertService:
         """Buffer latency alert — verrà inviato nell'hourly digest. Returns stub result."""
         self._latency_buffer.append(
             {
-                "ts": datetime.utcnow().strftime("%H:%M"),
+                "ts": datetime.now(timezone.utc).strftime("%H:%M"),
                 "duration_ms": round(duration_ms),
                 "method": method,
                 "path": path,
@@ -423,7 +423,7 @@ class AlertService:
 
         lines = [
             "⚠️ <b>Hourly Latency Digest</b>",
-            f"<i>{datetime.utcnow().strftime('%Y-%m-%d %H:00 UTC')} — {len(events)} eventi</i>",
+            f"<i>{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:00 UTC')} — {len(events)} eventi</i>",
             "",
         ]
 
@@ -438,7 +438,7 @@ class AlertService:
                 f"  {len(evts)}x — max <b>{worst}ms</b> avg {avg}ms — [{times}]"
             )
 
-        lines.append(f"\n<i>Zantara RAG — {datetime.utcnow().strftime('%H:%M:%S UTC')}</i>")
+        lines.append(f"\n<i>Zantara RAG — {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}</i>")
         text = "\n".join(lines)
 
         if self.enable_telegram:
@@ -458,7 +458,7 @@ class AlertService:
     async def _digest_loop(self) -> None:
         """Background loop: flush digest ogni ora esatta (minuto 0)."""
         while True:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             # Aspetta fino al prossimo minuto :00
             secs_to_next_hour = (60 - now.minute) * 60 - now.second
             if secs_to_next_hour <= 0:

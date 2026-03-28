@@ -4,7 +4,7 @@ Provides simple API key validation to bypass database dependency for testing
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from backend.app.core.config import settings
@@ -35,7 +35,7 @@ class APIKeyAuth:
                 "permissions": (
                     ["*"] if "admin" in api_key.lower() or "secret" in api_key.lower() else ["read"]
                 ),
-                "created_at": datetime.utcnow().isoformat() + "Z",
+                "created_at": datetime.now(timezone.utc).isoformat() + "Z",
                 "description": "API key loaded from environment variable",
             }
 
@@ -66,7 +66,7 @@ class APIKeyAuth:
 
         # Update usage statistics
         self.key_stats[api_key]["usage_count"] += 1
-        self.key_stats[api_key]["last_used"] = datetime.utcnow().isoformat()
+        self.key_stats[api_key]["last_used"] = datetime.now(timezone.utc).isoformat()
 
         logger.debug(
             f"Valid API key used: {key_info['role']} (usage: {self.key_stats[api_key]['usage_count']})"
@@ -119,7 +119,7 @@ class APIKeyAuth:
         self.valid_keys[key] = {
             "role": role,
             "permissions": permissions,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "description": f"Programmatically added key ({role})",
         }
         self.key_stats[key] = {"usage_count": 0, "last_used": None}
