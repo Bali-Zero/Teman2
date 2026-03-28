@@ -78,7 +78,6 @@ EMBEDDING_BORDERLINE_HIGH = 0.40
 class FilterResult(str, Enum):
     ADMIT = "ADMIT"
     REJECT = "REJECT"
-    BORDERLINE = "BORDERLINE"
 
 
 # ---------------------------------------------------------------------------
@@ -94,6 +93,24 @@ class T4RelevanceFilter:
     Layer 3 — Haiku LLM classifier (~500ms, borderline only)
     """
 
+    def __init__(self) -> None:
+        self._openai_client: Optional[object] = None
+        self._anthropic_client: Optional[object] = None
+
+    def _get_openai_client(self) -> object:
+        if self._openai_client is None:
+            import openai  # noqa: PLC0415
+
+            self._openai_client = openai.AsyncOpenAI()
+        return self._openai_client
+
+    def _get_anthropic_client(self) -> object:
+        if self._anthropic_client is None:
+            import anthropic  # noqa: PLC0415
+
+            self._anthropic_client = anthropic.AsyncAnthropic()
+        return self._anthropic_client
+
     def layer1_keywords(self, text: str) -> bool:
         """Return True if text passes keyword recall gate."""
         lower = text.lower()
@@ -105,9 +122,7 @@ class T4RelevanceFilter:
 
     async def _embed(self, text: str) -> list[float]:
         """Embed text using OpenAI text-embedding-3-small."""
-        import openai  # noqa: PLC0415
-
-        client = openai.AsyncOpenAI()
+        client = self._get_openai_client()
         resp = await client.embeddings.create(model=EMBEDDING_MODEL, input=text)
         return resp.data[0].embedding
 
@@ -130,9 +145,7 @@ class T4RelevanceFilter:
 
     async def _haiku_classify(self, text: str) -> float:
         """Call Haiku to score immigration relevance (0.0–1.0)."""
-        import anthropic  # noqa: PLC0415
-
-        client = anthropic.AsyncAnthropic()
+        client = self._get_anthropic_client()
         prompt = (
             "You are an immigration advisor for Bali, Indonesia. "
             "Score the following article's relevance to immigration enforcement "
@@ -163,7 +176,7 @@ class T4RelevanceFilter:
         *,
         ref_embedding: Optional[list[float]] = None,
     ) -> FilterResult:
-        """Run full 3-layer pipeline. Returns ADMIT, REJECT, or BORDERLINE."""
+        """Run full 3-layer pipeline. Returns ADMIT or REJECT."""
         if not self.layer1_keywords(text):
             return FilterResult.REJECT
 
