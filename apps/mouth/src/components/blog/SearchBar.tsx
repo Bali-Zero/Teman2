@@ -354,7 +354,7 @@ export function SearchModal({
 
       {/* Modal */}
       <div className="relative max-w-2xl mx-auto mt-20 md:mt-32 animate-in fade-in slide-in-from-top-4 duration-300">
-        <div className="mx-4 bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+        <div role="dialog" aria-modal="true" aria-label="Search articles" className="mx-4 bg-zinc-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
           {/* Search input */}
           <div className="relative flex items-center border-b border-white/10">
             <Search className="absolute left-4 w-5 h-5 text-white/40" />
@@ -364,6 +364,7 @@ export function SearchModal({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search articles, topics, authors..."
+              aria-label="Search articles"
               className="w-full h-14 pl-12 pr-20 bg-transparent text-white placeholder-white/40 focus:outline-none"
             />
             <button
