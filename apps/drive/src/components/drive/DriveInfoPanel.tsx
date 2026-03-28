@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Download,
@@ -14,10 +14,10 @@ import {
   HardDrive,
   Calendar,
   ExternalLink,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import type { FileItem } from "@/lib/api/drive/drive.types";
-import { getFileIcon } from "./file-icon";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { FileItem } from '@/lib/api/drive/drive.types';
+import { getFileIcon } from './file-icon';
 
 interface DriveInfoPanelProps {
   file: FileItem | null;
@@ -37,8 +37,8 @@ export function DriveInfoPanel({
   onDelete,
 }: DriveInfoPanelProps) {
   const formatSize = (bytes: number | undefined) => {
-    if (!bytes) return "--";
-    const units = ["B", "KB", "MB", "GB"];
+    if (!bytes) return '--';
+    const units = ['B', 'KB', 'MB', 'GB'];
     let size = bytes;
     let unitIndex = 0;
     while (size >= 1024 && unitIndex < units.length - 1) {
@@ -49,14 +49,14 @@ export function DriveInfoPanel({
   };
 
   const formatDate = (dateStr: string | undefined) => {
-    if (!dateStr) return "--";
+    if (!dateStr) return '--';
     const date = new Date(dateStr);
-    return date.toLocaleDateString("it-IT", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    return date.toLocaleDateString('it-IT', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -80,6 +80,7 @@ export function DriveInfoPanel({
               size="sm"
               onClick={onClose}
               className="h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              aria-label="Chiudi pannello dettagli"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -87,7 +88,7 @@ export function DriveInfoPanel({
 
           {/* Preview area - Clean */}
           <div className="flex items-center justify-center bg-white/60 dark:bg-slate-800/30 p-8">
-            <div className="w-20 h-20">{getFileIcon(file, "lg")}</div>
+            <div className="w-20 h-20">{getFileIcon(file, 'lg')}</div>
           </div>
 
           {/* Quick actions - Minimal pill style */}
@@ -152,13 +153,9 @@ export function DriveInfoPanel({
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide">
-                  Tipo
-                </p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide">Tipo</p>
                 <p className="text-[13px] text-slate-700 dark:text-slate-200">
-                  {file.is_folder
-                    ? "Cartella"
-                    : file.mime_type?.split("/").pop() || "Documento"}
+                  {file.is_folder ? 'Cartella' : file.mime_type?.split('/').pop() || 'Documento'}
                 </p>
               </div>
             </div>
@@ -170,9 +167,7 @@ export function DriveInfoPanel({
                   <HardDrive className="h-4 w-4 text-slate-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">
-                    Dimensione
-                  </p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">Dimensione</p>
                   <p className="text-[13px] text-slate-700 dark:text-slate-200">
                     {formatSize(file.size)}
                   </p>
@@ -186,9 +181,7 @@ export function DriveInfoPanel({
                 <Clock className="h-4 w-4 text-slate-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide">
-                  Modificato
-                </p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide">Modificato</p>
                 <p className="text-[13px] text-slate-700 dark:text-slate-200">
                   {formatDate(file.modified_time)}
                 </p>
@@ -202,9 +195,7 @@ export function DriveInfoPanel({
                   <Calendar className="h-4 w-4 text-slate-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">
-                    Creato
-                  </p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">Creato</p>
                   <p className="text-[13px] text-slate-700 dark:text-slate-200">
                     {formatDate((file as any).created_time)}
                   </p>
@@ -219,9 +210,7 @@ export function DriveInfoPanel({
                   <User className="h-4 w-4 text-slate-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">
-                    Proprietario
-                  </p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">Proprietario</p>
                   <p className="text-[13px] text-slate-700 dark:text-slate-200">
                     {(file as any).owner_name}
                   </p>
