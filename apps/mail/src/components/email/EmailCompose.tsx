@@ -137,7 +137,8 @@ export function EmailCompose({
         );
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        alert(`Failed to upload ${attachment.file.name}: ${msg}`);
+        setUploadWarning(true);
+        setTimeout(() => setUploadWarning(false), 4000);
         setAttachments((prev) => prev.filter((item) => item.file !== attachment.file));
       }
     }
