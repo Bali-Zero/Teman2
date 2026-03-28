@@ -668,7 +668,7 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
             entity_lines.append(f"    - name: {name}\n      type: {etype}")
         entity_mentions_yaml = "  entityMentions:\n" + "\n".join(entity_lines)
 
-    mdx_content = f'''---
+    return f'''---
 title: "{article.headline}"
 slug: "{slug}"
 excerpt: "{article.ai_summary}"
@@ -720,7 +720,6 @@ aiOptimization:
   question="Have questions about this topic?"
   placeholder="Ask Zantara AI for personalized advice..."
 />'''
-    return mdx_content
 
 
 @router.post("/publish", response_model=PublishResponse)
