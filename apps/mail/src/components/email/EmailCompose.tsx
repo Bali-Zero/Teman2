@@ -320,6 +320,8 @@ export function EmailCompose({
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Write your message..."
+                aria-label="Corpo del messaggio"
+                spellCheck="true"
                 className={cn(
                   'w-full h-full p-4 text-sm bg-transparent resize-none',
                   'text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]',
