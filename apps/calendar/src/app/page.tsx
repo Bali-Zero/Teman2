@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -16,8 +16,8 @@ import {
   Grid3X3,
   ExternalLink,
   X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CalendarEvent {
   id: string;
@@ -36,34 +36,51 @@ interface CalendarInfo {
   role: string;
 }
 
-const WEEKDAYS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [calendars, setCalendars] = useState<CalendarInfo[]>([]);
   const [selectedCalendar, setSelectedCalendar] = useState(
-    "ec0863e7c14ac6bf414ec23e2aab81960ecb26823c6a8f397c664fc64901d617@group.calendar.google.com",
+    'ec0863e7c14ac6bf414ec23e2aab81960ecb26823c6a8f397c664fc64901d617@group.calendar.google.com'
   );
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
-    null,
-  );
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
-  const [view, setView] = useState<"month" | "list">("month");
+  const [view, setView] = useState<'month' | 'list'>('month');
   const [isMounted, setIsMounted] = useState(false);
 
   const [newEvent, setNewEvent] = useState({
-    summary: "",
-    from: "",
-    to: "",
-    description: "",
-    location: "",
-    attendees: "",
+    summary: '',
+    from: '',
+    to: '',
+    description: '',
+    location: '',
+    attendees: '',
     withMeet: false,
   });
+
+  // Escape key handler for sidebar/form
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showCreateForm) {
+          setShowCreateForm(false);
+        } else if (selectedEvent) {
+          setSelectedEvent(null);
+        }
+      }
+    },
+    [showCreateForm, selectedEvent]
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   // Fix hydration - set date only on client
   useEffect(() => {
@@ -81,7 +98,7 @@ export default function CalendarPage() {
 
   const fetchCalendars = async () => {
     try {
-      const res = await fetch("/api/calendar/calendars");
+      const res = await fetch('/api/calendar/calendars');
       const data = await res.json();
       if (data.success) {
         setCalendars(data.calendars || []);
@@ -96,7 +113,7 @@ export default function CalendarPage() {
     setError(null);
     try {
       const res = await fetch(
-        `/api/calendar/events?calendarId=${encodeURIComponent(selectedCalendar)}&days=90`,
+        `/api/calendar/events?calendarId=${encodeURIComponent(selectedCalendar)}&days=90`
       );
       const data = await res.json();
       if (data.success) {
@@ -105,7 +122,7 @@ export default function CalendarPage() {
         setError(data.error);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -114,40 +131,38 @@ export default function CalendarPage() {
   const createEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/calendar/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/calendar/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...newEvent, calendarId: selectedCalendar }),
       });
       const data = await res.json();
       if (data.success) {
         setShowCreateForm(false);
         setNewEvent({
-          summary: "",
-          from: "",
-          to: "",
-          description: "",
-          location: "",
-          attendees: "",
+          summary: '',
+          from: '',
+          to: '',
+          description: '',
+          location: '',
+          attendees: '',
           withMeet: false,
         });
         fetchEvents();
       } else {
-        alert("Errore: " + data.error);
+        alert('Errore: ' + data.error);
       }
     } catch (err: unknown) {
-      alert(
-        "Errore: " + (err instanceof Error ? err.message : "Unknown error"),
-      );
+      alert('Errore: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
   const deleteEvent = async (eventId: string) => {
-    if (!confirm("Eliminare questo evento?")) return;
+    if (!confirm('Eliminare questo evento?')) return;
     try {
       const res = await fetch(
         `/api/calendar/events?eventId=${eventId}&calendarId=${encodeURIComponent(selectedCalendar)}`,
-        { method: "DELETE" },
+        { method: 'DELETE' }
       );
       const data = await res.json();
       if (data.success) {
@@ -155,9 +170,7 @@ export default function CalendarPage() {
         fetchEvents();
       }
     } catch (err: unknown) {
-      alert(
-        "Errore: " + (err instanceof Error ? err.message : "Unknown error"),
-      );
+      alert('Errore: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
@@ -180,13 +193,7 @@ export default function CalendarPage() {
     }
 
     while (days.length < 42) {
-      days.push(
-        new Date(
-          year,
-          month + 1,
-          days.length - lastDay.getDate() - startPadding + 1,
-        ),
-      );
+      days.push(new Date(year, month + 1, days.length - lastDay.getDate() - startPadding + 1));
     }
 
     return days;
@@ -207,33 +214,31 @@ export default function CalendarPage() {
       .slice(0, 10);
   }, [events]);
 
-  const isToday = (date: Date) =>
-    date.toDateString() === new Date().toDateString();
+  const isToday = (date: Date) => date.toDateString() === new Date().toDateString();
   const isCurrentMonth = (date: Date) =>
     currentMonth ? date.getMonth() === currentMonth.getMonth() : false;
-  const isSelected = (date: Date) =>
-    selectedDate?.toDateString() === date.toDateString();
+  const isSelected = (date: Date) => selectedDate?.toDateString() === date.toDateString();
 
   const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString("it-IT", {
-      hour: "2-digit",
-      minute: "2-digit",
+    return new Date(dateStr).toLocaleTimeString('it-IT', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
   const formatDateShort = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("it-IT", {
-      day: "numeric",
-      month: "short",
+    return new Date(dateStr).toLocaleDateString('it-IT', {
+      day: 'numeric',
+      month: 'short',
     });
   };
 
   const formatDateFull = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("it-IT", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
+    return new Date(dateStr).toLocaleDateString('it-IT', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
     });
   };
 
@@ -264,12 +269,9 @@ export default function CalendarPage() {
         <header className="border-b border-white/5 bg-[#1A1D24] px-6 py-4 shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-semibold text-[#E6E7EB]">
-                Bali Zero Calendar
-              </h1>
+              <h1 className="text-xl font-semibold text-[#E6E7EB]">Bali Zero Calendar</h1>
               <p className="text-sm text-[#9AA0AE]">
-                {calendars.find((c) => c.id === selectedCalendar)?.name ||
-                  "Team Calendar"}
+                {calendars.find((c) => c.id === selectedCalendar)?.name || 'Team Calendar'}
               </p>
             </div>
 
@@ -279,6 +281,7 @@ export default function CalendarPage() {
                 value={selectedCalendar}
                 onChange={(e) => setSelectedCalendar(e.target.value)}
                 className="bg-[#1A1D24] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
+                aria-label="Seleziona calendario"
               >
                 {calendars.map((cal) => (
                   <option key={cal.id} value={cal.id}>
@@ -290,24 +293,22 @@ export default function CalendarPage() {
               {/* View toggle */}
               <div className="flex border border-white/10 rounded-lg overflow-hidden">
                 <button
-                  onClick={() => setView("month")}
+                  onClick={() => setView('month')}
                   className={cn(
-                    "px-3 py-2 text-sm transition-colors",
-                    view === "month"
-                      ? "bg-[#d4845a] text-white"
-                      : "text-[#9AA0AE] hover:bg-white/5",
+                    'px-3 py-2 text-sm transition-colors',
+                    view === 'month' ? 'bg-[#d4845a] text-white' : 'text-[#9AA0AE] hover:bg-white/5'
                   )}
+                  aria-label="Vista mese"
                 >
                   <Grid3X3 className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => setView("list")}
+                  onClick={() => setView('list')}
                   className={cn(
-                    "px-3 py-2 text-sm transition-colors",
-                    view === "list"
-                      ? "bg-[#d4845a] text-white"
-                      : "text-[#9AA0AE] hover:bg-white/5",
+                    'px-3 py-2 text-sm transition-colors',
+                    view === 'list' ? 'bg-[#d4845a] text-white' : 'text-[#9AA0AE] hover:bg-white/5'
                   )}
+                  aria-label="Vista lista"
                 >
                   <List className="h-4 w-4" />
                 </button>
@@ -317,10 +318,9 @@ export default function CalendarPage() {
                 onClick={fetchEvents}
                 disabled={loading}
                 className="p-2 rounded-lg border border-white/10 text-[#9AA0AE] hover:bg-white/5 disabled:opacity-50"
+                aria-label="Aggiorna eventi"
               >
-                <RefreshCw
-                  className={cn("h-4 w-4", loading && "animate-spin")}
-                />
+                <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
               </button>
 
               <button
@@ -342,28 +342,22 @@ export default function CalendarPage() {
                 <button
                   onClick={() =>
                     setCurrentMonth(
-                      new Date(
-                        currentMonth.getFullYear(),
-                        currentMonth.getMonth() - 1,
-                        1,
-                      ),
+                      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
                     )
                   }
                   className="p-2 rounded-lg border border-white/10 text-[#9AA0AE] hover:bg-white/5"
+                  aria-label="Mese precedente"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() =>
                     setCurrentMonth(
-                      new Date(
-                        currentMonth.getFullYear(),
-                        currentMonth.getMonth() + 1,
-                        1,
-                      ),
+                      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
                     )
                   }
                   className="p-2 rounded-lg border border-white/10 text-[#9AA0AE] hover:bg-white/5"
+                  aria-label="Mese successivo"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -376,19 +370,17 @@ export default function CalendarPage() {
               </div>
 
               <h2 className="text-lg font-semibold capitalize text-[#E6E7EB]">
-                {currentMonth.toLocaleDateString("it-IT", {
-                  month: "long",
-                  year: "numeric",
+                {currentMonth.toLocaleDateString('it-IT', {
+                  month: 'long',
+                  year: 'numeric',
                 })}
               </h2>
 
-              <div className="text-sm text-[#9AA0AE]">
-                {events.length} eventi
-              </div>
+              <div className="text-sm text-[#9AA0AE]">{events.length} eventi</div>
             </div>
 
             {/* Calendar Grid or List */}
-            {view === "month" ? (
+            {view === 'month' ? (
               <div className="flex-1 overflow-auto p-4">
                 {/* Weekday headers */}
                 <div className="grid grid-cols-7 mb-2">
@@ -396,9 +388,9 @@ export default function CalendarPage() {
                     <div
                       key={day}
                       className={cn(
-                        "text-center text-xs font-medium py-2",
-                        i === 0 && "text-[#d4845a]",
-                        i !== 0 && "text-[#9AA0AE]",
+                        'text-center text-xs font-medium py-2',
+                        i === 0 && 'text-[#d4845a]',
+                        i !== 0 && 'text-[#9AA0AE]'
                       )}
                     >
                       {day}
@@ -417,21 +409,20 @@ export default function CalendarPage() {
                         key={i}
                         onClick={() => handleDateClick(date)}
                         className={cn(
-                          "min-h-[90px] p-2 border border-white/5 rounded-lg cursor-pointer transition-all",
-                          isInMonth ? "bg-[#1A1D24]" : "bg-[#1A1D24]/30",
-                          isToday(date) && "ring-2 ring-[#d4845a]",
-                          isSelected(date) &&
-                            "bg-[#d4845a]/10 border-[#d4845a]/50",
-                          !isInMonth && "opacity-40",
-                          "hover:border-[#d4845a]/30",
+                          'min-h-[90px] p-2 border border-white/5 rounded-lg cursor-pointer transition-all',
+                          isInMonth ? 'bg-[#1A1D24]' : 'bg-[#1A1D24]/30',
+                          isToday(date) && 'ring-2 ring-[#d4845a]',
+                          isSelected(date) && 'bg-[#d4845a]/10 border-[#d4845a]/50',
+                          !isInMonth && 'opacity-40',
+                          'hover:border-[#d4845a]/30'
                         )}
                       >
                         <div
                           className={cn(
-                            "text-sm font-medium mb-1",
-                            isToday(date) && "text-[#d4845a]",
-                            !isToday(date) && isInMonth && "text-[#E6E7EB]",
-                            date.getDay() === 0 && "text-[#d4845a]",
+                            'text-sm font-medium mb-1',
+                            isToday(date) && 'text-[#d4845a]',
+                            !isToday(date) && isInMonth && 'text-[#E6E7EB]',
+                            date.getDay() === 0 && 'text-[#d4845a]'
                           )}
                         >
                           {date.getDate()}
@@ -446,10 +437,9 @@ export default function CalendarPage() {
                                 setSelectedEvent(event);
                               }}
                               className={cn(
-                                "text-xs px-1.5 py-0.5 rounded truncate cursor-pointer",
-                                "bg-[#d4845a]/20 text-[#d4845a] hover:bg-[#d4845a]/30",
-                                event.hangoutLink &&
-                                  "bg-[#34D399]/20 text-[#34D399]",
+                                'text-xs px-1.5 py-0.5 rounded truncate cursor-pointer',
+                                'bg-[#d4845a]/20 text-[#d4845a] hover:bg-[#d4845a]/30',
+                                event.hangoutLink && 'bg-[#34D399]/20 text-[#34D399]'
                               )}
                             >
                               {formatTime(event.start)} {event.summary}
@@ -486,21 +476,18 @@ export default function CalendarPage() {
                         key={event.id}
                         onClick={() => setSelectedEvent(event)}
                         className={cn(
-                          "px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors",
+                          'px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors',
                           selectedEvent?.id === event.id &&
-                            "bg-[#d4845a]/10 border-l-2 border-l-[#d4845a]",
+                            'bg-[#d4845a]/10 border-l-2 border-l-[#d4845a]'
                         )}
                       >
                         <div className="flex items-start justify-between">
                           <div>
-                            <div className="font-medium text-[#E6E7EB]">
-                              {event.summary}
-                            </div>
+                            <div className="font-medium text-[#E6E7EB]">{event.summary}</div>
                             <div className="text-sm text-[#9AA0AE] flex items-center gap-4 mt-1">
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {formatDateShort(event.start)}{" "}
-                                {formatTime(event.start)}
+                                {formatDateShort(event.start)} {formatTime(event.start)}
                               </span>
                               {event.location && (
                                 <span className="flex items-center gap-1">
@@ -533,6 +520,7 @@ export default function CalendarPage() {
                   <button
                     onClick={() => setShowCreateForm(false)}
                     className="text-[#9AA0AE] hover:text-[#E6E7EB]"
+                    aria-label="Chiudi modulo creazione evento"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -547,9 +535,7 @@ export default function CalendarPage() {
                       type="text"
                       required
                       value={newEvent.summary}
-                      onChange={(e) =>
-                        setNewEvent({ ...newEvent, summary: e.target.value })
-                      }
+                      onChange={(e) => setNewEvent({ ...newEvent, summary: e.target.value })}
                       className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
                       placeholder="Aggiungi titolo"
                     />
@@ -564,9 +550,7 @@ export default function CalendarPage() {
                         type="datetime-local"
                         required
                         value={newEvent.from}
-                        onChange={(e) =>
-                          setNewEvent({ ...newEvent, from: e.target.value })
-                        }
+                        onChange={(e) => setNewEvent({ ...newEvent, from: e.target.value })}
                         className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
                       />
                     </div>
@@ -578,24 +562,18 @@ export default function CalendarPage() {
                         type="datetime-local"
                         required
                         value={newEvent.to}
-                        onChange={(e) =>
-                          setNewEvent({ ...newEvent, to: e.target.value })
-                        }
+                        onChange={(e) => setNewEvent({ ...newEvent, to: e.target.value })}
                         className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#9AA0AE] mb-1.5">
-                      Luogo
-                    </label>
+                    <label className="block text-sm font-medium text-[#9AA0AE] mb-1.5">Luogo</label>
                     <input
                       type="text"
                       value={newEvent.location}
-                      onChange={(e) =>
-                        setNewEvent({ ...newEvent, location: e.target.value })
-                      }
+                      onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
                       className="w-full bg-[#242424] border border-white/10 rounded-lg px-3 py-2 text-sm text-[#E6E7EB] focus:ring-2 focus:ring-[#d4845a] focus:outline-none"
                       placeholder="Aggiungi luogo"
                     />
@@ -623,15 +601,11 @@ export default function CalendarPage() {
                     <input
                       type="checkbox"
                       checked={newEvent.withMeet}
-                      onChange={(e) =>
-                        setNewEvent({ ...newEvent, withMeet: e.target.checked })
-                      }
+                      onChange={(e) => setNewEvent({ ...newEvent, withMeet: e.target.checked })}
                       className="w-4 h-4 rounded bg-[#242424] border-white/10"
                     />
                     <Video className="h-4 w-4 text-[#34D399]" />
-                    <span className="text-sm text-[#9AA0AE]">
-                      Aggiungi Google Meet
-                    </span>
+                    <span className="text-sm text-[#9AA0AE]">Aggiungi Google Meet</span>
                   </label>
 
                   <div className="flex gap-2 pt-4">
@@ -662,12 +636,14 @@ export default function CalendarPage() {
                       <button
                         onClick={() => deleteEvent(selectedEvent.id)}
                         className="p-2 rounded-lg text-[#d4845a] hover:bg-[#d4845a]/10"
+                        aria-label="Elimina evento"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setSelectedEvent(null)}
                         className="p-2 text-[#9AA0AE] hover:text-[#E6E7EB]"
+                        aria-label="Chiudi dettaglio evento"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -679,12 +655,9 @@ export default function CalendarPage() {
                       <Clock className="h-4 w-4" />
                       <div>
                         <div className="font-medium text-[#E6E7EB]">
-                          {formatTime(selectedEvent.start)} -{" "}
-                          {formatTime(selectedEvent.end)}
+                          {formatTime(selectedEvent.start)} - {formatTime(selectedEvent.end)}
                         </div>
-                        <div className="capitalize">
-                          {formatDateFull(selectedEvent.start)}
-                        </div>
+                        <div className="capitalize">{formatDateFull(selectedEvent.start)}</div>
                       </div>
                     </div>
 
@@ -714,49 +687,39 @@ export default function CalendarPage() {
 
                 {selectedEvent.description && (
                   <div className="p-6 border-b border-white/5">
-                    <h4 className="text-sm font-medium text-[#9AA0AE] mb-2">
-                      Descrizione
-                    </h4>
+                    <h4 className="text-sm font-medium text-[#9AA0AE] mb-2">Descrizione</h4>
                     <p className="text-sm text-[#E6E7EB] whitespace-pre-wrap">
                       {selectedEvent.description}
                     </p>
                   </div>
                 )}
 
-                {selectedEvent.attendees &&
-                  selectedEvent.attendees.length > 0 && (
-                    <div className="p-6 border-b border-white/5">
-                      <h4 className="text-sm font-medium text-[#9AA0AE] mb-3 flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Partecipanti ({selectedEvent.attendees.length})
-                      </h4>
-                      <div className="space-y-2">
-                        {selectedEvent.attendees.map((email, i) => (
-                          <div
-                            key={i}
-                            className="text-sm flex items-center gap-2 text-[#E6E7EB]"
-                          >
-                            <div className="w-8 h-8 rounded-full bg-[#d4845a]/20 flex items-center justify-center text-xs font-medium text-[#d4845a]">
-                              {email[0].toUpperCase()}
-                            </div>
-                            {email}
+                {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
+                  <div className="p-6 border-b border-white/5">
+                    <h4 className="text-sm font-medium text-[#9AA0AE] mb-3 flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Partecipanti ({selectedEvent.attendees.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedEvent.attendees.map((email, i) => (
+                        <div key={i} className="text-sm flex items-center gap-2 text-[#E6E7EB]">
+                          <div className="w-8 h-8 rounded-full bg-[#d4845a]/20 flex items-center justify-center text-xs font-medium text-[#d4845a]">
+                            {email[0].toUpperCase()}
                           </div>
-                        ))}
-                      </div>
+                          {email}
+                        </div>
+                      ))}
                     </div>
-                  )}
+                  </div>
+                )}
 
                 <div className="p-6">
-                  <div className="text-xs text-[#9AA0AE] font-mono">
-                    ID: {selectedEvent.id}
-                  </div>
+                  <div className="text-xs text-[#9AA0AE] font-mono">ID: {selectedEvent.id}</div>
                 </div>
               </div>
             ) : (
               <div className="flex-1 overflow-auto p-6">
-                <h3 className="font-semibold text-[#E6E7EB] mb-4">
-                  Prossimi Eventi
-                </h3>
+                <h3 className="font-semibold text-[#E6E7EB] mb-4">Prossimi Eventi</h3>
                 {upcomingEvents.length === 0 ? (
                   <div className="text-center text-[#9AA0AE] py-8">
                     <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-20" />
@@ -770,13 +733,10 @@ export default function CalendarPage() {
                         onClick={() => setSelectedEvent(event)}
                         className="p-3 border border-white/5 rounded-lg cursor-pointer hover:bg-white/5 transition-colors"
                       >
-                        <div className="font-medium text-sm text-[#E6E7EB]">
-                          {event.summary}
-                        </div>
+                        <div className="font-medium text-sm text-[#E6E7EB]">{event.summary}</div>
                         <div className="text-xs text-[#9AA0AE] mt-1 flex items-center gap-2">
                           <Clock className="h-3 w-3" />
-                          {formatDateShort(event.start)}{" "}
-                          {formatTime(event.start)}
+                          {formatDateShort(event.start)} {formatTime(event.start)}
                         </div>
                       </div>
                     ))}
@@ -790,7 +750,7 @@ export default function CalendarPage() {
 
       {/* Error Banner */}
       {error && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-900/80 text-red-200 px-4 py-2 rounded-lg text-sm backdrop-blur-sm border border-red-700/50">
+        <div role="alert" className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-900/80 text-red-200 px-4 py-2 rounded-lg text-sm backdrop-blur-sm border border-red-700/50">
           {error}
         </div>
       )}
