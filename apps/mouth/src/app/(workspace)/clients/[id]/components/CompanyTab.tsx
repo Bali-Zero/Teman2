@@ -976,9 +976,22 @@ export function CompanyTab({
       })),
   ];
 
+  // If pendirian fields are identical to perubahan, treat pendirian as absent
+  // (OCR sometimes duplicates perubahan data into pendirian fields)
+  const pendirianIsDuplicate =
+    co?.akta_pendirian_no &&
+    co?.akta_pendirian_no === co?.akta_perubahan_no &&
+    co?.akta_pendirian_date === co?.akta_perubahan_date;
+  const effectivePendirianNo = pendirianIsDuplicate
+    ? undefined
+    : co?.akta_pendirian_no;
+  const effectivePendirianDate = pendirianIsDuplicate
+    ? undefined
+    : co?.akta_pendirian_date;
+
   // Determine founding year
-  const foundingYear = co?.akta_pendirian_date
-    ? new Date(co.akta_pendirian_date).getFullYear()
+  const foundingYear = effectivePendirianDate
+    ? new Date(effectivePendirianDate).getFullYear()
     : co?.sk_menhumkam_date
       ? new Date(co.sk_menhumkam_date).getFullYear()
       : null;
@@ -1499,12 +1512,12 @@ export function CompanyTab({
               <p className="text-sm font-medium" style={{ color: "#f1f5f9" }}>
                 {foundingYear}
               </p>
-              {co?.akta_pendirian_no && (
+              {effectivePendirianNo && (
                 <p
                   className="text-[10px] mt-0.5"
                   style={{ color: "rgba(100,116,139,0.8)" }}
                 >
-                  Akta #{co.akta_pendirian_no}
+                  Akta #{effectivePendirianNo}
                 </p>
               )}
             </div>
@@ -1938,7 +1951,7 @@ export function CompanyTab({
             )}
 
             {/* Akta Pendirian */}
-            {co?.akta_pendirian_no && (
+            {effectivePendirianNo && (
               <div style={pillData}>
                 <p
                   className="text-[9px] uppercase tracking-widest font-bold mb-1.5"
@@ -1951,8 +1964,8 @@ export function CompanyTab({
                     className="text-sm font-medium font-mono"
                     style={{ color: "#f1f5f9" }}
                   >
-                    #{co.akta_pendirian_no}
-                    {co.akta_pendirian_date && (
+                    #{effectivePendirianNo}
+                    {effectivePendirianDate && (
                       <span
                         className="text-[10px] mx-1"
                         style={{ color: "rgba(148,163,184,0.5)" }}
@@ -1960,10 +1973,10 @@ export function CompanyTab({
                         |
                       </span>
                     )}
-                    {co.akta_pendirian_date &&
-                      formatDate(co.akta_pendirian_date)}
+                    {effectivePendirianDate &&
+                      formatDate(effectivePendirianDate)}
                   </p>
-                  {getAgeChip(co.akta_pendirian_date)}
+                  {getAgeChip(effectivePendirianDate)}
                 </div>
               </div>
             )}
