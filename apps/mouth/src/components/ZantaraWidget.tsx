@@ -93,6 +93,16 @@ export function ZantaraWidget() {
     }
   }, [open]);
 
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   // Greet on first open
   const handleOpen = useCallback(() => {
     setOpen(true);
@@ -223,7 +233,7 @@ export function ZantaraWidget() {
     <>
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-20 right-4 sm:right-6 z-50 w-[360px] max-w-[calc(100vw-2rem)] h-[500px] max-h-[70vh] flex flex-col rounded-2xl bg-[#0c1f3a] border border-white/10 shadow-2xl shadow-black/40 overflow-hidden">
+        <div className="fixed bottom-20 right-4 sm:right-6 z-50 w-[360px] max-w-[calc(100vw-2rem)] h-[500px] max-h-[70vh] flex flex-col rounded-2xl bg-[#0c1f3a] border border-white/10 shadow-2xl shadow-black/40 overflow-hidden" role="dialog" aria-modal="true" aria-label="Chat with Zantara">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0a1929]">
             <div className="flex items-center gap-2.5">

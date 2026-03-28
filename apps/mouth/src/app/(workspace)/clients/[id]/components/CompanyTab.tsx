@@ -308,6 +308,15 @@ function EditCompanyModal({
   formatDate: (d: string) => string;
 }) {
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   const [form, setForm] = useState({
     company_name: initialData.company_name || "",
     company_type: initialData.company_type || "PT PMA",
@@ -351,7 +360,7 @@ function EditCompanyModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true">
       <div
         className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
         style={{

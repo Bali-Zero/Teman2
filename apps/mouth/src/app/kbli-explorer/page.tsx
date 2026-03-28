@@ -954,6 +954,20 @@ export default function KBLIExplorerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Close mobile overlays on Escape
+  useEffect(() => {
+    const openOverlay = sidebarOpen || inspectorOpen;
+    if (!openOverlay) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (inspectorOpen) setInspectorOpen(false);
+        else if (sidebarOpen) setSidebarOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [sidebarOpen, inspectorOpen]);
+
   // Rotating placeholder
   useEffect(() => {
     const interval = setInterval(() => {
