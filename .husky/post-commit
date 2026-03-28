@@ -1,3 +1,11 @@
 #!/bin/sh
 # DocSentinel: auto-sync doc stats after commit (non-blocking background)
 python3 scripts/docs_sync.py --quiet 2>/dev/null &
+
+# Air sync: fetch from Pro and ff-only merge (direct SSH, no GitHub dependency)
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+if [ "$BRANCH" = "main" ] && [ "$(whoami)" = "nuzantara" ]; then
+    ssh -o ConnectTimeout=5 -o BatchMode=yes air \
+      "cd ~/Projects/nuzantara && git fetch pro main && git merge --ff-only pro/main" \
+      >> ~/.openclaw/logs/git-sync.log 2>&1 || true
+fi
