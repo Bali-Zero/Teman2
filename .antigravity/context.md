@@ -95,6 +95,19 @@ nuzantara/
 ### Pricing: ONLY from PricingTool — never hardcode
 ### Evidence Scoring: <0.15 ABSTAIN | 0.15-0.60 CAUTIOUS | >0.60 NORMAL
 
+## Git Sync Architecture (updated 2026-03-28)
+
+Both Pro and Air work on `main`. Sync is **automatic via husky post-commit hooks**.
+
+- **Pro commits** → Air auto-pulls via SSH (`git pull pro main --ff-only`)
+- **Air commits** → Air auto-pushes to Pro (`git push pro main`)
+- **GitHub** → Pro pushes to `origin/main` after its own commits
+
+Do NOT manually push from Air to GitHub — Pro handles GitHub sync.
+Do NOT create an `air` branch — both machines are always on `main`.
+
+Log: `~/.openclaw/logs/git-sync.log` on both machines.
+
 ## Multi-Agent Coordination
 
 - **Claude Code:** Architecture, refactoring, complex logic, autonomous agents
@@ -126,5 +139,5 @@ fly deploy --strategy rolling --app nuzantara-rag
 - API Docs: http://localhost:8000/docs
 
 ---
-**Last updated:** 2026-03-14
+**Last updated:** 2026-03-28
 **Maintainer:** Bali Zero AI Team
