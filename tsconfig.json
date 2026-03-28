@@ -16,9 +16,7 @@
   },
   "references": [
     { "path": "./apps/mouth" },
-    { "path": "./apps/webapp" },
-    { "path": "./apps/admin-dashboard" },
-    { "path": "./apps/zantara-media/dashboard" }
+    { "path": "./apps/admin-dashboard" }
   ],
   "files": [],
   "exclude": ["node_modules", "dist", ".next", "build"]

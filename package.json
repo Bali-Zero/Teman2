@@ -6,9 +6,7 @@
   "workspaces": [
     "apps/backend-rag",
     "apps/mouth",
-    "apps/admin-dashboard",
-    "apps/webapp",
-    "apps/zantara-media/dashboard"
+    "apps/admin-dashboard"
   ],
   "scripts": {
     "prepare": "husky",
