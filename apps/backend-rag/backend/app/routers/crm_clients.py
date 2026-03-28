@@ -235,6 +235,9 @@ class ClientResponse(BaseModel):
     lead_source: str | None = None
     service_interest: list[str] = []  # Default to empty list
     custom_fields: dict = {}  # Default to empty dict
+    tax_id: str | None = None
+    npwp: str | None = None
+    nib: str | None = None
     created_at: datetime
     updated_at: datetime
     created_by: str | None = None
@@ -415,7 +418,7 @@ async def list_clients(
                     ORDER BY interaction_date DESC
                     LIMIT 1
                 ) i ON true
-                WHERE 1=1
+                WHERE c.deleted_at IS NULL
                 """,
             ]
             params: list[Any] = []
@@ -500,6 +503,7 @@ async def get_client(
                    c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
                    c.tags, c.custom_fields, c.address, c.notes, c.passport_number, c.passport_expiry,
                    c.date_of_birth, c.lead_source, c.service_interest, c.tax_id,
+                   c.npwp, c.nib,
                    c.created_at, c.updated_at, c.created_by,
                    i.sentiment as last_sentiment,
                    i.summary as last_interaction_summary
@@ -548,6 +552,7 @@ async def get_client_by_email(
                    c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
                    c.tags, c.custom_fields, c.address, c.notes, c.passport_number, c.passport_expiry,
                    c.date_of_birth, c.lead_source, c.service_interest, c.tax_id,
+                   c.npwp, c.nib,
                    c.created_at, c.updated_at, c.created_by,
                    i.sentiment as last_sentiment,
                    i.summary as last_interaction_summary
@@ -895,21 +900,22 @@ async def get_clients_stats(
     """
     try:
         async with db_pool.acquire() as conn:
-            # Total clients by status
+            # Total clients by status (exclude soft-deleted)
             by_status_rows = await conn.fetch(
                 """
                 SELECT status, COUNT(*) as count
                 FROM clients
+                WHERE deleted_at IS NULL
                 GROUP BY status
                 """,
             )
 
-            # Clients by assigned team member
+            # Clients by assigned team member (exclude soft-deleted)
             by_team_member_rows = await conn.fetch(
                 """
                 SELECT assigned_to, COUNT(*) as count
                 FROM clients
-                WHERE assigned_to IS NOT NULL
+                WHERE assigned_to IS NOT NULL AND deleted_at IS NULL
                 GROUP BY assigned_to
                 ORDER BY count DESC
                 """,
