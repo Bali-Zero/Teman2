@@ -139,6 +139,7 @@ export default function NotificationsSettingsPage() {
                       : 'bg-[var(--background)] text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]'
                   }`}
                   title="Email notifications"
+                  aria-label="Toggle email notifications"
                 >
                   <Mail className="w-4 h-4" />
                 </button>
@@ -151,6 +152,7 @@ export default function NotificationsSettingsPage() {
                       : 'bg-[var(--background)] text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]'
                   }`}
                   title="Push notifications"
+                  aria-label="Toggle push notifications"
                 >
                   <Bell className="w-4 h-4" />
                 </button>
@@ -163,6 +165,7 @@ export default function NotificationsSettingsPage() {
                       : 'bg-[var(--background)] text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]'
                   }`}
                   title="In-app notifications"
+                  aria-label="Toggle in-app notifications"
                 >
                   <MessageSquare className="w-4 h-4" />
                 </button>

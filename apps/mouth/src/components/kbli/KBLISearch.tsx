@@ -110,6 +110,7 @@ export function KBLISearch({
           onKeyDown={handleKeyDown}
           onFocus={() => query.length >= 2 && setIsOpen(true)}
           placeholder={placeholder}
+          aria-label={placeholder || "Search KBLI"}
           autoFocus={autoFocus}
           className={cn(
             "w-full pl-12 pr-10 py-4 bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl text-white placeholder-zinc-500",

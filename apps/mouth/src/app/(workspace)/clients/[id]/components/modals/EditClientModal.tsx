@@ -122,7 +122,7 @@ export function EditClientModal({
     'w-full px-4 py-2.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 focus:border-[var(--accent)]';
 
   return (
-    <Modal title="Edit Client" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
+    <Modal title="Edit Client" aria-label="Edit Client" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
       {/* Avatar Upload */}
       <div className="flex items-center gap-6 pb-6 border-b border-[var(--bz-border)]">
         <div className="relative">
@@ -220,6 +220,7 @@ export function EditClientModal({
               }}
               className={`${inputClass} flex-1 min-w-0`}
               placeholder="Phone number"
+              aria-label="Phone number"
             />
           </div>
         </div>

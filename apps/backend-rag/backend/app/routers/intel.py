@@ -1277,6 +1277,10 @@ async def publish_staging_item(
                             headers={
                                 "Content-Type": "application/json",
                                 "Authorization": f"Bearer {fireworks_key}",
+                                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                                "Accept": "*/*",
+                                "Origin": "https://fireworks.ai",
+                                "Referer": "https://fireworks.ai/",
                             },
                         )
                         _resp = await asyncio.to_thread(

@@ -126,6 +126,7 @@ export default function PortalHomePage() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatusCard
           title="Immigration"
+          aria-label="Immigration status"
           status={defaultDashboard.visa.status}
           label={defaultDashboard.visa.type || 'No Visa'}
           expiry={defaultDashboard.visa.expiryDate}
@@ -134,6 +135,7 @@ export default function PortalHomePage() {
         />
         <StatusCard
           title="Company"
+          aria-label="Company status"
           status={defaultDashboard.company.status}
           label={defaultDashboard.company.primaryCompanyName || 'No Company'}
           subLabel={`${defaultDashboard.company.totalCompanies} compan${defaultDashboard.company.totalCompanies !== 1 ? 'ies' : 'y'}`}
@@ -141,6 +143,7 @@ export default function PortalHomePage() {
         />
         <StatusCard
           title="Tax"
+          aria-label="Tax status"
           status={defaultDashboard.taxes.status}
           label={
             defaultDashboard.taxes.nextDeadline

@@ -369,6 +369,7 @@ export default function ClientDetailPage() {
                     }[client.status] || 'bg-gray-500/20 text-gray-400'
                   }`}
                   title="Click to change status"
+                  aria-label="Change client status"
                 >
                   {isUpdatingStatus ? '...' : client.status}
                 </button>
@@ -538,6 +539,7 @@ export default function ClientDetailPage() {
                 )
               }
               title="Open client's Google Drive folder"
+              aria-label="Open client's Google Drive folder"
             >
               <FolderOpen className="w-4 h-4" />
               Drive

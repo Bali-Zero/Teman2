@@ -653,6 +653,7 @@ export default function CaseDetailPage() {
                 onClick={cyclePaymentStatus}
                 disabled={isUpdatingPayment}
                 title="Click to cycle payment status: unpaid → partial → paid"
+                aria-label="Cycle payment status"
                 className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-50"
                 style={{
                   background:
@@ -1079,6 +1080,7 @@ export default function CaseDetailPage() {
                   onClick={cyclePriority}
                   disabled={isUpdatingPriority}
                   title="Click to cycle: normal → high → urgent"
+                  aria-label="Cycle priority"
                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${
                     practice.priority === 'urgent'
                       ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25'
@@ -1104,6 +1106,7 @@ export default function CaseDetailPage() {
                   onClick={cyclePaymentStatus}
                   disabled={isUpdatingPayment}
                   title="Click to cycle: unpaid → partial → paid"
+                  aria-label="Cycle payment status"
                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer ${
                     practice.payment_status === 'paid'
                       ? 'bg-green-500/15 text-green-400 hover:bg-green-500/25'
@@ -1165,6 +1168,7 @@ export default function CaseDetailPage() {
                     className="font-medium hover:underline text-left transition-colors"
                     style={{ color: 'var(--bz-text-1)' }}
                     title="Click to edit"
+                    aria-label="Edit quoted price"
                   >
                     {formatCurrency(practice.quoted_price)}
                   </button>
@@ -1215,6 +1219,7 @@ export default function CaseDetailPage() {
                     className="font-medium hover:underline text-left transition-colors"
                     style={{ color: 'var(--bz-text-1)' }}
                     title="Click to edit"
+                    aria-label="Edit actual price"
                   >
                     {formatCurrency(practice.actual_price)}
                   </button>
@@ -1323,6 +1328,7 @@ export default function CaseDetailPage() {
                             color: '#34d399',
                           }}
                           title="Time since completion"
+                          aria-label="Time since completion"
                         >
                           {label}
                         </span>
@@ -1384,6 +1390,7 @@ export default function CaseDetailPage() {
                   className="p-1.5 rounded-lg transition-colors"
                   style={{ color: 'var(--bz-text-2)' }}
                   title="Edit notes"
+                  aria-label="Edit notes"
                 >
                   <Edit className="w-4 h-4" />
                 </button>

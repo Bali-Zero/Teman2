@@ -131,6 +131,7 @@ function FamilyMemberUploadButton({
         ref={fileInputRef}
         type="file"
         accept=".jpg,.jpeg,.png,.pdf"
+        aria-label="Upload document"
         className="hidden"
         onChange={handleUpload}
         disabled={isUploading}
