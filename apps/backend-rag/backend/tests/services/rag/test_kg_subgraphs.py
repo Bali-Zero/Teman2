@@ -232,6 +232,30 @@ async def test_identify_visa_type_kitas(mock_llm):
 
 
 @pytest.mark.asyncio
+async def test_identify_visa_type_kitas_with_kg(mock_llm, mock_db_pool):
+    """Test: Identify KITAS with KG lookup for employment type."""
+    pool, conn = mock_db_pool
+
+    # KG returns that employee employment REQUIRES visa:kitas
+    conn.fetchval = AsyncMock(return_value="visa:kitas")
+
+    state: VisaState = {
+        "query": "Ho bisogno di un visto per lavorare come employee",
+        "user_context": {"citizenship": "foreign"},
+        "current_entities": [],
+        "visited_entities": set(),
+        "relationship_chains": [],
+        "workflow": None,
+    }
+
+    result = await identify_visa_type_node(state, mock_llm, pool)
+
+    assert result["visa_type"] == "kitas"
+    assert result["employment_type"] == "employee"
+    assert result["requires_rptka"] is True
+
+
+@pytest.mark.asyncio
 async def test_identify_visa_type_kitap(mock_llm):
     """Test: Identify KITAP for retirement."""
     state: VisaState = {
@@ -251,9 +275,35 @@ async def test_identify_visa_type_kitap(mock_llm):
 
 
 @pytest.mark.asyncio
-async def test_check_rptka_requirements(mock_db_pool):
-    """Test: Check RPTKA requirements for work visa."""
-    pool, _ = mock_db_pool
+async def test_check_rptka_requirements_from_kg(mock_db_pool):
+    """Test: Check RPTKA requirements with KG data."""
+    pool, conn = mock_db_pool
+
+    # Mock KG returns real RPTKA data
+    conn.fetchrow = AsyncMock(
+        return_value={
+            "entity_id": "rptka:main",
+            "name": "RPTKA",
+            "properties": {
+                "duration": "3-4 weeks",
+                "validity": "Max 5 years",
+            },
+        }
+    )
+    conn.fetch = AsyncMock(
+        return_value=[
+            {
+                "req": "Submit RPTKA application via TKA Online",
+                "dur": "3-4 weeks",
+                "val": "Max 5 years",
+            },
+            {
+                "req": "Pay DKP-TKA compensation",
+                "dur": None,
+                "val": None,
+            },
+        ]
+    )
 
     state: VisaState = {
         "query": "KITAS work",
@@ -273,12 +323,83 @@ async def test_check_rptka_requirements(mock_db_pool):
     rptka_req = result["visa_requirements"][0]
     assert rptka_req["requirement_type"] == "rptka"
     assert "Work Permit" in rptka_req["description"]
+    assert len(rptka_req["steps"]) == 2  # From KG, not fallback
+    assert rptka_req["duration"] == "3-4 weeks"
 
 
 @pytest.mark.asyncio
-async def test_get_visa_requirements_kitas(mock_db_pool):
-    """Test: Get KITAS requirements with fees."""
-    pool, _ = mock_db_pool
+async def test_check_rptka_requirements_fallback(mock_db_pool):
+    """Test: Check RPTKA falls back to hardcoded when KG is empty."""
+    pool, conn = mock_db_pool
+
+    # KG returns no data
+    conn.fetchrow = AsyncMock(return_value=None)
+    conn.fetch = AsyncMock(return_value=[])
+
+    state: VisaState = {
+        "query": "KITAS work",
+        "user_context": {},
+        "visa_type": "kitas",
+        "purpose": "work",
+        "requires_rptka": True,
+        "current_entities": [],
+        "visited_entities": set(),
+        "relationship_chains": [],
+        "workflow": None,
+    }
+
+    result = await check_rptka_requirements_node(state, pool)
+
+    assert len(result["visa_requirements"]) > 0
+    rptka_req = result["visa_requirements"][0]
+    assert rptka_req["requirement_type"] == "rptka"
+    assert len(rptka_req["steps"]) == 5  # Fallback has 5 hardcoded steps
+
+
+@pytest.mark.asyncio
+async def test_get_visa_requirements_from_kg(mock_db_pool):
+    """Test: Get KITAS requirements from KG nodes/edges."""
+    pool, conn = mock_db_pool
+
+    # Mock KG visa node
+    conn.fetchrow = AsyncMock(
+        side_effect=[
+            {
+                "entity_id": "kitas:main",
+                "name": "KITAS",
+                "properties": {
+                    "documents": ["Passport", "E-Visa approval", "Sponsorship letter"],
+                    "processing_time": "14-30 days",
+                    "validity": "1-2 years",
+                },
+            },
+            # dur_row (HAS_DURATION query)
+            {"dur_desc": "1-2 years (renewable)", "dur_name": "KITAS validity"},
+        ]
+    )
+
+    # Mock REQUIRES and HAS_FEE queries
+    conn.fetch = AsyncMock(
+        side_effect=[
+            # REQUIRES edges (documents)
+            [
+                {
+                    "name": "Employment contract",
+                    "entity_type": "dokumen",
+                    "properties": {},
+                },
+            ],
+            # HAS_FEE edges
+            [
+                {
+                    "name": "PNBP",
+                    "amount": "3500000",
+                    "currency": "IDR",
+                    "fee_desc": "PNBP",
+                },
+            ],
+        ]
+    )
 
     state: VisaState = {
         "query": "KITAS",
@@ -299,6 +420,39 @@ async def test_get_visa_requirements_kitas(mock_db_pool):
     assert "details" in visa_req
     assert "documents" in visa_req["details"]
     assert "fees" in visa_req["details"]
+    assert visa_req["details"]["fees"]["PNBP"] == 3_500_000  # IDR from KG
+    assert result.get("kg_sources_used", 0) > 0
+
+
+@pytest.mark.asyncio
+async def test_get_visa_requirements_fallback(mock_db_pool):
+    """Test: Get KITAS requirements falls back when KG is empty."""
+    pool, conn = mock_db_pool
+
+    # KG returns no data
+    conn.fetchrow = AsyncMock(return_value=None)
+    conn.fetch = AsyncMock(return_value=[])
+
+    state: VisaState = {
+        "query": "KITAS",
+        "user_context": {},
+        "visa_type": "kitas",
+        "purpose": "work",
+        "current_entities": [],
+        "visited_entities": set(),
+        "relationship_chains": [],
+        "workflow": None,
+    }
+
+    result = await get_visa_requirements_node(state, pool)
+
+    assert len(result["visa_requirements"]) > 0
+    visa_req = result["visa_requirements"][-1]
+    assert visa_req["visa_type"] == "kitas"
+    assert "details" in visa_req
+    assert "documents" in visa_req["details"]
+    assert "fees" in visa_req["details"]
+    # Fallback values
     assert visa_req["details"]["fees"]["PNBP"] == 3_500_000  # IDR
 
 
