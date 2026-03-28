@@ -2,7 +2,7 @@
 Tests for CRM Clients Router
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -82,11 +82,11 @@ def sample_client_data():
         "status": "active",
         "client_type": "individual",
         "assigned_to": "team@example.com",
-        "first_contact_date": datetime.now(),
+        "first_contact_date": datetime.now(tz=timezone.utc),
         "last_interaction_date": None,
         "tags": ["vip"],
-        "created_at": datetime.now(),
-        "updated_at": datetime.now(),
+        "created_at": datetime.now(tz=timezone.utc),
+        "updated_at": datetime.now(tz=timezone.utc),
     }
 
 

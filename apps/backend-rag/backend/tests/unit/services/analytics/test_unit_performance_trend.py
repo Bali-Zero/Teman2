@@ -4,7 +4,7 @@ Target: >95% coverage
 """
 
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -53,12 +53,12 @@ class TestPerformanceTrendService:
 
         session = MagicMock()
         session.__getitem__ = lambda self, key: {
-            "session_start": datetime.now() - timedelta(days=7),
+            "session_start": datetime.now(tz=timezone.utc) - timedelta(days=7),
             "duration_minutes": 480,
             "conversations_count": 30,
             "activities_count": 100,
         }.get(key)
-        session.session_start = datetime.now() - timedelta(days=7)
+        session.session_start = datetime.now(tz=timezone.utc) - timedelta(days=7)
         sessions = [session]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
         results = await performance_trend.analyze_performance_trends("test@example.com")

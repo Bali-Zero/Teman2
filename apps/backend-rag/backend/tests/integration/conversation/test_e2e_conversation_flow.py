@@ -13,7 +13,7 @@ Target: Test complete integration of conversation management
 """
 
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -224,7 +224,7 @@ class TestE2EConversationFlow:
             {
                 "role": "user",
                 "content": "Ho completato la domanda per E33G oggi",
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             }
         ]
         session_id = "test-session-123"

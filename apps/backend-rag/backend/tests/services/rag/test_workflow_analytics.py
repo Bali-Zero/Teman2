@@ -8,7 +8,7 @@ Tests cover:
 """
 
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -332,7 +332,7 @@ class TestWorkflowAnalyticsRepository:
         )
 
         pool, conn = mock_db_pool
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         conn.fetch = AsyncMock(
             return_value=[
                 {

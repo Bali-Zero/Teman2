@@ -2,7 +2,7 @@
 Tests for AutoIngestionService - Phase 8
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -75,7 +75,7 @@ class TestIngestionResult:
         result = IngestionResult(
             document_id="doc123",
             status=IngestionStatus.PENDING,
-            started_at=datetime.now(),
+            started_at=datetime.now(tz=timezone.utc),
         )
 
         assert result.status == IngestionStatus.PENDING
@@ -87,8 +87,8 @@ class TestIngestionResult:
         result = IngestionResult(
             document_id="doc123",
             status=IngestionStatus.COMPLETED,
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
+            started_at=datetime.now(tz=timezone.utc),
+            completed_at=datetime.now(tz=timezone.utc),
             qdrant_id="qdrant-uuid",
             processing_time_ms=1500.5,
         )
@@ -164,7 +164,7 @@ class TestAutoIngestionService:
             url="https://example.com",
             content="Test content",
             raw_html="<p>Test</p>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
         )
 
         result = await service.ingest_document(scraped_doc)
@@ -240,8 +240,8 @@ class TestAutoIngestionService:
             return_value=IngestionResult(
                 document_id="doc1",
                 status=IngestionStatus.COMPLETED,
-                started_at=datetime.now(),
-                completed_at=datetime.now(),
+                started_at=datetime.now(tz=timezone.utc),
+                completed_at=datetime.now(tz=timezone.utc),
             )
         )
 
@@ -253,7 +253,7 @@ class TestAutoIngestionService:
                 url=f"https://example.com/{i}",
                 content="Content",
                 raw_html="<p>HTML</p>",
-                scraped_at=datetime.now(),
+                scraped_at=datetime.now(tz=timezone.utc),
             )
             for i in range(3)
         ]

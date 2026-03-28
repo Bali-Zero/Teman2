@@ -4,7 +4,7 @@ Integration Tests for KG Monitoring Service - Phase 8
 Tests the full pipeline from scraping to ingestion.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -38,7 +38,7 @@ class TestMonitoringPipeline:
             url="https://example.com/test",
             content="Pasal 1: Testing the pipeline " * 20,
             raw_html="<article>Test</article>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
         )
 
         # Step 1: Detect changes (should be NEW)
@@ -69,8 +69,8 @@ class TestMonitoringPipeline:
             url="https://example.com",
             title="Old Title",
             content_hash="old_hash_123",
-            first_seen=datetime.now(),
-            last_checked=datetime.now(),
+            first_seen=datetime.now(tz=timezone.utc),
+            last_checked=datetime.now(tz=timezone.utc),
         )
 
         # Create updated document
@@ -81,7 +81,7 @@ class TestMonitoringPipeline:
             url="https://example.com",
             content="New content with different hash",
             raw_html="<p>New</p>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
             document_hash="new_hash_456",
         )
 
@@ -108,7 +108,7 @@ class TestMonitoringPipeline:
                 url=f"https://example.com/{i}",
                 content=f"Content {i} " * 50,
                 raw_html=f"<p>Doc {i}</p>",
-                scraped_at=datetime.now(),
+                scraped_at=datetime.now(tz=timezone.utc),
             )
             for i in range(3)
         ]
@@ -185,8 +185,8 @@ class TestEndToEndScenarios:
             url="https://example.com",
             title="Same",
             content_hash="same_hash",
-            first_seen=datetime.now(),
-            last_checked=datetime.now(),
+            first_seen=datetime.now(tz=timezone.utc),
+            last_checked=datetime.now(tz=timezone.utc),
         )
 
         # Scrape same document
@@ -197,7 +197,7 @@ class TestEndToEndScenarios:
             url="https://example.com",
             content="Content for same_hash",
             raw_html="<p>Same</p>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
             document_hash="same_hash",
         )
 
@@ -221,8 +221,8 @@ class TestEndToEndScenarios:
             url="https://example.com/1",
             title="Unchanged",
             content_hash="hash1",
-            first_seen=datetime.now(),
-            last_checked=datetime.now(),
+            first_seen=datetime.now(tz=timezone.utc),
+            last_checked=datetime.now(tz=timezone.utc),
         )
         detector._state_cache["existing_updated"] = DocumentState(
             document_id="existing_updated",
@@ -230,8 +230,8 @@ class TestEndToEndScenarios:
             url="https://example.com/2",
             title="Will Update",
             content_hash="old_hash",
-            first_seen=datetime.now(),
-            last_checked=datetime.now(),
+            first_seen=datetime.now(tz=timezone.utc),
+            last_checked=datetime.now(tz=timezone.utc),
         )
 
         # Scrape mixed documents
@@ -243,7 +243,7 @@ class TestEndToEndScenarios:
                 url="https://example.com/new",
                 content="New content",
                 raw_html="<p>New</p>",
-                scraped_at=datetime.now(),
+                scraped_at=datetime.now(tz=timezone.utc),
             ),
             ScrapedDocument(
                 document_id="existing_unchanged",
@@ -252,7 +252,7 @@ class TestEndToEndScenarios:
                 url="https://example.com/1",
                 content="Content for hash1",
                 raw_html="<p>Same</p>",
-                scraped_at=datetime.now(),
+                scraped_at=datetime.now(tz=timezone.utc),
                 document_hash="hash1",
             ),
             ScrapedDocument(
@@ -262,7 +262,7 @@ class TestEndToEndScenarios:
                 url="https://example.com/2",
                 content="New content here",
                 raw_html="<p>Updated</p>",
-                scraped_at=datetime.now(),
+                scraped_at=datetime.now(tz=timezone.utc),
                 document_hash="new_hash",
             ),
         ]
@@ -292,8 +292,8 @@ class TestEndToEndScenarios:
             url="https://example.com/gone",
             title="Deleted",
             content_hash="hash",
-            first_seen=datetime.now(),
-            last_checked=datetime.now(),
+            first_seen=datetime.now(tz=timezone.utc),
+            last_checked=datetime.now(tz=timezone.utc),
             is_active=True,
         )
 

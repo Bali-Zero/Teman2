@@ -4,7 +4,7 @@ Target: >95% coverage
 """
 
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -49,7 +49,7 @@ class TestOptimalHoursService:
     @pytest.mark.asyncio
     async def test_identify_optimal_hours_with_sessions(self, optimal_hours_service, mock_db_pool):
         """Test identifying optimal hours with sessions"""
-        datetime.now() - timedelta(days=30)
+        datetime.now(tz=timezone.utc) - timedelta(days=30)
         sessions = [
             {"hour": 9, "duration_minutes": 120, "conversations_count": 10},
             {"hour": 10, "duration_minutes": 180, "conversations_count": 15},

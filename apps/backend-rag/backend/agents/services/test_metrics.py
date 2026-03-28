@@ -11,7 +11,7 @@ import json
 import logging
 import time
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -109,7 +109,7 @@ class AgentMetrics:
             if error:
                 self.errors.append(error)
 
-        self.last_operation = datetime.now()
+        self.last_operation = datetime.now(tz=timezone.utc)
         self.avg_operation_time = self.total_operation_time / (
             self.operations_completed + self.operations_failed
         )
@@ -216,7 +216,7 @@ class TestMetricsCollector:
         )
 
         summary = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             "uptime": self.system.uptime,
             "test_generation": asdict(self.test_generation),
             "coverage": asdict(self.coverage),
@@ -311,7 +311,7 @@ class TestMetricsCollector:
     def save_snapshot(self, filename: str | None = None):
         """Save current metrics snapshot to file"""
         if filename is None:
-            filename = f"metrics_snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            filename = f"metrics_snapshot_{datetime.now(tz=timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
 
         snapshot = self.get_summary()
         snapshot["alerts"] = self.check_alerts()

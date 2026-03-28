@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
@@ -294,7 +294,7 @@ class KnowledgeGraphRepository:
                     "top_entities": top_entities,
                     "hubs": hubs,
                     "relationship_types": rel_types,
-                    "generated_at": datetime.now().isoformat(),
+                    "generated_at": datetime.now(tz=timezone.utc).isoformat(),
                 }
 
         except asyncpg.PostgresError as e:
@@ -303,7 +303,7 @@ class KnowledgeGraphRepository:
                 "top_entities": [],
                 "hubs": [],
                 "relationship_types": {},
-                "generated_at": datetime.now().isoformat(),
+                "generated_at": datetime.now(tz=timezone.utc).isoformat(),
             }
         except Exception as e:
             logger.error(f"Unexpected error getting insights: {e}", exc_info=True)
@@ -311,7 +311,7 @@ class KnowledgeGraphRepository:
                 "top_entities": [],
                 "hubs": [],
                 "relationship_types": {},
-                "generated_at": datetime.now().isoformat(),
+                "generated_at": datetime.now(tz=timezone.utc).isoformat(),
             }
 
     async def get_user_related_entities(
@@ -644,7 +644,7 @@ class KnowledgeGraphRepository:
                     "total_edges": edge_count,
                     "node_types": {row["entity_type"]: row["count"] for row in node_types},
                     "edge_types": {row["relationship_type"]: row["count"] for row in edge_types},
-                    "generated_at": datetime.now().isoformat(),
+                    "generated_at": datetime.now(tz=timezone.utc).isoformat(),
                 }
 
         except Exception as e:
@@ -654,5 +654,5 @@ class KnowledgeGraphRepository:
                 "total_edges": 0,
                 "node_types": {},
                 "edge_types": {},
-                "generated_at": datetime.now().isoformat(),
+                "generated_at": datetime.now(tz=timezone.utc).isoformat(),
             }

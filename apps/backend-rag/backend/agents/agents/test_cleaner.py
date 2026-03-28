@@ -18,7 +18,7 @@ import logging
 import shutil
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -506,7 +506,7 @@ class TestCleanerAgent:
         self.orphan_detector = OrphanDetector(repo_path)
 
         # Archive directory
-        self.archive_dir = tests_dir / ".archive" / datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.archive_dir = tests_dir / ".archive" / datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
 
         # Statistics
         self.stats = {
@@ -763,7 +763,7 @@ class TestCleanerAgent:
         """Generate simple markdown report."""
         md = f"""# 🧹 Test Cleanup Report
 
-**Generated:** {datetime.now().isoformat()}
+**Generated:** {datetime.now(tz=timezone.utc).isoformat()}
 **Mode:** {"DRY RUN" if results.get("dry_run", True) else "LIVE"}
 
 ## Summary

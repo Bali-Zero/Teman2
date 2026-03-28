@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -268,7 +268,7 @@ Based on analysis of successful conversations:
 
         try:
             # Create branch name (sanitized)
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+            timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M")
             branch_name = f"auto/prompt-improvement-{timestamp}"
 
             # Write proposed prompt to a staging file for human review.
@@ -301,7 +301,7 @@ Based on analysis of successful conversations:
             # 3. Create analysis report
             report_content = f"""# Conversation Quality Analysis
 
-Date: {datetime.now().isoformat()}
+Date: {datetime.now(tz=timezone.utc).isoformat()}
 
 ## Analysis Results
 
@@ -321,7 +321,7 @@ See `{prompt_file}` for updated system prompt.
             report_file.write_text(report_content, encoding="utf-8")
 
             # 4. Commit (safe subprocess)
-            commit_message = f"feat(prompts): auto-improve based on {datetime.now().strftime('%Y-%m-%d')} conversation analysis"
+            commit_message = f"feat(prompts): auto-improve based on {datetime.now(tz=timezone.utc).strftime('%Y-%m-%d')} conversation analysis"
 
             safe_git_add([str(prompt_file), str(report_file)], cwd=repo_path)
             safe_git_commit(commit_message, cwd=repo_path)

@@ -2,7 +2,7 @@
 Tests for LegalScraper - Phase 8
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -27,7 +27,7 @@ class TestScrapedDocument:
             url="https://example.com/doc",
             content="Test content",
             raw_html="<html>Test</html>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
         )
 
         assert doc.document_id == "test123"
@@ -44,7 +44,7 @@ class TestScrapedDocument:
             url="https://example.com/1",
             content="Same content",
             raw_html="<p>Same</p>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
         )
 
         doc2 = ScrapedDocument(
@@ -54,7 +54,7 @@ class TestScrapedDocument:
             url="https://example.com/2",
             content="Same content",
             raw_html="<p>Same</p>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
         )
 
         # Same title and content should produce same hash
@@ -69,7 +69,7 @@ class TestScrapedDocument:
             url="https://example.com/1",
             content="Content A",
             raw_html="<p>A</p>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
         )
 
         doc2 = ScrapedDocument(
@@ -79,7 +79,7 @@ class TestScrapedDocument:
             url="https://example.com/2",
             content="Content B",
             raw_html="<p>B</p>",
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
         )
 
         assert doc1.document_hash != doc2.document_hash

@@ -4,7 +4,7 @@ Target: >95% coverage
 """
 
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -53,7 +53,7 @@ class TestPatternAnalyzerService:
 
         session = MagicMock()
         session.__getitem__ = lambda self, key: {
-            "session_start": datetime.now(),
+            "session_start": datetime.now(tz=timezone.utc),
             "duration_minutes": 60,
             "day_of_week": 1,
             "start_hour": 9.0,
