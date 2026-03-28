@@ -322,6 +322,7 @@ export default function AnalyticsDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           title="Conversations Today"
+          aria-label="Conversations Today"
           value={data.overview.conversations_today}
           subtitle={`${data.overview.conversations_week} this week`}
           icon={MessageSquare}
@@ -329,18 +330,21 @@ export default function AnalyticsDashboard() {
         />
         <StatCard
           title="Active Users"
+          aria-label="Active Users"
           value={data.overview.users_active}
           icon={Users}
           onClick={() => toggleSection('team')}
         />
         <StatCard
           title="System Uptime"
+          aria-label="System Uptime"
           value={formatDuration(data.overview.uptime_seconds)}
           icon={Clock}
           onClick={() => toggleSection('system')}
         />
         <StatCard
           title="Services Health"
+          aria-label="Services Health"
           value={`${data.overview.services_healthy}/${data.overview.services_total}`}
           variant={
             data.overview.services_healthy === data.overview.services_total ? 'success' : 'warning'
@@ -355,6 +359,7 @@ export default function AnalyticsDashboard() {
         {/* RAG Pipeline */}
         <ExpandableSection
           title="RAG Pipeline"
+          aria-label="RAG Pipeline"
           icon={Brain}
           isExpanded={expandedSection === 'rag'}
           onToggle={() => toggleSection('rag')}
@@ -460,6 +465,7 @@ export default function AnalyticsDashboard() {
         {/* System Health */}
         <ExpandableSection
           title="System Health"
+          aria-label="System Health"
           icon={Server}
           isExpanded={expandedSection === 'system'}
           onToggle={() => toggleSection('system')}
@@ -617,6 +623,7 @@ export default function AnalyticsDashboard() {
         {/* Qdrant */}
         <ExpandableSection
           title="Vector Database (Qdrant)"
+          aria-label="Vector Database (Qdrant)"
           icon={Database}
           isExpanded={expandedSection === 'qdrant'}
           onToggle={() => toggleSection('qdrant')}
@@ -700,6 +707,7 @@ export default function AnalyticsDashboard() {
         {/* CRM */}
         <ExpandableSection
           title="CRM Analytics"
+          aria-label="CRM Analytics"
           icon={UserCog}
           isExpanded={expandedSection === 'crm'}
           onToggle={() => toggleSection('crm')}
@@ -895,6 +903,7 @@ export default function AnalyticsDashboard() {
         {/* Team */}
         <ExpandableSection
           title="Team Productivity"
+          aria-label="Team Productivity"
           icon={Users}
           isExpanded={expandedSection === 'team'}
           onToggle={() => toggleSection('team')}
@@ -977,6 +986,7 @@ export default function AnalyticsDashboard() {
         {/* Feedback */}
         <ExpandableSection
           title="Quality & Feedback"
+          aria-label="Quality & Feedback"
           icon={TrendingUp}
           isExpanded={expandedSection === 'feedback'}
           onToggle={() => toggleSection('feedback')}
@@ -1132,6 +1142,7 @@ export default function AnalyticsDashboard() {
         {/* Alerts */}
         <ExpandableSection
           title="Alerts & Errors"
+          aria-label="Alerts & Errors"
           icon={AlertTriangle}
           isExpanded={expandedSection === 'alerts'}
           onToggle={() => toggleSection('alerts')}

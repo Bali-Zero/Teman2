@@ -369,6 +369,7 @@ export default function NewPracticePage() {
                 <input
                   type="text"
                   value={clientSearch}
+                  aria-label="Search client"
                   onChange={(e) => {
                     setClientSearch(e.target.value);
                     setShowClientDropdown(true);

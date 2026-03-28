@@ -283,6 +283,7 @@ export default function WorkspaceLKPMSubmitPage() {
                 />
                 <input
                   type="text"
+                  aria-label="Search company by name, NIB, or NPWP"
                   value={companySearch}
                   onChange={(e) => {
                     setCompanySearch(e.target.value);
@@ -457,6 +458,7 @@ export default function WorkspaceLKPMSubmitPage() {
                   inputMode="numeric"
                   value={formatNumber(investment[`${cat.key}_domestic`])}
                   onChange={(e) => updateInvestment(`${cat.key}_domestic`, e.target.value)}
+                  aria-label={`${cat.label} - Domestik`}
                   placeholder="0"
                   className="w-full rounded-lg border px-3 py-2 text-sm text-right"
                   style={{
@@ -469,6 +471,7 @@ export default function WorkspaceLKPMSubmitPage() {
                   inputMode="numeric"
                   value={formatNumber(investment[`${cat.key}_import`])}
                   onChange={(e) => updateInvestment(`${cat.key}_import`, e.target.value)}
+                  aria-label={`${cat.label} - Impor`}
                   placeholder="0"
                   className="w-full rounded-lg border px-3 py-2 text-sm text-right"
                   style={{
@@ -492,6 +495,7 @@ export default function WorkspaceLKPMSubmitPage() {
                   inputMode="numeric"
                   value={formatNumber(investment[field.key])}
                   onChange={(e) => updateInvestment(field.key, e.target.value)}
+                  aria-label={field.label}
                   placeholder="0"
                   className="w-full rounded-lg border px-3 py-2 text-sm text-right col-span-2"
                   style={{
@@ -523,6 +527,7 @@ export default function WorkspaceLKPMSubmitPage() {
             inputMode="numeric"
             value={formatNumber(investment.working_capital)}
             onChange={(e) => updateInvestment('working_capital', e.target.value)}
+            aria-label="Total modal kerja untuk 1 siklus operasional"
             placeholder="Total modal kerja untuk 1 siklus operasional"
             className="w-full rounded-lg border px-3 py-2 text-sm text-right"
             style={{

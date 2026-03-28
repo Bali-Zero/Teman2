@@ -700,6 +700,7 @@ export default function PratichePage() {
                       : 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
                   }`}
                   title="Click to filter paid practices"
+                  aria-label="Filter paid practices"
                 >
                   {new Intl.NumberFormat('id-ID', {
                     notation: 'compact',
@@ -724,6 +725,7 @@ export default function PratichePage() {
                       : 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
                   }`}
                   title="Click to filter unpaid practices"
+                  aria-label="Filter unpaid practices"
                 >
                   {new Intl.NumberFormat('id-ID', {
                     notation: 'compact',
@@ -759,6 +761,7 @@ export default function PratichePage() {
               ref={searchInputRef}
               type="text"
               placeholder="Search process… (press / to focus)"
+              aria-label="Search process"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               title="Press / to focus search, Escape to clear"
@@ -784,6 +787,7 @@ export default function PratichePage() {
               className="gap-2 border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md text-[var(--bz-text-2)] hover:bg-[rgba(45,45,50,0.8)] hover:text-[var(--bz-text-1)]"
               onClick={exportCSV}
               title={`Export ${filteredPractices.length} processes as CSV`}
+              aria-label={`Export ${filteredPractices.length} processes as CSV`}
             >
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export</span>
@@ -797,6 +801,7 @@ export default function PratichePage() {
                     : 'text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]'
                 }`}
                 title="Kanban Board"
+                aria-label="Kanban Board"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
@@ -808,6 +813,7 @@ export default function PratichePage() {
                     : 'text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]'
                 }`}
                 title="List View"
+                aria-label="List View"
               >
                 <List className="w-4 h-4" />
               </button>
@@ -899,6 +905,7 @@ export default function PratichePage() {
                 : 'bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-purple-500/30 hover:text-purple-400'
             }`}
             title="Show processes not updated in >14 days"
+            aria-label="Show stale processes (not updated in 14+ days)"
           >
             🕰 Stale 14d+
           </button>
@@ -1179,6 +1186,7 @@ export default function PratichePage() {
                                     }}
                                     className="text-xs text-[var(--bz-text-2)] truncate hover:text-[var(--bz-accent)] transition-colors text-left"
                                     title="Open client profile"
+                                    aria-label="Open client profile"
                                   >
                                     {practice.client_name || 'Unknown Client'}
                                   </button>
@@ -1311,6 +1319,7 @@ export default function PratichePage() {
                                     }}
                                     className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
                                     title="WhatsApp"
+                                    aria-label="Contact via WhatsApp"
                                   >
                                     <MessageCircle className="w-3.5 h-3.5" />
                                   </button>
@@ -1323,6 +1332,7 @@ export default function PratichePage() {
                                     }}
                                     className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
                                     title="Email"
+                                    aria-label="Send email"
                                   >
                                     <Mail className="w-3.5 h-3.5" />
                                   </button>
@@ -1334,6 +1344,7 @@ export default function PratichePage() {
                                   }}
                                   className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
                                   title="View Documents"
+                                  aria-label="View documents"
                                 >
                                   <FileText className="w-3.5 h-3.5" />
                                 </button>
@@ -1576,6 +1587,7 @@ export default function PratichePage() {
                           <span
                             className="text-[var(--bz-text-2)] text-xs italic opacity-60"
                             title="No team member assigned"
+                            aria-label="No team member assigned"
                           >
                             Unassigned
                           </span>
@@ -1615,7 +1627,7 @@ export default function PratichePage() {
                             ↑ high
                           </span>
                         ) : (
-                          <span className="text-[var(--bz-text-2)] text-xs" title="Normal priority">
+                          <span className="text-[var(--bz-text-2)] text-xs" title="Normal priority" aria-label="Normal priority">
                             —
                           </span>
                         )}
@@ -1635,7 +1647,7 @@ export default function PratichePage() {
                             {practice.payment_status}
                           </span>
                         ) : (
-                          <span className="text-[var(--bz-text-2)] text-xs" title="Payment not set">
+                          <span className="text-[var(--bz-text-2)] text-xs" title="Payment not set" aria-label="Payment not set">
                             —
                           </span>
                         )}
@@ -1689,6 +1701,7 @@ export default function PratichePage() {
                                         : 'var(--bz-text-2)',
                                 }}
                                 title={`Last updated: ${new Date(practice.updated_at).toLocaleDateString('en-US')}`}
+                                aria-label={`Last updated: ${new Date(practice.updated_at).toLocaleDateString('en-US')}`}
                               >
                                 {label}
                               </span>
@@ -1715,6 +1728,7 @@ export default function PratichePage() {
                               }}
                               className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
                               title="WhatsApp"
+                              aria-label="Contact via WhatsApp"
                             >
                               <MessageCircle className="w-3.5 h-3.5" />
                             </button>
@@ -1727,6 +1741,7 @@ export default function PratichePage() {
                               }}
                               className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
                               title="Email"
+                              aria-label="Send email"
                             >
                               <Mail className="w-3.5 h-3.5" />
                             </button>
@@ -1735,6 +1750,7 @@ export default function PratichePage() {
                             className="p-1.5 rounded text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors"
                             onClick={(e) => handleMenuClick(e, practice)}
                             title="More options"
+                            aria-label="More options"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
