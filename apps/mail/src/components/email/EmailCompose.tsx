@@ -59,6 +59,7 @@ export function EmailCompose({
   const [content, setContent] = React.useState(initialData?.htmlContent || '');
   const [attachments, setAttachments] = React.useState<AttachmentItem[]>([]);
   const [isSavingDraft, setIsSavingDraft] = React.useState(false);
+  const [toTouched, setToTouched] = React.useState(false);
 
   React.useEffect(() => {
     if (initialData) {
@@ -91,6 +92,10 @@ export function EmailCompose({
   const handleSend = async () => {
     if (attachments.some((a) => a.isUploading)) {
       alert('Please wait for files to finish uploading.');
+      return;
+    }
+    if (!to.trim()) {
+      setToTouched(true);
       return;
     }
     await onSend(getComposeData());
@@ -225,11 +230,18 @@ export function EmailCompose({
                 type="text"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
+                onBlur={() => setToTouched(true)}
                 placeholder="Recipients"
+                aria-required="true"
+                aria-invalid={toTouched && !to.trim() ? 'true' : undefined}
+                aria-label="Destinatari email"
                 className={cn(
                   'flex-1 px-2 py-2 text-sm bg-transparent',
                   'text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]',
-                  'focus:outline-none'
+                  'focus:outline-none',
+                  toTouched &&
+                    !to.trim() &&
+                    'text-[var(--error)] placeholder:text-[var(--error)]/50'
                 )}
               />
               <button
@@ -293,6 +305,7 @@ export function EmailCompose({
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Subject"
+                aria-label="Oggetto email"
                 className={cn(
                   'flex-1 px-2 py-2 text-sm bg-transparent',
                   'text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]',
