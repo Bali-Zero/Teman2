@@ -11,6 +11,8 @@ ADMIT articles into NLM NB-2 via the nlm CLI.
 
 from __future__ import annotations
 
+import hashlib
+import httpx
 import logging
 import math
 from dataclasses import dataclass
@@ -384,3 +386,170 @@ class T4CircuitBreaker:
         state.cb_failure_count = CB_T4_FAILURE_THRESHOLD
         state.cb_last_failure = datetime.now(timezone.utc)
         logger.error("CB_T4 forced OPEN: %s", reason)
+
+
+# ---------------------------------------------------------------------------
+# Fetchers
+# ---------------------------------------------------------------------------
+
+
+class T4Fetcher:
+    """Fetch articles from RSS feeds, government websites, and X/Twitter."""
+
+    async def fetch_rss(
+        self, url: str, *, source_handle: str
+    ) -> list[Article]:
+        """Fetch and parse an RSS feed. Returns [] on any error."""
+        import feedparser  # noqa: PLC0415
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(url, follow_redirects=True)
+                resp.raise_for_status()
+                feed = feedparser.parse(resp.text)
+        except Exception:
+            logger.exception("RSS fetch failed for %s", url)
+            return []
+
+        articles: list[Article] = []
+        for entry in feed.entries:
+            link = getattr(entry, "link", "") or ""
+            if not link:
+                continue
+            article_id = hashlib.sha1(link.encode()).hexdigest()[:16]
+            title = getattr(entry, "title", link)
+            summary = getattr(entry, "summary", "")
+            content_detail = getattr(entry, "content", [])
+            body = content_detail[0].value if content_detail else summary
+
+            published_at: Optional[datetime] = None
+            if hasattr(entry, "published_parsed") and entry.published_parsed:
+                from time import mktime  # noqa: PLC0415
+
+                try:
+                    published_at = datetime.fromtimestamp(
+                        mktime(entry.published_parsed), tz=timezone.utc
+                    )
+                except Exception:
+                    pass
+
+            articles.append(
+                Article(
+                    source_handle=source_handle,
+                    article_id=article_id,
+                    url=link,
+                    title=title,
+                    content=f"{title}. {body}",
+                    scraped_at=datetime.now(timezone.utc),
+                    platform="rss",
+                    published_at=published_at,
+                )
+            )
+        return articles
+
+    async def fetch_website(
+        self,
+        url: str,
+        *,
+        source_handle: str,
+        article_selector: str = "article",
+        title_selector: str = "h2",
+        link_selector: str = "a",
+    ) -> list[Article]:
+        """Scrape a /berita/ listing page. Returns [] on any error."""
+        from bs4 import BeautifulSoup  # noqa: PLC0415
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(url, follow_redirects=True)
+                resp.raise_for_status()
+                soup = BeautifulSoup(resp.text, "html.parser")
+        except Exception:
+            logger.exception("Website fetch failed for %s", url)
+            return []
+
+        articles: list[Article] = []
+        for block in soup.select(article_selector)[:20]:
+            title_el = block.select_one(title_selector)
+            link_el = block.select_one(link_selector)
+            if not title_el or not link_el:
+                continue
+            title = title_el.get_text(strip=True)
+            link = link_el.get("href", "")
+            if not link:
+                continue
+            if not link.startswith("http"):
+                from urllib.parse import urljoin  # noqa: PLC0415
+
+                link = urljoin(url, link)
+            article_id = hashlib.sha1(link.encode()).hexdigest()[:16]
+            text = block.get_text(separator=" ", strip=True)
+
+            articles.append(
+                Article(
+                    source_handle=source_handle,
+                    article_id=article_id,
+                    url=link,
+                    title=title,
+                    content=text[:2000],
+                    scraped_at=datetime.now(timezone.utc),
+                    platform="website",
+                )
+            )
+        return articles
+
+    async def fetch_twitter(
+        self,
+        handle: str,
+        *,
+        bearer_token: str,
+        max_results: int = 20,
+    ) -> list[Post]:
+        """Fetch recent tweets via Twitter API v2. Returns [] on any error."""
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                user_resp = await client.get(
+                    f"https://api.twitter.com/2/users/by/username/{handle.lstrip('@')}",
+                    headers={"Authorization": f"Bearer {bearer_token}"},
+                )
+                user_resp.raise_for_status()
+                user_id = user_resp.json()["data"]["id"]
+
+                tweet_resp = await client.get(
+                    f"https://api.twitter.com/2/users/{user_id}/tweets",
+                    headers={"Authorization": f"Bearer {bearer_token}"},
+                    params={
+                        "max_results": max_results,
+                        "tweet.fields": "created_at,text",
+                    },
+                )
+                tweet_resp.raise_for_status()
+                tweets = tweet_resp.json().get("data", [])
+        except Exception:
+            logger.exception("Twitter fetch failed for @%s", handle)
+            return []
+
+        posts: list[Post] = []
+        for tweet in tweets:
+            tweet_id = tweet["id"]
+            url = f"https://twitter.com/{handle.lstrip('@')}/status/{tweet_id}"
+            created = None
+            if tweet.get("created_at"):
+                try:
+                    created = datetime.fromisoformat(
+                        tweet["created_at"].replace("Z", "+00:00")
+                    )
+                except ValueError:
+                    pass
+            posts.append(
+                Post(
+                    handle=handle,
+                    post_id=tweet_id,
+                    url=url,
+                    content=tweet.get("text", ""),
+                    scraped_at=datetime.now(timezone.utc),
+                    platform="twitter",
+                    timestamp=created,
+                )
+            )
+        return posts
