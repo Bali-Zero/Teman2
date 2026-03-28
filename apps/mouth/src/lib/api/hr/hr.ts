@@ -6,9 +6,10 @@ const BASE = "/api/hr";
 
 async function fetchHR<T>(path: string, options?: RequestInit): Promise<T> {
   const token =
-    typeof window !== "undefined" ? localStorage.getItem("nz_token") : null;
+    typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
   const res = await fetch(`${BASE}${path}`, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
