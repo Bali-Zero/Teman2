@@ -492,3 +492,4 @@ apps/bali-intel-scraper/data/scraped/
 venv/
 .venv/
 .worktrees/
+apps/backend-rag/venv/
