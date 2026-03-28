@@ -1,0 +1,222 @@
+TAX TREATY — CONVENZIONI CONTRO LA DOPPIA IMPOSIZIONE
+GUIDA PER INVESTITORI STRANIERI IN INDONESIA
+2024-2025
+
+Guida normativa verificata | Basata su P3B Indonesia con 70+ paesi
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CHE COS'È UN TAX TREATY
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Un Tax Treaty (o P3B — Perjanjian Penghindaran Pajak Berganda) è un
+accordo bilaterale tra due paesi per evitare che lo stesso reddito
+venga tassato due volte: una volta in Indonesia (paese della fonte)
+e una volta nel paese di residenza del beneficiario. [TAX-065]
+
+L'Indonesia ha stipulato P3B con oltre 70 paesi, inclusi tutti i
+principali paesi europei, gli USA, l'Australia, Singapore e Giappone.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. PAESI CON P3B CON INDONESIA (selezione rilevante)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EUROPA: [TAX-066]
+- Italia: P3B in vigore. Dividendi 10-15%, Royalties 10-15%, Interessi 10%
+- Francia: P3B in vigore. Dividendi 10-15%, Royalties 10%, Interessi 15%
+- Germania: P3B in vigore. Dividendi 10-15%, Royalties 7,5%, Interessi 10%
+- Paesi Bassi: P3B in vigore. Dividendi 5-15%, Royalties 10%, Interessi 10%
+- Svizzera: P3B in vigore. Dividendi 5-15%, Royalties 10%, Interessi 10%
+- Inghilterra (UK): P3B in vigore. Dividendi 10-15%, Royalties 10-15%
+- Spagna: P3B in vigore. Dividendi 10-15%, Royalties 10%
+- Svezia: P3B in vigore. Dividendi 10-15%, Royalties 10%
+- Austria: P3B in vigore. Dividendi 5-15%, Royalties 10%
+- Belgio: P3B in vigore. Dividendi 10-15%, Royalties 10%
+- Russia: P3B in vigore. Dividendi 15%, Royalties 15%
+- Polonia: P3B in vigore. Dividendi 10-15%, Royalties 15%
+
+ASIA PACIFIC:
+- Australia: P3B in vigore. Dividendi 15%, Royalties 10-15%
+- Singapore: P3B in vigore. Dividendi 10-15%, Royalties 10%
+- Giappone: P3B in vigore. Dividendi 10-15%, Royalties 10%
+- Cina: P3B in vigore. Dividendi 10%, Royalties 10%
+- India: P3B in vigore. Dividendi 10-15%, Royalties 10-15%
+- Korea Sud: P3B in vigore. Dividendi 10-15%, Royalties 15%
+- Hong Kong: P3B in vigore. Dividendi 5-10%, Royalties 5%
+- Malaysia: P3B in vigore. Dividendi 10%, Royalties 10%
+
+AMERICAS:
+- USA: P3B in vigore. Dividendi 10-15%, Royalties 10%
+- Canada: P3B in vigore. Dividendi 10-15%, Royalties 10%
+- Messico: P3B in vigore.
+
+NOTA: Le aliquote esatte variano in base alla struttura del reddito
+(aliquota ridotta per partecipazioni sostanziali vs minori).
+Verificare sempre il testo del P3B specifico.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. COME BENEFICIARE DEL P3B
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 Certificate of Domicile (COD) — obbligatorio
+
+Per applicare le aliquote ridotte del P3B, il beneficiario straniero
+DEVE presentare il CERTIFICATE OF DOMICILE (SKD — Surat Keterangan
+Domisili) rilasciato dall'autorità fiscale del suo paese di residenza.
+[TAX-046]
+
+TIPI DI COD:
+- Form DGT-1: per redditi generali (dividendi, royalties, interessi)
+- Form DGT-2: per redditi da lavoro dipendente / pensioni
+- Form DGT-3: per shipping/air transport
+
+PROCEDURA:
+1. Il beneficiario ottiene il COD dalla propria autorità fiscale
+   (es: Agenzia delle Entrate in Italia, IRS negli USA, HMRC in UK)
+2. Presenta il COD alla PT PMA pagante PRIMA del pagamento
+3. La PT PMA applica l'aliquota P3B invece del 20% standard
+4. Il COD è valido per 12 mesi dalla data di emissione
+
+SENZA COD: La PT PMA DEVE applicare l'aliquota standard PPh 26 del 20%.
+Non è possibile applicare retroattivamente il P3B dopo il pagamento
+senza COD. [TAX-067]
+
+3.2 Form DGT-1 — Dettaglio
+
+Il Form DGT-1 deve essere compilato e firmato:
+- Parte I: dal beneficiario del reddito (il fornitore straniero)
+- Parte II: validata dall'autorità fiscale del paese di residenza
+- Include dichiarazione di essere il "beneficial owner" del reddito
+
+BENEFICIAL OWNER: il beneficiario deve essere il titolare effettivo
+del reddito (non una società conduit/intermediaria usata solo
+per applicare il P3B). [TAX-068]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. P3B INDONESIA-ITALIA — PUNTI CHIAVE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Rilevante per clienti italiani di Bali Zero: [TAX-069]
+
+DIVIDENDI (Art. 10):
+- Aliquota ridotta: 10% se beneficiario detiene ≥ 25% del capitale
+- Aliquota ridotta: 15% negli altri casi
+- Aliquota standard senza P3B: 20%
+
+INTERESSI (Art. 11):
+- Aliquota ridotta: 10% su tutti gli interessi
+- Aliquota standard senza P3B: 20%
+
+ROYALTIES (Art. 12):
+- Aliquota ridotta: 10-15% (dipende dal tipo di royalty)
+- Aliquota standard senza P3B: 20%
+
+REDDITI DA LAVORO DIPENDENTE (Art. 15):
+- In linea generale tassati SOLO in Indonesia (paese della fonte) se:
+  - La prestazione dura più di 183 giorni nell'anno
+  - Il datore di lavoro è indonesiano o ha stabile organizzazione in Indonesia
+- Tassati solo in Italia se la prestazione è breve (< 183 giorni)
+  e il datore di lavoro è italiano
+
+STABILE ORGANIZZAZIONE (Art. 5):
+- La PT PMA in Indonesia è già una stabile organizzazione della società
+  madre italiana → tassazione in Indonesia sui redditi indonesiani.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. RESIDENZA FISCALE — DETERMINARE SE WNA È "PENDUDUK"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CRITERI PER ESSERE PENDUDUK INDONESIA (UU 36/2008 Pasal 2): [TAX-070]
+
+Un WNA è considerato WAJIB PAJAK DALAM NEGERI (residente fiscale
+indonesiano) se:
+- Bertempat tinggal di Indonesia (dimora abituale in Indonesia), OPPURE
+- Berada di Indonesia > 183 hari dalam 12 bulan (presenza > 183 giorni),
+  OPPURE
+- Berada di Indonesia dalam tahun pajak (presenza nell'anno fiscale)
+  E bermaksud bertempat tinggal (intende stabilirsi) in Indonesia
+
+KITAP = fortissimo indicatore di residenza fiscale indonesiana.
+KITAS lavorativo a lungo termine = presumibilmente penduduk.
+
+SE PENDUDUK INDONESIA:
+- Soggetto a PPh 21 (non PPh 26)
+- Obbligo SPT Tahunan Pribadi
+- Tassazione sul reddito MONDIALE (non solo indonesiano)
+- Possibilità di credito per imposte pagate all'estero (P3B)
+
+SE NON PENDUDUK:
+- Soggetto a PPh 26
+- Solo sui redditi DA FONTE INDONESIANA
+- Nessun obbligo SPT Tahunan in Indonesia
+- Applicazione P3B solo con COD
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. RISCHI E PIANIFICAZIONE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RISCHIO DOPPIA RESIDENZA FISCALE:
+Un WNA con residenza in Indonesia (KITAS/KITAP + NPWP Pribadi)
+che mantiene anche residenza fiscale nel paese d'origine
+rischia di essere tassato su tutto il reddito mondiale in ENTRAMBI
+i paesi. [TAX-071]
+
+SOLUZIONE: Il P3B prevede regole di "tie-breaker" per determinare
+il paese di residenza fiscale prevalente (art. 4 dei P3B basati su OCSE):
+1. Dimora permanente (abitazione stabile disponibile)
+2. Centro degli interessi vitali (affari, famiglia)
+3. Soggiorno abituale
+4. Cittadinanza
+5. Accordo tra le autorità competenti
+
+TRASFERIMENTO DIVIDENDI ALL'ESTERO:
+Il P3B riduce la ritenuta indonesiana sui dividendi inviati alla
+casa madre o ai soci stranieri. Ma il P3B non elimina l'imposizione
+nel paese di residenza — solo previene la doppia imposizione.
+I dividendi ricevuti dall'Italia sono soggetti a IRPEF in Italia
+(con credito per la ritenuta indonesiana già pagata).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CONSIGLIO PRATICO:
+Per i clienti con struttura internazionale (soci stranieri + PT PMA),
+si raccomanda una CONSULENZA FISCALE INTERNAZIONALE che conosca sia
+il sistema indonesiano che quello del paese d'origine del cliente.
+Bali Zero collabora con consulenti fiscali internazionali per Bali.
+
+DIVIDENDI VS STIPENDIO:
+Spesso i soci WNA preferiscono ricevere compensi come DIVIDENDI
+piuttosto che come stipendio, per beneficiare dell'aliquota P3B
+ridotta sui dividendi (10-15%) rispetto alla PPh 21/26 progressiva.
+La struttura ottimale dipende dal caso specifico.
+
+DATABASE P3B DJP:
+Testo completo di tutti i P3B: pajak.go.id sezione P3B
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+TAX-046, TAX-065, TAX-066, TAX-067, TAX-068, TAX-069, TAX-070, TAX-071
+
+Base normativa: UU 36/2008 Pasal 2-4 (residenza fiscale),
+P3B Indonesia-Italia (Lembaran Negara RI No. 83/1996),
+PMK 25/2010 (Certificate of Domicile), PMK 196/2018 (DGT forms).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

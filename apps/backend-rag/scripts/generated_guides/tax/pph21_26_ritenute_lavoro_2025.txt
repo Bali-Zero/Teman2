@@ -1,0 +1,252 @@
+PPH 21 E PPH 26 — RITENUTE SU REDDITI DA LAVORO
+GUIDA PER DATORI DI LAVORO PT PMA IN INDONESIA
+2024-2025
+
+Guida normativa verificata | Basata su UU 36/2008 (PPh), UU 7/2021 (HPP), PMK 168/2023
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. DIFFERENZA TRA PPH 21 E PPH 26
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Le due imposte regolano la tassazione dei redditi da lavoro dipendente
+e equiparati, ma si applicano a soggetti diversi:
+
+PPH 21 — Per PENDUDUK INDONESIA (residenti fiscali): [TAX-040]
+- WNI (Warga Negara Indonesia) dipendenti e non
+- WNA (Warga Negara Asing) con status PENDUDUK:
+  - Titolari di KITAP (Kartu Izin Tinggal Tetap)
+  - WNA che soggiornano > 183 giorni/anno in Indonesia
+  - WNA con KITAS lavorativo che si qualificano come penduduk
+
+PPH 26 — Per NON PENDUDUK (non residenti fiscali): [TAX-041]
+- WNA che lavorano in Indonesia ma non si qualificano come penduduk
+- Persone fisiche straniere che percepiscono redditi da fonti indonesiane
+  senza essere residenti fiscali in Indonesia
+- Tipicamente: dirigenti WNA con KITAS breve o arrivi recenti
+
+CRITERIO 183 GIORNI (keberadaan di Indonesia):
+Se il WNA soggiorna > 183 giorni in un anno fiscale in Indonesia
+→ diventa PENDUDUK → tassato con PPh 21 (aliquote progressive)
+Se soggiorna ≤ 183 giorni
+→ NON PENDUDUK → tassato con PPh 26 (flat 20% o ridotto da tax treaty)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. PPH 21 — STRUTTURA E ALIQUOTE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1 Redditi soggetti a PPh 21
+
+- Gaji (stipendio mensile)
+- Tunjangan (indennità: trasporto, makan, jabatan)
+- Bonus, THR (Tunjangan Hari Raya — tredicesima festività islamica)
+- Honorarium, komisi (onorari, provvigioni)
+- Penghasilan direktur (compenso del direktur)
+- Uang pensiun (pensione)
+
+2.2 PTKP — Reddito non imponibile
+
+Prima di calcolare PPh 21, si deduce il PTKP (Penghasilan Tidak Kena Pajak):
+[TAX-042]
+
+Ammontare PTKP (PMK 101/2016, ancora in vigore):
+- Wajib Pajak sendiri: Rp 54.000.000/anno (4,5 juta/mese)
+- Tambahan status kawin: Rp 4.500.000/anno
+- Tambahan istri bekerja: Rp 54.000.000/anno
+- Tambahan tiap tanggungan (max 3): Rp 4.500.000/anno per tanggungan
+
+Esempio PTKP per dipendente single: Rp 54.000.000/anno = Rp 4.500.000/mese
+Nessuna PPh 21 fino a Rp 54 juta di reddito annuo.
+
+2.3 Aliquote PPh 21 progressive (UU 7/2021 HPP) [TAX-043]
+
+TARIF EFEKTIF RATA-RATA (TER) — sistema semplificato dal 2024:
+
+| Lapisan PKP Bruto | Aliquota |
+|---|---|
+| Sampai Rp 60 juta/tahun | 5% |
+| Rp 60 juta - Rp 250 juta | 15% |
+| Rp 250 juta - Rp 500 juta | 25% |
+| Rp 500 juta - Rp 5 miliardi | 30% |
+| Di atas Rp 5 miliardi | 35% |
+
+NOVITÀ 2024 (PMK 168/2023): Il sistema TER (Tarif Efektif Rata-rata)
+semplifica il calcolo mensile usando tabelle TER pre-calcolate.
+A dicembre si effettua il conguaglio annuale. [TAX-044]
+
+2.4 Biaya Jabatan (deduzione forfettaria)
+
+I dipendenti hanno diritto a una Biaya Jabatan (deduzione automatica):
+5% dello stipendio lordo, massimo Rp 500.000/mese (Rp 6.000.000/anno).
+Non richiede documentazione — si applica automaticamente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. PPH 26 — STRUTTURA E ALIQUOTE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 Aliquota standard PPh 26
+
+ALIQUOTA FLAT: 20% sul REDDITO BRUTO (no deduzioni PTKP) [TAX-041]
+
+Applicata su:
+- Stipendio/compenso del direktur WNA non penduduk
+- Redditi da dividendi a soggetti esteri non residenti
+- Royalties a soggetti esteri
+- Interessi a soggetti esteri
+
+3.2 Riduzione per Tax Treaty
+
+L'aliquota del 20% può essere ridotta se esiste un PERJANJIAN
+PENGHINDARAN PAJAK BERGANDA (P3B — Tax Treaty / DTT) tra Indonesia
+e il paese di residenza del percettore. [TAX-045]
+
+ESEMPI DI ALIQUOTE RIDOTTE PPH 26 SU STIPENDI (P3B):
+- Indonesia–Italia: 15% (art. redditi lavoro dipendente)
+- Indonesia–Australia: 15%
+- Indonesia–Francia: 15%
+- Indonesia–Germania: 15%
+- Indonesia–Singapore: 15%
+- Indonesia–Paesi Bassi: 10%
+- Indonesia–Japan: 15%
+- Indonesia–UK: 15%
+
+Per beneficiare della riduzione, il dipendente WNA deve presentare
+COD (Certificate of Domicile) del paese di residenza fiscale,
+emesso dall'autorità fiscale del paese. [TAX-046]
+
+3.3 PPh 26 su dividendi a soci WNA
+
+Se la PT PMA distribuisce dividendi a un socio WNA non penduduk:
+PPh 26 = 20% × dividendo (o aliquota ridotta da P3B)
+
+Per paesi con P3B: es. Italia → 10-15% sui dividendi (vedi art. 10 P3B)
+Trattamento fiscale nel paese di residenza: da verificare con consulente locale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. OBBLIGHI DEL DATORE DI LAVORO (PT PMA)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La PT PMA come PEMOTONG PAJAK (sostituto d'imposta) ha i seguenti obblighi:
+[TAX-047]
+
+4.1 Calcolo e ritenuta mensile
+
+- Calcolare PPh 21/26 su ogni pagamento di stipendio/compenso
+- Trattenere l'importo dalla busta paga del dipendente
+- Versare al DJP entro il 10 del mese successivo (ora il 15 con CoreTax)
+
+CODICE SETOR PAJAK:
+- PPh 21: 411121-100
+- PPh 26: 411127-100
+
+4.2 SPT Masa PPh 21/26 (dichiarazione mensile)
+
+La PT PMA deve presentare ogni mese il SPT Masa PPh 21/26: [TAX-048]
+- SCADENZA: entro il 20 del mese successivo
+- MODALITÀ: e-Filing via DJP Online / CoreTax
+- Include: elenco dipendenti, compensi, PPh calcolata e versata
+
+4.3 Bukti Potong (certificato di ritenuta)
+
+La PT PMA deve rilasciare ai dipendenti il BUKTI POTONG
+(certificato di ritenuta fiscale) ogni anno: [TAX-049]
+- Formulir 1721-A1 per karyawan tetap (dipendenti stabili)
+- Formulir 1721-A2 per karyawan tidak tetap e bukan pegawai
+- Da rilasciare entro 28 febbraio dell'anno successivo
+- Il dipendente lo usa per compilare la propria SPT Tahunan Pribadi
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. BPJS — CONTRIBUTI PREVIDENZIALI (non fiscali ma correlati)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Oltre alla PPh 21/26, la PT PMA deve gestire anche i contributi BPJS
+(non fiscali, ma obbligatori per tutti i dipendenti): [TAX-050]
+
+BPJS KETENAGAKERJAAN (previdenza lavorativa):
+- JHT (Jaminan Hari Tua): 3,7% datore + 2% lavoratore
+- JP (Jaminan Pensiun): 2% datore + 1% lavoratore
+- JKK (Jaminan Kecelakaan Kerja): 0,24%-1,74% datore (in base al rischio)
+- JKM (Jaminan Kematian): 0,3% datore
+
+BPJS KESEHATAN (previdenza sanitaria):
+- 4% datore + 1% lavoratore (su upah — max Rp 12 juta/bulan)
+
+SCADENZA BPJS: entro il 15 del mese successivo.
+
+NOTA: I contributi BPJS del datore sono costi DEDUCIBILI ai fini PPh Badan.
+Quelli a carico del lavoratore NON sono deducibili dal reddito del lavoratore.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. ESEMPI PRATICI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6.1 Stipendio dipendente WNI single
+
+Gaji bruto: Rp 10.000.000/mese
+Biaya jabatan: 5% × 10.000.000 = Rp 500.000
+Penghasilan neto: Rp 9.500.000/mese = Rp 114.000.000/anno
+PTKP: Rp 54.000.000
+PKP annuo: Rp 60.000.000
+PPh 21 annuo: 5% × Rp 60.000.000 = Rp 3.000.000
+PPh 21 mensile: Rp 250.000
+
+6.2 Compenso direktur WNA (non penduduk, senza P3B)
+
+Compenso mensile: Rp 30.000.000
+PPh 26: 20% × Rp 30.000.000 = Rp 6.000.000/mese
+Netto percepito: Rp 24.000.000/mese
+
+6.3 Compenso direktur WNA italiano (P3B Indonesia-Italia)
+
+Compenso mensile: Rp 30.000.000
+Aliquota P3B Italia: 15% (su reddito da lavoro dipendente non autonomo)
+PPh 26 ridotta: 15% × Rp 30.000.000 = Rp 4.500.000/mese
+Risparmio vs standard 20%: Rp 1.500.000/mese
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STRUTTURA COMPENSO DIREKTUR:
+Molte PT PMA strutturano la compensazione del direktur WNA in modo misto:
+- Stipendio (gaji) formale → soggetto a PPh 26
+- Dividendi (deviden) → soggetto a PPh 26 ridotto con P3B
+La struttura ottimale dipende dal caso specifico — consultare un
+konsultan pajak certificato.
+
+ZERO STIPENDIO INIZIALE:
+Nelle fasi iniziali, il direktur può non percepire compensi formali
+dalla PT PMA. In questo caso non vi è obbligo PPh 21/26.
+Tuttavia, per il rinnovo KITAS lavorativo, è necessario dimostrare
+un rapporto di lavoro (almeno sulla carta) con la PT PMA.
+
+FREELANCE E CONSULENTI (bukan pegawai):
+Se la PT PMA paga consulenti o freelance (WNI o WNA), applica:
+- PPh 21 su compensi WNI: aliquota progressiva su 50% del lordo
+- PPh 26 su compensi WNA non penduduk: 20% sul lordo (o P3B)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+TAX-040, TAX-041, TAX-042, TAX-043, TAX-044, TAX-045, TAX-046,
+TAX-047, TAX-048, TAX-049, TAX-050
+
+Base normativa: UU 36/2008 Pasal 21-26, UU 7/2021 (HPP),
+PMK 168/2023 (TER PPh 21), P3B Indonesia-Italia (berlaku sejak 1996).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

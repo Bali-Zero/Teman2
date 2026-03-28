@@ -1,0 +1,194 @@
+PPH 23 — RITENUTE ALLA FONTE SU SERVIZI E REDDITI DI CAPITALE
+GUIDA PER PT PMA IN INDONESIA
+2024-2025
+
+Guida normativa verificata | Basata su UU 36/2008 Pasal 23, UU 7/2021 (HPP)
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CHE COS'È IL PPH 23
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il PPh 23 è una ritenuta alla fonte applicata dalla PT PMA quando paga
+determinati tipi di reddito a TERZI (fornitori di servizi, prestatori,
+finanziatori) residenti in Indonesia. [TAX-051]
+
+La PT PMA funge da PEMOTONG (sostituto d'imposta): trattiene l'importo
+direttamente sul pagamento e lo versa al DJP per conto del beneficiario.
+
+DIFFERENZA CON PPH 21/26:
+- PPh 21/26: per redditi DA LAVORO DIPENDENTE (dipendenti, direttori)
+- PPh 23: per redditi DA SERVIZI, ROYALTIES, DIVIDENDI, SEWA tra entità
+  (quando la PT paga un'altra badan o un professionista non dipendente)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. REDDITI SOGGETTI A PPH 23 E ALIQUOTE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ALIQUOTA 15% (sul reddito bruto): [TAX-052]
+- Dividen (dividendi) a pemegang saham badan (azionisti persone giuridiche)
+- Bunga (interessi su prestiti/depositi tra imprese)
+- Royalti (royalties su licenze software, marchi, brevetti)
+- Hadiah (premi e vincite da attività bisnis)
+
+ALIQUOTA 2% (sul reddito bruto): [TAX-053]
+- Sewa (canoni di affitto di beni non immobiliari — attrezzature, veicoli)
+- Imbalan jasa teknik (compensi per servizi tecnici)
+- Imbalan jasa manajemen (compensi per servizi di management)
+- Imbalan jasa konsultan (compensi per consulenza)
+- Imbalan jasa konstruksi (per alcune categorie)
+- Imbalan jasa lainnya (altri servizi professionali)
+
+NOTA CRITICA — NPWP DEL FORNITORE:
+Se il fornitore di servizi NON ha NPWP: la ritenuta è RADDOPPIATA
+(es: 2% → 4%, 15% → 30%). [TAX-054]
+Sempre verificare il NPWP del fornitore prima di emettere il pagamento.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. ESEMPI DI PPH 23 NELLA PRATICA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 PT PMA paga consulente contabile (badan)
+Onorario consulente: Rp 10.000.000
+PPh 23: 2% × Rp 10.000.000 = Rp 200.000
+Netto pagato al consulente: Rp 9.800.000
+
+3.2 PT PMA paga affitto auto a società noleggio
+Noleggio auto mensile: Rp 5.000.000
+PPh 23 su sewa: 2% × Rp 5.000.000 = Rp 100.000
+Netto pagato: Rp 4.900.000
+
+3.3 PT PMA paga royalty a detentore marchio estero
+Royalty mensile: USD 500 (≈ Rp 8.000.000)
+PPh 23: 15% × Rp 8.000.000 = Rp 1.200.000
+(Se detentore marchio è WNA non penduduk → PPh 26, non PPh 23)
+
+3.4 PT PMA distribuisce dividendi a PT Induk (holding locale)
+Dividen: Rp 100.000.000
+PPh 23: 15% × Rp 100.000.000 = Rp 15.000.000
+Netto al ricevente: Rp 85.000.000
+
+NOTA: Se la PT Induk riceve dividendi e li reinveste, può applicare
+l'esenzione dividendi (ketentuan HPP 2021 — dividen tidak dipotong
+jika diinvestasikan kembali). [TAX-055]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. OBBLIGHI DELLA PT PMA COME PEMOTONG PPH 23
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1 Versamento
+
+SCADENZA: entro il 10 del mese successivo al mese del pagamento
+(ora esteso al 15 con CoreTax)
+KODEBILLING: 411124-100
+
+4.2 Bukti Potong PPh 23
+
+La PT PMA deve rilasciare il BUKTI POTONG PPh 23 al fornitore: [TAX-056]
+- Da emettere via e-Bupot (sistema DJP) o CoreTax
+- Il fornitore usa il bukti potong come kreditan fiskal nella propria SPT
+
+4.3 SPT Masa PPh 23 (dichiarazione mensile)
+
+SCADENZA: entro il 20 del mese successivo
+MODALITÀ: e-Filing via DJP Online / CoreTax
+Include: elenco tutti i pagamenti soggetti a PPh 23 effettuati nel mese
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. SEWA TANAH DAN BANGUNAN — REGIME SPECIALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ATTENZIONE: L'affitto di TERRENI E IMMOBILI (sewa tanah dan bangunan)
+non è soggetto a PPh 23 ma a un regime speciale: [TAX-057]
+
+PPh FINAL ATAS SEWA TANAH/BANGUNAN: 10% (PP 34/2017)
+Sul canone lordo del contratto d'affitto.
+Il locatore (proprietario immobile) è il soggetto d'imposta.
+Se il locatore è privato, la PT PMA deve fungere da pemotong.
+Se il locatore è badan (azienda), paga lui direttamente (PPh Final).
+
+ESEMPIO:
+PT PMA affitta locale commerciale: Rp 10.000.000/mese
+PPh Final sewa: 10% × Rp 10.000.000 = Rp 1.000.000
+La PT PMA trattiene Rp 1.000.000 e versa al DJP
+Netto al locatore: Rp 9.000.000
+
+Questo è SEPARATO dal PPh 23 standard e usa codici billing diversi.
+Codice setor: 411128-403
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. PPH 4 AYAT 2 — RITENUTA FINALE SU ALTRI REDDITI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Oltre a PPh 23, esiste il PPh 4 Ayat 2 (Final) su: [TAX-058]
+- Sewa tanah/bangunan: 10% (come sopra)
+- Bunga deposito/tabungan: 20% (trattenuta dalla banca)
+- Bunga obligasi: 15% (obbligazioni)
+- Imbalan jasa konstruksi: 2,65-6% (varie categorie)
+- Pengalihan hak tanah/bangunan: 2,5% (cessione immobile)
+- Deviden orang pribadi penduduk: 10% (finale, non creditabile)
+
+Il PPh 4(2) è FINALE: non creditabile nella SPT Tahunan.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. RIEPILOGO CODICI SETOR PAJAK PRINCIPALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Per la PT PMA, i codici billing DJP più frequenti:
+
+| Pajak | Kode Akun | Kode Setor |
+|---|---|---|
+| PPh 21 (dipendenti) | 411121 | 100 |
+| PPh 22 (importazioni) | 411122 | 100 |
+| PPh 23 (jasa/dividen) | 411124 | 100 |
+| PPh 25 (angsuran Badan) | 411126 | 200 |
+| PPh 26 (non penduduk) | 411127 | 100 |
+| PPh 29 (kurang bayar tahunan) | 411129 | 200 |
+| PPh 4(2) sewa tanah/bangunan | 411128 | 403 |
+| PPN | 411211 | 900 |
+| PPN Impor | 411212 | 900 |
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CHECKLIST PAGAMENTI CON PPH 23:
+Prima di ogni pagamento a terzi, la PT PMA deve verificare:
+1. Il servizio/reddito è soggetto a PPh 23?
+2. Il fornitore ha NPWP? (senza NPWP → aliquota doppia)
+3. Calcolare la ritenuta correttamente
+4. Emettere bukti potong via e-Bupot/CoreTax
+5. Versare entro scadenza
+
+AFACOLTA' DI FREELANCE E AGENZIA:
+A Bali, molte PT PMA usano freelancer o agenzie per marketing, web, foto.
+Se il pagamento è a un individuo WNI bukan pegawai: → PPh 21 (non PPh 23)
+Se il pagamento è a una PT/CV consulente: → PPh 23 2%
+La distinzione è critica per il tipo di bukti potong da emettere.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+TAX-051, TAX-052, TAX-053, TAX-054, TAX-055, TAX-056, TAX-057, TAX-058
+
+Base normativa: UU 36/2008 Pasal 23, UU 7/2021 (HPP),
+PP 34/2017 (sewa tanah/bangunan), PMK 141/2015 (daftar jasa PPh 23).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
