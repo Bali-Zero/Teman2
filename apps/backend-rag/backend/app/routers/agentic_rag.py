@@ -803,12 +803,12 @@ async def stream_agentic_rag(
                         {
                             "role": "user",
                             "content": request_body.query,
-                            "timestamp": datetime.now().isoformat(),
+                            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                         },
                         {
                             "role": "assistant",
                             "content": full_answer,
-                            "timestamp": datetime.now().isoformat(),
+                            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                         },
                     ]
                     conversation_metadata = {

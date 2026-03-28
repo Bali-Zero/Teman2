@@ -121,7 +121,7 @@ async def get_client_overview(
             total_clients = await conn.fetchval(total_query, *params) or 0
 
             # New this month
-            month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            month_start = datetime.now(tz=timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             new_month_query = f"""
                 SELECT COUNT(*) FROM clients
                 {where_clause}
@@ -131,7 +131,7 @@ async def get_client_overview(
             new_this_month = await conn.fetchval(new_month_query, *month_params) or 0
 
             # New this week
-            week_start = datetime.now() - timedelta(days=datetime.now().weekday())
+            week_start = datetime.now(tz=timezone.utc) - timedelta(days=datetime.now(tz=timezone.utc).weekday())
             week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
             new_week_query = f"""
                 SELECT COUNT(*) FROM clients
@@ -208,7 +208,7 @@ async def get_team_performance(
                 )
                 members = [row["assigned_to"] for row in member_rows if row["assigned_to"]]
 
-            datetime.now() - timedelta(days=period_days)
+            datetime.now(tz=timezone.utc) - timedelta(days=period_days)
             results = []
 
             for member in members:
@@ -321,7 +321,7 @@ async def get_revenue_summary(
             # Monthly breakdown (last 6 months)
             months = []
             for i in range(5, -1, -1):
-                month_start = (datetime.now().replace(day=1) - timedelta(days=i * 30)).replace(
+                month_start = (datetime.now(tz=timezone.utc).replace(day=1) - timedelta(days=i * 30)).replace(
                     day=1
                 )
                 month_end = (month_start + timedelta(days=32)).replace(day=1)
@@ -461,7 +461,7 @@ async def get_client_trend(
 
             results = []
             for i in range(months - 1, -1, -1):
-                month_start = (datetime.now().replace(day=1) - timedelta(days=i * 30)).replace(
+                month_start = (datetime.now(tz=timezone.utc).replace(day=1) - timedelta(days=i * 30)).replace(
                     day=1
                 )
                 month_end = (month_start + timedelta(days=32)).replace(day=1)

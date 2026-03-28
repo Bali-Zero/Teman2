@@ -49,7 +49,7 @@ class IntelAnalyticsService:
         # Track analytics query
         intel_analytics_queries_total.labels(period_days=str(days)).inc()
 
-        cutoff_date = datetime.now() - timedelta(days=days)
+        cutoff_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
         analytics = {
             "period_days": days,
             "summary": {
@@ -178,7 +178,7 @@ class IntelAnalyticsService:
         daily_trends = []
 
         for i in range(days):
-            date = datetime.now() - timedelta(days=i)
+            date = datetime.now(tz=timezone.utc) - timedelta(days=i)
             date_str = date.strftime("%Y-%m-%d")
             daily = {
                 "date": date_str,

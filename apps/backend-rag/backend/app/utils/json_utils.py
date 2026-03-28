@@ -54,7 +54,7 @@ def json_serializer(obj: Any) -> str:
         >>> import json
         >>> from decimal import Decimal
         >>> from datetime import datetime
-        >>> data = {"amount": Decimal("100.50"), "created": datetime.now()}
+        >>> data = {"amount": Decimal("100.50"), "created": datetime.now(tz=timezone.utc)}
         >>> json.dumps(data, default=json_serializer)
         '{"amount": "100.50", "created": "2026-01-14T15:30:00"}'
     """

@@ -31,7 +31,7 @@ class ConversationService:
         Triggers Auto-CRM if successful.
         """
         if not session_id:
-            session_id = f"session-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            session_id = f"session-{datetime.now(tz=timezone.utc).strftime('%Y%m%d-%H%M%S')}"
 
         metadata = metadata or {}
 
@@ -63,7 +63,7 @@ class ConversationService:
                         session_id,
                         messages,
                         metadata,
-                        datetime.now(),
+                        datetime.now(tz=timezone.utc),
                     )
 
                     if row:

@@ -153,7 +153,7 @@ class MemoryServicePostgres:
                     }
 
                     summary = stats_row["summary"] if stats_row else ""
-                    updated_at = stats_row["updated_at"] if stats_row else datetime.now()
+                    updated_at = stats_row["updated_at"] if stats_row else datetime.now(tz=timezone.utc)
 
                     memory = UserMemory(
                         user_id=user_id,
@@ -181,7 +181,7 @@ class MemoryServicePostgres:
             profile_facts=[],
             summary="",
             counters={"conversations": 0, "searches": 0, "tasks": 0},
-            updated_at=datetime.now(),
+            updated_at=datetime.now(tz=timezone.utc),
         )
         self.memory_cache[user_id] = memory
         logger.info(f"📝 Created new memory for {user_id}")
@@ -197,7 +197,7 @@ class MemoryServicePostgres:
         Returns:
             True if saved successfully
         """
-        memory.updated_at = datetime.now()
+        memory.updated_at = datetime.now(tz=timezone.utc)
 
         # Save to cache
         self.memory_cache[memory.user_id] = memory
@@ -274,7 +274,7 @@ class MemoryServicePostgres:
                         fact_type,
                         1.0,
                         "system",
-                        datetime.now(),
+                        datetime.now(tz=timezone.utc),
                     )
 
                     logger.info(f"✅ Added fact to PostgreSQL for {user_id}: {fact}")
@@ -493,7 +493,7 @@ class MemoryServicePostgres:
                                 "created_at": (
                                     row["created_at"].isoformat()
                                     if row["created_at"]
-                                    else datetime.now().isoformat()
+                                    else datetime.now(tz=timezone.utc).isoformat()
                                 ),
                             }
                         )

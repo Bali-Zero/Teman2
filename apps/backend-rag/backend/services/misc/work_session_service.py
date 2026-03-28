@@ -50,7 +50,7 @@ class WorkSessionService:
         Each line is a JSON object with timestamp
         """
         try:
-            event = {"timestamp": datetime.now().isoformat(), "event_type": event_type, **data}
+            event = {"timestamp": datetime.now(tz=timezone.utc).isoformat(), "event_type": event_type, **data}
 
             with open(self.log_file, "a") as f:
                 f.write(json.dumps(event) + "\n")
@@ -76,7 +76,7 @@ class WorkSessionService:
 
         try:
             # Check if already has active session today
-            today_start = datetime.now().replace(hour=0, minute=0, second=0)
+            today_start = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0)
 
             existing = await self.pool.fetchrow(
                 """
@@ -287,7 +287,7 @@ Session ID: {session["id"]}
         if not self.pool:
             return []
 
-        today_start = datetime.now().replace(hour=0, minute=0, second=0)
+        today_start = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0)
 
         sessions = await self.pool.fetch(
             """
@@ -308,7 +308,7 @@ Session ID: {session["id"]}
         if not self.pool:
             return {}
 
-        week_start = datetime.now() - timedelta(days=7)
+        week_start = datetime.now(tz=timezone.utc) - timedelta(days=7)
 
         sessions = await self.pool.fetch(
             """
@@ -356,7 +356,7 @@ Session ID: {session["id"]}
 
         return {
             "week_start": week_start.strftime("%Y-%m-%d"),
-            "week_end": datetime.now().strftime("%Y-%m-%d"),
+            "week_end": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
             "team_stats": list(user_stats.values()),
             "total_team_hours": sum(s["total_hours"] for s in user_stats.values()),
         }
@@ -370,7 +370,7 @@ Session ID: {session["id"]}
             return {"error": "Database not available"}
 
         if not date:
-            date = datetime.now()
+            date = datetime.now(tz=timezone.utc)
 
         day_start = date.replace(hour=0, minute=0, second=0)
         day_end = day_start + timedelta(days=1)

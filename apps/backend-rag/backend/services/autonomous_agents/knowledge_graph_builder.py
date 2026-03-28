@@ -75,7 +75,7 @@ class Entity:
     source_collection: str | None = None
     confidence: float = 1.0
     source_chunk_ids: list[str] = field(default_factory=list)
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(tz=timezone.utc).isoformat())
 
 
 @dataclass
@@ -90,7 +90,7 @@ class Relationship:
     confidence: float = 1.0
     source_collection: str | None = None
     source_chunk_ids: list[str] = field(default_factory=list)
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(tz=timezone.utc).isoformat())
 
 
 class KnowledgeGraphBuilder:

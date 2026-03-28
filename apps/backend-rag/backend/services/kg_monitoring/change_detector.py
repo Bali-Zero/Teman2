@@ -268,7 +268,7 @@ class ChangeDetector:
             1 for c in changes if c.change_type == ChangeType.UNCHANGED
         )
         self.detection_stats["deleted_documents"] += len(deleted_changes)
-        self.detection_stats["last_run"] = datetime.now().isoformat()
+        self.detection_stats["last_run"] = datetime.now(tz=timezone.utc).isoformat()
 
         # Send alerts for significant changes
         if self.alert_on_change:
@@ -285,7 +285,7 @@ class ChangeDetector:
         """Check a single document for changes"""
         doc_id = doc.document_id
         new_hash = doc.document_hash
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
 
         # Get existing state
         existing_state = self._state_cache.get(doc_id)
@@ -366,7 +366,7 @@ class ChangeDetector:
     ) -> list[ChangeEvent]:
         """Detect documents that are no longer available"""
         deletions = []
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
 
         # Find documents in cache but not in current scrape
         for doc_id, state in self._state_cache.items():

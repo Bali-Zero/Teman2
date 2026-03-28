@@ -95,7 +95,7 @@ class ClientJourney:
     description: str
     steps: list[JourneyStep]
     status: JourneyStatus = JourneyStatus.NOT_STARTED
-    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(tz=timezone.utc).isoformat())
     started_at: str | None = None
     completed_at: str | None = None
     estimated_completion: str | None = None
@@ -375,7 +375,7 @@ class ClientJourneyOrchestrator:
             ClientJourney instance
         """
         # Generate journey ID
-        journey_id = f"{journey_type}_{client_id}_{int(datetime.now().timestamp())}"
+        journey_id = f"{journey_type}_{client_id}_{int(datetime.now(tz=timezone.utc).timestamp())}"
 
         # Build journey (delegated to JourneyBuilderService)
         if custom_steps:
@@ -497,7 +497,7 @@ class ClientJourneyOrchestrator:
                 # Calculate actual duration
                 if journey.started_at:
                     started = datetime.fromisoformat(journey.started_at)
-                    completed = datetime.now()
+                    completed = datetime.now(tz=timezone.utc)
                     duration_days = (completed - started).days
 
                     # Update avg completion days

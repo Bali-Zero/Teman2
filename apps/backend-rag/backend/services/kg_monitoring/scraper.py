@@ -202,7 +202,7 @@ class LegalScraper:
                 break
 
         self.scrape_stats["documents_found"] += len(documents)
-        self.scrape_stats["last_run"] = datetime.now().isoformat()
+        self.scrape_stats["last_run"] = datetime.now(tz=timezone.utc).isoformat()
 
         logger.info(f"✅ Scraped {len(documents)} documents from {source.name}")
         return documents
@@ -346,7 +346,7 @@ class LegalScraper:
             url=full_url,
             content=content,
             raw_html=str(item),
-            scraped_at=datetime.now(),
+            scraped_at=datetime.now(tz=timezone.utc),
             metadata={
                 "date_text": date_text,
                 "category": category,

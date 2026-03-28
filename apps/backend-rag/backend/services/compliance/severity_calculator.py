@@ -45,7 +45,7 @@ class SeverityCalculatorService:
             Tuple of (severity, days_until_deadline)
         """
         deadline_date = datetime.fromisoformat(deadline.replace("Z", ""))
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         days_until = (deadline_date - now).days
 
         if days_until < 0:
@@ -67,5 +67,5 @@ class SeverityCalculatorService:
             Days until deadline (negative if overdue)
         """
         deadline_date = datetime.fromisoformat(deadline.replace("Z", ""))
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         return (deadline_date - now).days
