@@ -54,7 +54,7 @@ def parse_python_file(file_path: Path) -> ast.Module | None:
 class TypeHintChecker(ast.NodeVisitor):
     """AST visitor to check for missing type hints."""
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str) -> None:
         self.file_path = file_path
         self.violations: list[str] = []
 
@@ -184,7 +184,7 @@ def test_golden_rule_6_no_hardcoded_secrets():
 class PrintStatementChecker(ast.NodeVisitor):
     """AST visitor to find print() calls."""
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str) -> None:
         self.file_path = file_path
         self.violations: list[str] = []
 
@@ -236,7 +236,7 @@ def test_golden_rule_8_no_print_statements():
 class ImportChecker(ast.NodeVisitor):
     """AST visitor to find relative imports."""
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str) -> None:
         self.file_path = file_path
         self.violations: list[str] = []
 

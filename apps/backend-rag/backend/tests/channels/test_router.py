@@ -16,7 +16,7 @@ from backend.channels.router import ChannelRouter
 class MockChannel(BaseChannel):
     """Mock channel for testing."""
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict) -> None:
         # Initialize attributes BEFORE calling super().__init__()
         # because super().__init__() calls self.channel_name property
         self._channel_name = config.get("channel_name", "mock")

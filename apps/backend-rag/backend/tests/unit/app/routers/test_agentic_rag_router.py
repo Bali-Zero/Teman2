@@ -235,7 +235,7 @@ class TestAgenticRagRouter:
 
         # Create a dict-like object that supports both .get() and [] access
         class MockRow(dict):
-            def __init__(self, messages):
+            def __init__(self, messages) -> None:
                 super().__init__()
                 self["messages"] = messages
 
@@ -357,7 +357,7 @@ class TestAgenticQueryResponse:
 
         # Create a proper dict-like object
         class MockRow(dict):
-            def __init__(self, messages):
+            def __init__(self, messages) -> None:
                 super().__init__()
                 self["messages"] = messages
 
@@ -389,7 +389,7 @@ class TestAgenticQueryResponse:
 
         # Create a proper dict-like object with JSON string
         class MockRow(dict):
-            def __init__(self, messages_json):
+            def __init__(self, messages_json) -> None:
                 super().__init__()
                 self["messages"] = messages_json
 

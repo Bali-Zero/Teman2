@@ -21,7 +21,7 @@ from backend.services.portal.tax_service import TaxService
 class AsyncContextManagerMock:
     """Helper class for mocking async context managers."""
 
-    def __init__(self, return_value):
+    def __init__(self, return_value) -> None:
         self.return_value = return_value
 
     async def __aenter__(self):

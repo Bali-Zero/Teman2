@@ -40,7 +40,7 @@ if "backend.app.core.config" not in sys.modules:
 
     # Create a fake Settings class that returns our mock
     class FakeSettings:
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args, **kwargs) -> None:
             pass
 
         def __call__(self, *args, **kwargs):
