@@ -125,7 +125,7 @@ else
     ok "Cron path OK (usa venv)"
 fi
 
-# --- 5. Git config (prevent auto-rebase on pull) ---
+# --- 5. Git config + branch topology ---
 echo ""
 echo "--- 5. Git config ---"
 
@@ -153,6 +153,15 @@ elif ! echo "$PRO_REMOTE" | grep -q "nuzantara@"; then
     ok "Fixed 'pro' git remote URL"
 else
     ok "Git remote 'pro' OK"
+fi
+
+# Ensure Air is on 'air' branch (not main)
+CURRENT_BRANCH=$(cd "$REPO_DIR" && git branch --show-current)
+if [ "$CURRENT_BRANCH" != "air" ]; then
+    cd "$REPO_DIR" && git fetch pro && git checkout air 2>/dev/null || git checkout -b air pro/main
+    warn "Switched to branch 'air' (was on $CURRENT_BRANCH)"
+else
+    ok "On branch 'air' ✓"
 fi
 
 # --- 6. Logs directory ---
@@ -200,16 +209,20 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-# Git sync check
+# Git topology check: Air/air should be ahead-of or equal to Pro/main
 LOCAL_HEAD=$(git rev-parse --short=8 HEAD 2>/dev/null)
-REMOTE_HEAD=$(ssh -o ConnectTimeout=3 pro 'cd ~/Desktop/nuzantara && git rev-parse --short=8 HEAD' 2>/dev/null || echo "UNREACHABLE")
-if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then
-    ok "Git sync OK ($LOCAL_HEAD)"
-elif [ "$REMOTE_HEAD" = "UNREACHABLE" ]; then
+PRO_MAIN=$(git rev-parse --short=8 pro/main 2>/dev/null || echo "UNREACHABLE")
+if [ "$PRO_MAIN" = "UNREACHABLE" ]; then
     warn "Pro non raggiungibile per sync check"
 else
-    warn "Git OUT OF SYNC — Air: ${LOCAL_HEAD} | Pro: ${REMOTE_HEAD}"
-    ERRORS=$((ERRORS + 1))
+    AHEAD=$(git rev-list pro/main..HEAD 2>/dev/null | wc -l | tr -d ' ')
+    BEHIND=$(git rev-list HEAD..pro/main 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$BEHIND" -eq 0 ]; then
+        ok "Git topology OK — Air/air is $AHEAD commit(s) ahead of Pro/main"
+    else
+        warn "Air is $BEHIND behind Pro/main — run: git rebase pro/main"
+        ERRORS=$((ERRORS + 1))
+    fi
 fi
 
 echo ""
