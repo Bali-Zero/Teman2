@@ -188,6 +188,7 @@ export default function VaultPage() {
         <Input
           type="text"
           placeholder="Search documents..."
+          aria-label="Search documents"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full"
