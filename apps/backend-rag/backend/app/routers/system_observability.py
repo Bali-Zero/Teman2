@@ -176,7 +176,7 @@ async def get_qdrant_collections(
         # but here we need data.
         import httpx
 
-        async with httpx.AsyncClient() as http_client:
+        async with httpx.AsyncClient(timeout=15.0) as http_client:
             resp = await http_client.get(f"{settings.qdrant_url}/collections")
             resp.raise_for_status()
             data = resp.json()
@@ -205,7 +205,7 @@ async def get_qdrant_points(
         if offset:
             payload["offset"] = offset
 
-        async with httpx.AsyncClient() as http_client:
+        async with httpx.AsyncClient(timeout=15.0) as http_client:
             resp = await http_client.post(
                 f"{settings.qdrant_url}/collections/{collection}/points/scroll",
                 json=payload,

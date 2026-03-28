@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React from "react";
+import React, { useEffect, useCallback } from 'react';
 import {
   X,
   Send,
@@ -11,10 +11,10 @@ import {
   ChevronDown,
   Save,
   Loader2,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { emailApi } from "@/lib/api";
-import type { AttachmentObject } from "@/lib/email.types";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { emailApi } from '@/lib/api';
+import type { AttachmentObject } from '@/lib/email.types';
 
 interface EmailComposeProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ interface EmailComposeProps {
   onSend: (data: ComposeData) => Promise<void>;
   onSaveDraft: (data: ComposeData) => Promise<void>;
   initialData?: Partial<ComposeData>;
-  mode?: "new" | "reply" | "replyAll" | "forward";
+  mode?: 'new' | 'reply' | 'replyAll' | 'forward';
   isSending?: boolean;
 }
 
@@ -47,52 +47,50 @@ export function EmailCompose({
   onSend,
   onSaveDraft,
   initialData,
-  mode = "new",
+  mode = 'new',
   isSending,
 }: EmailComposeProps) {
   const [isMinimized, setIsMinimized] = React.useState(false);
   const [showCcBcc, setShowCcBcc] = React.useState(false);
-  const [to, setTo] = React.useState(initialData?.to?.join(", ") || "");
-  const [cc, setCc] = React.useState(initialData?.cc?.join(", ") || "");
-  const [bcc, setBcc] = React.useState(initialData?.bcc?.join(", ") || "");
-  const [subject, setSubject] = React.useState(initialData?.subject || "");
-  const [content, setContent] = React.useState(initialData?.htmlContent || "");
+  const [to, setTo] = React.useState(initialData?.to?.join(', ') || '');
+  const [cc, setCc] = React.useState(initialData?.cc?.join(', ') || '');
+  const [bcc, setBcc] = React.useState(initialData?.bcc?.join(', ') || '');
+  const [subject, setSubject] = React.useState(initialData?.subject || '');
+  const [content, setContent] = React.useState(initialData?.htmlContent || '');
   const [attachments, setAttachments] = React.useState<AttachmentItem[]>([]);
   const [isSavingDraft, setIsSavingDraft] = React.useState(false);
 
   React.useEffect(() => {
     if (initialData) {
-      setTo(initialData.to?.join(", ") || "");
-      setCc(initialData.cc?.join(", ") || "");
-      setBcc(initialData.bcc?.join(", ") || "");
-      setSubject(initialData.subject || "");
-      setContent(initialData.htmlContent || "");
+      setTo(initialData.to?.join(', ') || '');
+      setCc(initialData.cc?.join(', ') || '');
+      setBcc(initialData.bcc?.join(', ') || '');
+      setSubject(initialData.subject || '');
+      setContent(initialData.htmlContent || '');
     }
   }, [initialData]);
 
   const getComposeData = (): ComposeData => ({
     to: to
-      .split(",")
+      .split(',')
       .map((e) => e.trim())
       .filter(Boolean),
     cc: cc
-      .split(",")
+      .split(',')
       .map((e) => e.trim())
       .filter(Boolean),
     bcc: bcc
-      .split(",")
+      .split(',')
       .map((e) => e.trim())
       .filter(Boolean),
     subject,
     htmlContent: content,
-    attachmentIds: attachments
-      .map((a) => a.data)
-      .filter((d): d is AttachmentObject => !!d),
+    attachmentIds: attachments.map((a) => a.data).filter((d): d is AttachmentObject => !!d),
   });
 
   const handleSend = async () => {
     if (attachments.some((a) => a.isUploading)) {
-      alert("Please wait for files to finish uploading.");
+      alert('Please wait for files to finish uploading.');
       return;
     }
     await onSend(getComposeData());
@@ -100,7 +98,7 @@ export function EmailCompose({
 
   const handleSave = async () => {
     if (attachments.some((a) => a.isUploading)) {
-      alert("Please wait for files to finish uploading.");
+      alert('Please wait for files to finish uploading.');
       return;
     }
     setIsSavingDraft(true);
@@ -126,17 +124,13 @@ export function EmailCompose({
         const response = await emailApi.uploadAttachment(attachment.file);
         setAttachments((prev) =>
           prev.map((item) =>
-            item.file === attachment.file
-              ? { ...item, data: response, isUploading: false }
-              : item,
-          ),
+            item.file === attachment.file ? { ...item, data: response, isUploading: false } : item
+          )
         );
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         alert(`Failed to upload ${attachment.file.name}: ${msg}`);
-        setAttachments((prev) =>
-          prev.filter((item) => item.file !== attachment.file),
-        );
+        setAttachments((prev) => prev.filter((item) => item.file !== attachment.file));
       }
     }
   };
@@ -148,37 +142,51 @@ export function EmailCompose({
   if (!isOpen) return null;
 
   const modeLabels = {
-    new: "New Message",
-    reply: "Reply",
-    replyAll: "Reply All",
-    forward: "Forward",
+    new: 'New Message',
+    reply: 'Reply',
+    replyAll: 'Reply All',
+    forward: 'Forward',
   };
 
   const hasPendingUploads = attachments.some((a) => a.isUploading);
-  const isActionDisabled =
-    isSending || isSavingDraft || hasPendingUploads || !to.trim();
+  const isActionDisabled = isSending || isSavingDraft || hasPendingUploads || !to.trim();
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    },
+    [isOpen, onClose]
+  );
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   return (
     <div
       className={cn(
-        "fixed z-50 bg-[var(--background-secondary)] border border-[var(--border)] rounded-t-xl shadow-2xl",
-        "flex flex-col transition-all duration-200",
+        'fixed z-50 bg-[var(--background-secondary)] border border-[var(--border)] rounded-t-xl shadow-2xl',
+        'flex flex-col transition-all duration-200',
         isMinimized
-          ? "bottom-0 right-4 w-80 h-12"
-          : "bottom-0 right-4 w-[600px] h-[500px] max-h-[80vh]",
+          ? 'bottom-0 right-4 w-80 h-12'
+          : 'bottom-0 right-4 w-[600px] h-[500px] max-h-[80vh]'
       )}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Componi email: ${modeLabels[mode]}`}
     >
       {/* Header */}
       <div
         className={cn(
-          "flex items-center justify-between px-4 py-3 border-b border-[var(--border)]",
-          "bg-[var(--background-elevated)] rounded-t-xl cursor-pointer",
+          'flex items-center justify-between px-4 py-3 border-b border-[var(--border)]',
+          'bg-[var(--background-elevated)] rounded-t-xl cursor-pointer'
         )}
         onClick={() => isMinimized && setIsMinimized(false)}
       >
-        <span className="text-sm font-medium text-[var(--foreground)]">
-          {modeLabels[mode]}
-        </span>
+        <span className="text-sm font-medium text-[var(--foreground)]">{modeLabels[mode]}</span>
         <div className="flex items-center gap-1">
           <button
             onClick={(e) => {
@@ -186,6 +194,7 @@ export function EmailCompose({
               setIsMinimized(!isMinimized);
             }}
             className="p-1.5 rounded hover:bg-[var(--background-secondary)] transition-colors"
+            aria-label={isMinimized ? 'Espandi finestra' : 'Minimizza finestra'}
           >
             {isMinimized ? (
               <Maximize2 className="w-4 h-4 text-[var(--foreground-muted)]" />
@@ -199,6 +208,7 @@ export function EmailCompose({
               onClose();
             }}
             className="p-1.5 rounded hover:bg-[var(--background-secondary)] transition-colors"
+            aria-label="Chiudi finestra di composizione"
           >
             <X className="w-4 h-4 text-[var(--foreground-muted)]" />
           </button>
@@ -210,18 +220,16 @@ export function EmailCompose({
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* To */}
             <div className="flex items-center border-b border-[var(--border)]">
-              <label className="w-16 px-4 py-2 text-sm text-[var(--foreground-muted)]">
-                To
-              </label>
+              <label className="w-16 px-4 py-2 text-sm text-[var(--foreground-muted)]">To</label>
               <input
                 type="text"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
                 placeholder="Recipients"
                 className={cn(
-                  "flex-1 px-2 py-2 text-sm bg-transparent",
-                  "text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]",
-                  "focus:outline-none",
+                  'flex-1 px-2 py-2 text-sm bg-transparent',
+                  'text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]',
+                  'focus:outline-none'
                 )}
               />
               <button
@@ -231,8 +239,8 @@ export function EmailCompose({
                 Cc/Bcc
                 <ChevronDown
                   className={cn(
-                    "w-3 h-3 inline ml-1 transition-transform",
-                    showCcBcc && "rotate-180",
+                    'w-3 h-3 inline ml-1 transition-transform',
+                    showCcBcc && 'rotate-180'
                   )}
                 />
               </button>
@@ -250,9 +258,9 @@ export function EmailCompose({
                     onChange={(e) => setCc(e.target.value)}
                     placeholder="Carbon copy"
                     className={cn(
-                      "flex-1 px-2 py-2 text-sm bg-transparent",
-                      "text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]",
-                      "focus:outline-none",
+                      'flex-1 px-2 py-2 text-sm bg-transparent',
+                      'text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]',
+                      'focus:outline-none'
                     )}
                   />
                 </div>
@@ -266,9 +274,9 @@ export function EmailCompose({
                     onChange={(e) => setBcc(e.target.value)}
                     placeholder="Blind carbon copy"
                     className={cn(
-                      "flex-1 px-2 py-2 text-sm bg-transparent",
-                      "text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]",
-                      "focus:outline-none",
+                      'flex-1 px-2 py-2 text-sm bg-transparent',
+                      'text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]',
+                      'focus:outline-none'
                     )}
                   />
                 </div>
@@ -286,9 +294,9 @@ export function EmailCompose({
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Subject"
                 className={cn(
-                  "flex-1 px-2 py-2 text-sm bg-transparent",
-                  "text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]",
-                  "focus:outline-none",
+                  'flex-1 px-2 py-2 text-sm bg-transparent',
+                  'text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]',
+                  'focus:outline-none'
                 )}
               />
             </div>
@@ -300,9 +308,9 @@ export function EmailCompose({
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Write your message..."
                 className={cn(
-                  "w-full h-full p-4 text-sm bg-transparent resize-none",
-                  "text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]",
-                  "focus:outline-none",
+                  'w-full h-full p-4 text-sm bg-transparent resize-none',
+                  'text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]',
+                  'focus:outline-none'
                 )}
               />
             </div>
@@ -340,12 +348,7 @@ export function EmailCompose({
           <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)]">
             <div className="flex items-center gap-2">
               <label className="cursor-pointer">
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleAttachFile}
-                  className="hidden"
-                />
+                <input type="file" multiple onChange={handleAttachFile} className="hidden" />
                 <div
                   className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)] transition-colors"
                   title="Attach file"
@@ -367,9 +370,9 @@ export function EmailCompose({
                 onClick={handleSave}
                 disabled={isActionDisabled || !subject}
                 className={cn(
-                  "px-3 py-2 rounded-lg font-medium transition-all flex items-center gap-2",
-                  "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)]",
-                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  'px-3 py-2 rounded-lg font-medium transition-all flex items-center gap-2',
+                  'text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)]',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
               >
                 {isSavingDraft ? (
@@ -384,9 +387,9 @@ export function EmailCompose({
                 onClick={handleSend}
                 disabled={isActionDisabled}
                 className={cn(
-                  "px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2",
-                  "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white",
-                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  'px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2',
+                  'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
               >
                 {isSending ? (
