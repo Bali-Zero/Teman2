@@ -24,6 +24,7 @@ import {
   Calendar,
   ExternalLink,
   ClipboardCheck,
+  Banknote,
 } from 'lucide-react';
 import { navigation, portalNavigation, NavSection, NavItem } from '@/types/navigation';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,7 @@ const iconMap: Record<string, React.ElementType> = {
   Cloud,
   Calendar,
   ClipboardCheck,
+  Banknote,
 };
 
 interface AppSidebarProps {

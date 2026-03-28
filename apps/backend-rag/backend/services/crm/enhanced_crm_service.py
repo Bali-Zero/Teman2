@@ -427,10 +427,17 @@ class EnhancedCRMService:
         try:
             assigned_to = practice_data.get("assigned_to")
             if not assigned_to:
-                logger.debug(f"HR bonus skip: practice {practice_id} has no assigned_to")
                 return
 
             async with self.db_pool.acquire() as conn:
+                # Guard: skip if HR tables don't exist yet (migration not applied)
+                table_exists = await conn.fetchval(
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                    "WHERE table_name = 'hr_bonus_rates')"
+                )
+                if not table_exists:
+                    return
+
                 # Get practice type code
                 pt = await conn.fetchrow("""
                     SELECT pt.code FROM practice_types pt
