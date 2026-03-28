@@ -12,7 +12,7 @@ if [ "$BRANCH" = "main" ] && [ "$(whoami)" = "nuzantara" ]; then
       cd "$REPO" && \
       git branch -f air main 2>/dev/null && \
       ssh -o ConnectTimeout=5 -o BatchMode=yes air \
-        "cd ~/Projects/nuzantara && git fetch pro && git rebase pro/main 2>&1" \
+        "cd ~/Projects/nuzantara && git stash -q 2>/dev/null; git fetch pro && git rebase pro/main 2>&1; git stash pop -q 2>/dev/null || true" \
         >> "$LOG" 2>&1
     ) &
 fi
