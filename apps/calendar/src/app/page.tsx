@@ -161,10 +161,10 @@ export default function CalendarPage() {
         });
         fetchEvents();
       } else {
-        alert('Errore: ' + data.error);
+        setError(data.error || 'Errore nella creazione evento');
       }
     } catch (err: unknown) {
-      alert('Errore: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setError(err instanceof Error ? err.message : 'Errore nella creazione evento');
     } finally {
       setCreating(false);
     }
@@ -183,7 +183,7 @@ export default function CalendarPage() {
         fetchEvents();
       }
     } catch (err: unknown) {
-      alert('Errore: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setError(err instanceof Error ? err.message : 'Errore nella cancellazione evento');
     }
   };
 
