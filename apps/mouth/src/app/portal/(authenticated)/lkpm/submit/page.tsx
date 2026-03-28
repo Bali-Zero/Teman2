@@ -225,12 +225,14 @@ export default function LKPMSubmitPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label
+                htmlFor="lkpm-quarter"
                 className="block text-xs mb-1"
                 style={{ color: "var(--bz-text-2)" }}
               >
                 {t.quarter}
               </label>
               <select
+                id="lkpm-quarter"
                 value={quarter}
                 onChange={(e) => setQuarter(e.target.value)}
                 className="w-full rounded-lg border px-3 py-2 text-sm"
@@ -248,12 +250,14 @@ export default function LKPMSubmitPage() {
             </div>
             <div>
               <label
+                htmlFor="lkpm-year"
                 className="block text-xs mb-1"
                 style={{ color: "var(--bz-text-2)" }}
               >
                 {t.year}
               </label>
               <select
+                id="lkpm-year"
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
                 className="w-full rounded-lg border px-3 py-2 text-sm"
