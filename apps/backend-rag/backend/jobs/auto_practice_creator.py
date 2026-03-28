@@ -166,7 +166,7 @@ async def create_renewal_practice(
         return None
 
     # Calculate priority
-    days_until_expiry = (expiry_date - date.today()).days
+    days_until_expiry = (expiry_date - datetime.now(tz=timezone.utc).date()).days
     priority = "high" if days_until_expiry < URGENT_THRESHOLD_DAYS else "normal"
 
     # Determine assignee
@@ -267,7 +267,7 @@ async def run_auto_practice_creator(db_pool) -> dict:
     """
     logger.info("Starting auto-practice-creator job")
 
-    target_date = date.today() + timedelta(days=RENEWAL_TRIGGER_DAYS)
+    target_date = datetime.now(tz=timezone.utc).date() + timedelta(days=RENEWAL_TRIGGER_DAYS)
 
     stats = {
         "visas_checked": 0,
