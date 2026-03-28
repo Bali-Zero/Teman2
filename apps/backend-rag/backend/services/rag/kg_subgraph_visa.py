@@ -178,11 +178,11 @@ async def check_rptka_requirements_node(state: VisaState, db_pool: asyncpg.Pool)
     # Fallback if KG has no RPTKA data
     if not rptka_steps:
         rptka_steps = [
-            "Submit TKA allocation quota application to Kementerian Ketenagakerjaan",
-            "Apply for IMTA (Izin Mempekerjakan Tenaga Kerja Asing) online via SPKP system",
-            "Provide job description and justification",
-            "Provide local training plan (mentorship program)",
-            "Pay IMTA fee per worker",
+            "Submit RPTKA (Rencana Penggunaan TKA) application via TKA Online / OSS portal",
+            "Provide job description, justification, and TKA companion (pendamping) plan",
+            "Obtain RPTKA approval (replaces former IMTA per PP 34/2021)",
+            "Pay DKP-TKA (Dana Kompensasi) USD 100/month/position for contract duration",
+            "Proceed to VITAS E23 application at evisa.imigrasi.go.id",
         ]
 
     rptka_req = {
