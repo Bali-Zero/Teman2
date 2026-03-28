@@ -9,7 +9,7 @@ from backend.services.tools.definitions import AgentState, BaseTool
 
 # Mock Tools
 class MockTool(BaseTool):
-    def __init__(self, name="mock_tool"):
+    def __init__(self, name="mock_tool") -> None:
         self._name = name
         self._description = "A mock tool"
         self._parameters = {"type": "object", "properties": {"arg": {"type": "string"}}}

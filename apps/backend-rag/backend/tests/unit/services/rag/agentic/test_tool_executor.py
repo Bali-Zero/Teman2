@@ -19,7 +19,7 @@ from backend.services.tools.definitions import BaseTool
 class MockTool(BaseTool):
     """Mock tool for testing"""
 
-    def __init__(self, name: str = "mock_tool", execute_result: str = "success"):
+    def __init__(self, name: str = "mock_tool", execute_result: str = "success") -> None:
         self._name = name
         self._execute_result = execute_result
         self._should_raise = None

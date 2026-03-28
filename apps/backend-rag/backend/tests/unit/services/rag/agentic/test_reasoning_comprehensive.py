@@ -255,7 +255,7 @@ class TestToolCallValidation:
         """Test valid tool call"""
 
         class ToolCall:
-            def __init__(self):
+            def __init__(self) -> None:
                 self.tool_name = "test"
                 self.arguments = {}
 
@@ -270,7 +270,7 @@ class TestToolCallValidation:
         """Test tool call without name"""
 
         class ToolCall:
-            def __init__(self):
+            def __init__(self) -> None:
                 self.arguments = {}
 
         tool_call = ToolCall()
@@ -280,7 +280,7 @@ class TestToolCallValidation:
         """Test tool call with None arguments"""
 
         class ToolCall:
-            def __init__(self):
+            def __init__(self) -> None:
                 self.tool_name = "test"
                 self.arguments = None
 

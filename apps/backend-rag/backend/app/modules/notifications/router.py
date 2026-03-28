@@ -202,7 +202,7 @@ async def run_expiry_check(
 
     except Exception as e:
         logger.error("Expiry check failed", exc_info=e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/status", response_model=StatusResponse)
@@ -228,7 +228,7 @@ async def get_notification_status(
 
     except Exception as e:
         logger.error("Failed to get status", exc_info=e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/send-pending")
@@ -274,7 +274,7 @@ async def send_pending_alerts(
 
     except Exception as e:
         logger.error("Failed to send pending alerts", exc_info=e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/send-email", response_model=SendEmailResponse)

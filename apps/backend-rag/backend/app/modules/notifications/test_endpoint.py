@@ -254,7 +254,7 @@ async def test_notification(
         raise
     except Exception as e:
         logger.error(f"Test notification failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/clients")
