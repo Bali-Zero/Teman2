@@ -11,6 +11,7 @@ ADMIT articles into NLM NB-2 via the nlm CLI.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import httpx
 import logging
@@ -797,7 +798,6 @@ class T4Monitor:
         content: str,
         timeout_seconds: int = 60,
     ) -> bool:
-        import asyncio  # noqa: PLC0415
         import shutil  # noqa: PLC0415
 
         nlm_bin = shutil.which("nlm") or "nlm"
@@ -840,3 +840,42 @@ class T4Monitor:
         return os.environ.get("TWITTER_BEARER_TOKEN") or os.environ.get(
             "X_BEARER_TOKEN"
         )
+
+
+# ---------------------------------------------------------------------------
+# CLI entrypoint (python -m apps.evaluator.nlm_deep_research.t4_monitor)
+# ---------------------------------------------------------------------------
+
+
+def _parse_args() -> Any:
+    import argparse  # noqa: PLC0415
+
+    parser = argparse.ArgumentParser(description="T4 Social Media Monitor")
+    parser.add_argument("--notebook-id", default=NB2_ID, help="NLM notebook UUID")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Fetch + filter but do not ingest"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+    )
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    import sys
+
+    args = _parse_args()
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    monitor = T4Monitor(notebook_id=args.notebook_id, dry_run=args.dry_run)
+    result = asyncio.run(monitor.run())
+    print(  # noqa: T201
+        f"T4 run complete: fetched={result.fetched} "
+        f"ingested={result.ingested} rejected={result.rejected} "
+        f"errors={result.errors}"
+    )
+    sys.exit(0 if result.errors == 0 else 1)
