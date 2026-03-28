@@ -217,3 +217,80 @@ class TestT4FetcherTwitter:
             )
 
         assert posts == []
+
+
+from apps.evaluator.nlm_deep_research.t4_monitor import T4Monitor
+from apps.evaluator.nlm_deep_research.t4_state import T4State, T4StatePersistence
+
+
+class TestT4MonitorIngest:
+    @pytest.mark.asyncio
+    async def test_already_seen_article_skipped(self, tmp_path):
+        state = T4State(seen_ids={"abc123"})
+        persistence = T4StatePersistence(tmp_path / "state.json")
+        persistence.save(state)
+
+        monitor = T4Monitor(state_path=tmp_path / "state.json", dry_run=True)
+        ingested = await monitor._maybe_ingest(
+            Article(
+                source_handle="test",
+                article_id="abc123",
+                url="https://example.com/1",
+                title="Test",
+                content="timpora deportasi WNA",
+                scraped_at=datetime.now(timezone.utc),
+                platform="rss",
+            )
+        )
+        assert ingested is False
+
+    @pytest.mark.asyncio
+    async def test_dry_run_does_not_call_nlm(self, tmp_path):
+        monitor = T4Monitor(state_path=tmp_path / "state.json", dry_run=True)
+        article = Article(
+            source_handle="imngurahrai",
+            article_id="new999",
+            url="https://ngurahrai.imigrasi.go.id/berita/new",
+            title="Deportasi Timpora WNA",
+            content="Timpora deportasi WNA overstay visa dicabut.",
+            scraped_at=datetime.now(timezone.utc),
+            platform="rss",
+        )
+        with patch(
+            "apps.evaluator.nlm_deep_research.t4_monitor.T4Monitor._call_nlm_cli",
+            new=AsyncMock(return_value=True),
+        ) as mock_nlm:
+            await monitor._maybe_ingest(article)
+        mock_nlm.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_budget_exceeded_evicts_oldest(self, tmp_path):
+        state = T4State(active_t4_sources=["s"] * 11)
+        persistence = T4StatePersistence(tmp_path / "state.json")
+        persistence.save(state)
+
+        monitor = T4Monitor(state_path=tmp_path / "state.json", dry_run=True)
+        loaded_state = monitor._persistence.load()
+        assert loaded_state.is_over_budget()
+        evicted = loaded_state.evict_oldest()
+        assert evicted == "s"
+        assert len(loaded_state.active_t4_sources) == 10
+
+    @pytest.mark.asyncio
+    async def test_nlm_ingest_builds_correct_content_format(self, tmp_path):
+        monitor = T4Monitor(state_path=tmp_path / "state.json", dry_run=False)
+        article = Article(
+            source_handle="imngurahrai",
+            article_id="x1",
+            url="https://ngurahrai.imigrasi.go.id/berita/1",
+            title="Deportasi WNA",
+            content="Timpora razia overstay.",
+            scraped_at=datetime(2026, 3, 28, 10, 0, 0, tzinfo=timezone.utc),
+            platform="rss",
+            svs_score=0.62,
+        )
+        formatted = monitor._format_for_nlm(article)
+        assert "[TITLE]: Deportasi WNA" in formatted
+        assert "[SOURCE]: imngurahrai" in formatted
+        assert "[SVS]: 0.62" in formatted
+        assert "Timpora razia overstay." in formatted

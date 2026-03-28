@@ -557,3 +557,269 @@ class T4Fetcher:
                 )
             )
         return posts
+
+
+# ---------------------------------------------------------------------------
+# T4Monitor — main orchestrator
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class T4RunResult:
+    fetched: int = 0
+    filtered_admit: int = 0
+    ingested: int = 0
+    skipped_dedup: int = 0
+    skipped_budget: int = 0
+    rejected: int = 0
+    errors: int = 0
+
+
+class T4Monitor:
+    """Main orchestrator: fetch → filter → SVS → ingest → persist."""
+
+    RSS_SOURCES = [
+        ("https://ngurahrai.imigrasi.go.id/feed/", "imngurahrai"),
+        ("https://ditjenimigrasi.go.id/feed/", "ditjen_imigrasi"),
+        ("https://www.imigrasi.go.id/feed/", "imigrasi_go_id"),
+    ]
+
+    WEBSITE_SOURCES = [
+        (
+            "https://ditjenimigrasi.go.id/kategori/berita/",
+            "ditjen_imigrasi",
+            {
+                "article_selector": ".post",
+                "title_selector": ".post-title",
+                "link_selector": "a",
+            },
+        ),
+        (
+            "https://kanwilbali.kemenkumham.go.id/berita-utama",
+            "kemenkumbali",
+            {
+                "article_selector": "article",
+                "title_selector": "h2",
+                "link_selector": "a",
+            },
+        ),
+    ]
+
+    TWITTER_HANDLES = [
+        "@ditjen_imigrasi",
+        "@imngurahrai",
+        "@kemenkumbali",
+    ]
+
+    def __init__(
+        self,
+        *,
+        state_path: Optional["Path"] = None,
+        dry_run: bool = False,
+        notebook_id: str = NB2_ID,
+    ) -> None:
+        from apps.evaluator.nlm_deep_research.t4_state import (  # noqa: PLC0415
+            T4StatePersistence,
+            _DEFAULT_STATE_PATH,
+        )
+
+        self._notebook_id = notebook_id
+        self._dry_run = dry_run
+        self._persistence = T4StatePersistence(
+            state_path if state_path is not None else _DEFAULT_STATE_PATH
+        )
+        self._fetcher = T4Fetcher()
+        self._filter = T4RelevanceFilter()
+        self._svs = T4SVSScorer()
+        self._cb = T4CircuitBreaker()
+        self._ref_embedding: Optional[list[float]] = None
+
+    async def run(self) -> "T4RunResult":
+        """Main entry point: run full T4 monitor cycle."""
+        result = T4RunResult()
+        state = self._persistence.load()
+
+        if self._cb.is_open(state):
+            logger.warning("CB_T4 is OPEN — skipping T4 monitor run")
+            self._persistence.save(state)
+            return result
+
+        articles: list[Article] = []
+
+        # Fetch RSS
+        for url, handle in self.RSS_SOURCES:
+            fetched = await self._fetcher.fetch_rss(url, source_handle=handle)
+            articles.extend(fetched)
+            result.fetched += len(fetched)
+
+        # Fetch websites
+        for url, handle, selectors in self.WEBSITE_SOURCES:
+            fetched = await self._fetcher.fetch_website(
+                url, source_handle=handle, **selectors
+            )
+            articles.extend(fetched)
+            result.fetched += len(fetched)
+
+        # Fetch X/Twitter (if enabled and bearer available)
+        bearer = self._get_bearer_token()
+        if state.x_enabled and bearer:
+            for handle in self.TWITTER_HANDLES:
+                posts = await self._fetcher.fetch_twitter(handle, bearer_token=bearer)
+                for post in posts:
+                    articles.append(
+                        Article(
+                            source_handle=post.handle,
+                            article_id=post.post_id,
+                            url=post.url,
+                            title=post.content[:100],
+                            content=post.content,
+                            scraped_at=post.scraped_at,
+                            platform="twitter",
+                        )
+                    )
+                    result.fetched += 1
+
+        # Get reference embedding once
+        if articles:
+            try:
+                self._ref_embedding = await self._filter._embed(REFERENCE_QUERY)
+            except Exception:
+                logger.warning("Could not get reference embedding — skipping L2/L3")
+
+        # Filter, score, ingest
+        for article in articles:
+            if state.is_seen(article.article_id):
+                result.skipped_dedup += 1
+                continue
+            ingested = await self._maybe_ingest(article)
+            if ingested:
+                result.ingested += 1
+                result.filtered_admit += 1
+                state.mark_seen(article.article_id)
+                state.add_source(article.article_id)
+            else:
+                result.rejected += 1
+
+        state.last_run_at = datetime.now(timezone.utc)
+        self._persistence.save(state)
+        logger.info(
+            "T4 run complete: fetched=%d admit=%d ingested=%d dedup=%d rejected=%d",
+            result.fetched,
+            result.filtered_admit,
+            result.ingested,
+            result.skipped_dedup,
+            result.rejected,
+        )
+        return result
+
+    async def _maybe_ingest(self, article: Article) -> bool:
+        """Filter → SVS → budget check → ingest. Returns True if ingested."""
+        state = self._persistence.load()
+
+        # Dedup
+        if state.is_seen(article.article_id):
+            return False
+
+        # Relevance filter
+        try:
+            filter_result = await self._filter.classify(
+                article.content, ref_embedding=self._ref_embedding
+            )
+        except Exception:
+            logger.exception("Filter failed for article %s", article.article_id)
+            return False
+        article.filter_result = filter_result.value
+        if filter_result == FilterResult.REJECT:
+            return False
+
+        # SVS scoring
+        svs = self._svs.score(article)
+        article.svs_score = svs
+        if svs < 0.35:
+            return False
+
+        # Budget enforcement
+        if state.is_over_budget():
+            evicted = state.evict_oldest()
+            logger.info("T4 budget full — evicted oldest source %s", evicted)
+
+        # Dry-run gate
+        if self._dry_run:
+            logger.info("[DRY-RUN] Would ingest: %s (SVS=%.2f)", article.title, svs)
+            return False
+
+        # Ingest via nlm CLI
+        success = await self._call_nlm_cli(
+            self._notebook_id,
+            title=article.title,
+            content=self._format_for_nlm(article),
+        )
+        if success:
+            self._cb.record_success(state)
+            self._persistence.save(state)
+        else:
+            self._cb.record_failure(state)
+            self._persistence.save(state)
+        return success
+
+    def _format_for_nlm(self, article: Article) -> str:
+        return (
+            f"[TITLE]: {article.title}\n"
+            f"[SOURCE]: {article.source_handle} | {article.url}\n"
+            f"[DATE]: {article.scraped_at.isoformat()}\n"
+            f"[PLATFORM]: {article.platform}\n"
+            f"[SVS]: {article.svs_score:.2f}\n\n"
+            f"{article.content}"
+        )
+
+    async def _call_nlm_cli(
+        self,
+        notebook_id: str,
+        *,
+        title: str,
+        content: str,
+        timeout_seconds: int = 60,
+    ) -> bool:
+        import asyncio  # noqa: PLC0415
+        import shutil  # noqa: PLC0415
+
+        nlm_bin = shutil.which("nlm") or "nlm"
+        cmd = [
+            nlm_bin,
+            "source",
+            "add",
+            notebook_id,
+            "--text",
+            content,
+            "--title",
+            title,
+            "--wait",
+        ]
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await asyncio.wait_for(
+                proc.communicate(), timeout=timeout_seconds
+            )
+            if proc.returncode != 0:
+                logger.error("nlm CLI error: %s", stderr.decode()[:200])
+            return proc.returncode == 0
+        except asyncio.TimeoutError:
+            logger.error(
+                "nlm CLI timeout after %ds for title: %s", timeout_seconds, title
+            )
+            return False
+        except Exception:
+            logger.exception("nlm CLI unexpected error for title: %s", title)
+            return False
+
+    @staticmethod
+    def _get_bearer_token() -> Optional[str]:
+        import os  # noqa: PLC0415
+
+        return os.environ.get("TWITTER_BEARER_TOKEN") or os.environ.get(
+            "X_BEARER_TOKEN"
+        )
