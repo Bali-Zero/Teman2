@@ -29,7 +29,7 @@ def get_adapter(model_name: str) -> ModelAdapter:
         if adapter_class:
             return adapter_class()
     except ValueError:
-        pass
+        pass  # model_name not a valid ModelType enum — fall through to string matching
 
     # Fallback: check if known model type is in the string
     if "gemini" in model_name.lower():

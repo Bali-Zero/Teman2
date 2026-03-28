@@ -63,7 +63,7 @@ class KnowledgeGraphBuilder:
 
                 self.db_pool = getattr(app.state, "db_pool", None)
             except Exception:
-                pass
+                pass  # app.state.db_pool not yet available at init time
 
         if not self.db_pool:
             raise RuntimeError(

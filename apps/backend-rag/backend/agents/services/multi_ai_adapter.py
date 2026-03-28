@@ -452,8 +452,8 @@ class MultiAIAdapter:
             result = subprocess.run(["gemini", "--version"], capture_output=True, timeout=5.0)
             if result.returncode == 0:
                 available.append(AITool.GEMINI)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Gemini CLI not available: {e}")
 
         # Check Claude API
         if self.claude.client:
@@ -476,8 +476,8 @@ class MultiAIAdapter:
             result = subprocess.run(["cursor", "--version"], capture_output=True, timeout=5.0)
             if result.returncode == 0:
                 available.append(AITool.CURSOR)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Cursor CLI not available: {e}")
 
         return available
 

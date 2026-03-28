@@ -384,7 +384,7 @@ def _rgb_string_to_hex(rgb_str: str) -> str:
         if len(parts) == 3:
             return "#{:02x}{:02x}{:02x}".format(*parts)
     except (ValueError, AttributeError):
-        pass
+        pass  # malformed RGB string — use fallback
     return "#a0aec0"  # neutral gray fallback
 
 

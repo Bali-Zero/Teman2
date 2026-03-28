@@ -301,7 +301,7 @@ class EmotionalAttunementService:
                     suggested_tone = ToneStyle(pref_tone)
                     reasoning += f" | Preference override: {pref_tone}"
                 except ValueError:
-                    pass
+                    pass  # invalid ToneStyle value — ignore preference, use detected tone
 
         logger.info(
             f"🎭 Emotional Analysis: {detected_state.value} "

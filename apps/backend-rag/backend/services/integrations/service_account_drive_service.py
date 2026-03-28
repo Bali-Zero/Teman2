@@ -44,8 +44,8 @@ class ServiceAccountDriveService:
             if parsed.get("type") == "service_account":
                 service_account_info = parsed
                 logger.info("✅ Loaded Google credentials from raw JSON")
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            logger.debug(f"SA creds not raw JSON, trying base64: {e}")
 
         # Try base64-encoded JSON
         if not service_account_info:
@@ -55,8 +55,8 @@ class ServiceAccountDriveService:
                 if parsed.get("type") == "service_account":
                     service_account_info = parsed
                     logger.info("✅ Loaded Google credentials from base64-encoded JSON")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"SA creds base64 decode failed: {e}")
 
         if not service_account_info:
             raise ValueError(

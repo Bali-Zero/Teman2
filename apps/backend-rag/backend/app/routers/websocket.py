@@ -167,7 +167,7 @@ async def websocket_endpoint(websocket: WebSocket) -> Any:
                         await websocket.send_json({"type": "pong"})
                     # Other message types can be handled here if needed
                 except json.JSONDecodeError:
-                    pass
+                    pass  # non-JSON message — ignore (e.g. raw binary ping frames)
             except asyncio.TimeoutError:
                 # No data received for 30s, loop around (heartbeat triggers separately)
                 continue
@@ -194,7 +194,7 @@ async def send_heartbeat(websocket: WebSocket, interval: int = 15) -> None:
             except Exception:
                 break
     except asyncio.CancelledError:
-        pass
+        pass  # heartbeat task cancelled on disconnect — expected
 
 
 # ============================================================================

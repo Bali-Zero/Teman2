@@ -140,7 +140,7 @@ class ContextFilter(logging.Filter):
             if correlation_id:
                 record.correlation_id = correlation_id
         except (ImportError, LookupError):
-            pass
+            pass  # correlation_id not available in this context — non-critical
 
         return True
 
