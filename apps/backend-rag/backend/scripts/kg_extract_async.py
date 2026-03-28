@@ -136,7 +136,7 @@ async def main():
                                         "target": e2,
                                         "type": rel_type,
                                         "chunk": chunk_id,
-                                    }
+                                    },
                                 )
 
     # Results

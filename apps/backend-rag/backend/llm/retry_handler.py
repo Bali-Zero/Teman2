@@ -92,14 +92,14 @@ class RetryHandler:
                 if not is_retryable or attempt >= self.max_retries - 1:
                     # Not retryable or last attempt
                     logger.error(
-                        f"❌ {operation_name} failed (attempt {attempt + 1}/{self.max_retries}): {e}"
+                        f"❌ {operation_name} failed (attempt {attempt + 1}/{self.max_retries}): {e}",
                     )
                     raise e
 
                 # Calculate delay with exponential backoff
                 delay = self.base_delay * (self.backoff_factor**attempt)
                 logger.warning(
-                    f"⚠️ {operation_name} failed (attempt {attempt + 1}/{self.max_retries}): {e}. Retrying in {delay}s..."
+                    f"⚠️ {operation_name} failed (attempt {attempt + 1}/{self.max_retries}): {e}. Retrying in {delay}s...",
                 )
                 await asyncio.sleep(delay)
 

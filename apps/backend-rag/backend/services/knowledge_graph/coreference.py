@@ -143,7 +143,7 @@ class CoreferenceResolver:
         self._compile_patterns()
 
         logger.warning(
-            f"CoreferenceResolver initialized, use_llm={use_llm} - DEPRECATED: Anthropic/Claude removed"
+            f"CoreferenceResolver initialized, use_llm={use_llm} - DEPRECATED: Anthropic/Claude removed",
         )
 
     def _compile_patterns(self) -> None:
@@ -173,7 +173,7 @@ class CoreferenceResolver:
                             position=match.start(),
                             is_pronoun=True,
                             entity_type=self._ref_type_to_entity_type(ref_type),
-                        )
+                        ),
                     )
 
         return sorted(mentions, key=lambda m: m.position)
@@ -432,7 +432,7 @@ class CoreferenceResolver:
                     mention=cluster.mentions[0] if cluster.mentions else cluster.canonical_name,
                     attributes=cluster.attributes,
                     confidence=0.9,
-                )
+                ),
             )
 
         return deduplicated

@@ -33,7 +33,7 @@ def verify_founder_access(current_user: Any = Depends(get_current_user)) -> Any:
     """
     if current_user.get("role") not in ["Founder", "admin"]:
         raise HTTPException(
-            status_code=403, detail="Access denied. This dashboard is for founders only."
+            status_code=403, detail="Access denied. This dashboard is for founders only.",
         )
     return current_user
 
@@ -57,7 +57,7 @@ async def get_completion_rates(
         return await calculate_completion_rate(db_pool, practice_type, start_date, end_date)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to calculate completion rates: {str(e)}"
+            status_code=500, detail=f"Failed to calculate completion rates: {str(e)}",
         ) from e
 
 
@@ -122,7 +122,7 @@ async def get_revenue_metrics(
         return await calculate_revenue_metrics(db_pool, practice_type, start_date, end_date)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to calculate revenue metrics: {str(e)}"
+            status_code=500, detail=f"Failed to calculate revenue metrics: {str(e)}",
         ) from e
 
 

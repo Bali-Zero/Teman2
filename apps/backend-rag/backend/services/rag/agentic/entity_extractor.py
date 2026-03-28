@@ -180,7 +180,7 @@ class EntityExtractionService:
         return None
 
     def _extract_property_entities(
-        self, query_lower: str, query_upper: str
+        self, query_lower: str, query_upper: str,
     ) -> dict[str, Any] | None:
         """Extract property-related entities."""
         property_type = None
@@ -217,7 +217,7 @@ class EntityExtractionService:
         return None
 
     def _extract_company_entities(
-        self, query_lower: str, query_upper: str
+        self, query_lower: str, query_upper: str,
     ) -> dict[str, Any] | None:
         """Extract company-related entities."""
         company_type = None

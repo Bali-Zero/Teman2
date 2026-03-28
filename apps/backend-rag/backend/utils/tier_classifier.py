@@ -143,7 +143,7 @@ class TierClassifier:
         logger.info("TierClassifier initialized")
 
     def classify_book_tier(
-        self, book_title: str, book_author: str = "", book_content_sample: str = ""
+        self, book_title: str, book_author: str = "", book_content_sample: str = "",
     ) -> TierLevel:
         """
         Classify a book into a tier based on title, author, and content.
@@ -179,7 +179,7 @@ class TierClassifier:
         if max(tier_scores.values()) > 0:
             best_tier = max(tier_scores, key=lambda t: tier_scores[t])
             logger.info(
-                f"Classified '{book_title}' as Tier {best_tier.value} (scores: {tier_scores})"
+                f"Classified '{book_title}' as Tier {best_tier.value} (scores: {tier_scores})",
             )
             return best_tier
 

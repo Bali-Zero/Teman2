@@ -55,7 +55,7 @@ class IntelCoverHandler:
         try:
             NOTIFICATION_MAP_FILE.parent.mkdir(parents=True, exist_ok=True)
             NOTIFICATION_MAP_FILE.write_text(
-                json.dumps(self._notification_map, indent=2, ensure_ascii=False)
+                json.dumps(self._notification_map, indent=2, ensure_ascii=False),
             )
         except Exception as e:
             logger.warning(f"Failed to save notification map: {e}")

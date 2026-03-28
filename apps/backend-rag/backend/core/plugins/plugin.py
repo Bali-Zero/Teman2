@@ -71,7 +71,7 @@ class PluginMetadata(BaseModel):
 
     # Backward compatibility
     legacy_handler_key: str | None = Field(
-        None, description="Original handler key for backward compatibility (e.g., 'gmail.send')"
+        None, description="Original handler key for backward compatibility (e.g., 'gmail.send')",
     )
 
     @validator("version")
@@ -230,7 +230,7 @@ class Plugin(ABC):
             # JSON schema validation can be added using jsonschema library
             # For now, config is validated via Pydantic models
             logger.debug(
-                f"Config schema defined for {self.metadata.name} but validation not implemented"
+                f"Config schema defined for {self.metadata.name} but validation not implemented",
             )
 
     async def on_load(self):

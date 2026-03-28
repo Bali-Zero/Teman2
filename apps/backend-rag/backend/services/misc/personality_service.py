@@ -36,7 +36,7 @@ class PersonalityService:
     def __init__(self) -> None:
         # Usa il nostro modello Zantara su Oracle Cloud
         self.zantara_oracle_url = os.getenv(
-            "ZANTARA_ORACLE_URL", "https://zantara.oracle.cloud/api/generate"
+            "ZANTARA_ORACLE_URL", "https://zantara.oracle.cloud/api/generate",
         )
         self.oracle_api_key = os.getenv("ORACLE_API_KEY", "")
         self.team_members = TEAM_MEMBERS
@@ -189,7 +189,7 @@ Be the expert consultant who provides reliable professional guidance.""",
         }
 
     async def translate_to_personality(
-        self, gemini_response: str, user_email: str, original_query: str
+        self, gemini_response: str, user_email: str, original_query: str,
     ) -> dict[str, Any]:
         """
         Traduce la risposta di Gemini nella personalità appropriata
@@ -275,7 +275,7 @@ Your response:"""
                     "style": profile["style"],
                     "team_count": len(profile["team_members"]),
                     "traits": profile["traits"],
-                }
+                },
             )
 
         return personalities
@@ -351,7 +351,7 @@ Your response:"""
             user = user_context["user"]
 
             logger.info(
-                f"🎭 Advanced personality translation for {user['name']} ({personality['name']})"
+                f"🎭 Advanced personality translation for {user['name']} ({personality['name']})",
             )
 
             # Use Gemini PRO for sophisticated personality translation
@@ -385,7 +385,7 @@ Your response:"""
 
                     # Get personality-translated response from Gemini PRO
                     gemini_translated = await gemini_pro_model.generate_content_async(
-                        translation_prompt
+                        translation_prompt,
                     )
                     gemini_personality_response = gemini_translated.text
 
@@ -397,7 +397,7 @@ Your response:"""
                         and user_context["personality_type"] == "jaksel"
                     ):
                         zantara_enhanced = await self._enhance_with_zantara_model(
-                            gemini_personality_response, personality
+                            gemini_personality_response, personality,
                         )
                         final_response = zantara_enhanced
                         model_used = "gemini-pro + zantara-local"
@@ -422,12 +422,12 @@ Your response:"""
                     logger.warning(f"⚠️ Gemini PRO personality translation failed: {gemini_error}")
                     # Fallback to original method
                     return await self.translate_to_personality(
-                        gemini_response, user_email, original_query
+                        gemini_response, user_email, original_query,
                     )
             else:
                 # No model getter provided, fallback to original method
                 return await self.translate_to_personality(
-                    gemini_response, user_email, original_query
+                    gemini_response, user_email, original_query,
                 )
 
         except Exception as e:

@@ -27,7 +27,7 @@ def extract_handlers_from_router(module: Any) -> list[dict[str, Any]]:
                             route.endpoint.__doc__.strip() if route.endpoint.__doc__ else ""
                         ),
                         "module": module.__name__,
-                    }
+                    },
                 )
 
     return handlers

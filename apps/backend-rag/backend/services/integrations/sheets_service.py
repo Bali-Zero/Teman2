@@ -79,13 +79,13 @@ class SheetsService:
         creds_path = self._get_credentials_path()
         if not creds_path:
             raise FileNotFoundError(
-                "Google credentials not found. Set GOOGLE_SERVICE_ACCOUNT_JSON."
+                "Google credentials not found. Set GOOGLE_SERVICE_ACCOUNT_JSON.",
             )
 
         # Use Direct SA (DWD doesn't have Sheets scope in Workspace config).
         # The target spreadsheets must be shared with the SA email as Editor.
         credentials = service_account.Credentials.from_service_account_file(
-            creds_path, scopes=SCOPES
+            creds_path, scopes=SCOPES,
         )
         svc = build("sheets", "v4", credentials=credentials)
         self._connected_as = "service-account"

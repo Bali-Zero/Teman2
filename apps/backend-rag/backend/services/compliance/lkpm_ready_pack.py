@@ -74,7 +74,7 @@ def generate_ready_pack_html(pack: LKPMReadyPack) -> str:
     obstacles = html_escape(pack.narrative_obstacles or OBSTACLE_TEMPLATES["no_obstacles"])
     plans = html_escape(
         pack.narrative_plans
-        or "Perusahaan akan melanjutkan realisasi investasi sesuai rencana yang telah disetujui."
+        or "Perusahaan akan melanjutkan realisasi investasi sesuai rencana yang telah disetujui.",
     )
 
     return f"""<!DOCTYPE html>

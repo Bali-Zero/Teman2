@@ -50,7 +50,7 @@ class TestQdrantClientCreateCollection:
             mock_http_client.put = AsyncMock(return_value=mock_response)
 
             result = await client.create_collection(
-                vector_size=1536, distance="Cosine", enable_sparse=True
+                vector_size=1536, distance="Cosine", enable_sparse=True,
             )
 
             assert result is True
@@ -66,7 +66,7 @@ class TestQdrantClientCreateCollection:
             mock_http_client.put = AsyncMock(return_value=mock_response)
 
             result = await client.create_collection(
-                vector_size=1536, distance="Cosine", on_disk_payload=True
+                vector_size=1536, distance="Cosine", on_disk_payload=True,
             )
 
             assert result is True
@@ -145,7 +145,7 @@ class TestQdrantClientUpsertDocuments:
             mock_http_client.put = AsyncMock(return_value=mock_response)
 
             result = await client.upsert_documents(
-                chunks=["chunk1"], embeddings=[[0.1] * 1536], metadatas=[{"key": "value"}], ids=None
+                chunks=["chunk1"], embeddings=[[0.1] * 1536], metadatas=[{"key": "value"}], ids=None,
             )
 
             assert result["success"] is True
@@ -180,7 +180,7 @@ class TestQdrantClientUpsertDocuments:
             metadatas = [{"key": f"value{i}"} for i in range(1000)]
 
             result = await client.upsert_documents(
-                chunks=chunks, embeddings=embeddings, metadatas=metadatas, batch_size=500
+                chunks=chunks, embeddings=embeddings, metadatas=metadatas, batch_size=500,
             )
 
             assert result["success"] is True

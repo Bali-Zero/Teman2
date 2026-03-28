@@ -176,7 +176,7 @@ async def migrate_collection(
                 scroll_payload["offset"] = offset
 
             response = await http_client.post(
-                f"/collections/{collection_name}/points/scroll", json=scroll_payload
+                f"/collections/{collection_name}/points/scroll", json=scroll_payload,
             )
             response.raise_for_status()
             data = response.json().get("result", {})
@@ -237,7 +237,7 @@ async def migrate_collection(
                     rate = total_migrated / elapsed if elapsed > 0 else 0
                     pct = total_migrated / total_docs * 100
                     logger.info(
-                        f"  Migrated {total_migrated}/{total_docs} ({pct:.1f}%) - {rate:.1f} docs/sec"
+                        f"  Migrated {total_migrated}/{total_docs} ({pct:.1f}%) - {rate:.1f} docs/sec",
                     )
                 else:
                     logger.error(f"  Batch failed: {upsert_result.get('error')}")
@@ -265,8 +265,8 @@ async def migrate_collection(
         # Rename original to _legacy
         rename_payload = {
             "actions": [
-                {"rename_collection": {"old_name": collection_name, "new_name": legacy_collection}}
-            ]
+                {"rename_collection": {"old_name": collection_name, "new_name": legacy_collection}},
+            ],
         }
         rename_response = await http_client.post("/collections/aliases", json=rename_payload)
 
@@ -282,8 +282,8 @@ async def migrate_collection(
         # Rename hybrid to original name
         rename_payload = {
             "actions": [
-                {"rename_collection": {"old_name": target_collection, "new_name": collection_name}}
-            ]
+                {"rename_collection": {"old_name": target_collection, "new_name": collection_name}},
+            ],
         }
         rename_response = await http_client.post("/collections/aliases", json=rename_payload)
 
@@ -339,7 +339,7 @@ async def migrate_all(dry_run: bool = False):
         }.get(r["status"], "")
 
         logger.info(
-            f"{status_emoji} {r['collection']}: {r['status']} ({r['documents_migrated']} docs)"
+            f"{status_emoji} {r['collection']}: {r['status']} ({r['documents_migrated']} docs)",
         )
         if r.get("error"):
             logger.info(f"   Error: {r['error']}")

@@ -148,7 +148,7 @@ class ABTestManager:
 
         logger.info(
             f"ABTestManager initialized with {len(self.experiments)} experiments: "
-            f"{list(self.experiments.keys())}"
+            f"{list(self.experiments.keys())}",
         )
 
     def assign_variant(self, user_id: str, experiment: str) -> str:
@@ -206,7 +206,7 @@ class ABTestManager:
 
         logger.debug(
             f"Assigned user '{user_id}' to variant '{variant}' "
-            f"in experiment '{experiment}' (hash={hash_normalized:.4f})"
+            f"in experiment '{experiment}' (hash={hash_normalized:.4f})",
         )
 
         return variant
@@ -291,7 +291,7 @@ class ABTestManager:
             )
             logger.debug(
                 f"Recorded metric '{metric}={value}' for experiment '{experiment}' "
-                f"variant '{variant}'"
+                f"variant '{variant}'",
             )
         except Exception as e:
             logger.error(f"Failed to record metric: {e}")
@@ -341,7 +341,7 @@ class ABTestManager:
                     and len(treatment_data) >= config.min_sample_size
                 ):
                     significance_results[metric_name] = self._calculate_significance(
-                        control_data, treatment_data, config.confidence_level
+                        control_data, treatment_data, config.confidence_level,
                     )
                 else:
                     significance_results[metric_name] = {
@@ -426,10 +426,10 @@ class ABTestManager:
         treatment_mean = sum(treatment_data) / len(treatment_data)
 
         control_var = sum((x - control_mean) ** 2 for x in control_data) / max(
-            len(control_data) - 1, 1
+            len(control_data) - 1, 1,
         )
         treatment_var = sum((x - treatment_mean) ** 2 for x in treatment_data) / max(
-            len(treatment_data) - 1, 1
+            len(treatment_data) - 1, 1,
         )
 
         # Standard error of the difference

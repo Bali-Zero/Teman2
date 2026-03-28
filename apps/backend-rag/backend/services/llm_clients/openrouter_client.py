@@ -202,7 +202,7 @@ class OpenRouterClient:
 
         client = self._get_client()
         response = await client.post(
-            f"{self.BASE_URL}/chat/completions", headers=self._get_headers(), json=payload
+            f"{self.BASE_URL}/chat/completions", headers=self._get_headers(), json=payload,
         )
         response.raise_for_status()
 
@@ -310,7 +310,7 @@ except Exception as e:
 
 # Convenience functions
 async def smart_complete(
-    prompt: str, system: str | None = None, tier: ModelTier = ModelTier.BALANCED, **kwargs
+    prompt: str, system: str | None = None, tier: ModelTier = ModelTier.BALANCED, **kwargs,
 ) -> CompletionResult:
     """Simple completion with optional system prompt"""
     messages = []
@@ -322,7 +322,7 @@ async def smart_complete(
 
 
 async def smart_complete_stream(
-    prompt: str, system: str | None = None, tier: ModelTier = ModelTier.BALANCED, **kwargs
+    prompt: str, system: str | None = None, tier: ModelTier = ModelTier.BALANCED, **kwargs,
 ) -> AsyncGenerator[str, None]:
     """Simple streaming completion with optional system prompt"""
     messages = []

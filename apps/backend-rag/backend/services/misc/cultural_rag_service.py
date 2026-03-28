@@ -53,7 +53,7 @@ class CulturalRAGService:
         logger.info("✅ CulturalRAGService initialized")
 
     async def get_cultural_context(
-        self, context_params: dict[str, Any], limit: int = 2
+        self, context_params: dict[str, Any], limit: int = 2,
     ) -> list[dict[str, Any]]:
         """
         Get relevant cultural context based on conversation parameters
@@ -90,11 +90,11 @@ class CulturalRAGService:
 
             # Query cultural insights from Qdrant (using CulturalInsightsService)
             cultural_insights = await self.cultural_insights.query_insights(
-                query=query, when_to_use=when_to_use, limit=limit
+                query=query, when_to_use=when_to_use, limit=limit,
             )
 
             logger.info(
-                f"🌴 Retrieved {len(cultural_insights)} cultural insights (intent: {intent}, stage: {conversation_stage})"
+                f"🌴 Retrieved {len(cultural_insights)} cultural insights (intent: {intent}, stage: {conversation_stage})",
             )
 
             return cultural_insights
@@ -142,7 +142,7 @@ class CulturalRAGService:
             cultural_context = "\n".join(context_parts)
 
             logger.info(
-                f"📝 Built cultural injection: {len(cultural_context)} chars from {len(cultural_chunks)} chunks"
+                f"📝 Built cultural injection: {len(cultural_context)} chars from {len(cultural_chunks)} chunks",
             )
             return cultural_context
 

@@ -17,7 +17,7 @@ class TaxService:
         self.db_pool = db_pool
 
     async def get_client_taxes(
-        self, client_id: int, include_completed: bool = False
+        self, client_id: int, include_completed: bool = False,
     ) -> list[TaxObligation]:
         """
         Get all tax obligations for a client.
@@ -142,7 +142,7 @@ class TaxService:
             return TaxObligation(**dict(row))
 
     async def update_status(
-        self, obligation_id: int, new_status: str, amount_paid: float | None = None
+        self, obligation_id: int, new_status: str, amount_paid: float | None = None,
     ) -> TaxObligation | None:
         """Update obligation status and create timeline event."""
         async with self.db_pool.acquire() as conn, conn.transaction():

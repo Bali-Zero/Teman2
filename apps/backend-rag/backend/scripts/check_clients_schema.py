@@ -9,7 +9,7 @@ async def check():
     conn = await asyncpg.connect(settings.database_url)
     print("--- Table: clients ---")
     res = await conn.fetch(
-        "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'clients'"
+        "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'clients'",
     )
     for r in res:
         print(f"{r['column_name']}: {r['data_type']}")

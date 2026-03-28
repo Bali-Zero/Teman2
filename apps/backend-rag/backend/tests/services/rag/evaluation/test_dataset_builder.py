@@ -39,7 +39,7 @@ def mock_llm_client():
             content="Jawaban sintetis untuk pengujian.",
             model="gemini",
             provider="gemini",
-        )
+        ),
     )
     return client
 
@@ -67,7 +67,7 @@ class TestInitialization:
     def test_init_with_defaults(self):
         """Test initialization with default parameters."""
         with patch(
-            "backend.services.rag.evaluation.dataset_builder.create_default_client"
+            "backend.services.rag.evaluation.dataset_builder.create_default_client",
         ) as mock_create:
             mock_client = MagicMock()
             mock_create.return_value = mock_client

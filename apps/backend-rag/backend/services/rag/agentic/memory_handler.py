@@ -135,14 +135,14 @@ class MemoryHandler:
                 if result.success and result.facts_saved > 0:
                     logger.info(
                         f"Saved {result.facts_saved}/{result.facts_extracted} "
-                        f"facts for {user_id} ({result.processing_time_ms:.1f}ms)"
+                        f"facts for {user_id} ({result.processing_time_ms:.1f}ms)",
                     )
 
                 # Record lock contention metric
                 lock_wait_time = time.time() - lock_start_time
                 if lock_wait_time > 0.01 and metrics_collector:  # Only record if waited > 10ms
                     metrics_collector.record_memory_lock_contention(
-                        operation="save_memory", wait_time_seconds=lock_wait_time
+                        operation="save_memory", wait_time_seconds=lock_wait_time,
                     )
 
             finally:
@@ -150,7 +150,7 @@ class MemoryHandler:
 
         except asyncio.TimeoutError:
             logger.warning(
-                f"Memory save lock timeout for user {user_id} (timeout: {self._lock_timeout}s)"
+                f"Memory save lock timeout for user {user_id} (timeout: {self._lock_timeout}s)",
             )
             if metrics_collector:
                 metrics_collector.record_memory_lock_timeout(user_id=user_id)
@@ -183,11 +183,11 @@ class MemoryHandler:
             return None
 
         task = asyncio.create_task(
-            self.save_conversation_memory(user_id, query, answer, metrics_collector)
+            self.save_conversation_memory(user_id, query, answer, metrics_collector),
         )
         task.add_done_callback(
             lambda t: (
                 logger.error(f"Memory save failed: {t.exception()}") if t.exception() else None
-            )
+            ),
         )
         return task

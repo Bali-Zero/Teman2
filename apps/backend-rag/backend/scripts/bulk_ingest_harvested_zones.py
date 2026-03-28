@@ -14,7 +14,7 @@ import asyncpg
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("bulk_ingest")
 
@@ -92,7 +92,7 @@ async def process_file(file_path: Path, pool: asyncpg.Pool):
                 geom_json,
                 0.0,
                 0.5,
-            )
+            ),
         )
 
     if not rows:
@@ -115,7 +115,7 @@ async def process_file(file_path: Path, pool: asyncpg.Pool):
             inserted = len(rows)
         except Exception as e:
             logger.warning(
-                f"Batch insert failed for {file_path.name}: {e} — falling back to row-by-row"
+                f"Batch insert failed for {file_path.name}: {e} — falling back to row-by-row",
             )
             for row in rows:
                 try:
@@ -159,7 +159,7 @@ async def bulk_ingest(directories: list[str]):
             files_processed += 1
             if files_processed % 10 == 0:
                 logger.info(
-                    f"Processed {files_processed} files... ({total_inserted} polygons so far)"
+                    f"Processed {files_processed} files... ({total_inserted} polygons so far)",
                 )
 
     await pool.close()

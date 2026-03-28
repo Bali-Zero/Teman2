@@ -82,7 +82,7 @@ async def test_fluid_fallback_implementation():
         logger.info("✅ PASS: Both ABSTAIN (critical) and Tier 1 (non-critical) paths exist")
     else:
         logger.info(
-            f"⚠️  WARNING: Missing paths - ABSTAIN: {has_abstain_path}, Tier 1: {has_tier1_path}"
+            f"⚠️  WARNING: Missing paths - ABSTAIN: {has_abstain_path}, Tier 1: {has_tier1_path}",
         )
 
 
@@ -144,14 +144,14 @@ async def test_constants():
         logger.info("✅ PASS: ABSTAIN_THRESHOLD is lowered to 0.15")
     else:
         logger.info(
-            f"❌ FAIL: ABSTAIN_THRESHOLD is {EvidenceScoreConstants.ABSTAIN_THRESHOLD} (expected 0.15)"
+            f"❌ FAIL: ABSTAIN_THRESHOLD is {EvidenceScoreConstants.ABSTAIN_THRESHOLD} (expected 0.15)",
         )
 
     if EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS == 0.35:
         logger.info("✅ PASS: CONTEXT_KEYWORD_BONUS is increased to 0.35")
     else:
         logger.info(
-            f"⚠️  WARNING: CONTEXT_KEYWORD_BONUS is {EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS} (expected 0.35)"
+            f"⚠️  WARNING: CONTEXT_KEYWORD_BONUS is {EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS} (expected 0.35)",
         )
 
 

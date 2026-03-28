@@ -164,7 +164,7 @@ class DynamicPricingService:
                             currency="IDR",
                             source_oracle=source_oracle,
                             is_recurring=is_recurring,
-                        )
+                        ),
                     )
 
                 except (ValueError, IndexError) as e:
@@ -293,7 +293,7 @@ class DynamicPricingService:
         logger.info(
             f"✅ Pricing calculated: Setup=Rp {total_setup:,.0f}, "
             f"Recurring=Rp {total_recurring:,.0f}/year, "
-            f"Confidence={confidence:.2f}"
+            f"Confidence={confidence:.2f}",
         )
 
         return result

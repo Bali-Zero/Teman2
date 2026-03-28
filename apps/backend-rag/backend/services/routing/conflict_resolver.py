@@ -82,13 +82,13 @@ class ConflictResolver:
                     self.stats["conflicts_detected"] += 1
                     logger.warning(
                         f"⚠️ [Conflict Detected] {coll1} vs {coll2} - "
-                        f"scores: {conflict['collection1_top_score']:.2f} vs {conflict['collection2_top_score']:.2f}"
+                        f"scores: {conflict['collection1_top_score']:.2f} vs {conflict['collection2_top_score']:.2f}",
                     )
 
         return conflicts
 
     def resolve_conflicts(
-        self, results_by_collection: dict[str, list[dict]], conflicts: list[dict]
+        self, results_by_collection: dict[str, list[dict]], conflicts: list[dict],
     ) -> tuple[list[dict], list[dict]]:
         """
         Resolve conflicts using timestamp and relevance-based priority.
@@ -184,7 +184,7 @@ class ConflictResolver:
 
             logger.info(
                 f"✅ [Conflict Resolved] {winner_coll} (preferred) > {loser_coll} - "
-                f"reason: {resolution_reason}"
+                f"reason: {resolution_reason}",
             )
 
         return resolved_results, conflict_reports

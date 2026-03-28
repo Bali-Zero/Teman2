@@ -392,7 +392,7 @@ Example output: ["variant 1", "variant 2"]"""
             return variants
 
         target_langs = ", ".join(
-            [{"id": "Indonesian", "en": "English"}.get(lang, lang) for lang in languages]
+            [{"id": "Indonesian", "en": "English"}.get(lang, lang) for lang in languages],
         )
 
         prompt = f"""Translate this query to {target_langs}.
@@ -514,7 +514,7 @@ Return ONLY a JSON object with language codes as keys:
                         if isinstance(parsed, list):
                             variants = [v for v in parsed if isinstance(v, str)]
                             logger.debug(
-                                f"LLM rephrasing completed in {elapsed_ms:.1f}ms: {len(variants)} variants"
+                                f"LLM rephrasing completed in {elapsed_ms:.1f}ms: {len(variants)} variants",
                             )
 
                             # Cache the result

@@ -41,10 +41,10 @@ class AlertThresholdsRequest(BaseModel):
     """Request model for updating alert thresholds."""
 
     min_score: float = Field(
-        default=0.3, ge=0.0, le=1.0, description="Minimum acceptable retrieval score (0.0-1.0)"
+        default=0.3, ge=0.0, le=1.0, description="Minimum acceptable retrieval score (0.0-1.0)",
     )
     max_abstain_rate: float = Field(
-        default=0.2, ge=0.0, le=1.0, description="Maximum acceptable abstain rate (0.0-1.0)"
+        default=0.2, ge=0.0, le=1.0, description="Maximum acceptable abstain rate (0.0-1.0)",
     )
     max_latency_ms: float = Field(
         default=5000.0,
@@ -53,7 +53,7 @@ class AlertThresholdsRequest(BaseModel):
         description="Maximum acceptable latency in milliseconds",
     )
     min_cache_hit_rate: float = Field(
-        default=0.5, ge=0.0, le=1.0, description="Minimum acceptable cache hit rate (0.0-1.0)"
+        default=0.5, ge=0.0, le=1.0, description="Minimum acceptable cache hit rate (0.0-1.0)",
     )
 
 
@@ -138,7 +138,7 @@ def verify_admin_access(current_user: dict[str, Any] = Depends(get_current_user)
 
     if user_role not in [r.lower() for r in allowed_roles]:
         logger.warning(
-            f"Unauthorized access attempt to monitoring endpoint by user: {current_user.get('id')}"
+            f"Unauthorized access attempt to monitoring endpoint by user: {current_user.get('id')}",
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -335,7 +335,7 @@ async def set_alert_thresholds(
         logger.info(
             f"Updating alert thresholds by user {current_user.get('id')}: "
             f"min_score={thresholds.min_score}, "
-            f"max_abstain_rate={thresholds.max_abstain_rate}"
+            f"max_abstain_rate={thresholds.max_abstain_rate}",
         )
 
         new_thresholds = AlertThresholds(

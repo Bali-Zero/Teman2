@@ -44,7 +44,7 @@ class ConversationEngine:
         logger.info("✅ ConversationEngine initialized")
 
     async def process_message(
-        self, message: ChannelMessage, channel_config: dict[str, Any]
+        self, message: ChannelMessage, channel_config: dict[str, Any],
     ) -> AsyncIterator[ChannelResponse]:
         """
         Process a message through the RAG pipeline.
@@ -67,7 +67,7 @@ class ConversationEngine:
         start_time = time.time()
         logger.info(
             f"🔄 Processing message from {message.channel} "
-            f"(user={message.user_id}, session={message.session_id})"
+            f"(user={message.user_id}, session={message.session_id})",
         )
 
         try:
@@ -96,7 +96,7 @@ class ConversationEngine:
 
             logger.info(
                 f"✅ Message processed in {duration:.2f}s "
-                f"(channel={message.channel}, user={message.user_id})"
+                f"(channel={message.channel}, user={message.user_id})",
             )
 
         except Exception as e:
@@ -129,7 +129,7 @@ class ConversationEngine:
         # Thinking event: LLM reasoning step
         elif event_type == "thinking":
             return ChannelResponse(
-                text="", metadata={"event_type": "thinking", "data": event.get("data")}
+                text="", metadata={"event_type": "thinking", "data": event.get("data")},
             )
 
         # Tool call event: agent executing a tool
@@ -146,7 +146,7 @@ class ConversationEngine:
         # Observation event: tool execution result
         elif event_type == "observation":
             return ChannelResponse(
-                text="", metadata={"event_type": "observation", "data": event.get("data")}
+                text="", metadata={"event_type": "observation", "data": event.get("data")},
             )
 
         # Sources event: citations/references

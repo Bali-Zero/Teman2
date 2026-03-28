@@ -62,7 +62,7 @@ async def extract_text_from_pdf_async(file_path: str, use_ocr: bool = False) -> 
                     return ocr_text
                 if not full_text.strip():
                     raise DocumentParseError(
-                        f"No text extracted from PDF (even with OCR/Vision): {file_path}"
+                        f"No text extracted from PDF (even with OCR/Vision): {file_path}",
                     )
             except DocumentParseError:
                 raise
@@ -144,14 +144,14 @@ def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
                             vision_text = asyncio.run(vision_service.extract_text(pdf_bytes))
                             if vision_text and vision_text.strip():
                                 logger.info(
-                                    f"Vision extraction successful: {len(vision_text)} characters"
+                                    f"Vision extraction successful: {len(vision_text)} characters",
                                 )
                                 return vision_text
                     except Exception as vision_err:
                         logger.warning(f"Vision extraction failed: {vision_err}")
 
                     raise DocumentParseError(
-                        f"No text extracted from PDF (even with OCR/Vision): {file_path}"
+                        f"No text extracted from PDF (even with OCR/Vision): {file_path}",
                     )
             except DocumentParseError:
                 raise
@@ -207,7 +207,7 @@ If the page is blank or contains no text, return an empty string."""
             try:
                 logger.info(f"OCR processing page {page_num}/{total_pages}...")
                 page_text = await vision_service.analyze_page(
-                    pdf_path=file_path, page_number=page_num, prompt=ocr_prompt, is_drive_file=False
+                    pdf_path=file_path, page_number=page_num, prompt=ocr_prompt, is_drive_file=False,
                 )
                 if page_text and page_text.strip():
                     text_parts.append(page_text)
@@ -226,7 +226,7 @@ If the page is blank or contains no text, return an empty string."""
 
         if full_text.strip():
             logger.info(
-                f"✅ Gemini Vision OCR successful: {len(full_text)} characters from {len(text_parts)} pages"
+                f"✅ Gemini Vision OCR successful: {len(full_text)} characters from {len(text_parts)} pages",
             )
             return full_text
         logger.warning("No text extracted from any page")
@@ -270,7 +270,7 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
                     except Exception:
                         # If OCR not available, try alternative extraction
                         logger.warning(
-                            f"OCR not available for page {page_num}, trying alternative extraction"
+                            f"OCR not available for page {page_num}, trying alternative extraction",
                         )
                         # Convert page to image and use vision model as fallback
                         page.get_pixmap()
@@ -446,7 +446,7 @@ def auto_detect_and_parse(file_path: str, use_ocr: bool = False) -> str:
     if file_ext == ".md":
         return extract_text_from_txt(file_path)  # Markdown is plain text
     raise DocumentParseError(
-        f"Unsupported file type: {file_ext}. Supported formats: .pdf, .docx, .epub, .txt, .md"
+        f"Unsupported file type: {file_ext}. Supported formats: .pdf, .docx, .epub, .txt, .md",
     )
 
 

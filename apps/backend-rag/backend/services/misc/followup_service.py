@@ -31,7 +31,7 @@ def safe_register_counter(name: Any, documentation: Any, labelnames: Any) -> Any
 
 
 def safe_register_histogram(
-    name: Any, documentation: Any, labelnames: Any, buckets: Any = None
+    name: Any, documentation: Any, labelnames: Any, buckets: Any = None,
 ) -> Histogram:
     try:
         if buckets:
@@ -124,7 +124,7 @@ class FollowupService:
         )
 
     def generate_followups(
-        self, query: str, response: str, topic: str | None = "business", language: str | None = None
+        self, query: str, response: str, topic: str | None = "business", language: str | None = None,
     ) -> list[str]:
         """
         Backward-compatible synchronous entrypoint used by integration tests.
@@ -140,7 +140,7 @@ class FollowupService:
         if self.zantara_client:
             try:
                 ai_result = self.zantara_client.generate_response(
-                    query=query, response=response, topic=topic
+                    query=query, response=response, topic=topic,
                 )
                 # Await coroutine if mocked as AsyncMock/coroutine
                 if inspect.iscoroutine(ai_result):
@@ -163,11 +163,11 @@ class FollowupService:
         detected_language = language if language else self.detect_language_from_query(query)
         detected_topic = self.detect_topic_from_query(query) if topic is None else topic
         return self.get_topic_based_followups(
-            _query=query, _response=response, topic=detected_topic, language=detected_language
+            _query=query, _response=response, topic=detected_topic, language=detected_language,
         )
 
     def get_topic_based_followups(
-        self, _query: str, _response: str, topic: str = "business", language: str = "en"
+        self, _query: str, _response: str, topic: str = "business", language: str = "en",
     ) -> list[str]:
         """
         Get pre-defined topic-based follow-up questions
@@ -344,7 +344,7 @@ class FollowupService:
 
         # Build prompt for ZANTARA AI
         prompt = self._build_followup_generation_prompt(
-            query, response, conversation_context, language
+            query, response, conversation_context, language,
         )
 
         try:
@@ -362,7 +362,7 @@ class FollowupService:
             # Call ZANTARA AI for fast follow-up generation
             ai_start_time = time.time()
             ai_response = await self.zantara_client.chat_async(
-                messages=[{"role": "user", "content": prompt}], max_tokens=8192
+                messages=[{"role": "user", "content": prompt}], max_tokens=8192,
             )
             ai_duration = time.time() - ai_start_time
 
@@ -418,7 +418,7 @@ class FollowupService:
             return self.get_topic_based_followups(query, response or "", "business", language)
 
     def _build_followup_generation_prompt(
-        self, query: str, response: str | None, conversation_context: str | None, language: str
+        self, query: str, response: str | None, conversation_context: str | None, language: str,
     ) -> str:
         """Build prompt for AI to generate follow-up questions in the user's language"""
 
@@ -666,10 +666,10 @@ CRITICAL: All questions MUST be in {language.upper()} language."""
 
             # Record metrics
             followup_requests_total.labels(
-                method=method, topic=topic, language=language, status=status
+                method=method, topic=topic, language=language, status=status,
             ).inc()
             followup_generation_duration.labels(
-                method=method, topic=topic, language=language
+                method=method, topic=topic, language=language,
             ).observe(duration)
 
             logger.info(
@@ -695,10 +695,10 @@ CRITICAL: All questions MUST be in {language.upper()} language."""
 
             # Record error metrics
             followup_requests_total.labels(
-                method=method, topic=topic, language=language, status=status
+                method=method, topic=topic, language=language, status=status,
             ).inc()
             followup_generation_duration.labels(
-                method=method, topic=topic, language=language
+                method=method, topic=topic, language=language,
             ).observe(duration)
 
             logger.error(

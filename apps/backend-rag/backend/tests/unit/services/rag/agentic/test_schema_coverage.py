@@ -171,7 +171,7 @@ class TestCoreResultSources:
                 "url": "https://example.com",
                 "score": 0.95,
                 "metadata": {"author": "Test", "date": "2024-01-01"},
-            }
+            },
         ]
         result = CoreResult(answer="Test", sources=sources)
         assert result.sources[0]["metadata"]["author"] == "Test"

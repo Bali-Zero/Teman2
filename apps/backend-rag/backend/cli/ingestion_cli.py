@@ -124,7 +124,7 @@ class IngestionCLI:
             return {"success": False, "error": str(e)}
 
     async def ingest_conversations(
-        self, source: str, collection: str = "conversations"
+        self, source: str, collection: str = "conversations",
     ) -> dict[str, Any]:
         """
         Ingest conversation data.
@@ -208,7 +208,7 @@ class IngestionCLI:
             return {"success": False, "error": str(e)}
 
     async def ingest_laws(
-        self, file_path: str | None = None, directory: str | None = None
+        self, file_path: str | None = None, directory: str | None = None,
     ) -> dict[str, Any]:
         """
         Ingest legal documents.
@@ -326,7 +326,7 @@ class IngestionCLI:
                     "source": "Required: --file",
                     "collection": "knowledge_base (default)",
                 },
-            }
+            },
         }
 
 

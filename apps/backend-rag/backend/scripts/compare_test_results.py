@@ -133,10 +133,10 @@ def main() -> None:
     print(f"Action: {result['action']}")
     print("")
     print(
-        f"Before: {result['summary_before']['passed']} passed, {result['summary_before']['failed']} failed"
+        f"Before: {result['summary_before']['passed']} passed, {result['summary_before']['failed']} failed",
     )
     print(
-        f"After:  {result['summary_after']['passed']} passed, {result['summary_after']['failed']} failed"
+        f"After:  {result['summary_after']['passed']} passed, {result['summary_after']['failed']} failed",
     )
     print(f"Delta:  {result['delta']['passed']:+d} passed, {result['delta']['failed']:+d} failed")
     print("")

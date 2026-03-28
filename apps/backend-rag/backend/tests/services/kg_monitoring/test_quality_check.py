@@ -259,7 +259,7 @@ class TestQualityCheckService:
 
         report = await service.validate(good_doc)
         relevance_score = next(
-            (d for d in report.dimension_scores if d.dimension == QualityDimension.RELEVANCE), None
+            (d for d in report.dimension_scores if d.dimension == QualityDimension.RELEVANCE), None,
         )
         assert relevance_score is not None
         assert relevance_score.score > 0.5

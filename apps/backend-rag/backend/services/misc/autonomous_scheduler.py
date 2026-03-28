@@ -185,7 +185,7 @@ class AutonomousScheduler:
                     # Still wait the full interval before trying again
                     try:
                         await asyncio.wait_for(
-                            self._shutdown_event.wait(), timeout=task.interval_seconds
+                            self._shutdown_event.wait(), timeout=task.interval_seconds,
                         )
                         break
                     except asyncio.TimeoutError:
@@ -238,7 +238,7 @@ class AutonomousScheduler:
         for task in self.tasks.values():
             if task.enabled:
                 task._task = asyncio.create_task(
-                    self._run_task_loop(task), name=f"scheduler_{task.name}"
+                    self._run_task_loop(task), name=f"scheduler_{task.name}",
                 )
                 logger.info(f"   ✅ Started: {task.name}")
             else:
@@ -410,7 +410,7 @@ async def create_and_start_scheduler(
                     return
 
                 logger.info(
-                    f"🎓 Conversation Trainer found {len(analysis.get('patterns', []))} patterns"
+                    f"🎓 Conversation Trainer found {len(analysis.get('patterns', []))} patterns",
                 )
 
                 # 2. Generate improved prompt based on analysis
@@ -594,12 +594,12 @@ async def create_and_start_scheduler(
                                 p["assigned_to"],
                             )
                             logger.info(
-                                f"   📌 Created {days}d alert for practice {p['id'][:8]}..."
+                                f"   📌 Created {days}d alert for practice {p['id'][:8]}...",
                             )
 
                     # Count pending alerts
                     pending = await conn.fetchval(
-                        "SELECT COUNT(*) FROM renewal_alerts WHERE status = 'pending'"
+                        "SELECT COUNT(*) FROM renewal_alerts WHERE status = 'pending'",
                     )
                     logger.info(f"✅ Renewal Alerts Checker done. {pending} alerts pending.")
 
@@ -689,7 +689,7 @@ async def create_and_start_scheduler(
                     if result["success"]:
                         logger.info(
                             f"🧹 Conversation cleanup: {result['deleted_count']} deleted, "
-                            f"{result['anonymized_count']} anonymized"
+                            f"{result['anonymized_count']} anonymized",
                         )
                 except Exception as e:
                     logger.error(f"❌ Conversation cleanup error: {e}", exc_info=True)
@@ -735,7 +735,7 @@ async def create_and_start_scheduler(
 
                 logger.info(
                     f"🤖 Daily Ops Autopilot completed: "
-                    f"{reminders} reminders sent, {articles} articles composed"
+                    f"{reminders} reminders sent, {articles} articles composed",
                 )
             except Exception as e:
                 logger.error(f"❌ Daily Ops Autopilot error: {e}", exc_info=True)

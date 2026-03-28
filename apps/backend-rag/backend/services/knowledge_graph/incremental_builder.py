@@ -68,7 +68,7 @@ class KGIncrementalBuilder:
                 # Initialize with Google AI Studio API key
                 self._gemini_client = genai.Client(api_key=api_key)
                 logger.info(
-                    f"✅ Gemini client initialized with Google AI Studio (API key: {api_key[:10]}...)"
+                    f"✅ Gemini client initialized with Google AI Studio (API key: {api_key[:10]}...)",
                 )
             except ImportError:
                 logger.warning("⚠️ google-genai SDK not available")
@@ -100,7 +100,7 @@ class KGIncrementalBuilder:
                         WHERE source_chunk_ids IS NOT NULL
                             AND array_length(source_chunk_ids, 1) > 0
                     ) combined
-                    """
+                    """,
                 )
                 chunk_ids = {row["chunk_id"] for row in rows if row["chunk_id"]}
                 logger.info(f"Found {len(chunk_ids):,} already processed chunks")
@@ -156,7 +156,7 @@ class KGIncrementalBuilder:
             if scripts_path is None:
                 logger.error(
                     f"❌ kg_incremental_extraction.py not found. Tried: "
-                    f"{[str(p) for p in candidate_paths]}"
+                    f"{[str(p) for p in candidate_paths]}",
                 )
                 return {"status": "error", "error": "kg_incremental_extraction.py not found"}
 
@@ -216,13 +216,13 @@ class KGIncrementalBuilder:
             if max_chunks_remaining <= 0:
                 logger.warning(
                     f"⚠️ Daily limit reached ({self.MAX_CHUNKS_PER_RUN} chunks). "
-                    f"Skipping remaining collections."
+                    f"Skipping remaining collections.",
                 )
                 break
 
             logger.info(
                 f"🕸️ Processing collection: {collection} "
-                f"(remaining daily quota: {max_chunks_remaining} chunks)"
+                f"(remaining daily quota: {max_chunks_remaining} chunks)",
             )
 
             for attempt in range(max_retries):
@@ -245,7 +245,7 @@ class KGIncrementalBuilder:
                         f"✅ {collection}: {chunks_this_run} chunks, "
                         f"{stats.get('entities_extracted', 0)} entities, "
                         f"{stats.get('relationships_extracted', 0)} relationships "
-                        f"(remaining: {max_chunks_remaining} chunks)"
+                        f"(remaining: {max_chunks_remaining} chunks)",
                     )
                     break  # Success, move to next collection
 
@@ -258,7 +258,7 @@ class KGIncrementalBuilder:
                         total_stats["collections_failed"] += 1
                         total_stats["errors"].append(error_msg)
                         logger.error(
-                            f"❌ Failed to process {collection} after {max_retries} attempts"
+                            f"❌ Failed to process {collection} after {max_retries} attempts",
                         )
                     else:
                         # Retry with exponential backoff
@@ -271,7 +271,7 @@ class KGIncrementalBuilder:
             f"{total_stats['collections_processed']}/{len(collections)} collections, "
             f"{total_stats['total_chunks']:,} chunks, "
             f"{total_stats['total_entities']:,} entities, "
-            f"{total_stats['total_relationships']:,} relationships"
+            f"{total_stats['total_relationships']:,} relationships",
         )
 
         return total_stats

@@ -116,7 +116,7 @@ async def list_news(
 
         if search:
             conditions.append(
-                f"to_tsvector('english', coalesce(title, '') || ' ' || coalesce(summary, '')) @@ plainto_tsquery('english', ${param_idx})"
+                f"to_tsvector('english', coalesce(title, '') || ' ' || coalesce(summary, '')) @@ plainto_tsquery('english', ${param_idx})",
             )
             params.append(search)
             param_idx += 1
@@ -270,7 +270,7 @@ async def create_news(
             # Check for duplicate by external_id
             if item.external_id:
                 existing = await conn.fetchval(
-                    "SELECT id FROM news_items WHERE external_id = $1", item.external_id
+                    "SELECT id FROM news_items WHERE external_id = $1", item.external_id,
                 )
                 if existing:
                     return {"success": True, "data": {"id": str(existing)}, "duplicate": True}
@@ -320,7 +320,7 @@ async def create_news_bulk(
                 # Check duplicate
                 if item.external_id:
                     existing = await conn.fetchval(
-                        "SELECT id FROM news_items WHERE external_id = $1", item.external_id
+                        "SELECT id FROM news_items WHERE external_id = $1", item.external_id,
                     )
                     if existing:
                         duplicates += 1

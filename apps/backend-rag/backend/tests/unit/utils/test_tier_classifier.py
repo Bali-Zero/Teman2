@@ -33,7 +33,7 @@ class TestTierClassifier:
     def test_classify_tier_s_consciousness(self, classifier):
         """Test classifying Tier S - consciousness"""
         result = classifier.classify_book_tier(
-            "The Nature of Consciousness and Awareness", "Author"
+            "The Nature of Consciousness and Awareness", "Author",
         )
         assert result == TierLevel.S
 

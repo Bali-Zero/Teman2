@@ -85,7 +85,7 @@ def sample_experiments():
             split_ratio=0.5,
             min_sample_size=10,
             enabled=True,
-        )
+        ),
     }
 
 
@@ -154,7 +154,7 @@ class TestVariantAssignment:
                 variants=["A", "B"],
                 split_ratio=0.5,
                 enabled=True,
-            )
+            ),
         }
         manager = ABTestManager(experiments=experiments)
 
@@ -388,7 +388,7 @@ class TestExperimentResults:
                             "std_dev": 0.43,
                             "min": 0.0,
                             "max": 1.0,
-                        }
+                        },
                     },
                     "raw": {
                         "ctr": [1.0] * 75 + [0.0] * 25,
@@ -404,13 +404,13 @@ class TestExperimentResults:
                             "std_dev": 0.36,
                             "min": 0.0,
                             "max": 1.0,
-                        }
+                        },
                     },
                     "raw": {
                         "ctr": [1.0] * 85 + [0.0] * 15,
                     },
                 },
-            }
+            },
         )
 
         results = await ab_manager.get_experiment_results("hybrid_vs_dense")
@@ -429,7 +429,7 @@ class TestExperimentResults:
                     "variant": "dense_only",
                     "count": 100,
                     "metrics": {
-                        "ctr": {"count": 100, "mean": 0.5, "std_dev": 0.5, "min": 0.0, "max": 1.0}
+                        "ctr": {"count": 100, "mean": 0.5, "std_dev": 0.5, "min": 0.0, "max": 1.0},
                     },
                     "raw": {"ctr": [1.0] * 50 + [0.0] * 50},
                 },
@@ -437,11 +437,11 @@ class TestExperimentResults:
                     "variant": "hybrid",
                     "count": 100,
                     "metrics": {
-                        "ctr": {"count": 100, "mean": 0.8, "std_dev": 0.4, "min": 0.0, "max": 1.0}
+                        "ctr": {"count": 100, "mean": 0.8, "std_dev": 0.4, "min": 0.0, "max": 1.0},
                     },
                     "raw": {"ctr": [1.0] * 80 + [0.0] * 20},
                 },
-            }
+            },
         )
 
         is_sig = await ab_manager.is_significant("hybrid_vs_dense", "ctr")
@@ -596,7 +596,7 @@ class TestMetricsTracker:
                     min_value=0.0,
                     max_value=1.0,
                 ),
-            ]
+            ],
         )
 
         results = await tracker.get_experiment_aggregates(
@@ -625,7 +625,7 @@ class TestMetricsTracker:
                     timestamp=datetime.now(timezone.utc),
                     metadata=None,
                 ),
-            ]
+            ],
         )
 
         metrics = await tracker.get_metrics_by_query("query456")
@@ -651,7 +651,7 @@ class TestMetricsTracker:
                     timestamp=datetime.now(timezone.utc),
                     metadata=json.dumps({"source": "web"}),
                 ),
-            ]
+            ],
         )
 
         data = await tracker.export_experiment_data("test_exp")
@@ -878,7 +878,7 @@ class TestIntegration:
                 variants=["A", "B"],
                 split_ratio=0.5,
                 enabled=True,
-            )
+            ),
         }
         manager = ABTestManager(experiments=experiments)
 

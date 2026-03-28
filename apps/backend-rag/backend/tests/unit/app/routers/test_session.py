@@ -98,7 +98,7 @@ class TestSessionRouter:
     def test_update_session(self, client, mock_session_service):
         """Test updating a session"""
         response = client.put(
-            "/api/sessions/session123", json={"history": [{"role": "user", "content": "Updated"}]}
+            "/api/sessions/session123", json={"history": [{"role": "user", "content": "Updated"}]},
         )
         assert response.status_code == 200
         data = response.json()
@@ -111,7 +111,7 @@ class TestSessionRouter:
         app.dependency_overrides[get_session_service] = lambda: mock_session_service
 
         response = client.put(
-            "/api/sessions/session123", json={"history": [{"role": "user", "content": "Updated"}]}
+            "/api/sessions/session123", json={"history": [{"role": "user", "content": "Updated"}]},
         )
         assert response.status_code == 400
 

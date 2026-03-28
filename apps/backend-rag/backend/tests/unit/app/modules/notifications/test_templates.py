@@ -164,7 +164,7 @@ class TestAllAlertTypesCovered:
     """Ensure all alert types have templates for major languages."""
 
     @pytest.mark.parametrize(
-        "lang,alert_type", [(lang, alert) for lang in _LANGUAGES for alert in _ALERT_TYPES]
+        "lang,alert_type", [(lang, alert) for lang in _LANGUAGES for alert in _ALERT_TYPES],
     )
     def test_template_exists(self, lang: str, alert_type: AlertType):
         """Every language and alert type combination should have a template."""

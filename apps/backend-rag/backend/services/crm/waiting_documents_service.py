@@ -17,7 +17,7 @@ from backend.services.integrations.zoho_email_service import ZohoEmailService
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
-    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email"
+    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "REDACTED-ROTATED-KEY")
 
@@ -78,7 +78,7 @@ class WaitingDocumentsService:
                     )
                     results["team_leader_notified"] = True
                     logger.info(
-                        f"Waiting docs notification sent to team leader {team_leader_email}"
+                        f"Waiting docs notification sent to team leader {team_leader_email}",
                     )
                 except Exception as e:
                     logger.error(f"Failed to notify team leader: {e}")
@@ -163,12 +163,12 @@ Zantara CRM 🤖
                 )
                 response.raise_for_status()
             logger.info(
-                f"Team leader waiting-docs notification sent to {team_leader_email} via Brevo"
+                f"Team leader waiting-docs notification sent to {team_leader_email} via Brevo",
             )
             return
         except Exception as brevo_error:
             logger.warning(
-                f"Brevo failed for waiting-docs team notification, trying Zoho: {brevo_error}"
+                f"Brevo failed for waiting-docs team notification, trying Zoho: {brevo_error}",
             )
 
         # Fallback: Zoho

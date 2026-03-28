@@ -47,7 +47,7 @@ async def send_client_welcome(client_id: int, db_pool: asyncpg.Pool) -> None:
     """
     if not _WHATSAPP_WELCOME_ACTIVE:
         logger.debug(
-            "WelcomeWhatsApp: inactive (template approval pending), skipping client %d", client_id
+            "WelcomeWhatsApp: inactive (template approval pending), skipping client %d", client_id,
         )
         return
 
@@ -63,7 +63,7 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
 
     if not phone_number_id or not access_token:
         logger.warning(
-            "WelcomeWhatsApp: WHATSAPP_PHONE_NUMBER_ID or ACCESS_TOKEN not set, skipping"
+            "WelcomeWhatsApp: WHATSAPP_PHONE_NUMBER_ID or ACCESS_TOKEN not set, skipping",
         )
         return
 

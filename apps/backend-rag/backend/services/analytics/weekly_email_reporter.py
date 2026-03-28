@@ -47,7 +47,7 @@ class WeeklyEmailReporter:
         self.running = True
         self.task = asyncio.create_task(self._scheduler_loop())
         logger.info(
-            f"📧 Weekly email reporter started (sends Sundays at {CHECK_TIME_HOUR}:00 Bali time)"
+            f"📧 Weekly email reporter started (sends Sundays at {CHECK_TIME_HOUR}:00 Bali time)",
         )
 
     async def stop(self) -> None:
@@ -98,7 +98,7 @@ class WeeklyEmailReporter:
                 FROM team_members
                 WHERE is_active = TRUE
                 ORDER BY department, full_name
-                """
+                """,
             )
             return [dict(row) for row in rows]
 
@@ -189,7 +189,7 @@ class WeeklyEmailReporter:
             }
 
     def _build_html_email(
-        self, team_activities: list[dict], summary: dict, week_end: datetime
+        self, team_activities: list[dict], summary: dict, week_end: datetime,
     ) -> str:
         """Build HTML email content."""
         week_start = week_end - timedelta(days=7)
@@ -248,7 +248,7 @@ class WeeklyEmailReporter:
         inactive_warning = ""
         if inactive_members:
             inactive_names = ", ".join(
-                [m.get("full_name", m["email"]) for m in inactive_members[:5]]
+                [m.get("full_name", m["email"]) for m in inactive_members[:5]],
             )
             inactive_warning = f"""
             <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-top: 20px;">

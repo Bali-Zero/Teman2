@@ -21,13 +21,13 @@ def get_allowed_origins() -> list[str]:
                 origin.strip()
                 for origin in settings.zantara_allowed_origins.split(",")
                 if origin.strip()
-            ]
+            ],
         )
 
     # Development origins from settings (if configured)
     if hasattr(settings, "dev_origins") and settings.dev_origins:
         origins.extend(
-            [origin.strip() for origin in settings.dev_origins.split(",") if origin.strip()]
+            [origin.strip() for origin in settings.dev_origins.split(",") if origin.strip()],
         )
 
     # Default production origins

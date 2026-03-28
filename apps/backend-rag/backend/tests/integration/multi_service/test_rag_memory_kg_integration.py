@@ -35,10 +35,10 @@ def mock_search_service():
                     "text": "Marco Verdi ha completato la domanda per E33G KITAS",
                     "score": 0.9,
                     "metadata": {"source": "visa_oracle"},
-                }
+                },
             ],
             "total": 1,
-        }
+        },
     )
     return service
 
@@ -66,7 +66,7 @@ def mock_memory_orchestrator(mock_db_pool):
             "facts": ["Interested in E33G KITAS", "Budget: $50k USD"],
             "collective_facts": [],
             "entities": {"name": "Marco Verdi", "city": "Milano"},
-        }
+        },
     )
     orchestrator.save_conversation = AsyncMock(return_value={"success": True})
     return orchestrator
@@ -82,7 +82,7 @@ def mock_episodic_memory(mock_db_pool):
             "success": True,
             "event_type": "visa_application",
             "title": "E33G KITAS Application",
-        }
+        },
     )
     service.link_entity_to_event = AsyncMock(return_value={"success": True})
     return service
@@ -93,7 +93,7 @@ class TestRAGMemoryKGIntegration:
 
     @pytest.mark.asyncio
     async def test_rag_query_with_memory_context(
-        self, mock_search_service, mock_db_pool, mock_memory_orchestrator
+        self, mock_search_service, mock_db_pool, mock_memory_orchestrator,
     ):
         """Test RAG query using Memory context for personalization"""
         query = "Quanto costa E33G per me?"
@@ -101,13 +101,13 @@ class TestRAGMemoryKGIntegration:
 
         # Create orchestrator with memory
         with patch(
-            "backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator
+            "backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator,
         ):
             orchestrator = create_agentic_rag(retriever=mock_search_service, db_pool=mock_db_pool)
 
             # Execute query
             result = await orchestrator.process_query(
-                query=query, user_id=user_id, session_id="test-session", conversation_history=[]
+                query=query, user_id=user_id, session_id="test-session", conversation_history=[],
             )
 
             # Verify RAG executed and returned a result
@@ -128,10 +128,10 @@ class TestRAGMemoryKGIntegration:
                         {"name": "E33G", "type": "VISA_TYPE"},
                     ],
                     "relations": [
-                        {"subject": "Marco Verdi", "predicate": "APPLIED_FOR", "object": "E33G"}
+                        {"subject": "Marco Verdi", "predicate": "APPLIED_FOR", "object": "E33G"},
                     ],
                     "success": True,
-                }
+                },
             )
             mock_kg.return_value = mock_kg_instance
 
@@ -149,7 +149,7 @@ class TestRAGMemoryKGIntegration:
 
     @pytest.mark.asyncio
     async def test_rag_result_to_episodic_memory(
-        self, mock_search_service, mock_db_pool, mock_episodic_memory
+        self, mock_search_service, mock_db_pool, mock_episodic_memory,
     ):
         """Test that RAG results create Episodic Memory events"""
         user_id = "marco@example.com"
@@ -179,13 +179,13 @@ class TestRAGMemoryKGIntegration:
 
             # Verify entity linking
             link_result = await mock_episodic_memory.link_entity_to_event(
-                event_id=event["event_id"], entity_name="E33G", entity_type="VISA_TYPE"
+                event_id=event["event_id"], entity_name="E33G", entity_type="VISA_TYPE",
             )
             assert link_result["success"] is True
 
     @pytest.mark.asyncio
     async def test_memory_facts_influence_rag_response(
-        self, mock_search_service, mock_db_pool, mock_memory_orchestrator
+        self, mock_search_service, mock_db_pool, mock_memory_orchestrator,
     ):
         """Test that Memory facts influence RAG response generation"""
         query = "Qual è il prossimo passo?"
@@ -202,18 +202,18 @@ class TestRAGMemoryKGIntegration:
                 ],
                 "collective_facts": [],
                 "entities": {},
-            }
+            },
         )
 
         # Create orchestrator
         with patch(
-            "backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator
+            "backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator,
         ):
             orchestrator = create_agentic_rag(retriever=mock_search_service, db_pool=mock_db_pool)
 
             # Execute query
             result = await orchestrator.process_query(
-                query=query, user_id=user_id, session_id="test-session", conversation_history=[]
+                query=query, user_id=user_id, session_id="test-session", conversation_history=[],
             )
 
             # Verify response considers memory context
@@ -226,7 +226,7 @@ class TestRAGMemoryKGIntegration:
 
         # Mock KG entity lookup
         kg_entities = [
-            {"name": "Marco Verdi", "type": "PERSON", "related_entities": ["E33G", "PT PMA"]}
+            {"name": "Marco Verdi", "type": "PERSON", "related_entities": ["E33G", "PT PMA"]},
         ]
 
         # Enhance query with KG entities
@@ -234,7 +234,7 @@ class TestRAGMemoryKGIntegration:
 
         # Execute enhanced search
         result = await mock_search_service.search(
-            query=enhanced_query, collection="visa_oracle", limit=5
+            query=enhanced_query, collection="visa_oracle", limit=5,
         )
 
         # Verify search was executed with enhanced query
@@ -243,7 +243,7 @@ class TestRAGMemoryKGIntegration:
 
     @pytest.mark.asyncio
     async def test_conversation_save_triggers_kg_and_memory(
-        self, mock_db_pool, mock_episodic_memory
+        self, mock_db_pool, mock_episodic_memory,
     ):
         """Test that saving conversation triggers both KG extraction and Memory storage"""
         conversation_text = "Marco Verdi ha aperto PT PMA a Bali nel 2024"
@@ -253,7 +253,7 @@ class TestRAGMemoryKGIntegration:
         with patch("backend.services.misc.conversation_service.ConversationService") as mock_conv:
             mock_conv_instance = MagicMock()
             mock_conv_instance.save_conversation = AsyncMock(
-                return_value={"success": True, "conversation_id": 456}
+                return_value={"success": True, "conversation_id": 456},
             )
             mock_conv.return_value = mock_conv_instance
 
@@ -264,7 +264,7 @@ class TestRAGMemoryKGIntegration:
                     return_value={
                         "entities": [{"name": "Marco Verdi", "type": "PERSON"}],
                         "success": True,
-                    }
+                    },
                 )
                 mock_kg.return_value = mock_kg_instance
 
@@ -293,7 +293,7 @@ class TestRAGMemoryKGIntegration:
 
     @pytest.mark.asyncio
     async def test_multi_turn_conversation_with_kg_updates(
-        self, mock_search_service, mock_db_pool, mock_memory_orchestrator
+        self, mock_search_service, mock_db_pool, mock_memory_orchestrator,
     ):
         """Test multi-turn conversation that updates Knowledge Graph incrementally"""
         session_id = "test-session"
@@ -313,14 +313,14 @@ class TestRAGMemoryKGIntegration:
                 {"name": "PT PMA", "type": "COMPANY_TYPE"},
             ]
             relations_turn2 = [
-                {"subject": "Marco Verdi", "predicate": "WANTS_TO_CREATE", "object": "PT PMA"}
+                {"subject": "Marco Verdi", "predicate": "WANTS_TO_CREATE", "object": "PT PMA"},
             ]
 
             mock_kg_instance.process_document = AsyncMock(
                 side_effect=[
                     {"entities": entities_turn1, "success": True},
                     {"entities": entities_turn2, "relations": relations_turn2, "success": True},
-                ]
+                ],
             )
             mock_kg.return_value = mock_kg_instance
 
@@ -329,12 +329,12 @@ class TestRAGMemoryKGIntegration:
 
             # Turn 1
             result1 = await kg_pipeline.process_document(
-                text=turn1_query, metadata={"turn": 1, "session_id": session_id}
+                text=turn1_query, metadata={"turn": 1, "session_id": session_id},
             )
 
             # Turn 2
             result2 = await kg_pipeline.process_document(
-                text=f"{turn1_query} {turn2_query}", metadata={"turn": 2, "session_id": session_id}
+                text=f"{turn1_query} {turn2_query}", metadata={"turn": 2, "session_id": session_id},
             )
 
             # Verify incremental KG updates

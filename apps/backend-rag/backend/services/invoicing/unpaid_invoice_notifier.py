@@ -57,7 +57,7 @@ class UnpaidInvoiceNotifier:
         """
         logger.info(
             "[UnpaidInvoiceNotifier] Starting overdue invoice check "
-            f"(threshold: {OVERDUE_DAYS} days)"
+            f"(threshold: {OVERDUE_DAYS} days)",
         )
 
         try:
@@ -79,7 +79,7 @@ class UnpaidInvoiceNotifier:
             await self._send_asya_reminder(invoices)
             logger.info(
                 f"[UnpaidInvoiceNotifier] Reminder sent to {ACCOUNTING_EMAIL} "
-                f"for {len(invoices)} invoice(s)"
+                f"for {len(invoices)} invoice(s)",
             )
             return {"overdue_count": len(invoices), "notified": True, "skipped": False}
         except Exception as exc:
@@ -175,7 +175,7 @@ class UnpaidInvoiceNotifier:
                 f"{amount_formatted}</td>"
                 f"<td style='padding:8px 12px;border-bottom:1px solid #eee;text-align:center;'>"
                 f"<strong>{days_overdue}</strong></td>"
-                "</tr>"
+                "</tr>",
             )
 
         table_html = "\n".join(table_rows)
@@ -228,7 +228,7 @@ class UnpaidInvoiceNotifier:
 
         logger.info(
             f"[UnpaidInvoiceNotifier] Sending reminder to {ACCOUNTING_EMAIL} "
-            f"via Brevo ({n} invoice(s))"
+            f"via Brevo ({n} invoice(s))",
         )
 
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -244,5 +244,5 @@ class UnpaidInvoiceNotifier:
             response.raise_for_status()
 
         logger.info(
-            f"[UnpaidInvoiceNotifier] Brevo accepted reminder email (status {response.status_code})"
+            f"[UnpaidInvoiceNotifier] Brevo accepted reminder email (status {response.status_code})",
         )

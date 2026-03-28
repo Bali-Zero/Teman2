@@ -61,7 +61,7 @@ class MemoryFactExtractor:
         ]
 
     def extract_facts_from_conversation(
-        self, user_message: str, ai_response: str, user_id: str
+        self, user_message: str, ai_response: str, user_id: str,
     ) -> list[dict]:
         """
         Extract key facts from a conversation turn
@@ -97,11 +97,11 @@ class MemoryFactExtractor:
             # Log extraction results
             if facts:
                 logger.info(
-                    f"💎 [FactExtractor] Extracted {len(facts)} facts for {user_id} ({duration * 1000:.1f}ms)"
+                    f"💎 [FactExtractor] Extracted {len(facts)} facts for {user_id} ({duration * 1000:.1f}ms)",
                 )
                 for fact in facts[:3]:  # Log top 3
                     logger.info(
-                        f"   - [{fact['type']}] {fact['content'][:50]}... (conf: {fact['confidence']:.2f})"
+                        f"   - [{fact['type']}] {fact['content'][:50]}... (conf: {fact['confidence']:.2f})",
                     )
 
             return facts
@@ -124,7 +124,7 @@ class MemoryFactExtractor:
             for match in matches:
                 # Extract context with word boundaries (no truncation)
                 context = self._extract_context_with_word_boundaries(
-                    text, match.start(), match.end(), chars_before=50, chars_after=50
+                    text, match.start(), match.end(), chars_before=50, chars_after=50,
                 )
                 context = self._clean_context(context)
 
@@ -135,7 +135,7 @@ class MemoryFactExtractor:
                             "type": fact_type,
                             "confidence": base_confidence,
                             "source": source,
-                        }
+                        },
                     )
 
         # Check business patterns
@@ -143,7 +143,7 @@ class MemoryFactExtractor:
             matches = re.finditer(pattern, text_lower)
             for match in matches:
                 context = self._extract_context_with_word_boundaries(
-                    text, match.start(), match.end(), chars_before=30, chars_after=70
+                    text, match.start(), match.end(), chars_before=30, chars_after=70,
                 )
                 context = self._clean_context(context)
 
@@ -154,7 +154,7 @@ class MemoryFactExtractor:
                             "type": fact_type,
                             "confidence": base_confidence + 0.1,  # Business facts are important
                             "source": source,
-                        }
+                        },
                     )
 
         # Check personal patterns
@@ -162,7 +162,7 @@ class MemoryFactExtractor:
             matches = re.finditer(pattern, text_lower)
             for match in matches:
                 context = self._extract_context_with_word_boundaries(
-                    text, match.start(), match.end(), chars_before=20, chars_after=100
+                    text, match.start(), match.end(), chars_before=20, chars_after=100,
                 )
                 context = self._clean_context(context)
 
@@ -174,7 +174,7 @@ class MemoryFactExtractor:
                             "confidence": base_confidence
                             + 0.15,  # Identity facts are very important
                             "source": source,
-                        }
+                        },
                     )
 
         # Check timeline patterns
@@ -182,7 +182,7 @@ class MemoryFactExtractor:
             matches = re.finditer(pattern, text_lower)
             for match in matches:
                 context = self._extract_context_with_word_boundaries(
-                    text, match.start(), match.end(), chars_before=40, chars_after=60
+                    text, match.start(), match.end(), chars_before=40, chars_after=60,
                 )
                 context = self._clean_context(context)
 
@@ -193,7 +193,7 @@ class MemoryFactExtractor:
                             "type": fact_type,
                             "confidence": base_confidence + 0.2,  # Timelines are critical
                             "source": source,
-                        }
+                        },
                     )
 
         return facts

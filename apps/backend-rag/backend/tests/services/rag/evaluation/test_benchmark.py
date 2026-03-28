@@ -37,7 +37,7 @@ def mock_hybrid_service():
             "results": [{"text": "Context 1"}, {"text": "Context 2"}],
             "search_type": "dense",
             "total_results": 2,
-        }
+        },
     )
     service.search_hybrid = AsyncMock(
         return_value={
@@ -46,7 +46,7 @@ def mock_hybrid_service():
             "bm25_enabled": True,
             "alpha": 0.5,
             "total_results": 2,
-        }
+        },
     )
     return service
 
@@ -59,7 +59,7 @@ def mock_reranker():
         return_value=[
             {"text": "Context 1", "score": 0.95},
             {"text": "Context 2", "score": 0.85},
-        ]
+        ],
     )
     return reranker
 
@@ -80,7 +80,7 @@ def mock_evaluator():
                 "context_entity_recall": 0.8,
             },
             metadata={},
-        )
+        ),
     )
     return evaluator
 
@@ -154,7 +154,7 @@ class TestInitialization:
     def test_init_lazy_reranker(self, mock_evaluator, mock_hybrid_service):
         """Test lazy initialization of reranker."""
         with patch(
-            "backend.services.rag.evaluation.benchmark.CrossEncoderRerankerMixin"
+            "backend.services.rag.evaluation.benchmark.CrossEncoderRerankerMixin",
         ) as mock_reranker_cls:
             mock_reranker = MagicMock()
             mock_reranker_cls.return_value = mock_reranker
@@ -170,7 +170,7 @@ class TestInitialization:
     def test_init_reranker_failure(self, mock_evaluator, mock_hybrid_service):
         """Test handling of reranker initialization failure."""
         with patch(
-            "backend.services.rag.evaluation.benchmark.CrossEncoderRerankerMixin"
+            "backend.services.rag.evaluation.benchmark.CrossEncoderRerankerMixin",
         ) as mock_reranker_cls:
             mock_reranker_cls.side_effect = Exception("Reranker not available")
 
@@ -306,7 +306,7 @@ class TestSampleEvaluation:
 
     @pytest.mark.asyncio
     async def test_evaluate_sample_unknown_method(
-        self, benchmark, sample_dataset, benchmark_config
+        self, benchmark, sample_dataset, benchmark_config,
     ):
         """Test that unknown method raises error."""
         with pytest.raises(ValueError, match="Unknown search method"):
@@ -355,7 +355,7 @@ class TestMethodEvaluation:
                     metrics={"faithfulness": 0.8},
                     metadata={},
                 ),
-            ]
+            ],
         )
 
         result = await benchmark.evaluate_method(
@@ -574,7 +574,7 @@ class TestDatabaseOperations:
             return_value=[
                 {"id": "run-1", "name": "weekly"},
                 {"id": "run-2", "name": "weekly"},
-            ]
+            ],
         )
         mock_pool = MagicMock()
         mock_pool.acquire = MagicMock()

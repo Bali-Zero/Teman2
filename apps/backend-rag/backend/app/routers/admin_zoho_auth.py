@@ -89,7 +89,7 @@ async def admin_zoho_callback(
 
         # Exchange code for tokens
         result = await oauth_service.exchange_code(
-            code=code, user_id="7dfe56b2-ff63-4d40-b78b-90c018127a02"
+            code=code, user_id="7dfe56b2-ff63-4d40-b78b-90c018127a02",
         )
 
         return {
@@ -120,7 +120,7 @@ async def admin_zoho_debug_callback(
     logger = logging.getLogger(__name__)
 
     logger.info(
-        f"Zoho OAuth Debug - code: {code[:50] if code else 'None'}..., state: {state}, error: {error}"
+        f"Zoho OAuth Debug - code: {code[:50] if code else 'None'}..., state: {state}, error: {error}",
     )
 
     if code:

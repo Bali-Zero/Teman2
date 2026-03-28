@@ -47,7 +47,7 @@ async def get_team_members(
     async with pool.acquire() as conn:
         # Get current user's department
         user_dept = await conn.fetchval(
-            "SELECT department FROM team_members WHERE email = $1", user_email
+            "SELECT department FROM team_members WHERE email = $1", user_email,
         )
 
         # Check if user has specific visibility rules
@@ -75,7 +75,7 @@ async def get_team_members(
                 """SELECT email, name, full_name, role, department, active, avatar
                    FROM team_members
                    WHERE active = TRUE
-                   ORDER BY name"""
+                   ORDER BY name""",
             )
         else:
             # Default: see only members of same department

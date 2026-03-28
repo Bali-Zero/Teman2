@@ -261,7 +261,7 @@ class TestWorkflowAnalyticsRepository:
                 "follow_rate_percent": 75.0,
                 "avg_confidence": 0.82,
                 "avg_feedback_score": 4.1,
-            }
+            },
         )
         repo = WorkflowAnalyticsRepository(pool)
 
@@ -314,7 +314,7 @@ class TestWorkflowAnalyticsRepository:
                     "followed_count": 28,
                     "avg_score": 4.5,
                 },
-            ]
+            ],
         )
         repo = WorkflowAnalyticsRepository(pool)
 
@@ -341,7 +341,7 @@ class TestWorkflowAnalyticsRepository:
                     "avg_confidence": 0.85,
                     "avg_latency_ms": 320,
                 },
-            ]
+            ],
         )
         repo = WorkflowAnalyticsRepository(pool)
 

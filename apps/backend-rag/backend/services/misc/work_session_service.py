@@ -341,7 +341,7 @@ Session ID: {session["id"]}
             user_stats[email]["total_conversations"] += s["conversations_count"] or 0
             user_stats[email]["total_activities"] += s["activities_count"] or 0
             user_stats[email]["sessions"].append(
-                {"date": s["session_start"].strftime("%Y-%m-%d"), "hours": round(hours, 2)}
+                {"date": s["session_start"].strftime("%Y-%m-%d"), "hours": round(hours, 2)},
             )
 
         # Count unique days
@@ -418,7 +418,7 @@ Session ID: {session["id"]}
                     "activities": session["activities_count"] or 0,
                     "status": session["status"],
                     "notes": session["notes"],
-                }
+                },
             )
 
         report = {
@@ -504,7 +504,7 @@ Subject: {subject}
 
 {message}
 ════════════════════════════════════════════════
-        """
+        """,
         )
 
         # Email sending can be implemented using NotificationHub service

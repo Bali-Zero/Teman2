@@ -135,7 +135,7 @@ def parse_gold_content_ts(filepath: Path) -> dict[str, dict]:
         # Extract TKA positions
         tka_positions = []
         for pm in re.finditer(
-            r'titleEn\s*:\s*"([^"]*)".*?titleId\s*:\s*"([^"]*)"', entry_str, re.DOTALL
+            r'titleEn\s*:\s*"([^"]*)".*?titleId\s*:\s*"([^"]*)"', entry_str, re.DOTALL,
         ):
             tka_positions.append({"en": pm.group(1), "id": pm.group(2)})
         if tka_positions:
@@ -334,7 +334,7 @@ async def main():
                 "id": deterministic_uuid(code),
                 "payload": payload,
                 "_text_to_embed": embedding_text,
-            }
+            },
         )
 
     logger.info(f"Built {len(all_points)} points to index")
@@ -383,7 +383,7 @@ async def main():
                 "id": point["id"],
                 "vector": {"dense": emb},
                 "payload": point["payload"],
-            }
+            },
         )
 
     logger.info(f"Upserting {len(qdrant_points)} points...")

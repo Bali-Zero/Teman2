@@ -157,7 +157,7 @@ class QueryGates:
             GateResult with identity response if triggered
         """
         identity_response = self.prompt_builder.check_identity_questions(
-            query, context=user_context
+            query, context=user_context,
         )
         if identity_response:
             logger.info("Returning hardcoded identity response")
@@ -191,7 +191,7 @@ class QueryGates:
         return GateResult(triggered=False)
 
     def check_clarification_gate(
-        self, query: str, conversation_history: list[dict], confidence_threshold: float = 0.6
+        self, query: str, conversation_history: list[dict], confidence_threshold: float = 0.6,
     ) -> GateResult:
         """
         CLARIFICATION GATE: Detect ambiguous queries needing clarification.
@@ -216,7 +216,7 @@ class QueryGates:
         ):
             logger.info(f"Stopped ambiguous query: {ambiguity_info['reasons']}")
             clarification_msg = self.clarification_service.generate_clarification_request(
-                query, ambiguity_info
+                query, ambiguity_info,
             )
             return GateResult(
                 triggered=True,

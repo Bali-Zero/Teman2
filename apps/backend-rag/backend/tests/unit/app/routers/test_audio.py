@@ -96,7 +96,7 @@ class TestAudioRouter:
     def test_generate_speech(self, client, mock_audio_service):
         """Test generating speech"""
         response = client.post(
-            "/audio/speech", json={"text": "Hello world", "voice": "alloy", "model": "tts-1"}
+            "/audio/speech", json={"text": "Hello world", "voice": "alloy", "model": "tts-1"},
         )
         assert response.status_code == 200
         assert response.headers["content-type"] == "audio/mpeg"

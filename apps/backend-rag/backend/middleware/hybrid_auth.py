@@ -50,13 +50,13 @@ def _allowed_origins() -> set[str]:
                 origin.strip()
                 for origin in settings.zantara_allowed_origins.split(",")
                 if origin.strip()
-            }
+            },
         )
 
     # Development origins from settings
     if getattr(settings, "dev_origins", None):
         origins.update(
-            {origin.strip() for origin in settings.dev_origins.split(",") if origin.strip()}
+            {origin.strip() for origin in settings.dev_origins.split(",") if origin.strip()},
         )
 
     # Defaults (keep in sync with cors_config.py)
@@ -197,7 +197,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
         logger.info(
             f"HybridAuthMiddleware initialized - API Auth: {self.api_auth_enabled}, "
-            f"Bypass DB: {self.api_auth_bypass_db}, Public Endpoints: {len(self.public_endpoints)}"
+            f"Bypass DB: {self.api_auth_bypass_db}, Public Endpoints: {len(self.public_endpoints)}",
         )
 
     # Paths that require admin API key in production (docs, metrics)
@@ -208,7 +208,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/openapi.json",
             "/api/v1/openapi.json",
             "/redoc",
-        }
+        },
     )
     _METRICS_PATHS = frozenset({"/metrics", "/metrics/"})
 
@@ -325,12 +325,12 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
                     # Record total access
                     public_endpoint_access_total.labels(
-                        endpoint=request.url.path, method=request.method
+                        endpoint=request.url.path, method=request.method,
                     ).inc()
 
                     # Record access by IP (for abuse detection)
                     public_endpoint_access_by_ip.labels(
-                        endpoint=request.url.path, client_ip=client_ip
+                        endpoint=request.url.path, client_ip=client_ip,
                     ).inc()
                 except (ImportError, AttributeError):
                     # Metrics not available, continue without metrics
@@ -347,7 +347,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 # Fail-Closed: authentication required for non-public endpoints
                 if not auth_result:
                     logger.debug(
-                        f"Authentication failed for: {request.url.path} from {request.client.host}"
+                        f"Authentication failed for: {request.url.path} from {request.client.host}",
                     )
                     from fastapi.responses import JSONResponse
 
@@ -365,7 +365,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 user_email = auth_result.get("email", "unknown")
                 logger.debug(
                     f"Request authenticated: {request.url.path} - "
-                    f"User: {user_email} via {request.state.auth_type}"
+                    f"User: {user_email} via {request.state.auth_type}",
                 )
 
             # Step 3: Process the authenticated request
@@ -386,7 +386,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             logger.warning(
                 f"[{correlation_id}] HTTPException during request processing: "
                 f"{exc.status_code} - {request.method} {request.url.path} from {client_host}. "
-                f"Detail: {exc.detail if isinstance(exc.detail, str) else 'See detail object'}"
+                f"Detail: {exc.detail if isinstance(exc.detail, str) else 'See detail object'}",
             )
 
             from fastapi.responses import JSONResponse
@@ -425,7 +425,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 # If sanitization failed, fallback to string representation
                 logger.error(
                     f"[{correlation_id}] Failed to serialize HTTPException detail: {serialization_error}. "
-                    f"Original detail type: {type(exc.detail)}"
+                    f"Original detail type: {type(exc.detail)}",
                 )
                 return JSONResponse(
                     status_code=exc.status_code,
@@ -525,7 +525,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             user_context = self.api_key_auth.validate_api_key(api_key)
             if user_context:
                 logger.info(
-                    f"API Key authenticated: {user_context.get('role', 'unknown')} from {client_host}"
+                    f"API Key authenticated: {user_context.get('role', 'unknown')} from {client_host}",
                 )
                 return user_context
             else:
@@ -541,7 +541,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # Validate CSRF for state-changing requests (POST, PUT, DELETE, PATCH)
             if settings.csrf_enabled and not is_csrf_exempt(request) and not validate_csrf(request):
                 logger.warning(
-                    f"CSRF validation failed for {request.method} {request.url.path} from {client_host}"
+                    f"CSRF validation failed for {request.method} {request.url.path} from {client_host}",
                 )
                 return None
 
@@ -549,7 +549,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             if jwt_user:
                 jwt_user["auth_method"] = "jwt_cookie"
                 logger.info(
-                    f"Cookie JWT authenticated: {jwt_user.get('email', 'unknown')} from {client_host}"
+                    f"Cookie JWT authenticated: {jwt_user.get('email', 'unknown')} from {client_host}",
                 )
                 return jwt_user
             else:
@@ -567,7 +567,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 if jwt_user:
                     jwt_user["auth_method"] = "jwt_header"
                     logger.info(
-                        f"Header JWT authenticated: {jwt_user.get('email', 'unknown')} from {client_host}"
+                        f"Header JWT authenticated: {jwt_user.get('email', 'unknown')} from {client_host}",
                     )
                     return jwt_user
                 else:
@@ -597,7 +597,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
             # Stateless validation using secret key
             payload = jwt.decode(
-                token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
+                token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm],
             )
 
             # Validate required fields
@@ -637,7 +637,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
             # Stateless validation using secret key
             payload = jwt.decode(
-                jwt_token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
+                jwt_token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm],
             )
 
             # Validate required fields

@@ -97,7 +97,7 @@ class DailyCheckinNotifier:
                 FROM team_timesheet
                 WHERE DATE(created_at AT TIME ZONE 'Asia/Makassar') = CURRENT_DATE
                 ORDER BY created_at DESC
-                """
+                """,
             )
 
             return [
@@ -120,7 +120,7 @@ class DailyCheckinNotifier:
                     last_action_bali
                 FROM team_online_status
                 ORDER BY is_online DESC, email
-                """
+                """,
             )
 
             return [

@@ -167,7 +167,7 @@ def test_get_services_status_registry_fail(mock_settings, auth_headers):
 
 def test_get_recent_traces(mock_settings, auth_headers):
     with patch(
-        "backend.middleware.request_tracing.RequestTracingMiddleware.get_recent_traces"
+        "backend.middleware.request_tracing.RequestTracingMiddleware.get_recent_traces",
     ) as mock_get:
         mock_get.return_value = [{"id": "1"}]
         response = client.get("/api/debug/traces/recent", headers=auth_headers)
@@ -198,7 +198,7 @@ def test_db_queries_slow(mock_settings, auth_headers):
 
 def test_db_queries_recent(mock_settings, auth_headers):
     with patch(
-        "backend.app.utils.db_debugger.DatabaseQueryDebugger.get_recent_queries"
+        "backend.app.utils.db_debugger.DatabaseQueryDebugger.get_recent_queries",
     ) as mock_get:
         mock_get.return_value = []
         response = client.get("/api/debug/db/queries/recent", headers=auth_headers)
@@ -207,7 +207,7 @@ def test_db_queries_recent(mock_settings, auth_headers):
 
 def test_db_queries_analyze(mock_settings, auth_headers):
     with patch(
-        "backend.app.utils.db_debugger.DatabaseQueryDebugger.analyze_query_patterns"
+        "backend.app.utils.db_debugger.DatabaseQueryDebugger.analyze_query_patterns",
     ) as mock_analyze:
         mock_analyze.return_value = {}
         response = client.get("/api/debug/db/queries/analyze", headers=auth_headers)
@@ -264,8 +264,8 @@ async def test_parent_documents_success(mock_settings, auth_headers):
                         "char_count": 100,
                         "pasal_count": 5,
                         "created_at": "2023-01-01",
-                    }
-                ]
+                    },
+                ],
             )
             mock_conn.close = AsyncMock()
             mock_connect.return_value = mock_conn
@@ -376,7 +376,7 @@ def test_postgres_query(mock_settings, auth_headers):
         mock_instance.execute_query = AsyncMock(return_value={"columns": [], "rows": []})
 
         response = client.post(
-            "/api/debug/postgres/query", json={"query": "SELECT 1"}, headers=auth_headers
+            "/api/debug/postgres/query", json={"query": "SELECT 1"}, headers=auth_headers,
         )
         assert response.status_code == 200
         assert response.json()["success"] is True
@@ -388,7 +388,7 @@ def test_postgres_query_validation_error(mock_settings, auth_headers):
         mock_instance.execute_query = AsyncMock(side_effect=ValueError("Unsafe query"))
 
         response = client.post(
-            "/api/debug/postgres/query", json={"query": "DELETE FROM table"}, headers=auth_headers
+            "/api/debug/postgres/query", json={"query": "DELETE FROM table"}, headers=auth_headers,
         )
         assert response.status_code == 400
 

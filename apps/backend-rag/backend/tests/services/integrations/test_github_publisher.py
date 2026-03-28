@@ -27,7 +27,7 @@ from backend.services.integrations.github_publisher import (
 
 
 def _make_publisher(
-    token: str = "ghp_fake", owner: str = "org", repo: str = "repo"
+    token: str = "ghp_fake", owner: str = "org", repo: str = "repo",
 ) -> GitHubPublisher:
     with patch("backend.services.integrations.github_publisher.settings") as mock_settings:
         mock_settings.github_token = token

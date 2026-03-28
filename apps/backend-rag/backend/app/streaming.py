@@ -132,7 +132,7 @@ async def bali_zero_chat_stream(
                     "counters": memory_obj.counters,
                 }
                 logger.info(
-                    f"✅ Loaded memory for {user_id}: {len(memory_obj.profile_facts)} facts"
+                    f"✅ Loaded memory for {user_id}: {len(memory_obj.profile_facts)} facts",
                 )
         except Exception as e:
             logger.warning(f"⚠️ Failed to load memory for {user_id}: {e}")
@@ -248,7 +248,7 @@ async def bali_zero_chat_stream(
                         try:
                             await workflow.ainvoke(input_state)
                             logger.info(
-                                f"🧠 Collective Memory processed for {input_state['user_id']}"
+                                f"🧠 Collective Memory processed for {input_state['user_id']}",
                             )
                         except Exception as e:
                             logger.error(f"❌ Collective Memory failed: {e}")
@@ -338,12 +338,12 @@ async def chat_stream_post(
     ):
         try:
             history_data = await request.app.state.conversation_service.get_history(
-                user_email=user_email, session_id=session_id, limit=20
+                user_email=user_email, session_id=session_id, limit=20,
             )
             if history_data and history_data.get("messages"):
                 conversation_history_list = history_data["messages"]
                 logger.info(
-                    f"📜 Loaded {len(conversation_history_list)} messages from {history_data.get('source')} for session {session_id}"
+                    f"📜 Loaded {len(conversation_history_list)} messages from {history_data.get('source')} for session {session_id}",
                 )
         except Exception as e:
             logger.warning(f"⚠️ Failed to fetch history for session {session_id}: {e}")
@@ -372,7 +372,7 @@ async def chat_stream_post(
                     "counters": memory_obj.counters,
                 }
                 logger.info(
-                    f"✅ Loaded memory for {user_id}: {len(memory_obj.profile_facts)} facts"
+                    f"✅ Loaded memory for {user_id}: {len(memory_obj.profile_facts)} facts",
                 )
         except Exception as e:
             logger.warning(f"⚠️ Failed to load memory for {user_id}: {e}")
@@ -502,7 +502,7 @@ async def chat_stream_post(
                         try:
                             await workflow.ainvoke(input_state)
                             logger.info(
-                                f"🧠 Collective Memory processed for {input_state['user_id']}"
+                                f"🧠 Collective Memory processed for {input_state['user_id']}",
                             )
                         except Exception as e:
                             logger.error(f"❌ Collective Memory failed: {e}")

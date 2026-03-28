@@ -57,7 +57,7 @@ class DrivePermissionsManager:
                     "name": perm.get("displayName", ""),
                     "role": perm.get("role"),
                     "type": perm.get("type"),
-                }
+                },
             )
 
         return permissions
@@ -108,7 +108,7 @@ class DrivePermissionsManager:
 
     @drive_operation("update_permission")
     async def update_permission(
-        self, user_email: str, file_id: str, permission_id: str, request: Any
+        self, user_email: str, file_id: str, permission_id: str, request: Any,
     ) -> dict[str, Any]:
         """
         Aggiorna il ruolo di un permesso esistente (es. da 'reader' a 'writer').
@@ -143,7 +143,7 @@ class DrivePermissionsManager:
 
     @drive_operation("remove_permission")
     async def remove_permission(
-        self, user_email: str, file_id: str, permission_id: str
+        self, user_email: str, file_id: str, permission_id: str,
     ) -> dict[str, bool]:
         """
         Rimuove / revoca un permesso di accesso a un file o cartella.

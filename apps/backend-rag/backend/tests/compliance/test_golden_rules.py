@@ -73,7 +73,7 @@ class TypeHintChecker(ast.NodeVisitor):
         # Check if function has return type annotation
         if node.returns is None:
             self.violations.append(
-                f"{self.file_path}:{node.lineno} - Function '{node.name}' missing return type hint"
+                f"{self.file_path}:{node.lineno} - Function '{node.name}' missing return type hint",
             )
 
         # Check if arguments have type annotations (except self, cls)
@@ -83,7 +83,7 @@ class TypeHintChecker(ast.NodeVisitor):
             if arg.annotation is None:
                 self.violations.append(
                     f"{self.file_path}:{node.lineno} - "
-                    f"Parameter '{arg.arg}' in '{node.name}' missing type hint"
+                    f"Parameter '{arg.arg}' in '{node.name}' missing type hint",
                 )
 
         self.generic_visit(node)
@@ -119,7 +119,7 @@ def test_golden_rule_5_type_hints():
         pytest.fail(
             f"❌ Golden Rule #5 violated: {total} missing type hints\n\n"
             f"{violation_msg}\n"
-            f"{'...' if total > 10 else ''}"
+            f"{'...' if total > 10 else ''}",
         )
 
 
@@ -166,7 +166,7 @@ def test_golden_rule_6_no_hardcoded_secrets():
                     if re.search(pattern, line, re.IGNORECASE):
                         violations.append(
                             f"{file_path.relative_to(BACKEND_ROOT)}:{line_num} - "
-                            f"Potential hardcoded {secret_type}: {line.strip()}"
+                            f"Potential hardcoded {secret_type}: {line.strip()}",
                         )
 
     if violations:
@@ -174,7 +174,7 @@ def test_golden_rule_6_no_hardcoded_secrets():
         pytest.fail(
             f"❌ Golden Rule #6 violated: {len(violations)} potential hardcoded secrets\n\n"
             f"{violation_msg}\n"
-            f"Use os.getenv() or settings.* instead"
+            f"Use os.getenv() or settings.* instead",
         )
 
 
@@ -192,7 +192,7 @@ class PrintStatementChecker(ast.NodeVisitor):
         """Check for print() calls."""
         if isinstance(node.func, ast.Name) and node.func.id == "print":
             self.violations.append(
-                f"{self.file_path}:{node.lineno} - Found print() statement - use logger instead"
+                f"{self.file_path}:{node.lineno} - Found print() statement - use logger instead",
             )
         self.generic_visit(node)
 
@@ -226,7 +226,7 @@ def test_golden_rule_8_no_print_statements():
         pytest.fail(
             f"❌ Golden Rule #8 violated: {len(violations)} print() statements\n\n"
             f"{violation_msg}\n"
-            f"Use logger = logging.getLogger(__name__) instead"
+            f"Use logger = logging.getLogger(__name__) instead",
         )
 
 
@@ -245,7 +245,7 @@ class ImportChecker(ast.NodeVisitor):
         if node.level > 0:  # level > 0 means relative import
             self.violations.append(
                 f"{self.file_path}:{node.lineno} - "
-                f"Found relative import: from {'.' * node.level}{node.module or ''}"
+                f"Found relative import: from {'.' * node.level}{node.module or ''}",
             )
         self.generic_visit(node)
 
@@ -279,7 +279,7 @@ def test_golden_rule_3_no_relative_imports():
         pytest.fail(
             f"❌ Golden Rule #3 violated: {len(violations)} relative imports\n\n"
             f"{violation_msg}\n"
-            f"Use absolute imports: from backend.module import X"
+            f"Use absolute imports: from backend.module import X",
         )
 
 

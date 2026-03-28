@@ -107,7 +107,7 @@ class CircuitBreaker:
         elif self.failure_count >= self.failure_threshold:
             self.state = CircuitState.OPEN
             logger.error(
-                f"Circuit breaker: OPEN (failure threshold {self.failure_threshold} reached)"
+                f"Circuit breaker: OPEN (failure threshold {self.failure_threshold} reached)",
             )
 
 
@@ -150,7 +150,7 @@ def get_anthropic_client() -> anthropic.Anthropic:
             anthropic.RateLimitError,
             anthropic.APIConnectionError,
             anthropic.APITimeoutError,
-        )
+        ),
     ),
     before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True,

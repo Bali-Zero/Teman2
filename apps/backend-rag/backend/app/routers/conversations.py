@@ -39,7 +39,7 @@ SUMMARY_MAX_LENGTH = 200  # Max length for auto-generated summaries
 
 
 async def _generate_and_update_title(
-    conversation_id: int, first_user_message: str, db_pool: asyncpg.Pool
+    conversation_id: int, first_user_message: str, db_pool: asyncpg.Pool,
 ) -> None:
     """
     Background task to generate and store conversation title.
@@ -58,7 +58,7 @@ async def _generate_and_update_title(
     try:
         # Generate title using LLM
         title = await generate_conversation_title(
-            conversation_id=str(conversation_id), first_user_message=first_user_message
+            conversation_id=str(conversation_id), first_user_message=first_user_message,
         )
 
         if title:
@@ -83,13 +83,13 @@ async def _generate_and_update_title(
             )
         else:
             logger.info(
-                f"Title generation returned None for conversation {conversation_id}, using fallback"
+                f"Title generation returned None for conversation {conversation_id}, using fallback",
             )
 
     except Exception as e:
         # Don't fail conversation save if title generation fails
         log_warning(
-            logger, "Title generation failed", conversation_id=conversation_id, error=str(e)
+            logger, "Title generation failed", conversation_id=conversation_id, error=str(e),
         )
 
 
@@ -225,7 +225,7 @@ async def save_conversation(
         for msg in request.messages:
             mem_cache.add_message(session_id, msg.get("role", "unknown"), msg.get("content", ""))
         logger.info(
-            f"✅ Saved {len(request.messages)} messages to memory cache for session {session_id}"
+            f"✅ Saved {len(request.messages)} messages to memory cache for session {session_id}",
         )
     except Exception as e:
         logger.warning(f"⚠️ Failed to save to memory cache: {e}")
@@ -295,10 +295,10 @@ async def save_conversation(
                                             conversation_id=conversation_id,
                                             first_user_message=first_user_msg,
                                             db_pool=db_pool,
-                                        )
+                                        ),
                                     )
                                     logger.info(
-                                        f"🎯 Triggered async title generation for conversation {conversation_id}"
+                                        f"🎯 Triggered async title generation for conversation {conversation_id}",
                                     )
 
                             break  # Success - exit retry loop
@@ -319,7 +319,7 @@ async def save_conversation(
 
                 wait_time = 2**attempt
                 logger.warning(
-                    f"⚠️ DB Save attempt {attempt + 1} failed, retrying in {wait_time}s: {e}"
+                    f"⚠️ DB Save attempt {attempt + 1} failed, retrying in {wait_time}s: {e}",
                 )
                 await asyncio.sleep(wait_time)
 
@@ -628,7 +628,7 @@ async def list_conversations(
                         message_count=len(messages),
                         created_at=row["created_at"].isoformat(),
                         session_id=row["session_id"],
-                    )
+                    ),
                 )
 
             log_success(

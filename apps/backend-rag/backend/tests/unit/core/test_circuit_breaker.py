@@ -32,7 +32,7 @@ class TestCircuitBreaker:
     def test_init_custom_params(self):
         """Test initialization with custom parameters"""
         breaker = CircuitBreaker(
-            failure_threshold=3, success_threshold=1, timeout=30.0, name="test_breaker"
+            failure_threshold=3, success_threshold=1, timeout=30.0, name="test_breaker",
         )
         assert breaker.failure_threshold == 3
         assert breaker.success_threshold == 1

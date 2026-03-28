@@ -68,7 +68,7 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
 
     if not status_file.exists():
         await telegram_bot.answer_callback_query(
-            callback_id, text="Item not found or already processed.", show_alert=True
+            callback_id, text="Item not found or already processed.", show_alert=True,
         )
         return True
 
@@ -81,7 +81,7 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
 
     if voter_id in all_voters:
         await telegram_bot.answer_callback_query(
-            callback_id, text="You already voted!", show_alert=True
+            callback_id, text="You already voted!", show_alert=True,
         )
         return True
 

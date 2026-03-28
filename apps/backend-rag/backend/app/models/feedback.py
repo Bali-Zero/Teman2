@@ -28,7 +28,7 @@ class ConversationRating(SQLModel, table=True):
 
     # Feedback qualitative
     feedback_type: str | None = Field(
-        default=None, max_length=20
+        default=None, max_length=20,
     )  # 'positive', 'negative', 'issue'
     feedback_text: str | None = Field(default=None, sa_column=Column(Text))
 
@@ -52,7 +52,7 @@ class ReviewQueue(SQLModel, table=True):
 
     id: UUID = Field(primary_key=True, default=None)
     source_feedback_id: UUID = Field(
-        foreign_key="conversation_ratings.id", nullable=False, index=True
+        foreign_key="conversation_ratings.id", nullable=False, index=True,
     )
 
     # Status tracking
@@ -65,7 +65,7 @@ class ReviewQueue(SQLModel, table=True):
 
     # Priority (optional, for manual prioritization)
     priority: str | None = Field(
-        default=None, max_length=20, description="Priority: 'low', 'medium', 'high', 'urgent'"
+        default=None, max_length=20, description="Priority: 'low', 'medium', 'high', 'urgent'",
     )
 
     # Timestamps

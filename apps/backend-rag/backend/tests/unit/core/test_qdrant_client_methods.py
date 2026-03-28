@@ -35,8 +35,8 @@ class TestQdrantClientGet:
                     "id": "1",
                     "vector": [0.1, 0.2, 0.3],
                     "payload": {"text": "test text", "metadata": {"key": "value"}},
-                }
-            ]
+                },
+            ],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -161,7 +161,7 @@ class TestQdrantClientPeek:
         """Test successful peek operation"""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "result": {"points": [{"id": "1", "payload": {"text": "test", "metadata": {}}}]}
+            "result": {"points": [{"id": "1", "payload": {"text": "test", "metadata": {}}}]},
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -238,8 +238,8 @@ class TestQdrantClientHybridSearch:
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "result": {
-                "points": [{"id": "1", "score": 0.9, "payload": {"text": "test", "metadata": {}}}]
-            }
+                "points": [{"id": "1", "score": 0.9, "payload": {"text": "test", "metadata": {}}}],
+            },
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -247,7 +247,7 @@ class TestQdrantClientHybridSearch:
             patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
             patch("time.time", return_value=0.0),
             patch(
-                "backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock
+                "backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock,
             ) as mock_retry,
         ):
 
@@ -281,7 +281,7 @@ class TestQdrantClientHybridSearch:
             patch.object(client, "search", new_callable=AsyncMock) as mock_search,
             patch.object(client, "_get_client", return_value=AsyncMock()),
             patch(
-                "backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock
+                "backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock,
             ) as mock_retry,
         ):
             mock_search.return_value = {"ids": ["1"], "documents": ["test"]}

@@ -14,7 +14,7 @@ NOISE_PATTERNS = [
     re.compile(r"^Halaman\s+\d+\s+dari\s+\d+", re.IGNORECASE | re.MULTILINE),
     # Certification footer
     re.compile(
-        r"^Salinan sesuai dengan aslinya.*?(?=\n)", re.IGNORECASE | re.MULTILINE | re.DOTALL
+        r"^Salinan sesuai dengan aslinya.*?(?=\n)", re.IGNORECASE | re.MULTILINE | re.DOTALL,
     ),
     # President header (repeated on every page)
     re.compile(r"^PRESIDEN REPUBLIK INDONESIA\s*\n", re.IGNORECASE | re.MULTILINE),
@@ -58,7 +58,7 @@ YEAR_PATTERN = re.compile(r"TAHUN\s+(\d{4})", re.IGNORECASE)
 
 # Topic (text after "TENTANG" until "DENGAN RAHMAT" or end)
 TOPIC_PATTERN = re.compile(
-    r"TENTANG\s+(.+?)(?=DENGAN RAHMAT|Menimbang|Mengingat|$)", re.IGNORECASE | re.DOTALL
+    r"TENTANG\s+(.+?)(?=DENGAN RAHMAT|Menimbang|Mengingat|$)", re.IGNORECASE | re.DOTALL,
 )
 
 # Status indicators
@@ -79,10 +79,10 @@ KONSIDERANS_MARKERS = [
 
 # Batang Tubuh (Body) structure
 BAB_PATTERN = re.compile(
-    r"^BAB\s+([IVX]+|[A-Z]+|\d+)\s*\n?\s*(.+?)(?=\n|$)", re.IGNORECASE | re.MULTILINE
+    r"^BAB\s+([IVX]+|[A-Z]+|\d+)\s*\n?\s*(.+?)(?=\n|$)", re.IGNORECASE | re.MULTILINE,
 )
 BAGIAN_PATTERN = re.compile(
-    r"^Bagian\s+([A-Za-z]+|\d+)\s+(.+?)(?=\n|$)", re.IGNORECASE | re.MULTILINE
+    r"^Bagian\s+([A-Za-z]+|\d+)\s+(.+?)(?=\n|$)", re.IGNORECASE | re.MULTILINE,
 )
 PARAGRAF_PATTERN = re.compile(r"^Paragraf\s+(\d+)\s+(.+?)(?=\n|$)", re.IGNORECASE | re.MULTILINE)
 
@@ -97,12 +97,12 @@ PASAL_PATTERN = re.compile(
 # Ayat (Clause/Paragraph within Pasal)
 # Ayat (Clause/Paragraph within Pasal)
 AYAT_PATTERN = re.compile(
-    r"(?:^|\n)\s*\((\d+)\)\s*(.+?)(?=(?:^|\n)\s*\(\d+\)|$)", re.MULTILINE | re.DOTALL
+    r"(?:^|\n)\s*\((\d+)\)\s*(.+?)(?=(?:^|\n)\s*\(\d+\)|$)", re.MULTILINE | re.DOTALL,
 )
 
 # Penjelasan (Elucidation)
 PENJELASAN_PATTERN = re.compile(
-    r"^Penjelasan\s+(?:Umum|Atas|Pasal|Ayat)", re.IGNORECASE | re.MULTILINE
+    r"^Penjelasan\s+(?:Umum|Atas|Pasal|Ayat)", re.IGNORECASE | re.MULTILINE,
 )
 
 # ============================================================================

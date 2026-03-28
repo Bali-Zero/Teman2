@@ -105,7 +105,7 @@ def _send_telegram_alert(message: str) -> None:
                 "chat_id": chat_id,
                 "text": message,
                 "parse_mode": "HTML",
-            }
+            },
         ).encode()
         urllib.request.urlopen(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
@@ -275,7 +275,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                             )
                         subfolder_map[parent_id] = (client_id, folder_name)
                         logger.info(
-                            f"Drive poll: registered nested folder '{parent_name}' for client {client_id}"
+                            f"Drive poll: registered nested folder '{parent_name}' for client {client_id}",
                         )
                     else:
                         skipped += 1
@@ -295,7 +295,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     continue
 
             logger.info(
-                f"Drive poll: new file '{file_name}' in {folder_name} for client {client_id}"
+                f"Drive poll: new file '{file_name}' in {folder_name} for client {client_id}",
             )
 
             # Create document record with auto-categorization
@@ -344,7 +344,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
             )
 
         logger.info(
-            f"Drive poll: processed {processed}, skipped {skipped} from {len(changes)} changes"
+            f"Drive poll: processed {processed}, skipped {skipped} from {len(changes)} changes",
         )
         return {
             "status": "ok",

@@ -116,7 +116,7 @@ class VisionRAGService:
 
                 # Analizza con Vision
                 element = await self._analyze_visual_element(
-                    image_bytes, page_num + 1, "image_{page_num}_{img_idx}"
+                    image_bytes, page_num + 1, "image_{page_num}_{img_idx}",
                 )
                 if element:
                     visual_elements.append(element)
@@ -129,7 +129,7 @@ class VisionRAGService:
 
         logger.info(
             f"📸 [VisionRAG] Processed {{pdf_path.name}}: "
-            f"{len(all_text)} pages, {len(visual_elements)} visual elements"
+            f"{len(all_text)} pages, {len(visual_elements)} visual elements",
         )
 
         return MultiModalDocument(
@@ -140,7 +140,7 @@ class VisionRAGService:
         )
 
     async def _analyze_visual_element(
-        self, image_bytes: bytes, page_num: int, element_id: str
+        self, image_bytes: bytes, page_num: int, element_id: str,
     ) -> VisualElement | None:
         """
         Analizza un elemento visivo. Ollama-first, Gemini fallback.
@@ -279,7 +279,7 @@ Output JSON:
                         image_data=image_bytes,
                         extracted_text=markdown,
                         description=f"Table with {len(table.cells)} cells",
-                    )
+                    ),
                 )
         except Exception:
             logger.warning("Table extraction failed: {e}")
@@ -303,14 +303,14 @@ Output JSON:
         return "\n".join(lines)
 
     async def query_with_vision(
-        self, query: str, documents: list[MultiModalDocument], include_images: bool = True
+        self, query: str, documents: list[MultiModalDocument], include_images: bool = True,
     ) -> dict[str, Any]:
         """
         Query che considera sia testo che elementi visuali.
         """
         # 1. Prepara contesto testuale
         text_context = "\n\n".join(
-            ["Document: {doc.doc_id}\n{doc.text_content[:5000]}" for doc in documents]
+            ["Document: {doc.doc_id}\n{doc.text_content[:5000]}" for doc in documents],
         )
 
         # 2. Trova elementi visuali rilevanti
@@ -332,7 +332,7 @@ Output JSON:
             {{text_context[:10000]}}
 
             Visual Elements Found: {len(relevant_visuals)}
-            """
+            """,
         ]
 
         # Aggiungi descrizioni elementi visuali

@@ -89,7 +89,7 @@ class WebChannelAdapter(BaseChannel):
 
             logger.info(
                 f"🌐 Web message received: user={user_id[:20]}, "
-                f"session={session_id}, text={text[:50]}..."
+                f"session={session_id}, text={text[:50]}...",
             )
 
             return ChannelMessage(
@@ -143,7 +143,7 @@ class WebChannelAdapter(BaseChannel):
         # This method is for non-streaming scenarios (rarely used)
 
     async def stream_response(
-        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse]
+        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
     ) -> AsyncIterator[str]:
         """
         Stream response to web client using SSE format.
@@ -164,7 +164,7 @@ class WebChannelAdapter(BaseChannel):
                 {
                     "type": "status",
                     "data": {"status": "processing", "correlation_id": channel_id},
-                }
+                },
             )
 
             # Stream events
@@ -180,7 +180,7 @@ class WebChannelAdapter(BaseChannel):
                 {
                     "type": "status",
                     "data": {"status": "completed", "correlation_id": channel_id},
-                }
+                },
             )
 
             logger.info(f"✅ Completed web stream for channel {channel_id}")

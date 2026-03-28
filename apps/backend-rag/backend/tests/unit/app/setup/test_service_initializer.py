@@ -122,7 +122,7 @@ class TestInitCriticalServices:
     @patch("backend.llm.zantara_ai_client.ZantaraAIClient")
     @patch("backend.services.search.search_service.SearchService")
     async def test_init_critical_services_ai_failure(
-        self, mock_search_service, mock_ai_client, mock_registry
+        self, mock_search_service, mock_ai_client, mock_registry,
     ):
         """Test ZantaraAIClient initialization failure"""
         app = FastAPI()
@@ -145,7 +145,7 @@ class TestInitToolStack:
     @patch("backend.services.misc.zantara_tools.ZantaraTools")
     @patch("backend.services.misc.tool_executor.ToolExecutor")
     async def test_init_tool_stack_success(
-        self, mock_tool_executor, mock_zantara_tools, mock_mcp_client
+        self, mock_tool_executor, mock_zantara_tools, mock_mcp_client,
     ):
         """Test successful tool stack initialization"""
         app = FastAPI()
@@ -168,7 +168,7 @@ class TestInitToolStack:
     @patch("backend.services.misc.zantara_tools.ZantaraTools")
     @patch("backend.services.misc.tool_executor.ToolExecutor")
     async def test_init_tool_stack_mcp_failure(
-        self, mock_tool_executor, mock_zantara_tools, mock_mcp_client
+        self, mock_tool_executor, mock_zantara_tools, mock_mcp_client,
     ):
         """Test tool stack initialization with MCP failure"""
         app = FastAPI()
@@ -191,7 +191,7 @@ class TestInitRAGComponents:
     @patch("backend.services.misc.cultural_rag_service.CulturalRAGService")
     @patch("backend.services.routing.query_router.QueryRouter")
     async def test_init_rag_components_with_cultural_insights(
-        self, mock_query_router, mock_cultural_rag
+        self, mock_query_router, mock_cultural_rag,
     ):
         """Test RAG components initialization with cultural insights"""
         app = FastAPI()
@@ -210,7 +210,7 @@ class TestInitRAGComponents:
     @patch("backend.services.misc.cultural_rag_service.CulturalRAGService")
     @patch("backend.services.routing.query_router.QueryRouter")
     async def test_init_rag_components_without_cultural_insights(
-        self, mock_query_router, mock_cultural_rag
+        self, mock_query_router, mock_cultural_rag,
     ):
         """Test RAG components initialization without cultural insights"""
         app = FastAPI()
@@ -234,7 +234,7 @@ class TestInitSpecializedAgents:
     @patch("backend.services.oracle.cross_oracle_synthesis_service.CrossOracleSynthesisService")
     @patch("backend.services.misc.client_journey_orchestrator.ClientJourneyOrchestrator")
     async def test_init_specialized_agents_success(
-        self, mock_client_journey, mock_cross_oracle, mock_autonomous_research
+        self, mock_client_journey, mock_cross_oracle, mock_autonomous_research,
     ):
         """Test successful specialized agents initialization"""
         app = FastAPI()
@@ -258,7 +258,7 @@ class TestInitSpecializedAgents:
     @patch("backend.services.oracle.cross_oracle_synthesis_service.CrossOracleSynthesisService")
     @patch("backend.services.misc.client_journey_orchestrator.ClientJourneyOrchestrator")
     async def test_init_specialized_agents_partial_failure(
-        self, mock_client_journey, mock_cross_oracle, mock_autonomous_research
+        self, mock_client_journey, mock_cross_oracle, mock_autonomous_research,
     ):
         """Test specialized agents initialization with partial failures"""
         app = FastAPI()
@@ -363,7 +363,7 @@ class TestInitializeDatabaseServices:
         side_effect=ConnectionError("Connection failed"),
     )
     async def test_initialize_database_services_connection_error(
-        self, mock_create_pool, mock_settings, mock_sleep
+        self, mock_create_pool, mock_settings, mock_sleep,
     ):
         """Test database initialization with connection error"""
         app = FastAPI()
@@ -427,7 +427,7 @@ class TestInitializeCRMAndMemoryServices:
     @patch("backend.services.memory.MemoryServicePostgres")
     @patch("backend.app.setup.service_initializer.settings")
     async def test_initialize_crm_and_memory_services_no_db_pool(
-        self, mock_settings, mock_memory, mock_conversation, mock_collective_memory, mock_activity
+        self, mock_settings, mock_memory, mock_conversation, mock_collective_memory, mock_activity,
     ):
         """Test CRM and memory services initialization without db_pool"""
         app = FastAPI()
@@ -458,7 +458,7 @@ class TestInitializeIntelligentRouter:
     @patch("backend.services.routing.intelligent_router.IntelligentRouter")
     @patch("backend.services.crm.collaborator_service.CollaboratorService")
     async def test_initialize_intelligent_router_success(
-        self, mock_collaborator, mock_intelligent_router
+        self, mock_collaborator, mock_intelligent_router,
     ):
         """Test successful intelligent router initialization"""
         app = FastAPI()
@@ -494,7 +494,7 @@ class TestInitializeIntelligentRouter:
     @patch("backend.services.routing.intelligent_router.IntelligentRouter")
     @patch("backend.services.crm.collaborator_service.CollaboratorService")
     async def test_initialize_intelligent_router_collaborator_failure(
-        self, mock_collaborator, mock_intelligent_router
+        self, mock_collaborator, mock_intelligent_router,
     ):
         """Test intelligent router initialization with collaborator failure"""
         app = FastAPI()

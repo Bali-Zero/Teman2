@@ -53,7 +53,7 @@ class AgentInvokeRequest(BaseModel):
                     "session_id": "session_456",
                     "language": "en",
                 },
-            }
+            },
         }
 
 
@@ -91,7 +91,7 @@ class AgentInvokeResponse(BaseModel):
                 "timestamp": "2026-02-14T10:30:00",
                 "metadata": {"user_id": "user_123"},
                 "errors": None,
-            }
+            },
         }
 
 
@@ -140,7 +140,7 @@ async def invoke_agent(
     ```
     """
     logger.info(
-        f"[AGENT_API] Received invoke request from user: {current_user.get('email', 'unknown')}"
+        f"[AGENT_API] Received invoke request from user: {current_user.get('email', 'unknown')}",
     )
     logger.info(f"[AGENT_API] Question: {request.question[:100]}")
 
@@ -152,7 +152,7 @@ async def invoke_agent(
                 "user_email": current_user.get("email"),
                 "user_id": current_user.get("id"),
                 "request_timestamp": datetime.now(tz=timezone.utc).isoformat(),
-            }
+            },
         )
 
         # Invoke the workflow
@@ -181,7 +181,7 @@ async def invoke_agent(
         )
 
         logger.info(
-            f"[AGENT_API] Workflow completed. Success: {success}, Steps: {response.step_count}"
+            f"[AGENT_API] Workflow completed. Success: {success}, Steps: {response.step_count}",
         )
         return response
 

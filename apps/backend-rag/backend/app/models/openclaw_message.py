@@ -19,46 +19,46 @@ class MessageLog(SQLModel, table=True):
 
     # Primary key - message_id from OpenClaw
     message_id: str = Field(
-        primary_key=True, max_length=255, description="Unique message ID from OpenClaw"
+        primary_key=True, max_length=255, description="Unique message ID from OpenClaw",
     )
 
     # Timestamp
     timestamp: datetime = Field(
-        nullable=False, index=True, description="Message timestamp from OpenClaw"
+        nullable=False, index=True, description="Message timestamp from OpenClaw",
     )
 
     # Channel and direction
     channel: str = Field(
-        nullable=False, max_length=50, description="Communication channel (e.g., whatsapp, sms)"
+        nullable=False, max_length=50, description="Communication channel (e.g., whatsapp, sms)",
     )
     direction: str = Field(
-        nullable=False, max_length=20, description="Message direction (inbound/outbound)"
+        nullable=False, max_length=20, description="Message direction (inbound/outbound)",
     )
 
     # Contact information
     from_number: str = Field(nullable=False, max_length=50, description="Sender phone number")
     to_number: str = Field(nullable=False, max_length=50, description="Recipient phone number")
     contact_name: str | None = Field(
-        default=None, max_length=255, description="Contact name if available"
+        default=None, max_length=255, description="Contact name if available",
     )
 
     # Message content
     message_text: str | None = Field(
-        default=None, sa_column=Column(Text), description="Message text content"
+        default=None, sa_column=Column(Text), description="Message text content",
     )
     media_type: str | None = Field(
-        default=None, max_length=50, description="Media type if present (image, video, etc.)"
+        default=None, max_length=50, description="Media type if present (image, video, etc.)",
     )
 
     # Metadata
     session_id: str | None = Field(
-        default=None, max_length=255, index=True, description="Session ID from metadata"
+        default=None, max_length=255, index=True, description="Session ID from metadata",
     )
     reply_to: str | None = Field(
-        default=None, max_length=255, description="Reply-to message ID from metadata"
+        default=None, max_length=255, description="Reply-to message ID from metadata",
     )
 
     # System timestamps
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, nullable=False, description="Record creation timestamp"
+        default_factory=datetime.utcnow, nullable=False, description="Record creation timestamp",
     )

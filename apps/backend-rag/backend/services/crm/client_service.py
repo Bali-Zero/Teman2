@@ -28,7 +28,7 @@ class ClientService:
         self.repository = repository
 
     async def create_client(
-        self, client_data: dict[str, Any], company_data: dict[str, Any] | None = None
+        self, client_data: dict[str, Any], company_data: dict[str, Any] | None = None,
     ) -> asyncpg.Record:
         """
         1. Valida l'input tramite Pydantic
@@ -43,7 +43,7 @@ class ClientService:
 
             # 2. Esecuzione tramite Repository (garantisce atomicità se c'è company_data)
             created_record = await self.repository.create_client_with_details(
-                client_data=validated_data, company_data=company_data
+                client_data=validated_data, company_data=company_data,
             )
 
             # 3. Invalidazione della Cache
@@ -62,12 +62,12 @@ class ClientService:
                 exc_info=True,
             )
             raise ResourceConflictError(
-                "Un cliente con questi dati unici (es. email o telefono) esiste già."
+                "Un cliente con questi dati unici (es. email o telefono) esiste già.",
             ) from e
 
         except Exception as e:
             # Propaga altri errori critici mantenendo la traccia nei log
             logger.error(
-                f"Errore imprevisto nella logica di business di create_client: {e}", exc_info=True
+                f"Errore imprevisto nella logica di business di create_client: {e}", exc_info=True,
             )
             raise

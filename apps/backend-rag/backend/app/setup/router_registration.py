@@ -169,7 +169,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(intel.router)
     api.include_router(oracle_universal.router)
     api.include_router(
-        kbli_notebook.router, prefix=settings.API_V1_STR
+        kbli_notebook.router, prefix=settings.API_V1_STR,
     )  # [NEW] KBLI 2025 Notebook Explorer
 
     # Preview router (for Telegram article previews)
@@ -181,23 +181,23 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(websocket.router)
     api.include_router(telegram.router)  # Telegram bot integration (query endpoints)
     api.include_router(
-        telegram_webhook.router
+        telegram_webhook.router,
     )  # [NEW] Telegram webhook (multi-channel architecture)
     api.include_router(twitter.router)  # Twitter/X omnichannel API
     api.include_router(twitter.webhook_router)  # X/Twitter Account Activity webhook
     api.include_router(x_monitor.router)  # X/Twitter social listening monitor
     api.include_router(
-        whatsapp_chat.router
+        whatsapp_chat.router,
     )  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
     # api.include_router(whatsapp_chat.alias_router)  # ❌ DISABLED - Legacy alias causes duplicate responses
     api.include_router(
-        whatsapp_conversations.router
+        whatsapp_conversations.router,
     )  # Omnichannel WhatsApp conversations API (dashboard only)
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(instagram_chat.webhook_router)  # [NEW] Instagram webhook
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(
-        messaging_identity.router
+        messaging_identity.router,
     )  # Admin: Manage phone/telegram → team_member mappings
 
     # Integrations routers

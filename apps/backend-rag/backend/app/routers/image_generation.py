@@ -93,7 +93,7 @@ async def generate_image(request: ImageGenerationRequest) -> ImageGenerationResp
 
     except httpx.HTTPStatusError as e:
         raise HTTPException(
-            status_code=e.response.status_code, detail=f"Image generation failed: {e.response.text}"
+            status_code=e.response.status_code, detail=f"Image generation failed: {e.response.text}",
         ) from e
     except Exception as e:
         raise HTTPException(

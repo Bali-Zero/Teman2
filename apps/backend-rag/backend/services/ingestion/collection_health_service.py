@@ -117,7 +117,7 @@ class CollectionHealthService:
         }
 
     def record_query(
-        self, collection_name: str, had_results: bool, result_count: int = 0, avg_score: float = 0.0
+        self, collection_name: str, had_results: bool, result_count: int = 0, avg_score: float = 0.0,
     ) -> Any:
         """
         Record a query to a collection for health tracking.
@@ -211,7 +211,7 @@ class CollectionHealthService:
             return StalenessSeverity.VERY_STALE
 
     def calculate_health_status(
-        self, hit_rate: float, avg_confidence: float, staleness: StalenessSeverity, query_count: int
+        self, hit_rate: float, avg_confidence: float, staleness: StalenessSeverity, query_count: int,
     ) -> HealthStatus:
         """
         Calculate overall health status for a collection.
@@ -289,33 +289,33 @@ class CollectionHealthService:
             recommendations.append(f"🚨 URGENT: Re-ingest {collection_name} - data >6 months old")
         elif staleness == StalenessSeverity.STALE:
             recommendations.append(
-                f"⚠️ WARNING: Consider updating {collection_name} - data 3-6 months old"
+                f"⚠️ WARNING: Consider updating {collection_name} - data 3-6 months old",
             )
         elif staleness == StalenessSeverity.AGING:
             recommendations.append(
-                f"ℹ️ INFO: Schedule update for {collection_name} - data 1-3 months old"
+                f"ℹ️ INFO: Schedule update for {collection_name} - data 1-3 months old",
             )
 
         # Hit rate recommendations
         if query_count > 10:
             if hit_rate < 0.4:
                 recommendations.append(
-                    f"🚨 Low hit rate ({hit_rate * 100:.0f}%) - review collection content relevance"
+                    f"🚨 Low hit rate ({hit_rate * 100:.0f}%) - review collection content relevance",
                 )
             elif hit_rate < 0.6:
                 recommendations.append(
-                    f"⚠️ Medium hit rate ({hit_rate * 100:.0f}%) - consider expanding collection content"
+                    f"⚠️ Medium hit rate ({hit_rate * 100:.0f}%) - consider expanding collection content",
                 )
 
         # Confidence recommendations
         if query_count > 10:
             if avg_confidence < 0.3:
                 recommendations.append(
-                    f"🚨 Low confidence ({avg_confidence:.2f}) - review embedding quality"
+                    f"🚨 Low confidence ({avg_confidence:.2f}) - review embedding quality",
                 )
             elif avg_confidence < 0.5:
                 recommendations.append(
-                    f"⚠️ Medium confidence ({avg_confidence:.2f}) - consider improving content specificity"
+                    f"⚠️ Medium confidence ({avg_confidence:.2f}) - consider improving content specificity",
                 )
 
         # Usage recommendations
@@ -388,7 +388,7 @@ class CollectionHealthService:
 
         # Calculate health status
         health_status = self.calculate_health_status(
-            hit_rate, avg_confidence, staleness, query_count
+            hit_rate, avg_confidence, staleness, query_count,
         )
 
         # Detect issues
@@ -404,7 +404,7 @@ class CollectionHealthService:
 
         # Generate recommendations
         recommendations = self.generate_recommendations(
-            collection_name, health_status, staleness, hit_rate, avg_confidence, query_count
+            collection_name, health_status, staleness, hit_rate, avg_confidence, query_count,
         )
 
         return CollectionMetrics(
@@ -481,7 +481,7 @@ class CollectionHealthService:
                         "collection": coll_name,
                         "status": health.health_status.value,
                         "issues": health.issues,
-                    }
+                    },
                 )
 
         overall_hit_rate = total_hits / total_queries if total_queries > 0 else 0.0
@@ -582,7 +582,7 @@ class CollectionHealthService:
             lines.append(f"  Status: {health.health_status.value}")
             lines.append(f"  Staleness: {health.staleness.value}")
             lines.append(
-                f"  Queries: {health.query_count} (hit rate: {(health.hit_count / health.query_count * 100) if health.query_count > 0 else 0:.0f}%)"
+                f"  Queries: {health.query_count} (hit rate: {(health.hit_count / health.query_count * 100) if health.query_count > 0 else 0:.0f}%)",
             )
             lines.append(f"  Avg Confidence: {health.avg_confidence:.2f}")
 
@@ -600,7 +600,7 @@ class CollectionHealthService:
         return "\n".join(lines)
 
     def _generate_markdown_report(
-        self, all_health: dict[str, CollectionMetrics], summary: dict
+        self, all_health: dict[str, CollectionMetrics], summary: dict,
     ) -> str:
         """Generate markdown health report"""
         # Implementation similar to text but with markdown formatting

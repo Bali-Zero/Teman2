@@ -55,14 +55,14 @@ class AICRMExtractor:
         try:
             self.client = ai_client if ai_client else ZantaraAIClient()
             logger.info(
-                f"✅ AICRMExtractor initialized with ZANTARA AI for {settings.COMPANY_NAME}"
+                f"✅ AICRMExtractor initialized with ZANTARA AI for {settings.COMPANY_NAME}",
             )
         except Exception as e:
             logger.error(f"❌ Failed to initialize ZANTARA AI: {e}")
             raise
 
     async def extract_from_conversation(
-        self, messages: list[dict], existing_client_data: dict | None = None
+        self, messages: list[dict], existing_client_data: dict | None = None,
     ) -> dict:
         """
         Extract structured CRM data from conversation messages
@@ -103,13 +103,13 @@ class AICRMExtractor:
 
         # Build conversation text
         conversation_text = "\n\n".join(
-            [f"{msg['role'].upper()}: {msg['content']}" for msg in messages]
+            [f"{msg['role'].upper()}: {msg['content']}" for msg in messages],
         )
 
         existing_data_str = "NO EXISTING CLIENT DATA"
         if existing_client_data:
             existing_data_str = "EXISTING CLIENT DATA:\\n" + json.dumps(
-                existing_client_data, indent=2, cls=AsyncpgJSONEncoder
+                existing_client_data, indent=2, cls=AsyncpgJSONEncoder,
             )
 
         # Extraction prompt
@@ -137,7 +137,7 @@ Extract the following information and return ONLY valid JSON (no markdown, no ex
         try:
             # Use ZANTARA AI for extraction
             response = await self.client.conversational(
-                extraction_prompt, "system_crm_extractor", max_tokens=8192
+                extraction_prompt, "system_crm_extractor", max_tokens=8192,
             )
             content = response["text"]
             content = content.strip()
@@ -153,7 +153,7 @@ Extract the following information and return ONLY valid JSON (no markdown, no ex
             extracted_data = json.loads(content)
 
             logger.info(
-                f"✅ Extracted CRM data with {extracted_data['client']['confidence']:.2f} client confidence"
+                f"✅ Extracted CRM data with {extracted_data['client']['confidence']:.2f} client confidence",
             )
 
             return extracted_data
@@ -199,7 +199,7 @@ Extract the following information and return ONLY valid JSON (no markdown, no ex
         }
 
     async def enrich_client_data(
-        self, extracted: dict, existing_client: dict | None = None
+        self, extracted: dict, existing_client: dict | None = None,
     ) -> dict:
         """
         Merge extracted data with existing client data (prefer non-null values)

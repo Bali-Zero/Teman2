@@ -39,7 +39,7 @@ async def use_service_account(request: Request) -> dict[str, Any]:
         from googleapiclient.discovery import build
 
         credentials = service_account.Credentials.from_service_account_file(
-            sa_path, scopes=["https://www.googleapis.com/auth/drive"]
+            sa_path, scopes=["https://www.googleapis.com/auth/drive"],
         )
 
         service = build("drive", "v3", credentials=credentials)

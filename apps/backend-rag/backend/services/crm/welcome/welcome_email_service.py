@@ -78,7 +78,7 @@ def schedule_client_welcome_email(client_id: int, db_pool: asyncpg.Pool) -> None
         scheduler = get_scheduler()
         if not scheduler or not scheduler.scheduler:
             logger.warning(
-                "WelcomeEmail: scheduler not available, falling back to asyncio.sleep pattern"
+                "WelcomeEmail: scheduler not available, falling back to asyncio.sleep pattern",
             )
             import asyncio
 
@@ -98,7 +98,7 @@ def schedule_client_welcome_email(client_id: int, db_pool: asyncpg.Pool) -> None
             misfire_grace_time=300,  # up to 5min late is OK
         )
         logger.info(
-            "WelcomeEmail: scheduled for client %d at %s", client_id, run_at.strftime("%H:%M UTC")
+            "WelcomeEmail: scheduled for client %d at %s", client_id, run_at.strftime("%H:%M UTC"),
         )
 
     except Exception:
@@ -176,11 +176,11 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
                     "name": "Bali_Zero_Introduction.pdf",
                     "content": brochure_b64,
                     "contentType": "application/pdf",
-                }
+                },
             ]
         except Exception:
             logger.warning(
-                "WelcomeEmail: could not read brochure for client %d", client_id, exc_info=True
+                "WelcomeEmail: could not read brochure for client %d", client_id, exc_info=True,
             )
     else:
         logger.warning("WelcomeEmail: brochure not found at %s", _BROCHURE_PATH)

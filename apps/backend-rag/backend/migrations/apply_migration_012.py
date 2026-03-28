@@ -63,7 +63,7 @@ def apply_migration_012():
             FROM information_schema.columns
             WHERE table_name = 'interactions'
             AND column_name = 'conversation_id'
-        """
+        """,
         )
 
         result = cursor.fetchone()

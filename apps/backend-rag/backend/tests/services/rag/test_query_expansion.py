@@ -263,7 +263,7 @@ class TestLLMRephrasing:
     async def test_llm_rephrase_success(self, expander):
         """Test successful LLM rephrasing."""
         mock_response = {
-            "text": '["What are the steps to obtain KITAS?", "How do I get a residence permit?"]'
+            "text": '["What are the steps to obtain KITAS?", "How do I get a residence permit?"]',
         }
 
         with patch.object(expander, "_get_genai_client") as mock_get_client:

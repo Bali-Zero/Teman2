@@ -19,7 +19,7 @@ from backend.db.migration_base import MigrationError
 from backend.db.migration_manager import MigrationManager
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ async def cmd_list(manager: MigrationManager):
 
 
 async def cmd_apply(
-    manager: MigrationManager, migration_number: int | None = None, dry_run: bool = False
+    manager: MigrationManager, migration_number: int | None = None, dry_run: bool = False,
 ):
     """Apply migration(s)"""
     if migration_number:
@@ -157,7 +157,7 @@ Examples:
     # Apply command
     apply_parser = subparsers.add_parser("apply-all", help="Apply all pending migrations")
     apply_parser.add_argument(
-        "--dry-run", action="store_true", help="Show what would be applied without executing"
+        "--dry-run", action="store_true", help="Show what would be applied without executing",
     )
 
     # Info command

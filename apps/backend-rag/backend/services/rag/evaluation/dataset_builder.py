@@ -729,7 +729,7 @@ Jawaban (maksimal 3 paragraf, dalam Bahasa Indonesia):"""
                 f"Built evaluation dataset with {len(dataset)} samples: "
                 f"expert={len([s for s in dataset if s.metadata.get('source') == 'expert'])}, "
                 f"user={len([s for s in dataset if s.metadata.get('source') == 'anonymized_user'])}, "
-                f"synthetic={len([s for s in dataset if s.metadata.get('source') == 'synthetic'])}"
+                f"synthetic={len([s for s in dataset if s.metadata.get('source') == 'synthetic'])}",
             )
 
             return dataset
@@ -758,10 +758,10 @@ Jawaban (maksimal 3 paragraf, dalam Bahasa Indonesia):"""
                 "source_distribution": {
                     "expert": len([s for s in dataset if s.metadata.get("source") == "expert"]),
                     "user": len(
-                        [s for s in dataset if s.metadata.get("source") == "anonymized_user"]
+                        [s for s in dataset if s.metadata.get("source") == "anonymized_user"],
                     ),
                     "synthetic": len(
-                        [s for s in dataset if s.metadata.get("source") == "synthetic"]
+                        [s for s in dataset if s.metadata.get("source") == "synthetic"],
                     ),
                 },
             },

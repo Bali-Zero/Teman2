@@ -63,7 +63,7 @@ class TestOptimalHoursService:
 
     @pytest.mark.asyncio
     async def test_identify_optimal_hours_with_user_email(
-        self, optimal_hours_service, mock_db_pool
+        self, optimal_hours_service, mock_db_pool,
     ):
         """Test identifying optimal hours for specific user"""
         mock_db_pool.fetch = AsyncMock(return_value=[])
@@ -83,7 +83,7 @@ class TestOptimalHoursService:
 
     @pytest.mark.asyncio
     async def test_identify_optimal_hours_productivity_calculation(
-        self, optimal_hours_service, mock_db_pool
+        self, optimal_hours_service, mock_db_pool,
     ):
         """Test productivity calculation"""
         sessions = [

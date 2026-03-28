@@ -24,7 +24,7 @@ async def get_cell_status(
         recent = await conn.fetch(
             """SELECT pulse_number, health_status, response_time_ms,
                       action_taken, error_message, created_at
-               FROM cell_pulse_log ORDER BY created_at DESC LIMIT 50"""
+               FROM cell_pulse_log ORDER BY created_at DESC LIMIT 50""",
         )
         cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
         stats = await conn.fetchrow(

@@ -97,7 +97,7 @@ class MetricsPusher:
                         labels = {"__name__": name, "service": self.service_name}
                         if labels_str:
                             for label in re.findall(
-                                r'([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"', labels_str
+                                r'([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"', labels_str,
                             ):
                                 labels[label[0]] = label[1]
 
@@ -107,7 +107,7 @@ class MetricsPusher:
                                 "labels": labels,
                                 "value": value,
                                 "timestamp": current_time_ms,
-                            }
+                            },
                         )
                 else:
                     # Metric without labels
@@ -122,7 +122,7 @@ class MetricsPusher:
                                 "labels": {"__name__": name, "service": self.service_name},
                                 "value": value,
                                 "timestamp": current_time_ms,
-                            }
+                            },
                         )
             except (ValueError, IndexError) as e:
                 logger.debug(f"Failed to parse metric line: {line} - {e}")
@@ -265,7 +265,7 @@ class MetricsPusher:
                     logger.debug(f"Pushed {len(metrics)} metrics to Grafana Cloud")
                     return True
                 logger.warning(
-                    f"Failed to push metrics: {response.status_code} - {response.text[:200]}"
+                    f"Failed to push metrics: {response.status_code} - {response.text[:200]}",
                 )
                 return False
 

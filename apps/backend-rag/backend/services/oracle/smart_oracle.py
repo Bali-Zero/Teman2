@@ -58,7 +58,7 @@ def get_drive_service() -> Any:
     try:
         creds_dict = json.loads(creds_json)
         creds = service_account.Credentials.from_service_account_info(
-            creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"]
+            creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"],
         )
         return build("drive", "v3", credentials=creds)
     except Exception as e:
@@ -201,13 +201,13 @@ async def smart_oracle(query, best_filename_from_qdrant) -> str:
                 result = await client.generate_content(
                     contents=[
                         {
-                            "text": "You are an expert consultant. Answer the user query based ONLY on the provided document."
+                            "text": "You are an expert consultant. Answer the user query based ONLY on the provided document.",
                         },
                         {
                             "file_data": {
                                 "file_uri": gemini_file.uri,
                                 "mime_type": gemini_file.mime_type,
-                            }
+                            },
                         },
                         {"text": f"User Query: {query}"},
                     ],

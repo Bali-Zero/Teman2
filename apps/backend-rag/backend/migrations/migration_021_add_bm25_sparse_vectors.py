@@ -176,7 +176,7 @@ async def run_migration():
                     rate = total_migrated / elapsed if elapsed > 0 else 0
                     logger.info(
                         f"  Migrated {total_migrated}/{total_docs} documents "
-                        f"({total_migrated / total_docs * 100:.1f}%) - {rate:.1f} docs/sec"
+                        f"({total_migrated / total_docs * 100:.1f}%) - {rate:.1f} docs/sec",
                     )
                 else:
                     logger.error(f"  Batch upsert failed: {result.get('error')}")
@@ -197,7 +197,7 @@ async def run_migration():
             logger.info(f"✅ Target collection verified: {target_docs} documents")
         else:
             logger.warning(
-                f"⚠️ Document count mismatch: expected {total_migrated}, got {target_docs}"
+                f"⚠️ Document count mismatch: expected {total_migrated}, got {target_docs}",
             )
 
         # Step 5: Instructions for swapping collections
@@ -207,7 +207,7 @@ async def run_migration():
         logger.info("")
         logger.info("1. Verify hybrid search works on the new collection:")
         logger.info(
-            '   python -c "import asyncio; from test_hybrid_search import test; asyncio.run(test())"'
+            '   python -c "import asyncio; from test_hybrid_search import test; asyncio.run(test())"',
         )
         logger.info("")
         logger.info("2. Swap collections (optional):")
@@ -215,14 +215,14 @@ async def run_migration():
         logger.info(f"   curl -X POST '{qdrant_url}/collections/{SOURCE_COLLECTION}/aliases' \\")
         logger.info("        -H 'api-key: $QDRANT_API_KEY' -H 'Content-Type: application/json' \\")
         logger.info(
-            f'        -d \'{{"actions": [{{"rename_collection": {{"old_name": "{SOURCE_COLLECTION}", "new_name": "{BACKUP_COLLECTION}"}}}}]}}\''
+            f'        -d \'{{"actions": [{{"rename_collection": {{"old_name": "{SOURCE_COLLECTION}", "new_name": "{BACKUP_COLLECTION}"}}}}]}}\'',
         )
         logger.info("")
         logger.info("   # Rename new collection to original name")
         logger.info(f"   curl -X POST '{qdrant_url}/collections/{TARGET_COLLECTION}/aliases' \\")
         logger.info("        -H 'api-key: $QDRANT_API_KEY' -H 'Content-Type: application/json' \\")
         logger.info(
-            f'        -d \'{{"actions": [{{"rename_collection": {{"old_name": "{TARGET_COLLECTION}", "new_name": "{SOURCE_COLLECTION}"}}}}]}}\''
+            f'        -d \'{{"actions": [{{"rename_collection": {{"old_name": "{TARGET_COLLECTION}", "new_name": "{SOURCE_COLLECTION}"}}}}]}}\'',
         )
         logger.info("")
         logger.info("3. Or use the new collection directly:")
@@ -279,7 +279,7 @@ async def test_hybrid_search():
 
             logger.info(f"   Time: {elapsed * 1000:.0f}ms | Results: {results['total_found']}")
             for i, (doc_id, score) in enumerate(
-                zip(results.get("ids", [])[:3], results.get("scores", [])[:3], strict=False), 1
+                zip(results.get("ids", [])[:3], results.get("scores", [])[:3], strict=False), 1,
             ):
                 logger.info(f"   {i}. [{score:.3f}] {doc_id[:50]}")
 

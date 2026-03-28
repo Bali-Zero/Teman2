@@ -154,7 +154,7 @@ class TestAutoIngestionService:
                 title="Test",
                 document_type=DocumentType.UNDANG_UNDANG,
                 confidence_score=0.9,
-            )
+            ),
         )
 
         scraped_doc = ScrapedDocument(
@@ -242,7 +242,7 @@ class TestAutoIngestionService:
                 status=IngestionStatus.COMPLETED,
                 started_at=datetime.now(tz=timezone.utc),
                 completed_at=datetime.now(tz=timezone.utc),
-            )
+            ),
         )
 
         docs = [

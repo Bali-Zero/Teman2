@@ -171,7 +171,7 @@ class KnowledgeGraphBuilder:
         }
 
         logger.info(
-            f"✅ KnowledgeGraphBuilder initialized (Persistence: {'Enabled' if db_pool else 'Disabled'}, LLM: {'Enabled' if llm_gateway else 'Disabled'})"
+            f"✅ KnowledgeGraphBuilder initialized (Persistence: {'Enabled' if db_pool else 'Disabled'}, LLM: {'Enabled' if llm_gateway else 'Disabled'})",
         )
 
     async def add_entity(self, entity: Entity) -> None:
@@ -259,7 +259,7 @@ class KnowledgeGraphBuilder:
         logger.info("⚠️ LLM not available, using Regex extraction fallback")
         entities = self.extract_entities_from_text(text, source_collection="api_request")
         relationships = self.infer_relationships_from_text(
-            text, entities, source_collection="api_request"
+            text, entities, source_collection="api_request",
         )
 
         metrics_collector.record_kg_metrics(len(entities), len(relationships), "regex")
@@ -276,7 +276,7 @@ class KnowledgeGraphBuilder:
         }
 
     def extract_entities_from_text(
-        self, text: str, source_collection: str | None = None
+        self, text: str, source_collection: str | None = None,
     ) -> list[Entity]:
         """Extract entities from text (Sync helper)"""
         entities = []
@@ -306,7 +306,7 @@ class KnowledgeGraphBuilder:
         return entities
 
     def infer_relationships_from_text(
-        self, text: str, entities: list[Entity], source_collection: str | None = None
+        self, text: str, entities: list[Entity], source_collection: str | None = None,
     ) -> list[Relationship]:
         """Infer relationships (Sync helper)"""
         relationships = []
@@ -367,7 +367,7 @@ class KnowledgeGraphBuilder:
             # Use LLM extraction if available (more accurate)
             if self.llm_gateway:
                 await self.extract_via_llm(
-                    text, source_collection=collection_name, chunk_id=chunk_id
+                    text, source_collection=collection_name, chunk_id=chunk_id,
                 )
                 total_added += 1
             else:
@@ -441,13 +441,13 @@ class KnowledgeGraphBuilder:
                 self.relationships[rel.relationship_id] = rel
 
             logger.info(
-                f"🔄 Refreshed graph from DB: {len(self.entities)} nodes, {len(self.relationships)} edges"
+                f"🔄 Refreshed graph from DB: {len(self.entities)} nodes, {len(self.relationships)} edges",
             )
         except Exception as e:
             logger.error(f"Failed to refresh from DB: {e}")
 
     async def extract_via_llm(
-        self, text: str, source_collection: str = None, chunk_id: str = None
+        self, text: str, source_collection: str = None, chunk_id: str = None,
     ) -> dict:
         """
         Extract entities and relationships using LLM (Semantic Extraction).
@@ -545,7 +545,7 @@ class KnowledgeGraphBuilder:
                 await self.add_relationship(rel)
 
             metrics_collector.record_kg_metrics(
-                len(extracted_entities), len(extracted_relationships), "llm"
+                len(extracted_entities), len(extracted_relationships), "llm",
             )
 
             logger.info(
@@ -611,7 +611,7 @@ class KnowledgeGraphBuilder:
                     props.append(f'{k}: "{val_safe}"')
 
             lines.append(
-                f'MERGE (e:Entity {{id: "{entity.entity_id}"}}) SET e += {{{", ".join(props)}}}, e:{entity.entity_type};'
+                f'MERGE (e:Entity {{id: "{entity.entity_id}"}}) SET e += {{{", ".join(props)}}}, e:{entity.entity_type};',
             )
 
         lines.append("")
@@ -627,7 +627,7 @@ class KnowledgeGraphBuilder:
                     props.append(f'{k}: "{val_safe}"')
 
             lines.append(
-                f'MATCH (s:Entity {{id: "{rel.source_entity_id}"}}) MATCH (t:Entity {{id: "{rel.target_entity_id}"}}) MERGE (s)-[r:{rel_type}]->(t) SET r += {{{", ".join(props)}}};'
+                f'MATCH (s:Entity {{id: "{rel.source_entity_id}"}}) MATCH (t:Entity {{id: "{rel.target_entity_id}"}}) MERGE (s)-[r:{rel_type}]->(t) SET r += {{{", ".join(props)}}};',
             )
 
         return "\n".join(lines)
@@ -644,7 +644,7 @@ class KnowledgeGraphBuilder:
             lines.append(f'<node id="{e.entity_id}"><data key="name">{name_safe}</data></node>')
         for r in self.relationships.values():
             lines.append(
-                f'<edge source="{r.source_entity_id}" target="{r.target_entity_id}"><data key="type">{r.relationship_type}</data></edge>'
+                f'<edge source="{r.source_entity_id}" target="{r.target_entity_id}"><data key="type">{r.relationship_type}</data></edge>',
             )
         lines.append("</graph></graphml>")
         return "\n".join(lines)

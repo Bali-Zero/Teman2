@@ -373,13 +373,13 @@ async def process_whatsapp_message(
                     {
                         "role": "user",
                         "content": f"[CONTESTO WHATSAPP]\n{whatsapp_persona_instructions}\n\nRispondi sempre come Zan di Bali Zero, naturalmente su WhatsApp (no markdown, tono umano).",
-                    }
+                    },
                 )
                 enhanced_history.append(
                     {
                         "role": "assistant",
                         "content": "Capito, rispondo come Zan su WhatsApp - tono naturale, niente markdown, focus su visa e business a Bali.",
-                    }
+                    },
                 )
 
             enhanced_history.extend(ctx["conversation_history"])
@@ -463,7 +463,7 @@ async def process_whatsapp_message(
             logger.info(
                 f"✅ Zan responded to {phone} in {total_duration:.1f}s "
                 f"({len(response_text)} chars, lang={ctx['detected_language']}, "
-                f"first={ctx['is_first_message']})"
+                f"first={ctx['is_first_message']})",
             )
 
         except asyncio.TimeoutError:

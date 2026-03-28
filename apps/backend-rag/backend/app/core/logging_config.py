@@ -48,7 +48,7 @@ class PerformanceLogger:
             )
         else:
             getattr(self.logger, self.level)(
-                f"✅ {self.operation} completed in {duration:.2f}s", extra={"duration": duration}
+                f"✅ {self.operation} completed in {duration:.2f}s", extra={"duration": duration},
             )
 
 
@@ -114,13 +114,13 @@ def setup_logging() -> Any:
         # Production: JSON logging
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(
-            StructuredJSONFormatter("%(timestamp)s %(level)s %(name)s %(message)s")
+            StructuredJSONFormatter("%(timestamp)s %(level)s %(name)s %(message)s"),
         )
     else:
         # Development: Colored console logging
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(
-            ColoredFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            ColoredFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
         )
 
     root_logger.addHandler(handler)

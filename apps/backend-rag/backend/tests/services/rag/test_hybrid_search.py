@@ -63,7 +63,7 @@ def mock_collection_manager():
             "scores": [0.95, 0.87, 0.76],
             "total_found": 3,
             "search_type": "hybrid_rrf",
-        }
+        },
     )
     mock_client.search = AsyncMock(
         return_value={
@@ -71,7 +71,7 @@ def mock_collection_manager():
             "documents": ["text1", "text2"],
             "metadatas": [{"source": "test"}, {"source": "test2"}],
             "distances": [0.1, 0.2],
-        }
+        },
     )
     manager.get_collection.return_value = mock_client
     return manager
@@ -81,7 +81,7 @@ def mock_collection_manager():
 def hybrid_service(mock_settings, mock_collection_manager, mock_bm25_vectorizer):
     """Create hybrid search service with mocked dependencies."""
     with patch(
-        "backend.services.rag.hybrid_search.get_bm25_vectorizer", return_value=mock_bm25_vectorizer
+        "backend.services.rag.hybrid_search.get_bm25_vectorizer", return_value=mock_bm25_vectorizer,
     ):
         service = HybridSearchService(
             collection_manager=mock_collection_manager,
@@ -237,19 +237,19 @@ class TestReciprocalRankFusion:
 
         # Alpha 1.0 - all weight to dense
         result_dense = hybrid_service.reciprocal_rank_fusion(
-            dense_results, sparse_results, alpha=1.0
+            dense_results, sparse_results, alpha=1.0,
         )
         dense_only_score = round(1.0 / (RRF_K + 1), 6)  # rank 1, rounded to 6 decimals
 
         # Alpha 0.0 - all weight to sparse
         result_sparse = hybrid_service.reciprocal_rank_fusion(
-            dense_results, sparse_results, alpha=0.0
+            dense_results, sparse_results, alpha=0.0,
         )
         sparse_only_score = round(1.0 / (RRF_K + 1), 6)  # rank 1, rounded to 6 decimals
 
         # Alpha 0.5 - balanced
         result_balanced = hybrid_service.reciprocal_rank_fusion(
-            dense_results, sparse_results, alpha=0.5
+            dense_results, sparse_results, alpha=0.5,
         )
         balanced_score = round(0.5 * (1.0 / (RRF_K + 1)) + 0.5 * (1.0 / (RRF_K + 1)), 6)
 
@@ -301,7 +301,7 @@ class TestHybridSearchIntegration:
         """Test hybrid search using native Qdrant hybrid search."""
         with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536
+                return_value=[0.1] * 1536,
             )
 
             result = await hybrid_service.search_hybrid(
@@ -326,7 +326,7 @@ class TestHybridSearchIntegration:
 
         with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536
+                return_value=[0.1] * 1536,
             )
 
             result = await hybrid_service.search_hybrid(
@@ -346,7 +346,7 @@ class TestHybridSearchIntegration:
 
         with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536
+                return_value=[0.1] * 1536,
             )
 
             result = await hybrid_service.search_hybrid(
@@ -372,7 +372,7 @@ class TestHybridSearchIntegration:
 
     @pytest.mark.asyncio
     async def test_search_hybrid_collection_not_found(
-        self, hybrid_service, mock_collection_manager
+        self, hybrid_service, mock_collection_manager,
     ):
         """Test hybrid search when collection doesn't exist."""
         mock_collection_manager.get_collection.return_value = None
@@ -386,7 +386,7 @@ class TestHybridSearchIntegration:
                     "metadatas": [],
                     "scores": [],
                     "total_found": 0,
-                }
+                },
             )
             mock_qdrant.return_value = mock_client
 
@@ -405,7 +405,7 @@ class TestHybridSearchIntegration:
 
         with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536
+                return_value=[0.1] * 1536,
             )
 
             await hybrid_service.search_hybrid(
@@ -435,7 +435,7 @@ class TestDenseOnlySearch:
         """Test successful dense-only search."""
         with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536
+                return_value=[0.1] * 1536,
             )
 
             result = await hybrid_service.search_dense_only(
@@ -454,12 +454,12 @@ class TestDenseOnlySearch:
     async def test_search_dense_only_error(self, hybrid_service, mock_collection_manager):
         """Test dense-only search with error."""
         mock_collection_manager.get_collection.return_value.search.side_effect = Exception(
-            "Search failed"
+            "Search failed",
         )
 
         with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536
+                return_value=[0.1] * 1536,
             )
 
             result = await hybrid_service.search_dense_only(
@@ -729,7 +729,7 @@ class TestPerformanceAndKeywordQueries:
         """Test that cached searches are faster."""
         with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536
+                return_value=[0.1] * 1536,
             )
 
             # First call
@@ -783,7 +783,7 @@ class TestIndonesianLanguageSupport:
         """Test hybrid search with Indonesian query."""
         with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536
+                return_value=[0.1] * 1536,
             )
 
             result = await hybrid_service.search_hybrid(
@@ -824,7 +824,7 @@ class TestErrorHandling:
     def test_compute_bm25_vectors_graceful_failure(self, hybrid_service, mock_bm25_vectorizer):
         """Test BM25 computation handles errors gracefully."""
         mock_bm25_vectorizer.generate_batch_sparse_vectors.side_effect = Exception(
-            "Tokenization error"
+            "Tokenization error",
         )
 
         result = hybrid_service.compute_bm25_vectors(["test text"])
@@ -872,7 +872,7 @@ class TestEdgeCases:
         """Test search with very large limit."""
         with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536
+                return_value=[0.1] * 1536,
             )
 
             result = await hybrid_service.search_hybrid(

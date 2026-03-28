@@ -149,7 +149,7 @@ Return ONLY a JSON object:
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_prompt),
-        ]
+        ],
     )
 
     # Parse response (assume LLM returns JSON)
@@ -173,7 +173,7 @@ Return ONLY a JSON object:
             f"✅ [Understand Query] Intent: {state['intent']}, "
             f"Domain: {domain}, "
             f"Entities: {len(state['extracted_entities'])}, "
-            f"Citizenship: {state['user_context'].get('citizenship')}"
+            f"Citizenship: {state['user_context'].get('citizenship')}",
         )
     except (json.JSONDecodeError, KeyError) as e:
         logger.error(f"❌ [Understand Query] Failed to parse LLM response: {e}")
@@ -451,7 +451,7 @@ async def resolve_entities_node(
                     entity_ids.append(eid)
                     confidence_scores[eid] = conf
                     await cache.set_resolved_entity(
-                        entity_str, {"entity_id": eid, "confidence": conf}
+                        entity_str, {"entity_id": eid, "confidence": conf},
                     )
                     logger.info(f"✅ [Resolve] Exact match: {entity_str} → {eid}")
                     continue
@@ -491,11 +491,11 @@ async def resolve_entities_node(
                     entity_ids.append(eid)
                     confidence_scores[eid] = conf
                     await cache.set_resolved_entity(
-                        entity_str, {"entity_id": eid, "confidence": conf}
+                        entity_str, {"entity_id": eid, "confidence": conf},
                     )
                     logger.info(
                         f"🔍 [Resolve] Fuzzy match: {entity_str} → {eid} "
-                        f"(sim: {best['sim_score']:.2f}, type: {best['entity_type']})"
+                        f"(sim: {best['sim_score']:.2f}, type: {best['entity_type']})",
                     )
                 else:
                     # Cache the miss too (avoids repeated DB lookups for unknown entities)
@@ -506,7 +506,7 @@ async def resolve_entities_node(
     state["confidence_scores"] = confidence_scores
 
     logger.info(
-        f"✅ [Resolve Entities] Resolved {len(entity_ids)}/{len(state['extracted_entities'])} entities"
+        f"✅ [Resolve Entities] Resolved {len(entity_ids)}/{len(state['extracted_entities'])} entities",
     )
 
     return state
@@ -540,7 +540,7 @@ async def traverse_graph_node(
     """
     logger.info(
         f"🌐 [Traverse Graph] Starting BFS from {len(state['current_entities'])} entities, "
-        f"max_depth={max_depth}"
+        f"max_depth={max_depth}",
     )
 
     if not state["current_entities"]:
@@ -576,7 +576,7 @@ async def traverse_graph_node(
         for depth in range(max_depth):
             actual_depth = depth
             logger.info(
-                f"🔍 [Traverse] Depth {depth + 1}/{max_depth}, frontier size: {len(frontier)}"
+                f"🔍 [Traverse] Depth {depth + 1}/{max_depth}, frontier size: {len(frontier)}",
             )
 
             if not frontier:
@@ -652,7 +652,7 @@ async def traverse_graph_node(
 
         logger.info(
             f"✅ [Traverse Graph] Found {len(chains)} relationship chains, "
-            f"visited {len(visited)} entities"
+            f"visited {len(visited)} entities",
         )
 
     return state
@@ -716,7 +716,7 @@ Provide:
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content="Analyze the graph and answer the query."),
-        ]
+        ],
     )
 
     state["reasoning_steps"].append(response.content)
@@ -730,7 +730,7 @@ Provide:
     kg_llm_reasoning_duration_seconds.observe(duration)
 
     logger.info(
-        f"✅ [Reason] Reasoning complete, {len(evidence)} evidence pieces extracted ({duration:.2f}s)"
+        f"✅ [Reason] Reasoning complete, {len(evidence)} evidence pieces extracted ({duration:.2f}s)",
     )
 
     return state
@@ -882,7 +882,7 @@ def extract_evidence_from_chains(chains: list[list[dict]]) -> list[dict]:
                     "entity_type": element["target_type"],
                     "relationship": element["relationship_type"],
                     "context": f"Found via {element['relationship_type']} from {element['source_name']}",
-                }
+                },
             )
 
     return evidence

@@ -52,7 +52,7 @@ class GoldenAnswerService:
             # PERFORMANCE FIX: Increased pool size from max=10 to max=20 for better concurrency
             # See: docs/debug/performance/database_report.md
             self.pool = await asyncpg.create_pool(
-                self.database_url, min_size=5, max_size=20, command_timeout=30
+                self.database_url, min_size=5, max_size=20, command_timeout=30,
             )
             logger.info("✅ GoldenAnswerService connected to PostgreSQL (pool: min=5, max=20)")
         except Exception as e:
@@ -130,7 +130,7 @@ class GoldenAnswerService:
 
             if semantic_match:
                 logger.info(
-                    f"✅ Semantic golden answer match: {semantic_match['cluster_id']} (similarity: {semantic_match['similarity']:.2f})"
+                    f"✅ Semantic golden answer match: {semantic_match['cluster_id']} (similarity: {semantic_match['similarity']:.2f})",
                 )
 
                 # Increment usage count
@@ -185,7 +185,7 @@ class GoldenAnswerService:
                     FROM golden_answers
                     ORDER BY usage_count DESC
                     LIMIT 100
-                """
+                """,
                 )
 
             if not golden_answers:
@@ -267,7 +267,7 @@ class GoldenAnswerService:
                     MAX(usage_count) as max_usage,
                     MIN(usage_count) as min_usage
                 FROM golden_answers
-            """
+            """,
             )
 
             top_10 = await conn.fetch(
@@ -280,7 +280,7 @@ class GoldenAnswerService:
                 FROM golden_answers
                 ORDER BY usage_count DESC
                 LIMIT 10
-            """
+            """,
             )
 
         return {

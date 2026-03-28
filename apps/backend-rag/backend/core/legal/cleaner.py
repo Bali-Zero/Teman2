@@ -75,7 +75,7 @@ class LegalCleaner:
         if reduction > 0:
             logger.info(
                 f"Cleaned text: {original_length} → {cleaned_length} chars "
-                f"({reduction} removed, {reduction / original_length * 100:.1f}%)"
+                f"({reduction} removed, {reduction / original_length * 100:.1f}%)",
             )
 
         return cleaned

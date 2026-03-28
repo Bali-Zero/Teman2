@@ -192,13 +192,13 @@ class OrchestratorStreamingManager:
                 )
 
                 logger.exception(
-                    "❌ [Stream] Unexpected error processing event", extra=error_context
+                    "❌ [Stream] Unexpected error processing event", extra=error_context,
                 )
                 metrics_collector.stream_event_processing_error_total.inc()
 
                 if event_error_count >= self._max_event_errors:
                     yield self.create_error_event(
-                        "processing_error", f"Stream aborted: {str(e)}", correlation_id
+                        "processing_error", f"Stream aborted: {str(e)}", correlation_id,
                     )
                     break
 

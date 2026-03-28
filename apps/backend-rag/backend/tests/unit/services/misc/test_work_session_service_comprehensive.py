@@ -85,7 +85,7 @@ class TestWorkSessionService:
             side_effect=[
                 None,  # No existing session
                 {"id": 1, "session_start": MagicMock(isoformat=lambda: "2024-01-01T00:00:00")},
-            ]
+            ],
         )
 
         with (
@@ -93,7 +93,7 @@ class TestWorkSessionService:
             patch.object(work_session_service, "_notify_zero"),
         ):
             result = await work_session_service.start_session(
-                "user1", "Test User", "test@example.com"
+                "user1", "Test User", "test@example.com",
             )
             assert result["status"] == "started"
 
@@ -106,7 +106,7 @@ class TestWorkSessionService:
             return_value={
                 "id": 1,
                 "session_start": MagicMock(isoformat=lambda: "2024-01-01T00:00:00"),
-            }
+            },
         )
 
         result = await work_session_service.start_session("user1", "Test User", "test@example.com")
@@ -134,7 +134,7 @@ class TestWorkSessionService:
         work_session_service.pool = mock_db_pool
 
         mock_db_pool.fetchrow = AsyncMock(
-            return_value={"id": 1, "session_start": MagicMock(), "last_activity": MagicMock()}
+            return_value={"id": 1, "session_start": MagicMock(), "last_activity": MagicMock()},
         )
 
         with (

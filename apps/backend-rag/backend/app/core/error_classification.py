@@ -92,7 +92,7 @@ class ErrorClassifier:
             if isinstance(error, (asyncpg.ConnectionDoesNotExistError, asyncpg.InterfaceError)):
                 return (ErrorCategory.TRANSIENT, ErrorSeverity.HIGH)
             if isinstance(
-                error, (asyncpg.UniqueViolationError, asyncpg.ForeignKeyViolationError)
+                error, (asyncpg.UniqueViolationError, asyncpg.ForeignKeyViolationError),
             ):
                 return (ErrorCategory.PERMANENT, ErrorSeverity.MEDIUM)
             return (ErrorCategory.TRANSIENT, ErrorSeverity.MEDIUM)

@@ -59,7 +59,7 @@ _TRUSTED_TOOL_NAMES: frozenset[str] = frozenset(
         "team_knowledge",
         "timesheet",
         "vector_search",
-    }
+    },
 )
 
 
@@ -106,7 +106,7 @@ def _validate_context_quality(
 
     # Penalize if too few items
     item_count_penalty = min(
-        len(context_items) / EvidenceScoreConstants.PREFERRED_CONTEXT_ITEMS, 1.0
+        len(context_items) / EvidenceScoreConstants.PREFERRED_CONTEXT_ITEMS, 1.0,
     )
 
     final_score = (
@@ -212,7 +212,7 @@ class ReasoningEngine:
         # Fallback order: Requested Lang -> English -> Generic
         lang_stubs = stubs.get(key, {})
         return lang_stubs.get(
-            language, lang_stubs.get("ENGLISH", "I'm sorry, I cannot fulfill this request.")
+            language, lang_stubs.get("ENGLISH", "I'm sorry, I cannot fulfill this request."),
         )
 
     async def execute_react_loop(
@@ -298,7 +298,7 @@ class ReasoningEngine:
                         set_span_attribute("step_tokens", step_usage.total_tokens)
                         conversation_messages.append({"role": "user", "content": message})
                         conversation_messages.append(
-                            {"role": "assistant", "content": text_response}
+                            {"role": "assistant", "content": text_response},
                         )
 
                     except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
@@ -327,7 +327,7 @@ class ReasoningEngine:
                                 # If we found native calls, stop looking in this candidate
                                 if tool_calls:
                                     logger.info(
-                                        f"✅ [Native Function Call] Detected {len(tool_calls)} calls in response"
+                                        f"✅ [Native Function Call] Detected {len(tool_calls)} calls in response",
                                     )
                                     set_span_attribute("function_call_mode", "native")
                                     set_span_attribute("tool_calls_count", len(tool_calls))
@@ -365,7 +365,7 @@ class ReasoningEngine:
                                             "arguments": tc.arguments,
                                             "step": state.current_step + step_idx,
                                             "user_id": user_id,
-                                        }
+                                        },
                                     },
                                 )
                                 result, duration = await execute_tool(
@@ -384,7 +384,7 @@ class ReasoningEngine:
                         import asyncio
 
                         results = await asyncio.gather(
-                            *[_exec_tool_wrapper(tc, i) for i, tc in enumerate(tool_calls)]
+                            *[_exec_tool_wrapper(tc, i) for i, tc in enumerate(tool_calls)],
                         )
 
                         # Process results
@@ -411,18 +411,18 @@ class ReasoningEngine:
                                                 state.sources = []
                                             state.sources.extend(new_sources)
                                             set_span_attribute(
-                                                "sources_collected", len(new_sources)
+                                                "sources_collected", len(new_sources),
                                             )
                                         else:
                                             logger.warning(
-                                                "⚠️ [Agent] Vector search empty content. Keeping original."
+                                                "⚠️ [Agent] Vector search empty content. Keeping original.",
                                             )
                                             if new_sources:
                                                 if not hasattr(state, "sources"):
                                                     state.sources = []
                                                 state.sources.extend(new_sources)
-                                except json.JSONDecodeError:
-                                    pass
+                                except json.JSONDecodeError as e:
+                                    logger.debug(f"Vector search JSON decode skipped: {e}")
                                 except (KeyError, ValueError, TypeError) as e:
                                     logger.warning(f"Failed to parse vector_search: {e}")
 
@@ -431,17 +431,17 @@ class ReasoningEngine:
                                 try:
                                     parsed_result = json.loads(tool_result)
                                     if isinstance(parsed_result, dict) and parsed_result.get(
-                                        "success"
+                                        "success",
                                     ):
                                         image_url = parsed_result.get(
-                                            "image_url"
+                                            "image_url",
                                         ) or parsed_result.get("image_data")
                                         if image_url:
                                             if not hasattr(state, "generated_images"):
                                                 state.generated_images = []
                                             state.generated_images.append(image_url)
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    logger.debug(f"Image URL parse skipped: {e}")
 
                             # Update tool call result
                             tool_call.result = tool_result
@@ -467,7 +467,7 @@ class ReasoningEngine:
                                 state.context_gathered.append(tool_result)
 
                             turn_observations.append(
-                                f"Output from {tool_call.tool_name}: {tool_result}"
+                                f"Output from {tool_call.tool_name}: {tool_result}",
                             )
 
                         # Update step counter if we ran multiple tools
@@ -488,7 +488,7 @@ class ReasoningEngine:
                                             "quality_score": quality_score,
                                             "context_items": len(state.context_gathered),
                                             "step": state.current_step,
-                                        }
+                                        },
                                     },
                                 )
                                 try:
@@ -503,12 +503,12 @@ class ReasoningEngine:
                                 # Try to gather more context if not at max steps
                                 if state.current_step < state.max_steps:
                                     logger.info(
-                                        "🔄 [Agent] Low quality context, continuing to gather more..."
+                                        "🔄 [Agent] Low quality context, continuing to gather more...",
                                     )
                                     continue  # Try another tool
                                 # Last step - use what we have but warn
                                 logger.warning(
-                                    "Using low-quality context due to max steps reached"
+                                    "Using low-quality context due to max steps reached",
                                 )
 
                         # OPTIMIZATION: Early exit (only for simple queries)
@@ -530,7 +530,7 @@ class ReasoningEngine:
                             break
                         if is_complex_query and tool_call.tool_name == "vector_search":
                             logger.info(
-                                "🔗 [Complex Query] Allowing multi-tool reasoning (KG may be needed)"
+                                "🔗 [Complex Query] Allowing multi-tool reasoning (KG may be needed)",
                             )
 
                         set_span_status("ok")
@@ -550,7 +550,7 @@ class ReasoningEngine:
                                 state.final_answer = text_response
 
                             step = AgentStep(
-                                step_number=state.current_step, thought=text_response, is_final=True
+                                step_number=state.current_step, thought=text_response, is_final=True,
                             )
                             state.steps.append(step)
                             set_span_attribute("is_final_answer", "true")
@@ -587,7 +587,7 @@ class ReasoningEngine:
                         trusted_tools_used = True
                         logger.info(
                             f"🔧 [Trusted Tools] {step.action.tool_name} used successfully "
-                            f"(obs_len={len(step.observation)}), bypassing keyword evidence check"
+                            f"(obs_len={len(step.observation)}), bypassing keyword evidence check",
                         )
                         break
 
@@ -644,7 +644,7 @@ class ReasoningEngine:
                 trusted_tools_used = True
                 logger.info(
                     "🔍 [Answer Content] Final answer contains pricing data, "
-                    "bypassing evidence check"
+                    "bypassing evidence check",
                 )
 
         # ==================== POLICY ENFORCEMENT ====================
@@ -658,7 +658,7 @@ class ReasoningEngine:
         if has_tools and state.final_answer:
             logger.info(
                 f"🔍 [Tools Available] LLM had {len(llm_gateway._gemini_tools)} tools "
-                f"and produced answer, skipping strict evidence check"
+                f"and produced answer, skipping strict evidence check",
             )
             trusted_tools_used = True
 
@@ -678,10 +678,10 @@ class ReasoningEngine:
                 domain_type = get_critical_domain_type(query)
                 logger.warning(
                     f"🛡️ [Uncertainty] Overriding existing answer due to low evidence for critical domain "
-                    f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
+                    f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})",
                 )
                 strict_abstain_critical_total.labels(
-                    intent_type=intent_type, domain_type=domain_type
+                    intent_type=intent_type, domain_type=domain_type,
                 ).inc()
                 abstain_decision_total.labels(decision_type="strict_abstain").inc()
                 # Use localized ABSTAIN message
@@ -690,11 +690,11 @@ class ReasoningEngine:
                 # TIER 1: Regenerate with Transparency Protocol
                 has_context = bool(state.context_gathered)
                 tier1_fallback_activated_total.labels(
-                    intent_type=intent_type, has_context=str(has_context).lower()
+                    intent_type=intent_type, has_context=str(has_context).lower(),
                 ).inc()
                 logger.info(
                     f"🌊 [Tier 1] Regenerating answer with Transparency Protocol "
-                    f"(Score: {evidence_score:.2f}, Intent: {intent_type})"
+                    f"(Score: {evidence_score:.2f}, Intent: {intent_type})",
                 )
                 transparency_instruction = """
 [SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
@@ -741,14 +741,14 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     tier1_response_duration.observe(tier1_duration)
                     tier1_fallback_success_total.labels(intent_type=intent_type).inc()
                     logger.info(
-                        f"🌊 [Tier 1] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)"
+                        f"🌊 [Tier 1] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)",
                     )
                 except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
                     tier1_duration = time.time() - tier1_start_time
                     tier1_response_duration.observe(tier1_duration)
                     error_type = type(e).__name__
                     tier1_fallback_failed_total.labels(
-                        intent_type=intent_type, error_type=error_type
+                        intent_type=intent_type, error_type=error_type,
                     ).inc()
                     logger.error(f"Failed to regenerate Tier 1 answer: {error_type}", exc_info=True)
                     state.final_answer = self._get_localized_stub("abstain", language)
@@ -777,10 +777,10 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     domain_type = get_critical_domain_type(query)
                     logger.warning(
                         f"🛡️ [Uncertainty] Triggered STRICT ABSTAIN for critical domain "
-                        f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
+                        f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})",
                     )
                     strict_abstain_critical_total.labels(
-                        intent_type=intent_type, domain_type=domain_type
+                        intent_type=intent_type, domain_type=domain_type,
                     ).inc()
                     abstain_decision_total.labels(decision_type="strict_abstain").inc()
                     state.final_answer = (
@@ -796,12 +796,12 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     # TIER 1: Fluid Fallback - Use General Intelligence with Transparency Protocol
                     has_context = bool(state.context_gathered)
                     tier1_fallback_activated_total.labels(
-                        intent_type=intent_type, has_context=str(has_context).lower()
+                        intent_type=intent_type, has_context=str(has_context).lower(),
                     ).inc()
                     abstain_decision_total.labels(decision_type="tier1_fallback").inc()
                     logger.info(
                         f"🌊 [Tier 1] Low evidence ({evidence_score:.2f}) for non-critical query, "
-                        f"using General Intelligence fallback"
+                        f"using General Intelligence fallback",
                     )
                     # Inject Transparency Protocol instruction into prompt
                     transparency_instruction = """
@@ -852,14 +852,14 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         tier1_response_duration.observe(tier1_duration)
                         tier1_fallback_success_total.labels(intent_type=intent_type).inc()
                         logger.info(
-                            f"🌊 [Tier 1] General Intelligence response generated (duration: {tier1_duration:.2f}s)"
+                            f"🌊 [Tier 1] General Intelligence response generated (duration: {tier1_duration:.2f}s)",
                         )
                     except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
                         tier1_response_duration.observe(tier1_duration)
                         error_type = type(e).__name__
                         tier1_fallback_failed_total.labels(
-                            intent_type=intent_type, error_type=error_type
+                            intent_type=intent_type, error_type=error_type,
                         ).inc()
                         logger.error(
                             f"Failed to generate Tier 1 fallback answer: {error_type}",
@@ -881,7 +881,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         "Still provide a helpful answer, but acknowledge limitations if needed."
                     )
                     logger.info(
-                        f"🛡️ [Uncertainty] Moderate evidence detected (Score: {evidence_score:.2f}), adding warning"
+                        f"🛡️ [Uncertainty] Moderate evidence detected (Score: {evidence_score:.2f}), adding warning",
                     )
 
                 final_prompt = f"""
@@ -943,22 +943,22 @@ Make it feel natural and helpful, not forced.
                 if is_critical:
                     domain_type = get_critical_domain_type(query)
                     logger.warning(
-                        f"🛡️ [Uncertainty] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})"
+                        f"🛡️ [Uncertainty] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})",
                     )
                     strict_abstain_critical_total.labels(
-                        intent_type=intent_type, domain_type=domain_type
+                        intent_type=intent_type, domain_type=domain_type,
                     ).inc()
                     abstain_decision_total.labels(decision_type="strict_abstain").inc()
                     state.final_answer = self._get_localized_stub("abstain", language)
                 else:
                     # TIER 1: No context but non-critical - use General Intelligence
                     tier1_fallback_activated_total.labels(
-                        intent_type=intent_type, has_context="false"
+                        intent_type=intent_type, has_context="false",
                     ).inc()
                     abstain_decision_total.labels(decision_type="tier1_fallback").inc()
                     logger.info(
                         "🌊 [Tier 1] No context gathered for non-critical query, "
-                        "using General Intelligence fallback"
+                        "using General Intelligence fallback",
                     )
                     transparency_instruction = """
 [SYSTEM NOTICE: NO INTERNAL DOCUMENTS FOUND]
@@ -997,14 +997,14 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         tier1_response_duration.observe(tier1_duration)
                         tier1_fallback_success_total.labels(intent_type=intent_type).inc()
                         logger.info(
-                            f"🌊 [Tier 1] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)"
+                            f"🌊 [Tier 1] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)",
                         )
                     except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
                         tier1_response_duration.observe(tier1_duration)
                         error_type = type(e).__name__
                         tier1_fallback_failed_total.labels(
-                            intent_type=intent_type, error_type=error_type
+                            intent_type=intent_type, error_type=error_type,
                         ).inc()
                         logger.error(
                             f"Failed to generate Tier 1 fallback answer: {error_type}",
@@ -1043,7 +1043,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         verification = processed.get("verification", {})
                         logger.warning(
                             f"🛡️ [Pipeline] REJECTED draft (Score: {verification.get('score', 0)}). "
-                            f"Reason: {verification.get('reasoning', 'unknown')}"
+                            f"Reason: {verification.get('reasoning', 'unknown')}",
                         )
                         add_span_event(
                             "pipeline.self_correction",
@@ -1084,7 +1084,7 @@ Do not invent information. If the context is insufficient, admit it.
                     logger.info(
                         f"✅ [Pipeline] Response processed: "
                         f"verification={processed.get('verification_status', 'unknown')}, "
-                        f"citations={processed.get('citation_count', 0)}"
+                        f"citations={processed.get('citation_count', 0)}",
                     )
                     set_span_attribute("citation_count", processed.get("citation_count", 0))
                     set_span_status("ok")
@@ -1099,7 +1099,7 @@ Do not invent information. If the context is insufficient, admit it.
         logger.info(
             f"📊 [ReAct] Total token usage: {accumulated_usage.prompt_tokens} prompt + "
             f"{accumulated_usage.completion_tokens} completion = {accumulated_usage.total_tokens} total "
-            f"(${accumulated_usage.cost_usd:.6f})"
+            f"(${accumulated_usage.cost_usd:.6f})",
         )
 
         return state, model_used_name, conversation_messages, accumulated_usage
@@ -1219,20 +1219,20 @@ Do not invent information. If the context is insufficient, admit it.
                                     state.sources = []
                                 state.sources.extend(new_sources)
                                 logger.info(
-                                    f"📚 [Agent Stream] Collected {len(new_sources)} sources"
+                                    f"📚 [Agent Stream] Collected {len(new_sources)} sources",
                                 )
                             else:
                                 # Empty content - log warning, still collect sources
                                 logger.warning(
                                     f"⚠️ [Agent Stream] Vector search returned empty content "
-                                    f"with {len(new_sources)} sources"
+                                    f"with {len(new_sources)} sources",
                                 )
                                 if new_sources:
                                     if not hasattr(state, "sources"):
                                         state.sources = []
                                     state.sources.extend(new_sources)
-                    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
-                        pass
+                    except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
+                        logger.debug(f"Streaming vector search parse skipped: {e}")
 
                 # Handle image generation results
                 if tool_call.tool_name == "generate_image":
@@ -1241,7 +1241,7 @@ Do not invent information. If the context is insufficient, admit it.
                         if isinstance(parsed_result, dict) and parsed_result.get("success"):
                             # Extract image URL or base64 data
                             image_url = parsed_result.get("image_url") or parsed_result.get(
-                                "image_data"
+                                "image_data",
                             )
                             if image_url:
                                 # Yield special image event for frontend rendering
@@ -1254,7 +1254,7 @@ Do not invent information. If the context is insufficient, admit it.
                                     },
                                 }
                                 logger.info(
-                                    f"🖼️ [Agent Stream] Image generated: {parsed_result.get('service')}"
+                                    f"🖼️ [Agent Stream] Image generated: {parsed_result.get('service')}",
                                 )
                                 # Store in state for final response
                                 if not hasattr(state, "generated_images"):
@@ -1298,7 +1298,7 @@ Do not invent information. If the context is insufficient, admit it.
                     break
                 elif is_complex_query and tool_call.tool_name == "vector_search":
                     logger.info(
-                        "🔗 [Stream Complex Query] Allowing multi-tool reasoning (KG may be needed)"
+                        "🔗 [Stream Complex Query] Allowing multi-tool reasoning (KG may be needed)",
                     )
 
             else:
@@ -1310,7 +1310,7 @@ Do not invent information. If the context is insufficient, admit it.
                         state.final_answer = text_response
 
                     step = AgentStep(
-                        step_number=state.current_step, thought=text_response, is_final=True
+                        step_number=state.current_step, thought=text_response, is_final=True,
                     )
                     state.steps.append(step)
                     break
@@ -1337,7 +1337,7 @@ Do not invent information. If the context is insufficient, admit it.
                         trusted_tools_used = True
                         logger.info(
                             f"🔧 [Trusted Tools - Stream] {step.action.tool_name} used successfully "
-                            f"(obs_len={len(step.observation)}), using high evidence score"
+                            f"(obs_len={len(step.observation)}), using high evidence score",
                         )
                         break
 
@@ -1405,7 +1405,7 @@ Do not invent information. If the context is insufficient, admit it.
             ):
                 trusted_tools_used = True
                 logger.info(
-                    "🔍 [Trusted Tools] KG data found in context_gathered, bypassing evidence check"
+                    "🔍 [Trusted Tools] KG data found in context_gathered, bypassing evidence check",
                 )
 
         # FIX: Also bypass evidence check when context_gathered has substantial content
@@ -1416,7 +1416,7 @@ Do not invent information. If the context is insufficient, admit it.
                 trusted_tools_used = True
                 logger.info(
                     f"🔍 [Context Evidence] Substantial context gathered ({total_context_len} chars), "
-                    f"bypassing strict evidence check"
+                    f"bypassing strict evidence check",
                 )
 
         # ==================== ANSWER CONTENT CHECK ====================
@@ -1444,7 +1444,7 @@ Do not invent information. If the context is insufficient, admit it.
                 trusted_tools_used = True
                 logger.info(
                     "🔍 [Answer Content] Final answer contains pricing data, "
-                    "bypassing evidence check"
+                    "bypassing evidence check",
                 )
 
         # ==================== POLICY ENFORCEMENT ====================
@@ -1458,7 +1458,7 @@ Do not invent information. If the context is insufficient, admit it.
         if has_tools and state.final_answer:
             logger.info(
                 f"🔍 [Tools Available] LLM had {len(llm_gateway._gemini_tools)} tools "
-                f"and produced answer, skipping strict evidence check"
+                f"and produced answer, skipping strict evidence check",
             )
             trusted_tools_used = True
 
@@ -1478,10 +1478,10 @@ Do not invent information. If the context is insufficient, admit it.
                 domain_type = get_critical_domain_type(query)
                 logger.warning(
                     f"🛡️ [Uncertainty Stream] Overriding existing answer due to low evidence for critical domain "
-                    f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
+                    f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})",
                 )
                 strict_abstain_critical_total.labels(
-                    intent_type=intent_type, domain_type=domain_type
+                    intent_type=intent_type, domain_type=domain_type,
                 ).inc()
                 abstain_decision_total.labels(decision_type="strict_abstain").inc()
                 state.final_answer = self._get_localized_stub("abstain", language)
@@ -1489,12 +1489,12 @@ Do not invent information. If the context is insufficient, admit it.
                 # TIER 1: Regenerate with Transparency Protocol (streaming)
                 has_context = bool(state.context_gathered)
                 tier1_fallback_activated_total.labels(
-                    intent_type=intent_type, has_context=str(has_context).lower()
+                    intent_type=intent_type, has_context=str(has_context).lower(),
                 ).inc()
                 abstain_decision_total.labels(decision_type="tier1_fallback").inc()
                 logger.info(
                     f"🌊 [Tier 1 Stream] Regenerating answer with Transparency Protocol "
-                    f"(Score: {evidence_score:.2f}, Intent: {intent_type})"
+                    f"(Score: {evidence_score:.2f}, Intent: {intent_type})",
                 )
                 transparency_instruction = """
 [SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
@@ -1534,14 +1534,14 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     tier1_response_duration.observe(tier1_duration)
                     tier1_fallback_success_total.labels(intent_type=intent_type).inc()
                     logger.info(
-                        f"🌊 [Tier 1 Stream] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)"
+                        f"🌊 [Tier 1 Stream] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)",
                     )
                 except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
                     tier1_duration = time.time() - tier1_start_time
                     tier1_response_duration.observe(tier1_duration)
                     error_type = type(e).__name__
                     tier1_fallback_failed_total.labels(
-                        intent_type=intent_type, error_type=error_type
+                        intent_type=intent_type, error_type=error_type,
                     ).inc()
                     logger.error(f"Failed to regenerate Tier 1 answer: {error_type}", exc_info=True)
                     state.final_answer = self._get_localized_stub("abstain", language)
@@ -1549,7 +1549,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
             logger.info("🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
         elif trusted_tools_used and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info(
-                "🧮 [Trusted Tool Stream] Skipping evidence check (trusted_tools_used=True)"
+                "🧮 [Trusted Tool Stream] Skipping evidence check (trusted_tools_used=True)",
             )
 
         # ==================== FINAL ANSWER GENERATION ====================
@@ -1571,10 +1571,10 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     domain_type = get_critical_domain_type(query)
                     logger.warning(
                         f"🛡️ [Uncertainty Stream] Triggered STRICT ABSTAIN for critical domain "
-                        f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})"
+                        f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})",
                     )
                     strict_abstain_critical_total.labels(
-                        intent_type=intent_type, domain_type=domain_type
+                        intent_type=intent_type, domain_type=domain_type,
                     ).inc()
                     abstain_decision_total.labels(decision_type="strict_abstain").inc()
                     state.final_answer = (
@@ -1590,12 +1590,12 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     # TIER 1: Fluid Fallback - Use General Intelligence with Transparency Protocol
                     has_context = bool(state.context_gathered)
                     tier1_fallback_activated_total.labels(
-                        intent_type=intent_type, has_context=str(has_context).lower()
+                        intent_type=intent_type, has_context=str(has_context).lower(),
                     ).inc()
                     abstain_decision_total.labels(decision_type="tier1_fallback").inc()
                     logger.info(
                         f"🌊 [Tier 1 Stream] Low evidence ({evidence_score:.2f}) for non-critical query, "
-                        f"using General Intelligence fallback"
+                        f"using General Intelligence fallback",
                     )
                     # Inject Transparency Protocol instruction into prompt
                     transparency_instruction = """
@@ -1640,14 +1640,14 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         tier1_response_duration.observe(tier1_duration)
                         tier1_fallback_success_total.labels(intent_type=intent_type).inc()
                         logger.info(
-                            f"🌊 [Tier 1 Stream] General Intelligence response generated (duration: {tier1_duration:.2f}s)"
+                            f"🌊 [Tier 1 Stream] General Intelligence response generated (duration: {tier1_duration:.2f}s)",
                         )
                     except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
                         tier1_response_duration.observe(tier1_duration)
                         error_type = type(e).__name__
                         tier1_fallback_failed_total.labels(
-                            intent_type=intent_type, error_type=error_type
+                            intent_type=intent_type, error_type=error_type,
                         ).inc()
                         logger.error(
                             f"Failed to generate Tier 1 fallback answer: {error_type}",
@@ -1669,7 +1669,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         "Still provide a helpful answer, but acknowledge limitations if needed."
                     )
                     logger.info(
-                        f"🛡️ [Uncertainty Stream] Moderate evidence detected (Score: {evidence_score:.2f}), adding warning"
+                        f"🛡️ [Uncertainty Stream] Moderate evidence detected (Score: {evidence_score:.2f}), adding warning",
                     )
 
                 final_prompt = f"""
@@ -1698,7 +1698,7 @@ Make it feel natural and helpful, not forced.
             # For general tasks, this is OK - generate answer without RAG context
             if state.skip_rag:
                 logger.info(
-                    "🏷️ [General Task Stream] No context needed, proceeding with LLM generation"
+                    "🏷️ [General Task Stream] No context needed, proceeding with LLM generation",
                 )
                 try:
                     state.final_answer, _, _, _ = await llm_gateway.send_message(
@@ -1719,22 +1719,22 @@ Make it feel natural and helpful, not forced.
                 if is_critical:
                     domain_type = get_critical_domain_type(query)
                     logger.warning(
-                        f"🛡️ [Uncertainty Stream] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})"
+                        f"🛡️ [Uncertainty Stream] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})",
                     )
                     strict_abstain_critical_total.labels(
-                        intent_type=intent_type, domain_type=domain_type
+                        intent_type=intent_type, domain_type=domain_type,
                     ).inc()
                     abstain_decision_total.labels(decision_type="strict_abstain").inc()
                     state.final_answer = self._get_localized_stub("abstain", language)
                 else:
                     # TIER 1: No context but non-critical - use General Intelligence
                     tier1_fallback_activated_total.labels(
-                        intent_type=intent_type, has_context="false"
+                        intent_type=intent_type, has_context="false",
                     ).inc()
                     abstain_decision_total.labels(decision_type="tier1_fallback").inc()
                     logger.info(
                         "🌊 [Tier 1 Stream] No context gathered for non-critical query, "
-                        "using General Intelligence fallback"
+                        "using General Intelligence fallback",
                     )
                     transparency_instruction = """
 [SYSTEM NOTICE: NO INTERNAL DOCUMENTS FOUND]
@@ -1767,14 +1767,14 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         tier1_response_duration.observe(tier1_duration)
                         tier1_fallback_success_total.labels(intent_type=intent_type).inc()
                         logger.info(
-                            f"🌊 [Tier 1 Stream] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)"
+                            f"🌊 [Tier 1 Stream] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)",
                         )
                     except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
                         tier1_response_duration.observe(tier1_duration)
                         error_type = type(e).__name__
                         tier1_fallback_failed_total.labels(
-                            intent_type=intent_type, error_type=error_type
+                            intent_type=intent_type, error_type=error_type,
                         ).inc()
                         logger.error(
                             f"Failed to generate Tier 1 fallback answer: {error_type}",

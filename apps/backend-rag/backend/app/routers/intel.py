@@ -79,10 +79,10 @@ class ScraperSubmission(BaseModel):
     extraction_method: str | None = IntelConstants.DEFAULT_EXTRACTION_METHOD
     tier: str = IntelConstants.DEFAULT_TIER  # T1, T2, T3
     cover_image: str | None = Field(
-        None, description="Cover image URL/path (optional, generated later by enricher)"
+        None, description="Cover image URL/path (optional, generated later by enricher)",
     )
     cover_image_base64: str | None = Field(
-        None, description="Cover image as base64 string (uploaded to Drive on submit)"
+        None, description="Cover image as base64 string (uploaded to Drive on submit)",
     )
 
 
@@ -241,7 +241,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 
     # Extract Summary section
     summary_match = re.search(
-        r"## Summary\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
+        r"## Summary\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE,
     )
     ai_summary = summary_match.group(1).strip() if summary_match else content[:280]
 
@@ -251,7 +251,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 
     # Extract Bali Zero Take section
     bali_zero_take_match = re.search(
-        r"## Bali Zero Take\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
+        r"## Bali Zero Take\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE,
     )
     bali_zero_take_text = (
         bali_zero_take_match.group(1).strip()
@@ -289,7 +289,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 
     # Extract Next Steps section
     next_steps_match = re.search(
-        r"## Next Steps\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE
+        r"## Next Steps\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE,
     )
     next_steps_text = next_steps_match.group(1).strip() if next_steps_match else ""
 
@@ -464,12 +464,12 @@ async def submit_from_scraper(
     try:
         # Classify intel type using service
         intel_type = classification_service.classify_intel_type(
-            submission.category, submission.title, submission.content
+            submission.category, submission.title, submission.content,
         )
 
         # Generate unique item ID
         item_id = staging_service.generate_item_id(
-            intel_type, submission.title, submission.source_url
+            intel_type, submission.title, submission.source_url,
         )
 
         # Check for duplicates
@@ -482,7 +482,7 @@ async def submit_from_scraper(
 
             intel_articles_duplicates.labels(intel_type=intel_type).inc()
             intel_scraper_latency.labels(scraper_type=submission.source_name).observe(
-                time.time() - start_time
+                time.time() - start_time,
             )
 
             return {
@@ -557,10 +557,10 @@ async def submit_from_scraper(
 
         # Metrics
         intel_articles_submitted.labels(
-            scraper_type=submission.source_name, intel_type=intel_type, tier=submission.tier
+            scraper_type=submission.source_name, intel_type=intel_type, tier=submission.tier,
         ).inc()
         intel_scraper_latency.labels(scraper_type=submission.source_name).observe(
-            time.time() - start_time
+            time.time() - start_time,
         )
         staging_service.update_staging_queue_metrics()
 
@@ -763,7 +763,7 @@ async def approve_staging_item(
 
     # Send Telegram notification using approval service
     notification_sent = await approval_service.send_approval_notification(
-        type, item_id, data, enriched_data, image_path
+        type, item_id, data, enriched_data, image_path,
     )
 
     if not notification_sent:
@@ -791,7 +791,7 @@ async def approve_staging_item(
 
 @router.put("/api/intel/staging/{type}/{item_id}")
 async def edit_staging_item(
-    type: str, item_id: str, request: EditStagingItemRequest
+    type: str, item_id: str, request: EditStagingItemRequest,
 ) -> dict[str, Any]:
     """
     Edit staging item (title, content, category).
@@ -848,7 +848,7 @@ async def edit_staging_item(
 
 @router.post("/api/intel/staging/{type}/{item_id}/cover")
 async def upload_cover_image(
-    type: str, item_id: str, request: CoverImageUploadRequest
+    type: str, item_id: str, request: CoverImageUploadRequest,
 ) -> dict[str, Any]:
     """
     Upload cover image for staging item.
@@ -950,7 +950,7 @@ async def reject_staging_item(type: str, item_id: str) -> dict[str, Any]:
         return {"success": True, "message": "Item rejected and archived", "id": item_id}
     except Exception as e:
         logger.error(
-            f"Rejection failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id}
+            f"Rejection failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id},
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -1084,7 +1084,7 @@ async def publish_staging_item(
                 extra={"type": type, "item_id": item_id, "title": title},
             )
             raise HTTPException(
-                status_code=500, detail="Failed to ingest article to knowledge base"
+                status_code=500, detail="Failed to ingest article to knowledge base",
             )
 
         logger.info(
@@ -1211,7 +1211,7 @@ async def publish_staging_item(
 
                     if cover_image_path.exists():
                         cover_image_base64 = base64.b64encode(cover_image_path.read_bytes()).decode(
-                            "utf-8"
+                            "utf-8",
                         )
                         cover_image_filename = cover_image_path.name
                         logger.info(
@@ -1284,7 +1284,7 @@ async def publish_staging_item(
                             },
                         )
                         _resp = await asyncio.to_thread(
-                            urllib.request.urlopen, _req, None, 60  # 60s timeout
+                            urllib.request.urlopen, _req, None, 60,  # 60s timeout
                         )
                         _img_bytes = await asyncio.to_thread(_resp.read)
                         if len(_img_bytes) > 5000:
@@ -1470,7 +1470,7 @@ async def publish_staging_item(
                             "slug": article_slug,
                             "category": category,
                             "queued_at": datetime.now(timezone.utc).isoformat(),
-                        }
+                        },
                     )
             logger.info(
                 "📥 Enqueued for post-processing",
@@ -1518,7 +1518,7 @@ async def publish_staging_item(
         raise
     except Exception as e:
         logger.error(
-            f"Publish failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id}
+            f"Publish failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id},
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -1542,7 +1542,7 @@ async def enqueue_post_publish(request: Request) -> dict:
         # avoid duplicates
         if not any(item["slug"] == slug for item in _post_publish_queue):
             _post_publish_queue.append(
-                {"slug": slug, "category": category, "queued_at": datetime.now(timezone.utc).isoformat()}
+                {"slug": slug, "category": category, "queued_at": datetime.now(timezone.utc).isoformat()},
             )
     logger.info("📥 Post-publish queue: added", extra={"slug": slug, "category": category})
     return {"ok": True, "slug": slug}
@@ -1642,7 +1642,7 @@ async def get_system_metrics() -> Any:
             archive_dir = staging_service.get_staging_dir(archive_type) / "archived" / "approved"
             if archive_dir.exists():
                 for file_path in sorted(
-                    archive_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+                    archive_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True,
                 ):
                     try:
                         with open(file_path) as f:
@@ -1682,7 +1682,7 @@ async def get_system_metrics() -> Any:
             archive_dir = staging_service.get_staging_dir(archive_type) / "archived" / "approved"
             if archive_dir.exists():
                 for file_path in sorted(
-                    archive_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+                    archive_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True,
                 )[:10]:
                     try:
                         with open(file_path) as f:
@@ -1756,7 +1756,7 @@ async def search_intel(request: IntelSearchRequest) -> dict[str, Any]:
 
                 # Search (async)
                 results = await client.search(
-                    query_embedding=query_embedding, filter=where_filter, limit=request.limit
+                    query_embedding=query_embedding, filter=where_filter, limit=request.limit,
                 )
 
                 # Parse results
@@ -1784,7 +1784,7 @@ async def search_intel(request: IntelSearchRequest) -> dict[str, Any]:
                             "action_required": metadata.get("action_required") == "True",
                             "deadline_date": metadata.get("deadline_date"),
                             "similarity_score": similarity_score,
-                        }
+                        },
                     )
 
             except Exception as e:
@@ -1830,7 +1830,7 @@ async def store_intel(request: IntelStoreRequest) -> dict[str, Any]:
 
 @router.get("/api/intel/critical")
 async def get_critical_items(
-    category: str | None = None, days: int = IntelConstants.DUPLICATE_CHECK_DAYS
+    category: str | None = None, days: int = IntelConstants.DUPLICATE_CHECK_DAYS,
 ) -> dict[str, Any]:
     """Get critical impact items"""
     try:
@@ -1854,7 +1854,7 @@ async def get_critical_items(
                     "must": [
                         {"key": "impact_level", "match": {"value": "critical"}},
                         {"key": "published_date", "range": {"gte": cutoff_date}},
-                    ]
+                    ],
                 }
 
                 try:
@@ -1874,10 +1874,10 @@ async def get_critical_items(
                     }
 
                     async with httpx.AsyncClient(
-                        timeout=HttpTimeoutConstants.INTEL_SCRAPER_TIMEOUT
+                        timeout=HttpTimeoutConstants.INTEL_SCRAPER_TIMEOUT,
                     ) as http_client:
                         response = await http_client.post(
-                            scroll_url, json=scroll_payload, headers=headers
+                            scroll_url, json=scroll_payload, headers=headers,
                         )
                         response.raise_for_status()
                         scroll_data = response.json().get("result", {})
@@ -1888,7 +1888,7 @@ async def get_critical_items(
                         ]
                 except Exception as scroll_error:
                     logger.warning(
-                        f"Qdrant scroll with filter failed, falling back to peek: {scroll_error}"
+                        f"Qdrant scroll with filter failed, falling back to peek: {scroll_error}",
                     )
                     results = await client.peek(limit=100)
                     filtered_metadatas = []
@@ -1912,7 +1912,7 @@ async def get_critical_items(
                             "action_required": metadata.get("action_required") == "True",
                             "deadline_date": metadata.get("deadline_date"),
                             "severity": "high",  # All critical items are high severity for chain compatibility
-                        }
+                        },
                     )
 
             except Exception:
@@ -1935,7 +1935,7 @@ async def get_critical_items(
 
 @router.get("/api/intel/trends")
 async def get_trends(
-    category: str | None = None, _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS
+    category: str | None = None, _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS,
 ) -> dict[str, Any]:
     """Get trending topics and keywords"""
     try:
@@ -1958,7 +1958,7 @@ async def get_trends(
                     {
                         "collection": collection_name.replace("bali_intel_", ""),
                         "total_items": stats.get("total_documents", 0),
-                    }
+                    },
                 )
 
             except Exception:
@@ -1985,7 +1985,7 @@ async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_
     except Exception as e:
         logger.error(f"Failed to calculate analytics: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Analytics calculation failed: {str(e)}"
+            status_code=500, detail=f"Analytics calculation failed: {str(e)}",
         ) from e
 
 

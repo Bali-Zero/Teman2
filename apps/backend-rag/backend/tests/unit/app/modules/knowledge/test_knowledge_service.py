@@ -28,7 +28,7 @@ def mock_qdrant_client():
             "ids": ["doc1"],
             "distances": [0.1],
             "metadatas": [{}],
-        }
+        },
     )
     return client
 
@@ -46,7 +46,7 @@ def knowledge_service(mock_qdrant_client, mock_router):
     """Create KnowledgeService instance with mocked dependencies"""
     with (
         patch(
-            "backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client
+            "backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client,
         ),
         patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
         patch("backend.app.modules.knowledge.service.QueryRouter", return_value=mock_router),
@@ -106,7 +106,7 @@ class TestKnowledgeService:
     async def test_search(self, knowledge_service, mock_qdrant_client):
         """Test search functionality"""
         result = await knowledge_service.search(
-            query="test query", user_level=1, limit=5, collection_override="visa_oracle"
+            query="test query", user_level=1, limit=5, collection_override="visa_oracle",
         )
         assert isinstance(result, dict)
         assert "results" in result
@@ -128,7 +128,7 @@ class TestKnowledgeService:
     async def test_search_pricing_query(self, knowledge_service, mock_qdrant_client):
         """Test search with pricing query detection"""
         result = await knowledge_service.search(
-            query="how much does it cost", user_level=1, limit=5
+            query="how much does it cost", user_level=1, limit=5,
         )
         assert isinstance(result, dict)
         # Should route to bali_zero_pricing_hybrid collection
@@ -138,7 +138,7 @@ class TestKnowledgeService:
     async def test_search_collection_not_found(self, knowledge_service, mock_qdrant_client):
         """Test search with non-existent collection override"""
         result = await knowledge_service.search(
-            query="test query", user_level=1, limit=5, collection_override="nonexistent"
+            query="test query", user_level=1, limit=5, collection_override="nonexistent",
         )
         # Should default to visa_oracle
         assert isinstance(result, dict)
@@ -151,12 +151,12 @@ class TestKnowledgeService:
             mock_reranker = MagicMock()
             mock_reranker.enabled = True
             mock_reranker.rerank = AsyncMock(
-                return_value=[{"id": "doc1", "text": "test", "score": 0.9, "metadata": {}}]
+                return_value=[{"id": "doc1", "text": "test", "score": 0.9, "metadata": {}}],
             )
             knowledge_service.reranker = mock_reranker
 
             result = await knowledge_service.search_with_reranking(
-                query="test query", user_level=1, limit=5, collection_override="visa_oracle"
+                query="test query", user_level=1, limit=5, collection_override="visa_oracle",
             )
             assert isinstance(result, dict)
             assert result.get("reranked") is True
@@ -170,7 +170,7 @@ class TestKnowledgeService:
             knowledge_service.reranker = mock_reranker
 
             result = await knowledge_service.search_with_reranking(
-                query="test query", user_level=1, limit=5, collection_override="visa_oracle"
+                query="test query", user_level=1, limit=5, collection_override="visa_oracle",
             )
             assert isinstance(result, dict)
             assert result.get("reranked") is False
@@ -207,13 +207,13 @@ class TestKnowledgeService:
                 "ids": ["id1", "id2", "id3"],
                 "distances": [0.1, 0.2, 0.3],
                 "metadatas": [{}, {}, {}],
-            }
+            },
         )
         knowledge_service.collections["visa_oracle"] = multi_client
         # Use unique query to avoid cache hits from other tests
         unique_query = f"test query multiple results {uuid.uuid4()}"
         result = await knowledge_service.search(
-            query=unique_query, user_level=1, limit=5, collection_override="visa_oracle"
+            query=unique_query, user_level=1, limit=5, collection_override="visa_oracle",
         )
         assert len(result["results"]) == 3
         assert result["results"][0]["id"] == "id1"
@@ -222,7 +222,7 @@ class TestKnowledgeService:
 
     @pytest.mark.asyncio
     async def test_search_bali_zero_pricing_hybrid_score_bias(
-        self, knowledge_service, mock_qdrant_client
+        self, knowledge_service, mock_qdrant_client,
     ):
         """Test search with bali_zero_pricing_hybrid collection adds score bias"""
         mock_qdrant_client.search = AsyncMock(
@@ -231,7 +231,7 @@ class TestKnowledgeService:
                 "ids": ["pricing1"],
                 "distances": [0.1],
                 "metadatas": [{}],
-            }
+            },
         )
         result = await knowledge_service.search(query="how much", user_level=1, limit=5)
         assert result["collection_used"] == "bali_zero_pricing_hybrid"
@@ -243,7 +243,7 @@ class TestKnowledgeService:
     async def test_search_zantara_books_with_tiers(self, knowledge_service, mock_qdrant_client):
         """Test search with zantara_books collection and tier filtering"""
         result = await knowledge_service.search(
-            query="test query", user_level=2, limit=5, collection_override="zantara_books"
+            query="test query", user_level=2, limit=5, collection_override="zantara_books",
         )
         assert result["collection_used"] == "zantara_books"
         assert len(result["allowed_tiers"]) > 0
@@ -266,10 +266,10 @@ class TestKnowledgeService:
                 "ids": ["id1"],
                 "distances": [0.1],
                 "metadatas": [{"tier": "S"}],
-            }
+            },
         )
         result = await knowledge_service.search(
-            query="test query", user_level=0, limit=5, collection_override="zantara_books"
+            query="test query", user_level=0, limit=5, collection_override="zantara_books",
         )
         assert TierLevel.S in result["allowed_tiers"]
         assert len(result["allowed_tiers"]) == 1
@@ -283,10 +283,10 @@ class TestKnowledgeService:
                 "ids": ["id1"],
                 "distances": [0.1],
                 "metadatas": [{"tier": "A"}],
-            }
+            },
         )
         result = await knowledge_service.search(
-            query="test query", user_level=1, limit=5, collection_override="zantara_books"
+            query="test query", user_level=1, limit=5, collection_override="zantara_books",
         )
         assert TierLevel.S in result["allowed_tiers"]
         assert TierLevel.A in result["allowed_tiers"]
@@ -301,7 +301,7 @@ class TestKnowledgeService:
                 "ids": ["id1"],
                 "distances": [0.1],
                 "metadatas": [{"tier": "S"}],
-            }
+            },
         )
         result = await knowledge_service.search(
             query="test query",
@@ -363,7 +363,7 @@ class TestKnowledgeService:
                     "ids": ["id1"],
                     "distances": [0.1],
                     "metadatas": [{}],
-                }
+                },
             )
             result = await knowledge_service.search(query=query, user_level=1, limit=5)
             assert result["collection_used"] == "bali_zero_pricing_hybrid"

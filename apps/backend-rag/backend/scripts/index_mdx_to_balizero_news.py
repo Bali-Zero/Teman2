@@ -218,7 +218,7 @@ async def upsert_to_qdrant(points: list[dict], qdrant_url: str, api_key: str | N
             )
             if resp.status_code != 200:
                 logger.error(
-                    f"Qdrant upsert failed batch {i}: {resp.status_code} {resp.text[:300]}"
+                    f"Qdrant upsert failed batch {i}: {resp.status_code} {resp.text[:300]}",
                 )
             else:
                 logger.info(f"  Upserted batch {i}-{i + len(batch)} ({len(batch)} points)")
@@ -227,14 +227,14 @@ async def upsert_to_qdrant(points: list[dict], qdrant_url: str, api_key: str | N
 async def main():
     parser = argparse.ArgumentParser(description="Index MDX articles into balizero_news")
     parser.add_argument(
-        "--dry-run", action="store_true", help="Parse and chunk but don't embed or upsert"
+        "--dry-run", action="store_true", help="Parse and chunk but don't embed or upsert",
     )
     parser.add_argument("--limit", type=int, default=0, help="Limit number of articles (0=all)")
     parser.add_argument(
-        "--category", type=str, default="", help="Only index articles in this category"
+        "--category", type=str, default="", help="Only index articles in this category",
     )
     parser.add_argument(
-        "--qdrant-url", type=str, default="", help="Qdrant URL (default: from env or localhost)"
+        "--qdrant-url", type=str, default="", help="Qdrant URL (default: from env or localhost)",
     )
     args = parser.parse_args()
 
@@ -304,7 +304,7 @@ async def main():
                     "id": point_id,
                     "payload": payload,
                     "_text_to_embed": embedding_text,  # temporary, removed before upsert
-                }
+                },
             )
 
         stats["articles"] += 1
@@ -319,7 +319,7 @@ async def main():
             logger.info(f"  Title: {p['payload']['metadata']['title'][:80]}")
             logger.info(f"  Category: {p['payload']['metadata']['category']}")
             logger.info(
-                f"  Chunk: {p['payload']['metadata']['chunk_index']}/{p['payload']['metadata']['total_chunks']}"
+                f"  Chunk: {p['payload']['metadata']['chunk_index']}/{p['payload']['metadata']['total_chunks']}",
             )
             logger.info(f"  Text preview: {p['_text_to_embed'][:150]}...")
             logger.info("")
@@ -350,7 +350,7 @@ async def main():
                 "id": point["id"],
                 "vector": embedding,
                 "payload": point["payload"],
-            }
+            },
         )
 
     logger.info(f"Upserting {len(qdrant_points)} points to {COLLECTION_NAME}...")

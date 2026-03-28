@@ -72,11 +72,11 @@ class OllamaProvider(LLMProvider):
                         )
                         if self._available:
                             logger.info(
-                                f"OllamaProvider initialized: model={self._model}, available={self._available}"
+                                f"OllamaProvider initialized: model={self._model}, available={self._available}",
                             )
                         else:
                             logger.warning(
-                                f"OllamaProvider: Model {self._model} not found. Available: {model_names[:3]}"
+                                f"OllamaProvider: Model {self._model} not found. Available: {model_names[:3]}",
                             )
                     else:
                         self._available = False
@@ -96,7 +96,7 @@ class OllamaProvider(LLMProvider):
         return self._available
 
     async def generate(
-        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs,
     ) -> LLMResponse:
         """Generate response using Ollama."""
         if not self.is_available:
@@ -155,7 +155,7 @@ class OllamaProvider(LLMProvider):
             raise RuntimeError(f"Ollama generation failed: {e}")
 
     async def generate_stream(
-        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs,
     ) -> AsyncIterator[LLMResponse]:
         """Generate streaming response using Ollama."""
         if not self.is_available:
@@ -218,7 +218,7 @@ class OllamaProvider(LLMProvider):
             raise RuntimeError(f"Ollama streaming failed: {e}")
 
     async def stream(
-        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs,
     ) -> AsyncIterator[str]:
         """Stream response - yields content chunks (LLMProvider interface)."""
         async for resp in self.generate_stream(messages, temperature=temperature, **kwargs):

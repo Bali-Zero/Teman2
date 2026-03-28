@@ -56,12 +56,12 @@ class OracleQueryRequest(BaseModel):
     use_ai: bool = Field(True, description="Enable AI reasoning")
     include_sources: bool = Field(True, description="Include source document references")
     response_format: str = Field(
-        "structured", description="Response format: 'structured' or 'conversational'"
+        "structured", description="Response format: 'structured' or 'conversational'",
     )
     limit: int = Field(10, ge=1, le=50, description="Max document results")
     session_id: str | None = Field(None, description="Session identifier for analytics")
     conversation_history: list[ConversationMessage] | None = Field(
-        None, description="Previous messages in this conversation for context continuity"
+        None, description="Previous messages in this conversation for context continuity",
     )
 
 
@@ -103,23 +103,23 @@ class OracleQueryResponse(BaseModel):
 
     # Enhanced Services (NEW)
     followup_questions: list[str] = Field(
-        default_factory=list, description="Suggested follow-up questions"
+        default_factory=list, description="Suggested follow-up questions",
     )
     citations: list[dict[str, Any]] = Field(
-        default_factory=list, description="Source citations with metadata"
+        default_factory=list, description="Source citations with metadata",
     )
     clarification_needed: bool = Field(
-        default=False, description="Whether query needs clarification"
+        default=False, description="Whether query needs clarification",
     )
     clarification_question: str | None = Field(
-        default=None, description="Clarification question if needed"
+        default=None, description="Clarification question if needed",
     )
     personality_used: str | None = Field(default=None, description="Personality type used")
     golden_answer_used: bool = Field(
-        default=False, description="Whether a cached golden answer was used"
+        default=False, description="Whether a cached golden answer was used",
     )
     user_memory_facts: list[str] = Field(
-        default_factory=list, description="User's stored profile facts for context"
+        default_factory=list, description="User's stored profile facts for context",
     )
 
 
@@ -177,7 +177,7 @@ async def hybrid_oracle_query(
         logger.error(f"❌ Oracle Router Error: {e}")
         logger.debug(traceback.format_exc())
         return OracleQueryResponse(
-            success=False, query=request.query, error=str(e), execution_time_ms=0, document_count=0
+            success=False, query=request.query, error=str(e), execution_time_ms=0, document_count=0,
         )
 
 

@@ -63,7 +63,7 @@ class WorkloadBalanceService:
                     "hours": round(hours, 2),
                     "conversations": s["total_conversations"] or 0,
                     "sessions": s["session_count"],
-                }
+                },
             )
 
         # Calculate shares and ideal distribution
@@ -110,7 +110,7 @@ class WorkloadBalanceService:
                 "team_size": team_size,
             },
             "recommendations": self._generate_workload_recommendations(
-                team_stats, ideal_hours_per_person
+                team_stats, ideal_hours_per_person,
             ),
         }
 
@@ -124,13 +124,13 @@ class WorkloadBalanceService:
         if overworked:
             for s in overworked:
                 recommendations.append(
-                    f"⚠️ {s['user']} is working {abs(s['deviation_from_ideal']):.1f}h above average - consider redistributing tasks"
+                    f"⚠️ {s['user']} is working {abs(s['deviation_from_ideal']):.1f}h above average - consider redistributing tasks",
                 )
 
         if underutilized:
             for s in underutilized:
                 recommendations.append(
-                    f"💡 {s['user']} has capacity for {abs(s['deviation_from_ideal']):.1f}h more work"
+                    f"💡 {s['user']} has capacity for {abs(s['deviation_from_ideal']):.1f}h more work",
                 )
 
         if not recommendations:

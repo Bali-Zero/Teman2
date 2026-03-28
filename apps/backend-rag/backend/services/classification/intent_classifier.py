@@ -658,13 +658,13 @@ class IntentClassifier:
                 category = "casual"
                 suggested_ai = "fast"
                 logger.info(
-                    "🏷️ [IntentClassifier] Fallback: casual (short message, no business keywords)"
+                    "🏷️ [IntentClassifier] Fallback: casual (short message, no business keywords)",
                 )
             else:
                 category = "business_simple"  # Default to business, not casual
                 suggested_ai = "fast"
                 logger.info(
-                    "🏷️ [IntentClassifier] Fallback: business_simple (has business keywords or long message)"
+                    "🏷️ [IntentClassifier] Fallback: business_simple (has business keywords or long message)",
                 )
 
             result = {

@@ -44,7 +44,7 @@ class DriveFolderService:
 
             folder_id = folder.get("id")
             folder_url = folder.get(
-                "webViewLink", f"https://drive.google.com/drive/folders/{folder_id}"
+                "webViewLink", f"https://drive.google.com/drive/folders/{folder_id}",
             )
 
             # Create subfolder for Documents

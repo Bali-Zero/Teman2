@@ -83,7 +83,7 @@ class TestCollectiveMemoryService:
         mock_conn.execute = AsyncMock()
 
         result = await collective_memory_service.add_contribution(
-            user_id="test@example.com", content="KITAS costs 15M", category="pricing"
+            user_id="test@example.com", content="KITAS costs 15M", category="pricing",
         )
         assert result is not None
 
@@ -105,13 +105,13 @@ class TestCollectiveMemoryService:
         collective_memory_service.pool = mock_db_pool
         mock_db_pool.acquire = acquire
         mock_conn.fetchrow = AsyncMock(
-            return_value={"id": 1, "source_count": 2, "is_promoted": False}
+            return_value={"id": 1, "source_count": 2, "is_promoted": False},
         )
         mock_conn.fetchval = AsyncMock(return_value=3)  # 3 sources = promotion threshold
         mock_conn.execute = AsyncMock()
 
         result = await collective_memory_service.add_contribution(
-            user_id="test@example.com", content="KITAS costs 15M", category="pricing"
+            user_id="test@example.com", content="KITAS costs 15M", category="pricing",
         )
         assert result is not None
 
@@ -131,7 +131,7 @@ class TestCollectiveMemoryService:
         mock_conn.execute = AsyncMock()
 
         result = await collective_memory_service.refute_fact(
-            user_id="test@example.com", memory_id=1, reason="Incorrect information"
+            user_id="test@example.com", memory_id=1, reason="Incorrect information",
         )
         assert result is not None
 
@@ -148,7 +148,7 @@ class TestCollectiveMemoryService:
 
         mock_db_pool.acquire = acquire
         mock_conn.fetch = AsyncMock(
-            return_value=[{"content": "Fact 1", "confidence": 0.9, "source_count": 3}]
+            return_value=[{"content": "Fact 1", "confidence": 0.9, "source_count": 3}],
         )
 
         # Use get_collective_context which returns promoted facts
@@ -237,7 +237,7 @@ class TestCollectiveMemory:
                     "last_confirmed_at": None,
                     "metadata": {},
                 },
-            ]
+            ],
         )
 
         memories = await collective_memory_service.get_all_memories(limit=10)
@@ -257,8 +257,8 @@ class TestCollectiveMemory:
         mock_db_pool.acquire = acquire
         mock_conn.fetch = AsyncMock(
             return_value=[
-                {"user_id": "user1@example.com", "action": "contribute", "created_at": None}
-            ]
+                {"user_id": "user1@example.com", "action": "contribute", "created_at": None},
+            ],
         )
 
         sources = await collective_memory_service.get_memory_sources(1)
@@ -282,8 +282,8 @@ class TestCollectiveMemory:
                     "first_learned_at": None,
                     "last_confirmed_at": None,
                     "metadata": {},
-                }
-            ]
+                },
+            ],
         )
 
         @asynccontextmanager
@@ -339,7 +339,7 @@ class TestCollectiveMemory:
 
     @pytest.mark.asyncio
     async def test_refute_fact_low_confidence_removal(
-        self, collective_memory_service, mock_db_pool
+        self, collective_memory_service, mock_db_pool,
     ):
         """Test fact removal when confidence too low"""
         from contextlib import asynccontextmanager
@@ -354,7 +354,7 @@ class TestCollectiveMemory:
         mock_conn.fetchval = AsyncMock(return_value=True)  # Fact exists
         mock_conn.execute = AsyncMock()
         mock_conn.fetchrow = AsyncMock(
-            return_value={"confidence": 0.1, "is_promoted": False}
+            return_value={"confidence": 0.1, "is_promoted": False},
         )  # Low confidence
 
         result = await collective_memory_service.refute_fact("user@example.com", 1, "Wrong")

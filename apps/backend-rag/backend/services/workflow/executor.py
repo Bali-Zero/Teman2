@@ -43,7 +43,7 @@ async def execute_chain(
     if executor is None:
         raise KeyError(
             f"No executor registered for chain_id='{chain_id}'. "
-            f"Available: {list(_CHAIN_REGISTRY.keys())}"
+            f"Available: {list(_CHAIN_REGISTRY.keys())}",
         )
 
     logger.info(f"Dispatching chain_id={chain_id} thread_id={thread_id}")

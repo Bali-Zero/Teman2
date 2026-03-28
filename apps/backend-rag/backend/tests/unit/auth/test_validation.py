@@ -146,7 +146,7 @@ class TestAuthValidation:
                 "email": "other@example.com",
             }
             result = await validate_auth_mixed(
-                authorization=f"Bearer {token}", x_api_key="valid_key"
+                authorization=f"Bearer {token}", x_api_key="valid_key",
             )
             assert result is not None
             assert result["id"] == "user123"  # Bearer token takes priority

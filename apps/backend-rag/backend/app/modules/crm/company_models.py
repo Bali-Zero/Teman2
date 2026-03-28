@@ -54,7 +54,7 @@ class Company(SQLModel, table=True):
 
     # Status & Metadata
     status: str = Field(
-        default="active", max_length=50, index=True
+        default="active", max_length=50, index=True,
     )  # active, dormant, dissolved, in_setup
     setup_progress: int = Field(default=0)  # 0-100
 
@@ -90,7 +90,7 @@ class ClientCompanyLink(SQLModel, table=True):
 
     # Role & Association
     role: str = Field(
-        default="shareholder", max_length=50
+        default="shareholder", max_length=50,
     )  # Director, Commissioner, Shareholder, etc.
     is_primary: bool = Field(default=False)
 
@@ -114,7 +114,7 @@ class ClientCompanyLink(SQLModel, table=True):
     # Relationships
     company: Company | None = Relationship(back_populates="client_links")
     client: Optional["Client"] = Relationship(
-        back_populates="company_links", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="company_links", sa_relationship_kwargs={"lazy": "selectin"},
     )
 
 
@@ -160,7 +160,7 @@ class CompanyDocument(SQLModel, table=True):
 
     # Status
     status: str = Field(
-        default="active", max_length=50, index=True
+        default="active", max_length=50, index=True,
     )  # active, expired, archived, pending
 
     # Notes

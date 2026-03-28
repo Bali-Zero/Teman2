@@ -31,7 +31,7 @@ def mock_db_pool():
             "notes": "Test notes",
             "email": "test@example.com",
             "latest_conversation": None,
-        }
+        },
     )
     mock_acquire.__aenter__ = AsyncMock(return_value=mock_connection)
     mock_acquire.__aexit__ = AsyncMock(return_value=None)
@@ -87,7 +87,7 @@ def mock_db_with_delay(mock_db_pool):
 @pytest.mark.asyncio
 @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
 async def test_parallel_loading_timing(
-    mock_get_cache, mock_db_with_delay, mock_memory_orchestrator
+    mock_get_cache, mock_db_with_delay, mock_memory_orchestrator,
 ):
     """
     Test that parallel loading is faster than sequential.
@@ -145,7 +145,7 @@ async def test_parallel_loading_with_one_failure(mock_get_cache, mock_db_with_de
     # Memory orchestrator that fails
     failing_orchestrator = MagicMock()
     failing_orchestrator.get_user_context = AsyncMock(
-        side_effect=Exception("Memory service unavailable")
+        side_effect=Exception("Memory service unavailable"),
     )
 
     start_time = time.time()
@@ -170,7 +170,7 @@ async def test_parallel_loading_with_one_failure(mock_get_cache, mock_db_with_de
 @pytest.mark.asyncio
 @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
 async def test_parallel_loading_logs_timing(
-    mock_get_cache, mock_db_pool, mock_memory_orchestrator, caplog
+    mock_get_cache, mock_db_pool, mock_memory_orchestrator, caplog,
 ):
     """
     Test that timing metrics are logged correctly.

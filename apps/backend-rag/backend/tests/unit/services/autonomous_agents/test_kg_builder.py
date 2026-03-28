@@ -31,7 +31,7 @@ def mock_db_pool():
 def kg_builder(mock_db_pool):
     """Create KG builder instance"""
     return KnowledgeGraphBuilder(
-        search_service=MagicMock(), db_pool=mock_db_pool, llm_gateway=MagicMock()
+        search_service=MagicMock(), db_pool=mock_db_pool, llm_gateway=MagicMock(),
     )
 
 
@@ -41,7 +41,7 @@ class TestKnowledgeGraphBuilder:
     def test_init(self, mock_db_pool):
         """Test initialization"""
         builder = KnowledgeGraphBuilder(
-            search_service=MagicMock(), db_pool=mock_db_pool, llm_gateway=MagicMock()
+            search_service=MagicMock(), db_pool=mock_db_pool, llm_gateway=MagicMock(),
         )
         assert builder.db_pool == mock_db_pool
 
@@ -79,10 +79,10 @@ class TestKnowledgeGraphBuilder:
         # Test extract_via_llm method
         with patch.object(kg_builder.llm_gateway, "conversational") as mock_llm:
             mock_llm.return_value = {
-                "text": '{"entities": [{"id": "test", "type": "LEGAL_ENTITY", "name": "PT PMA"}], "relationships": []}'
+                "text": '{"entities": [{"id": "test", "type": "LEGAL_ENTITY", "name": "PT PMA"}], "relationships": []}',
             }
 
             result = await kg_builder.extract_via_llm(
-                "PT PMA requires investment", "test_collection", "chunk1"
+                "PT PMA requires investment", "test_collection", "chunk1",
             )
             assert "entities" in result

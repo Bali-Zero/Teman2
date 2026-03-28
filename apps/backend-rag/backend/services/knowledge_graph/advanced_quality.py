@@ -158,7 +158,7 @@ def extract_cross_references(text: str) -> list[dict]:
                     "target_name": normalized_name,
                     "relationship": rel_type,
                     "evidence": match.group(0),
-                }
+                },
             )
 
     return references
@@ -211,7 +211,7 @@ def detect_hierarchical_relationships(entities: list[dict]) -> list[dict]:
                         "type": "PART_OF",
                         "evidence": f"[hierarchical: {pasal_name} in {law_name}]",
                         "confidence": 0.8,
-                    }
+                    },
                 )
                 break
         else:
@@ -224,7 +224,7 @@ def detect_hierarchical_relationships(entities: list[dict]) -> list[dict]:
                         "type": "PART_OF",
                         "evidence": "[hierarchical: inferred from context]",
                         "confidence": 0.6,
-                    }
+                    },
                 )
 
     # KBLI hierarchy: 5-digit → 4-digit → 3-digit → 2-digit
@@ -249,7 +249,7 @@ def detect_hierarchical_relationships(entities: list[dict]) -> list[dict]:
                         "type": "PART_OF",
                         "evidence": f"[hierarchical: KBLI {code} → {parent_code}]",
                         "confidence": 0.95,
-                    }
+                    },
                 )
 
     return relationships
@@ -315,7 +315,7 @@ def infer_domain_relationships(
                             "type": rel_type,
                             "evidence": f"[domain rule: {source_type} → {target_type}]",
                             "confidence": 0.7,
-                        }
+                        },
                     )
 
     return relationships
@@ -394,7 +394,7 @@ async def find_semantic_links(
                         "type": rel_type,
                         "evidence": f"[semantic similarity: {best_similarity:.2f}]",
                         "confidence": min(best_similarity, 0.8),
-                    }
+                    },
                 )
 
     except ImportError:
@@ -609,7 +609,7 @@ async def enhance_kg_quality(
             )
 
             total_nodes = await conn.fetchval(
-                "SELECT COUNT(*) FROM kg_nodes WHERE source_collection = $1", collection
+                "SELECT COUNT(*) FROM kg_nodes WHERE source_collection = $1", collection,
             )
 
             logger.info(f"Final orphan rate: {final_orphans * 100 / total_nodes:.1f}%")

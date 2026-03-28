@@ -71,7 +71,7 @@ class TextChunker:
 
         logger.info(
             f"TextChunker initialized: chunk_size={self.chunk_size}, "
-            f"overlap={self.chunk_overlap}, max_chunks={self.max_chunks}"
+            f"overlap={self.chunk_overlap}, max_chunks={self.max_chunks}",
         )
 
     def _split_text_recursive(self, text: str, separator: str) -> list[str]:
@@ -180,7 +180,7 @@ class TextChunker:
             # Limit number of chunks if needed
             if len(chunks) > self.max_chunks:
                 logger.warning(
-                    f"Text split into {len(chunks)} chunks, truncating to {self.max_chunks}"
+                    f"Text split into {len(chunks)} chunks, truncating to {self.max_chunks}",
                 )
                 chunks = chunks[: self.max_chunks]
 
@@ -202,7 +202,7 @@ class TextChunker:
 
             logger.info(
                 f"Created {len(chunk_objects)} chunks "
-                f"(avg length: {sum(len(c['text']) for c in chunk_objects) // len(chunk_objects) if chunk_objects else 0})"
+                f"(avg length: {sum(len(c['text']) for c in chunk_objects) // len(chunk_objects) if chunk_objects else 0})",
             )
 
             return chunk_objects
@@ -212,7 +212,7 @@ class TextChunker:
             raise
 
     def chunk_by_pages(
-        self, text: str, page_markers: list[int] = None, metadata: dict[str, Any] = None
+        self, text: str, page_markers: list[int] = None, metadata: dict[str, Any] = None,
     ) -> list[dict[str, Any]]:
         """
         Alternative chunking that respects page boundaries (for PDFs).

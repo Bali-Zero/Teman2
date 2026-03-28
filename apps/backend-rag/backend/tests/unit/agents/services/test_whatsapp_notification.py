@@ -21,7 +21,7 @@ from backend.agents.services.whatsapp_notification import WhatsAppNotificationSe
 def whatsapp_service():
     """Create WhatsAppNotificationService instance"""
     return WhatsAppNotificationService(
-        twilio_sid="test_sid", twilio_token="test_token", whatsapp_number="+1234567890"
+        twilio_sid="test_sid", twilio_token="test_token", whatsapp_number="+1234567890",
     )
 
 
@@ -31,7 +31,7 @@ class TestWhatsAppNotificationService:
     def test_init(self):
         """Test initialization"""
         service = WhatsAppNotificationService(
-            twilio_sid="test_sid", twilio_token="test_token", whatsapp_number="+1234567890"
+            twilio_sid="test_sid", twilio_token="test_token", whatsapp_number="+1234567890",
         )
         assert service.twilio_sid == "test_sid"
         assert service.twilio_token == "test_token"
@@ -107,7 +107,7 @@ class TestWhatsAppNotificationService:
             # Mock wait_for to raise TimeoutError
             with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError()):
                 result = await whatsapp_service.send_message(
-                    "+1234567890", "Test message", timeout=0.1
+                    "+1234567890", "Test message", timeout=0.1,
                 )
                 assert result is None
 
@@ -128,7 +128,7 @@ class TestWhatsAppNotificationService:
             with patch("asyncio.get_event_loop", return_value=mock_loop):
                 with patch("asyncio.sleep", new_callable=AsyncMock):
                     result = await whatsapp_service.send_message(
-                        "+1234567890", "Test message", max_retries=1
+                        "+1234567890", "Test message", max_retries=1,
                     )
                     assert result is None
 
@@ -161,6 +161,6 @@ class TestWhatsAppNotificationService:
             with patch("asyncio.get_event_loop", return_value=mock_loop):
                 with patch("asyncio.sleep", new_callable=AsyncMock):
                     result = await whatsapp_service.send_message(
-                        "+1234567890", "Test message", max_retries=3
+                        "+1234567890", "Test message", max_retries=3,
                     )
                     assert result == "test_sid_after_retry"

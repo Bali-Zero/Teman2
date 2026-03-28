@@ -303,7 +303,7 @@ async def _send_email(
                     "name": "Bali_Zero_Introduction.pdf",
                     "content": brochure_b64,
                     "contentType": "application/pdf",
-                }
+                },
             ]
         except Exception:
             logger.warning(

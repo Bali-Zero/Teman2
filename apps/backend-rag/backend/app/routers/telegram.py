@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/telegram", tags=["telegram"])
 
 @router.get("/conversations")
 async def get_telegram_conversations(
-    limit: int = 50, offset: int = 0, db: Pool = Depends(get_database)
+    limit: int = 50, offset: int = 0, db: Pool = Depends(get_database),
 ) -> Any:
     try:
         async with db.acquire() as conn:
@@ -64,7 +64,7 @@ async def get_telegram_conversations(
                         "last_message": last_msg_text,
                         "last_message_date": row["created_at"].isoformat(),
                         "session_id": session_id,
-                    }
+                    },
                 )
             return conversations
     except Exception as e:
@@ -74,7 +74,7 @@ async def get_telegram_conversations(
 
 @router.get("/messages/{chat_id}")
 async def get_telegram_messages(
-    chat_id: str, limit: int = 100, db: Pool = Depends(get_database)
+    chat_id: str, limit: int = 100, db: Pool = Depends(get_database),
 ) -> Any:
 
     try:
@@ -98,7 +98,7 @@ async def get_telegram_messages(
                         "message_text": m.get("content", ""),
                         "direction": "inbound" if m.get("role") == "user" else "outbound",
                         "timestamp": row["created_at"].isoformat(),
-                    }
+                    },
                 )
             return result
     except Exception as e:

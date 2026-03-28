@@ -410,7 +410,7 @@ class ClientJourneyOrchestrator:
         total_days = sum(s.estimated_duration_days for s in journey.steps)
         logger.info(
             f"✅ Created journey: {journey_id} ({journey_type}) - "
-            f"{len(journey.steps)} steps, estimated {total_days} days"
+            f"{len(journey.steps)} steps, estimated {total_days} days",
         )
 
         return journey

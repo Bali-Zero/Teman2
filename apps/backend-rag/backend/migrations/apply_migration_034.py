@@ -41,7 +41,7 @@ def apply_migration():
     print()
     print(f"📁 Migration file: {migration_file.name}")
     print(
-        f"🗄️  Target database: {database_url.split('@')[1] if '@' in database_url else 'PostgreSQL'}"
+        f"🗄️  Target database: {database_url.split('@')[1] if '@' in database_url else 'PostgreSQL'}",
     )
     print()
 
@@ -71,7 +71,7 @@ def apply_migration():
                 'company_documents', 'tax_records', 'tax_documents'
             )
             ORDER BY table_name
-        """
+        """,
         )
 
         tables = cursor.fetchall()
@@ -86,7 +86,7 @@ def apply_migration():
                 'company_documents', 'tax_records', 'tax_documents'
             )
             ORDER BY tablename, indexname
-        """
+        """,
         )
         indexes = cursor.fetchall()
 
@@ -110,7 +110,7 @@ def apply_migration():
             WHERE table_schema = 'public'
             AND table_name LIKE '%company%'
             ORDER BY table_name
-        """
+        """,
         )
         views = cursor.fetchall()
 

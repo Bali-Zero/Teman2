@@ -54,7 +54,7 @@ class CompanyState(TypedDict, total=False):
 
 
 async def identify_company_type_node(
-    state: CompanyState, llm, db_pool: asyncpg.Pool | None = None
+    state: CompanyState, llm, db_pool: asyncpg.Pool | None = None,
 ) -> CompanyState:
     """
     Identify company type from query and user context.
@@ -128,7 +128,7 @@ async def identify_company_type_node(
                         company_type = "pt_pma"
                         is_foreign = True  # PT PMA implies foreign investor
                         logger.info(
-                            f"✅ [Company Subgraph] KBLI {kbli_codes} requires PT PMA (from KG)"
+                            f"✅ [Company Subgraph] KBLI {kbli_codes} requires PT PMA (from KG)",
                         )
             except Exception as e:
                 logger.warning(f"⚠️ [Company Subgraph] KG lookup failed: {e}")
@@ -199,7 +199,7 @@ async def check_pma_eligibility_node(state: CompanyState, db_pool: asyncpg.Pool)
                     "business_name": row["name"],
                     "pma_status": pma_status,
                     "eligible": pma_status in ["allowed", "open"],
-                }
+                },
             )
 
         state["kbli_codes"] = kbli_codes
@@ -208,8 +208,8 @@ async def check_pma_eligibility_node(state: CompanyState, db_pool: asyncpg.Pool)
                 {
                     "requirement_type": "pma_eligibility",
                     "details": pma_info,
-                }
-            ]
+                },
+            ],
         )
 
         logger.info(f"✅ [Company Subgraph] PMA eligibility checked for {len(pma_info)} KBLI codes")
@@ -276,13 +276,13 @@ async def get_capital_requirements_node(state: CompanyState, db_pool: asyncpg.Po
         {
             "requirement_type": "capital",
             "details": requirements,
-        }
+        },
     )
 
     state["capital_amount"] = requirements.get("min_capital")
 
     logger.info(
-        f"✅ [Company Subgraph] Capital requirements: {requirements.get('min_capital', 'N/A')} IDR"
+        f"✅ [Company Subgraph] Capital requirements: {requirements.get('min_capital', 'N/A')} IDR",
     )
 
     return state
@@ -328,7 +328,7 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
                 "company_type": company_type,
                 "is_foreign_investor": is_foreign,
             },
-        }
+        },
     )
 
     # Step 2: Capital preparation
@@ -342,7 +342,7 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
                     "amount": capital,
                     "currency": "IDR",
                 },
-            }
+            },
         )
 
     # Step 3: Company registration
@@ -355,7 +355,7 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
                 "system": "OSS",
                 "outputs": ["NIB", "TDP", "API (if applicable)"],
             },
-        }
+        },
     )
 
     # Step 4: Licensing
@@ -368,7 +368,7 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
                 "details": {
                     "kbli_codes": state["kbli_codes"],
                 },
-            }
+            },
         )
 
     # Step 5: Bank account
@@ -380,7 +380,7 @@ async def synthesize_company_workflow_node(state: CompanyState) -> CompanyState:
             "details": {
                 "requirement": "After NIB issuance",
             },
-        }
+        },
     )
 
     from dataclasses import asdict

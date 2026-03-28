@@ -44,7 +44,7 @@ def db_retry(max_retries: int = 3, delay: float = 1.0, backoff_factor: float = 2
                     if is_transient and attempt < max_retries:
                         logger.warning(
                             f"⚠️ DB Operation failed (attempt {attempt + 1}/{max_retries}): {e}. "
-                            f"Retrying in {current_delay:.2f}s..."
+                            f"Retrying in {current_delay:.2f}s...",
                         )
                         await asyncio.sleep(current_delay)
                         current_delay *= backoff_factor

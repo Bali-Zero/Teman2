@@ -162,7 +162,7 @@ class TestFormatAsNumberedList:
                     line
                     for line in result.split("\n")
                     if line.strip().startswith(("1.", "2.", "3.", "4."))
-                ]
+                ],
             )
             >= 2
         )

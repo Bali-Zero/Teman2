@@ -53,7 +53,7 @@ async def log_knowledge_activity(
             )
 
         logger.info(
-            f"KB activity logged: {user_email} {activity.action_type} {activity.resource_type}/{activity.resource_id}"
+            f"KB activity logged: {user_email} {activity.action_type} {activity.resource_type}/{activity.resource_id}",
         )
 
         return {"success": True, "message": "Activity logged"}

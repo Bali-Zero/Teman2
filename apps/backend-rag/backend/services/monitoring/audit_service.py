@@ -33,7 +33,7 @@ class AuditService:
 
         try:
             self.pool = await asyncpg.create_pool(
-                self.database_url, min_size=1, max_size=5, command_timeout=10
+                self.database_url, min_size=1, max_size=5, command_timeout=10,
             )
             logger.info("✅ AuditService connected to database")
         except Exception as e:

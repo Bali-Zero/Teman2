@@ -173,7 +173,7 @@ async def kg_query(
 
             logger.info(
                 f"🧠 KG Query: {request.query[:100]}... "
-                f"(session={session_id}, user={current_user.get('sub', 'anonymous')})"
+                f"(session={session_id}, user={current_user.get('sub', 'anonymous')})",
             )
 
             # Process with orchestrator
@@ -203,7 +203,7 @@ async def kg_query(
             logger.info(
                 f"✅ KG Query complete: confidence={result.confidence:.2f}, "
                 f"golden_route={result.golden_route_matched}, "
-                f"time={total_time:.0f}ms"
+                f"time={total_time:.0f}ms",
             )
 
             set_span_attribute("confidence", result.confidence)
@@ -283,7 +283,7 @@ async def kg_stats(
                 SELECT
                     (SELECT COUNT(*) FROM kg_nodes) as total_nodes,
                     (SELECT COUNT(*) FROM kg_edges) as total_edges
-                """
+                """,
             )
 
             # Get node types
@@ -293,7 +293,7 @@ async def kg_stats(
                 FROM kg_nodes
                 GROUP BY entity_type
                 ORDER BY count DESC
-                """
+                """,
             )
             node_types = {r["entity_type"]: r["count"] for r in node_types_rows}
 
@@ -304,7 +304,7 @@ async def kg_stats(
                 FROM kg_edges
                 GROUP BY relationship_type
                 ORDER BY count DESC
-                """
+                """,
             )
             edge_types = {r["relationship_type"]: r["count"] for r in edge_types_rows}
 
@@ -405,7 +405,7 @@ async def find_kg_path(
                 {
                     "depth": p["depth"],
                     "steps": steps,
-                }
+                },
             )
 
         return {

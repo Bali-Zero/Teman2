@@ -77,12 +77,12 @@ class ClientScoringService:
 
         except asyncpg.PostgresError as e:
             logger.error(
-                f"Database error calculating score for client {client_id}: {e}", exc_info=True
+                f"Database error calculating score for client {client_id}: {e}", exc_info=True,
             )
             return None
         except Exception as e:
             logger.error(
-                f"Unexpected error calculating score for client {client_id}: {e}", exc_info=True
+                f"Unexpected error calculating score for client {client_id}: {e}", exc_info=True,
             )
             return None
 

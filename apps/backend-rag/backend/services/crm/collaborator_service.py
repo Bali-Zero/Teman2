@@ -72,7 +72,7 @@ class CollaboratorProfile:
                 self.role.lower(),
                 self.department.lower(),
                 " ".join(self.traits).lower(),
-            ]
+            ],
         )
         return query_lower in haystack
 

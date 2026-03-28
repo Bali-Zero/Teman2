@@ -122,7 +122,7 @@ class MigrationRunner:
                             migration_number = instance.migration_number
                             self._migration_classes[migration_number] = obj
                             logger.debug(
-                                f"Discovered migration {migration_number}: {instance.description}"
+                                f"Discovered migration {migration_number}: {instance.description}",
                             )
                         except Exception as e:
                             logger.warning(f"Could not instantiate migration {name}: {e}")
@@ -189,7 +189,7 @@ class MigrationRunner:
         return {m["migration_number"] for m in applied if m.get("migration_number")}
 
     async def get_pending_migrations(
-        self, dry_run: bool = False
+        self, dry_run: bool = False,
     ) -> list[tuple[int, type[BaseMigration]]]:
         """
         Get list of pending migrations in correct order.

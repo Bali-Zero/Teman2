@@ -59,7 +59,7 @@ class DocumentRetrievalService:
                     logger.info(f"✅ Found match: '{found_file['name']}' (ID: {found_file['id']})")
 
                     request = google_services.drive_service.files().get_media(
-                        fileId=found_file["id"]
+                        fileId=found_file["id"],
                     )
                     file_stream = io.BytesIO()
                     downloader = MediaIoBaseDownload(file_stream, request)

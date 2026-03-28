@@ -8,7 +8,7 @@ from typing import Any
 
 
 def build_search_filter(
-    tier_filter: dict[str, Any] | None = None, exclude_repealed: bool = True
+    tier_filter: dict[str, Any] | None = None, exclude_repealed: bool = True,
 ) -> dict[str, Any] | None:
     """Build combined search filter with tier access and repealed law exclusion.
 

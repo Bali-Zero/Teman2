@@ -40,7 +40,7 @@ class MemoryFact(BaseModel):
     confidence: float = Field(default=0.8, ge=0.0, le=1.0, description="Confidence score")
     source: str = Field(default="user", description="Source: 'user' or 'ai'")
     created_at: datetime = Field(
-        default_factory=datetime.now, description="When fact was extracted"
+        default_factory=datetime.now, description="When fact was extracted",
     )
 
     class Config:
@@ -56,16 +56,16 @@ class MemoryContext(BaseModel):
 
     user_id: str = Field(..., description="User identifier (email)")
     profile_facts: list[str] = Field(
-        default_factory=list, description="List of profile facts (max 10)"
+        default_factory=list, description="List of profile facts (max 10)",
     )
     collective_facts: list[str] = Field(
-        default_factory=list, description="Shared knowledge from collective memory"
+        default_factory=list, description="Shared knowledge from collective memory",
     )
     timeline_summary: str = Field(
-        default="", description="Formatted summary of recent episodic events"
+        default="", description="Formatted summary of recent episodic events",
     )
     kg_entities: list[dict] = Field(
-        default_factory=list, description="Knowledge graph entities relevant to context"
+        default_factory=list, description="Knowledge graph entities relevant to context",
     )
     summary: str = Field(default="", max_length=500, description="Conversation summary")
     counters: dict[str, int] = Field(

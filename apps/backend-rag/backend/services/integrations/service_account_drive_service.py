@@ -60,14 +60,14 @@ class ServiceAccountDriveService:
 
         if not service_account_info:
             raise ValueError(
-                "Invalid Service Account credentials - must be raw JSON or base64-encoded JSON"
+                "Invalid Service Account credentials - must be raw JSON or base64-encoded JSON",
             )
 
         # Create credentials with Domain-wide Delegation
         # This allows the Service Account to impersonate a Workspace user
         # who has access to Shared Drives (AMBARADAM)
         base_credentials = service_account.Credentials.from_service_account_info(
-            service_account_info, scopes=self.SCOPES
+            service_account_info, scopes=self.SCOPES,
         )
 
         # Impersonate a Workspace user with Shared Drive access

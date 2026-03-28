@@ -259,7 +259,7 @@ class TestTaxService:
         mock_conn.fetchrow.return_value = make_tax_row(status="paid")
 
         result = await tax_service.update_status(
-            obligation_id=1, new_status="paid", amount_paid=5000000.0
+            obligation_id=1, new_status="paid", amount_paid=5000000.0,
         )
 
         assert result.status == "paid"

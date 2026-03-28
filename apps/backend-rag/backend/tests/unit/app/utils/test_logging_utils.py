@@ -282,7 +282,7 @@ class TestLogDatabaseOperation:
         logger = MagicMock()
 
         log_database_operation(
-            logger, "INSERT", "users", record_id=456, user_email="test@example.com"
+            logger, "INSERT", "users", record_id=456, user_email="test@example.com",
         )
 
         logger.debug.assert_called_once()

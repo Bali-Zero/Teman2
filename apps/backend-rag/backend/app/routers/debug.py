@@ -109,7 +109,7 @@ async def get_request_trace(
 async def get_logs(
     module: str | None = Query(None, description="Filter logs by module name"),
     level: str | None = Query(
-        None, description="Filter by log level (DEBUG, INFO, WARNING, ERROR)"
+        None, description="Filter by log level (DEBUG, INFO, WARNING, ERROR)",
     ),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of logs to return"),
     _: bool = Depends(verify_debug_access),
@@ -539,7 +539,7 @@ async def get_parent_documents(
                     "char_count": row["char_count"],
                     "pasal_count": row["pasal_count"],
                     "created_at": str(row["created_at"]),
-                }
+                },
             )
 
         return {
@@ -937,7 +937,7 @@ async def execute_postgres_query(
 
     try:
         results = await debugger.execute_query(
-            query=query_request.query, limit=query_request.limit, pool=pool
+            query=query_request.query, limit=query_request.limit, pool=pool,
         )
         return {
             "success": True,
@@ -1053,5 +1053,5 @@ async def sentry_test_error(
     logger.warning("🧪 Sentry test endpoint triggered - about to raise exception")
     # This will be caught by Sentry
     raise ValueError(
-        "🧪 TEST ERROR: This is a controlled test error for Sentry verification. If you see this in Sentry, the integration is working correctly!"
+        "🧪 TEST ERROR: This is a controlled test error for Sentry verification. If you see this in Sentry, the integration is working correctly!",
     )

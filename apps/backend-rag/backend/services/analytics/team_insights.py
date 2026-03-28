@@ -78,7 +78,7 @@ class TeamInsightsService:
                         "hour": f"{hour:02d}:00",
                         "team_members_online": len(members),
                         "members": list(members),
-                    }
+                    },
                 )
 
         collaboration_windows.sort(key=lambda x: x["team_members_online"], reverse=True)
@@ -145,7 +145,7 @@ class TeamInsightsService:
             best_window = collab_windows[0]
             insights.append(
                 f"🤝 Best collaboration time: {best_window['hour']} "
-                f"({best_window['team_members_online']} members typically online)"
+                f"({best_window['team_members_online']} members typically online)",
             )
 
         if health_score >= 80:

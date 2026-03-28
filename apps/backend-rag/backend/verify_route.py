@@ -24,7 +24,7 @@ try:
     else:
         # 422, 500, 400 are all "Success" in terms of routing/connectivity
         print(
-            f"✅ CONNECTIVITY SUCCESS: Reached backend service (Error expected for fake audio: {response.status_code})"
+            f"✅ CONNECTIVITY SUCCESS: Reached backend service (Error expected for fake audio: {response.status_code})",
         )
 
 except Exception as e:

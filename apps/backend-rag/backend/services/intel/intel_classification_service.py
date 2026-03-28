@@ -28,7 +28,7 @@ class IntelClassificationService:
         self.min_visa_keywords = IntelConstants.MIN_VISA_KEYWORDS
 
     def classify_intel_type(
-        self, category: str, title: str, content: str
+        self, category: str, title: str, content: str,
     ) -> Literal["visa", "news"]:
         """
         Classify article as 'visa' or 'news' for routing to correct staging folder.
@@ -62,7 +62,7 @@ class IntelClassificationService:
         duration = time.time() - start_time
         intel_classification_duration.observe(duration)
         intel_classification_total.labels(
-            category_input=category, classified_as=classification
+            category_input=category, classified_as=classification,
         ).inc()
 
         logger.debug(

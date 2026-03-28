@@ -78,7 +78,7 @@ class Migration021:
                     SELECT 1 FROM information_schema.columns
                     WHERE table_name = 'memory_facts' AND column_name = 'related_entities'
                 )
-                """
+                """,
             )
             if not col_exists:
                 logger.error("Column related_entities not found in memory_facts")
@@ -91,7 +91,7 @@ class Migration021:
                     SELECT 1 FROM information_schema.columns
                     WHERE table_name = 'episodic_memories' AND column_name = 'kg_entity_ids'
                 )
-                """
+                """,
             )
             if not col_exists:
                 logger.error("Column kg_entity_ids not found in episodic_memories")
@@ -114,7 +114,7 @@ class Migration021:
                     SELECT 1 FROM information_schema.views
                     WHERE table_name = 'memory_facts_with_entities'
                 )
-                """
+                """,
             )
             if not view_exists:
                 logger.error("View memory_facts_with_entities not found")
@@ -127,7 +127,7 @@ class Migration021:
                     SELECT 1 FROM information_schema.routines
                     WHERE routine_name = 'get_user_memory_entities'
                 )
-                """
+                """,
             )
             if not func_exists:
                 logger.error("Function get_user_memory_entities not found")

@@ -31,7 +31,7 @@ class SessionService:
     """
 
     def __init__(
-        self, redis_url: str | None = None, ttl_hours: int = 24, redis_client: Any | None = None
+        self, redis_url: str | None = None, ttl_hours: int = 24, redis_client: Any | None = None,
     ) -> None:
         """
         Initialize SessionService
@@ -60,8 +60,8 @@ class SessionService:
                 self._register_component("active")
                 logger.info(f"SessionService initialized via RedisManager ({ttl_hours}h TTL)")
                 return
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"RedisManager init skipped: {e}")
 
         # Legacy fallback: create own connection
         if redis_url:
@@ -88,8 +88,8 @@ class SessionService:
             from backend.core.redis_manager import RedisManager
 
             RedisManager.get_instance().register_component("session_service", status)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not register session_service component: {e}")
 
     async def health_check(self) -> bool:
         """Check if Redis connection is healthy"""
@@ -312,8 +312,8 @@ class SessionService:
                             ranges["21-50"] += 1
                         else:
                             ranges["51+"] += 1
-                    except json.JSONDecodeError:
-                        pass
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON decode error in session analytics: {e}")
 
             active_sessions = len([c for c in message_counts if c > 0])
             avg_messages = sum(message_counts) / len(message_counts) if message_counts else 0
@@ -341,7 +341,7 @@ class SessionService:
             }
 
     async def update_history_with_ttl(
-        self, session_id: str, history: list[dict], ttl_hours: int | None = None
+        self, session_id: str, history: list[dict], ttl_hours: int | None = None,
     ) -> bool:
         """
         Update conversation history with custom TTL
@@ -364,7 +364,7 @@ class SessionService:
 
             await self.redis.setex(f"session:{session_id}", ttl, json.dumps(history))
             logger.info(
-                f"💾 Updated session {session_id} with {len(history)} messages (TTL: {ttl.total_seconds() / 3600:.1f}h)"
+                f"💾 Updated session {session_id} with {len(history)} messages (TTL: {ttl.total_seconds() / 3600:.1f}h)",
             )
             return True
         except Exception as e:

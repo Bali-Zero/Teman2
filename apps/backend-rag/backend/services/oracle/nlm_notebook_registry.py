@@ -116,7 +116,7 @@ NLM_NOTEBOOKS: dict[str, dict] = {
 
 # Keywords that indicate the user wants T0/T1 primary law sources
 _PRIMARY_LAW_KEYWORDS = frozenset(
-    {"pasal", "uu ", "pp ", "peraturan", "permenkumham", "permen", "undang"}
+    {"pasal", "uu ", "pp ", "peraturan", "permenkumham", "permen", "undang"},
 )
 
 

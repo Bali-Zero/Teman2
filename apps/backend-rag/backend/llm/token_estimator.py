@@ -48,14 +48,14 @@ class TokenEstimator:
                 if "gemini" in model.lower():
                     self._encoding = tiktoken.get_encoding("cl100k_base")
                     logger.debug(
-                        f"✅ TokenEstimator initialized with tiktoken cl100k_base for Gemini model {model}"
+                        f"✅ TokenEstimator initialized with tiktoken cl100k_base for Gemini model {model}",
                     )
                 else:
                     self._encoding = tiktoken.encoding_for_model(model)
                     logger.debug(f"✅ TokenEstimator initialized with tiktoken for {model}")
             except Exception as e:
                 logger.debug(
-                    f"⚠️ Failed to load tiktoken encoding for {model}: {e}, using approximation"
+                    f"⚠️ Failed to load tiktoken encoding for {model}: {e}, using approximation",
                 )
                 self._encoding = None
 

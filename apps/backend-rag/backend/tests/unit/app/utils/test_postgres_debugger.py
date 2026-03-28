@@ -168,14 +168,14 @@ class TestPostgreSQLDebuggerExecuteQuery:
         mock_conn = AsyncMock()
         mock_conn.fetch = AsyncMock(return_value=[mock_row])
         mock_conn.transaction = MagicMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(), __aexit__=AsyncMock())
+            return_value=AsyncMock(__aenter__=AsyncMock(), __aexit__=AsyncMock()),
         )
 
         mock_pool = MagicMock()
         mock_pool.acquire = MagicMock(
             return_value=AsyncMock(
-                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock(return_value=None)
-            )
+                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock(return_value=None),
+            ),
         )
 
         result = await debugger.execute_query("SELECT * FROM users LIMIT 1", pool=mock_pool)
@@ -199,14 +199,14 @@ class TestPostgreSQLDebuggerExecuteQuery:
         mock_conn = AsyncMock()
         mock_conn.fetch = AsyncMock(side_effect=Exception("Database error"))
         mock_conn.transaction = MagicMock(
-            return_value=AsyncMock(__aenter__=AsyncMock(), __aexit__=AsyncMock())
+            return_value=AsyncMock(__aenter__=AsyncMock(), __aexit__=AsyncMock()),
         )
 
         mock_pool = MagicMock()
         mock_pool.acquire = MagicMock(
             return_value=AsyncMock(
-                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock(return_value=None)
-            )
+                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock(return_value=None),
+            ),
         )
 
         # execute_query propagates exceptions (may raise original or UnboundLocalError)

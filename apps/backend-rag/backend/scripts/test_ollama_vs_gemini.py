@@ -181,7 +181,7 @@ async def compare():
         speedup = g_avg / o_avg if o_avg > 0 else 0
 
         print(
-            f"\n  Ollama avg: {o_avg:.0f}ms | Gemini avg: {g_avg:.0f}ms | Speedup: {speedup:.1f}x"
+            f"\n  Ollama avg: {o_avg:.0f}ms | Gemini avg: {g_avg:.0f}ms | Speedup: {speedup:.1f}x",
         )
         print("  Cost saved: 100% (Ollama is free)")
 

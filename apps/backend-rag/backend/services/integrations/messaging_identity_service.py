@@ -67,7 +67,7 @@ class MessagingIdentityService:
 
                 if row:
                     logger.info(
-                        f"Found user mapping for phone {normalized_phone}: {row['user_id']}"
+                        f"Found user mapping for phone {normalized_phone}: {row['user_id']}",
                     )
                     return dict(row)
 
@@ -172,7 +172,7 @@ class MessagingIdentityService:
                 )
 
                 logger.info(
-                    f"Created mapping: {channel} ({phone or telegram_chat_id}) → user {user_id}"
+                    f"Created mapping: {channel} ({phone or telegram_chat_id}) → user {user_id}",
                 )
                 return True
 
@@ -184,7 +184,7 @@ class MessagingIdentityService:
             return False
 
     async def update_last_message(
-        self, phone: str | None = None, telegram_chat_id: int | None = None
+        self, phone: str | None = None, telegram_chat_id: int | None = None,
     ) -> bool:
         """
         Update last_message_at timestamp for a user.
@@ -257,7 +257,7 @@ class MessagingIdentityService:
             return []
 
     async def deactivate_mapping(
-        self, phone: str | None = None, telegram_chat_id: int | None = None
+        self, phone: str | None = None, telegram_chat_id: int | None = None,
     ) -> bool:
         """
         Deactivate a mapping (soft delete).

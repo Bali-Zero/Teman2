@@ -86,7 +86,7 @@ async def personalize_workflow(
                 age = (datetime.now(tz=timezone.utc).date() - dob).days // 365
                 if age < 55:
                     logger.warning(
-                        f"⚠️ User {user_email} is under 55 ({age}), retirement workflow may be invalid"
+                        f"⚠️ User {user_email} is under 55 ({age}), retirement workflow may be invalid",
                     )
                     step["blocked_reason"] = "Age requirement (55+) not met"
                     step["status"] = "blocked"

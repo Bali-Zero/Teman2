@@ -29,7 +29,7 @@ def qdrant_client():
     """Create QdrantClient instance"""
     with patch("httpx.AsyncClient"):
         return QdrantClient(
-            qdrant_url="http://localhost:6333", collection_name="test_collection", api_key=None
+            qdrant_url="http://localhost:6333", collection_name="test_collection", api_key=None,
         )
 
 
@@ -95,7 +95,7 @@ class TestQdrantClient:
         """Test initialization"""
         with patch("httpx.AsyncClient"):
             client = QdrantClient(
-                qdrant_url="http://localhost:6333", collection_name="test_collection"
+                qdrant_url="http://localhost:6333", collection_name="test_collection",
             )
             assert client.qdrant_url == "http://localhost:6333"
             assert client.collection_name == "test_collection"
@@ -115,7 +115,7 @@ class TestQdrantClient:
         """Test initialization with custom timeout"""
         with patch("httpx.AsyncClient"):
             client = QdrantClient(
-                qdrant_url="http://localhost:6333", collection_name="test_collection", timeout=60.0
+                qdrant_url="http://localhost:6333", collection_name="test_collection", timeout=60.0,
             )
             assert client.timeout == 60.0
 
@@ -123,7 +123,7 @@ class TestQdrantClient:
         """Test initialization removes trailing slash"""
         with patch("httpx.AsyncClient"):
             client = QdrantClient(
-                qdrant_url="http://localhost:6333/", collection_name="test_collection"
+                qdrant_url="http://localhost:6333/", collection_name="test_collection",
             )
             assert client.qdrant_url == "http://localhost:6333"
 
@@ -167,7 +167,7 @@ class TestQdrantClient:
             mock_client_class.return_value = mock_client
 
             async with QdrantClient(
-                qdrant_url="http://localhost:6333", collection_name="test_collection"
+                qdrant_url="http://localhost:6333", collection_name="test_collection",
             ) as client:
                 assert client is not None
 
@@ -189,7 +189,7 @@ class TestQdrantClient:
         with patch("httpx.AsyncClient"):
             # Create client with explicit api_key=None to override any settings
             client = QdrantClient(
-                qdrant_url="http://localhost:6333", collection_name="test_collection", api_key=None
+                qdrant_url="http://localhost:6333", collection_name="test_collection", api_key=None,
             )
             # Ensure api_key is None
             client.api_key = None
@@ -229,8 +229,8 @@ class TestQdrantClient:
         mock_response.status_code = 200
         mock_response.json = MagicMock(
             return_value={
-                "result": [{"id": "1", "score": 0.9, "payload": {"text": "test", "metadata": {}}}]
-            }
+                "result": [{"id": "1", "score": 0.9, "payload": {"text": "test", "metadata": {}}}],
+            },
         )
         mock_response.raise_for_status = MagicMock()
 
@@ -257,7 +257,7 @@ class TestQdrantClient:
 
         with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.search(
-                query_embedding=[0.1] * 1536, limit=5, filter={"tier": "S"}
+                query_embedding=[0.1] * 1536, limit=5, filter={"tier": "S"},
             )
             assert result is not None
 
@@ -327,7 +327,7 @@ class TestQdrantClient:
 
         with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.upsert_documents(
-                chunks=["test chunk"], embeddings=[[0.1] * 1536], metadatas=[{"test": "metadata"}]
+                chunks=["test chunk"], embeddings=[[0.1] * 1536], metadatas=[{"test": "metadata"}],
             )
             assert result is not None
             assert "documents_added" in result or "success" in result
@@ -369,9 +369,9 @@ class TestQdrantClient:
         mock_response.json = MagicMock(
             return_value={
                 "result": [
-                    {"id": "1", "vector": [0.1] * 1536, "payload": {"text": "test", "metadata": {}}}
-                ]
-            }
+                    {"id": "1", "vector": [0.1] * 1536, "payload": {"text": "test", "metadata": {}}},
+                ],
+            },
         )
         mock_response.raise_for_status = MagicMock()
 
@@ -446,7 +446,7 @@ class TestQdrantClient:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json = AsyncMock(
-            return_value={"result": {"points": [{"id": "1", "payload": {"text": "test"}}]}}
+            return_value={"result": {"points": [{"id": "1", "payload": {"text": "test"}}]}},
         )
         mock_response.raise_for_status = MagicMock()
 
@@ -577,7 +577,7 @@ class TestQdrantMetrics:
                 "upsert_documents_total": 0,
                 "retry_count": 0,
                 "errors": 0,
-            }
+            },
         )
 
         try:
@@ -605,7 +605,7 @@ class TestQdrantMetrics:
                 "upsert_documents_total": 50,  # 50 documents total
                 "retry_count": 2,
                 "errors": 1,
-            }
+            },
         )
 
         try:
@@ -635,7 +635,7 @@ class TestQdrantMetrics:
                 "upsert_documents_total": 0,
                 "retry_count": 0,
                 "errors": 0,
-            }
+            },
         )
 
         try:
@@ -660,7 +660,7 @@ class TestQdrantMetrics:
                 "upsert_documents_total": 20,
                 "retry_count": 0,
                 "errors": 0,
-            }
+            },
         )
 
         try:

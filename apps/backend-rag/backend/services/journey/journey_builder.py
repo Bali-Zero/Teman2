@@ -90,7 +90,7 @@ class JourneyBuilderService:
         )
 
         logger.info(
-            f"✅ Built journey {journey_id} from template {template_key} ({len(steps)} steps)"
+            f"✅ Built journey {journey_id} from template {template_key} ({len(steps)} steps)",
         )
 
         return journey

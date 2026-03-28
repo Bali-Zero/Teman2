@@ -95,7 +95,7 @@ class MemoryOrchestrator:
         # Read semaphores: allow concurrent reads in get_user_context
         self._write_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._read_semaphores: dict[str, asyncio.Semaphore] = defaultdict(
-            lambda: asyncio.Semaphore(10)  # Allow 10 concurrent reads per user
+            lambda: asyncio.Semaphore(10),  # Allow 10 concurrent reads per user
         )
         self._lock_timeout = 5.0  # seconds
 
@@ -332,12 +332,12 @@ class MemoryOrchestrator:
                                 limit=10,
                             )
                             logger.debug(
-                                f"Retrieved {len(collective_facts)} relevant collective facts for query"
+                                f"Retrieved {len(collective_facts)} relevant collective facts for query",
                             )
                         else:
                             # Fallback to confidence-based retrieval
                             collective_facts = await self._collective_memory.get_collective_context(
-                                limit=10
+                                limit=10,
                             )
                     except Exception as e:
                         logger.warning(f"Failed to get collective memory: {e}")
@@ -395,15 +395,15 @@ class MemoryOrchestrator:
                 if has_data:
                     logger.info(
                         f"✅ Retrieved context for {user_email}: "
-                        f"{len(context.profile_facts)} personal facts, {len(collective_facts)} collective facts"
+                        f"{len(context.profile_facts)} personal facts, {len(collective_facts)} collective facts",
                     )
                 else:
                     logger.debug(f"📝 No existing memory for {user_email}")
 
                 return context
 
-        except Exception:
-            logger.exception("Failed to get user context", extra={"user_email": user_email})
+        except Exception as e:
+            logger.exception("Failed to get user context", extra={"user_email": user_email, "error": str(e)})
             try:
                 from backend.app.metrics import memory_context_failed_total
 
@@ -499,7 +499,7 @@ class MemoryOrchestrator:
                             fact_type=fact_type,
                             confidence=raw_fact.get("confidence", 0.8),
                             source=raw_fact.get("source", "user"),
-                        )
+                        ),
                     )
 
                 facts_extracted = len(facts)
@@ -538,7 +538,7 @@ class MemoryOrchestrator:
                         )
                         if event_result and event_result.get("status") == "created":
                             logger.info(
-                                f"📅 Saved episodic event: {event_result.get('title', '')[:50]}"
+                                f"📅 Saved episodic event: {event_result.get('title', '')[:50]}",
                             )
                     except Exception as e:
                         logger.warning(f"Failed to extract episodic event: {e}")
@@ -548,7 +548,7 @@ class MemoryOrchestrator:
                 if facts_saved > 0:
                     logger.info(
                         f"💾 Saved {facts_saved}/{facts_extracted} facts for {user_email} "
-                        f"({processing_time:.1f}ms)"
+                        f"({processing_time:.1f}ms)",
                     )
 
                 return MemoryProcessResult(

@@ -131,7 +131,7 @@ def test_state_chains_update(sample_state):
             "relationship_type": "REQUIRES",
             "target_entity_id": "pt_pma",
             "target_name": "PT PMA",
-        }
+        },
     ]
     sample_state["relationship_chains"] = [chain]
 
@@ -168,7 +168,7 @@ async def test_understand_query_node_success(sample_state, mock_llm):
             "intent": "company_setup",
             "entities": ["kbli:56101", "pt_pma"],
             "citizenship": "foreign",
-        }
+        },
     )
     mock_llm.ainvoke.return_value = mock_response
 
@@ -233,7 +233,7 @@ async def test_resolve_entities_node_fuzzy_match(sample_state, mock_db_pool):
             "confidence": 0.9,
             "sim_score": 0.85,
             "entity_type": "kbli",
-        }
+        },
     ]
 
     # Execute node
@@ -278,7 +278,7 @@ async def test_traverse_graph_node_single_hop(sample_state, mock_db_pool):
             "target_name": "PT PMA",
             "target_type": "company_type",
             "target_confidence": 0.9,
-        }
+        },
     ]
 
     # Execute node
@@ -309,7 +309,7 @@ async def test_traverse_graph_node_cycle_detection(sample_state, mock_db_pool):
             "target_name": "PT PMA",
             "target_type": "company_type",
             "target_confidence": 0.9,
-        }
+        },
     ]
 
     # Execute node
@@ -333,8 +333,8 @@ async def test_reason_over_graph_node_success(sample_state, mock_llm):
                 "target_name": "PT PMA",
                 "target_type": "company_type",
                 "depth": 1,
-            }
-        ]
+            },
+        ],
     ]
 
     # Mock LLM response
@@ -365,8 +365,8 @@ async def test_synthesize_workflow_node_success(sample_state, mock_db_pool):
                 "target_type": "company_type",
                 "relationship_type": "REQUIRES",
                 "depth": 1,
-            }
-        ]
+            },
+        ],
     ]
 
     # Execute node
@@ -468,8 +468,8 @@ def test_format_chains_for_llm_single_chain():
                 "relationship_type": "REQUIRES",
                 "target_name": "PT PMA",
                 "target_type": "company_type",
-            }
-        ]
+            },
+        ],
     ]
 
     formatted = format_chains_for_llm(chains)
@@ -490,7 +490,7 @@ def test_format_chains_for_llm_multiple_chains():
                 "relationship_type": "REL",
                 "target_name": "B",
                 "target_type": "t2",
-            }
+            },
         ]
         for _ in range(3)
     ]
@@ -521,8 +521,8 @@ def test_extract_evidence_from_chains():
                 "target_name": "Target1",
                 "target_type": "type1",
                 "relationship_type": "REQUIRES",
-            }
-        ]
+            },
+        ],
     ]
 
     evidence = extract_evidence_from_chains(chains)
@@ -543,7 +543,7 @@ def test_extract_evidence_deduplication():
                 "target_name": "T1",
                 "target_type": "type1",
                 "relationship_type": "REL",
-            }
+            },
         ],
         [
             {
@@ -552,7 +552,7 @@ def test_extract_evidence_deduplication():
                 "target_name": "T1",
                 "target_type": "type1",
                 "relationship_type": "REL",
-            }
+            },
         ],
     ]
 

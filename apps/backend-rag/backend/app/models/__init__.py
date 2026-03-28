@@ -140,7 +140,7 @@ class UserProfile(BaseModel):
     # Language preferences (unified)
     language: str = Field(default="en", description="User's preferred response language")
     language_preference: str | None = Field(
-        None, description="Alias for language, for backward compatibility"
+        None, description="Alias for language, for backward compatibility",
     )
 
     # Oracle-specific preferences
@@ -152,7 +152,7 @@ class UserProfile(BaseModel):
     # Metadata (unified)
     metadata: dict[str, Any] | None = Field(None, description="General metadata")
     meta_json: dict[str, Any] = Field(
-        default_factory=dict, description="Alias for metadata, for backward compatibility"
+        default_factory=dict, description="Alias for metadata, for backward compatibility",
     )
 
     @model_validator(mode="before")

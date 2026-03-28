@@ -64,7 +64,7 @@ def orchestrator(mock_tools):
         # Setup mock FollowupService
         mock_followup_instance = MagicMock()
         mock_followup_instance.get_followups = AsyncMock(
-            return_value=["Quanto costa?", "Quali documenti servono?", "Quanto tempo richiede?"]
+            return_value=["Quanto costa?", "Quali documenti servono?", "Quanto tempo richiede?"],
         )
         mock_followup.return_value = mock_followup_instance
 

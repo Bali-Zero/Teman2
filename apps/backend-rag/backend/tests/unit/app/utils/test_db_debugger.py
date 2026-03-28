@@ -83,7 +83,7 @@ class TestDatabaseQueryDebugger:
         """Test tracing query with connection and transaction IDs"""
         debugger = DatabaseQueryDebugger()
         trace_ctx = debugger.trace_query(
-            "SELECT * FROM users", connection_id="conn-123", transaction_id="txn-456"
+            "SELECT * FROM users", connection_id="conn-123", transaction_id="txn-456",
         )
 
         assert trace_ctx.trace.connection_id == "conn-123"

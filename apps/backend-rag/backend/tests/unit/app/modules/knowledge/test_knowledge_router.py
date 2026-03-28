@@ -47,12 +47,12 @@ def mock_search_service():
                         "total_chunks": 10,
                     },
                     "score": 0.95,
-                }
+                },
             ],
             "user_level": 0,
             "allowed_tiers": [],
             "collection_used": "visa_oracle",
-        }
+        },
     )
     return service
 
@@ -120,7 +120,7 @@ class TestSemanticSearch:
 
     @pytest.mark.asyncio
     async def test_semantic_search_success(
-        self, mock_search_service, mock_search_query, mock_request
+        self, mock_search_service, mock_search_query, mock_request,
     ):
         """Test successful semantic search using SearchService"""
         mock_request.app.state.search_service = mock_search_service
@@ -175,7 +175,7 @@ class TestSemanticSearch:
 
     @pytest.mark.asyncio
     async def test_semantic_search_with_collection_override(
-        self, mock_search_service, mock_request
+        self, mock_search_service, mock_request,
     ):
         """Test semantic search with collection override"""
         mock_request.app.state.search_service = mock_search_service
@@ -273,12 +273,12 @@ class TestSemanticSearch:
 
     @pytest.mark.asyncio
     async def test_semantic_search_http_exception_passthrough(
-        self, mock_search_service, mock_request
+        self, mock_search_service, mock_request,
     ):
         """Test that HTTPException is passed through without modification"""
         mock_request.app.state.search_service = mock_search_service
         mock_search_service.search.side_effect = HTTPException(
-            status_code=400, detail="Bad request"
+            status_code=400, detail="Bad request",
         )
 
         query = SearchQuery(query="test", level=0, limit=5)
@@ -305,7 +305,7 @@ class TestSemanticSearch:
                     "text": "doc1",
                     "metadata": {"book_title": "Book1", "tier": "S"},
                     "score": 0.9,
-                }
+                },
             ],
             "user_level": 0,
             "allowed_tiers": [],
@@ -334,7 +334,7 @@ class TestSemanticSearch:
                     "text": "doc1",
                     "metadata": {"book_title": "Book1", "tier": "INVALID"},
                     "score": 0.9,
-                }
+                },
             ],
             "user_level": 0,
             "allowed_tiers": [],
@@ -363,7 +363,7 @@ class TestSemanticSearch:
                     "text": "doc1",
                     "metadata": {},  # Empty metadata
                     "score": 0.9,
-                }
+                },
             ],
             "user_level": 0,
             "allowed_tiers": [],

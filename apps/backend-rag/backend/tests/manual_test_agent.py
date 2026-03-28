@@ -101,7 +101,7 @@ async def test_workflow_with_real_services():
         query_router = QueryRouterIntegration()
         embedder = create_embeddings_generator()
         cultural_insights = CulturalInsightsService(
-            collection_manager=collection_manager, embedder=embedder
+            collection_manager=collection_manager, embedder=embedder,
         )
 
         search_service = SearchService(

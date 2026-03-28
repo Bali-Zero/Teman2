@@ -44,7 +44,7 @@ class KnowledgeGraphSchema:
                         WHERE table_schema = 'public'
                         AND table_name = 'kg_nodes'
                     )
-                    """
+                    """,
                 )
 
                 kg_edges_exists = await conn.fetchval(
@@ -54,7 +54,7 @@ class KnowledgeGraphSchema:
                         WHERE table_schema = 'public'
                         AND table_name = 'kg_edges'
                     )
-                    """
+                    """,
                 )
 
                 if kg_nodes_exists and kg_edges_exists:
@@ -63,7 +63,7 @@ class KnowledgeGraphSchema:
                     edges_count = await conn.fetchval("SELECT COUNT(*) FROM kg_edges")
                     logger.info(
                         f"✅ Knowledge graph schema verified: "
-                        f"{nodes_count:,} nodes, {edges_count:,} edges"
+                        f"{nodes_count:,} nodes, {edges_count:,} edges",
                     )
                 else:
                     missing = []
@@ -73,7 +73,7 @@ class KnowledgeGraphSchema:
                         missing.append("kg_edges")
                     logger.warning(
                         f"⚠️ Knowledge graph tables missing: {', '.join(missing)}. "
-                        f"Run migrations 028 and 029 to create them."
+                        f"Run migrations 028 and 029 to create them.",
                     )
 
         except asyncpg.PostgresError as e:

@@ -87,7 +87,7 @@ class TestMetrics:
     def test_rag_queries_total(self):
         """Test RAG queries counter"""
         metrics.rag_queries_total.labels(
-            collection="test", route_used="fast", status="success"
+            collection="test", route_used="fast", status="success",
         ).inc()
         # Should not raise exception
 

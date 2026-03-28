@@ -55,7 +55,7 @@ async def audit_kb():
         try:
             # Use SCROLL which is safer
             scroll_res, _ = client.scroll(
-                collection_name=col_name, limit=3, with_payload=True, with_vectors=False
+                collection_name=col_name, limit=3, with_payload=True, with_vectors=False,
             )
 
             if not scroll_res:

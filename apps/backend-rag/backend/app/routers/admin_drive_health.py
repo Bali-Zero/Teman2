@@ -149,7 +149,7 @@ async def drive_health(request: Request) -> dict[str, Any]:
             """SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_name = 'google_drive_tokens'
-            )"""
+            )""",
         )
 
         if not table_exists:
@@ -158,7 +158,7 @@ async def drive_health(request: Request) -> dict[str, Any]:
         # Check SYSTEM token
         token = await conn.fetchrow(
             """SELECT user_id, expires_at, refresh_token IS NOT NULL as has_refresh, updated_at
-               FROM google_drive_tokens WHERE user_id = 'SYSTEM'"""
+               FROM google_drive_tokens WHERE user_id = 'SYSTEM'""",
         )
 
         if not token:
@@ -223,7 +223,7 @@ async def trigger_drive_poll(request: Request) -> dict[str, Any]:
 
 @router.post("/backfill")
 async def backfill_drive_documents(
-    request: Request, background_tasks: BackgroundTasks
+    request: Request, background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     """One-time backfill: scan all client Drive folders and register schema-compliant files.
 
@@ -246,15 +246,15 @@ async def backfill_drive_documents(
             async with pool.acquire() as conn:
                 clients = await conn.fetch(
                     "SELECT id, google_drive_folder_id FROM clients "
-                    "WHERE google_drive_folder_id IS NOT NULL"
+                    "WHERE google_drive_folder_id IS NOT NULL",
                 )
                 existing = await conn.fetch(
-                    "SELECT file_id FROM documents WHERE file_id IS NOT NULL"
+                    "SELECT file_id FROM documents WHERE file_id IS NOT NULL",
                 )
                 existing_fids = {r["file_id"] for r in existing}
 
             logger.info(
-                f"Backfill: scanning {len(clients)} clients, {len(existing_fids)} existing docs"
+                f"Backfill: scanning {len(clients)} clients, {len(existing_fids)} existing docs",
             )
 
             added = 0
@@ -352,11 +352,11 @@ async def backfill_drive_documents(
 
                 if (i + 1) % 200 == 0:
                     logger.info(
-                        f"Backfill progress: {i + 1}/{len(clients)}, +{added}, skip {skipped}"
+                        f"Backfill progress: {i + 1}/{len(clients)}, +{added}, skip {skipped}",
                     )
 
             logger.info(
-                f"Backfill DONE: {len(clients)} clients, +{added} docs, {skipped} skipped, {errors} errors"
+                f"Backfill DONE: {len(clients)} clients, +{added} docs, {skipped} skipped, {errors} errors",
             )
         finally:
             await pool.close()

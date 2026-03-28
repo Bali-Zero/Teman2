@@ -54,7 +54,7 @@ async def generate_speech(
     try:
         # Generate audio content (bytes)
         audio_content = await audio_service.generate_speech(
-            text=request.text, voice=request.voice, model=request.model
+            text=request.text, voice=request.voice, model=request.model,
         )
 
         # Return as streaming response

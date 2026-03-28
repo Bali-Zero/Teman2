@@ -82,7 +82,7 @@ def validate_category(category: str) -> str:
 
     if normalized not in VALID_CATEGORIES:
         raise ValueError(
-            f"Invalid category '{category}'. Must be one of: {', '.join(VALID_CATEGORIES)}"
+            f"Invalid category '{category}'. Must be one of: {', '.join(VALID_CATEGORIES)}",
         )
 
     return normalized
@@ -123,7 +123,7 @@ class ComposeRequestValidator(BaseModel):
         """Validate and sanitize content"""
         if len(v) > MAX_CONTENT_LENGTH:
             raise ValueError(
-                f"Content too large ({len(v)} chars). Maximum allowed: {MAX_CONTENT_LENGTH} chars"
+                f"Content too large ({len(v)} chars). Maximum allowed: {MAX_CONTENT_LENGTH} chars",
             )
         return sanitize_content(v)
 

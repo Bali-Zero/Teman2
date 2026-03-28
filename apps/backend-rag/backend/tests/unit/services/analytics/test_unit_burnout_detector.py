@@ -47,7 +47,7 @@ class TestBurnoutDetectorService:
 
     @pytest.mark.asyncio
     async def test_detect_burnout_signals_insufficient_sessions(
-        self, burnout_detector, mock_db_pool
+        self, burnout_detector, mock_db_pool,
     ):
         """Test detecting burnout signals with insufficient sessions"""
         mock_db_pool.fetch = AsyncMock(
@@ -70,7 +70,7 @@ class TestBurnoutDetectorService:
                     "day_of_week": 2,
                     "session_start": datetime.now(tz=timezone.utc),
                 },
-            ]
+            ],
         )
         results = await burnout_detector.detect_burnout_signals()
         assert len(results) == 0  # Need at least 3 sessions

@@ -294,7 +294,7 @@ class TestCitationStageComplete:
                     "url": "https://example.com",
                     "score": 0.9,
                     "collection": "test_collection",
-                }
+                },
             ],
         }
         result = await stage.process(data)
@@ -373,7 +373,7 @@ class TestCitationStageComplete:
         data = {
             "response": "Test",
             "sources": [
-                {"title": "Test Doc", "source_url": "https://example.com/fallback", "score": 0.9}
+                {"title": "Test Doc", "source_url": "https://example.com/fallback", "score": 0.9},
             ],
         }
         result = await stage.process(data)
@@ -441,7 +441,7 @@ class TestCitationStageComplete:
                     "url": "https://example.com",
                     "score": 0.9,
                     "metadata": {"author": "Test Author", "date": "2024-01-01"},
-                }
+                },
             ],
         }
         result = await stage.process(data)
@@ -460,7 +460,7 @@ class TestCitationStageComplete:
                     "url": "https://example.com",
                     "score": 0.9,
                     "snippet": "This is a snippet from the document",
-                }
+                },
             ],
         }
         result = await stage.process(data)
@@ -564,7 +564,7 @@ class TestResponsePipelineComplete:
         stage2 = MagicMock(spec=PipelineStage)
         stage2.name = "Stage2"
         stage2.process = AsyncMock(
-            return_value={"response": "processed2", "stages_completed": ["Stage1"]}
+            return_value={"response": "processed2", "stages_completed": ["Stage1"]},
         )
 
         pipeline = ResponsePipeline(stages=[stage1, stage2])

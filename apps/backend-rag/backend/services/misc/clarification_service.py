@@ -49,7 +49,7 @@ class ClarificationService:
         logger.info("✅ ClarificationService initialized")
 
     def detect_ambiguity(
-        self, query: str, conversation_history: list[dict] | None = None
+        self, query: str, conversation_history: list[dict] | None = None,
     ) -> dict[str, Any]:
         """
         Detect if a query is ambiguous and needs clarification
@@ -146,7 +146,7 @@ class ClarificationService:
                 # Short query with ambiguous keyword
                 confidence += 0.3
                 reasons.append(
-                    f"Keyword '{keyword}' has multiple interpretations: {', '.join(interpretations[:2])}"
+                    f"Keyword '{keyword}' has multiple interpretations: {', '.join(interpretations[:2])}",
                 )
                 ambiguity_type = AmbiguityType.MULTIPLE_INTERPRETATIONS
 
@@ -171,7 +171,7 @@ class ClarificationService:
 
         if clarification_needed:
             logger.info(
-                f"🤔 [Clarification] Ambiguous query detected (confidence: {confidence:.2f}, type: {ambiguity_type.value})"
+                f"🤔 [Clarification] Ambiguous query detected (confidence: {confidence:.2f}, type: {ambiguity_type.value})",
             )
             for reason in reasons:
                 logger.info(f"   - {reason}")
@@ -181,7 +181,7 @@ class ClarificationService:
         return result
 
     def generate_clarification_request(
-        self, query: str, ambiguity_info: dict[str, Any], language: str = "en"
+        self, query: str, ambiguity_info: dict[str, Any], language: str = "en",
     ) -> str:
         """
         Generate a natural clarification request
@@ -267,7 +267,7 @@ class ClarificationService:
         return None
 
     def _generate_clarification_options(
-        self, query: str, _ambiguity_type: str, language: str
+        self, query: str, _ambiguity_type: str, language: str,
     ) -> str | None:
         """Generate specific clarification options based on query"""
         query_lower = query.lower()

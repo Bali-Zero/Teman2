@@ -230,7 +230,7 @@ language clear and accessible.
 <style_instruction>
 {tone_instruction}
 </style_instruction>
-"""
+""",
                 )
 
         # Memory/RAG context
@@ -244,7 +244,7 @@ CONTEXT USAGE INSTRUCTIONS:
 3. If the context doesn't contain specific information, acknowledge this honestly
 4. Do NOT make up information - only use what's in the context or your general knowledge
 5. For pricing, legal requirements, and specific procedures: ONLY use context data
-"""
+""",
             )
 
         # Combine everything

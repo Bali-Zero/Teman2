@@ -261,7 +261,7 @@ class HealthMonitor:
             logger.debug(f"DB pool check failed: {e}")
 
     async def _send_resource_alert_throttled(
-        self, resource: str, current: float, threshold: float, unit: str = "%"
+        self, resource: str, current: float, threshold: float, unit: str = "%",
     ) -> None:
         """Send resource alert with cooldown to avoid spam."""
         last = self._resource_alert_cooldown.get(resource)
@@ -277,7 +277,7 @@ class HealthMonitor:
         self._resource_alert_cooldown[resource] = datetime.now(tz=timezone.utc)
 
     def _update_resource_metrics(
-        self, rss_mb: float, mem_percent: float, cpu_percent: float
+        self, rss_mb: float, mem_percent: float, cpu_percent: float,
     ) -> None:
         """Update Prometheus gauges for resources."""
         try:
@@ -402,7 +402,7 @@ class HealthMonitor:
         logger.warning(
             f"PostgreSQL health check failed: "
             f"memory_service={memory_service is not None}, "
-            f"app_state={self.app_state is not None}"
+            f"app_state={self.app_state is not None}",
         )
         return False
 
@@ -419,7 +419,7 @@ class HealthMonitor:
                 logger.warning(
                     "AI Router health check: router is None. "
                     f"injected_router={intelligent_router is not None}, "
-                    f"app_state={self.app_state is not None}"
+                    f"app_state={self.app_state is not None}",
                 )
             return False
 
@@ -438,7 +438,7 @@ class HealthMonitor:
             if not hasattr(self, "_ai_router_debug_logged"):
                 self._ai_router_debug_logged = True
                 logger.warning(
-                    f"AI Router health check failed: router_type={type(router).__name__}"
+                    f"AI Router health check failed: router_type={type(router).__name__}",
                 )
 
             return False
@@ -487,8 +487,8 @@ class HealthMonitor:
                 else None,
                 "boot_time": _BOOT_TIMESTAMP.isoformat(),
             }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Health check silently failed: {e}")
 
         # DB pool info
         pool_info: dict[str, Any] = {}

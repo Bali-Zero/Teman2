@@ -96,7 +96,7 @@ class MCPClientService:
                     "name": tool_name,
                     "description": f"[MCP] {tool_info['description']}",
                     "parameters": tool_info["schema"],
-                }
+                },
             )
 
         return gemini_tools

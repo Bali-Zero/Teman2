@@ -105,7 +105,7 @@ class BaseMigration:
                         if "TRUNCATE" in line.upper() and not line.strip().startswith("--"):
                             raise MigrationError(
                                 f"SQL contains potentially dangerous pattern: {pattern}. "
-                                "If this is intentional, add a comment explaining why."
+                                "If this is intentional, add a comment explaining why.",
                             )
                 else:
                     raise MigrationError(f"SQL contains dangerous pattern: {pattern}")
@@ -128,7 +128,7 @@ class BaseMigration:
                 execution_time_ms INTEGER,
                 rollback_sql TEXT
             )
-        """
+        """,
         )
 
         # Create index for faster lookups
@@ -136,13 +136,13 @@ class BaseMigration:
             """
             CREATE INDEX IF NOT EXISTS idx_schema_migrations_name
             ON schema_migrations(migration_name)
-        """
+        """,
         )
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_schema_migrations_number
             ON schema_migrations(migration_number)
-        """
+        """,
         )
 
     async def _is_applied(self, conn: asyncpg.Connection) -> bool:
@@ -175,7 +175,7 @@ class BaseMigration:
             if not result:
                 raise MigrationError(
                     f"Migration {self.migration_number} depends on migration {dep_number}, "
-                    f"but {dep_number} has not been applied yet"
+                    f"but {dep_number} has not been applied yet",
                 )
 
     async def _log_migration(
@@ -280,7 +280,7 @@ class BaseMigration:
 
                 logger.info(
                     f"✅ Migration {self.migration_name} applied successfully "
-                    f"in {execution_time_ms}ms"
+                    f"in {execution_time_ms}ms",
                 )
                 return True
 

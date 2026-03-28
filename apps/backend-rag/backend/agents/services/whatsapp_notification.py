@@ -34,7 +34,7 @@ class WhatsAppNotificationService:
         self.whatsapp_number = whatsapp_number
 
     async def send_message(
-        self, phone: str, message: str, max_retries: int = 3, timeout: float = 30.0
+        self, phone: str, message: str, max_retries: int = 3, timeout: float = 30.0,
     ) -> str | None:
         """
         Send WhatsApp message via Twilio with retry logic and timeout.
@@ -78,7 +78,7 @@ class WhatsAppNotificationService:
                     if attempt < max_retries - 1:
                         wait_time = 2**attempt  # Exponential backoff
                         logger.warning(
-                            f"Attempt {attempt + 1}/{max_retries} failed for {phone}, retrying in {wait_time}s: {e}"
+                            f"Attempt {attempt + 1}/{max_retries} failed for {phone}, retrying in {wait_time}s: {e}",
                         )
                         await asyncio.sleep(wait_time)
                     else:
