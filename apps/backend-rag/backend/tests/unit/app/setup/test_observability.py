@@ -11,7 +11,12 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+import backend.app.setup.observability as observability_module
 from backend.app.setup.observability import setup_observability
+
+# Ensure OTLPGrpcSpanExporter attribute exists for patching (conditionally imported in source)
+if not hasattr(observability_module, "OTLPGrpcSpanExporter"):
+    observability_module.OTLPGrpcSpanExporter = None  # type: ignore[attr-defined]
 
 
 class TestObservabilitySetup:
