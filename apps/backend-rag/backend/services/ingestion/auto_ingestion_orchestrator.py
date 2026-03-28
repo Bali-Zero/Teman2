@@ -29,7 +29,7 @@ Integration with bali-intel-scraper:
 import hashlib
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 

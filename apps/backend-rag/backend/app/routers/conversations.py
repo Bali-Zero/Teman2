@@ -12,7 +12,7 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg

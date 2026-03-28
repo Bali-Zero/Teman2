@@ -17,7 +17,7 @@ Performance Impact:
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np

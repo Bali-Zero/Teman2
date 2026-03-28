@@ -6,7 +6,7 @@ Handles analytics and metrics calculation for Intel articles.
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from backend.app.core.constants import IntelConstants

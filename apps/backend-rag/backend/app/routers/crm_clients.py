@@ -6,7 +6,7 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
 import time
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg

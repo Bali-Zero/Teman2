@@ -6,7 +6,7 @@ Handles approval workflow and Telegram notifications for Intel articles.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
