@@ -158,9 +158,9 @@ export default function LKPMReviewPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ color: "var(--bz-text-2)" }}>
-                <th className="text-left py-2">Category</th>
-                <th className="text-right py-2">Domestic</th>
-                <th className="text-right py-2">Import</th>
+                <th scope="col" className="text-left py-2">Category</th>
+                <th scope="col" className="text-right py-2">Domestic</th>
+                <th scope="col" className="text-right py-2">Import</th>
               </tr>
             </thead>
             <tbody
