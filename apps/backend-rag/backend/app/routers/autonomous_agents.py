@@ -459,7 +459,7 @@ async def extract_kg_sample(
 
     except Exception as e:
         logger.error(f"KG sample extraction failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/knowledge-graph/persist-sample")
@@ -562,7 +562,7 @@ async def persist_kg_sample(
 
     except Exception as e:
         logger.error(f"KG persist failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ============================================================================
@@ -794,7 +794,7 @@ async def enable_scheduler_task(task_name: str) -> dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to enable task: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/scheduler/task/{task_name}/disable")
@@ -823,4 +823,4 @@ async def disable_scheduler_task(task_name: str) -> dict[str, Any]:
         raise
     except Exception as e:
         logger.error(f"Failed to disable task: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

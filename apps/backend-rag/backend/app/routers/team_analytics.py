@@ -39,7 +39,7 @@ async def get_work_patterns(
         return {"success": True, "data": patterns}
     except Exception as e:
         logger.error(f"Failed to analyze work patterns: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/productivity")
@@ -67,7 +67,7 @@ async def get_burnout_signals(
         return {"success": True, "signals": signals}
     except Exception as e:
         logger.error(f"Failed to detect burnout signals: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/trends/{user_email}")
@@ -82,7 +82,7 @@ async def get_performance_trends(
         return {"success": True, "trends": trends}
     except Exception as e:
         logger.error(f"Failed to analyze performance trends: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/workload-balance")
@@ -96,7 +96,7 @@ async def get_workload_balance(
         return {"success": True, "balance": balance}
     except Exception as e:
         logger.error(f"Failed to analyze workload balance: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/optimal-hours")
@@ -111,7 +111,7 @@ async def get_optimal_hours(
         return {"success": True, "optimal_hours": optimal}
     except Exception as e:
         logger.error(f"Failed to identify optimal hours: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/team-insights")
@@ -125,4 +125,4 @@ async def get_team_insights(
         return {"success": True, "insights": insights}
     except Exception as e:
         logger.error(f"Failed to generate team insights: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

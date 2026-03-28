@@ -114,6 +114,7 @@ export function FileList({
   const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <button
       onClick={() => handleSort(field)}
+      aria-sort={sortField === field ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
       className={`
         flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium uppercase tracking-wider
         transition-colors hover:bg-slate-100 dark:hover:bg-slate-800

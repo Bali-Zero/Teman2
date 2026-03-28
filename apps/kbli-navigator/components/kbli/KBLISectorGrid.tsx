@@ -1,5 +1,5 @@
-import Link from "next/link";
-import type { KBLISection } from "@/lib/kbli-types";
+import Link from 'next/link';
+import type { KBLISection } from '@/lib/kbli-types';
 import {
   Tractor,
   Pickaxe,
@@ -23,7 +23,7 @@ import {
   Home,
   Globe2,
   HelpCircle,
-} from "lucide-react";
+} from 'lucide-react';
 
 const SECTOR_ICONS: Record<string, React.ReactNode> = {
   A: <Tractor strokeWidth={1.5} />,
@@ -52,12 +52,12 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
   const maxCount = Math.max(...sections.map((s) => s.codeCount));
 
   // Size tier based on code count relative to max
-  function getSizeTier(count: number): "xl" | "lg" | "md" | "sm" {
+  function getSizeTier(count: number): 'xl' | 'lg' | 'md' | 'sm' {
     const ratio = count / maxCount;
-    if (ratio >= 0.6) return "xl";
-    if (ratio >= 0.3) return "lg";
-    if (ratio >= 0.1) return "md";
-    return "sm";
+    if (ratio >= 0.6) return 'xl';
+    if (ratio >= 0.3) return 'lg';
+    if (ratio >= 0.1) return 'md';
+    return 'sm';
   }
 
   const remainder = sections.length % 4;
@@ -73,49 +73,51 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
 
         // Accent intensity based on tier
         const accentOpacity =
-          tier === "xl"
-            ? "opacity-100"
-            : tier === "lg"
-              ? "opacity-80"
-              : tier === "md"
-                ? "opacity-60"
-                : "opacity-40";
+          tier === 'xl'
+            ? 'opacity-100'
+            : tier === 'lg'
+              ? 'opacity-80'
+              : tier === 'md'
+                ? 'opacity-60'
+                : 'opacity-40';
 
         // Icon size
         const iconSize =
-          tier === "xl"
-            ? "text-3xl"
-            : tier === "lg"
-              ? "text-2xl"
-              : tier === "md"
-                ? "text-xl"
-                : "text-lg";
+          tier === 'xl'
+            ? 'text-3xl'
+            : tier === 'lg'
+              ? 'text-2xl'
+              : tier === 'md'
+                ? 'text-xl'
+                : 'text-lg';
 
         // Name size
         const nameSize =
-          tier === "xl"
-            ? "text-sm font-bold"
-            : tier === "lg"
-              ? "text-sm font-semibold"
-              : "text-xs font-medium";
+          tier === 'xl'
+            ? 'text-sm font-bold'
+            : tier === 'lg'
+              ? 'text-sm font-semibold'
+              : 'text-xs font-medium';
 
         return (
           <Link
             key={s.id}
             href={`/kbli/sectors/${s.id}`}
+            aria-label={`${s.nameEn} — Section ${s.id}, ${s.codeCount} ${s.codeCount === 1 ? 'code' : 'codes'}`}
             className={`group relative rounded-2xl border border-[#3f3f46] bg-[#27272a] p-4.5
                        transition-all duration-500 hover:border-transparent hover:shadow-[0_8px_32px_rgba(212,132,90,0.2)] hover:-translate-y-1
                        animate-fade-in-up holographic-card flex flex-col
-                       ${isLastOrphan ? "col-span-2 sm:col-span-1" : ""}`}
+                       ${isLastOrphan ? 'col-span-2 sm:col-span-1' : ''}`}
             style={{ animationDelay: `${i * 60}ms` }}
           >
             {/* Icon & Section Code */}
             <div className="flex items-start justify-between mb-2">
               <div
-                className={`inline-flex items-center justify-center rounded-xl bg-white/5 border border-white/10 shadow-[inset_0_0_20px_rgba(255,255,255,0.05)] text-zinc-400 group-hover:text-[#d4845a] group-hover:bg-[#d4845a]/20 group-hover:border-[#d4845a]/50 group-hover:shadow-[0_0_30px_rgba(212,132,90,0.3)] transition-all duration-500 ${iconSize === "text-2xl" || iconSize === "text-3xl" ? "h-12 w-12" : "h-10 w-10"}`}
+                className={`inline-flex items-center justify-center rounded-xl bg-white/5 border border-white/10 shadow-[inset_0_0_20px_rgba(255,255,255,0.05)] text-zinc-400 group-hover:text-[#d4845a] group-hover:bg-[#d4845a]/20 group-hover:border-[#d4845a]/50 group-hover:shadow-[0_0_30px_rgba(212,132,90,0.3)] transition-all duration-500 ${iconSize === 'text-2xl' || iconSize === 'text-3xl' ? 'h-12 w-12' : 'h-10 w-10'}`}
               >
                 <div
-                  className={`drop-shadow-md group-hover:scale-110 transition-transform duration-500 flex items-center justify-center ${iconSize === "text-2xl" || iconSize === "text-3xl" ? "scale-125" : "scale-100"}`}
+                  aria-hidden="true"
+                  className={`drop-shadow-md group-hover:scale-110 transition-transform duration-500 flex items-center justify-center ${iconSize === 'text-2xl' || iconSize === 'text-3xl' ? 'scale-125' : 'scale-100'}`}
                 >
                   {SECTOR_ICONS[s.id] || <HelpCircle strokeWidth={1.5} />}
                 </div>
@@ -134,9 +136,9 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
             <div className="mt-5">
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-[11px] font-medium text-zinc-400 group-hover:text-zinc-300 transition-colors">
-                  {s.codeCount} {s.codeCount === 1 ? "code" : "codes"}
+                  {s.codeCount} {s.codeCount === 1 ? 'code' : 'codes'}
                 </span>
-                {tier === "xl" && (
+                {tier === 'xl' && (
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#d4845a] animate-pulse">
                     Large
                   </span>
@@ -150,7 +152,7 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
                   className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#d4845a] via-[#a855f7] to-[#3b82f6] opacity-60 group-hover:opacity-100 transition-opacity"
                   style={{
                     width: `${barPct}%`,
-                    animation: "progress-grow 1.2s ease-out forwards",
+                    animation: 'progress-grow 1.2s ease-out forwards',
                   }}
                 />
                 <div

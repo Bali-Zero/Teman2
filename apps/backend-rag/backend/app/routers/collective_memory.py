@@ -54,7 +54,7 @@ async def contribute_fact(
         return {"success": True, "message": f"Fact {result['status']}", "data": result}
     except Exception as e:
         logger.error(f"Error contributing to collective memory: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/refute")
@@ -78,7 +78,7 @@ async def refute_fact(
         return {"success": True, "message": f"Fact {result['status']}", "data": result}
     except Exception as e:
         logger.error(f"Error refuting fact: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/facts")
@@ -98,7 +98,7 @@ async def get_collective_facts(
         return {"success": True, "facts": facts, "count": len(facts)}
     except Exception as e:
         logger.error(f"Error getting collective facts: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/stats")
@@ -115,4 +115,4 @@ async def get_collective_stats(
         return {"success": True, "data": stats}
     except Exception as e:
         logger.error(f"Error getting stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

@@ -177,7 +177,7 @@ async def list_news(
 
     except Exception as e:
         logger.error(f"Error listing news: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/categories")
@@ -202,7 +202,7 @@ async def get_categories(
         }
     except Exception as e:
         logger.error(f"Error getting categories: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/{slug}")
@@ -255,7 +255,7 @@ async def get_news_by_slug(
         raise
     except Exception as e:
         logger.error(f"Error getting news by slug: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("")
@@ -302,7 +302,7 @@ async def create_news(
 
     except Exception as e:
         logger.error(f"Error creating news: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/bulk")
@@ -353,7 +353,7 @@ async def create_news_bulk(
 
     except Exception as e:
         logger.error(f"Error bulk creating news: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.patch("/{news_id}/status")
@@ -385,7 +385,7 @@ async def update_news_status(
         raise
     except Exception as e:
         logger.error(f"Error updating news status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ============================================================================
@@ -421,7 +421,7 @@ async def subscribe_to_news(
 
     except Exception as e:
         logger.error(f"Error subscribing: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/unsubscribe")
@@ -446,7 +446,7 @@ async def unsubscribe_from_news(
 
     except Exception as e:
         logger.error(f"Error unsubscribing: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ============================================================================
@@ -519,4 +519,4 @@ async def get_rss_feed(
 
     except Exception as e:
         logger.error(f"Error generating RSS feed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

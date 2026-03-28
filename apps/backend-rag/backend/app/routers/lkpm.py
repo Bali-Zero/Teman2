@@ -47,7 +47,7 @@ async def save_client_config(
         return {"success": True, "config_id": config_id}
     except Exception as e:
         logger.error(f"Failed to save client config: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ------------------------------------------------------------------
@@ -76,7 +76,7 @@ async def submit_data(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Form submission failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/sync-jurnal/{client_id}", response_model=dict)
@@ -102,7 +102,7 @@ async def sync_jurnal(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Jurnal sync failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ------------------------------------------------------------------
@@ -148,7 +148,7 @@ async def validate_draft(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Validation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ------------------------------------------------------------------
@@ -181,7 +181,7 @@ async def get_ready_pack(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Ready pack generation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ------------------------------------------------------------------
@@ -201,7 +201,7 @@ async def approve_draft(
         return await service.approve_draft(draft_id)
     except Exception as e:
         logger.error(f"Approval failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/mark-submitted/{draft_id}", response_model=dict)
@@ -217,7 +217,7 @@ async def mark_submitted(
         return await service.mark_submitted(draft_id, submitted_by or current_user)
     except Exception as e:
         logger.error(f"Mark submitted failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/upload-receipt/{draft_id}", response_model=dict)
@@ -234,7 +234,7 @@ async def upload_receipt(
         return await service.upload_receipt(draft_id, receipt_number, receipt_file_url)
     except Exception as e:
         logger.error(f"Receipt upload failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ------------------------------------------------------------------
@@ -262,7 +262,7 @@ async def get_my_history(
         }
     except Exception as e:
         logger.error(f"Failed to get LKPM history for portal client: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ------------------------------------------------------------------
