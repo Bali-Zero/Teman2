@@ -58,7 +58,7 @@ async def get_completion_rates(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to calculate completion rates: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/response-times")
@@ -123,7 +123,7 @@ async def get_revenue_metrics(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to calculate revenue metrics: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/monthly-report/{year}/{month}")

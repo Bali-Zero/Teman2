@@ -106,4 +106,4 @@ async def upload_file(file: UploadFile = File(...)) -> dict[str, Any]:
         raise HTTPException(
             status_code=500,
             detail={"success": False, "error": "Upload failed", "details": str(e)},
-        )
+        ) from e
