@@ -12,7 +12,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Page error', { component: 'ErrorBoundary', error: error.message });
+    logger.error(`Page error: ${error.message}`, { component: 'ErrorBoundary' });
   }, [error]);
 
   return (

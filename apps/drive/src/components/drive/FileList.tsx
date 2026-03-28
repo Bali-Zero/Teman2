@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import React, { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
-import type { FileItem } from "@/lib/api/drive/drive.types";
-import { getFileIcon, getDepartmentInfo } from "./file-icon";
-import { MoreVertical, ChevronDown } from "lucide-react";
-import { usePrefetchFolder } from "@/hooks/useDrive";
+import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import type { FileItem } from '@/lib/api/drive/drive.types';
+import { getFileIcon, getDepartmentInfo } from './file-icon';
+import { MoreVertical, ChevronDown } from 'lucide-react';
+import { usePrefetchFolder } from '@/hooks/useDrive';
 
 interface FileListProps {
   files: FileItem[];
@@ -19,8 +19,8 @@ interface FileListProps {
   onLoadMore?: () => void;
 }
 
-type SortField = "name" | "modified" | "size";
-type SortDirection = "asc" | "desc";
+type SortField = 'name' | 'modified' | 'size';
+type SortDirection = 'asc' | 'desc';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -38,7 +38,7 @@ const rowVariants = {
     opacity: 1,
     x: 0,
     transition: {
-      type: "spring" as const,
+      type: 'spring' as const,
       stiffness: 400,
       damping: 30,
     },
@@ -55,8 +55,8 @@ export function FileList({
   isFetchingNextPage,
   onLoadMore,
 }: FileListProps) {
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const { prefetchFolder } = usePrefetchFolder();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +70,7 @@ export function FileList({
           onLoadMore();
         }
       },
-      { rootMargin: "200px", threshold: 0 },
+      { rootMargin: '200px', threshold: 0 }
     );
 
     observer.observe(sentinelRef.current);
@@ -88,49 +88,42 @@ export function FileList({
 
     let comparison = 0;
     switch (sortField) {
-      case "name":
+      case 'name':
         comparison = a.name.localeCompare(b.name);
         break;
-      case "modified":
+      case 'modified':
         comparison =
-          new Date(a.modified_time || 0).getTime() -
-          new Date(b.modified_time || 0).getTime();
+          new Date(a.modified_time || 0).getTime() - new Date(b.modified_time || 0).getTime();
         break;
-      case "size":
+      case 'size':
         comparison = (a.size || 0) - (b.size || 0);
         break;
     }
-    return sortDirection === "asc" ? comparison : -comparison;
+    return sortDirection === 'asc' ? comparison : -comparison;
   });
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
-      setSortDirection("asc");
+      setSortDirection('asc');
     }
   };
 
-  const SortButton = ({
-    field,
-    children,
-  }: {
-    field: SortField;
-    children: React.ReactNode;
-  }) => (
+  const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
     <button
       onClick={() => handleSort(field)}
       className={`
         flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium uppercase tracking-wider
         transition-colors hover:bg-slate-100 dark:hover:bg-slate-800
-        ${sortField === field ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400"}
+        ${sortField === field ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}
       `}
     >
       {children}
       {sortField === field && (
         <ChevronDown
-          className={`h-3 w-3 transition-transform duration-200 ${sortDirection === "desc" ? "rotate-180" : ""}`}
+          className={`h-3 w-3 transition-transform duration-200 ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
         />
       )}
     </button>
@@ -175,15 +168,15 @@ export function FileList({
                 transition-all duration-150
                 ${
                   isSelected
-                    ? "bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100/80 dark:hover:bg-blue-950/50"
-                    : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    ? 'bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-100/80 dark:hover:bg-blue-950/50'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                 }
               `}
             >
               {/* Icon */}
               <div className="flex w-10 justify-center">
                 <div className="relative">
-                  {getFileIcon(file, "sm")}
+                  {getFileIcon(file, 'sm')}
                   {deptInfo && (
                     <div
                       className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white dark:border-slate-900 shadow-sm"
@@ -218,7 +211,7 @@ export function FileList({
 
               {/* Size */}
               <span className="w-20 text-right text-[13px] text-slate-400 dark:text-slate-500">
-                {file.is_folder ? "--" : formatSize(file.size)}
+                {file.is_folder ? '--' : formatSize(file.size)}
               </span>
 
               {/* Actions - Minimal */}
@@ -229,6 +222,7 @@ export function FileList({
                     onContextMenu(file, e);
                   }}
                   className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
+                  aria-label={`Azioni per ${file.name}`}
                 >
                   <MoreVertical className="h-4 w-4" />
                 </button>
@@ -248,11 +242,7 @@ export function FileList({
                     stroke="currentColor"
                     strokeWidth={3}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </motion.div>
               )}
@@ -267,9 +257,7 @@ export function FileList({
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
             Nessun file trovato
           </p>
-          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-            Questa cartella è vuota
-          </p>
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Questa cartella è vuota</p>
         </div>
       )}
 
@@ -297,8 +285,8 @@ export function FileList({
 }
 
 const formatSize = (bytes: number | undefined) => {
-  if (!bytes) return "--";
-  const units = ["B", "KB", "MB", "GB"];
+  if (!bytes) return '--';
+  const units = ['B', 'KB', 'MB', 'GB'];
   let size = bytes;
   let unitIndex = 0;
   while (size >= 1024 && unitIndex < units.length - 1) {
@@ -309,7 +297,7 @@ const formatSize = (bytes: number | undefined) => {
 };
 
 const formatDate = (dateStr: string | undefined) => {
-  if (!dateStr) return "--";
+  if (!dateStr) return '--';
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -318,16 +306,16 @@ const formatDate = (dateStr: string | undefined) => {
   // Show relative time for recent dates
   if (diffDays === 0) {
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    if (hours === 0) return "Adesso";
+    if (hours === 0) return 'Adesso';
     return `${hours}h fa`;
   }
-  if (diffDays === 1) return "Ieri";
+  if (diffDays === 1) return 'Ieri';
   if (diffDays < 7) return `${diffDays}g fa`;
 
   // Show full date for older items
-  return date.toLocaleDateString("it-IT", {
-    day: "numeric",
-    month: "short",
-    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  return date.toLocaleDateString('it-IT', {
+    day: 'numeric',
+    month: 'short',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
   });
 };
