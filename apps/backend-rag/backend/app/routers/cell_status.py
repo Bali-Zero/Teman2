@@ -58,6 +58,33 @@ async def get_cell_status(
     }
 
 
+@router.get("/metrics")
+async def get_cell_metrics(
+    db_pool=Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Lightweight metrics endpoint for CELL's ErrorRateSensor.
+
+    Returns 5xx/error count in the last 5 minutes from cell_pulse_log.
+    No auth required — CELL reads this internally every 60s.
+    """
+    async with db_pool.acquire() as conn:
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
+        row = await conn.fetchrow(
+            """SELECT
+                 COUNT(*) FILTER (WHERE health_status = 'red') AS errors_5min,
+                 COUNT(*) AS total_5min
+               FROM cell_pulse_log
+               WHERE created_at > $1""",
+            cutoff,
+        )
+
+    return {
+        "errors_5min": int(row["errors_5min"]) if row else 0,
+        "total_5min": int(row["total_5min"]) if row else 0,
+        "window_minutes": 5,
+    }
+
+
 @router.get("/alerts")
 async def get_cell_alerts(
     limit: int = 20,

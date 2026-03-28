@@ -38,6 +38,9 @@ class PulseEngine:
         alerter: Any = None,
         fly_effector: Any = None,
         logs_effector: Any = None,
+        db_sensor: Any = None,
+        qdrant_sensor: Any = None,
+        error_rate_sensor: Any = None,
     ) -> None:
         self._dna = dna_loader
         self._safety = safety_gate
@@ -49,6 +52,9 @@ class PulseEngine:
         self._alerter = alerter
         self._fly = fly_effector
         self._logs = logs_effector
+        self._db_sensor = db_sensor
+        self._qdrant_sensor = qdrant_sensor
+        self._error_rate_sensor = error_rate_sensor
         self._recent_pulses: list[dict] = []
 
     async def single_pulse(self, pulse_number: int = 0) -> PulseResult:
@@ -68,20 +74,62 @@ class PulseEngine:
         # 3. SENSE
         reading = await self._health.read()
 
-        # 4. EVALUATE (FAST)
+        # 4. EVALUATE (FAST) — aggregate all sensors
         if reading.reachable and reading.status_code == 200:
-            status = HealthStatus.GREEN
+            http_status = HealthStatus.GREEN
         elif reading.reachable:
-            status = HealthStatus.YELLOW
+            http_status = HealthStatus.YELLOW
         else:
-            status = HealthStatus.RED
+            http_status = HealthStatus.RED
 
         response_ms = int(reading.response_time_seconds * 1000) if reading.reachable else 0
 
+        # Secondary sensors (reuse /health body, no extra HTTP)
+        sensor_metadata: dict[str, Any] = {}
+        db_ok: float = 1.0
+        qdrant_ok: float = 1.0
+        error_rate_norm: float = 0.0
+
+        if self._db_sensor is not None:
+            db_reading = self._db_sensor.read(reading)
+            sensor_metadata["db"] = db_reading.metadata
+            if db_reading.status == "red":
+                db_ok = 0.0
+            elif db_reading.status == "yellow":
+                db_ok = 0.5
+
+        if self._qdrant_sensor is not None:
+            qdrant_reading = self._qdrant_sensor.read(reading)
+            sensor_metadata["qdrant"] = qdrant_reading.metadata
+            if qdrant_reading.status == "red":
+                qdrant_ok = 0.0
+            elif qdrant_reading.status == "yellow":
+                qdrant_ok = 0.5
+
+        if self._error_rate_sensor is not None:
+            error_reading = await self._error_rate_sensor.read()
+            sensor_metadata["error_rate"] = error_reading.metadata
+            error_rate_norm = error_reading.error_rate_norm
+
+        # Aggregate: final status is the worst across all sensors
+        sensor_statuses = [http_status.value]
+        if self._db_sensor is not None:
+            sensor_statuses.append(db_reading.status)  # type: ignore[possibly-undefined]
+        if self._qdrant_sensor is not None:
+            sensor_statuses.append(qdrant_reading.status)  # type: ignore[possibly-undefined]
+        if self._error_rate_sensor is not None:
+            sensor_statuses.append(error_reading.status)  # type: ignore[possibly-undefined]
+
+        _severity = {"green": 0, "yellow": 1, "red": 2}
+        worst = max(sensor_statuses, key=lambda s: _severity.get(s, 0))
+        status = HealthStatus(worst)
+
         logger.info(
-            f"Pulse: health={status.value}, reachable={reading.reachable}, "
+            f"Pulse: health={status.value} (http={http_status.value}), "
+            f"reachable={reading.reachable}, "
             f"status_code={reading.status_code}, "
             f"response_time={reading.response_time_seconds:.3f}s"
+            + (f", sensors={sensor_metadata}" if sensor_metadata else "")
         )
 
         # Track recent history for reasoner context
@@ -107,6 +155,9 @@ class PulseEngine:
                     recent_history=self._recent_pulses,
                     budget_spent=self._metabolism.daily_spend,
                     budget_limit=self._metabolism._daily_limit,
+                    db_ok=db_ok,
+                    qdrant_ok=qdrant_ok,
+                    error_rate_norm=error_rate_norm,
                 )
 
                 thought_tier = proposal.tier_used
