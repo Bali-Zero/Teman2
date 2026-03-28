@@ -199,6 +199,10 @@ def main():
     print(f"✅ {slide_count} slides generate", file=sys.stderr)
     print(f"🔎 Hallucination check: {slides_data.get('hallucination_check')}", file=sys.stderr)
 
+    # NLM fact-check (non bloccante, routing per dominio)
+    print("\n🔍 NLM fact-check...", file=sys.stderr)
+    slides_data = nlm_fact_check(args.topic, slides_data)
+
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text(json.dumps(slides_data, ensure_ascii=False, indent=2))
     print(f"✅ Slide JSON salvato → {args.output}", file=sys.stderr)
@@ -206,3 +210,30 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def detect_domain(topic: str) -> str:
+    Rileva il dominio del topic per routing NLM.
+    t = topic.lower()
+    if any(k in t for k in [visa, kitas, kitap, immigration, tka, work permit, stay permit, overstay]):
+        return immigration
+    if any(k in t for k in [company, kbli, pma, oss, nib, pt pma, cv, perseroan, business license]):
+        return company
+    if any(k in t for k in [tax, pajak, npwp, pph, ppn, coretax, bpjs, fiscal, vat]):
+        return tax
+    if any(k in t for k in [property, land, hgb, hak pakai, leasehold, freehold, villa, tanah, real estate]):
+        return property
+    return cross_domain
+
+
+NLM_NOTEBOOK_IDS = {
+    immigration: 84375bc3-12d0-4405-a774-9b89189d8c39,   # NB-2
+    company:     2e84b9b9-3b99-4bc5-8ec5-351a43c52df4,   # NB-3
+    tax:         837b620b-2aca-43ab-812e-97ca92bdad1d,   # NB-4
+    property:    568ec624-ceb8-47d1-a2a2-5b2f793ea7ed,   # NB-5
+    cross_domain: 1143b525-dd3f-40d7-a34d-2e9263b44460,  # NB-8
+}
+
+
+def nlm_fact_check(topic: str, slides_data: dict, timeout: int = 90) -> dict:
+    

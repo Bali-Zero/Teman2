@@ -633,7 +633,6 @@ export default function ClientAnalyticsPage() {
                     }%`
               }
               subtitle="Active / Total"
-              aria-label="Conversion Rate"
               icon={Target}
               color="purple"
               loading={isLoading}
