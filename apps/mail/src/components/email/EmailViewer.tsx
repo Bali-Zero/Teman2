@@ -204,6 +204,8 @@ export function EmailViewer({
                 {email.cc && email.cc.length > 0 && <span>, cc: {formatEmailList(email.cc)}</span>}
                 <button
                   onClick={() => setShowFullHeaders(!showFullHeaders)}
+                  aria-label={showFullHeaders ? 'Nascondi intestazioni' : 'Mostra intestazioni complete'}
+                  aria-expanded={showFullHeaders}
                   className="p-0.5 hover:bg-[var(--background-elevated)] rounded"
                 >
                   <ChevronDown
@@ -291,6 +293,7 @@ export function EmailViewer({
                   onClick={() =>
                     onDownloadAttachment(attachment.attachment_id, attachment.filename)
                   }
+                  aria-label={`Scarica ${attachment.filename}`}
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors',
                     'bg-[var(--background-elevated)] hover:bg-[var(--background-secondary)]',

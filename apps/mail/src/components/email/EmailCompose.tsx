@@ -60,6 +60,7 @@ export function EmailCompose({
   const [attachments, setAttachments] = React.useState<AttachmentItem[]>([]);
   const [isSavingDraft, setIsSavingDraft] = React.useState(false);
   const [toTouched, setToTouched] = React.useState(false);
+  const [uploadWarning, setUploadWarning] = React.useState(false);
 
   React.useEffect(() => {
     if (initialData) {
@@ -91,7 +92,8 @@ export function EmailCompose({
 
   const handleSend = async () => {
     if (attachments.some((a) => a.isUploading)) {
-      alert('Please wait for files to finish uploading.');
+      setUploadWarning(true);
+      setTimeout(() => setUploadWarning(false), 3000);
       return;
     }
     if (!to.trim()) {
@@ -103,7 +105,8 @@ export function EmailCompose({
 
   const handleSave = async () => {
     if (attachments.some((a) => a.isUploading)) {
-      alert('Please wait for files to finish uploading.');
+      setUploadWarning(true);
+      setTimeout(() => setUploadWarning(false), 3000);
       return;
     }
     setIsSavingDraft(true);
@@ -134,7 +137,8 @@ export function EmailCompose({
         );
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        alert(`Failed to upload ${attachment.file.name}: ${msg}`);
+        setUploadWarning(true);
+        setTimeout(() => setUploadWarning(false), 4000);
         setAttachments((prev) => prev.filter((item) => item.file !== attachment.file));
       }
     }
@@ -320,6 +324,8 @@ export function EmailCompose({
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Write your message..."
+                aria-label="Corpo del messaggio"
+                spellCheck="true"
                 className={cn(
                   'w-full h-full p-4 text-sm bg-transparent resize-none',
                   'text-[var(--foreground)] placeholder:text-[var(--foreground-muted)]',
@@ -356,6 +362,13 @@ export function EmailCompose({
               </div>
             )}
           </div>
+
+          {/* Upload warning */}
+          {uploadWarning && (
+            <div role="alert" className="mx-4 mb-1 px-3 py-1.5 text-xs rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              Attendi il completamento degli upload prima di inviare.
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)]">

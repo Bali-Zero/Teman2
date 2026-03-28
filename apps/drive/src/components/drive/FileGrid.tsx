@@ -226,7 +226,7 @@ function FileCard({
       `}
     >
       {/* Quick actions - Clean minimal style */}
-      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
         <button
           onClick={(e) => {
             e.stopPropagation();
