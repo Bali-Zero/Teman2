@@ -60,11 +60,12 @@ export function PassportCard({
     setTimeout(poll, 2000); // Initial delay for OCR to start
   }, [clientId, onRefresh]);
 
-  // Find passport document from documents
+  // Find passport document from documents — only the client's own passport (no family members)
   const passportDoc = documents.find(
     (doc) =>
-      doc.document_type?.toLowerCase().includes('passport') ||
-      (doc.document_category === 'personal' && doc.document_type?.toLowerCase() === 'passport')
+      !doc.family_member_id &&
+      (doc.document_type?.toLowerCase().includes('passport') ||
+        (doc.document_category === 'personal' && doc.document_type?.toLowerCase() === 'passport'))
   );
 
   // Get passport validity color and alert level
