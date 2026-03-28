@@ -137,7 +137,7 @@ async def test_create_renewal_practice_success():
             visa_record_id=456,
             visa_type="kitas_work",
             visa_number="C123456",
-            expiry_date=date.today() + timedelta(days=60),
+            expiry_date=datetime.now(tz=timezone.utc).date() + timedelta(days=60),
             assigned_to="agent@example.com",
         )
 
@@ -158,7 +158,7 @@ async def test_create_renewal_practice_no_practice_type():
             visa_record_id=456,
             visa_type="unknown",
             visa_number="X999",
-            expiry_date=date.today() + timedelta(days=60),
+            expiry_date=datetime.now(tz=timezone.utc).date() + timedelta(days=60),
             assigned_to=None,
         )
 
@@ -183,7 +183,7 @@ async def test_create_renewal_practice_priority_high():
             visa_record_id=456,
             visa_type="kitas_work",
             visa_number="C123456",
-            expiry_date=date.today() + timedelta(days=20),  # <30 days
+            expiry_date=datetime.now(tz=timezone.utc).date() + timedelta(days=20),  # <30 days
             assigned_to=None,
         )
 
@@ -210,7 +210,7 @@ async def test_create_renewal_practice_priority_normal():
             visa_record_id=456,
             visa_type="kitas_work",
             visa_number="C123456",
-            expiry_date=date.today() + timedelta(days=60),  # >=30 days
+            expiry_date=datetime.now(tz=timezone.utc).date() + timedelta(days=60),  # >=30 days
             assigned_to=None,
         )
 
@@ -246,7 +246,7 @@ async def test_run_auto_practice_creator_creates_practices():
         return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
     )
 
-    target_date = date.today() + timedelta(days=RENEWAL_TRIGGER_DAYS)
+    target_date = datetime.now(tz=timezone.utc).date() + timedelta(days=RENEWAL_TRIGGER_DAYS)
 
     # Mock visas expiring in 60 days
     mock_conn.fetch.return_value = [
@@ -302,7 +302,7 @@ async def test_run_auto_practice_creator_skips_existing():
         return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
     )
 
-    target_date = date.today() + timedelta(days=RENEWAL_TRIGGER_DAYS)
+    target_date = datetime.now(tz=timezone.utc).date() + timedelta(days=RENEWAL_TRIGGER_DAYS)
 
     mock_conn.fetch.return_value = [
         {
@@ -344,7 +344,7 @@ async def test_run_auto_practice_creator_handles_errors():
         return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock())
     )
 
-    target_date = date.today() + timedelta(days=RENEWAL_TRIGGER_DAYS)
+    target_date = datetime.now(tz=timezone.utc).date() + timedelta(days=RENEWAL_TRIGGER_DAYS)
 
     mock_conn.fetch.return_value = [
         {

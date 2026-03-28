@@ -68,7 +68,7 @@ def make_tax_row(
 ):
     """Helper to create mock tax obligation row."""
     if due_date is None:
-        due_date = date.today() + timedelta(days=30)
+        due_date = datetime.now(tz=timezone.utc).date() + timedelta(days=30)
     return {
         "id": id,
         "uuid": "550e8400-e29b-41d4-a716-446655440000",
@@ -154,7 +154,7 @@ class TestTaxService:
     @pytest.mark.asyncio
     async def test_get_tax_summary_upcoming_deadline(self, tax_service, mock_conn):
         """Test summary with upcoming deadline shows correct days."""
-        next_deadline = date.today() + timedelta(days=10)
+        next_deadline = datetime.now(tz=timezone.utc).date() + timedelta(days=10)
         mock_conn.fetchrow.return_value = {
             "total_due": 5000000,
             "next_deadline": next_deadline,
@@ -170,7 +170,7 @@ class TestTaxService:
     @pytest.mark.asyncio
     async def test_get_tax_summary_critical_deadline(self, tax_service, mock_conn):
         """Test summary with critical deadline (≤7 days)."""
-        next_deadline = date.today() + timedelta(days=5)
+        next_deadline = datetime.now(tz=timezone.utc).date() + timedelta(days=5)
         mock_conn.fetchrow.return_value = {
             "total_due": 5000000,
             "next_deadline": next_deadline,
@@ -187,7 +187,7 @@ class TestTaxService:
         """Test summary with overdue obligations."""
         mock_conn.fetchrow.return_value = {
             "total_due": 5000000,
-            "next_deadline": date.today() + timedelta(days=30),
+            "next_deadline": datetime.now(tz=timezone.utc).date() + timedelta(days=30),
             "pending_count": 2,
             "overdue_count": 1,
         }
@@ -199,7 +199,7 @@ class TestTaxService:
     @pytest.mark.asyncio
     async def test_get_tax_summary_ok_status(self, tax_service, mock_conn):
         """Test summary with ok status (>14 days, no overdue)."""
-        next_deadline = date.today() + timedelta(days=30)
+        next_deadline = datetime.now(tz=timezone.utc).date() + timedelta(days=30)
         mock_conn.fetchrow.return_value = {
             "total_due": 5000000,
             "next_deadline": next_deadline,
