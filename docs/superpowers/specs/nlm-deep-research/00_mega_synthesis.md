@@ -26,9 +26,9 @@
 
 ## Quality Verification
 
-- Source tiers: .go.id (T1) > Law firms (T2) > News (T3) > Blogs (T4)
-- Confidence = Authority×0.4 + Recency×0.3 + Corroboration×0.3
-- ≥0.75 auto-import, 0.60-0.75 review, <0.60 discard
+- Source tiers: T0 (gazette) through T6 (forums) — see Step 3 for full 7-tier hierarchy
+- Confidence = max(0, min(1, Auth×0.30 + Corr×0.25 + Spec×0.15 + Type×0.12 + Rec×0.10 + Geo×0.08 - Penalty)) — see Step 3 for canonical formula
+- ≥0.75 VERIFIED, 0.55-0.74 PROVISIONAL, 0.35-0.54 MONITORING, <0.35 UNVERIFIED — see Step 3 for thresholds
 - Claim extraction: verify atomic claims, not whole articles
 
 ## Source Management

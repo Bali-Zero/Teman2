@@ -179,11 +179,14 @@ B is modified using ONLY these fields (not raw prose)
 
 **Merged detection approach:**
 
-| Layer                    | Source               | What to check                                                                                                                                                      |
-| ------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1 — Scraper scan (03:35) | Intel scraper output | Regex: `(UU\|PP\|Permen\|Permenkumham)\s+\d+\s*Tahun\s*202[5-9]`. Hot keywords: `moratorium`, `larangan`, `dicabut`, `darurat`. Density: 3+ articles on same topic |
-| 2 — L1 result (03:55)    | NLM response         | New regulation number not in `known_regulations` set. Recency phrases: `baru saja`, `efektif per`, `mulai berlaku`. 5+ unique sources for single finding           |
-| 3 — Manual (anytime)     | Telegram command     | `/nlm_override "description" cluster=X priority=critical`                                                                                                          |
+> **NOTE:** Times below match the adopted 01:00-02:20 upstream pipeline window.
+> Layer 1 reads YESTERDAY's scraper output (scraper runs at 03:00, after NLM).
+
+| Layer                           | Source                           | What to check                                                                                                                                                      |
+| ------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1 — Yesterday's scraper (01:05) | Intel scraper output (yesterday) | Regex: `(UU\|PP\|Permen\|Permenkumham)\s+\d+\s*Tahun\s*202[5-9]`. Hot keywords: `moratorium`, `larangan`, `dicabut`, `darurat`. Density: 3+ articles on same topic |
+| 2 — L1 result (~01:30)          | NLM response from today's query  | New regulation number not in `known_regulations` set. Recency phrases: `baru saja`, `efektif per`, `mulai berlaku`. 5+ unique sources for single finding           |
+| 3 — Manual (anytime)            | Telegram command                 | `/nlm_override "description" cluster=X priority=critical`                                                                                                          |
 
 **Scoring (Codex approach):**
 
@@ -279,14 +282,16 @@ Total >= 90 → CRITICAL (immediate team alert)
 
 ### Timeout Handling
 
+> **NOTE:** Times below match the adopted 01:00-02:20 upstream pipeline window.
+
 | L1 finish time | Action on L2                                     |
 | -------------- | ------------------------------------------------ |
-| Before 04:00   | L2 runs normally (deep mode)                     |
-| 04:00-04:15    | L2 runs in fast mode (saves ~10 min)             |
-| After 04:15    | L2 SKIPPED, pushed to afternoon fast             |
-| After 04:25    | L1 itself killed (hard timeout), pipeline FAILED |
+| Before 01:45   | L2 runs normally (deep mode)                     |
+| 01:45-02:00    | L2 runs in fast mode (saves ~10 min)             |
+| After 02:00    | L2 SKIPPED, pushed to afternoon fast             |
+| After 02:25    | L1 itself killed (hard timeout), pipeline FAILED |
 
-04:25 hard deadline = 5 min buffer before NB-1 refresh at 04:30.
+02:25 hard deadline = 5 min buffer before INV-9 at 02:30, 30 min before scraper at 03:00.
 
 ### Throttle Detection
 
