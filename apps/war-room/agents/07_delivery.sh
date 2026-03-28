@@ -23,7 +23,7 @@ PYTHON="$WAR_ROOM/.venv/bin/python3"
 BRAND_FILE="$WAR_ROOM/config/brand.json"
 DRIVE_FOLDER=$("$PYTHON" -c "import json; print(json.load(open('$BRAND_FILE'))['delivery']['google_drive_folder'])")
 TONE=$(cat "$WAR_ROOM/output/strategy/claude_slides.json" 2>/dev/null | "$PYTHON" -c "import json,sys; print(json.load(sys.stdin).get('tone', 'N/A'))" 2>/dev/null || echo "N/A")
-CANVA_URL=$("$PYTHON" -c "import json; d=json.load(open('$WAR_ROOM/output/canva/carousel_canva.json')); print(d.get('design_url',''))" 2>/dev/null || echo "")
+CANVA_URL=""  # populated after executor (line ~215)
 
 echo "📦 Comprimo master archive..."
 ARCHIVE="$WAR_ROOM/output/balizero_warroom_$(date +%Y%m%d_%H%M%S).zip"
@@ -44,8 +44,9 @@ echo "📱 Invio notifica Telegram..."
 CAPTION=$(cat "$MASTER_DIR/instagram_caption.txt" 2>/dev/null | head -c 500 || echo "")
 
 # Notifica: Telegram Bot API diretta (affidabile, no middleware)
-BOT_TOKEN="${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN env var}"
-CHAT_IDS="${TELEGRAM_GROUP_ID:?Set TELEGRAM_GROUP_ID env var}"
+BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+[[ -z "$BOT_TOKEN" ]] && { echo "⚠️  TELEGRAM_BOT_TOKEN not set — skip notifications"; exit 0; }
+CHAT_IDS="${TELEGRAM_GROUP_ID:-1125336968}"
 
 # Bilingual notifications: Italian for owner, Indonesian for Damar
 DAMAR_CHAT_ID="1813875994"
@@ -75,11 +76,11 @@ ${CANVA_URL:+| Canva carousel: $CANVA_URL.}
 ${CAPTION:+| Caption: $CAPTION}"
   fi
 
-  "$PYTHON" -c "
-import urllib.request, urllib.parse, json, sys
-token='$BOT_TOKEN'; chat='$CID'
+  TG_TOKEN="$BOT_TOKEN" TG_CHAT="$CID" "$PYTHON" -c "
+import urllib.request, urllib.parse, json, sys, os
+token=os.environ['TG_TOKEN']; chat=os.environ['TG_CHAT']
 msg=sys.stdin.read()
-data=urllib.parse.urlencode({'chat_id':chat,'text':msg}).encode()
+data=urllib.parse.urlencode({'chat_id':chat,'text':msg,'parse_mode':'Markdown'}).encode()
 req=urllib.request.Request(f'https://api.telegram.org/bot{token}/sendMessage',data=data)
 resp=urllib.request.urlopen(req,timeout=10)
 print(f'✅ Telegram inviato a {chat}' if json.loads(resp.read()).get('ok') else f'⚠️ Telegram ko per {chat}')
@@ -178,6 +179,8 @@ APPLIED_FILE="$WAR_ROOM/output/canva/carousel_canva.json"
 if [[ -f "$PENDING_FILE" ]]; then
     PENDING_STATUS=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('status',''))" 2>/dev/null)
     PENDING_TOPIC=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('topic',''))" 2>/dev/null)
+    # sanitize: rimuovi caratteri shell-pericolosi
+    PENDING_TOPIC=$(printf '%s' "$PENDING_TOPIC" | tr -cd 'a-zA-Z0-9 ._-' | cut -c1-80)
     PENDING_OPS=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('operations_count',0))" 2>/dev/null)
 
     if [[ "$PENDING_STATUS" == "pending" ]]; then
