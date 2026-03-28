@@ -223,6 +223,7 @@ export function CompanyDocUpload({
             ref={fileInputRef}
             type="file"
             accept=".jpg,.jpeg,.png,.pdf"
+            aria-label="Upload company document"
             className="hidden"
             onChange={handleUpload}
             disabled={isUploading}
