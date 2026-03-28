@@ -1,6 +1,7 @@
 """Database connection for CELL pulse logging."""
 import asyncpg
 import logging
+from typing import Any
 from cell.core.config import settings
 
 logger = logging.getLogger("cell.db")
@@ -54,6 +55,72 @@ async def log_pulse(
         )
     except Exception as e:
         logger.error(f"Failed to log pulse to DB: {e}")
+
+
+async def create_patterns_table() -> None:
+    """Create cell_patterns table if it does not exist."""
+    try:
+        pool = await get_pool()
+        await pool.execute("""
+            CREATE TABLE IF NOT EXISTS cell_patterns (
+                id              SERIAL PRIMARY KEY,
+                health_status   VARCHAR(16) NOT NULL,
+                response_time_ms INTEGER NOT NULL,
+                budget_pct      FLOAT NOT NULL,
+                action          VARCHAR(64) NOT NULL,
+                reason          TEXT NOT NULL,
+                confidence      FLOAT NOT NULL,
+                tier_used       INTEGER NOT NULL,
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await pool.execute("""
+            CREATE INDEX IF NOT EXISTS idx_cell_patterns_created_at
+            ON cell_patterns (created_at DESC)
+        """)
+        logger.info("cell_patterns table ready.")
+    except Exception as e:
+        logger.error(f"Failed to create cell_patterns table: {e}")
+
+
+async def save_pattern(
+    health_status: str,
+    response_time_ms: int,
+    budget_pct: float,
+    action: str,
+    reason: str,
+    confidence: float,
+    tier_used: int,
+) -> None:
+    """Persist a resolved pattern to the DB (fire-and-forget)."""
+    try:
+        pool = await get_pool()
+        await pool.execute(
+            """INSERT INTO cell_patterns
+               (health_status, response_time_ms, budget_pct, action, reason, confidence, tier_used)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)""",
+            health_status, response_time_ms, budget_pct, action, reason, confidence, tier_used,
+        )
+    except Exception as e:
+        logger.error(f"Failed to save pattern to DB: {e}")
+
+
+async def load_patterns(limit: int = 500) -> list[dict[str, Any]]:
+    """Load most recent patterns from DB. Returns list of dicts."""
+    try:
+        pool = await get_pool()
+        rows = await pool.fetch(
+            """SELECT health_status, response_time_ms, budget_pct,
+                      action, reason, confidence, tier_used, created_at
+               FROM cell_patterns
+               ORDER BY created_at DESC
+               LIMIT $1""",
+            limit,
+        )
+        return [dict(r) for r in rows]
+    except Exception as e:
+        logger.error(f"Failed to load patterns from DB: {e}")
+        return []
 
 
 async def log_alert(

@@ -9,6 +9,7 @@ import httpx
 import redis.asyncio as aioredis
 
 from cell.core.config import settings
+from cell.core.db import create_patterns_table
 from cell.core.dna import DNALoader
 from cell.core.dna_interpreter import DNAInterpreter
 from cell.core.pulse import PulseEngine
@@ -17,7 +18,10 @@ from cell.effectors.fly_effector import FlyEffector
 from cell.effectors.logs_effector import LogsEffector
 from cell.effectors.telegram import TelegramAlerter
 from cell.metabolism.tracker import MetabolismTracker
+from cell.sensors.database_sensor import DatabaseSensor
+from cell.sensors.error_rate_sensor import ErrorRateSensor
 from cell.sensors.health_sensor import HealthSensor
+from cell.sensors.qdrant_sensor import QdrantSensor
 from cell.slow.reasoner import SlowReasoner
 
 logging.basicConfig(
@@ -39,6 +43,9 @@ async def main() -> None:
     signal.signal(signal.SIGINT, _handle_signal)
     signal.signal(signal.SIGTERM, _handle_signal)
 
+    # Persistent memory bootstrap (create table before reasoner uses it)
+    await create_patterns_table()
+
     dna_loader = DNALoader()
     dna_hash = dna_loader.compute_hash()
     logger.info(f"DNA loaded. Hash: {dna_hash[:16]}...")
@@ -54,6 +61,8 @@ async def main() -> None:
     reasoner = SlowReasoner(
         gemini_api_key=os.environ.get("GOOGLE_API_KEY", ""),
     )
+    patterns_loaded = await reasoner.bootstrap_memory()
+    logger.info(f"PatternIndex: {patterns_loaded} patterns loaded from DB")
     interpreter = DNAInterpreter()
     logger.info("SLOW layer initialized (Qwen local + Gemini Flash)")
 
@@ -65,6 +74,14 @@ async def main() -> None:
 
     async with httpx.AsyncClient() as http_client:
         health_sensor = HealthSensor(client=http_client, url=settings.backend_health_url)
+
+        # Secondary sensors — reuse /health body (no extra HTTP calls)
+        db_sensor = DatabaseSensor()
+        qdrant_sensor = QdrantSensor()
+        # ErrorRateSensor calls /api/cell/metrics on the backend (1 query, 1x/min cooldown)
+        metrics_url = settings.backend_health_url.replace("/health", "/api/cell/metrics")
+        error_rate_sensor = ErrorRateSensor(client=http_client, metrics_url=metrics_url)
+        logger.info(f"Secondary sensors initialized (DB, Qdrant, ErrorRate → {metrics_url})")
 
         # Telegram alerter — CELL's voice
         tg_token = os.environ.get("CELL_TELEGRAM_BOT_TOKEN", "")
@@ -96,6 +113,9 @@ async def main() -> None:
             alerter=alerter,
             fly_effector=fly_effector,
             logs_effector=logs_effector,
+            db_sensor=db_sensor,
+            qdrant_sensor=qdrant_sensor,
+            error_rate_sensor=error_rate_sensor,
         )
 
         logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")

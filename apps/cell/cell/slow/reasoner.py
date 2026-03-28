@@ -199,12 +199,22 @@ What action should I take?"""
             # Rough cost estimate: ~500 input tokens * $0.075/MTok
             return text, 0.00004
 
+    async def bootstrap_memory(self) -> int:
+        """Load persisted patterns from DB into the in-memory PatternIndex.
+
+        Returns count of patterns loaded. Call once at boot before the pulse loop.
+        """
+        return await self._patterns.load_from_db()
+
     def record_pattern(
         self,
         health_status: str,
         response_time_ms: int,
         budget_pct: float,
         proposal: "ReasonerProposal",
+        db_ok: float = 1.0,
+        qdrant_ok: float = 1.0,
+        error_rate_norm: float = 0.0,
     ) -> None:
         """Record a resolved proposal into the pattern index for future reuse."""
         if proposal.action == "none":
@@ -217,6 +227,9 @@ What action should I take?"""
             reason=proposal.reason,
             confidence=proposal.confidence,
             tier_used=proposal.tier_used,
+            db_ok=db_ok,
+            qdrant_ok=qdrant_ok,
+            error_rate_norm=error_rate_norm,
         )
 
     async def think(
@@ -228,6 +241,9 @@ What action should I take?"""
         budget_spent: float = 0.0,
         budget_limit: float = 10.0,
         max_tier: int = 1,
+        db_ok: float = 1.0,
+        qdrant_ok: float = 1.0,
+        error_rate_norm: float = 0.0,
     ) -> ReasonerProposal:
         """Reason about the current situation and propose an action.
 
@@ -240,7 +256,10 @@ What action should I take?"""
         budget_pct = (budget_spent / budget_limit) if budget_limit > 0 else 1.0
 
         # Tier -1: Pattern match — free, instant
-        match = self._patterns.find_similar(health_status, response_time_ms, budget_pct)
+        match = self._patterns.find_similar(
+            health_status, response_time_ms, budget_pct,
+            db_ok=db_ok, qdrant_ok=qdrant_ok, error_rate_norm=error_rate_norm,
+        )
         if match is not None:
             logger.info(
                 f"Tier -1 (PatternIndex): reusing action={match.action} "
@@ -268,13 +287,15 @@ What action should I take?"""
 
             # If Qwen is confident enough, use its answer
             if proposal.confidence >= 0.6 or proposal.action == "none":
-                self.record_pattern(health_status, response_time_ms, budget_pct, proposal)
+                self.record_pattern(health_status, response_time_ms, budget_pct, proposal,
+                                    db_ok=db_ok, qdrant_ok=qdrant_ok, error_rate_norm=error_rate_norm)
                 return proposal
 
             # Low confidence — escalate if allowed
             if max_tier < 1:
                 logger.info("Qwen low confidence but max_tier=0, using anyway")
-                self.record_pattern(health_status, response_time_ms, budget_pct, proposal)
+                self.record_pattern(health_status, response_time_ms, budget_pct, proposal,
+                                    db_ok=db_ok, qdrant_ok=qdrant_ok, error_rate_norm=error_rate_norm)
                 return proposal
 
             logger.info(f"Qwen confidence {proposal.confidence:.2f} < 0.6, escalating to Tier 1")
@@ -293,7 +314,8 @@ What action should I take?"""
             text, cost = await self._call_gemini(system, user)
             proposal = self._parse_response(text, tier=1, cost=cost)
             logger.info(f"Tier 1 (Gemini): action={proposal.action}, confidence={proposal.confidence:.2f}, reason={proposal.reason[:80]}")
-            self.record_pattern(health_status, response_time_ms, budget_pct, proposal)
+            self.record_pattern(health_status, response_time_ms, budget_pct, proposal,
+                                db_ok=db_ok, qdrant_ok=qdrant_ok, error_rate_norm=error_rate_norm)
             return proposal
 
         except Exception as e:
