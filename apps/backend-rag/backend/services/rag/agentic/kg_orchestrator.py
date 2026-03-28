@@ -405,21 +405,20 @@ class KGAgenticOrchestrator:
                     target_collections,
                 )
 
-            else:
-                # Federated search across all collections
-                logger.info("Executing federated search across all collections")
-                result_str = await self.vector_tool.execute(
-                    query=query,
-                    collection=None,  # None triggers federated search
-                    top_k=10,
-                )
+            # Federated search across all collections
+            logger.info("Executing federated search across all collections")
+            result_str = await self.vector_tool.execute(
+                query=query,
+                collection=None,  # None triggers federated search
+                top_k=10,
+            )
 
-                try:
-                    result = json.loads(result_str)
-                    return result, ["federated_all"]
-                except json.JSONDecodeError:
-                    logger.warning("Failed to parse federated search result")
-                    return {"sources": [], "content": ""}, ["federated_all"]
+            try:
+                result = json.loads(result_str)
+                return result, ["federated_all"]
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse federated search result")
+                return {"sources": [], "content": ""}, ["federated_all"]
 
         except Exception as e:
             logger.error(f"Vector search failed: {e}", exc_info=True)

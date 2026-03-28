@@ -228,45 +228,44 @@ class CollectiveMemoryService:
                             "confidence": updated["confidence"],
                         }
 
-                    else:
-                        # New fact - create it atomically
-                        memory_id = await conn.fetchval(
-                            """
+                    # New fact - create it atomically
+                    memory_id = await conn.fetchval(
+                        """
                             INSERT INTO collective_memories (content, content_hash, category, metadata, source_count)
                             VALUES ($1, $2, $3, $4, 1)
                             RETURNING id
                             """,
-                            content,
-                            content_hash,
-                            category,
-                            json.dumps(metadata or {}),
-                        )
+                        content,
+                        content_hash,
+                        category,
+                        json.dumps(metadata or {}),
+                    )
 
-                        # Add contributor
-                        await conn.execute(
-                            """
+                    # Add contributor
+                    await conn.execute(
+                        """
                             INSERT INTO collective_memory_sources (memory_id, user_id, conversation_id, action)
                             VALUES ($1, $2, $3, 'contribute')
                             """,
-                            memory_id,
-                            user_id,
-                            conversation_id,
-                        )
+                        memory_id,
+                        user_id,
+                        conversation_id,
+                    )
 
-                        # NOTE 2026-01-10: Qdrant sync removed - using PostgreSQL only
-                        # Collective memories are stored in PostgreSQL and retrieved via SQL queries
-                        # Qdrant collection was empty and not needed for current use case
+                    # NOTE 2026-01-10: Qdrant sync removed - using PostgreSQL only
+                    # Collective memories are stored in PostgreSQL and retrieved via SQL queries
+                    # Qdrant collection was empty and not needed for current use case
 
-                        logger.info(
-                            f"🧠 [Collective] New fact #{memory_id} from {user_id}: {content[:50]}..."
-                        )
+                    logger.info(
+                        f"🧠 [Collective] New fact #{memory_id} from {user_id}: {content[:50]}..."
+                    )
 
-                        return {
-                            "status": "created",
-                            "memory_id": memory_id,
-                            "source_count": 1,
-                            "is_promoted": False,
-                        }
+                    return {
+                        "status": "created",
+                        "memory_id": memory_id,
+                        "source_count": 1,
+                        "is_promoted": False,
+                    }
 
                 except Exception as e:
                     logger.error(f"Failed to add collective contribution: {e}")

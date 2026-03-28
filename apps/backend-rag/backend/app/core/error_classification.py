@@ -91,12 +91,11 @@ class ErrorClassifier:
         if isinstance(error, asyncpg.PostgresError):
             if isinstance(error, (asyncpg.ConnectionDoesNotExistError, asyncpg.InterfaceError)):
                 return (ErrorCategory.TRANSIENT, ErrorSeverity.HIGH)
-            elif isinstance(
+            if isinstance(
                 error, (asyncpg.UniqueViolationError, asyncpg.ForeignKeyViolationError)
             ):
                 return (ErrorCategory.PERMANENT, ErrorSeverity.MEDIUM)
-            else:
-                return (ErrorCategory.TRANSIENT, ErrorSeverity.MEDIUM)
+            return (ErrorCategory.TRANSIENT, ErrorSeverity.MEDIUM)
 
         # Google API errors
         if isinstance(error, ResourceExhausted):
@@ -109,7 +108,7 @@ class ErrorClassifier:
             status = error.status_code
             if 400 <= status < 500:
                 return (ErrorCategory.CLIENT_ERROR, ErrorSeverity.MEDIUM)
-            elif status >= 500:
+            if status >= 500:
                 return (ErrorCategory.TRANSIENT, ErrorSeverity.HIGH)
 
         # Pattern-based classification

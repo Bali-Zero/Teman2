@@ -240,9 +240,8 @@ class RAGASEvaluator:
             if age < self.cache_ttl:
                 self._cache_hit_count += 1
                 return cached["result"]
-            else:
-                # Expired
-                del self._cache[cache_key]
+            # Expired
+            del self._cache[cache_key]
         return None
 
     def _cache_result(self, cache_key: str, result: dict[str, Any]) -> None:

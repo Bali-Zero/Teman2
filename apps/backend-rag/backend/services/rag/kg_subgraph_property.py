@@ -42,14 +42,13 @@ def _get_client(timeout: float = 10.0, verify: bool = True) -> httpx.AsyncClient
                 limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
             )
         return _client_verified
-    else:
-        if _client_unverified is None or _client_unverified.is_closed:
-            _client_unverified = httpx.AsyncClient(
-                timeout=timeout,
-                verify=False,  # noqa: S501 — Badung DPUPR uses self-signed cert
-                limits=httpx.Limits(max_connections=5, max_keepalive_connections=2),
-            )
-        return _client_unverified
+    if _client_unverified is None or _client_unverified.is_closed:
+        _client_unverified = httpx.AsyncClient(
+            timeout=timeout,
+            verify=False,  # noqa: S501 — Badung DPUPR uses self-signed cert
+            limits=httpx.Limits(max_connections=5, max_keepalive_connections=2),
+        )
+    return _client_unverified
 
 
 async def close_property_subgraph_client() -> None:
@@ -108,9 +107,8 @@ async def _fetch_and_ingest_desa(desa_code: str, db_pool: asyncpg.Pool) -> int:
     # Route to provider based on BPS prefix
     if desa_code.startswith("5103"):  # Badung
         return await _fetch_badung_provider(desa_code, db_pool)
-    else:
-        # Denpasar (5171), Gianyar (5104) and others use National GISTARU
-        return await _fetch_gistaru_provider(desa_code, db_pool)
+    # Denpasar (5171), Gianyar (5104) and others use National GISTARU
+    return await _fetch_gistaru_provider(desa_code, db_pool)
 
 
 async def _fetch_badung_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:

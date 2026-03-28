@@ -108,21 +108,20 @@ def _get_multi_agent_llm() -> Any:
             temperature=0.2,
             api_key=anthropic_key,
         )
-    elif openai_key and ChatOpenAI is not None:
+    if openai_key and ChatOpenAI is not None:
         logger.info("🤖 [MultiAgent] Using OpenAI GPT-4 for reasoning (Anthropic unavailable)")
         return ChatOpenAI(
             model="gpt-4-turbo-preview",
             temperature=0.2,
             api_key=openai_key,
         )
-    else:
-        raise ValueError(
-            "No LLM available for multi-agent reasoning. "
-            f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} "
-            f"(lib={'ok' if ChatAnthropic else 'missing'}), "
-            f"OPENAI_API_KEY={'set' if openai_key else 'missing'} "
-            f"(lib={'ok' if ChatOpenAI else 'missing'})"
-        )
+    raise ValueError(
+        "No LLM available for multi-agent reasoning. "
+        f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} "
+        f"(lib={'ok' if ChatAnthropic else 'missing'}), "
+        f"OPENAI_API_KEY={'set' if openai_key else 'missing'} "
+        f"(lib={'ok' if ChatOpenAI else 'missing'})"
+    )
 
 
 # ============================================================================
@@ -322,13 +321,13 @@ class FinancialAgent:
 
         if any(kw in q for kw in ("pt pma", "pt pmdn", "company", "perusahaan", "badan usaha")):
             return "business_setup"
-        elif any(kw in q for kw in ("kitas", "kitap", "work permit", "izin kerja", "stay permit")):
+        if any(kw in q for kw in ("kitas", "kitap", "work permit", "izin kerja", "stay permit")):
             return "kitas"
-        elif any(kw in q for kw in ("visa", "vitas", "e-visa")):
+        if any(kw in q for kw in ("visa", "vitas", "e-visa")):
             return "visa"
-        elif any(kw in q for kw in ("tax", "pajak", "npwp", "spt")):
+        if any(kw in q for kw in ("tax", "pajak", "npwp", "spt")):
             return "tax_consulting"
-        elif any(kw in q for kw in ("legal", "hukum", "notaris")):
+        if any(kw in q for kw in ("legal", "hukum", "notaris")):
             return "legal"
         return "all"
 

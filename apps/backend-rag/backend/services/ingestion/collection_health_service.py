@@ -200,12 +200,11 @@ class CollectionHealthService:
 
             if days_old < self.staleness_thresholds[StalenessSeverity.FRESH]:
                 return StalenessSeverity.FRESH
-            elif days_old < self.staleness_thresholds[StalenessSeverity.AGING]:
+            if days_old < self.staleness_thresholds[StalenessSeverity.AGING]:
                 return StalenessSeverity.AGING
-            elif days_old < self.staleness_thresholds[StalenessSeverity.STALE]:
+            if days_old < self.staleness_thresholds[StalenessSeverity.STALE]:
                 return StalenessSeverity.STALE
-            else:
-                return StalenessSeverity.VERY_STALE
+            return StalenessSeverity.VERY_STALE
 
         except Exception as e:
             logger.error(f"Error calculating staleness: {e}")
@@ -520,8 +519,7 @@ class CollectionHealthService:
 
         if format == "markdown":
             return self._generate_markdown_report(all_health, summary)
-        else:
-            return self._generate_text_report(all_health, summary)
+        return self._generate_text_report(all_health, summary)
 
     def _generate_text_report(self, all_health: dict[str, CollectionMetrics], summary: dict) -> str:
         """Generate plain text health report"""

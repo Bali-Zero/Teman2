@@ -27,7 +27,7 @@ class NormalizationConfig:
     max_content_length: int = 1000000  # 1MB
     required_fields: list[str] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.required_fields is None:
             self.required_fields = ["title", "content"]
 

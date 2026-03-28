@@ -238,14 +238,13 @@ class WhatsAppTriageService:
         if decision == TriageDecision.ESCALATE_PERSONAL:
             return f"{greeting} Un attimo, ti richiamo 👋"
 
-        elif decision == TriageDecision.ESCALATE_REQUEST:
+        if decision == TriageDecision.ESCALATE_REQUEST:
             return "Un momento, ti rispondo a breve 📞"
 
-        elif decision == TriageDecision.ESCALATE_CONTEXT:
+        if decision == TriageDecision.ESCALATE_CONTEXT:
             return f"{greeting} Dammi un secondo!"
 
-        else:
-            return "Un attimo..."
+        return "Un attimo..."
 
     def get_welcome_message(self, sender_name: str | None = None) -> str:
         """

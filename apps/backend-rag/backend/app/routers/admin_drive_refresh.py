@@ -44,12 +44,11 @@ async def drive_refresh(request: Request) -> dict[str, Any]:
                 "message": "Token refreshed successfully",
                 "token_preview": new_token[:30] + "...",
             }
-        else:
-            return {
-                "status": "error",
-                "message": "Refresh failed. Token may be revoked.",
-                "auth_url": "/admin/google-drive/auth",
-            }
+        return {
+            "status": "error",
+            "message": "Refresh failed. Token may be revoked.",
+            "auth_url": "/admin/google-drive/auth",
+        }
 
     except Exception as e:
         return {

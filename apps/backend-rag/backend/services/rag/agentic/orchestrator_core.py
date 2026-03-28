@@ -177,16 +177,15 @@ class OrchestratorCore:
                     timings={"total": time.time() - start_time, "faq_cache_lookup": 0.001},
                     tools_called=[],
                 )
-            else:
-                # Cache MISS - continue to semantic cache / full processing
-                logger.debug(f"FAQ Cache MISS: {query[:60]}...")
+            # Cache MISS - continue to semantic cache / full processing
+            logger.debug(f"FAQ Cache MISS: {query[:60]}...")
 
-                # Record metrics
-                from backend.app.metrics import faq_cache_misses_total
+            # Record metrics
+            from backend.app.metrics import faq_cache_misses_total
 
-                faq_cache_misses_total.inc()
+            faq_cache_misses_total.inc()
 
-                return None
+            return None
 
         except Exception as e:
             logger.warning(f"⚠️ FAQ Cache error: {e}")
@@ -242,8 +241,7 @@ class OrchestratorCore:
                         entities=extracted_entities,
                         document_count=len(sources),
                     )
-                else:
-                    set_span_attribute("cache_hit", "false")
+                set_span_attribute("cache_hit", "false")
             except (KeyError, ValueError, RuntimeError) as e:
                 logger.warning(f"Cache lookup failed: {e}", exc_info=True)
                 set_span_status("error", str(e))

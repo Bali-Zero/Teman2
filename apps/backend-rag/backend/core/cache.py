@@ -213,13 +213,12 @@ class CacheService:
                     return json.loads(value)
                 self.stats["misses"] += 1
                 return None
-            else:
-                value = self._memory_cache.get(key)
-                if value is not None:
-                    self.stats["hits"] += 1
-                    return value
-                self.stats["misses"] += 1
-                return None
+            value = self._memory_cache.get(key)
+            if value is not None:
+                self.stats["hits"] += 1
+                return value
+            self.stats["misses"] += 1
+            return None
         except Exception as e:
             logger.error(f"Cache get error: {e}")
             self.stats["errors"] += 1
@@ -238,9 +237,8 @@ class CacheService:
             if self.redis_available and self.redis_client:
                 await self.redis_client.setex(key, ttl, json.dumps(value, cls=DecimalEncoder))
                 return True
-            else:
-                self._memory_cache.set(key, value, ttl)
-                return True
+            self._memory_cache.set(key, value, ttl)
+            return True
         except Exception as e:
             logger.error(f"Cache set error: {e}")
             self.stats["errors"] += 1
@@ -252,8 +250,7 @@ class CacheService:
             if self.redis_available and self.redis_client:
                 await self.redis_client.delete(key)
                 return True
-            else:
-                return self._memory_cache.delete(key)
+            return self._memory_cache.delete(key)
         except Exception as e:
             logger.error(f"Cache delete error: {e}")
             return False
@@ -266,8 +263,7 @@ class CacheService:
                 if keys:
                     return await self.redis_client.delete(*keys)
                 return 0
-            else:
-                return self._memory_cache.clear_pattern(pattern)
+            return self._memory_cache.clear_pattern(pattern)
         except Exception as e:
             logger.error(f"Cache clear error: {e}")
             return 0

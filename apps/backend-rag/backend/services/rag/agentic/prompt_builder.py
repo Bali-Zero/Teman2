@@ -345,10 +345,9 @@ class SystemPromptBuilder:
             if time.time() - cached_time < self._cache_ttl:
                 logger.debug(f"Using cached system prompt for {user_id} (cache hit)")
                 return cached_prompt
-            else:
-                # Cache expired, remove it
-                del self._cache[cache_key]
-                logger.debug(f"Cache expired for {user_id}, rebuilding prompt")
+            # Cache expired, remove it
+            del self._cache[cache_key]
+            logger.debug(f"Cache expired for {user_id}, rebuilding prompt")
 
         # Build Memory / Identity Block
         memory_parts = []
@@ -561,30 +560,30 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
                     if is_returning:
                         return "Halo! Selamat datang kembali — ada yang bisa aku bantu?"
                     return "Halo! Ada yang bisa aku bantu hari ini?"
-                elif user_lang == "it":
+                if user_lang == "it":
                     if is_returning and user_name:
                         return f"Ciao {user_name}! Bentornato — come posso aiutarti oggi?"
                     if is_returning:
                         return "Ciao! Bentornato — come posso aiutarti oggi?"
                     return "Ciao! Come posso aiutarti oggi?"
-                elif user_lang == "uk":
+                if user_lang == "uk":
                     if is_returning and user_name:
                         return f"Привіт, {user_name}! З поверненням — чим можу допомогти?"
                     if is_returning:
                         return "Привіт! З поверненням — чим можу допомогти?"
                     return "Привіт! Чим можу допомогти?"
-                elif user_lang == "ru":
+                if user_lang == "ru":
                     if is_returning and user_name:
                         return f"Привет, {user_name}! С возвращением — чем могу помочь?"
                     if is_returning:
                         return "Привет! С возвращением — чем могу помочь?"
                     return "Привет! Чем могу помочь?"
-                else:  # Default English
-                    if is_returning and user_name:
-                        return f"Hello {user_name}! Welcome back — how can I help you today?"
-                    if is_returning:
-                        return "Hello! Welcome back — how can I help you today?"
-                    return "Hello! How can I help you today?"
+                # Default English
+                if is_returning and user_name:
+                    return f"Hello {user_name}! Welcome back — how can I help you today?"
+                if is_returning:
+                    return "Hello! Welcome back — how can I help you today?"
+                return "Hello! How can I help you today?"
 
         return None
 
@@ -757,18 +756,16 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         if re.search(r"(cosa fai|what do you do|che fai|apa kerjaan)", query_lower):
             if is_italian:
                 return "Sono Zantara, l'AI di Bali Zero! 🤖 Aiuto expat e imprenditori con visti, setup aziendale (PT PMA), tasse e tutto ciò che serve per vivere e lavorare in Indonesia. Chiedimi pure!"
-            elif is_indonesian:
+            if is_indonesian:
                 return "Aku Zantara, AI-nya Bali Zero! 🤖 Aku bantu expat dan pengusaha soal visa, setup perusahaan (PT PMA), pajak, dan semua yang perlu buat tinggal dan kerja di Indonesia. Tanya aja!"
-            else:
-                return "I'm Zantara, Bali Zero's AI assistant! 🤖 I help expats and entrepreneurs with visas, company setup (PT PMA), taxes, and everything needed to live and work in Indonesia. Ask me anything!"
+            return "I'm Zantara, Bali Zero's AI assistant! 🤖 I help expats and entrepreneurs with visas, company setup (PT PMA), taxes, and everything needed to live and work in Indonesia. Ask me anything!"
 
         # General casual - just acknowledge and redirect to business
         if is_italian:
             return "Capito! 😊 Se hai domande su visti, business, o vita in Indonesia, sono qui per te!"
-        elif is_indonesian:
+        if is_indonesian:
             return "Oke! 😊 Kalau ada pertanyaan soal visa, bisnis, atau kehidupan di Indonesia, tanya aja ya!"
-        else:
-            return "Got it! 😊 If you have questions about visas, business, or life in Indonesia, I'm here to help!"
+        return "Got it! 😊 If you have questions about visas, business, or life in Indonesia, I'm here to help!"
 
     def detect_prompt_injection(self, query: str) -> tuple[bool, str | None]:
         """

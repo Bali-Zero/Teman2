@@ -124,10 +124,9 @@ class TeamTimesheetService:
                         "message": f"Already clocked in at {bali_time.strftime('%H:%M')} Bali time",
                         "clocked_in_at": bali_time.isoformat(),
                     }
-                else:
-                    logger.info(
-                        f"🔄 Stale session detected for {email}. Last action: {last_action_date}. Allowing new clock-in."
-                    )
+                logger.info(
+                    f"🔄 Stale session detected for {email}. Last action: {last_action_date}. Allowing new clock-in."
+                )
 
             # Insert clock-in
             now = datetime.now(BALI_TZ)

@@ -13,7 +13,7 @@ class InstagramChannelConfig:
     supports_markdown: bool = False  # Plain text only
     supports_media: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.access_token:
             raise ValueError("access_token required")
         if not self.instagram_account_id:

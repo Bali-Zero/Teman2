@@ -84,19 +84,18 @@ class PricingService:
         # Map service types to specific methods
         if service_type == "visa":
             return self.get_visa_prices()
-        elif service_type == "kitas" or service_type == "long_stay_permit":
+        if service_type == "kitas" or service_type == "long_stay_permit":
             return self.get_kitas_prices()  # Generic long-stay permit prices
-        elif service_type == "business_setup":
+        if service_type == "business_setup":
             return self.get_business_prices()
-        elif service_type == "tax_consulting":
+        if service_type == "tax_consulting":
             return self.get_tax_prices()
-        elif service_type == "legal":
+        if service_type == "legal":
             return self.get_business_prices()  # Legal services are in business
-        elif service_type == "all":
+        if service_type == "all":
             return self.get_all_prices()
-        else:
-            # Try to search for the service
-            return self.search_service(service_type)
+        # Try to search for the service
+        return self.search_service(service_type)
 
     def get_all_prices(self) -> dict[str, Any]:
         """Get all official prices"""
@@ -248,14 +247,13 @@ class PricingService:
                 "contact_info": self.prices.get("contact_info", {}),
                 "disclaimer": self.prices.get("disclaimer", {}),
             }
-        else:
-            return {
-                "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025",
-                "search_query": query,
-                "message": f"No service found for '{query}'",
-                "suggestion": f"Contact {settings.SUPPORT_EMAIL} for custom quotes",
-                "contact_info": self.prices.get("contact_info", {}),
-            }
+        return {
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025",
+            "search_query": query,
+            "message": f"No service found for '{query}'",
+            "suggestion": f"Contact {settings.SUPPORT_EMAIL} for custom quotes",
+            "contact_info": self.prices.get("contact_info", {}),
+        }
 
     def get_visa_prices(self) -> dict[str, Any]:
         """Get all visa prices (single entry + multiple entry)"""

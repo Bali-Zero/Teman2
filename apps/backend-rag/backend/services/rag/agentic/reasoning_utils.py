@@ -88,14 +88,13 @@ def get_critical_domain_type(query: str) -> str:
 
     if any(kw in query_lower for kw in visa_keywords):
         return "visa"
-    elif any(kw in query_lower for kw in legal_keywords):
+    if any(kw in query_lower for kw in legal_keywords):
         return "legal"
-    elif any(kw in query_lower for kw in pricing_keywords):
+    if any(kw in query_lower for kw in pricing_keywords):
         return "pricing"
-    elif any(kw in query_lower for kw in procedure_keywords):
+    if any(kw in query_lower for kw in procedure_keywords):
         return "procedure"
-    else:
-        return "business_complex"
+    return "business_complex"
 
 
 def is_critical_domain(query: str, intent_type: str) -> bool:

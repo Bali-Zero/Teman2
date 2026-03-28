@@ -97,11 +97,10 @@ class QdrantErrorClassifier:
 
             if status_code in self.RETRYABLE_STATUS_CODES:
                 return QdrantErrorType.SERVER_ERROR, True
-            elif status_code in self.NON_RETRYABLE_STATUS_CODES:
+            if status_code in self.NON_RETRYABLE_STATUS_CODES:
                 return QdrantErrorType.CLIENT_ERROR, False
-            else:
-                # Unknown status code - be conservative
-                return QdrantErrorType.SERVER_ERROR, False
+            # Unknown status code - be conservative
+            return QdrantErrorType.SERVER_ERROR, False
 
         # Unknown error - don't retry by default
         return QdrantErrorType.NON_RETRYABLE, False

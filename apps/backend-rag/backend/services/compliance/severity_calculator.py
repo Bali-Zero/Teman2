@@ -50,12 +50,11 @@ class SeverityCalculatorService:
 
         if days_until < 0:
             return AlertSeverity.CRITICAL, days_until
-        elif days_until <= self.ALERT_THRESHOLDS[AlertSeverity.URGENT]:
+        if days_until <= self.ALERT_THRESHOLDS[AlertSeverity.URGENT]:
             return AlertSeverity.URGENT, days_until
-        elif days_until <= self.ALERT_THRESHOLDS[AlertSeverity.WARNING]:
+        if days_until <= self.ALERT_THRESHOLDS[AlertSeverity.WARNING]:
             return AlertSeverity.WARNING, days_until
-        else:
-            return AlertSeverity.INFO, days_until
+        return AlertSeverity.INFO, days_until
 
     def get_days_until_deadline(self, deadline: str) -> int:
         """

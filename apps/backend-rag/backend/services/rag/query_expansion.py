@@ -629,9 +629,8 @@ Return ONLY a JSON object with language codes as keys:
                 if await self.cache_service.delete(key):
                     count += 1
             return count
-        else:
-            # Clear all query expansion cache
-            return await self.cache_service.clear_pattern("zantara:query_expand:*")
+        # Clear all query expansion cache
+        return await self.cache_service.clear_pattern("zantara:query_expand:*")
 
 
 # Singleton instance for easy access

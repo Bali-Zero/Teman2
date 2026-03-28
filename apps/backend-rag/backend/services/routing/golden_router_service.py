@@ -125,8 +125,7 @@ class GoldenRouterService:
                             f"✅ Loaded {len(queries)} embeddings from cache ({CACHE_FILE})"
                         )
                         return
-                    else:
-                        logger.warning("⚠️ Cache mismatch (count differs). Regenerating...")
+                    logger.warning("⚠️ Cache mismatch (count differs). Regenerating...")
                 except (json.JSONDecodeError, ValueError, TypeError) as e:
                     logger.warning(f"⚠️ Failed to load cache: {e}")
                 except Exception as e:

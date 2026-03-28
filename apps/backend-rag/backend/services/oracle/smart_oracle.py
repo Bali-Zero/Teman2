@@ -219,8 +219,7 @@ async def smart_oracle(query, best_filename_from_qdrant) -> str:
                 os.remove(pdf_path)
 
                 return result.get("text", "No response generated.")
-            else:
-                return "GenAI SDK not available."
+            return "GenAI SDK not available."
 
         except Exception as ai_error:
             logger.error(f"AI Processing Error: {ai_error}")

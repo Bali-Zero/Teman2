@@ -127,9 +127,8 @@ class NotebookLMCacheService:
             if cached:
                 logger.info(f"✅ Cache HIT: {question[:50]}...")
                 return json.loads(cached)
-            else:
-                logger.debug(f"❌ Cache MISS: {question[:50]}...")
-                return None
+            logger.debug(f"❌ Cache MISS: {question[:50]}...")
+            return None
         except Exception as e:
             logger.error(f"❌ Cache get error: {e}")
             return None
@@ -225,9 +224,8 @@ class NotebookLMCacheService:
                 deleted = await self.redis_client.delete(*keys)
                 logger.info(f"✅ Cleared {deleted} cache entries")
                 return deleted
-            else:
-                logger.info("ℹ️ No cache entries to clear")
-                return 0
+            logger.info("ℹ️ No cache entries to clear")
+            return 0
         except Exception as e:
             logger.error(f"❌ Cache clear error: {e}")
             return 0

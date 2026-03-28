@@ -1021,14 +1021,13 @@ class TimeSheetTool(BaseTool):
             if action == "clock_in":
                 res = await service.clock_in(user_id, email, metadata={"source": "agent"})
                 return json.dumps(res)
-            elif action == "clock_out":
+            if action == "clock_out":
                 res = await service.clock_out(user_id, email, metadata={"source": "agent"})
                 return json.dumps(res)
-            elif action == "status":
+            if action == "status":
                 res = await service.get_my_status(user_id)
                 return json.dumps(res)
-            else:
-                return json.dumps({"error": f"Unknown action {action}"})
+            return json.dumps({"error": f"Unknown action {action}"})
 
         except Exception as e:
             return json.dumps({"error": str(e)})
