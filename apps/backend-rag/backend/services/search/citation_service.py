@@ -27,7 +27,7 @@ class CitationService:
     - Support for multiple source types (RAG docs, memory, web)
     """
 
-    def __init__(self, search_service=None):
+    def __init__(self, search_service=None) -> None:
         """
         Initialize citation service
 

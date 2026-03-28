@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class OracleConfiguration:
     """Production configuration manager for Oracle endpoints"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Don't validate at import time - allow lazy initialization
         # Validation will happen when database_url is actually accessed
         pass

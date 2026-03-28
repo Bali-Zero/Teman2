@@ -37,7 +37,7 @@ class PDFVisionService:
     Supporta download da Google Drive.
     """
 
-    def __init__(self, api_key: str = None, ai_client=None):
+    def __init__(self, api_key: str = None, ai_client=None) -> None:
         self.ai_client = ai_client
         self.api_key = api_key or settings.google_api_key
         self._genai_client: GenAIClient | None = None

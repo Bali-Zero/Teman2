@@ -33,7 +33,7 @@ class OrchestratorRoutingManager:
     - Determina se usare deep think mode
     """
 
-    def __init__(self, intent_classifier: IntentClassifier | None = None):
+    def __init__(self, intent_classifier: IntentClassifier | None = None) -> None:
         """
         Inizializza il routing manager.
 

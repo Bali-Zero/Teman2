@@ -140,7 +140,7 @@ class ReasoningEngine:
         self,
         tool_map: dict[str, Any],
         response_pipeline: Any = None,
-    ):
+    ) -> None:
         """
         Initialize the ReAct reasoning engine.
 

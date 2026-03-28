@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class DatabaseManager:
     """PostgreSQL database manager for user profiles and analytics using SQLAlchemy"""
 
-    def __init__(self, database_url: str):
+    def __init__(self, database_url: str) -> None:
         self.database_url = database_url
         self._engine = None
         self._init_engine()

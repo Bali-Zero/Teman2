@@ -98,7 +98,7 @@ class RAGPipelineDebugger:
         trace = debugger.finish(response)
     """
 
-    def __init__(self, query: str, correlation_id: str | None = None):
+    def __init__(self, query: str, correlation_id: str | None = None) -> None:
         """
         Initialize RAG pipeline debugger.
 
@@ -178,7 +178,7 @@ class RAGPipelineDebugger:
 class RAGPipelineStepContext:
     """Context manager for a single RAG pipeline step"""
 
-    def __init__(self, trace: RAGPipelineTrace, step_name: str, **metadata):
+    def __init__(self, trace: RAGPipelineTrace, step_name: str, **metadata) -> None:
         """
         Initialize step context.
 

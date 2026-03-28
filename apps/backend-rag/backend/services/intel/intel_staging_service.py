@@ -30,7 +30,7 @@ class IntelStagingService:
     Handles saving, reading, listing, and archiving staging items.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the staging service with directory paths."""
         self.base_staging_dir = Path(settings.get_intel_staging_base_dir)
         self.visa_staging_dir = self.base_staging_dir / "visa"

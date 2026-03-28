@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import type { FileItem } from '@/lib/api/drive/drive.types';
 import { getFileIcon, getDepartmentInfo } from './file-icon';
-import { MoreVertical, ChevronDown } from 'lucide-react';
+import { MoreVertical, ChevronDown, FolderOpen } from 'lucide-react';
 import { usePrefetchFolder } from '@/hooks/useDrive';
 
 interface FileListProps {
@@ -254,10 +254,15 @@ export function FileList({
       {/* Empty State - Elegant minimal */}
       {safeFiles.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
+          <div className="mb-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-6">
+            <FolderOpen className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+          </div>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-            Nessun file trovato
+            Questa cartella è vuota
           </p>
-          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Questa cartella è vuota</p>
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            Trascina file qui o clicca &quot;Nuovo&quot; per creare contenuti
+          </p>
         </div>
       )}
 

@@ -458,7 +458,7 @@ class KeywordMatcherService:
     Responsibility: Calculate domain scores based on keyword matching.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize keyword matcher with domain keyword lists."""
         self.domain_keywords = {
             "visa": VISA_KEYWORDS,

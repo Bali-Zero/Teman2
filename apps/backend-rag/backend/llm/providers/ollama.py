@@ -27,7 +27,7 @@ class OllamaProvider(LLMProvider):
         response = await provider.generate([LLMMessage(role="user", content="Hello")])
     """
 
-    def __init__(self, model: str = "qwen2.5:latest", base_url: str = "http://localhost:11434"):
+    def __init__(self, model: str = "qwen2.5:latest", base_url: str = "http://localhost:11434") -> None:
         """
         Initialize Ollama provider.
 

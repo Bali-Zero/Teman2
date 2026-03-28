@@ -129,7 +129,7 @@ class SpecializedServiceRouter:
         autonomous_research_service=None,
         cross_oracle_synthesis_service=None,
         client_journey_orchestrator=None,
-    ):
+    ) -> None:
         """
         Initialize specialized service router
 

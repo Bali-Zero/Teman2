@@ -19,7 +19,7 @@ class ImageGenerationService:
     requires Vertex AI setup.
     """
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self, api_key: str | None = None) -> None:
         from backend.app.core.config import settings
 
         # Use dedicated Imagen API key if available, otherwise fallback to google_api_key

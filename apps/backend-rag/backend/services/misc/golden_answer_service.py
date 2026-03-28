@@ -34,7 +34,7 @@ class GoldenAnswerService:
     Fast lookup and retrieval of pre-generated golden answers
     """
 
-    def __init__(self, database_url: str):
+    def __init__(self, database_url: str) -> None:
         """
         Initialize service
 

@@ -67,7 +67,7 @@ class MemoryOrchestrator:
     Thread-safe and designed for concurrent access.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool | None = None, database_url: str | None = None):
+    def __init__(self, db_pool: asyncpg.Pool | None = None, database_url: str | None = None) -> None:
         """
         Initialize MemoryOrchestrator.
 

@@ -34,7 +34,7 @@ class LegalIngestionService:
     Implements 4-stage pipeline: Clean → Extract Metadata → Parse Structure → Chunk
     """
 
-    def __init__(self, collection_name: str = "legal_unified"):
+    def __init__(self, collection_name: str = "legal_unified") -> None:
         """
         Initialize legal ingestion service.
 

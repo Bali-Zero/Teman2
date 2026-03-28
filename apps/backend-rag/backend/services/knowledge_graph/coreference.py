@@ -121,7 +121,7 @@ class CoreferenceResolver:
         use_llm: bool = True,
         model: str = "claude-sonnet-4-20250514",
         api_key: str | None = None,
-    ):
+    ) -> None:
         """
         Initialize Coreference Resolver
 

@@ -13,7 +13,7 @@ logger = structlog.get_logger(__name__)
 class VisaService:
     """Service for managing client visa records."""
 
-    def __init__(self, db_pool: Pool):
+    def __init__(self, db_pool: Pool) -> None:
         self.db_pool = db_pool
 
     async def get_active_visa(self, client_id: int) -> VisaRecord | None:

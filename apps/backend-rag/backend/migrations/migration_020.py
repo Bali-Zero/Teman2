@@ -19,7 +19,7 @@ class Migration020:
     description = "Setup Qdrant collection and backfill embeddings for collective memories"
     dependencies = [18]  # Depends on collective memory system
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sql_file = (
             Path(__file__).parent.parent / "db" / "migrations" / "020_collective_embeddings.sql"
         )

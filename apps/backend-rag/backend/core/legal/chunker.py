@@ -19,7 +19,7 @@ class SemanticSplitter:
     Groups sentences that are semantically close.
     """
 
-    def __init__(self, embeddings_generator, similarity_threshold: float = 0.7):
+    def __init__(self, embeddings_generator, similarity_threshold: float = 0.7) -> None:
         self.embedder = embeddings_generator
         self.threshold = similarity_threshold
 
@@ -90,7 +90,7 @@ class LegalChunker:
     Uses Pasal-aware splitting with context injection.
     """
 
-    def __init__(self, max_pasal_tokens: int = None):
+    def __init__(self, max_pasal_tokens: int = None) -> None:
         """
         Initialize legal chunker.
 

@@ -37,7 +37,7 @@ class ReRanker:
     Re-scores (query, document) pairs to determine true relevance using an external GPU-accelerated service.
     """
 
-    def __init__(self, model_name: str | None = None):
+    def __init__(self, model_name: str | None = None) -> None:
         """
         Initialize the Ze-Rank 2 Re-ranker.
 

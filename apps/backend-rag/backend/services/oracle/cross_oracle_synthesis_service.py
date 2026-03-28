@@ -139,7 +139,7 @@ class CrossOracleSynthesisService:
         },
     }
 
-    def __init__(self, search_service, zantara_ai_client=None, golden_answer_service=None):
+    def __init__(self, search_service, zantara_ai_client=None, golden_answer_service=None) -> None:
         """
         Initialize Cross-Oracle Synthesis Agent.
 

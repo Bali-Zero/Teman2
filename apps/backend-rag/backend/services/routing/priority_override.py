@@ -90,7 +90,7 @@ class PriorityOverrideService:
     Responsibility: Check for special query patterns that override normal routing.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize priority override service."""
         # Identity query patterns (highest priority)
         self.identity_patterns = [

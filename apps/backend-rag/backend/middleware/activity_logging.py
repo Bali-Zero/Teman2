@@ -35,7 +35,7 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
     - Errors
     """
 
-    def __init__(self, app: ASGIApp):
+    def __init__(self, app: ASGIApp) -> None:
         super().__init__(app)
         self.excluded_paths = {
             "/health",

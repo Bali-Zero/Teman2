@@ -17,7 +17,7 @@ class DriveOperationsManager:
     di googleapiclient.discovery (basato su httplib2 sincrono).
     """
 
-    def __init__(self, auth_manager: Any, http_client: httpx.AsyncClient, audit: Any | None = None):
+    def __init__(self, auth_manager: Any, http_client: httpx.AsyncClient, audit: Any | None = None) -> None:
         self.auth_manager = auth_manager
         self.http_client = http_client
         self.audit = audit  # Permette al decoratore @drive_operation di usare l'istanza corretta

@@ -19,7 +19,7 @@ from backend.db.migration_base import BaseMigration
 class Migration016(BaseMigration):
     """Add Summary to Parent Documents Migration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=16,
             sql_file="016_add_summary_to_parent_docs.sql",

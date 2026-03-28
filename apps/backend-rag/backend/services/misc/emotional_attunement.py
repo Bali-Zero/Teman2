@@ -207,7 +207,7 @@ class EmotionalAttunementService:
         ToneStyle.DIRECT: "Be direct and action-oriented. Focus on solutions, not explanations.",
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.info("✅ EmotionalAttunementService initialized")
 
     def analyze_message(

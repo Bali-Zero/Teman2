@@ -15,7 +15,7 @@ class LanguageDetectionService:
     Responsibility: Detect language from query text with Italian focus for Bali Zero clients.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize language detection service."""
         # Italian markers
         self.italian_markers = [

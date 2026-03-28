@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class OverviewStats:
     """Overview statistics for dashboard."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.conversations_today = 0
         self.conversations_week = 0
         self.users_active = 0
@@ -30,7 +30,7 @@ class OverviewStats:
 class RAGStats:
     """RAG pipeline statistics."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.queries_today = 0
         self.avg_latency_ms = 0.0
         self.embedding_latency_ms = 0.0
@@ -44,7 +44,7 @@ class RAGStats:
 class CRMStats:
     """CRM statistics."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.clients_by_status: dict[str, int] = {}
         self.clients_total = 0
         self.clients_active = 0
@@ -61,7 +61,7 @@ class CRMStats:
 class TeamStats:
     """Team productivity statistics."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.hours_today = 0.0
         self.hours_week = 0.0
         self.conversations_by_agent: dict[str, int] = {}
@@ -72,7 +72,7 @@ class TeamStats:
 class SystemStats:
     """System health statistics."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.cpu_percent = 0.0
         self.memory_mb = 0.0
         self.memory_percent = 0.0
@@ -89,7 +89,7 @@ class AnalyticsAggregator:
     - App metrics (system health, performance)
     """
 
-    def __init__(self, app_state: Any):
+    def __init__(self, app_state: Any) -> None:
         """
         Initialize aggregator with app state.
 

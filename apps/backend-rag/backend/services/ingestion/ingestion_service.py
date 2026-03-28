@@ -24,7 +24,7 @@ class IngestionService:
     Handles the full flow from raw document to searchable embeddings.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize ingestion service with all components"""
         self.chunker = TextChunker()
         self.embedder = create_embeddings_generator()

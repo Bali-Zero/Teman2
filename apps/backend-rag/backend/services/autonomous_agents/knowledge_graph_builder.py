@@ -145,7 +145,7 @@ class KnowledgeGraphBuilder:
         ],
     }
 
-    def __init__(self, search_service=None, db_pool: asyncpg.Pool = None, llm_gateway=None):
+    def __init__(self, search_service=None, db_pool: asyncpg.Pool = None, llm_gateway=None) -> None:
         """
         Initialize Knowledge Graph Builder.
 

@@ -91,7 +91,7 @@ class LLMGateway:
         - OpenRouter client is lazy-loaded to avoid unnecessary initialization
     """
 
-    def __init__(self, gemini_tools: list = None):
+    def __init__(self, gemini_tools: list = None) -> None:
         """Initialize LLM Gateway with Gemini models and OpenRouter fallback.
 
         Sets up all Gemini model instances and prepares for automatic fallback

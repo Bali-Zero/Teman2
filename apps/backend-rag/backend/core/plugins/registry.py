@@ -35,7 +35,7 @@ class PluginRegistry:
         results = registry.search("email")
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._plugins: dict[str, Plugin] = {}
         self._metadata: dict[str, PluginMetadata] = {}
         self._versions: dict[str, list[str]] = {}  # name -> [versions]

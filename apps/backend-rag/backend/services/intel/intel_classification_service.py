@@ -21,7 +21,7 @@ class IntelClassificationService:
     Classifies articles as 'visa' or 'news' based on category and content keywords.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the classification service."""
         self.visa_categories = IntelConstants.VISA_CATEGORIES
         self.visa_keywords = IntelConstants.VISA_KEYWORDS

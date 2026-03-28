@@ -45,7 +45,7 @@ class GoogleDriveService:
     # Token refresh buffer (5 minutes before expiry)
     TOKEN_EXPIRY_BUFFER = timedelta(minutes=5)
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         """
         Initialize GoogleDriveService.
 

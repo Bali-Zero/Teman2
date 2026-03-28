@@ -39,7 +39,7 @@ SMTP_SENDER_NAME = "Bali Zero AI"
 class InvoiceAutomationService:
     """Handles automated invoice generation and distribution via Zoho Email or SMTP fallback."""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
         self.drive_service = ServiceAccountDriveService()
         self.zoho_email_service = ZohoEmailService(db_pool)

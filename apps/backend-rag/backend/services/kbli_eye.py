@@ -33,7 +33,7 @@ class KBLIEye:
         "47191",
     }
 
-    def __init__(self, db_path: str = "source_documents/KBLI_2025_FINAL_CLEAN.json"):
+    def __init__(self, db_path: str = "source_documents/KBLI_2025_FINAL_CLEAN.json") -> None:
         # Risolviamo il path rispetto alla root del progetto
         self.db_path = Path(db_path)
         self.data: list = []

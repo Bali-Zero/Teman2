@@ -33,7 +33,7 @@ class ConversationEngine:
     to work across all channels (Telegram, WhatsApp, Web, etc.).
     """
 
-    def __init__(self, orchestrator: AgenticRAGOrchestrator):
+    def __init__(self, orchestrator: AgenticRAGOrchestrator) -> None:
         """
         Initialize conversation engine.
 

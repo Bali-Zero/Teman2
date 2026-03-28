@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class Migration025(BaseMigration):
     """Conversation Ratings System Migration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=25,
             sql_file="025_conversation_ratings.sql",

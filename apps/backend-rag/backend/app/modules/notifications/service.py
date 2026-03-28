@@ -62,7 +62,7 @@ class EmailProvider:
 class SMTPProvider(EmailProvider):
     """SMTP email provider (Gmail, etc.)."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.host = os.getenv("SMTP_HOST", "smtp.gmail.com")
         self.port = int(os.getenv("SMTP_PORT", "587"))
         self.user = os.getenv("SMTP_USER")
@@ -165,7 +165,7 @@ class SMTPProvider(EmailProvider):
 class SendGridProvider(EmailProvider):
     """SendGrid email provider."""
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self, api_key: str | None = None) -> None:
         self.api_key = api_key or os.getenv("SENDGRID_API_KEY")
         self.base_url = "https://api.sendgrid.com/v3"
 
@@ -239,7 +239,7 @@ class SendGridProvider(EmailProvider):
 class NotificationService:
     """Main service for handling notifications."""
 
-    def __init__(self, db_pool, email_provider: EmailProvider | None = None):
+    def __init__(self, db_pool, email_provider: EmailProvider | None = None) -> None:
         self.db_pool = db_pool
         self.email_provider = email_provider or self._create_provider()
 

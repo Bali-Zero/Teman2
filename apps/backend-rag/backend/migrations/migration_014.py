@@ -19,7 +19,7 @@ from backend.db.migration_base import BaseMigration
 class Migration014(BaseMigration):
     """Knowledge Graph Tables Migration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=14,
             sql_file="014_knowledge_graph_tables.sql",

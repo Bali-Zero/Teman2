@@ -78,7 +78,7 @@ class VectorSearchTool(BaseTool):
     If no collection specified, searches ALL collections (federated).
     """
 
-    def __init__(self, retriever, user_level: int = 1):
+    def __init__(self, retriever, user_level: int = 1) -> None:
         self.retriever = retriever
         self.user_level = user_level
 
@@ -330,7 +330,7 @@ class CalculatorTool(BaseTool):
 class VisionTool(BaseTool):
     """Tool for visual document analysis"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.vision_service = VisionRAGService()
 
     @property
@@ -399,7 +399,7 @@ class VisionTool(BaseTool):
 class PricingTool(BaseTool):
     """Tool for official service pricing lookup"""
 
-    def __init__(self, pricing_service=None):
+    def __init__(self, pricing_service=None) -> None:
         self.pricing_service = pricing_service or get_pricing_service()
 
     @property
@@ -452,7 +452,7 @@ class PricingTool(BaseTool):
 class TeamKnowledgeTool(BaseTool):
     """Tool for team member information lookup"""
 
-    def __init__(self, db_pool=None):
+    def __init__(self, db_pool=None) -> None:
         self.db_pool = db_pool
         self._team_data = None
         self._data_file = None
@@ -563,7 +563,7 @@ class TeamKnowledgeTool(BaseTool):
 class ImageGenerationTool(BaseTool):
     """Tool for generating images from text prompts using Google Imagen."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._client = None
 
     @property
@@ -713,7 +713,7 @@ class WebSearchTool(BaseTool):
         "questions, please refer to our verified documentation or contact our team directly.*"
     )
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._tavily_key = None
         self._brave_key = None
 
@@ -946,7 +946,7 @@ class WebSearchTool(BaseTool):
 class TimeSheetTool(BaseTool):
     """Tool for team timesheet management (clock-in, clock-out, status)"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._team_data = None
 
     @property

@@ -94,7 +94,7 @@ class KGAgenticOrchestrator:
         retriever: Any,
         llm_gateway: LLMGateway | None = None,
         intent_classifier: IntentClassifier | None = None,
-    ):
+    ) -> None:
         """
         Initialize KG-Agentic Orchestrator.
 

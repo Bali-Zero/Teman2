@@ -72,7 +72,7 @@ class PromptManager:
     - Handle prompt file errors gracefully
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize PromptManager and load base system prompt."""
         self._base_system_prompt = self._load_system_prompt_from_file()
 

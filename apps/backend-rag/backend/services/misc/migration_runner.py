@@ -35,7 +35,7 @@ class MigrationRunner:
     - Already applied migrations (from schema_migrations table)
     """
 
-    def __init__(self, migrations_dir: Path | None = None):
+    def __init__(self, migrations_dir: Path | None = None) -> None:
         """
         Initialize migration runner.
 

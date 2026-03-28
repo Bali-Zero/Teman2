@@ -21,7 +21,7 @@ class Migration021:
         20,
     ]  # Depends on episodic_memories table (019) and collective memory embeddings (020)
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sql_file = (
             Path(__file__).parent.parent / "db" / "migrations" / "021_memory_kg_integration.sql"
         )

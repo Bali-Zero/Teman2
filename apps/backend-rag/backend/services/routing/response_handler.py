@@ -25,7 +25,7 @@ class ResponseHandler:
     - Conditional contact info (not for greetings)
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize response handler"""
         logger.info("✨ [ResponseHandler] Initialized (PHASE 1 & 2 fixes)")
 

@@ -63,7 +63,7 @@ class VerificationService:
     Uses a lightweight LLM call to act as a 'Guardian'.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._genai_client: GenAIClient | None = None
         self.model_name = "gemini-2.5-flash"
 

@@ -54,7 +54,7 @@ class OnboardingIntentDetector:
         r"(?:want to|voglio|ingin)[\s:]+(.+)",
     ]
 
-    def __init__(self, mcp_base_url: str = "http://localhost:8000"):
+    def __init__(self, mcp_base_url: str = "http://localhost:8000") -> None:
         """Initialize detector with MCP server URL."""
         self.mcp_base_url = mcp_base_url
         self.client = httpx.AsyncClient(timeout=30.0)

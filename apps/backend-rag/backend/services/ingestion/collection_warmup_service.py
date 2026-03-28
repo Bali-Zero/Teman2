@@ -31,7 +31,7 @@ class CollectionWarmupService:
     - Collection management (use CollectionManager)
     """
 
-    def __init__(self, collection_manager: Any, embedder: Any):
+    def __init__(self, collection_manager: Any, embedder: Any) -> None:
         """Initialize collection warmup service with dependencies.
 
         Sets up warmup service with access to collection manager and embedding

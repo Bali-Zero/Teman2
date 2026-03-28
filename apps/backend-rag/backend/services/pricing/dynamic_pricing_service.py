@@ -80,7 +80,7 @@ class DynamicPricingService:
         "service_fees": ["bali zero", "consultation", "service", "professional fee"],
     }
 
-    def __init__(self, cross_oracle_synthesis_service, search_service):
+    def __init__(self, cross_oracle_synthesis_service, search_service) -> None:
         """
         Initialize Dynamic Pricing Service.
 

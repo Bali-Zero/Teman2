@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class Migration026(BaseMigration):
     """Review Queue System Migration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=26,
             sql_file="026_review_queue.sql",

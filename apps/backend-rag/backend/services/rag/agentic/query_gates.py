@@ -65,7 +65,7 @@ class QueryGates:
         self,
         prompt_builder: SystemPromptBuilder | None = None,
         clarification_service: ClarificationService | None = None,
-    ):
+    ) -> None:
         """
         Initialize QueryGates.
 

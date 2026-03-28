@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class CRMCache:
     """Cache in-memory per dati CRM con TTL."""
 
-    def __init__(self, default_ttl: int = 300):
+    def __init__(self, default_ttl: int = 300) -> None:
         """
         Inizializza cache.
 
@@ -135,7 +135,7 @@ def invalidate_practice_cache(practice_id: int) -> None:
 class QueryCache:
     """Cache specifica per query database frequenti."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._client_by_email: dict[str, tuple[int, datetime]] = {}
         self._client_by_phone: dict[str, tuple[int, datetime]] = {}
         self._practice_types: list[dict] | None = None

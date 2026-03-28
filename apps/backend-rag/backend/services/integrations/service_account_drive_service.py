@@ -25,7 +25,7 @@ class ServiceAccountDriveService:
 
     SCOPES = ["https://www.googleapis.com/auth/drive"]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Service Account Drive Service."""
         import base64
 

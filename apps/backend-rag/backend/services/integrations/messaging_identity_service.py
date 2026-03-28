@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class MessagingIdentityService:
     """Maps messaging identifiers to users (team + portal clients) for unified identity."""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         """
         Initialize service.
 

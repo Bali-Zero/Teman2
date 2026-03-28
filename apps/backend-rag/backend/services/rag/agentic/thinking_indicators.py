@@ -57,7 +57,7 @@ class ThinkingIndicatorService:
     "Let me check that for you…" performs better than "Retrieving requested data…"
     """
 
-    def __init__(self, language: str = "it"):
+    def __init__(self, language: str = "it") -> None:
         """
         Initialize thinking indicator service.
 

@@ -30,7 +30,7 @@ class QueryRouterIntegration:
     - Collection management (use CollectionManager)
     """
 
-    def __init__(self, query_router: QueryRouter | None = None):
+    def __init__(self, query_router: QueryRouter | None = None) -> None:
         """
         Initialize query router integration.
 

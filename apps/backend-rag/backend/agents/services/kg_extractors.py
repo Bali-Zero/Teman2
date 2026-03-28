@@ -28,7 +28,7 @@ except ImportError:
 class EntityExtractor:
     """Service for extracting entities from text using AI"""
 
-    def __init__(self, ai_client: ZantaraAIClient | None = None):
+    def __init__(self, ai_client: ZantaraAIClient | None = None) -> None:
         """
         Initialize EntityExtractor.
 
@@ -109,7 +109,7 @@ Be precise. Only extract clear entities."""
 class RelationshipExtractor:
     """Service for extracting relationships between entities using AI"""
 
-    def __init__(self, ai_client: ZantaraAIClient | None = None):
+    def __init__(self, ai_client: ZantaraAIClient | None = None) -> None:
         """
         Initialize RelationshipExtractor.
 

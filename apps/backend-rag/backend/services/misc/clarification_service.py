@@ -37,7 +37,7 @@ class ClarificationService:
     - Confidence scoring for ambiguity detection
     """
 
-    def __init__(self, search_service=None):
+    def __init__(self, search_service=None) -> None:
         """
         Initialize clarification service
 

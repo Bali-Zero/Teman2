@@ -36,7 +36,7 @@ class CulturalInsightsService:
         self,
         collection_manager: Any,
         embedder: EmbeddingsGenerator,
-    ):
+    ) -> None:
         """
         Initialize cultural insights service.
 

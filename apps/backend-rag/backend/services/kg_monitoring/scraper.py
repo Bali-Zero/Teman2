@@ -122,7 +122,7 @@ class LegalScraper:
         ),
     }
 
-    def __init__(self, custom_sources: dict[str, SourceConfig] | None = None):
+    def __init__(self, custom_sources: dict[str, SourceConfig] | None = None) -> None:
         """
         Initialize the legal scraper.
 

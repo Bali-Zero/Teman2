@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 class CodeChangeDetector:
     """Detects and analyzes code changes in git repository."""
 
-    def __init__(self, repo_path: Path):
+    def __init__(self, repo_path: Path) -> None:
         self.repo_path = repo_path
 
     def get_new_files(self, since_commit: str | None = None) -> list[Path]:

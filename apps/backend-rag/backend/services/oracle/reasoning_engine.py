@@ -26,7 +26,7 @@ class ReasoningEngineService:
         self,
         prompt_builder: ZantaraPromptBuilder | None = None,
         response_validator: ZantaraResponseValidator | None = None,
-    ):
+    ) -> None:
         """
         Initialize reasoning engine service.
 

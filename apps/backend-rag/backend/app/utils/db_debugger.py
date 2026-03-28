@@ -53,7 +53,7 @@ class DatabaseQueryDebugger:
             result = await conn.fetch(query, *params)
     """
 
-    def __init__(self, slow_query_threshold_ms: float = SLOW_QUERY_THRESHOLD_MS):
+    def __init__(self, slow_query_threshold_ms: float = SLOW_QUERY_THRESHOLD_MS) -> None:
         """
         Initialize database query debugger.
 
@@ -177,7 +177,7 @@ class QueryTraceContext:
         connection_id: str | None = None,
         transaction_id: str | None = None,
         slow_threshold: float = SLOW_QUERY_THRESHOLD_MS,
-    ):
+    ) -> None:
         """
         Initialize query trace context.
 

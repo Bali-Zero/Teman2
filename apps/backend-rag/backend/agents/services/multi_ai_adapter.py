@@ -81,7 +81,7 @@ class GeminiAdapter:
     Non serve API key separata se hai abbonamento/configurazione Google.
     """
 
-    def __init__(self, model: str = "gemini-2.0-flash-exp"):
+    def __init__(self, model: str = "gemini-2.0-flash-exp") -> None:
         self.model = model
         self.gemini_cmd = "gemini"
 
@@ -133,7 +133,7 @@ class ClaudeAdapter:
     L'API key può essere collegata all'account con abbonamento.
     """
 
-    def __init__(self, api_key: str | None = None, model: str = "claude-3-opus-20240229"):
+    def __init__(self, api_key: str | None = None, model: str = "claude-3-opus-20240229") -> None:
         # Prova prima API key esplicita, poi env var, poi cerca in configurazioni comuni
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
         self.model = model
@@ -197,7 +197,7 @@ class ClaudeAdapter:
 class CursorAdapter:
     """Adapter for Cursor IDE integration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.cursor_cmd = "cursor"
 
     async def generate(self, prompt: str, files: list[str] | None = None) -> AIResponse:
@@ -241,7 +241,7 @@ class MultiAIAdapter:
     - Cursor: Code editing (IDE-based)
     """
 
-    def __init__(self, qwen_adapter=None, project_root: Path | None = None):
+    def __init__(self, qwen_adapter=None, project_root: Path | None = None) -> None:
         # Import Qwen adapter (existing)
         if qwen_adapter:
             self.qwen = qwen_adapter

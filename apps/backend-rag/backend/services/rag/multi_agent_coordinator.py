@@ -133,7 +133,7 @@ def _get_multi_agent_llm() -> Any:
 class LegalAgent:
     """Analyzes legal requirements (documents, compliance, regulations)."""
 
-    def __init__(self, llm: Any, kg_retrieval: KGEnhancedRetrieval | None):
+    def __init__(self, llm: Any, kg_retrieval: KGEnhancedRetrieval | None) -> None:
         self.llm = llm
         self.kg_retrieval = kg_retrieval
 
@@ -242,7 +242,7 @@ class LegalAgent:
 class FinancialAgent:
     """Calculates total costs (government fees + Bali Zero services)."""
 
-    def __init__(self, llm: Any, pricing_service: PricingService):
+    def __init__(self, llm: Any, pricing_service: PricingService) -> None:
         self.llm = llm
         self.pricing_service = pricing_service
 
@@ -336,7 +336,7 @@ class FinancialAgent:
 class TimelineAgent:
     """Estimates timelines and deadlines based on legal steps and KG data."""
 
-    def __init__(self, llm: Any, kg_retrieval: KGEnhancedRetrieval | None):
+    def __init__(self, llm: Any, kg_retrieval: KGEnhancedRetrieval | None) -> None:
         self.llm = llm
         self.kg_retrieval = kg_retrieval
 
@@ -456,7 +456,7 @@ class MultiAgentCoordinator:
         kg_retrieval: KGEnhancedRetrieval | None = None,
         pricing_service: PricingService | None = None,
         db_pool: Any = None,
-    ):
+    ) -> None:
         """
         Initialize MultiAgentCoordinator.
 

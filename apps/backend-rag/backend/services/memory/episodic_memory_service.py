@@ -158,7 +158,7 @@ EMOTION_KEYWORDS = {
 class EpisodicMemoryService:
     """Service for managing episodic memories (timeline of events)"""
 
-    def __init__(self, pool: asyncpg.Pool | None = None):
+    def __init__(self, pool: asyncpg.Pool | None = None) -> None:
         self.pool = pool
 
     def _parse_date(self, match: re.Match) -> datetime:

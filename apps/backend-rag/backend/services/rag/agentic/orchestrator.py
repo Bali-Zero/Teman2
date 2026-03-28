@@ -103,7 +103,7 @@ class AgenticRAGOrchestrator:
         entity_extractor: EntityExtractionService = None,
         llm_gateway: LLMGateway = None,
         nlm_enrichment_service: Any = None,
-    ):
+    ) -> None:
         """Initialize the AgenticRAGOrchestrator.
 
         Sets up model clients, dependencies, and configuration for multi-tier

@@ -70,7 +70,7 @@ class PluginExecutor:
         )
     """
 
-    def __init__(self, redis_client: RedisClient | None = None):
+    def __init__(self, redis_client: RedisClient | None = None) -> None:
         """
         Initialize executor
 

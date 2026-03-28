@@ -486,7 +486,7 @@ class QueryRouter:
     CONFIDENCE_THRESHOLD_HIGH = RoutingConstants.CONFIDENCE_THRESHOLD_HIGH
     CONFIDENCE_THRESHOLD_LOW = RoutingConstants.CONFIDENCE_THRESHOLD_LOW
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the router with fallback chain support"""
         logger.info("QueryRouter initialized (Phase 3: Smart Fallback Chain Agent enabled)")
 

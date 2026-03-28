@@ -24,7 +24,7 @@ class TeamDriveService:
     per azzerare la latenza e prevenire memory leak.
     """
 
-    def __init__(self, db_pool: Any):
+    def __init__(self, db_pool: Any) -> None:
         self.db_pool = db_pool
 
         # 1. Ottimizzazione HTTP: Client asincrono condiviso per reuse delle connessioni.

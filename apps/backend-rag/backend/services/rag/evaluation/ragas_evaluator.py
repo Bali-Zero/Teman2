@@ -151,7 +151,7 @@ class EvaluationResult:
         ground_truth: str | None = None,
         metrics: dict[str, float] | None = None,
         metadata: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         self.query = query
         self.context = context
         self.answer = answer
@@ -204,7 +204,7 @@ class RAGASEvaluator:
         llm_client: UnifiedLLMClient | None = None,
         enable_cache: bool = True,
         cache_ttl: int = 86400,  # 24 hours
-    ):
+    ) -> None:
         """
         Initialize RAGAS Evaluator.
 

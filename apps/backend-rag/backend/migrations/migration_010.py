@@ -19,7 +19,7 @@ from backend.db.migration_base import BaseMigration
 class Migration010(BaseMigration):
     """Fix team_members schema alignment"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=10,
             sql_file="010_fix_team_members_schema.sql",

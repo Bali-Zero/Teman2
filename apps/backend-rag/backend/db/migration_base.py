@@ -50,7 +50,7 @@ class BaseMigration:
         description: str,
         dependencies: list[int] | None = None,
         rollback_sql: str | None = None,
-    ):
+    ) -> None:
         """
         Initialize migration.
 

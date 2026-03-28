@@ -51,7 +51,7 @@ class PricingPlugin(Plugin):
     - Bali Zero service margins and government fee breakdowns
     """
 
-    def __init__(self, config: dict | None = None, pricing_service=None):
+    def __init__(self, config: dict | None = None, pricing_service=None) -> None:
         """
         Initialize pricing plugin
 

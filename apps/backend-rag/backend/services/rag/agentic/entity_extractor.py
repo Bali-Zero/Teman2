@@ -34,7 +34,7 @@ class EntityExtractionService:
     DOMAIN_COMPANY = "company"
     DOMAIN_GENERAL = "general"
 
-    def __init__(self, llm_gateway: Any | None = None):
+    def __init__(self, llm_gateway: Any | None = None) -> None:
         self._llm_gateway = llm_gateway
 
     async def extract_entities(self, query: str) -> dict[str, Any]:

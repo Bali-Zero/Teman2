@@ -67,7 +67,7 @@ class VerificationStage(PipelineStage):
     Only verifies substantial responses (>50 chars) with context.
     """
 
-    def __init__(self, min_response_length: int = 50):
+    def __init__(self, min_response_length: int = 50) -> None:
         """
         Initialize verification stage.
 
@@ -181,7 +181,7 @@ class CitationStage(PipelineStage):
     - Sorts by relevance score
     """
 
-    def __init__(self, max_citations: int = 10):
+    def __init__(self, max_citations: int = 10) -> None:
         """
         Initialize citation stage.
 
@@ -333,7 +333,7 @@ class ResponsePipeline:
         })
     """
 
-    def __init__(self, stages: list[PipelineStage]):
+    def __init__(self, stages: list[PipelineStage]) -> None:
         """
         Initialize pipeline with stages.
 

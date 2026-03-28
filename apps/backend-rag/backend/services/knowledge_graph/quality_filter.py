@@ -171,7 +171,7 @@ class KGQualityFilter:
         min_name_length: int = 4,
         fuzzy_threshold: float = 0.85,
         infer_relationships: bool = True,
-    ):
+    ) -> None:
         """
         Initialize quality filter
 

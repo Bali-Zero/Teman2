@@ -17,7 +17,7 @@ class ClientRepository:
     isolando la logica DB dal livello HTTP/Routing.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
 
     async def search_clients_dynamic(

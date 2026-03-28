@@ -107,7 +107,7 @@ class PluginOutput(BaseModel):
     # Backward compatibility
     ok: bool | None = Field(None, description="Legacy success field")
 
-    def __init__(self, **data):
+    def __init__(self, **data) -> None:
         """Initialize and set ok field for backward compatibility"""
         super().__init__(**data)
         if self.ok is None:
@@ -155,7 +155,7 @@ class Plugin(ABC):
                 pass
     """
 
-    def __init__(self, config: dict[str, Any] | None = None):
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """
         Initialize plugin with optional configuration
 

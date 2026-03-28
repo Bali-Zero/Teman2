@@ -105,7 +105,7 @@ class KGPipeline:
     4. Persistence to PostgreSQL
     """
 
-    def __init__(self, config: PipelineConfig | None = None):
+    def __init__(self, config: PipelineConfig | None = None) -> None:
         """
         Initialize KG Pipeline
 

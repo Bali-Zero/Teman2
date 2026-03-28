@@ -60,7 +60,7 @@ class UnifiedHealthService:
     - Health check reporting
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.service_registry = service_registry
         self.start_time = time.time()
         self.http_client: httpx.AsyncClient | None = None

@@ -15,7 +15,7 @@ class ContextSuggestionService:
     Currently a stub to satisfy dependencies; logic to be implemented.
     """
 
-    def __init__(self, db_pool: Any = None):
+    def __init__(self, db_pool: Any = None) -> None:
         self.db_pool = db_pool
 
     async def get_suggestions(

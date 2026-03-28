@@ -28,7 +28,7 @@ LOG_FORMAT = getattr(__import__("os").environ, "LOG_FORMAT", "console")
 class PerformanceLogger:
     """Context manager for performance tracking"""
 
-    def __init__(self, operation: str, logger: logging.Logger, level: str = "info"):
+    def __init__(self, operation: str, logger: logging.Logger, level: str = "info") -> None:
         self.operation = operation
         self.logger = logger
         self.level = level

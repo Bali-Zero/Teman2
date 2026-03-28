@@ -58,7 +58,7 @@ class GitHubPublisher:
         token: str | None = None,
         owner: str | None = None,
         repo: str | None = None,
-    ):
+    ) -> None:
         """
         Initialize GitHub Publisher.
 

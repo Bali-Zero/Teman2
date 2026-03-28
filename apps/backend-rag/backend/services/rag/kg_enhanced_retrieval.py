@@ -131,7 +131,7 @@ class KGEnhancedRetrieval:
         (r"jangka\s+waktu", "jangka_waktu"),
     ]
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         """
         Initialize KG Enhanced Retrieval.
 

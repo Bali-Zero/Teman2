@@ -19,7 +19,7 @@ class ContextWindowManager:
     - Total context stays within safe limits
     """
 
-    def __init__(self, max_messages: int = 10, summary_threshold: int = 15):
+    def __init__(self, max_messages: int = 10, summary_threshold: int = 15) -> None:
         """
         Initialize context window manager
 
@@ -290,7 +290,7 @@ class AdvancedContextWindowManager:
         max_tokens: int = 6000,
         recent_window_tokens: int = 3000,
         summary_max_tokens: int = 8192,
-    ):
+    ) -> None:
         self.max_tokens = max_tokens
         self.recent_window_tokens = recent_window_tokens
         self.summary_max_tokens = summary_max_tokens
