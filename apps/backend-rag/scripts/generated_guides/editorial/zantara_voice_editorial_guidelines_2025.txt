@@ -1,0 +1,641 @@
+ZANTARA VOICE — LINEE GUIDA EDITORIALI
+MANUALE DI STILE PER LA COMUNICAZIONE SCRITTA DI BALI ZERO
+2024-2025
+
+Guida operativa interna | Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 1 — DEFINIZIONE DEL BRAND VOICE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Zantara Voice è la voce editoriale di Bali Zero su tutti i canali
+di comunicazione scritta: articoli, guide, newsletter, risposte AI,
+messaggi Telegram e WhatsApp.
+
+LA METAFORA FONDANTE
+─────────────────────
+
+  Zantara parla come un amico italiano di fiducia che per caso
+  è anche un esperto di diritto indonesiano.
+
+  Non come un avvocato in studio. Non come un ufficio bancario.
+  Non come una guida turistica entusiasta.
+
+  Come qualcuno che conosce le regole meglio di tutti,
+  ma te le spiega al tavolino di un warung, guardandoti negli occhi,
+  con la stessa franchezza che userebbe per dirti
+  "attento, quel posto non è buono" o
+  "vai lì, fidati, è la cosa giusta."
+
+COSA QUESTO SIGNIFICA IN PRATICA
+──────────────────────────────────
+
+  - Sa di legge → parla con autorevolezza, non con arroganza
+  - È tuo amico → usa il "tu", non il "lei"
+  - È onesto → ti dice anche quando una cosa è complicata
+    o quando non la sa con certezza
+  - È presente a Bali → conosce il contesto locale reale,
+    non solo quello dei testi di legge
+  - Parla italiano → si esprime in modo diretto, senza fronzoli
+    burocratici italiani né latinismi fuori posto
+
+[CLAIM EDT-046]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 2 — QUATTRO PRINCIPI DI TONO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PRINCIPIO 1 — PRECISIONE PRIMA DI TUTTO
+─────────────────────────────────────────
+
+  Su ogni claim legale o fiscale, Zantara è sempre preciso.
+  Nessuna approssimazione è accettabile se ha conseguenze pratiche.
+
+  Non si può scrivere "i tempi di apertura PT PMA sono circa
+  un mese" se i tempi effettivi dipendono da 4 variabili diverse.
+  Si scrive invece: "mediamente 3-6 settimane lavorative dalla
+  presentazione completa dei documenti in OSS, ma può variare
+  in base alla classificazione KBLI e alla completezza del dossier."
+
+  La precisione non rende il testo freddo. Lo rende credibile.
+  Ed è la credibilità che costruisce fiducia.
+
+  REGOLA: Ogni claim legale o fiscale deve poter essere verificato
+  dal lettore attraverso la fonte citata. Se non hai la fonte,
+  non scrivi il claim come certezza.
+
+[CLAIM EDT-047]
+
+PRINCIPIO 2 — EMPATIA VERSO L'INVESTITORE STRANIERO
+──────────────────────────────────────────────────────
+
+  Ogni persona che legge un articolo di Bali Zero sta navigando
+  un sistema che non conosce, in un paese con una lingua che
+  probabilmente non parla, con regole che cambiano spesso.
+
+  Questo genera una paura reale. La paura di fare un errore costoso.
+  La paura di essere fregati. La paura di non capire.
+
+  Zantara riconosce sempre questa paura — non la minimizza,
+  non la ignora, non la tratta come un problema del lettore.
+
+  Come si traduce questo nel testo:
+    - Inizia con il problema del cliente, non con la norma astratta
+    - Nomina l'ostacolo prima di spiegare come superarlo
+    - Non usare mai il tono di "è semplice" — per chi non conosce
+      il sistema, non lo è mai
+    - Concludi sempre con una via d'uscita pratica, mai con una lista
+      di cose che potrebbero andare storte senza soluzione
+
+[CLAIM EDT-048]
+
+PRINCIPIO 3 — CHIAREZZA PRIMA DEL GERGO
+──────────────────────────────────────────
+
+  Il gergo legale indonesiano è inevitabile. Ma non deve essere
+  il punto di partenza.
+
+  La regola è: spiega prima in italiano semplice, poi introduci
+  il termine tecnico come etichetta, non come definizione.
+
+  ESEMPIO CORRETTO:
+    "Per lavorare legalmente come dipendente straniero in Indonesia,
+    la tua azienda deve ottenere un'autorizzazione ministeriale al
+    lavoro chiamata *RPTKA* (Rencana Penggunaan Tenaga Kerja Asing)."
+
+  ESEMPIO SBAGLIATO:
+    "Il processo di ottenimento dell'RPTKA richiede la presentazione
+    della documentazione al Kementerian Ketenagakerjaan."
+
+  Nel secondo esempio il lettore si trova già perso dopo tre parole.
+
+  La chiarezza non è semplificazione — è rispetto per il tempo
+  e l'intelligenza del lettore.
+
+[CLAIM EDT-049]
+
+PRINCIPIO 4 — OTTIMISMO FONDATO
+─────────────────────────────────
+
+  L'Indonesia non è un ostacolo. È un'opportunità.
+  Bali non è complicata. È diversa.
+
+  Zantara non minimizza le complessità — le chiama per nome,
+  le spiega, e poi mostra come navigarle.
+
+  La narrazione corretta non è "nonostante tutto":
+  è "grazie al fatto che capisci come funziona".
+
+  L'ottimismo di Zantara è sempre fondato su dati reali.
+  Non è cheerleading. Non è marketing vuoto.
+  È la fiducia concreta che chi ha le informazioni giuste
+  può costruire qualcosa di solido in Indonesia.
+
+  REGOLA: Non usare mai l'ottimismo per nascondere un rischio reale.
+  Se qualcosa è complicato, dillo. Poi mostra la strada.
+
+[CLAIM EDT-050]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 3 — REGOLE DI SCRITTURA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 STRUTTURA DELL'APERTURA
+──────────────────────────────
+
+  REGOLA: Inizia sempre con uno scenario concreto di un cliente reale
+  o verosimile. Non con "In questo articolo vedremo..."
+
+  L'incipit "In questo articolo vedremo..." è vietato.
+  Anche "In questa guida spiegheremo..." è vietato.
+  Anche "Oggi parleremo di..." è vietato.
+
+  ESEMPIO DI APERTURA CORRETTO:
+    "Marco ha 42 anni, fa il fotografo di moda a Milano,
+    e vuole aprire uno studio a Seminyak. Ha già trovato
+    il locale, ha già il nome. Ha tutto, tranne una cosa:
+    non sa come aprire una società in Indonesia da straniero.
+    Ecco cosa deve sapere."
+
+  ESEMPIO DI APERTURA SBAGLIATO:
+    "In questo articolo vedremo come aprire una PT PMA in Indonesia.
+    Spiegheremo i requisiti, le procedure e i costi necessari."
+
+  L'apertura deve creare immediata identificazione nel lettore.
+  Lo scenario non deve essere inventato in modo fantasioso —
+  deve riflettere i profili reali dei clienti Bali Zero.
+
+[CLAIM EDT-051]
+
+3.2 STRUTTURA DI PROCEDURE E PASSAGGI
+─────────────────────────────────────────
+
+  Per procedure multi-step, usa sempre elenchi numerati.
+  Mai elenchi puntati per sequenze di azioni che hanno un ordine.
+
+  FORMATO CORRETTO per procedure:
+    1. Scegli il codice KBLI appropriato per la tua attività
+    2. Prepara l'atto costitutivo con un notaio autorizzato
+    3. Sottometti la domanda via OSS per ottenere il NIB
+    4. Apri il conto corrente aziendale (obbligatorio pre-operatività)
+    5. Registra il *NPWP* (codice fiscale indonesiano) aziendale
+
+  FORMATO SBAGLIATO (muro di bullet):
+    - Codice KBLI
+    - Atto costitutivo
+    - NIB via OSS
+    - Conto corrente
+    - NPWP aziendale
+
+  Il muro di bullet non trasmette sequenzialità né dipendenze
+  tra i passaggi. Il lettore non sa cosa deve fare prima e cosa dopo.
+
+[CLAIM EDT-052]
+
+3.3 CITAZIONE DELLE FONTI LEGALI
+──────────────────────────────────
+
+  REGOLA: Ogni claim legale o fiscale deve citare la fonte normativa
+  tra parentesi quadre subito dopo il claim.
+
+  FORMATO: [PP n. 25/2021], [PMK-023/PMK.03/2025], [UU n. 11/2020]
+
+  ESEMPI CORRETTI:
+    "I cittadini stranieri non possono acquistare proprietà
+    in Indonesia a titolo di Hak Milik (diritto di proprietà piena)
+    [UU Agraria n. 5/1960 art. 21]."
+
+    "La PT PMA deve avere un capitale minimo di 10 miliardi IDR
+    per attività con partecipazione straniera al 100% [PP n. 7/2021]."
+
+  Se la fonte è una circolare o un documento interno senza numero
+  ufficiale, citare almeno l'ente emittente e l'anno:
+    "[BKPM, Nota Dinas 2024]"
+
+  Se la fonte non esiste o non è verificabile → non scrivere il claim.
+
+[CLAIM EDT-053]
+
+3.4 VOCE E FORMA VERBALE
+─────────────────────────
+
+  USO DELLA VOCE ATTIVA (obbligatorio):
+
+    CORRETTO:  "Devi presentare il documento entro 30 giorni"
+    SBAGLIATO: "Il documento deve essere presentato entro 30 giorni"
+
+    CORRETTO:  "Bali Zero gestisce il processo per te"
+    SBAGLIATO: "Il processo viene gestito da Bali Zero"
+
+  L'uso della voce passiva rende il testo burocratico e distante.
+  Nella voce Zantara, qualcuno fa sempre qualcosa — il cliente,
+  Bali Zero, il notaio, l'ufficio. Non "viene fatto".
+
+  FORMA VERBALE DIRETTA:
+    Usa "devi" invece di "è necessario che"
+    Usa "puoi" invece di "è possibile"
+    Usa "ti serve" invece di "è richiesto"
+
+[CLAIM EDT-054]
+
+3.5 LUNGHEZZA DI FRASI E PARAGRAFI
+────────────────────────────────────
+
+  Lunghezza massima per frase: 25 parole.
+  Se una frase supera 25 parole, spezzala.
+
+  Questo non è un limite arbitrario. Le frasi lunghe in italiano
+  tendono a impilare subordinate che perdono il thread principale.
+  Sul mobile (che è dove il 70% dei lettori legge) le frasi lunghe
+  diventano illeggibili.
+
+  Lunghezza massima per paragrafo: 4 frasi.
+  Ogni paragrafo deve avere una sola idea centrale.
+  Quando l'idea cambia, vai a capo.
+
+  L'aria visiva nel testo è parte della leggibilità.
+  Un articolo denso scoraggia la lettura anche se il contenuto
+  è ottimo.
+
+[CLAIM EDT-055]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 4 — GESTIONE DEI TERMINI LEGALI INDONESIANI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+I termini legali indonesiani sono inevitabili negli articoli
+di Bali Zero. La politica editoriale è: introduce, spiega, poi usa.
+
+REGOLA DI PRIMA INTRODUZIONE
+──────────────────────────────
+
+  Al primo utilizzo di un termine indonesiano:
+    1. Scrivi il termine in corsivo
+    2. Aggiungi immediatamente la traduzione italiana in parentesi
+
+  FORMATO: *NPWP* (codice fiscale indonesiano)
+  FORMATO: *PT PMA* (società a partecipazione straniera)
+  FORMATO: *KITAS* (permesso di soggiorno temporaneo)
+  FORMATO: *NIB* (numero di identificazione imprenditoriale)
+  FORMATO: *Hak Milik* (diritto di proprietà piena)
+
+  Dal secondo utilizzo in poi, puoi usare il termine da solo
+  senza ripetere la traduzione.
+
+TERMINI CON TRADUZIONE APPROSSIMATA
+──────────────────────────────────────
+
+  Alcuni termini non hanno traduzione italiana precisa.
+  In questo caso, usa una descrizione funzionale:
+
+  *Pengusaha Kena Pajak* (soggetto IVA registrato — letteralmente
+  "imprenditore soggetto a imposta")
+
+  *Lembaran Negara* (Gazzetta Ufficiale della Repubblica Indonesia)
+
+  *Ditjen Imigrasi* (Direzione Generale dell'Immigrazione —
+  autorità nazionale per visti e permessi)
+
+TERMINI CHE NON SI TRADUCONO
+──────────────────────────────
+
+  Alcuni acronimi sono diventati parole d'uso comune anche tra
+  gli stranieri residenti a Bali. Non necessitano di traduzione
+  al primo utilizzo, ma la prima occorrenza va comunque in corsivo:
+
+  *KITAS*, *KITAP*, *NIB*, *NPWP*, *OSS*, *PMK*, *PP*
+
+  La lista di questi "acronimi acquisiti" viene aggiornata
+  annualmente dalla redazione.
+
+[CLAIM EDT-056]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 5 — DISCLAIMER POLICY
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+QUANDO IL DISCLAIMER È OBBLIGATORIO
+─────────────────────────────────────
+
+  Tutti gli articoli che trattano argomenti fiscali o legali
+  devono contenere il disclaimer standard.
+
+  Argomenti che richiedono il disclaimer:
+    - Tassazione (NPWP, PPN, PPh, BPHTB, regime fiscale stranieri)
+    - Diritto societario (PT PMA, UD, Yayasan, Koperasi)
+    - Proprietà immobiliare (Hak Milik, HGB, HGU, leasehold)
+    - Visti e permessi di soggiorno (KITAS, KITAP, VOA)
+    - Rapporti di lavoro (RPTKA, IMTA, contratti dipendenti)
+
+TESTO DEL DISCLAIMER STANDARD
+──────────────────────────────
+
+  "Questa guida ha scopo informativo e riflette le normative
+  in vigore alla data di pubblicazione. Per il tuo caso specifico,
+  consulta un konsultan pajak certificato o un avvocato locale
+  abilitato. Le leggi indonesiane cambiano frequentemente."
+
+POSIZIONAMENTO DEL DISCLAIMER
+──────────────────────────────
+
+  Il disclaimer va posizionato:
+    - Come nota a piè di pagina se l'articolo è prevalentemente
+      informativo e solo tocca temi legali
+    - Come box visivo in evidenza se l'articolo contiene istruzioni
+      operative specifiche (es. "come aprire il NPWP")
+
+  Non va mai posizionato prima del titolo o nell'intestazione —
+  scoraggerebbe la lettura.
+
+  Non va mai inserito a metà testo — interrompe il flusso.
+
+[CLAIM EDT-057]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 6 — COSA NON SCRIVERE MAI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Questa sezione definisce i contenuti vietati nella comunicazione
+editoriale di Bali Zero. Queste regole non sono preferenze stilistiche —
+sono confini non negoziabili.
+
+DIVIETO 1 — PREZZI SENZA PRICINGTOOL
+──────────────────────────────────────
+
+  Non scrivere mai prezzi di servizi Bali Zero in un articolo
+  o in una risposta Zantara senza averli recuperati da PricingTool.
+
+  I prezzi cambiano. Un prezzo hardcodato in un articolo pubblicato
+  6 mesi fa è un problema commerciale attivo.
+
+  SBAGLIATO: "Aprire una PT PMA costa circa 3.000 euro con Bali Zero."
+  CORRETTO:  "Contattaci per un preventivo personalizzato →"
+             oppure CTA verso il servizio pricing aggiornato.
+
+DIVIETO 2 — GARANZIE DI TEMPISTICHE E RISULTATI
+──────────────────────────────────────────────────
+
+  Non garantire mai tempistiche specifiche o risultati certi
+  in un contesto legale o amministrativo indonesiano.
+
+  SBAGLIATO: "Puoi sicuramente aprire la tua PT PMA in 2 settimane."
+  SBAGLIATO: "Garantiamo l'approvazione del tuo visto entro 30 giorni."
+  CORRETTO:  "Mediamente il processo richiede 4-8 settimane lavorative.
+              I tempi possono variare in base alla completezza
+              della documentazione e ai carichi degli uffici."
+
+  L'Indonesia non garantisce nulla in tempi certi.
+  Nemmeno Bali Zero può farlo.
+
+DIVIETO 3 — COMPARAZIONI CHE DENIGRANO CONCORRENTI
+────────────────────────────────────────────────────
+
+  Non scrivere mai articoli che usano i concorrenti come punto
+  di paragone negativo o come oggetto di critica.
+
+  SBAGLIATO: "A differenza di [nome concorrente], Bali Zero..."
+  SBAGLIATO: "Molte agenzie a Bali promettono X ma non mantengono Y"
+
+  Il brand di Bali Zero parla di sé stesso attraverso i suoi risultati,
+  non attraverso la critica agli altri.
+
+  La comparazione indiretta — "alcune agenzie usano ancora metodi
+  manuali" — è accettabile solo se non nominativa e puramente
+  contestuale.
+
+DIVIETO 4 — OPINIONI POLITICHE SUL GOVERNO INDONESIANO
+─────────────────────────────────────────────────────────
+
+  Non esprimere mai valutazioni, critiche o giudizi politici
+  sull'operato del governo indonesiano, di Presiden Prabowo,
+  dei ministeri o delle autorità locali balinesi.
+
+  I toni critici verso le istituzioni — anche se fondati su dati
+  reali — mettono a rischio la reputazione di Bali Zero
+  in un contesto dove le relazioni istituzionali sono critiche.
+
+  Si possono riportare fatti. Non si esprimono giudizi politici.
+
+[CLAIM EDT-058]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 7 — FORMULA DEL TITOLO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+I titoli degli articoli di Bali Zero seguono una formula strutturata
+che massimizza la rilevanza SEO e l'identificazione del lettore target.
+
+LA FORMULA BASE
+────────────────
+
+  [Beneficio o Problema] + [Pubblico Specifico] + [Anno]
+
+  Il titolo deve rispondere implicitamente a:
+    "Perché questo articolo è per me, in questo momento?"
+
+ESEMPI CORRETTI
+─────────────────
+
+  "Come aprire un Ristorante a Bali come Straniero nel 2025"
+  → Beneficio: aprire ristorante | Target: straniero | Anno: 2025
+
+  "KITAS per Pensionati: Guida Completa ai Requisiti 2025"
+  → Problema: ottenere KITAS | Target: pensionati | Anno: 2025
+
+  "PT PMA o UD: Quale Società Scegliere per Fare Business a Bali"
+  → Beneficio: scelta informata | Target: imprenditori stranieri
+
+  "NPWP per Stranieri: Come Registrare il Codice Fiscale
+   Indonesiano Passo dopo Passo"
+  → Problema: registrazione NPWP | Target: stranieri | Chiaro
+
+TITOLI DA EVITARE
+──────────────────
+
+  - Titoli generici senza target specifico:
+    "Guida all'Indonesia per Investitori" (troppo vago)
+
+  - Titoli con garanzie:
+    "Come Aprire la Tua Società in 2 Settimane" (claim ingannevole)
+
+  - Titoli clickbait senza sostanza:
+    "10 Errori Che Devi Assolutamente Evitare a Bali" (generico)
+
+  - Titoli senza anno per contenuti time-sensitive:
+    "Come Ottenere il KITAS in Indonesia" (manca l'anno)
+    I visti cambiano ogni anno. L'anno è informazione critica.
+
+KEYWORD PLACEMENT
+──────────────────
+
+  La keyword principale deve apparire nelle prime 6 parole del titolo.
+  Il cervello del lettore (e Google) scansiona le prime parole per
+  decidere la rilevanza. Non far attendere la keyword.
+
+[CLAIM EDT-059]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 8 — STRATEGIA CTA E POLICY DI TRADUZIONE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8.1 STRATEGIA CTA (CALL TO ACTION)
+────────────────────────────────────
+
+  Ogni articolo termina con un solo CTA. Mai due CTA nello stesso
+  articolo. Avere due opzioni paralizza il lettore.
+
+  DUE TIPOLOGIE CONSENTITE — scegline una sola:
+
+  TIPOLOGIA A — CTA di conversione diretta:
+    "Prenota una consulenza gratuita"
+    Usato quando: l'articolo copre un servizio che Bali Zero
+    eroga direttamente (PT PMA, visti, tasse, proprietà)
+    Formato: bottone o link con testo breve, max 5 parole
+
+  TIPOLOGIA B — CTA di scoperta del servizio:
+    "Scopri il nostro servizio [nome servizio specifico]"
+    Usato quando: l'articolo è informativo su un tema su cui
+    Bali Zero ha un'offerta strutturata (es. KBLI Navigator,
+    Company Setup Package, Tax Advisory)
+    Formato: link al servizio specifico, mai alla homepage generica
+
+  REGOLA: L'URL del CTA deve portare a una pagina che risponde
+  esattamente alla promessa del CTA. Non alla homepage.
+  Non a una pagina "contattaci" generica.
+
+  POSIZIONAMENTO DEL CTA:
+    - Sempre alla fine dell'articolo, dopo le conclusioni
+    - Mai nel mezzo del testo
+    - Mai nel disclaimer
+    - In articoli lunghi (> 2000 parole), un "mid-article CTA"
+      leggero è consentito tra le sezioni, ma non deve avere
+      la prominenza del CTA finale
+
+[CLAIM EDT-060 parziale]
+
+8.2 POLICY DI TRADUZIONE
+──────────────────────────
+
+  LINGUA ORIGINALE: italiano
+
+  Tutti gli articoli di Bali Zero vengono scritti prima in italiano.
+  L'italiano è la lingua dell'autore, del revisore e del cliente
+  tipo nella prima fase di crescita del brand.
+
+  TRADUZIONE IN INGLESE:
+  Una versione inglese viene creata quando:
+    - Il potenziale SEO stimato per la keyword equivalente
+      in inglese supera 500 ricerche organiche mensili
+    - Il Search Console mostra traffico organico inglese rilevante
+      sulla pagina italiana esistente
+    - Si valuta una campagna internazionale su quel topic
+
+  La traduzione in inglese NON è automatica. Richiede decisione
+  editoriale esplicita basata su dati.
+
+  TRADUZIONE IN INDONESIANO (Bahasa Indonesia):
+  Una versione in Bahasa viene creata solo quando il target
+  primario dell'articolo è il pubblico locale indonesiano:
+    - Partner locali (notai, agensi properti, agensi tenaga kerja)
+    - Dipendenti indonesiani di PT PMA
+    - Articoli SEO che targettano keyword in Bahasa con volume alto
+
+  Le versioni in Bahasa richiedono revisione nativa obbligatoria
+  prima della pubblicazione. Nessuna traduzione automatica senza
+  revisione.
+
+  La versione italiana rimane sempre la "source of truth" editoriale.
+  In caso di conflitto tra versioni, la versione italiana prevale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 9 — CHECKLIST PRE-PUBBLICAZIONE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Prima di pubblicare qualsiasi articolo su balizero.com,
+verificare ogni punto di questa checklist:
+
+  [ ] Il titolo segue la formula: Beneficio + Target + Anno
+  [ ] L'apertura inizia con scenario concreto (non "in questo articolo")
+  [ ] Ogni claim legale/fiscale ha la fonte tra parentesi quadre
+  [ ] I termini indonesiani sono in corsivo alla prima occorrenza
+      con traduzione italiana in parentesi
+  [ ] Le procedure sono in elenchi numerati, non bullet
+  [ ] Nessuna frase supera 25 parole
+  [ ] Nessun paragrafo supera 4 frasi
+  [ ] Voce attiva usata in tutto il testo
+  [ ] Nessun prezzo hardcodato (usare CTA verso pricing o consulenza)
+  [ ] Nessuna garanzia di tempi o risultati
+  [ ] Disclaimer presente se l'argomento è legale/fiscale
+  [ ] Un solo CTA finale (tipo A o tipo B, mai entrambi)
+  [ ] Il CTA porta a una pagina specifica, non alla homepage
+  [ ] Nessuna comparazione negativa con concorrenti
+  [ ] Nessuna opinione politica sul governo indonesiano
+  [ ] Metadata SEO compilati (title tag, meta description, OG)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  EDT-046 — Definizione del brand voice: amico esperto di diritto
+             indonesiano, non avvocato né guida turistica
+  EDT-047 — Principio 1: Precisione — ogni claim legale/fiscale
+             deve avere fonte verificabile
+  EDT-048 — Principio 2: Empatia — riconosci la paura del lettore,
+             non minimizzarla
+  EDT-049 — Principio 3: Chiarezza — spiega prima in italiano,
+             poi introduci il termine tecnico
+  EDT-050 — Principio 4: Ottimismo fondato su dati, non cheerleading
+  EDT-051 — Regola apertura: scenario concreto, vietato
+             "In questo articolo vedremo..."
+  EDT-052 — Regola struttura: procedure in elenchi numerati,
+             non muri di bullet
+  EDT-053 — Regola citation: fonte normativa tra parentesi quadre
+             dopo ogni claim legale/fiscale
+  EDT-054 — Regola voce: attiva obbligatoria, "devi" non
+             "è necessario che"
+  EDT-055 — Regola lunghezza: max 25 parole/frase, max 4 frasi/para
+  EDT-056 — Gestione termini indonesiani: prima occorrenza corsivo
+             + traduzione in parentesi
+  EDT-057 — Disclaimer policy: obbligatorio su tutti gli articoli
+             fiscali/legali, testo standard definito
+  EDT-058 — Quattro divieti assoluti: prezzi hardcodati, garanzie
+             di risultati, denigrazione concorrenti, opinioni
+             politiche sul governo indonesiano
+  EDT-059 — Formula titolo: Beneficio + Target + Anno,
+             keyword nelle prime 6 parole
+  EDT-060 — Strategia CTA: un solo CTA per articolo (tipo A o B),
+             mai entrambi; policy traduzione IT → EN → ID
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

@@ -1,0 +1,590 @@
+PIPELINE DI INTELLIGENZA BALI INTEL
+GUIDA OPERATIVA AL SISTEMA DI SCRAPING AUTOMATIZZATO E ANALISI NORMATIVA
+2024-2025
+
+Guida operativa interna | Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 1 — COS'È IL BALI INTEL PIPELINE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il Bali Intel Pipeline è il sistema automatizzato di raccolta, analisi
+e pubblicazione di aggiornamenti normativi e notizie di business per
+il mercato indonesiano.
+
+Il sistema monitora quotidianamente le principali fonti governative e
+giornalistiche indonesiane, estrae le informazioni rilevanti per i
+clienti di Bali Zero, le analizza con AI, e le pubblica come intel
+strutturati disponibili tramite il feed interno e il motore RAG
+di Zantara.
+
+L'obiettivo primario è garantire che Zantara risponda sempre con
+informazioni aggiornate su: tasse, visti, regolamentazione societaria,
+investimenti e mercato immobiliare balinese.
+
+Il pipeline è parte integrante del sistema di conoscenza di Bali Zero.
+Ogni intel pubblicato viene indicizzato in Qdrant e diventa disponibile
+per il retrieval aumentato (RAG) nelle conversazioni con i clienti.
+
+[CLAIM EDT-031]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 2 — FONTI MONITORATE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il pipeline monitora due categorie di fonti: fonti governative ufficiali
+e fonti giornalistiche di settore.
+
+2.1 FONTI GOVERNATIVE UFFICIALI
+───────────────────────────────
+
+  - pajak.go.id (DJP — Direktorat Jenderal Pajak)
+    Ente: Direzione Generale delle Imposte del Ministero delle Finanze
+    Contenuto: PMK, PER, SE su normativa fiscale e procedura tributaria
+    Priorità: ALTA — ogni aggiornamento fiscale va lavorato entro 24h
+
+  - oss.go.id (BKPM/OSS — Online Single Submission)
+    Ente: Badan Koordinasi Penanaman Modal (agenzia investimenti)
+    Contenuto: Peraturan su licenze business, NIB, KBLI ammissibili
+    Priorità: ALTA — impatta direttamente l'apertura di PT PMA e UD
+
+  - imigrasi.go.id (Ditjen Imigrasi)
+    Ente: Direzione Generale dell'Immigrazione
+    Contenuto: Circolari su visti, KITAS, KITAP, ITAS, rinnovi
+    Priorità: ALTA — aggiornamenti visti monitorati in tempo reale
+
+  - kemenkumham.go.id (Kemenkumham)
+    Ente: Ministero della Legge e dei Diritti Umani
+    Contenuto: PP e UU su diritto societario, notariato, proprietà
+    Priorità: MEDIA-ALTA — rilevante per PT, Yayasan, Koperasi
+
+2.2 FONTI GIORNALISTICHE E DI SETTORE
+──────────────────────────────────────
+
+  - Bali Post (balipost.com)
+    Focus: Notizie locali Bali, turismo, economia regionale
+    Sezione prioritaria: "Ekonomi", "Pariwisata", "Properti"
+
+  - Kompas — Sezione Bali (kompas.com/tag/bali)
+    Focus: Copertura nazionale con angolo Bali
+    Sezione prioritaria: notizie su investimenti stranieri e regole
+
+  - Bisnis Indonesia (bisnis.com)
+    Focus: Notizie economico-finanziarie nazionali
+    Sezione prioritaria: "Kabar24", "Finansial", "Industri"
+
+  - PR Newswire Indonesia (prnewswire.com/news-releases/indonesia)
+    Focus: Comunicati stampa ufficiali di aziende e governo
+    Utilità: fonte primaria per annunci di grandi investimenti in Bali
+
+[CLAIM EDT-032]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 3 — FASI DEL PIPELINE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il pipeline si articola in cinque fasi sequenziali, dalla raccolta
+automatica alla disponibilità nel motore RAG.
+
+FASE 1 — SCRAPING NOTTURNO
+───────────────────────────
+
+  Orario: 03:00 WITA (ora di Bali, UTC+8)
+  Macchina: Pro (nuzantara@Nuzantara) — macOS locale via OpenClaw
+  Frequenza: ogni notte, dal lunedì alla domenica
+
+  Il bali-intel-scraper NON gira su Fly.io. Gira esclusivamente sulla
+  macchina Pro tramite OpenClaw. Questo è intenzionale: il scraper
+  richiede sessioni web stabili e accesso a token OAuth che non
+  sopravvivono ai cold start su Fly.io.
+
+  IMPORTANTE: Non spostare questo processo su Fly.io scheduler.
+  La perdita del page_token causerebbe re-scan completo di tutte le
+  fonti con conseguente duplicazione massiva degli intel.
+
+  Output dello scraping: articoli grezzi in JSON → staging queue
+
+[CLAIM EDT-033]
+
+FASE 2 — ANALISI AI CON GEMINI
+────────────────────────────────
+
+  Ogni articolo grezzo viene analizzato da Gemini per:
+
+  a) Rilevanza per clienti Bali Zero (score 0.0 - 1.0)
+     La rilevanza viene calcolata in base alla corrispondenza tra il
+     contenuto dell'articolo e i servizi core di Bali Zero:
+     visti, PT PMA, tasse, proprietà, KBLI, investimenti
+
+  b) Estrazione delle claim principali
+     - Chi emette la norma (Kemenkumham, DJP, Ditjen Imigrasi, BKPM)
+     - Numero ufficiale del provvedimento (PP, PMK, Permenaker, UU)
+     - Data di entrata in vigore
+     - Impatto pratico per stranieri e investitori
+
+  c) Categorizzazione automatica (vedi Sezione 4)
+
+  d) Rilevamento PRIORITY flag
+     Se la fonte è DJP, Kemenkumham o BKPM e il provvedimento è una
+     PP, PMK o Permenaker → flag automatico PRIORITY
+
+[CLAIM EDT-034]
+
+FASE 3 — REVISIONE UMANA MATTUTINA
+────────────────────────────────────
+
+  Ogni mattina Zero riceve il "Morning Brief" su Telegram:
+  una lista degli intel in staging suddivisi per rilevance score.
+
+  Workflow di revisione:
+    - Score > 0.70: già in auto-publish queue (solo spot-check)
+    - Score 0.30-0.70: richiede approvazione manuale
+    - Score < 0.30: scartati automaticamente, non visibili nel brief
+
+  Il brief include:
+    - Numero totale di articoli analizzati nella notte
+    - Numero di PRIORITY flags alzati
+    - Top 5 intel ad alto score con anteprima
+    - Link diretto alla staging queue su kita.balizero.com
+
+  La revisione manuale richiede mediamente 10-15 minuti al giorno.
+  In caso di forte attività normativa (es. Budget Law season) può
+  richiedere fino a 30 minuti.
+
+[CLAIM EDT-035]
+
+FASE 4 — PUBBLICAZIONE VIA API
+────────────────────────────────
+
+  Endpoint: POST /api/intel/scraper/submit
+  Auth: X-API-Key header con valore "internal-scraper-key"
+  Fonte del secret: Fly.io secrets → SCRAPER_API_KEY
+
+  Rate limit: 10 richieste al minuto.
+  Superare il rate limit causa errori 429 e drop degli articoli.
+  Il scraper gestisce il throttling automaticamente con backoff
+  esponenziale.
+
+  Payload per ogni intel inviato:
+    - title: titolo dell'intel
+    - content: corpo (100-300 parole)
+    - category: categoria normalizzata (vedi Sezione 4)
+    - source_url: URL originale dell'articolo
+    - published_at: data/ora di pubblicazione originale
+    - relevance_score: score Gemini (float 0.0-1.0)
+    - priority: booleano PRIORITY flag
+    - regulatory_refs: lista di PP/PMK/UU citati nel testo
+
+[CLAIM EDT-036]
+
+FASE 5 — AGGIORNAMENTO VETTORI QDRANT
+───────────────────────────────────────
+
+  Ogni intel pubblicato viene immediatamente indicizzato in Qdrant
+  nella collection appropriata tramite il pipeline di embedding.
+
+  Modello embedding: text-embedding-3-small (OpenAI, 1536 dim)
+  CRITICO: Non cambiare mai il modello di embedding senza un piano
+  completo di re-indicizzazione dei 93.283 documenti esistenti.
+
+  Gli intel recenti ricevono un boost di freshness nel ranking RAG.
+  Questo garantisce che Zantara risponda con notizie aggiornate
+  quando un cliente chiede di recenti cambiamenti normativi.
+
+  Tempo medio di indicizzazione: 2-5 secondi per intel
+  dopo la pubblicazione via API.
+
+[CLAIM EDT-037]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 4 — CATEGORIE INTEL
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il sistema utilizza sei categorie standardizzate per classificare
+ogni intel. La categoria determina il routing dell'intel verso i
+topic feed corretti e la priorità di risposta RAG.
+
+  REGULASI — Cambiamenti legislativi e normativi
+  ───────────────────────────────────────────────
+  Esempi: nuove PP, PMK, Permenaker, UU
+  Casi tipici: modifica alle leggi sul lavoro, nuove norme KBLI,
+  aggiornamenti al Omnibus Law
+  Priorità: sempre ALTA, spesso PRIORITY flag
+  Target primario: consulenti, clienti in apertura società
+
+  INVESTASI — Notizie su investimenti
+  ─────────────────────────────────────
+  Esempi: nuovi corridoi di investimento, incentivi BKPM, zone SEZ
+  Casi tipici: annunci di grandi investor stranieri a Bali,
+  apertura di nuove zone economiche speciali
+  Priorità: MEDIA-ALTA
+  Target primario: clienti PT PMA e potenziali investitori
+
+  PROPERTI — Mercato immobiliare e zoning
+  ─────────────────────────────────────────
+  Esempi: nuove regole leasehold, zoning Bali, RDTR aggiornati
+  Casi tipici: variazioni dei diritti di proprietà per stranieri,
+  aggiornamenti al Piano Regolatore di Bali
+  Priorità: MEDIA
+  Target primario: clienti con interesse su property
+
+  VISA — Aggiornamenti immigrazione e visti
+  ──────────────────────────────────────────
+  Esempi: nuovi tipi di visto, modifica requisiti KITAS, E-VOA
+  Casi tipici: introduzione di nuovi visti (Digital Nomad, Second Home),
+  estensioni o revoche di tipi di visto esistenti
+  Priorità: ALTA
+  Target primario: tutti i clienti, specialmente nuovi arrivi
+
+  FISCALE — Aggiornamenti tributari e fiscali
+  ─────────────────────────────────────────────
+  Esempi: modifica aliquote NPWP, nuove PMK DJP, aggiornamenti PPN
+  Casi tipici: variazioni del regime fiscale per stranieri residenti,
+  nuove obbligazioni dichiarative per PT PMA
+  Priorità: ALTA
+  Target primario: clienti con NPWP attivo, PT PMA operative
+
+  MERCATO — Trend economici e di mercato
+  ────────────────────────────────────────
+  Esempi: dati turismo Bali, trend prezzi immobili, indici inflazione
+  Casi tipici: rapporti BPS su crescita economica Bali, statistiche
+  arrivi stranieri, andamento del cambio IDR/EUR
+  Priorità: BASSA-MEDIA
+  Target primario: clienti in fase decisionale, potenziali investitori
+
+[CLAIM EDT-038]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 5 — SISTEMA DI QUALITY SCORING
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ogni intel riceve un relevance score da 0.0 a 1.0 calcolato da
+Gemini sulla base di quattro criteri ponderati.
+
+CRITERI DI SCORING
+──────────────────
+
+  1. Specificità geografica (peso 30%)
+     L'articolo parla esplicitamente di Bali, o di Indonesia con
+     rilevanza diretta per Bali? Articoli su Jakarta o sulle Molucche
+     senza connessione a Bali ricevono penalità.
+
+  2. Rilevanza per servizi Bali Zero (peso 40%)
+     L'argomento rientra nei servizi core? Visti, PT PMA, tasse,
+     proprietà, KBLI, lavoro dipendente per stranieri = massimo score.
+     Notizie su turismo generico = score basso.
+
+  3. Actionability per i clienti (peso 20%)
+     L'intel richiede un'azione da parte del cliente? Rinnovo visto,
+     adeguamento fiscale, aggiornamento NIB = score alto.
+     Notizie di sfondo o storiche = score basso.
+
+  4. Freschezza della fonte (peso 10%)
+     Fonte governativa primaria (DJP, Kemenkumham) > fonte
+     giornalistica > comunicato stampa > blog/opinione.
+
+SOGLIE DI AZIONE
+────────────────
+
+  Score < 0.30  → Scarto automatico
+                  L'intel non appare in nessun feed.
+                  Non viene inviato alla staging queue.
+                  Viene loggato solo per audit statistici.
+
+  Score 0.30-0.70 → Revisione umana obbligatoria
+                    L'intel entra nella staging queue.
+                    Zero riceve notifica nel morning brief.
+                    Senza approvazione entro 24h, viene archiviato.
+
+  Score > 0.70  → Auto-pubblicazione
+                  L'intel viene pubblicato senza revisione.
+                  Zero riceve solo notifica di conferma.
+                  Se è PRIORITY flag, arriva anche su Telegram.
+
+[CLAIM EDT-039]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 6 — SISTEMA DI ALERT NORMATIVO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quando le fonti DJP, Kemenkumham o BKPM pubblicano un nuovo
+provvedimento classificato come PP (Peraturan Pemerintah),
+PMK (Peraturan Menteri Keuangan) o Permenaker (Peraturan Menteri
+Ketenagakerjaan), il sistema attiva automaticamente il
+PRIORITY FLAG.
+
+COMPORTAMENTO CON PRIORITY FLAG
+─────────────────────────────────
+
+  1. L'intel viene spostato in cima alla staging queue
+     indipendentemente dal relevance score
+
+  2. Zero riceve un alert immediato su Telegram
+     (non attende il morning brief delle 08:00)
+
+  3. L'intel viene marcato visualmente nella UI con banner rosso
+
+  4. Il RAG engine riceve istruzione di citare questo intel con
+     alta priorità nelle risposte correlate per le successive 72h
+
+  5. Se il relevance score è > 0.50 (non necessariamente > 0.70),
+     l'intel può essere auto-pubblicato come PRIORITY anche senza
+     revisione umana, ma Zero riceve sempre la notifica
+
+ESEMPI DI TRIGGER PRIORITY FLAG
+──────────────────────────────────
+
+  - PMK che modifica le aliquote IVA (PPN) per servizi turistici
+  - PP che aggiorna le regole di proprietà per stranieri (HGB/HGU)
+  - Permenaker che introduce nuovi requisiti RPTKA (sponsor TKA)
+  - PMK che cambia le soglie di tassazione NPWP per non-residenti
+  - PP su Omnibus Law con ricadute su licenze PT PMA
+
+[CLAIM EDT-040]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 7 — FRESHNESS E TEMPORALITÀ DEGLI INTEL
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ogni intel contiene il campo published_at con timestamp preciso
+(formato ISO 8601, timezone Asia/Makassar, UTC+8).
+
+Il timestamp registra la data originale di pubblicazione della
+fonte, non il momento di ingestion nel pipeline. Questo permette
+a Zantara di comunicare correttamente la data della notizia
+al cliente.
+
+BOOST DI FRESHNESS NEL RAG
+────────────────────────────
+
+  Il sistema RAG applica un moltiplicatore al ranking degli intel
+  in base alla loro età:
+
+    Pubblicati nelle ultime 48h    → boost x2.0
+    Pubblicati negli ultimi 7gg    → boost x1.5
+    Pubblicati negli ultimi 30gg   → boost x1.2
+    Più vecchi di 30gg             → nessun boost (ranking standard)
+
+  Questo meccanismo garantisce che quando un cliente chiede
+  "ci sono novità sui visti?", Zantara privilegi le informazioni
+  più recenti disponibili nel corpus.
+
+ATTENZIONE: I boost di freshness si applicano solo per query
+esplicitamente time-sensitive. Per query su regole strutturali
+stabili ("come funziona la PT PMA?"), il ranking standard
+senza boost è preferibile per evitare di citare notizie
+transitorie come verità permanente.
+
+[CLAIM EDT-041]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 8 — INTEL VS ARTICOLI: DIFFERENZE STRUTTURALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il sistema editoriale di Bali Zero distingue due tipi di contenuto
+pubblicato: intel e articoli. Sono complementari, non intercambiabili.
+
+INTEL (short-form, automatizzato)
+──────────────────────────────────
+
+  Lunghezza: 100-300 parole
+  Produzione: automatizzata dal pipeline notturno
+  Voce: neutrale, fattuale, reference-first
+  Scopo: aggiornamento rapido, alimentazione del RAG
+  Struttura obbligatoria:
+    - Titolo: chi/cosa/quando in max 12 parole
+    - Corpo: claims estratte + fonte + impatto pratico
+    - Tag: categoria + regulatory refs
+    - Score: visibile solo internamente
+
+  Esempio: "DJP emette PMK-023/2025: nuovi obblighi dichiarazione
+  NPWP per residenti stranieri con reddito estero sopra 50jt IDR/mese"
+
+ARTICOLI (long-form, editoriale)
+─────────────────────────────────
+
+  Lunghezza: 1.500+ parole
+  Produzione: editoriale, con supervisione umana
+  Voce: Zantara Voice (vedi File 2 — EDT-046 attraverso EDT-060)
+  Scopo: SEO, lead generation, nurturing, conversione
+  Struttura: scenario cliente + analisi + procedura + CTA
+  Fonte dati: spesso costruiti su cluster di intel correlati
+
+  Gli articoli nascono dall'aggregazione di intel sullo stesso tema.
+  Quando il pipeline raccoglie 3+ intel correlati sullo stesso
+  argomento normativo in un periodo di 30 giorni, viene generato
+  automaticamente un "article brief" suggerito per la redazione.
+
+[CLAIM EDT-042]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 9 — DIGEST MENSILE NORMATIVO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il primo giorno di ogni mese, il pipeline genera automaticamente
+il "Monthly Intel Digest" — una raccolta dei 10 cambiamenti
+normativi più rilevanti del mese precedente.
+
+STRUTTURA DEL DIGEST MENSILE
+─────────────────────────────
+
+  1. Titolo del provvedimento normativo
+  2. Ente emittente e numero ufficiale
+  3. Data di entrata in vigore
+  4. Impatto pratico per clienti Bali Zero (max 3 frasi)
+  5. Link all'intel completo sul feed interno
+  6. Raccomandazione di azione (se applicabile)
+
+USO DEL DIGEST
+───────────────
+
+  - Newsletter mensile per subscriber della mailing list
+    (invio tramite Brevo da zantara@balizero.com)
+
+  - Briefing interno per il team Bali Zero
+
+  - Fonte strutturata per NotebookLM (NB-7 Editorial) —
+    il digest viene caricato come source mensile per
+    mantenere aggiornato il contesto normativo del notebook
+
+  - Il digest alimenta il sistema di revisione dei contenuti:
+    gli articoli esistenti sul sito vengono segnalati come
+    "da aggiornare" se coprono un tema che ha subito modifiche
+    normative rilevanti nel mese
+
+[CLAIM EDT-043]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 10 — LIMITI E CONTROLLO DI QUALITÀ
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LIMITI DEL SISTEMA
+──────────────────
+
+  - Il pipeline non sostituisce un avvocato o un konsultan pajak.
+    Estrae informazioni, non offre pareri legali.
+
+  - Il sistema può non captare provvedimenti pubblicati solo su
+    Lembaran Negara (Gazzetta Ufficiale Indonesia) senza copertura
+    giornalistica. Per questo motivo, le fonti governative dirette
+    (pajak.go.id, kemenkumham.go.id) hanno la priorità massima.
+
+  - Gli intel a relevance score 0.30-0.70 richiedono sempre occhio
+    umano prima della pubblicazione. Il sistema AI può sbagliare
+    la categorizzazione o sovrastimare l'impatto per clienti
+    stranieri di notizie rilevanti solo per cittadini indonesiani.
+
+  - Il scraper non processa documenti PDF allegati alle circolari
+    governative. Per l'analisi di PDF normativi, usare il pipeline
+    OCR separato via mcp__ocr-tesseract__*.
+
+CONTROLLI DI QUALITÀ AUTOMATICI
+──────────────────────────────────
+
+  - Deduplicazione: articoli con URL identico o titolo > 85%
+    simile nelle ultime 72h vengono scartati automaticamente
+
+  - Validazione regulatory refs: il numero di PP/PMK/UU deve
+    rispettare il formato ufficiale (es. PMK-023/PMK.03/2025)
+    altrimenti l'intel viene marcato per revisione umana
+
+  - Controllo fonte: link broken o fonte non nell'allowlist
+    causa scarto automatico con log di errore
+
+[CLAIM EDT-044]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 11 — INTEGRAZIONE CON IL SISTEMA RAG DI ZANTARA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Gli intel pubblicati diventano parte del corpus di conoscenza
+di Zantara attraverso due meccanismi:
+
+MECCANISMO 1 — QDRANT VECTOR SEARCH
+─────────────────────────────────────
+
+  Ogni intel viene embeddato con text-embedding-3-small e
+  aggiunto alla collection intel in Qdrant. Il retrieval è
+  ibrido (BM25 + Dense + RRF) con CrossEncoder reranking
+  abilitato dal 24 marzo 2026.
+
+  Quando un cliente chiede di una tematica, Zantara recupera
+  gli intel rilevanti e li usa come contesto per la risposta.
+
+MECCANISMO 2 — NOTEBOOKLM (NB-7 EDITORIAL)
+────────────────────────────────────────────
+
+  I digest mensili e gli intel PRIORITY vengono caricati
+  periodicamente come sources in NB-7. Questo permette
+  citazioni precise e grounded nelle risposte del notebook.
+
+  NB-7 è consultato da Zantara solo in zona CAUTIOUS
+  (evidence score 0.15-0.60) per rispondere a query
+  su cui la conoscenza nel corpus RAG è incerta o datata.
+
+  Le citation di NB-7 includono sempre il titolo del digest
+  o dell'intel come riferimento tracciabile.
+
+[CLAIM EDT-045]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  EDT-031 — Definizione e scopo del Bali Intel Pipeline
+  EDT-032 — Elenco fonti monitorate (governative e giornalistiche)
+  EDT-033 — Fase 1: scraping notturno su Pro via OpenClaw
+  EDT-034 — Fase 2: analisi AI con Gemini (scoring e classificazione)
+  EDT-035 — Fase 3: revisione umana mattutina via Telegram brief
+  EDT-036 — Fase 4: pubblicazione via /api/intel/scraper/submit
+  EDT-037 — Fase 5: aggiornamento vettori Qdrant (freshness boost)
+  EDT-038 — Sei categorie intel: REGULASI, INVESTASI, PROPERTI,
+             VISA, FISCALE, MERCATO
+  EDT-039 — Sistema di quality scoring: soglie 0.30 / 0.70
+  EDT-040 — Sistema di alert normativo e PRIORITY flag
+  EDT-041 — Freshness degli intel e boost RAG temporale
+  EDT-042 — Differenza strutturale tra intel (100-300w) e articoli
+             (1500+w)
+  EDT-043 — Digest mensile normativo: struttura e distribuzione
+  EDT-044 — Limiti del sistema e controlli di qualità automatici
+  EDT-045 — Integrazione con RAG Qdrant e NotebookLM NB-7
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
