@@ -128,6 +128,7 @@ export function CategoryNav({
                   onCategoryChange?.(category as ArticleCategory);
                 }
               }}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "relative flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
                 isActive ? colors.active : colors.inactive,

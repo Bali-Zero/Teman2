@@ -28,7 +28,7 @@ Example Monitored Items:
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from backend.services.compliance import (
@@ -263,7 +263,7 @@ class ProactiveComplianceMonitor:
             raise ValueError(f"Unknown deadline type: {deadline_type}")
 
         # Calculate deadline date
-        deadline_date = datetime(year, template["deadline_month"], template["deadline_day"])
+        deadline_date = datetime(year, template["deadline_month"], template["deadline_day"], tzinfo=timezone.utc)
 
         compliance_type = template["compliance_type"]
         if isinstance(compliance_type, ComplianceType):
