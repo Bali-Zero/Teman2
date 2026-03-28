@@ -207,11 +207,12 @@ export default function PortalHomePage() {
           </h2>
           <div className="space-y-2">
             {defaultDashboard.actions.map((action) => (
-              <div
+              <button
                 key={action.id}
-                onClick={() => router.push(action.href)}
+                type="button"
+                onClick={() => { window.location.href = action.href; }}
                 className={cn(
-                  'flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.01]',
+                  'flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.01] w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-accent-warm)]',
                   action.priority === 'high'
                     ? 'bg-[rgba(244,63,94,0.1)] border-[rgba(244,63,94,0.2)] text-[var(--neon-rose)]'
                     : action.priority === 'medium'
@@ -224,7 +225,7 @@ export default function PortalHomePage() {
                   <p className="text-sm opacity-80">{action.description}</p>
                 </div>
                 <ChevronRight className="w-5 h-5" />
-              </div>
+              </button>
             ))}
           </div>
         </section>
@@ -349,10 +350,11 @@ function StatusCard({
   const expiryInfo = getExpiryInfo();
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
       className={cn(
-        'crystal-stat-card cursor-pointer !flex !flex-col border transition-all duration-200 hover:scale-[1.02] hover:shadow-lg',
+        'crystal-stat-card cursor-pointer !flex !flex-col border transition-all duration-200 hover:scale-[1.02] hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-accent-warm)]',
         getStatusStyle(status)
       )}
     >
@@ -379,7 +381,7 @@ function StatusCard({
       >
         {expiryInfo.text}
       </div>
-    </div>
+    </button>
   );
 }
 
