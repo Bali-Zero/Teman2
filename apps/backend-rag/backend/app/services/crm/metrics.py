@@ -6,7 +6,7 @@ Tracks: active_clients_count, application_processing_time, and more
 import asyncio
 import functools
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
