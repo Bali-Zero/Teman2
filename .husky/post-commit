@@ -1,18 +1,10 @@
 #!/bin/sh
-# DocSentinel: auto-sync doc stats after commit (non-blocking background)
 python3 scripts/docs_sync.py --quiet 2>/dev/null &
 
-# When Pro commits to main: fast-forward 'air' branch + notify Air to rebase
+# Pro→Air sync: tell Air to pull after Pro commits
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 if [ "$BRANCH" = "main" ] && [ "$(whoami)" = "nuzantara" ]; then
-    mkdir -p ~/.openclaw/logs
-    REPO="/Users/nuzantara/Desktop/nuzantara"
-    LOG="$HOME/.openclaw/logs/git-sync.log"
-    (
-      cd "$REPO" && \
-      git branch -f air main 2>/dev/null && \
-      ssh -o ConnectTimeout=5 -o BatchMode=yes air \
-        "cd ~/Projects/nuzantara && git stash -q 2>/dev/null; git fetch pro && git rebase pro/main 2>&1; git stash pop -q 2>/dev/null || true" \
-        >> "$LOG" 2>&1
-    ) &
+    (ssh -o ConnectTimeout=5 -o BatchMode=yes air \
+      "cd ~/Projects/nuzantara && git stash -q 2>/dev/null; git pull pro main --ff-only 2>&1; git stash pop -q 2>/dev/null || true" \
+      >> ~/.openclaw/logs/git-sync.log 2>&1) &
 fi
