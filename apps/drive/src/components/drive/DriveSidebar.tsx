@@ -86,6 +86,8 @@ export function DriveSidebar({
       animate={{ width: 220, opacity: 1 }}
       exit={{ width: 0, opacity: 0 }}
       transition={{ duration: 0.2 }}
+      role="navigation"
+      aria-label="Navigazione Drive"
       className="flex h-full flex-col border-r border-slate-200/60 dark:border-slate-700/40 bg-slate-50/50 dark:bg-slate-900/30"
     >
       {/* New button - Clean minimal style */}
