@@ -18,7 +18,7 @@ import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 if TYPE_CHECKING:
     from apps.evaluator.nlm_deep_research.t4_state import T4State
@@ -34,6 +34,7 @@ NB2_ID = "cff93ab0-813a-42f2-a8de-36987e724271"
 MAX_T4_SLOTS = 11
 CB_T4_FAILURE_THRESHOLD = 3
 CB_T4_RECOVERY_MINUTES = 30
+MAX_WEBSITE_ARTICLES = 20
 
 CRITICAL_KEYWORDS = [
     "timpora",
@@ -230,14 +231,14 @@ class T4RelevanceFilter:
         self._openai_client: Optional[object] = None
         self._anthropic_client: Optional[object] = None
 
-    def _get_openai_client(self) -> object:
+    def _get_openai_client(self) -> Any:
         if self._openai_client is None:
             import openai  # noqa: PLC0415
 
             self._openai_client = openai.AsyncOpenAI()
         return self._openai_client
 
-    def _get_anthropic_client(self) -> object:
+    def _get_anthropic_client(self) -> Any:
         if self._anthropic_client is None:
             import anthropic  # noqa: PLC0415
 
@@ -431,7 +432,7 @@ class T4Fetcher:
                         mktime(entry.published_parsed), tz=timezone.utc
                     )
                 except Exception:
-                    pass
+                    logger.debug("Could not parse published_parsed for entry: %s", getattr(entry, "link", "unknown"))
 
             articles.append(
                 Article(
@@ -469,7 +470,10 @@ class T4Fetcher:
             return []
 
         articles: list[Article] = []
-        for block in soup.select(article_selector)[:20]:
+        blocks = soup.select(article_selector)
+        if len(blocks) > MAX_WEBSITE_ARTICLES:
+            logger.debug("fetch_website: capping %d blocks to %d for %s", len(blocks), MAX_WEBSITE_ARTICLES, url)
+        for block in blocks[:MAX_WEBSITE_ARTICLES]:
             title_el = block.select_one(title_selector)
             link_el = block.select_one(link_selector)
             if not title_el or not link_el:
@@ -540,7 +544,7 @@ class T4Fetcher:
                         tweet["created_at"].replace("Z", "+00:00")
                     )
                 except ValueError:
-                    pass
+                    logger.debug("Bad created_at for tweet %s: %r", tweet_id, tweet.get("created_at"))
             posts.append(
                 Post(
                     handle=handle,
