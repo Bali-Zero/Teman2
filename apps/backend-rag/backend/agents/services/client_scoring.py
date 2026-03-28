@@ -168,12 +168,12 @@ class ClientScoringService:
         quality_score = avg_rating * 20  # 0-5 -> 0-100
         practice_score = min(100, practice_count * 15)
 
-        # Days since last interaction
-        days_since_last = (
-            (datetime.now(tz=timezone.utc).replace(tzinfo=None) - last_interaction).days
-            if last_interaction
-            else 999
-        )
+        # Days since last interaction (handle both aware and naive datetimes from DB)
+        if last_interaction:
+            last_naive = last_interaction.replace(tzinfo=None) if last_interaction.tzinfo else last_interaction
+            days_since_last = (datetime.now(tz=timezone.utc).replace(tzinfo=None) - last_naive).days
+        else:
+            days_since_last = 999
 
         # Weighted LTV prediction
         ltv_score = (
