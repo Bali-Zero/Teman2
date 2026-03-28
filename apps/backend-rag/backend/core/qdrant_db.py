@@ -29,7 +29,7 @@ try:
 except ImportError:
     # Fallback for standalone execution
     class QdrantServerError(Exception):
-        def __init__(self, message: str, status_code: int, response_text: str | None = None):
+        def __init__(self, message: str, status_code: int, response_text: str | None = None) -> None:
             super().__init__(message)
             self.status_code = status_code
             self.response_text = response_text
@@ -209,7 +209,7 @@ class QdrantClient:
         collection_name: str | None = None,
         api_key: str | None = None,
         timeout: float | None = None,
-    ):
+    ) -> None:
         """
         Initialize Qdrant client.
 

@@ -17,7 +17,7 @@ class PoliticsIngestionService:
     Stores in collection 'politics_id'.
     """
 
-    def __init__(self, qdrant_url: str | None = None):
+    def __init__(self, qdrant_url: str | None = None) -> None:
         self.embedder = create_embeddings_generator()
         self.vector_db = QdrantClient(
             qdrant_url=qdrant_url,

@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 class ZohoInvoiceService:
     """Service for interacting with Zoho Invoice API."""
 
-    def __init__(self, db_pool: Any):
+    def __init__(self, db_pool: Any) -> None:
         self.db_pool = db_pool
         self.api_domain = "https://invoice.zoho.com"
         self.oauth_service = ZohoOAuthService(db_pool)

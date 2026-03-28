@@ -168,7 +168,7 @@ class AutoIngestionOrchestrator:
         ),
     }
 
-    def __init__(self, search_service=None, claude_service=None, scraper_service=None):
+    def __init__(self, search_service=None, claude_service=None, scraper_service=None) -> None:
         """
         Initialize Auto-Ingestion Orchestrator.
 

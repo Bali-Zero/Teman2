@@ -33,7 +33,7 @@ class MemoryHandler:
     - Metrics recording for lock contention
     """
 
-    def __init__(self, db_pool: asyncpg.Pool | None = None, lock_timeout: float = 5.0):
+    def __init__(self, db_pool: asyncpg.Pool | None = None, lock_timeout: float = 5.0) -> None:
         """
         Initialize the MemoryHandler.
 

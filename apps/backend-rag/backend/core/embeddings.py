@@ -47,7 +47,7 @@ class EmbeddingCache:
     Thread-safe for async usage.
     """
 
-    def __init__(self, max_size: int = 1000):
+    def __init__(self, max_size: int = 1000) -> None:
         self._cache = {}
         self._max_size = max_size
         self._hits = 0
@@ -117,7 +117,7 @@ class EmbeddingsGenerator:
         model: str | None = None,
         provider: str | None = None,
         settings: object | None = None,
-    ):
+    ) -> None:
         """
         Initialize embeddings generator.
         Automatically chooses provider based on settings.

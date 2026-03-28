@@ -41,7 +41,7 @@ class TeamMembersListPlugin(Plugin):
     Returns complete team roster with roles, departments, expertise levels, and stats.
     """
 
-    def __init__(self, config: dict | None = None, collaborator_service=None):
+    def __init__(self, config: dict | None = None, collaborator_service=None) -> None:
         """
         Initialize team list plugin
 

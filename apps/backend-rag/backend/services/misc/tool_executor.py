@@ -28,7 +28,7 @@ class ToolExecutor:
         self,
         zantara_tools: Optional["ZantaraTools"] = None,
         mcp_client: Optional["MCPClientService"] = None,
-    ):
+    ) -> None:
         """
         Initialize tool executor
 

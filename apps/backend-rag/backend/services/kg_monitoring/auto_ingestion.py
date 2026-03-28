@@ -159,7 +159,7 @@ Return ONLY the JSON object, no other text."""
         embedding_service=None,
         quality_service=None,
         db_pool=None,
-    ):
+    ) -> None:
         """
         Initialize auto ingestion service.
 

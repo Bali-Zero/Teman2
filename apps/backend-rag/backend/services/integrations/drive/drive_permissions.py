@@ -17,7 +17,7 @@ class DrivePermissionsManager:
     evitando l'uso della SDK sincrona ufficiale.
     """
 
-    def __init__(self, auth_manager: Any, http_client: httpx.AsyncClient, audit: Any | None = None):
+    def __init__(self, auth_manager: Any, http_client: httpx.AsyncClient, audit: Any | None = None) -> None:
         self.auth_manager = auth_manager
         self.http_client = http_client
         self.audit = audit

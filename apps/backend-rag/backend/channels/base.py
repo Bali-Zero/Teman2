@@ -62,7 +62,7 @@ class BaseChannel(ABC):
     - Handle platform-specific features (typing indicators, media, etc.)
     """
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         """
         Initialize channel adapter.
 

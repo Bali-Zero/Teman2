@@ -86,7 +86,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
     SECURITY POLICY: Fail-Closed - any authentication system error denies access
     """
 
-    def __init__(self, app):
+    def __init__(self, app) -> None:
         super().__init__(app)
         self.api_key_auth = APIKeyAuth()
 

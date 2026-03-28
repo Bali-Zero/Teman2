@@ -19,7 +19,7 @@ class KBLIEnricher:
         concurrency: int = 8,
         retries: int = 3,
         collection_name: str = "kbli_2025_final",
-    ):
+    ) -> None:
         self.batch_size = batch_size
         self.semaphore = asyncio.Semaphore(concurrency)
         self.retries = retries

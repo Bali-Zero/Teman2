@@ -127,7 +127,7 @@ class BM25Vectorizer:
         b: float = 0.75,
         min_token_length: int = 2,
         max_token_length: int = 50,
-    ):
+    ) -> None:
         """
         Initialize BM25 Vectorizer.
 

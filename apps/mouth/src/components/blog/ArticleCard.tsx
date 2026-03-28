@@ -65,6 +65,41 @@ function CategoryBadge({ category }: { category: ArticleCategory }) {
   );
 }
 
+/** Image with gradient fallback for missing cover images */
+function CardCoverImage({
+  src,
+  alt,
+  className,
+  priority,
+  sizes,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  priority?: boolean;
+  sizes?: string;
+}) {
+  const [hasError, setHasError] = React.useState(false);
+
+  if (hasError || !src) {
+    return (
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460]" />
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className={className}
+      priority={priority}
+      sizes={sizes}
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 // Featured article card (hero style)
 function FeaturedCard({ article, index = 0 }: ArticleCardProps) {
   const href = `/${article.category}/${article.slug}`;
@@ -79,10 +114,9 @@ function FeaturedCard({ article, index = 0 }: ArticleCardProps) {
       <Link href={href} className="block">
         {/* Background Image */}
         <div className="relative aspect-[21/9] overflow-hidden">
-          <Image
+          <CardCoverImage
             src={article.coverImage}
             alt={article.title}
-            fill
             className="object-cover transition-transform duration-700 group-hover:scale-105"
             priority
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
@@ -173,10 +207,9 @@ function DefaultCard({
       <Link href={href} className="block">
         {/* Image */}
         <div className="relative aspect-[16/10] overflow-hidden rounded-xl mb-4">
-          <Image
+          <CardCoverImage
             src={article.coverImage}
             alt={article.title}
-            fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
@@ -271,10 +304,9 @@ function CompactCard({ article, index = 0 }: ArticleCardProps) {
       <Link href={href} className="flex gap-3">
         {/* Thumbnail */}
         <div className="relative w-20 h-20 flex-shrink-0 overflow-hidden rounded-lg">
-          <Image
+          <CardCoverImage
             src={article.coverImage}
             alt={article.title}
-            fill
             className="object-cover transition-transform duration-300 group-hover:scale-110"
             sizes="80px"
           />
@@ -310,10 +342,9 @@ function HorizontalCard({ article, index = 0, showCategory = true }: ArticleCard
       <Link href={href} className="flex gap-4 md:gap-6">
         {/* Image */}
         <div className="relative w-32 md:w-48 aspect-[4/3] flex-shrink-0 overflow-hidden rounded-xl">
-          <Image
+          <CardCoverImage
             src={article.coverImage}
             alt={article.title}
-            fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 768px) 128px, 192px"
           />

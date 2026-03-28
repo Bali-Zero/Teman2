@@ -40,7 +40,7 @@ class RetryHandler:
         max_retries: int = 3,
         base_delay: float = 2.0,
         backoff_factor: int = 2,
-    ):
+    ) -> None:
         """
         Initialize RetryHandler.
 

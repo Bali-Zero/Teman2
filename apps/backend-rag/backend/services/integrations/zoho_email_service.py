@@ -108,7 +108,7 @@ class ZohoEmailService:
     Handles all Zoho Mail API operations.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         """
         Initialize ZohoEmailService.
 

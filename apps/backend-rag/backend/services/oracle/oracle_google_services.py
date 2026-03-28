@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class GoogleServices:
     """Google Cloud services manager for Oracle endpoints"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._gemini_initialized = False
         self._drive_service = None
         self._genai_client: GenAIClient | None = None

@@ -17,7 +17,7 @@ class LegalCleaner:
     page numbers, and other non-content artifacts.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the legal cleaner"""
         logger.info("LegalCleaner initialized")
 

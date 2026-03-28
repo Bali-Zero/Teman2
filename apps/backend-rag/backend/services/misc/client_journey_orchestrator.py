@@ -118,7 +118,7 @@ class ClientJourneyOrchestrator:
     REFACTORED: Delegates to specialized sub-services.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize orchestrator with sub-services."""
         self.templates_service = JourneyTemplatesService()
         self.builder_service = JourneyBuilderService(self.templates_service)

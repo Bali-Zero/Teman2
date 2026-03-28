@@ -52,7 +52,7 @@ class HierarchicalIndexer:
 
     def __init__(
         self, structure_parser, qdrant_client, embeddings, chunker=None, sparse_vectorizer=None
-    ):
+    ) -> None:
         self.parser = structure_parser
         self.qdrant = qdrant_client
         self.embeddings = embeddings

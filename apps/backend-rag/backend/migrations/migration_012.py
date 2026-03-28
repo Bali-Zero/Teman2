@@ -19,7 +19,7 @@ from backend.db.migration_base import BaseMigration
 class Migration012(BaseMigration):
     """Fix Production Schema Issues"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=12,
             sql_file="012_fix_production_schema.sql",

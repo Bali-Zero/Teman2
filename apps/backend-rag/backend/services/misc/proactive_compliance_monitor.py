@@ -66,7 +66,7 @@ class ProactiveComplianceMonitor:
         self,
         search_service=None,
         notification_service=None,  # For WhatsApp/email alerts
-    ):
+    ) -> None:
         """
         Initialize Proactive Compliance Monitor.
 

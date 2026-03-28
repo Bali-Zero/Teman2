@@ -44,7 +44,7 @@ class ScraperDataNormalizer:
     - Metrics tracking
     """
 
-    def __init__(self, config: NormalizationConfig | None = None):
+    def __init__(self, config: NormalizationConfig | None = None) -> None:
         """
         Initialize the scraper data normalizer.
 

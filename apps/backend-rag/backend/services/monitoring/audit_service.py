@@ -20,7 +20,7 @@ class AuditService:
     Service for logging security and system events to the database.
     """
 
-    def __init__(self, database_url: str | None = None):
+    def __init__(self, database_url: str | None = None) -> None:
         self.database_url = database_url or settings.database_url
         self.pool: asyncpg.Pool | None = None
         self.enabled = bool(self.database_url)

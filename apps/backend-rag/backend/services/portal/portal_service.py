@@ -484,7 +484,7 @@ class PortalService:
     MAX_UPLOADS_PER_WINDOW = 10
     RATE_WINDOW_SECONDS = 900  # 15 minutes
 
-    def __init__(self, pool: asyncpg.Pool):
+    def __init__(self, pool: asyncpg.Pool) -> None:
         self.pool = pool
         self._metrics = {
             "uploads_total": 0,

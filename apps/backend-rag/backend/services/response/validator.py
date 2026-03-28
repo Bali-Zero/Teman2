@@ -29,7 +29,7 @@ class ZantaraResponseValidator:
         r"^As an AI language model,?\s*",
     ]
 
-    def __init__(self, mode_config: dict, dry_run: bool = True):
+    def __init__(self, mode_config: dict, dry_run: bool = True) -> None:
         self.config = mode_config
         self.dry_run = dry_run
         self.violations = []

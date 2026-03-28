@@ -23,7 +23,7 @@ class IntelAnalyticsService:
     Provides historical analytics, trends, and statistics.
     """
 
-    def __init__(self, staging_service: IntelStagingService):
+    def __init__(self, staging_service: IntelStagingService) -> None:
         """
         Initialize the analytics service.
 

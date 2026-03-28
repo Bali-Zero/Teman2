@@ -38,7 +38,7 @@ class ChannelRateLimiter:
     Prevents API abuse and ensures compliance with provider limits.
     """
 
-    def __init__(self, config: RateLimitConfig):
+    def __init__(self, config: RateLimitConfig) -> None:
         self.config = config
         self.tokens: dict[str, float] = defaultdict(lambda: config.burst_size)
         self.last_refill: dict[str, float] = defaultdict(time.time)
@@ -105,7 +105,7 @@ class MessageDeduplicator:
     Prevents duplicate processing of same message (webhook retries, etc.).
     """
 
-    def __init__(self, ttl_seconds: int = 300):
+    def __init__(self, ttl_seconds: int = 300) -> None:
         self.ttl_seconds = ttl_seconds
         self.seen_hashes: dict[str, float] = {}
         self._lock = asyncio.Lock()
@@ -151,7 +151,7 @@ class ChannelMetrics:
     Tracks success rate, latency, errors for monitoring.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.counters: dict[str, int] = defaultdict(int)
         self.latencies: dict[str, list[float]] = defaultdict(list)
         self.max_latency_samples = 1000  # Keep last 1000 samples
@@ -202,7 +202,7 @@ class ConnectionPool:
     Reuses httpx.AsyncClient instances to reduce connection overhead.
     """
 
-    def __init__(self, max_connections: int = 100, timeout: float = 30.0):
+    def __init__(self, max_connections: int = 100, timeout: float = 30.0) -> None:
         self.max_connections = max_connections
         self.timeout = timeout
         self.clients: dict[str, Any] = {}  # channel -> AsyncClient

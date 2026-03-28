@@ -22,7 +22,7 @@ class VertexProvider(LLMProvider):
     Note: Currently sync-only, no streaming support.
     """
 
-    def __init__(self, project_id: str = None, location: str = "us-central1"):
+    def __init__(self, project_id: str = None, location: str = "us-central1") -> None:
         """
         Initialize Vertex AI provider.
 

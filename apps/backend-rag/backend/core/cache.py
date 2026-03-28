@@ -139,7 +139,7 @@ class CacheService:
     Each instance has its own in-memory cache (instance-level, not module-level).
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.redis_available = False
         self.redis_client = None
         self.stats = {"hits": 0, "misses": 0, "errors": 0}

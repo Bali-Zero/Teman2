@@ -19,7 +19,7 @@ from backend.db.migration_base import BaseMigration
 class Migration001(BaseMigration):
     """Fix missing PostgreSQL tables"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=1,
             sql_file="001_fix_missing_tables.sql",

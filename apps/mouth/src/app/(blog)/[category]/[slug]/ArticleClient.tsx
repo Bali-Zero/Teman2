@@ -62,6 +62,34 @@ function stripJsxComponents(content: string): string {
   return stripped.trim();
 }
 
+/** Cover image with gradient fallback when image file is missing */
+function CoverImage({ src, alt }: { src: string; alt: string }) {
+  const [hasError, setHasError] = React.useState(false);
+
+  if (hasError || !src) {
+    return (
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] flex items-center justify-center">
+        <div className="text-center px-8">
+          <Sparkles className="w-12 h-12 text-[#2251ff]/40 mx-auto mb-3" />
+          <p className="text-white/60 text-sm font-medium max-w-md">{alt}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className="object-cover object-top"
+      priority
+      sizes="(max-width: 1280px) 100vw, 1200px"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 export function ArticleClient({ category, slug, initialArticle }: ArticleClientProps) {
   const [article, setArticle] = React.useState<ArticleWithMDX | null>(() => {
     if (!initialArticle) return null;
@@ -270,17 +298,10 @@ export function ArticleClient({ category, slug, initialArticle }: ArticleClientP
           </div>
         </div>
 
-        {/* Cover image */}
+        {/* Cover image with gradient fallback for missing images */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
           <div className="relative aspect-[21/9] rounded-2xl overflow-hidden">
-            <Image
-              src={article.coverImage}
-              alt={article.coverImageAlt}
-              fill
-              className="object-cover object-top"
-              priority
-              sizes="(max-width: 1280px) 100vw, 1200px"
-            />
+            <CoverImage src={article.coverImage} alt={article.coverImageAlt} />
           </div>
         </div>
       </section>

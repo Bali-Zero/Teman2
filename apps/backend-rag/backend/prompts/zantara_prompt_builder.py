@@ -29,7 +29,7 @@ class ZantaraPromptBuilder:
     3. Optimized for the specific LLM
     """
 
-    def __init__(self, model_adapter: ModelAdapter):
+    def __init__(self, model_adapter: ModelAdapter) -> None:
         self.adapter = model_adapter
         self.identity_spec = self._load_identity()
         self.modes = self._load_modes()

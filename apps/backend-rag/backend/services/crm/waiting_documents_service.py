@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 class WaitingDocumentsService:
     """Handles automated notifications when practice moves to 'waiting_documents'."""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
         self.zoho_email_service = ZohoEmailService(db_pool)
 

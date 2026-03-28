@@ -27,7 +27,7 @@ class ExtractedGraph(BaseModel):
 
 
 class GraphExtractor:
-    def __init__(self, ai_client: ZantaraAIClient):
+    def __init__(self, ai_client: ZantaraAIClient) -> None:
         self.ai = ai_client
 
     async def extract_from_text(self, text: str, context: str = "") -> ExtractedGraph:

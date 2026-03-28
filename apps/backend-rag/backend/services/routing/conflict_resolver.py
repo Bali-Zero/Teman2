@@ -18,7 +18,7 @@ class ConflictResolver:
     REFACTORED: Extracted from SearchService to reduce complexity.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize conflict resolver"""
         self.stats = {
             "conflicts_detected": 0,

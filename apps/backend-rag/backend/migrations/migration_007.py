@@ -19,7 +19,7 @@ from backend.db.migration_base import BaseMigration
 class Migration007(BaseMigration):
     """CRM System Schema Migration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=7,
             sql_file="007_crm_system_schema.sql",

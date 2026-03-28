@@ -73,7 +73,7 @@ class OrchestratorCore:
         db_pool: Any = None,
         kg_langgraph_orchestrator: Any = None,  # KGLangGraphOrchestrator
         nlm_enrichment_service: Any = None,  # NLMEnrichmentService
-    ):
+    ) -> None:
         """
         Inizializza OrchestratorCore.
 

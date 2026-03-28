@@ -49,7 +49,7 @@ logger = get_logger(__name__)
 class ActivityLogger:
     """Centralized activity logging service"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.pool: asyncpg.Pool | None = None
         self._initialized = False
 

@@ -27,7 +27,7 @@ class MigrationManager:
     - Connection pooling for performance
     """
 
-    def __init__(self, database_url: str | None = None):
+    def __init__(self, database_url: str | None = None) -> None:
         """
         Initialize migration manager.
 

@@ -79,7 +79,7 @@ class KGExtractor:
         api_key: str | None = None,
         max_tokens: int = 4096,
         temperature: float = 0.1,  # Low temperature for consistency
-    ):
+    ) -> None:
         """
         Initialize KG Extractor
 

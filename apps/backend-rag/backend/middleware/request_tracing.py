@@ -31,7 +31,7 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
     - Stores traces in memory for debug endpoints
     """
 
-    def __init__(self, app, max_traces: int = MAX_TRACES):
+    def __init__(self, app, max_traces: int = MAX_TRACES) -> None:
         """
         Initialize request tracing middleware.
 

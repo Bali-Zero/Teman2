@@ -26,7 +26,7 @@ INVITE_EXPIRY_HOURS = 72  # 3 days
 class InviteService:
     """Service for managing client portal invitations."""
 
-    def __init__(self, pool: asyncpg.Pool):
+    def __init__(self, pool: asyncpg.Pool) -> None:
         self.pool = pool
 
     async def create_invitation(

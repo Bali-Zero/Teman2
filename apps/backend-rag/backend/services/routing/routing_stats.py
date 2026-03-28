@@ -16,7 +16,7 @@ class RoutingStatsService:
     Responsibility: Record routing metrics and provide statistics.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize routing statistics service."""
         self.fallback_stats = {
             "total_routes": 0,

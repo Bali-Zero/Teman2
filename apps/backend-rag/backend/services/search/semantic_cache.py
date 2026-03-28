@@ -44,7 +44,7 @@ class SemanticCache:
         similarity_threshold: float = 0.95,
         default_ttl: int = 3600,  # 1 hour
         max_cache_size: int = 10000,
-    ):
+    ) -> None:
         self.redis = redis_client
         self.similarity_threshold = similarity_threshold
         self.default_ttl = default_ttl

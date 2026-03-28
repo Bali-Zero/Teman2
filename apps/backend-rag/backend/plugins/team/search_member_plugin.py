@@ -37,7 +37,7 @@ class TeamMemberSearchPlugin(Plugin):
     Returns contact info, role, department, expertise level, and language.
     """
 
-    def __init__(self, config: dict | None = None, collaborator_service=None):
+    def __init__(self, config: dict | None = None, collaborator_service=None) -> None:
         """
         Initialize team search plugin
 

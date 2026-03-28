@@ -26,7 +26,7 @@ class LegalStructureParser:
     Recognizes: Konsiderans, BAB, Bagian, Paragraf, Pasal, Ayat, Penjelasan.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the structure parser"""
         logger.info("LegalStructureParser initialized")
 

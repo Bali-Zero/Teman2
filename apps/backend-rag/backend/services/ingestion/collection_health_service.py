@@ -78,7 +78,7 @@ class CollectionHealthService:
     - Admin dashboard data
     """
 
-    def __init__(self, search_service=None, qdrant_client=None):
+    def __init__(self, search_service=None, qdrant_client=None) -> None:
         """
         Initialize health monitor.
 

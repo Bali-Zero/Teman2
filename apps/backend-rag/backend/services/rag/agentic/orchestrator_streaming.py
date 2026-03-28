@@ -48,7 +48,7 @@ class OrchestratorStreamingManager:
     - Formatta events per SSE
     """
 
-    def __init__(self, max_event_errors: int = 10, event_validation_enabled: bool = True):
+    def __init__(self, max_event_errors: int = 10, event_validation_enabled: bool = True) -> None:
         """
         Inizializza il streaming manager.
 

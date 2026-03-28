@@ -196,7 +196,7 @@ class GenAIClient:
     FLASH_MODEL = "gemini-3-flash-preview"  # Primary model
     PRO_HIGH_MODEL = "gemini-3-flash-preview"  # Same as flash
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self, api_key: str | None = None) -> None:
         """
         Initialize GenAI client.
 
@@ -481,7 +481,7 @@ class ChatSession:
         model: str,
         system_instruction: str | None = None,
         history: list[dict] | None = None,
-    ):
+    ) -> None:
         """
         Initialize chat session.
 

@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 class TestAnalyzer:
     """Analyzes test files for various quality issues."""
 
-    def __init__(self, repo_path: Path):
+    def __init__(self, repo_path: Path) -> None:
         self.repo_path = repo_path
 
     def analyze_test_file(self, test_file: Path) -> dict[str, Any]:
@@ -226,7 +226,7 @@ class TestAnalyzer:
 class DuplicateDetector:
     """Detects semantic duplicates in test files."""
 
-    def __init__(self, llm_adapter=None):
+    def __init__(self, llm_adapter=None) -> None:
         self.llm_adapter = llm_adapter
 
     def find_duplicates(self, test_files: list[Path]) -> list[dict[str, Any]]:
@@ -365,7 +365,7 @@ Consider: test purpose, assertions, structure, and functionality.
 class OrphanDetector:
     """Detects orphaned tests (tests for deleted source code)."""
 
-    def __init__(self, repo_path: Path):
+    def __init__(self, repo_path: Path) -> None:
         self.repo_path = repo_path
 
     def find_orphans(self, test_files: list[Path]) -> list[dict[str, Any]]:

@@ -24,7 +24,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
     Middleware to monitor HTTP errors and send alerts for 4xx/5xx responses
     """
 
-    def __init__(self, app, alert_service=None):
+    def __init__(self, app, alert_service=None) -> None:
         super().__init__(app)
         self.alert_service = alert_service
         self._latency_alert_last_sent: dict[str, float] = {}

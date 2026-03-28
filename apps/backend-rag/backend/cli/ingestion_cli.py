@@ -39,7 +39,7 @@ class IngestionCLI:
     - List available ingestion types
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.ingestion_service = IngestionService()
         self.legal_ingestion_service = LegalIngestionService()
 

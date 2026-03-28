@@ -31,7 +31,7 @@ class WhatsAppChannelAdapter(BaseChannel):
     - Media support (images, documents)
     """
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         """Initialize WhatsApp adapter."""
         super().__init__(config)
 

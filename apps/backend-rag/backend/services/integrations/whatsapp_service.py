@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class WhatsAppService:
     """Service for interacting with WhatsApp Business Cloud API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._token = settings.whatsapp_api_token
         self._phone_number_id = settings.whatsapp_phone_number_id
         self._client: httpx.AsyncClient | None = None

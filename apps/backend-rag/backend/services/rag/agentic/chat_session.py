@@ -26,7 +26,7 @@ class ChatSession:
         model: str,
         history: list[dict] | None = None,
         system_instruction: str = "",
-    ):
+    ) -> None:
         """
         Initialize ChatSession with model and history.
 
@@ -140,7 +140,7 @@ class MockChatSession:
         history: list[dict] | None = None,
         model: str = "mock",
         system_instruction: str = "",
-    ):
+    ) -> None:
         """
         Initialize MockChatSession.
 
@@ -170,7 +170,7 @@ class MockChatSession:
         )
 
         class MockResponse:
-            def __init__(self, text: str):
+            def __init__(self, text: str) -> None:
                 self.text = text
                 self.candidates = []
 

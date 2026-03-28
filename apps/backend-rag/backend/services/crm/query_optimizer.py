@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class CRMQueryOptimizer:
     """Ottimizzatore query per operazioni CRM frequenti."""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
 
     async def batch_insert_clients(self, clients: list[dict[str, Any]]) -> list[int]:

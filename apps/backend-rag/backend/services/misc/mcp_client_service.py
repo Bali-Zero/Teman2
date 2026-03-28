@@ -18,7 +18,7 @@ class MCPClientService:
     Connette l'AI a server MCP esterni per estendere le capacità.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sessions: dict[str, ClientSession] = {}
         self.available_tools: dict[str, dict] = {}
         self._initialized = False

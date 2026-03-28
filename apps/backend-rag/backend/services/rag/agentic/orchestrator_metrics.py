@@ -34,7 +34,7 @@ class OrchestratorMetricsManager:
     - Logging strutturato per analytics
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Inizializza il metrics manager."""
         pass
 

@@ -24,7 +24,7 @@ class UserContextService:
         self,
         personality_service: PersonalityService | None = None,
         memory_service: MemoryServicePostgres | None = None,
-    ):
+    ) -> None:
         """
         Initialize user context service.
 

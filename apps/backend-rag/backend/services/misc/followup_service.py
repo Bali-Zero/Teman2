@@ -79,7 +79,7 @@ class FollowupService:
     - Fast generation using ZANTARA AI
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize follow-up service with ZANTARA AI
         """

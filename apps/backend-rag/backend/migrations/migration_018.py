@@ -19,7 +19,7 @@ class Migration018:
     description = "Create collective memory tables for shared knowledge"
     dependencies = [2]  # Depends on memory system (migration 002)
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sql_file = (
             Path(__file__).parent.parent / "db" / "migrations" / "018_collective_memory.sql"
         )

@@ -80,7 +80,7 @@ class IngestionLogger:
     - Structured JSON output for analysis
     """
 
-    def __init__(self, service_name: str = "ingestion"):
+    def __init__(self, service_name: str = "ingestion") -> None:
         """
         Initialize the ingestion logger.
 

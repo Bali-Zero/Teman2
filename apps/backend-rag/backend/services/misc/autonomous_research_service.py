@@ -73,7 +73,7 @@ class AutonomousResearchService:
     CONFIDENCE_THRESHOLD = 0.7  # Stop if confidence >= this
     MIN_RESULTS_THRESHOLD = 3  # Minimum results to consider
 
-    def __init__(self, search_service, query_router, zantara_ai_service):
+    def __init__(self, search_service, query_router, zantara_ai_service) -> None:
         """
         Initialize Autonomous Research Agent.
 

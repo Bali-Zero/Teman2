@@ -7,7 +7,7 @@ from backend.db.migration_base import BaseMigration
 
 
 class Migration999(BaseMigration):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=999,
             sql_file="013_fix_missing_rag_tables.sql",

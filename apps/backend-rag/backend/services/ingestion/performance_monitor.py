@@ -77,7 +77,7 @@ class PerformanceMonitor:
     - Resource utilization monitoring
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.metrics_history: list[PerformanceMetric] = []
         self.active_alerts: dict[str, Alert] = {}
         self.performance_thresholds: dict[str, dict[str, float]] = self._initialize_thresholds()

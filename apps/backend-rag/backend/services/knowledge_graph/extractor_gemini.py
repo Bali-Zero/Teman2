@@ -41,7 +41,7 @@ class GeminiKGExtractor:
         api_key: str | None = None,
         max_tokens: int = 4096,
         temperature: float = 0.1,
-    ):
+    ) -> None:
         """
         Initialize Gemini KG Extractor with Google AI Studio
 

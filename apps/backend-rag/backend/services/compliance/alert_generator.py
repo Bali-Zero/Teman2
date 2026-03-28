@@ -52,7 +52,7 @@ class AlertGeneratorService:
     Responsibility: Generate alerts from compliance items.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize alert generator service."""
         self.alerts: dict[str, ComplianceAlert] = {}
         self.generator_stats = {

@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 class WorkflowAnalyticsRepository:
     """Repository for workflow analytics persistence and aggregation."""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
 
     # ========== WRITE OPERATIONS ==========

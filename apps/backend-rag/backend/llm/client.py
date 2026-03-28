@@ -30,7 +30,7 @@ class UnifiedLLMClient:
         ])
     """
 
-    def __init__(self, providers: list[LLMProvider]):
+    def __init__(self, providers: list[LLMProvider]) -> None:
         """
         Initialize with a list of providers in priority order.
 

@@ -37,7 +37,7 @@ class ChannelRouter:
         await router.route_message("web", web_api_request)
     """
 
-    def __init__(self, conversation_engine: "ConversationEngine"):
+    def __init__(self, conversation_engine: "ConversationEngine") -> None:
         """
         Initialize channel router.
 

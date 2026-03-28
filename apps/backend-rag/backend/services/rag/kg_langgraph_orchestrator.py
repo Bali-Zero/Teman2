@@ -590,7 +590,7 @@ class KGLangGraphOrchestrator:
         # result["workflow"] contains the synthesized workflow
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         """
         Initialize orchestrator with database pool.
 

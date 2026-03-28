@@ -37,7 +37,7 @@ BATCH_SIZE = 10  # Process 10 clients per run to avoid overloading Ollama
 class BirthplaceEnrichmentService:
     """Service to enrich client birthplace data with cultural context."""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
         self._client: httpx.AsyncClient | None = None
 

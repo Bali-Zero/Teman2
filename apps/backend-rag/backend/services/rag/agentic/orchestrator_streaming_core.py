@@ -39,7 +39,7 @@ class OrchestratorStreamingCore:
         self,
         core: OrchestratorCore,
         streaming_manager: OrchestratorStreamingManager,
-    ):
+    ) -> None:
         """
         Inizializza OrchestratorStreamingCore.
 

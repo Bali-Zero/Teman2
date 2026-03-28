@@ -21,7 +21,7 @@ class OrchestratorContextManager:
         db_pool: Any,
         memory_handler: Any,
         context_window_manager: ContextWindowManager,
-    ):
+    ) -> None:
         self.db_pool = db_pool
         self.memory_handler = memory_handler
         self.context_window_manager = context_window_manager

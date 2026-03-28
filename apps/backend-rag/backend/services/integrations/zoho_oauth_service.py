@@ -43,7 +43,7 @@ class ZohoOAuthService:
     # Refresh token before expiry (5 minutes buffer)
     TOKEN_EXPIRY_BUFFER = timedelta(minutes=5)
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         """
         Initialize ZohoOAuthService.
 

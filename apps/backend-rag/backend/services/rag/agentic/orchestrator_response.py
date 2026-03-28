@@ -33,7 +33,7 @@ class OrchestratorResponseBuilder:
     - Valida response structure
     """
 
-    def __init__(self, entity_extractor: EntityExtractionService | None = None):
+    def __init__(self, entity_extractor: EntityExtractionService | None = None) -> None:
         """
         Inizializza il response builder.
 

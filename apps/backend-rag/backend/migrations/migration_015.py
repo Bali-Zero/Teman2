@@ -19,7 +19,7 @@ from backend.db.migration_base import BaseMigration
 class Migration015(BaseMigration):
     """Add Drive Columns Migration"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             migration_number=15,
             sql_file="015_add_drive_columns.sql",

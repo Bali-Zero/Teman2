@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class ProcessAutomationService:
     """Handles automated notifications for practice status changes."""
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
         self.zoho_email_service = ZohoEmailService(db_pool)
 
