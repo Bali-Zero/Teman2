@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import {
   ArrowLeft,
   FolderKanban,
@@ -11,18 +11,37 @@ import {
   User,
   Search,
   Check,
-  Briefcase,
   DollarSign,
   UserCheck,
   Calendar,
-} from 'lucide-react';
-import Link from 'next/link';
-import { api } from '@/lib/api';
-import type { CreatePracticeParams, Client } from '@/lib/api/crm/crm.types';
-import { createPracticeSchema, flattenErrors } from '@/lib/api/crm/crm.schemas';
-import { casesMetrics } from '@/lib/metrics/cases-metrics';
-import { logger } from '@/lib/logger';
-import { toError } from '@/lib/types/common';
+  ChevronDown,
+  Tag,
+} from "lucide-react";
+import Link from "next/link";
+import { api } from "@/lib/api";
+import type { CreatePracticeParams, Client } from "@/lib/api/crm/crm.types";
+import { createPracticeSchema, flattenErrors } from "@/lib/api/crm/crm.schemas";
+import { casesMetrics } from "@/lib/metrics/cases-metrics";
+import { logger } from "@/lib/logger";
+import { toError } from "@/lib/types/common";
+
+interface ServiceItem {
+  code: string;
+  name: string;
+  description: string | null;
+  base_price: number | null;
+  typical_duration_days: number | null;
+}
+
+interface ServiceCategory {
+  code: string;
+  label: string;
+  services: ServiceItem[];
+}
+
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat("id-ID").format(price);
+}
 
 export default function NewPracticePage() {
   const router = useRouter();
@@ -31,54 +50,90 @@ export default function NewPracticePage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const preselectedClientId = searchParams?.get('client_id')
-    ? Number(searchParams.get('client_id'))
+  const preselectedClientId = searchParams?.get("client_id")
+    ? Number(searchParams.get("client_id"))
     : undefined;
 
+  // Service catalog from backend
+  const [catalog, setCatalog] = useState<ServiceCategory[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+
+  // Form state
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedServiceCode, setSelectedServiceCode] = useState("");
   const [formData, setFormData] = useState({
-    title: '', // Maps to notes
-    practice_type_code: 'visa',
+    title: "",
     client_id: preselectedClientId,
-    quoted_price: '',
-    assigned_to: '',
-    priority: 'normal',
-    start_date: '',
+    quoted_price: "",
+    assigned_to: "",
+    priority: "normal" as "normal" | "high" | "urgent",
+    start_date: "",
   });
 
   // Client Search State
-  const [clientSearch, setClientSearch] = useState('');
+  const [clientSearch, setClientSearch] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isSearchingClients, setIsSearchingClients] = useState(false);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // Metrics tracking
-  const startTime = useRef(performance.now());
   const userEmail = useRef<string | null>(null);
 
-  // Initialize metrics tracking on mount
+  const servicesInCategory = useMemo(() => {
+    if (!selectedCategory) return [];
+    const cat = catalog.find((c) => c.code === selectedCategory);
+    return cat?.services ?? [];
+  }, [catalog, selectedCategory]);
+
+  const selectedService = useMemo(() => {
+    if (!selectedServiceCode) return null;
+    for (const cat of catalog) {
+      const svc = cat.services.find((s) => s.code === selectedServiceCode);
+      if (svc) return svc;
+    }
+    return null;
+  }, [catalog, selectedServiceCode]);
+
+  // Load catalog on mount
+  useEffect(() => {
+    const loadCatalog = async () => {
+      try {
+        const data = await api.crm.getPracticeTypesCatalog();
+        setCatalog(data.categories);
+      } catch (err) {
+        logger.error(
+          "Failed to load practice types catalog",
+          { component: "NewProcess", action: "loadCatalog" },
+          toError(err),
+        );
+        toast.error("Error", "Failed to load service catalog");
+      } finally {
+        setCatalogLoading(false);
+      }
+    };
+    loadCatalog();
+  }, []);
+
   useEffect(() => {
     const initMetrics = async () => {
       try {
         const user = await api.getProfile();
         userEmail.current = user.email;
-        casesMetrics.trackPageView('new', undefined, user.email);
+        casesMetrics.trackPageView("new", undefined, user.email);
       } catch (err) {
         logger.error(
-          'Failed to init metrics',
-          { component: 'NewProcess', action: 'initMetrics' },
-          toError(err)
+          "Failed to init metrics",
+          { component: "NewProcess", action: "initMetrics" },
+          toError(err),
         );
       }
     };
-
     initMetrics();
   }, []);
 
-  // Load initial client if provided in URL
   useEffect(() => {
-    const preselectedId = searchParams?.get('client_id');
+    const preselectedId = searchParams?.get("client_id");
     if (preselectedId) {
       api.crm
         .getClient(Number(preselectedId))
@@ -86,11 +141,10 @@ export default function NewPracticePage() {
           setSelectedClient(client);
           setFormData((prev) => ({ ...prev, client_id: client.id }));
         })
-        .catch((err) => logger.error('Failed to load preselected client', err));
+        .catch((err) => logger.error("Failed to load preselected client", err));
     }
   }, [searchParams]);
 
-  // Client Search Logic
   useEffect(() => {
     const searchClients = async () => {
       if (!clientSearch.trim()) {
@@ -99,60 +153,56 @@ export default function NewPracticePage() {
       }
       setIsSearchingClients(true);
       const apiStart = performance.now();
-
       try {
-        // ✅ Increased limit from 5 to 20 to show more search results
         const results = await api.crm.getClients({
           search: clientSearch,
           limit: 20,
         });
         const apiDuration = performance.now() - apiStart;
         casesMetrics.trackApiCall(
-          '/api/crm/clients/search',
-          'GET',
+          "/api/crm/clients/search",
+          "GET",
           true,
           apiDuration,
           undefined,
-          userEmail.current || undefined
+          userEmail.current || undefined,
         );
         casesMetrics.trackClientSearch(
           clientSearch,
           results.length,
-          userEmail.current || undefined
+          userEmail.current || undefined,
         );
         setClients(results);
       } catch (error) {
         const apiDuration = performance.now() - apiStart;
         casesMetrics.trackApiCall(
-          '/api/crm/clients/search',
-          'GET',
+          "/api/crm/clients/search",
+          "GET",
           false,
           apiDuration,
           undefined,
-          userEmail.current || undefined
+          userEmail.current || undefined,
         );
         casesMetrics.trackError(
-          'Client Search Failed',
+          "Client Search Failed",
           (error as Error).message,
-          'CasesNewPage',
+          "CasesNewPage",
           undefined,
-          userEmail.current || undefined
+          userEmail.current || undefined,
         );
         logger.error(
-          'Failed to search clients',
-          { component: 'NewProcess', action: 'searchClients' },
-          toError(error)
+          "Failed to search clients",
+          { component: "NewProcess", action: "searchClients" },
+          toError(error),
         );
       } finally {
         setIsSearchingClients(false);
       }
     };
-
     const debounce = setTimeout(searchClients, 300);
     return () => clearTimeout(debounce);
   }, [clientSearch]);
 
-  // Close dropdown on outside click or Escape
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -160,24 +210,48 @@ export default function NewPracticePage() {
       }
     };
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowClientDropdown(false);
+      if (e.key === "Escape") setShowClientDropdown(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, []);
+
+  const handleCategoryChange = (catCode: string) => {
+    setSelectedCategory(catCode);
+    setSelectedServiceCode("");
+    setFormData((prev) => ({ ...prev, quoted_price: "" }));
+  };
+
+  const handleServiceChange = (serviceCode: string) => {
+    setSelectedServiceCode(serviceCode);
+    const cat = catalog.find((c) => c.code === selectedCategory);
+    const svc = cat?.services.find((s) => s.code === serviceCode);
+    if (svc?.base_price) {
+      setFormData((prev) => ({
+        ...prev,
+        quoted_price: String(svc.base_price),
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, quoted_price: "" }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFieldErrors({});
 
-    // Validate with Zod schema
+    if (!selectedServiceCode) {
+      setFieldErrors({ service: "Select a service" });
+      return;
+    }
+
     const result = createPracticeSchema.safeParse({
       client_id: formData.client_id,
-      practice_type_code: formData.practice_type_code,
+      practice_type_code: selectedServiceCode,
       notes: formData.title,
     });
 
@@ -185,48 +259,49 @@ export default function NewPracticePage() {
       const errors = flattenErrors(result.error);
       setFieldErrors(errors);
       casesMetrics.trackError(
-        'Validation Error',
-        Object.values(errors).join(', '),
-        'CasesNewPage',
+        "Validation Error",
+        Object.values(errors).join(", "),
+        "CasesNewPage",
         undefined,
-        userEmail.current || undefined
+        userEmail.current || undefined,
       );
       return;
     }
 
     setIsLoading(true);
     casesMetrics.trackButtonClick(
-      'Create Case',
-      'CasesNewPage',
+      "Create Case",
+      "CasesNewPage",
       undefined,
       undefined,
-      userEmail.current || undefined
+      userEmail.current || undefined,
     );
-    casesMetrics.startPerformanceMark('case_creation');
+    casesMetrics.startPerformanceMark("case_creation");
     const apiStart = performance.now();
 
     try {
       const user = await api.getProfile();
 
-      // Check for duplicate practices (same client + same type + active status)
-      const existingPractices = await api.crm.getClientPractices(result.data.client_id);
+      const existingPractices = await api.crm.getClientPractices(
+        result.data.client_id,
+      );
       const duplicateCheck = existingPractices.find(
         (p) =>
           p.practice_type_code === result.data.practice_type_code &&
-          !['completed', 'cancelled'].includes(p.status)
+          !["completed", "cancelled"].includes(p.status),
       );
 
       if (duplicateCheck) {
         toast.error(
-          'Duplicate Process',
-          `Client already has an active ${result.data.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Please complete or cancel it first.`
+          "Duplicate Process",
+          `Client already has an active ${selectedService?.name || result.data.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Complete or cancel it first.`,
         );
         casesMetrics.trackError(
-          'Duplicate Process Blocked',
+          "Duplicate Process Blocked",
           `Prevented duplicate ${result.data.practice_type_code} for client ${result.data.client_id}`,
-          'CasesNewPage',
+          "CasesNewPage",
           duplicateCheck.id,
-          user.email
+          user.email,
         );
         return;
       }
@@ -234,95 +309,106 @@ export default function NewPracticePage() {
       const backendData: CreatePracticeParams = {
         client_id: result.data.client_id,
         practice_type_code: result.data.practice_type_code,
-        status: 'inquiry',
-        priority: (formData.priority || 'normal') as 'normal' | 'high' | 'urgent',
+        status: "inquiry",
+        priority: formData.priority,
         notes: result.data.notes,
-        ...(formData.quoted_price ? { quoted_price: Number(formData.quoted_price) } : {}),
+        ...(formData.quoted_price
+          ? { quoted_price: Number(formData.quoted_price) }
+          : {}),
         ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
         ...(formData.start_date ? { start_date: formData.start_date } : {}),
       };
 
-      const createdPractice = await api.crm.createPractice(backendData, user.email);
+      const createdPractice = await api.crm.createPractice(
+        backendData,
+        user.email,
+      );
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
-        '/api/crm/practices/create',
-        'POST',
+        "/api/crm/practices/create",
+        "POST",
         true,
         apiDuration,
         undefined,
-        user.email
+        user.email,
       );
 
-      // Track case creation
-      const caseId = (createdPractice as any)?.id || 0;
+      const caseId = createdPractice?.id || 0;
       casesMetrics.trackCaseCreation(
         caseId,
         result.data.practice_type_code,
         result.data.client_id,
-        user.email
+        user.email,
       );
-      casesMetrics.endPerformanceMark('case_creation', caseId, user.email);
+      casesMetrics.endPerformanceMark("case_creation", caseId, user.email);
 
-      toast.success('Process Created', 'Successfully created new process.');
-      // Return to client page if we came from one, otherwise go to the new process detail
+      toast.success(
+        "Process Created",
+        `${selectedService?.name || "Process"} created successfully.`,
+      );
       if (preselectedClientId) {
         router.push(`/clients/${preselectedClientId}?tab=process`);
       } else {
-        const newId = (createdPractice as any)?.id;
-        router.push(newId ? `/process/${newId}` : '/process');
+        const newId = createdPractice?.id;
+        router.push(newId ? `/process/${newId}` : "/process");
       }
     } catch (error) {
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
-        '/api/crm/practices/create',
-        'POST',
+        "/api/crm/practices/create",
+        "POST",
         false,
         apiDuration,
         undefined,
-        userEmail.current || undefined
+        userEmail.current || undefined,
       );
       casesMetrics.trackError(
-        'Create Case Failed',
+        "Create Case Failed",
         (error as Error).message,
-        'CasesNewPage',
+        "CasesNewPage",
         undefined,
-        userEmail.current || undefined
+        userEmail.current || undefined,
       );
-
       logger.error(
-        'Failed to create case',
-        { component: 'NewProcess', action: 'createCase' },
-        toError(error)
+        "Failed to create case",
+        { component: "NewProcess", action: "createCase" },
+        toError(error),
       );
-      toast.error('Error', (error as Error).message);
+      toast.error("Error", (error as Error).message);
     } finally {
       setIsLoading(false);
     }
   };
 
   const inputClass =
-    'w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all';
-  const labelClass = 'text-sm font-medium text-[var(--foreground)] mb-1.5 block';
+    "w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all";
+  const labelClass =
+    "text-sm font-medium text-[var(--foreground)] mb-1.5 block";
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/process">
-          <Button variant="ghost" size="icon" aria-label="Go back to process list">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Go back to process list"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">New Process</h1>
-          <p className="text-sm text-[var(--foreground-muted)]">Start a new process</p>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">
+            New Process
+          </h1>
+          <p className="text-sm text-[var(--foreground-muted)]">
+            Select the service and define the details
+          </p>
         </div>
       </div>
 
-      {/* Form */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-8 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Form-level error */}
           {fieldErrors._form && (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
               {fieldErrors._form}
@@ -334,7 +420,6 @@ export default function NewPracticePage() {
             <label className={labelClass}>
               Client <span className="text-red-500">*</span>
             </label>
-
             {selectedClient ? (
               <div className="flex items-center justify-between p-3 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10">
                 <div className="flex items-center gap-3">
@@ -346,7 +431,7 @@ export default function NewPracticePage() {
                       {selectedClient.full_name}
                     </p>
                     <p className="text-xs text-[var(--foreground-muted)]">
-                      {selectedClient.email || 'No email'}
+                      {selectedClient.email || "No email"}
                     </p>
                   </div>
                 </div>
@@ -357,7 +442,7 @@ export default function NewPracticePage() {
                   onClick={() => {
                     setSelectedClient(null);
                     setFormData((prev) => ({ ...prev, client_id: undefined }));
-                    setClientSearch('');
+                    setClientSearch("");
                   }}
                 >
                   Change
@@ -381,8 +466,6 @@ export default function NewPracticePage() {
                 {isSearchingClients && (
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-[var(--foreground-muted)]" />
                 )}
-
-                {/* Search Results Dropdown */}
                 {showClientDropdown && clientSearch && (
                   <div className="absolute z-10 w-full mt-1 bg-[var(--background-elevated)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {clients.length > 0 ? (
@@ -405,7 +488,9 @@ export default function NewPracticePage() {
                               {client.full_name}
                             </p>
                             <p className="text-xs text-[var(--foreground-muted)]">
-                              {client.email || client.phone || 'No contact info'}
+                              {client.email ||
+                                client.phone ||
+                                "No contact info"}
                             </p>
                           </div>
                           {client.nationality && (
@@ -417,10 +502,11 @@ export default function NewPracticePage() {
                       ))
                     ) : (
                       <div className="p-4 text-center text-sm text-[var(--foreground-muted)]">
-                        {isSearchingClients ? 'Searching...' : 'No clients found'}
+                        {isSearchingClients
+                          ? "Searching..."
+                          : "No clients found"}
                       </div>
                     )}
-                    {/* Show hint if max results reached */}
                     {clients.length === 20 && (
                       <div className="px-4 py-2 text-xs text-[var(--foreground-muted)] border-t border-[var(--border)] bg-[var(--background-secondary)]/30">
                         Showing top 20 results. Type more to refine search.
@@ -431,43 +517,115 @@ export default function NewPracticePage() {
               </div>
             )}
             {fieldErrors.client_id && (
-              <p className="text-xs text-red-400 mt-1">{fieldErrors.client_id}</p>
+              <p className="text-xs text-red-400 mt-1">
+                {fieldErrors.client_id}
+              </p>
             )}
           </div>
 
-          {/* Process Type */}
-          <div className="space-y-2">
-            <label className={labelClass}>Process Type</label>
-            <div className="relative">
-              <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
-              <select
-                value={formData.practice_type_code}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    practice_type_code: e.target.value,
-                  }))
-                }
-                className={`${inputClass} appearance-none cursor-pointer`}
-              >
-                <option value="visa">VISA</option>
-                <option value="extension_visa">EXTENSION VISA</option>
-                <option value="kitas">KITAS</option>
-                <option value="extension_kitas">EXTENSION KITAS</option>
-                <option value="tax">TAX</option>
-                <option value="new_pt">NEW PT</option>
-                <option value="revision_pt">REVISION PT</option>
-                <option value="accessories">ACCESSORIES</option>
-              </select>
-            </div>
+          {/* Service Selection — 2 levels */}
+          <div className="space-y-4">
+            <label className={labelClass}>
+              Service <span className="text-red-500">*</span>
+            </label>
+            {catalogLoading ? (
+              <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)] py-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading services...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="relative">
+                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)] pointer-events-none" />
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    className={`${inputClass} appearance-none cursor-pointer pr-10`}
+                  >
+                    <option value="">-- Select category --</option>
+                    {catalog.map((cat) => (
+                      <option key={cat.code} value={cat.code}>
+                        {cat.label} ({cat.services.length})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="relative">
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)] pointer-events-none" />
+                  <select
+                    value={selectedServiceCode}
+                    onChange={(e) => handleServiceChange(e.target.value)}
+                    disabled={!selectedCategory}
+                    className={`${inputClass} appearance-none cursor-pointer pr-10 pl-4 ${!selectedCategory ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    <option value="">
+                      {selectedCategory
+                        ? "-- Select service --"
+                        : "Select category first"}
+                    </option>
+                    {servicesInCategory.map((svc) => (
+                      <option key={svc.code} value={svc.code}>
+                        {svc.name}
+                        {svc.base_price
+                          ? ` — Rp ${formatPrice(svc.base_price)}`
+                          : " — Quote"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {selectedService && (
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-[var(--accent)]/20 bg-[var(--accent)]/5">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-[var(--foreground)]">
+                    {selectedService.name}
+                  </p>
+                  {selectedService.description && (
+                    <p className="text-xs text-[var(--foreground-muted)] mt-0.5">
+                      {selectedService.description}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  {selectedService.base_price ? (
+                    <p className="text-sm font-semibold text-[var(--accent)]">
+                      Rp {formatPrice(selectedService.base_price)}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-[var(--foreground-muted)] italic">
+                      Contact for quote
+                    </p>
+                  )}
+                  {selectedService.typical_duration_days && (
+                    <p className="text-xs text-[var(--foreground-muted)]">
+                      ~{selectedService.typical_duration_days} days
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {fieldErrors.service && (
+              <p className="text-xs text-red-400">{fieldErrors.service}</p>
+            )}
+            {fieldErrors.practice_type_code && (
+              <p className="text-xs text-red-400">
+                {fieldErrors.practice_type_code}
+              </p>
+            )}
           </div>
 
-          {/* Quoted Price + Assigned To (optional, side by side) */}
+          {/* Quoted Price + Assigned To */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className={labelClass}>
-                Quoted Price{' '}
-                <span className="text-[var(--foreground-muted)] font-normal">(IDR, optional)</span>
+                Quoted Price{" "}
+                <span className="text-[var(--foreground-muted)] font-normal">
+                  (IDR)
+                </span>
               </label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
@@ -477,24 +635,37 @@ export default function NewPracticePage() {
                   step="100000"
                   value={formData.quoted_price}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, quoted_price: e.target.value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      quoted_price: e.target.value,
+                    }))
                   }
                   className={inputClass}
-                  placeholder="e.g. 5000000"
+                  placeholder="Auto-filled from catalog"
                 />
               </div>
+              {formData.quoted_price && (
+                <p className="text-xs text-[var(--foreground-muted)]">
+                  Rp {formatPrice(Number(formData.quoted_price))}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <label className={labelClass}>
-                Assigned To{' '}
-                <span className="text-[var(--foreground-muted)] font-normal">(optional)</span>
+                Assigned To{" "}
+                <span className="text-[var(--foreground-muted)] font-normal">
+                  (optional)
+                </span>
               </label>
               <div className="relative">
                 <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
                 <select
                   value={formData.assigned_to}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, assigned_to: e.target.value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      assigned_to: e.target.value,
+                    }))
                   }
                   className={`${inputClass} appearance-none cursor-pointer`}
                 >
@@ -511,39 +682,39 @@ export default function NewPracticePage() {
           <div className="space-y-2">
             <label className={labelClass}>Priority</label>
             <div className="flex gap-2">
-              {(
-                [
-                  {
-                    value: 'normal',
-                    label: 'Normal',
-                    color: 'text-zinc-400',
-                    activeBg: 'bg-zinc-500/20',
-                    activeBorder: 'border-zinc-500/40',
-                  },
-                  {
-                    value: 'high',
-                    label: '↑ High',
-                    color: 'text-orange-400',
-                    activeBg: 'bg-orange-500/20',
-                    activeBorder: 'border-orange-500/40',
-                  },
-                  {
-                    value: 'urgent',
-                    label: '🔥 Urgent',
-                    color: 'text-red-400',
-                    activeBg: 'bg-red-500/20',
-                    activeBorder: 'border-red-500/40',
-                  },
-                ] as const
-              ).map((p) => (
+              {[
+                {
+                  value: "normal" as const,
+                  label: "Normal",
+                  color: "text-zinc-400",
+                  activeBg: "bg-zinc-500/20",
+                  activeBorder: "border-zinc-500/40",
+                },
+                {
+                  value: "high" as const,
+                  label: "High",
+                  color: "text-orange-400",
+                  activeBg: "bg-orange-500/20",
+                  activeBorder: "border-orange-500/40",
+                },
+                {
+                  value: "urgent" as const,
+                  label: "Urgent",
+                  color: "text-red-400",
+                  activeBg: "bg-red-500/20",
+                  activeBorder: "border-red-500/40",
+                },
+              ].map((p) => (
                 <button
                   key={p.value}
                   type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, priority: p.value }))}
+                  onClick={() =>
+                    setFormData((prev) => ({ ...prev, priority: p.value }))
+                  }
                   className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
                     formData.priority === p.value
                       ? `${p.activeBg} ${p.activeBorder} ${p.color}`
-                      : 'border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:border-[var(--border)] hover:text-[var(--foreground)]'
+                      : "border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground-muted)] hover:border-[var(--border)] hover:text-[var(--foreground)]"
                   }`}
                 >
                   {p.label}
@@ -555,30 +726,39 @@ export default function NewPracticePage() {
           {/* Start Date */}
           <div className="space-y-2">
             <label className={labelClass}>
-              Start Date{' '}
-              <span className="text-[var(--foreground-muted)] font-normal">(optional)</span>
+              Start Date{" "}
+              <span className="text-[var(--foreground-muted)] font-normal">
+                (optional)
+              </span>
             </label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
               <input
                 type="date"
                 value={formData.start_date}
-                onChange={(e) => setFormData((prev) => ({ ...prev, start_date: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    start_date: e.target.value,
+                  }))
+                }
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all"
               />
             </div>
           </div>
 
-          {/* Title / Initial Notes */}
+          {/* Notes */}
           <div className="space-y-2">
-            <label className={labelClass}>Initial Notes / Title</label>
+            <label className={labelClass}>Notes</label>
             <div className="relative">
               <FolderKanban className="absolute left-3 top-3 w-4 h-4 text-[var(--foreground-muted)]" />
               <textarea
                 value={formData.title}
-                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, title: e.target.value }))
+                }
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all resize-none"
-                placeholder="e.g. KITAS Renewal 2025, special requirements..."
+                placeholder="Special requirements, client requests, internal notes..."
                 rows={3}
               />
             </div>
@@ -593,7 +773,9 @@ export default function NewPracticePage() {
             <Button
               className="bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white min-w-[120px]"
               type="submit"
-              disabled={isLoading || !formData.client_id}
+              disabled={
+                isLoading || !formData.client_id || !selectedServiceCode
+              }
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
