@@ -417,6 +417,22 @@ def run_image(slug: str, category: str) -> bool:
             return True
 
 
+def git_pull_monorepo() -> None:
+    """Pull latest commits so translate-articles.py can find newly published MDX files."""
+    repo_root = SCRIPT_DIR.parent.parent.parent
+    try:
+        result = subprocess.run(
+            ["git", "pull", "--ff-only"],
+            capture_output=True, text=True, cwd=str(repo_root), timeout=60
+        )
+        if result.returncode == 0:
+            log(f"✅ git pull OK: {result.stdout.strip()[:80]}")
+        else:
+            log(f"⚠ git pull failed (non-blocking): {result.stderr.strip()[:200]}")
+    except Exception as e:
+        log(f"⚠ git pull error (non-blocking): {e}")
+
+
 def main():
     log("=" * 50)
     log("🔄 Post-publish poller avviato")
@@ -433,6 +449,9 @@ def main():
         return
 
     log(f"📋 {len(pending)} articoli in coda")
+
+    # Pull latest MDX files so translator can find newly published articles
+    git_pull_monorepo()
 
     done_slugs = []
     for item in pending:
