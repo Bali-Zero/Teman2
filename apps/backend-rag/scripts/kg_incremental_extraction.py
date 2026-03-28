@@ -486,23 +486,10 @@ class KGIncrementalExtractor:
             logger.warning("LLM client not available - skipping extraction")
             return {"chunks_processed": 0, "entities_extracted": 0, "relationships_extracted": 0}
 
-        # Process each chunk
+        # Process each chunk through the shared path so per-run stats stay accurate.
         for chunk in chunks:
             try:
-                # Extract entities/relationships
-                result = await self.extract_entities(chunk["text"])
-
-                # Save entities
-                for entity in result.get("entities", []):
-                    await self.save_entity(
-                        entity=entity, chunk_id=chunk["id"], collection=collection_name
-                    )
-
-                # Save relationships
-                for rel in result.get("relationships", []):
-                    await self.save_relationship(
-                        rel=rel, chunk_id=chunk["id"], collection=collection_name
-                    )
+                await self.process_chunk(chunk)
             except Exception as e:
                 logger.warning(f"Error processing chunk {chunk['id']}: {e}")
                 self.stats["errors"] += 1
@@ -526,13 +513,20 @@ class KGIncrementalExtractor:
         prompt = EXTRACTION_PROMPT.format(text=text[:8000])
 
         try:
-            # Use the new GenAIClient wrapper
-            response = await self.gemini.generate_content(
-                model="gemini-2.0-flash-001",
-                contents=prompt,
-                temperature=0.1,  # Low temperature for extraction
-            )
-            response_text = response["text"].strip()
+            if hasattr(self.gemini, "generate_content"):
+                response = await self.gemini.generate_content(
+                    model="gemini-2.0-flash-001",
+                    contents=prompt,
+                    temperature=0.1,
+                )
+                response_text = response["text"].strip()
+            else:
+                response = await asyncio.to_thread(
+                    self.gemini.models.generate_content,
+                    model="gemini-2.0-flash",
+                    contents=prompt,
+                )
+                response_text = response.text.strip()
 
             # Clean JSON from markdown
             if "```json" in response_text:
