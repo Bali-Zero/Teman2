@@ -45,18 +45,27 @@ export function ImmigrationTab({
     });
   };
 
-  // Categorize immigration documents
+  // Family passports: passport docs belonging to family members — shown separately
+  const familyPassports = documents.filter(
+    (d) => d.family_member_id && d.document_type?.toLowerCase().includes('passport')
+  );
+
+  // Unique family members who have passport docs
+  const familyMemberIds = [...new Set(familyPassports.map((d) => d.family_member_id))];
+
+  // Categorize immigration documents — exclude family member passports (shown below)
   const immigrationDocs = documents.filter(
     (d) =>
-      d.document_category === 'immigration' ||
-      d.document_type?.toLowerCase().includes('kitas') ||
-      d.document_type?.toLowerCase().includes('kitap') ||
-      d.document_type?.toLowerCase().includes('visa') ||
-      d.document_type?.toLowerCase().includes('permit') ||
-      d.document_type?.toLowerCase().includes('imta') ||
-      d.document_type?.toLowerCase().includes('rptka') ||
-      d.document_type?.toLowerCase().includes('evisa') ||
-      d.document_type?.toLowerCase().includes('voa')
+      !d.family_member_id &&
+      (d.document_category === 'immigration' ||
+        d.document_type?.toLowerCase().includes('kitas') ||
+        d.document_type?.toLowerCase().includes('kitap') ||
+        d.document_type?.toLowerCase().includes('visa') ||
+        d.document_type?.toLowerCase().includes('permit') ||
+        d.document_type?.toLowerCase().includes('imta') ||
+        d.document_type?.toLowerCase().includes('rptka') ||
+        d.document_type?.toLowerCase().includes('evisa') ||
+        d.document_type?.toLowerCase().includes('voa'))
   );
 
   // Sort: most recent expiry first, then by type
@@ -298,6 +307,33 @@ export function ImmigrationTab({
             </div>
           );
         })
+      )}
+
+      {/* Family Passports — one subsection per family member */}
+      {familyMemberIds.length > 0 && (
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center gap-2">
+            <h4 className="font-medium text-[var(--bz-text-1)]">Family Passports</h4>
+            <span className="w-8 h-px bg-[rgba(255,255,255,0.1)]" />
+          </div>
+          {familyMemberIds.map((memberId) => {
+            const memberDocs = familyPassports.filter((d) => d.family_member_id === memberId);
+            const memberName = memberDocs[0]?.family_member_name || `Member #${memberId}`;
+            return (
+              <div key={memberId} className="space-y-3">
+                <h5 className="text-sm text-[var(--bz-text-2)] flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-xs bg-zinc-500/20 text-zinc-400">
+                    {memberName}
+                  </span>
+                  <span className="text-[var(--bz-text-2)] opacity-50">({memberDocs.length})</span>
+                </h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {memberDocs.map(renderDocCard)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
