@@ -13,7 +13,9 @@ from datetime import datetime
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
-VENV_PYTHON = SCRIPT_DIR.parent / ".venv" / "bin" / "python3"
+# Support both .venv (Air) and venv (Pro)
+_venv = SCRIPT_DIR.parent / ".venv" / "bin" / "python3"
+VENV_PYTHON = _venv if _venv.exists() else SCRIPT_DIR.parent / "venv" / "bin" / "python3"
 LOG_DIR = Path.home() / ".openclaw" / "workspace" / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / f"post_publish_poller_{datetime.now().strftime('%Y%m%d')}.log"
