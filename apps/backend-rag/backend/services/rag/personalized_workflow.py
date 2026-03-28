@@ -9,7 +9,7 @@ Date: 2026-02-09
 """
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 from backend.services.crm.enhanced_crm_service import EnhancedCRMService
@@ -83,7 +83,7 @@ async def personalize_workflow(
                 if isinstance(dob, str):
                     dob = date.fromisoformat(dob)
 
-                age = (date.today() - dob).days // 365
+                age = (datetime.now(tz=timezone.utc).date() - dob).days // 365
                 if age < 55:
                     logger.warning(
                         f"⚠️ User {user_email} is under 55 ({age}), retirement workflow may be invalid"
