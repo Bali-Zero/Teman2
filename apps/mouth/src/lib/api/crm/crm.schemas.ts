@@ -29,16 +29,11 @@ export const leadSourceEnum = z.enum([
   "other",
 ]);
 
-export const practiceTypeCodeEnum = z.enum([
-  "visa",
-  "extension_visa",
-  "kitas",
-  "extension_kitas",
-  "tax",
-  "new_pt",
-  "revision_pt",
-  "accessories",
-]);
+// Practice type codes are now loaded dynamically from the backend catalog
+// (69 services across 9 categories). Validate as non-empty string.
+export const practiceTypeCodeEnum = z
+  .string({ required_error: "Service type is required" })
+  .min(1, "Service type is required");
 
 export const practiceStatusEnum = z.enum([
   "inquiry",
