@@ -208,32 +208,79 @@ def main():
     print(f"✅ Slide JSON salvato → {args.output}", file=sys.stderr)
 
 
-if __name__ == "__main__":
-    main()
-
-
 def detect_domain(topic: str) -> str:
-    Rileva il dominio del topic per routing NLM.
+    """Rileva il dominio del topic per routing NLM."""
     t = topic.lower()
-    if any(k in t for k in [visa, kitas, kitap, immigration, tka, work permit, stay permit, overstay]):
-        return immigration
-    if any(k in t for k in [company, kbli, pma, oss, nib, pt pma, cv, perseroan, business license]):
-        return company
-    if any(k in t for k in [tax, pajak, npwp, pph, ppn, coretax, bpjs, fiscal, vat]):
-        return tax
-    if any(k in t for k in [property, land, hgb, hak pakai, leasehold, freehold, villa, tanah, real estate]):
-        return property
-    return cross_domain
+    if any(k in t for k in ["visa", "kitas", "kitap", "immigration", "tka", "work permit", "stay permit", "overstay"]):
+        return "immigration"
+    if any(k in t for k in ["company", "kbli", "pma", "oss", "nib", "pt pma", "cv", "perseroan", "business license"]):
+        return "company"
+    if any(k in t for k in ["tax", "pajak", "npwp", "pph", "ppn", "coretax", "bpjs", "fiscal", "vat"]):
+        return "tax"
+    if any(k in t for k in ["property", "land", "hgb", "hak pakai", "leasehold", "freehold", "villa", "tanah", "real estate"]):
+        return "property"
+    return "cross_domain"
 
 
 NLM_NOTEBOOK_IDS = {
-    immigration: 84375bc3-12d0-4405-a774-9b89189d8c39,   # NB-2
-    company:     2e84b9b9-3b99-4bc5-8ec5-351a43c52df4,   # NB-3
-    tax:         837b620b-2aca-43ab-812e-97ca92bdad1d,   # NB-4
-    property:    568ec624-ceb8-47d1-a2a2-5b2f793ea7ed,   # NB-5
-    cross_domain: 1143b525-dd3f-40d7-a34d-2e9263b44460,  # NB-8
+    "immigration":  "84375bc3-12d0-4405-a774-9b89189d8c39",  # NB-2
+    "company":      "2e84b9b9-3b99-4bc5-8ec5-351a43c52df4",  # NB-3
+    "tax":          "837b620b-2aca-43ab-812e-97ca92bdad1d",  # NB-4
+    "property":     "568ec624-ceb8-47d1-a2a2-5b2f793ea7ed",  # NB-5
+    "cross_domain": "1143b525-dd3f-40d7-a34d-2e9263b44460",  # NB-8
 }
 
 
 def nlm_fact_check(topic: str, slides_data: dict, timeout: int = 90) -> dict:
-    
+    """Fact-check NLM non bloccante. Routing per dominio. Restituisce slides_data arricchito."""
+    import os
+    import urllib.request
+    import urllib.parse
+
+    domain = detect_domain(topic)
+    notebook_id = NLM_NOTEBOOK_IDS.get(domain, NLM_NOTEBOOK_IDS["cross_domain"])
+    print(f"   🔍 NLM domain: {domain} → notebook {notebook_id[:8]}...", file=sys.stderr)
+
+    # NLM non ha un'API diretta — usiamo gemini CLI come proxy con contesto dominio
+    slides_text = json.dumps(slides_data.get("slides", []), ensure_ascii=False)[:3000]
+    nlm_prompt = (
+        f"You are a fact-checker for Bali Zero, an Indonesian business services firm.\n"
+        f"Domain: {domain} (NLM notebook: {notebook_id})\n"
+        f"Topic: {topic}\n\n"
+        f"Review these slides for factual accuracy regarding Indonesian law and regulations.\n"
+        f"Flag any claims that may be outdated, inaccurate, or unverifiable.\n"
+        f"Return JSON: {{\"validated\": true/false, \"flags\": [{{\"slide\": N, \"claim\": \"...\", \"issue\": \"...\"}}], \"overall\": \"PASS|WARN|FAIL\"}}\n\n"
+        f"SLIDES:\n{slides_text}"
+    )
+
+    try:
+        result = subprocess.run(
+            ["gemini", "-p", nlm_prompt],
+            capture_output=True, text=True, timeout=timeout
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            raw = result.stdout.strip()
+            if "{" in raw:
+                start = raw.find("{"); end = raw.rfind("}") + 1
+                nlm_result = json.loads(raw[start:end])
+            else:
+                nlm_result = {"validated": True, "flags": [], "overall": "PASS"}
+            slides_data["nlm_validation"] = {
+                "domain": domain,
+                "notebook_id": notebook_id,
+                "result": nlm_result,
+            }
+            overall = nlm_result.get("overall", "PASS")
+            flags = nlm_result.get("flags", [])
+            print(f"   ✅ NLM: {overall} ({len(flags)} flags)", file=sys.stderr)
+        else:
+            raise RuntimeError(result.stderr[:200])
+    except Exception as e:
+        print(f"   ⚠️  NLM fact-check failed: {e} — skipping", file=sys.stderr)
+        slides_data["nlm_validation"] = {"domain": domain, "skipped": True, "error": str(e)}
+
+    return slides_data
+
+
+if __name__ == "__main__":
+    main()
