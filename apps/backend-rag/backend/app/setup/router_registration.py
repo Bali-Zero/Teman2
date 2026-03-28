@@ -23,6 +23,7 @@ def include_routers(api: FastAPI) -> None:
     from backend.app.modules.identity.router import router as identity_router
     from backend.app.modules.knowledge.router import router as knowledge_router
     from backend.app.routers import (
+        admin_conversation_cleanup,
         admin_logs,
         admin_team_activity,
         agent,  # [NEW] LangGraph agentic layer
@@ -269,6 +270,9 @@ def include_routers(api: FastAPI) -> None:
 
     # RAG Monitoring router (Retrieval quality metrics and alerts)
     api.include_router(monitoring_rag.router)
+
+    # Admin Conversation Cleanup router
+    api.include_router(admin_conversation_cleanup.router)
 
     # Admin Logs router (Admin-only activity logs and audit trail)
     api.include_router(admin_logs.router)
