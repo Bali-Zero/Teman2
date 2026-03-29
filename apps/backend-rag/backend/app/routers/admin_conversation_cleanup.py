@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin-conversation-cleanup"])
 
 
-def verify_admin_key(x_debug_key: str | None = Header(default=None, alias="X-Debug-Key")) -> bool:
+def verify_admin_key(x_debug_key: str | None = Header(default=None, alias="x-debug-key", convert_underscores=False)) -> bool:
     """Verify ADMIN_API_KEY via X-Debug-Key header."""
     if settings.admin_api_key and x_debug_key == settings.admin_api_key:
         return True
