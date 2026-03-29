@@ -404,10 +404,10 @@ class TestExtractPassportEnhancedRBAC:
         from fastapi.testclient import TestClient
 
         from backend.app.dependencies import get_current_user, get_database_pool
-        from backend.app.routers import crm_clients
+        from backend.app.routers import crm_clients_documents
 
         app = FastAPI()
-        app.include_router(crm_clients.router)
+        app.include_router(crm_clients_documents.router)
 
         pool, conn = mock_db_pool
 
@@ -425,7 +425,7 @@ class TestExtractPassportEnhancedRBAC:
 
         # Mock verify_client_access to raise 403 (simulating non-assigned user)
         with patch(
-            "backend.app.routers.crm_clients.verify_client_access",
+            "backend.app.routers.crm_clients_documents.verify_client_access",
             new=AsyncMock(side_effect=HTTPException(status_code=403, detail="Access denied")),
         ):
             response = test_client.post(
@@ -449,10 +449,10 @@ class TestExtractNpwpRBAC:
         from fastapi.testclient import TestClient
 
         from backend.app.dependencies import get_current_user, get_database_pool
-        from backend.app.routers import crm_clients
+        from backend.app.routers import crm_clients_documents
 
         app = FastAPI()
-        app.include_router(crm_clients.router)
+        app.include_router(crm_clients_documents.router)
 
         pool, conn = mock_db_pool
 
@@ -470,7 +470,7 @@ class TestExtractNpwpRBAC:
 
         # Mock verify_client_access to raise 403 (simulating non-assigned user)
         with patch(
-            "backend.app.routers.crm_clients.verify_client_access",
+            "backend.app.routers.crm_clients_documents.verify_client_access",
             new=AsyncMock(side_effect=HTTPException(status_code=403, detail="Access denied")),
         ):
             # Use a valid base64 string to avoid triggering base64 validation error
@@ -499,10 +499,10 @@ class TestExtractNpwpRBAC:
         from fastapi.testclient import TestClient
 
         from backend.app.dependencies import get_current_user, get_database_pool
-        from backend.app.routers import crm_clients
+        from backend.app.routers import crm_clients_documents
 
         app = FastAPI()
-        app.include_router(crm_clients.router)
+        app.include_router(crm_clients_documents.router)
 
         pool, conn = mock_db_pool
 
@@ -530,7 +530,7 @@ class TestExtractNpwpRBAC:
 
         with (
             patch(
-                "backend.app.routers.crm_clients.verify_client_access",
+                "backend.app.routers.crm_clients_documents.verify_client_access",
                 new=AsyncMock(return_value=None),
             ),
             patch(
@@ -577,10 +577,10 @@ class TestExtractNibRBAC:
         from fastapi.testclient import TestClient
 
         from backend.app.dependencies import get_current_user, get_database_pool
-        from backend.app.routers import crm_clients
+        from backend.app.routers import crm_clients_documents
 
         app = FastAPI()
-        app.include_router(crm_clients.router)
+        app.include_router(crm_clients_documents.router)
 
         pool, conn = mock_db_pool
 
@@ -598,7 +598,7 @@ class TestExtractNibRBAC:
 
         # Mock verify_client_access to raise 403 (simulating non-assigned user)
         with patch(
-            "backend.app.routers.crm_clients.verify_client_access",
+            "backend.app.routers.crm_clients_documents.verify_client_access",
             new=AsyncMock(side_effect=HTTPException(status_code=403, detail="Access denied")),
         ):
             import base64
@@ -626,10 +626,10 @@ class TestExtractNibRBAC:
         from fastapi.testclient import TestClient
 
         from backend.app.dependencies import get_current_user, get_database_pool
-        from backend.app.routers import crm_clients
+        from backend.app.routers import crm_clients_documents
 
         app = FastAPI()
-        app.include_router(crm_clients.router)
+        app.include_router(crm_clients_documents.router)
 
         pool, conn = mock_db_pool
 
@@ -657,7 +657,7 @@ class TestExtractNibRBAC:
 
         with (
             patch(
-                "backend.app.routers.crm_clients.verify_client_access",
+                "backend.app.routers.crm_clients_documents.verify_client_access",
                 new=AsyncMock(return_value=None),
             ),
             patch(
