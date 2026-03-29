@@ -683,10 +683,23 @@ def main():
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
+    # Import NLM query function for production runs
+    nlm_query_fn = None
+    if not args.dry_run:
+        try:
+            from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_query, check_nlm_available
+            if check_nlm_available():
+                nlm_query_fn = nlm_query
+            else:
+                logger.warning("nlm CLI not available — pipeline will fail preflight")
+        except ImportError:
+            logger.warning("nlm_bridge import failed — pipeline will fail preflight")
+
     pipeline = NLMPipeline(
         state_file=args.state_file,
         dry_run=args.dry_run,
         force=args.force,
+        nlm_query_fn=nlm_query_fn,
     )
     pipeline.load_state()
     result = pipeline.run()
