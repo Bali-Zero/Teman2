@@ -144,26 +144,38 @@ async def recall_similar(request: RecallRequest) -> RecallResponse:
             filter_conditions = {"agent": request.agent}
 
         raw = await db.search(
-            query_vector=embedding,
+            query_embedding=embedding,
             limit=request.limit,
-            metadata_filter=filter_conditions,
+            filter=filter_conditions,
         )
 
+        # db.search() returns a dict with parallel arrays:
+        # {"ids": [...], "documents": [...], "metadatas": [...], "scores": [...], "total_found": N}
         results = []
-        for item in raw:
-            payload = item.get("metadata", {}) or item.get("payload", {})
+        ids = raw.get("ids", []) if isinstance(raw, dict) else []
+        documents = raw.get("documents", []) if isinstance(raw, dict) else []
+        metadatas = raw.get("metadatas", []) if isinstance(raw, dict) else []
+        scores = raw.get("scores", []) if isinstance(raw, dict) else []
+
+        for i, doc_id in enumerate(ids):
+            meta = metadatas[i] if i < len(metadatas) else {}
+            if not isinstance(meta, dict):
+                meta = {}
+            doc = documents[i] if i < len(documents) else ""
+            score = scores[i] if i < len(scores) else 0.0
+
             results.append(
                 EpisodeResult(
-                    id=item.get("id", ""),
-                    content=payload.get("content", item.get("document", "")),
-                    agent=payload.get("agent", ""),
-                    tags=payload.get("tags", []),
-                    outcome=payload.get("outcome", ""),
-                    timestamp=payload.get("timestamp", ""),
-                    score=item.get("score", 0.0),
+                    id=str(doc_id),
+                    content=meta.get("content", doc),
+                    agent=meta.get("agent", ""),
+                    tags=meta.get("tags", []),
+                    outcome=meta.get("outcome", ""),
+                    timestamp=meta.get("timestamp", ""),
+                    score=score,
                     metadata={
                         k: v
-                        for k, v in payload.items()
+                        for k, v in meta.items()
                         if k not in ("content", "agent", "tags", "outcome", "timestamp")
                     },
                 ),
