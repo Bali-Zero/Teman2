@@ -1,0 +1,328 @@
+{
+  "schema_version": 2,
+  "description": "YouTube channels to monitor for NLM notebooks. RSS: https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}",
+  "last_updated": "2026-03-30",
+  "title_denylist": [
+    "selamat idulfitri",
+    "selamat idul",
+    "halalbihalal",
+    "selamat hari raya",
+    "selamat natal",
+    "selamat tahun baru",
+    "happy new year",
+    "merry christmas",
+    "hari kemerdekaan",
+    "dirgahayu",
+    "ramadan kareem",
+    "isra miraj",
+    "selamat nyepi",
+    "tahun baru saka",
+    "hari kartini",
+    "hari pahlawan",
+    "ucapan",
+    "greeting",
+    "bumper",
+    "opening",
+    "closing ceremony",
+    "halal bihalal",
+    "silaturahmi",
+    "keistimewaan ramadan"
+  ],
+  "channels": {
+    "ditjen_imigrasi": {
+      "channel_id": "UCgBMrLLtuI2ULWvWQ4CTYOw",
+      "name": "Ditjen Imigrasi",
+      "handle": "@ditjenimigrasiyoutube",
+      "tier": "YT-T0",
+      "notebooks": ["NB-2"],
+      "keywords_critical": [
+        "deportasi",
+        "overstay",
+        "timpora",
+        "visa dicabut",
+        "cekal",
+        "peraturan baru imigrasi"
+      ],
+      "keywords_high": [
+        "kitas",
+        "kitap",
+        "visa",
+        "izin tinggal",
+        "paspor",
+        "e-voa",
+        "wna",
+        "tka",
+        "rptka"
+      ],
+      "rss_verified": true
+    },
+    "kemen_imipas": {
+      "channel_id": "UCFInE4Vi1xs8s5X9rsfVZ_A",
+      "name": "Kementerian Imigrasi dan Pemasyarakatan RI",
+      "handle": "@kemenimipas",
+      "tier": "YT-T0",
+      "notebooks": ["NB-2"],
+      "keywords_critical": [
+        "peraturan baru",
+        "kebijakan visa",
+        "permenimipas",
+        "peraturan menteri"
+      ],
+      "keywords_high": [
+        "sosialisasi",
+        "pelayanan",
+        "imigrasi",
+        "visa",
+        "pemasyarakatan"
+      ],
+      "rss_verified": false,
+      "note": "Channel ID from search results — needs RSS verification on next run"
+    },
+    "kementerian_investasi_bkpm": {
+      "channel_id": "UCUz3URk-BPisKlwtwcvgZBQ",
+      "name": "Kementerian Investasi dan Hilirisasi - BKPM",
+      "handle": null,
+      "tier": "YT-T0",
+      "notebooks": ["NB-3"],
+      "keywords_critical": [
+        "pp 28",
+        "gr 28",
+        "oss",
+        "perizinan berusaha",
+        "nib",
+        "peraturan bkpm"
+      ],
+      "keywords_high": [
+        "investasi",
+        "pma",
+        "bkpm",
+        "penanaman modal",
+        "hilirisasi",
+        "licensing",
+        "izin usaha"
+      ],
+      "rss_verified": true
+    },
+    "djp_ditjen_pajak": {
+      "channel_id": "UC_43SIyUJtVelGIPR5U3inQ",
+      "name": "Direktorat Jenderal Pajak",
+      "handle": "@DitjenPajakRI",
+      "tier": "YT-T0",
+      "notebooks": ["NB-4"],
+      "keywords_critical": [
+        "coretax",
+        "spt tahunan",
+        "ppn",
+        "pph",
+        "pajak penghasilan",
+        "peraturan pajak"
+      ],
+      "keywords_high": [
+        "npwp",
+        "faktur",
+        "billing",
+        "pajak badan",
+        "umkm",
+        "hpp",
+        "tax",
+        "wajib pajak"
+      ],
+      "rss_verified": true
+    },
+    "kementerian_atr_bpn": {
+      "channel_id": "UC29czQyZyoMFNDgXYYWjmkw",
+      "name": "Kementerian ATR/BPN",
+      "handle": "@KementerianATRBPN",
+      "tier": "YT-T0",
+      "notebooks": ["NB-5"],
+      "keywords_critical": [
+        "sertifikat tanah",
+        "hak pakai",
+        "hgb",
+        "hak milik",
+        "pendaftaran tanah",
+        "tanah terlantar"
+      ],
+      "keywords_high": [
+        "bpn",
+        "ptsl",
+        "atr",
+        "pertanahan",
+        "agraria",
+        "sertipikat",
+        "ppat"
+      ],
+      "rss_verified": false,
+      "note": "Channel ID from search — needs RSS verification"
+    },
+    "kantah_tangsel": {
+      "channel_id": "UCMGM-L4ajPea9A8q6uw6bCw",
+      "name": "Kantah Tangerang Selatan",
+      "handle": null,
+      "tier": "YT-T0",
+      "notebooks": ["NB-5"],
+      "keywords_critical": [
+        "sertifikat",
+        "ppat",
+        "pendaftaran",
+        "sertipikat elektronik"
+      ],
+      "keywords_high": ["tanah", "sertipikat", "sosialisasi", "hak atas tanah"],
+      "rss_verified": true
+    },
+    "sekretariat_presiden": {
+      "channel_id": "UC_m_NBgf7ieJBHzb6vvJC5A",
+      "name": "Sekretariat Presiden",
+      "handle": null,
+      "tier": "YT-T0",
+      "notebooks": ["NB-2", "NB-3", "NB-4", "NB-5"],
+      "keywords_critical": [
+        "menteri investasi",
+        "menteri imigrasi",
+        "menteri keuangan",
+        "menteri atr",
+        "menteri hukum"
+      ],
+      "keywords_high": [
+        "keterangan pers",
+        "press conference",
+        "kebijakan",
+        "regulasi",
+        "rapat kabinet"
+      ],
+      "rss_verified": true
+    },
+    "kementerian_hukum": {
+      "channel_id": "UCmJMRZ62mvUVc9bqEYScDyA",
+      "name": "Kementerian Hukum RI",
+      "handle": null,
+      "tier": "YT-T0",
+      "notebooks": ["NB-2", "NB-3"],
+      "keywords_critical": [
+        "perseroan terbatas",
+        "pendirian",
+        "badan hukum",
+        "ahu",
+        "kemenkumham"
+      ],
+      "keywords_high": [
+        "hukum",
+        "regulasi",
+        "undang-undang",
+        "notaris",
+        "akta"
+      ],
+      "rss_verified": false,
+      "note": "New ministry (split from Kumham). Covers company registration (AHU) and legal framework."
+    },
+    "cnbc_indonesia": {
+      "channel_id": "UCGN9JsnkvK05v2lnTI_-uGA",
+      "name": "CNBC Indonesia",
+      "handle": "@CNBCIndonesia",
+      "tier": "YT-T1",
+      "notebooks": ["NB-3", "NB-4", "NB-5"],
+      "keywords_critical": [],
+      "keywords_high": [
+        "investasi asing",
+        "pma",
+        "pajak",
+        "properti bali",
+        "bkpm",
+        "coretax",
+        "fiskal",
+        "tax holiday"
+      ],
+      "rss_verified": true,
+      "note": "VERY high volume — strict keyword filter. Only ingest when ≥2 HIGH keywords match."
+    },
+    "kompas_tv": {
+      "channel_id": "UCneA4BuveCEgJql1m7lwFag",
+      "name": "KOMPASTV",
+      "handle": "@KOMPASTV",
+      "tier": "YT-T1",
+      "notebooks": ["NB-2", "NB-5"],
+      "keywords_critical": [],
+      "keywords_high": [
+        "imigrasi",
+        "tanah terlantar",
+        "sertifikat tanah",
+        "bpn",
+        "properti bali",
+        "visa",
+        "deportasi"
+      ],
+      "rss_verified": true,
+      "note": "VERY high volume — strict keyword filter. Only ingest when ≥2 HIGH keywords match."
+    },
+    "ssek_law_firm": {
+      "channel_id": "UCfdJ15PQTe5m_uTeSLknAHQ",
+      "name": "SSEK Law Firm",
+      "handle": null,
+      "tier": "YT-T2",
+      "notebooks": ["NB-2", "NB-3", "NB-4", "NB-5"],
+      "keywords_critical": ["webinar", "seminar", "legal update"],
+      "keywords_high": [
+        "investment",
+        "indonesia",
+        "regulation",
+        "tax",
+        "property",
+        "immigration",
+        "company"
+      ],
+      "rss_verified": true,
+      "note": "Top-tier Indonesian law firm. Low volume, high value. Almost everything relevant."
+    },
+    "pratama_indomitra": {
+      "channel_id": "UC4P_z2uFJhie0Cw2jd_TYQQ",
+      "name": "Pratama Indomitra",
+      "handle": null,
+      "tier": "YT-T2",
+      "notebooks": ["NB-4"],
+      "keywords_critical": [
+        "pp 43",
+        "pelaporan keuangan",
+        "perpajakan",
+        "tax reform"
+      ],
+      "keywords_high": [
+        "pajak",
+        "tax",
+        "pph",
+        "ppn",
+        "coretax",
+        "hpp",
+        "transfer pricing"
+      ],
+      "rss_verified": true,
+      "note": "Tax consulting firm. Webinars on tax regulations and compliance."
+    },
+    "bankerindo": {
+      "channel_id": null,
+      "name": "Bankerindo",
+      "handle": null,
+      "tier": "YT-T2",
+      "notebooks": ["NB-5"],
+      "keywords_critical": [
+        "sertifikat tanah",
+        "girik",
+        "letter c",
+        "aturan baru tanah"
+      ],
+      "keywords_high": ["tanah", "properti", "investasi properti", "bpn"],
+      "rss_verified": false,
+      "note": "1.4M views on Girik video. High-quality property analysis. Need channel_id."
+    }
+  },
+  "monitoring_rules": {
+    "poll_interval_hours": 6,
+    "max_videos_per_poll": 5,
+    "svs_threshold": 0.35,
+    "max_slots_per_nb": 3,
+    "video_age_max_days": 30,
+    "language_filter": ["id", "en"],
+    "dedup_by": "video_url_hash",
+    "t1_min_keyword_matches": 2,
+    "shorts_policy": "skip"
+  }
+}

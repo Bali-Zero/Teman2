@@ -39,17 +39,16 @@ def nlm_query(
     Returns:
         Dict with status, answer, sources_used, conversation_id
     """
-    # Build nlm CLI command
+    # Build nlm CLI command (v0.5.x syntax: nlm query notebook <ID> <QUESTION>)
     cmd = [
-        NLM_CLI, "query",
-        "--notebook", notebook_id,
-        "--query", query,
-        "--format", "json",
+        NLM_CLI, "query", "notebook",
+        notebook_id,
+        query,
         "--timeout", str(timeout),
     ]
 
     if conversation_id:
-        cmd.extend(["--conversation", conversation_id])
+        cmd.extend(["--conversation-id", conversation_id])
 
     logger.info("NLM query: %s... (timeout=%ds)", query[:80], timeout)
 
@@ -72,6 +71,10 @@ def nlm_query(
             return {"status": "error", "error": "Empty response from nlm CLI"}
 
         data = json.loads(output)
+
+        # nlm CLI v0.5.x wraps response in {"value": {...}}
+        if "value" in data and isinstance(data["value"], dict):
+            data = data["value"]
 
         # Normalize response format
         return {
