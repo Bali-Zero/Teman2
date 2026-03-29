@@ -12,16 +12,23 @@ Access: Requires ADMIN_API_KEY (via verify_debug_access)
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool
-from backend.app.routers.debug import verify_debug_access
 from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/admin", tags=["admin-conversation-cleanup"])
+
+
+def verify_admin_key(x_debug_key: str | None = Header(default=None, alias="X-Debug-Key")) -> bool:
+    """Verify ADMIN_API_KEY via X-Debug-Key header."""
+    if settings.admin_api_key and x_debug_key == settings.admin_api_key:
+        return True
+    raise HTTPException(status_code=401, detail="Authentication required")
 
 # Default retention windows
 DEFAULT_DELETE_AFTER_DAYS = 90       # Hard delete conversations older than 90 days
@@ -66,7 +73,7 @@ async def run_conversation_cleanup(
         default=False,
         description="If true, count records but do not modify them",
     ),
-    _access: bool = Depends(verify_debug_access),
+    _access: bool = Depends(verify_admin_key),
     pool: Any = Depends(get_database_pool),
 ) -> CleanupResult:
     """
