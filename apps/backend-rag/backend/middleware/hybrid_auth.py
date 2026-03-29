@@ -517,6 +517,12 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         """
         client_host = request.client.host if request.client else "unknown"
 
+        # Priority 0: Admin API Key via X-Debug-Key header (for admin/cron endpoints)
+        debug_key = request.headers.get("X-Debug-Key")
+        if debug_key and settings.admin_api_key and debug_key == settings.admin_api_key:
+            logger.info(f"Admin key authenticated via X-Debug-Key from {client_host}")
+            return {"role": "admin", "email": "admin@internal", "auth_method": "admin_key", "user_id": "admin"}
+
         # Priority 1: API Key Authentication (fastest, bypasses database)
         api_key = request.headers.get("X-API-Key")
         if api_key:
