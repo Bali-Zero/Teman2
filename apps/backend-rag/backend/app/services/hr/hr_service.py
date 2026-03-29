@@ -7,7 +7,8 @@ Pattern: asyncpg pool, same as CRM services.
 from __future__ import annotations
 
 import calendar
-from datetime import date, datetime
+import logging
+from datetime import date
 from typing import Any
 
 import asyncpg
@@ -15,9 +16,7 @@ import asyncpg
 from backend.app.utils.hr_utils import (
     calculate_bpjs,
     calculate_pph21_monthly,
-    calculate_thr,
 )
-import logging
 
 logger = logging.getLogger(__name__)
 
