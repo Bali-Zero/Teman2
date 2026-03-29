@@ -8,19 +8,17 @@ RBAC:
 
 from __future__ import annotations
 
+import logging
 from datetime import date
-from decimal import Decimal
 from typing import Any
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-
-import asyncpg
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.hr.hr_service import HRService
 from backend.app.utils.hr_utils import is_hr_admin
-import logging
 
 logger = logging.getLogger(__name__)
 
