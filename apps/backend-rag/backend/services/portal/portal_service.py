@@ -519,6 +519,43 @@ class PortalService:
         # PostgreSQL: undefined_table = 42P01
         return getattr(exc, "sqlstate", None) == "42P01"
 
+    @staticmethod
+    def _classify_document_category(document_type: str, file_name: str) -> str:
+        """Auto-classify document_category from document_type and filename."""
+        dt = (document_type or "").lower()
+        fn = (file_name or "").lower()
+        combined = f"{dt} {fn}"
+
+        # Immigration
+        if any(k in combined for k in (
+            "kitas", "kitap", "visa", "evisa", "voa", "permit", "imta", "rptka", "itas",
+        )):
+            return "immigration"
+
+        # Personal
+        if any(k in combined for k in (
+            "passport", "paspor", "ktp", "photo", "foto", "cv ", "resume",
+            "domisili", "skck", "surat keterangan",
+        )):
+            return "personal"
+
+        # Company / PMA
+        if any(k in combined for k in (
+            "akta", "pendirian", "perubahan", "nib", "npwp", "sk ", "profil perseroan",
+            "sertifikat standar", "kbli", "sppl", "pks", "kontrak", "contract",
+        )):
+            return "pma"
+
+        # Tax
+        if any(k in combined for k in ("tax", "pajak", "spt", "efin", "pph", "ppn")):
+            return "tax"
+
+        # Family
+        if any(k in combined for k in ("akte lahir", "akta lahir", "birth", "nikah", "marriage")):
+            return "family"
+
+        return "other"
+
     # ================================================
     # DASHBOARD
     # ================================================
@@ -1526,19 +1563,22 @@ class PortalService:
             # =========================================================================
             # STEP 5: SAVE TO DATABASE (with transaction)
             # =========================================================================
+            # Auto-classify document_category from document_type
+            doc_category = self._classify_document_category(document_type, file_name)
+
             async with conn.transaction():
                 try:
                     doc = await conn.fetchrow(
                         """
                         INSERT INTO documents (
-                            client_id, practice_id, document_type, file_name,
+                            client_id, practice_id, document_type, document_category, file_name,
                             status, uploaded_by, uploaded_source, file_size_kb, mime_type,
                             storage_type, storage_path, file_id, file_url,
                             extracted_text, expiry_date,
                             client_visible, created_at
                         )
                         VALUES (
-                            $1, $2, $3, $4, 'received', $5, 'client', $6, $7,
+                            $1, $2, $3, $13, $4, 'received', $5, 'client', $6, $7,
                             'google_drive', $8, $9, $10,
                             $11, $12,
                             true, NOW()
@@ -1559,6 +1599,7 @@ class PortalService:
                         if ocr_result.get("text")
                         else None,  # Limit text size
                         expiry_result.get("expiry_date"),
+                        doc_category,
                     )
                 except Exception as e:
                     # Backward compatibility: try without new columns
