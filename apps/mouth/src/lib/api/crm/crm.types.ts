@@ -599,3 +599,15 @@ export interface SearchFilters {
   date_from?: string;
   date_to?: string;
 }
+
+// Portal Messages (team ↔ client bridge)
+export interface PortalMessageThread {
+  id: number;
+  subject?: string;
+  content: string;
+  direction: "client_to_team" | "team_to_client";
+  sent_by?: string;
+  read_at?: string;
+  created_at: string;
+  practice_id?: number;
+}
