@@ -2,9 +2,8 @@
 
 from datetime import date
 
-import pytest
-
 from backend.app.utils.hr_utils import (
+    UMK_BADUNG_2026,
     calculate_bpjs,
     calculate_pph21_annual,
     calculate_pph21_monthly,
@@ -12,10 +11,7 @@ from backend.app.utils.hr_utils import (
     is_hr_admin,
     total_employee_deductions,
     validate_minimum_wage,
-    PTKP,
-    UMK_BADUNG_2026,
 )
-
 
 # ─── RBAC ────────────────────────────────────────────────────────────────
 
