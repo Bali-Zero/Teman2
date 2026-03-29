@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.modules.notifications.checker import ExpiryChecker
 from backend.app.modules.notifications.models import ClientInfo
-from backend.app.modules.notifications.service import NotificationService, SMTPProvider
+from backend.app.modules.notifications.service import NotificationService
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 
 logger = logging.getLogger(__name__)
@@ -283,48 +283,58 @@ async def send_direct_email(
     _auth: dict = Depends(verify_internal_api_key),
 ) -> SendEmailResponse:
     """
-    Send a direct email via SMTP (Zoho nuzantara@balizero.com).
+    Send a direct email via Brevo HTTP API (zantara@balizero.com).
 
     Auth: X-API-Key header (valid key from API_KEYS env var).
     Used by MCP tools to send team notifications, CRM reports, etc.
+    Sender is always zantara@balizero.com (alias of damar@balizero.com).
     """
+    import os
 
-    smtp = SMTPProvider()
+    import httpx
+
+    api_key = os.getenv("SENDGRID_API_KEY", "")
     cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
 
-    try:
-        msg_obj = __import__("email.mime.multipart", fromlist=["MIMEMultipart"]).MIMEMultipart(
-            "alternative",
-        )
-        msg_obj["Subject"] = request.subject
-        msg_obj["From"] = f"Bali Zero Team <{smtp.from_email or smtp.user}>"
-        msg_obj["To"] = request.to
+    payload: dict = {
+        "sender": {"email": "zantara@balizero.com", "name": "Zantara"},
+        "to": [{"email": request.to}],
+        "subject": request.subject,
+        "htmlContent": request.body,
+    }
+    if cc_list:
+        payload["cc"] = [{"email": e} for e in cc_list]
+
+    # Brevo HTTP API (key starts with xkeysib-) or SendGrid API
+    is_brevo = api_key.startswith("xkeysib-")
+    url = "https://api.brevo.com/v3/smtp/email" if is_brevo else "https://api.sendgrid.com/v3/mail/send"
+    headers = (
+        {"api-key": api_key, "Content-Type": "application/json"}
+        if is_brevo
+        else {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    )
+
+    if not is_brevo:
+        # SendGrid format
+        payload = {
+            "personalizations": [{"to": [{"email": request.to}]}],
+            "from": {"email": "zantara@balizero.com", "name": "Zantara"},
+            "subject": request.subject,
+            "content": [{"type": "text/html", "value": request.body}],
+        }
         if cc_list:
-            msg_obj["Cc"] = ", ".join(cc_list)
+            payload["personalizations"][0]["cc"] = [{"email": e} for e in cc_list]
 
-        from email.mime.text import MIMEText
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(url, json=payload, headers=headers)
 
-        msg_obj.attach(MIMEText(request.body, "html", "utf-8"))
+        if resp.status_code in (200, 201, 202):
+            logger.info(f"Direct email sent to {request.to} — {request.subject!r}")
+            return SendEmailResponse(success=True, message=f"Email sent to {request.to}")
 
-        import aiosmtplib
-
-        use_tls = smtp.port == 465
-        start_tls = smtp.port == 587
-        recipients = [request.to] + (cc_list or [])
-
-        await aiosmtplib.send(
-            msg_obj,
-            hostname=smtp.host,
-            port=smtp.port,
-            username=smtp.user,
-            password=smtp.password,
-            use_tls=use_tls,
-            start_tls=start_tls,
-            recipients=recipients,
-        )
-
-        logger.info(f"Direct email sent to {request.to} — {request.subject!r}")
-        return SendEmailResponse(success=True, message=f"Email sent to {request.to}")
+        logger.error(f"Email API error {resp.status_code}: {resp.text[:300]}")
+        return SendEmailResponse(success=False, message=f"API error {resp.status_code}: {resp.text[:200]}")
 
     except Exception as e:
         logger.error(f"Failed to send direct email to {request.to}: {e}")
