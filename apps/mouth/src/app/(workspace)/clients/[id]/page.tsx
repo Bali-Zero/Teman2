@@ -49,6 +49,7 @@ import { ImmigrationTab } from "./components/ImmigrationTab";
 import { CompanyTab } from "./components/CompanyTab";
 import { TaxTab } from "./components/TaxTab";
 import { TimelineTab } from "./components/TimelineTab";
+import { PortalMessages } from "./components/PortalMessages";
 import { EditClientModal } from "./components/modals/EditClientModal";
 import { AddFamilyMemberModal } from "./components/modals/AddFamilyMemberModal";
 import { EditFamilyMemberModal } from "./components/modals/EditFamilyMemberModal";
@@ -818,20 +819,26 @@ export default function ClientDetailPage() {
 
       {/* Tab Content */}
       {activeTab === "overview" && (
-        <OverviewTab
-          client={client}
-          stats={stats}
-          documents={documents}
-          activePractices={activePractices}
-          completedPractices={completedPractices}
-          interactions={interactions}
-          formatDate={formatDate}
-          formatCurrency={formatCurrency}
-          router={router}
-          onEditClick={() => setActiveModal("edit_client")}
-          onRefresh={refreshProfile}
-          clientId={clientId}
-        />
+        <>
+          <OverviewTab
+            client={client}
+            stats={stats}
+            documents={documents}
+            activePractices={activePractices}
+            completedPractices={completedPractices}
+            interactions={interactions}
+            formatDate={formatDate}
+            formatCurrency={formatCurrency}
+            router={router}
+            onEditClick={() => setActiveModal("edit_client")}
+            onRefresh={refreshProfile}
+            clientId={clientId}
+          />
+          <PortalMessages
+            clientId={clientId}
+            clientName={client.full_name}
+          />
+        </>
       )}
 
       {activeTab === "documents" && (
