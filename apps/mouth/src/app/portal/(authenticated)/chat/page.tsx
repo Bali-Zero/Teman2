@@ -1,15 +1,18 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Loader2, Send, MessageCircle, User, Users } from 'lucide-react';
-import { api } from '@/lib/api';
-import { useToast } from '@/components/ui/toast';
-import { cn } from '@/lib/utils';
-import { logger } from '@/lib/logger';
-import type { PortalMessage, MessagesResponse } from '@/lib/api/portal/portal.types';
-import { Button } from '@/components/ui/button';
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { Loader2, Send, MessageCircle, User, Users } from "lucide-react";
+import { api } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
+import type {
+  PortalMessage,
+  MessagesResponse,
+} from "@/lib/api/portal/portal.types";
+import { Button } from "@/components/ui/button";
 
-const POLL_INTERVAL = 60000; // 60 seconds (avoids 429 rate limits)
+const POLL_INTERVAL = 30000; // 30 seconds
 
 const PAGE_SIZE = 100;
 
@@ -22,7 +25,7 @@ export default function ChatPage() {
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [isSending, setIsSending] = useState(false);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -32,9 +35,13 @@ export default function ChatPage() {
     async (silent = false) => {
       try {
         if (!silent) setIsLoading(true);
-        const data: MessagesResponse = await api.portal.getMessages(PAGE_SIZE, 0);
+        const data: MessagesResponse = await api.portal.getMessages(
+          PAGE_SIZE,
+          0,
+        );
         const sortedMessages = [...data.messages].sort(
-          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
         setMessages(sortedMessages);
         setUnreadCount(data.unreadCount);
@@ -42,34 +49,38 @@ export default function ChatPage() {
         setHasMore(data.messages.length === PAGE_SIZE);
       } catch (err) {
         if (!silent) {
-          error('Failed to load messages', 'Please try again later');
+          error("Failed to load messages", "Please try again later");
         }
-        logger.error('Failed to load portal messages', {}, err as Error);
+        logger.error("Failed to load portal messages", {}, err as Error);
       } finally {
         setIsLoading(false);
       }
     },
-    [error]
+    [error],
   );
 
   // Load earlier messages (prepend)
   const loadMoreMessages = useCallback(async () => {
     try {
       setIsLoadingMore(true);
-      const data: MessagesResponse = await api.portal.getMessages(PAGE_SIZE, offset);
+      const data: MessagesResponse = await api.portal.getMessages(
+        PAGE_SIZE,
+        offset,
+      );
       if (data.messages.length === 0) {
         setHasMore(false);
         return;
       }
       const older = [...data.messages].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       );
       setMessages((prev) => [...older, ...prev]);
       setOffset((prev) => prev + PAGE_SIZE);
       setHasMore(data.messages.length === PAGE_SIZE);
     } catch (err) {
-      error('Failed to load earlier messages', 'Please try again');
-      logger.error('Failed to load earlier messages', {}, err as Error);
+      error("Failed to load earlier messages", "Please try again");
+      logger.error("Failed to load earlier messages", {}, err as Error);
     } finally {
       setIsLoadingMore(false);
     }
@@ -78,14 +89,14 @@ export default function ChatPage() {
   // Mark visible messages as read
   const markVisibleMessagesAsRead = useCallback(async () => {
     const unreadMessages = messages.filter(
-      (msg) => msg.direction === 'team_to_client' && !msg.readAt
+      (msg) => msg.direction === "team_to_client" && !msg.readAt,
     );
 
     for (const msg of unreadMessages) {
       try {
         await api.portal.markMessageRead(parseInt(msg.id));
       } catch (err) {
-        logger.error('Failed to mark message as read', {}, err as Error);
+        logger.error("Failed to mark message as read", {}, err as Error);
       }
     }
 
@@ -112,7 +123,7 @@ export default function ChatPage() {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
@@ -138,18 +149,18 @@ export default function ChatPage() {
         content: trimmedMessage,
       });
       setMessages((prev) => [...prev, sentMessage]);
-      setNewMessage('');
+      setNewMessage("");
       inputRef.current?.focus();
     } catch (err) {
-      error('Failed to send message', 'Please try again');
-      logger.error('Failed to send portal message', {}, err as Error);
+      error("Failed to send message", "Please try again");
+      logger.error("Failed to send portal message", {}, err as Error);
     } finally {
       setIsSending(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -157,9 +168,9 @@ export default function ChatPage() {
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
       hour12: true,
     });
   };
@@ -171,14 +182,15 @@ export default function ChatPage() {
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return 'Today';
+      return "Today";
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
+      return "Yesterday";
     } else {
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year:
+          date.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
       });
     }
   };
@@ -193,26 +205,50 @@ export default function ChatPage() {
       groups[date].push(message);
       return groups;
     },
-    {} as Record<string, PortalMessage[]>
+    {} as Record<string, PortalMessage[]>,
   );
 
   if (isLoading) {
     return (
       <div className="flex flex-col h-[calc(100vh-180px)] md:h-[calc(100vh-140px)] animate-in fade-in duration-500">
-        <div className="flex-shrink-0 pb-4 border-b" style={{ borderColor: 'var(--bz-border)' }}>
-          <div className="h-6 w-32 rounded animate-pulse" style={{ background: 'var(--bz-border)' }} />
-          <div className="h-4 w-48 rounded mt-1 animate-pulse" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+        <div
+          className="flex-shrink-0 pb-4 border-b"
+          style={{ borderColor: "var(--bz-border)" }}
+        >
+          <div
+            className="h-6 w-32 rounded animate-pulse"
+            style={{ background: "var(--bz-border)" }}
+          />
+          <div
+            className="h-4 w-48 rounded mt-1 animate-pulse"
+            style={{ background: "var(--bz-border)", opacity: 0.5 }}
+          />
         </div>
         <div className="flex-1 py-4 space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className={`flex gap-3 ${i % 2 === 0 ? 'flex-row-reverse' : ''}`}>
-              <div className="w-8 h-8 rounded-full flex-shrink-0 animate-pulse" style={{ background: 'var(--bz-border)' }} />
-              <div className={`h-16 rounded-xl animate-pulse ${i % 2 === 0 ? 'w-2/3' : 'w-3/4'}`} style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+            <div
+              key={i}
+              className={`flex gap-3 ${i % 2 === 0 ? "flex-row-reverse" : ""}`}
+            >
+              <div
+                className="w-8 h-8 rounded-full flex-shrink-0 animate-pulse"
+                style={{ background: "var(--bz-border)" }}
+              />
+              <div
+                className={`h-16 rounded-xl animate-pulse ${i % 2 === 0 ? "w-2/3" : "w-3/4"}`}
+                style={{ background: "var(--bz-border)", opacity: 0.5 }}
+              />
             </div>
           ))}
         </div>
-        <div className="flex-shrink-0 pt-3 border-t" style={{ borderColor: 'var(--bz-border)' }}>
-          <div className="h-12 w-full rounded-xl animate-pulse" style={{ background: 'var(--bz-border)', opacity: 0.4 }} />
+        <div
+          className="flex-shrink-0 pt-3 border-t"
+          style={{ borderColor: "var(--bz-border)" }}
+        >
+          <div
+            className="h-12 w-full rounded-xl animate-pulse"
+            style={{ background: "var(--bz-border)", opacity: 0.4 }}
+          />
         </div>
       </div>
     );
@@ -223,14 +259,19 @@ export default function ChatPage() {
       {/* Header */}
       <section
         className="flex-shrink-0 pb-4 border-b sticky top-0 z-10"
-        style={{ borderColor: 'var(--bz-border)', background: 'var(--bz-bg)' }}
+        style={{ borderColor: "var(--bz-border)", background: "var(--bz-bg)" }}
       >
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
-            <p style={{ color: 'var(--bz-text-2)' }}>Chat with your Bali Zero team</p>
+            <p style={{ color: "var(--bz-text-2)" }}>
+              Chat with your Bali Zero team
+            </p>
           </div>
-          <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--bz-text-2)' }}>
+          <div
+            className="flex items-center gap-2 text-sm"
+            style={{ color: "var(--bz-text-2)" }}
+          >
             <Users className="w-4 h-4" />
             <span>Bali Zero Team</span>
           </div>
@@ -240,17 +281,17 @@ export default function ChatPage() {
             <div
               className="px-3 py-1.5 text-sm rounded-full inline-flex items-center gap-1.5"
               style={{
-                background: 'rgba(201,169,110,0.12)',
-                color: 'var(--bz-accent-warm)',
+                background: "rgba(201,169,110,0.12)",
+                color: "var(--bz-accent-warm)",
               }}
             >
               <MessageCircle className="w-4 h-4" />
-              {unreadCount} unread message{unreadCount !== 1 ? 's' : ''}
+              {unreadCount} unread message{unreadCount !== 1 ? "s" : ""}
             </div>
             <button
               onClick={markVisibleMessagesAsRead}
               className="text-xs underline underline-offset-2 opacity-60 hover:opacity-100 transition-opacity"
-              style={{ color: 'var(--bz-text-2)' }}
+              style={{ color: "var(--bz-text-2)" }}
             >
               Mark all as read
             </button>
@@ -265,11 +306,20 @@ export default function ChatPage() {
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <MessageCircle className="w-16 h-16 mb-4" style={{ color: 'var(--bz-text-3)' }} />
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--bz-text-2)' }}>
+            <MessageCircle
+              className="w-16 h-16 mb-4"
+              style={{ color: "var(--bz-text-3)" }}
+            />
+            <h3
+              className="text-lg font-semibold"
+              style={{ color: "var(--bz-text-2)" }}
+            >
               No messages yet
             </h3>
-            <p className="text-sm mt-1 max-w-xs" style={{ color: 'var(--bz-text-3)' }}>
+            <p
+              className="text-sm mt-1 max-w-xs"
+              style={{ color: "var(--bz-text-3)" }}
+            >
               Start a conversation with your Bali Zero team. We're here to help!
             </p>
           </div>
@@ -282,12 +332,14 @@ export default function ChatPage() {
                   disabled={isLoadingMore}
                   className="text-xs px-3 py-1.5 rounded-full border transition-opacity hover:opacity-80 disabled:opacity-40"
                   style={{
-                    borderColor: 'var(--bz-border)',
-                    color: 'var(--bz-text-2)',
-                    background: 'rgba(255,255,255,0.03)',
+                    borderColor: "var(--bz-border)",
+                    color: "var(--bz-text-2)",
+                    background: "rgba(255,255,255,0.03)",
                   }}
                 >
-                  {isLoadingMore ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : null}
+                  {isLoadingMore ? (
+                    <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
+                  ) : null}
                   Load earlier messages
                 </button>
               </div>
@@ -296,17 +348,30 @@ export default function ChatPage() {
               <div key={date}>
                 {/* Date Separator */}
                 <div className="flex items-center gap-3 my-4">
-                  <div className="flex-1 h-px" style={{ background: 'var(--bz-border)' }} />
-                  <span className="text-xs font-medium px-2" style={{ color: 'var(--bz-text-2)' }}>
+                  <div
+                    className="flex-1 h-px"
+                    style={{ background: "var(--bz-border)" }}
+                  />
+                  <span
+                    className="text-xs font-medium px-2"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     {formatDate(dateMessages[0].createdAt)}
                   </span>
-                  <div className="flex-1 h-px" style={{ background: 'var(--bz-border)' }} />
+                  <div
+                    className="flex-1 h-px"
+                    style={{ background: "var(--bz-border)" }}
+                  />
                 </div>
 
                 {/* Messages for this date */}
                 <div className="space-y-3">
                   {dateMessages.map((message) => (
-                    <MessageBubble key={message.id} message={message} formatTime={formatTime} />
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      formatTime={formatTime}
+                    />
                   ))}
                 </div>
               </div>
@@ -317,7 +382,10 @@ export default function ChatPage() {
       </div>
 
       {/* Input Area */}
-      <div className="flex-shrink-0 pt-4 border-t" style={{ borderColor: 'var(--bz-border)' }}>
+      <div
+        className="flex-shrink-0 pt-4 border-t"
+        style={{ borderColor: "var(--bz-border)" }}
+      >
         <div className="flex gap-2">
           <input
             ref={inputRef}
@@ -330,14 +398,14 @@ export default function ChatPage() {
             id="message-input"
             disabled={isSending}
             className={cn(
-              'flex-1 px-4 py-3 rounded-xl border',
-              'focus:outline-none focus:ring-2',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+              "flex-1 px-4 py-3 rounded-xl border",
+              "focus:outline-none focus:ring-2",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
             )}
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              borderColor: 'rgba(255,255,255,0.05)',
-              color: 'var(--bz-text-1)',
+              background: "rgba(255,255,255,0.03)",
+              borderColor: "rgba(255,255,255,0.05)",
+              color: "var(--bz-text-1)",
             }}
           />
           <Button
@@ -345,7 +413,7 @@ export default function ChatPage() {
             disabled={!newMessage.trim() || isSending}
             size="icon"
             className="h-12 w-12 rounded-xl"
-            aria-label={isSending ? 'Sending message' : 'Send message'}
+            aria-label={isSending ? "Sending message" : "Send message"}
           >
             {isSending ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -354,7 +422,10 @@ export default function ChatPage() {
             )}
           </Button>
         </div>
-        <p className="text-xs mt-2 text-center" style={{ color: 'var(--bz-text-3)' }}>
+        <p
+          className="text-xs mt-2 text-center"
+          style={{ color: "var(--bz-text-3)" }}
+        >
           Messages are typically responded to within 24 hours
         </p>
       </div>
@@ -370,41 +441,51 @@ function MessageBubble({
   message: PortalMessage;
   formatTime: (date: string) => string;
 }) {
-  const isFromTeam = message.direction === 'team_to_client';
+  const isFromTeam = message.direction === "team_to_client";
   const isUnread = isFromTeam && !message.readAt;
 
   return (
-    <div className={cn('flex gap-2', isFromTeam ? 'justify-start' : 'justify-end')}>
+    <div
+      className={cn("flex gap-2", isFromTeam ? "justify-start" : "justify-end")}
+    >
       {/* Team Avatar */}
       {isFromTeam && (
         <div
           className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(201,169,110,0.12)' }}
+          style={{ background: "rgba(201,169,110,0.12)" }}
         >
-          <Users className="w-4 h-4" style={{ color: 'var(--bz-accent-warm)' }} />
+          <Users
+            className="w-4 h-4"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
         </div>
       )}
 
       {/* Message Content */}
       <div
         className={cn(
-          'max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5',
-          isFromTeam ? 'rounded-tl-sm' : 'rounded-tr-sm',
-          isUnread && 'ring-2'
+          "max-w-[80%] md:max-w-[70%] rounded-2xl px-4 py-2.5",
+          isFromTeam ? "rounded-tl-sm" : "rounded-tr-sm",
+          isUnread && "ring-2",
         )}
         style={
           isFromTeam
             ? {
-                background: 'rgba(255,255,255,0.03)',
-                backdropFilter: 'blur(12px)',
-                boxShadow: isUnread ? '0 0 0 2px rgba(201,169,110,0.3)' : undefined,
+                background: "rgba(255,255,255,0.03)",
+                backdropFilter: "blur(12px)",
+                boxShadow: isUnread
+                  ? "0 0 0 2px rgba(201,169,110,0.3)"
+                  : undefined,
               }
-            : { background: 'var(--bz-accent-warm)', color: '#0c0c0e' }
+            : { background: "var(--bz-accent-warm)", color: "#0c0c0e" }
         }
       >
         {/* Sender name for team messages */}
         {isFromTeam && message.sentBy && (
-          <p className="text-xs font-medium mb-1" style={{ color: 'var(--bz-accent-warm)' }}>
+          <p
+            className="text-xs font-medium mb-1"
+            style={{ color: "var(--bz-accent-warm)" }}
+          >
             {message.sentBy}
           </p>
         )}
@@ -413,7 +494,7 @@ function MessageBubble({
         {message.subject && (
           <p
             className="text-sm font-semibold mb-1"
-            style={{ color: isFromTeam ? 'var(--bz-text-1)' : '#0c0c0e' }}
+            style={{ color: isFromTeam ? "var(--bz-text-1)" : "#0c0c0e" }}
           >
             {message.subject}
           </p>
@@ -422,7 +503,7 @@ function MessageBubble({
         {/* Message content */}
         <p
           className="text-sm whitespace-pre-wrap break-words"
-          style={{ color: isFromTeam ? 'var(--bz-text-1)' : '#0c0c0e' }}
+          style={{ color: isFromTeam ? "var(--bz-text-1)" : "#0c0c0e" }}
         >
           {message.content}
         </p>
@@ -431,11 +512,11 @@ function MessageBubble({
         <p
           className="text-[10px] mt-1"
           style={{
-            color: isFromTeam ? 'var(--bz-text-2)' : 'rgba(12,12,14,0.6)',
+            color: isFromTeam ? "var(--bz-text-2)" : "rgba(12,12,14,0.6)",
           }}
         >
           {formatTime(message.createdAt)}
-          {!isFromTeam && message.readAt && ' • Read'}
+          {!isFromTeam && message.readAt && " • Read"}
         </p>
       </div>
 
@@ -443,9 +524,9 @@ function MessageBubble({
       {!isFromTeam && (
         <div
           className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ background: 'var(--bz-accent-warm)' }}
+          style={{ background: "var(--bz-accent-warm)" }}
         >
-          <User className="w-4 h-4" style={{ color: '#0c0c0e' }} />
+          <User className="w-4 h-4" style={{ color: "#0c0c0e" }} />
         </div>
       )}
     </div>
