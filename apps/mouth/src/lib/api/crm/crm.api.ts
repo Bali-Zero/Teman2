@@ -21,6 +21,7 @@ import type {
   ClientCompanyLink,
   CompanyDocument,
   TaxRecord,
+  PortalMessageThread,
 } from "./crm.types";
 import type {
   RequiredDocument,
@@ -1160,5 +1161,71 @@ export class CrmApi {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  // ============================================================================
+  // Portal Messages (team ↔ client messaging bridge)
+  // ============================================================================
+
+  async getPortalMessages(
+    clientId: number,
+    limit = 50,
+    offset = 0,
+  ): Promise<{ messages: PortalMessageThread[]; total: number }> {
+    const resp = await this.client.request<{
+      success: boolean;
+      data: { messages: PortalMessageThread[]; total: number };
+    }>(
+      `/api/crm/portal/clients/${clientId}/messages?limit=${limit}&offset=${offset}`,
+    );
+    return resp.data;
+  }
+
+  async sendPortalMessage(
+    clientId: number,
+    content: string,
+    subject?: string,
+    practiceId?: number,
+  ): Promise<PortalMessageThread> {
+    const resp = await this.client.request<{
+      success: boolean;
+      data: PortalMessageThread;
+    }>(`/api/crm/portal/clients/${clientId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content, subject, practice_id: practiceId }),
+    });
+    return resp.data;
+  }
+
+  async markPortalMessageRead(
+    clientId: number,
+    messageId: number,
+  ): Promise<void> {
+    await this.client.request(
+      `/api/crm/portal/clients/${clientId}/messages/${messageId}/read`,
+      { method: "POST" },
+    );
+  }
+
+  async getPortalUnreadCount(): Promise<{
+    total_unread: number;
+    by_client: {
+      client_id: number;
+      client_name: string;
+      unread_count: number;
+    }[];
+  }> {
+    const resp = await this.client.request<{
+      success: boolean;
+      data: {
+        total_unread: number;
+        by_client: {
+          client_id: number;
+          client_name: string;
+          unread_count: number;
+        }[];
+      };
+    }>("/api/crm/portal/messages/unread-count");
+    return resp.data;
   }
 }
