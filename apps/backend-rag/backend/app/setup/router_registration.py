@@ -96,6 +96,7 @@ def include_routers(api: FastAPI) -> None:
         team_activity,
         team_analytics,
         team_drive,
+        team_members,
         telegram,
         telegram_webhook,
         twitter,
@@ -268,6 +269,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(team.router)  # Team member visibility management
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
+    api.include_router(team_members.router)  # [NEW] Team members list for CRM dropdowns
     api.include_router(media.router)
     # api.include_router(audio.router)  # Already included in app_factory.py with prefix="/api"
     api.include_router(voice.router)  # Fast voice endpoint for realtime voice AI
