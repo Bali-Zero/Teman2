@@ -400,3 +400,35 @@ export interface DriveFilesResponse {
   total_size_bytes?: number;
   message?: string;
 }
+
+// ============================================================================
+// Billing Types
+// ============================================================================
+
+export interface PortalInvoice {
+  id: number;
+  invoice_number: string;
+  amount_idr: number;
+  invoice_source: string;
+  has_pdf: boolean;
+  drive_web_link: string | null;
+  email_sent: boolean;
+  generated_at: string | null;
+  created_at: string | null;
+  practice_id: number;
+  practice_name: string;
+  practice_category: string;
+  payment_status: string;
+}
+
+export interface BillingSummary {
+  total_invoiced: number;
+  total_paid: number;
+  total_pending: number;
+  count: number;
+}
+
+export interface BillingResponse {
+  invoices: PortalInvoice[];
+  summary: BillingSummary;
+}
