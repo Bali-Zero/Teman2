@@ -7,7 +7,6 @@ import functools
 import json
 from datetime import datetime, timezone
 from typing import Any
-from unittest.mock import MagicMock
 
 import asyncpg
 
@@ -308,7 +307,7 @@ def audit_change(entity_type: str, change_type: str = "update") -> Any:
                             )
                             if row and hasattr(row, "items"):
                                 old_state = dict(row)
-                            elif row and not isinstance(row, MagicMock):
+                            elif row:
                                 # If it's a real record but doesn't have items() (unlikely for asyncpg)
                                 old_state = dict(row)
                     else:

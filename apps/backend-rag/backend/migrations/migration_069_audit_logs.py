@@ -61,4 +61,3 @@ async def downgrade(pool) -> None:
     """Revert migration."""
     async with pool.acquire() as conn:
         await conn.execute(DOWNGRADE_SQL)
-"""

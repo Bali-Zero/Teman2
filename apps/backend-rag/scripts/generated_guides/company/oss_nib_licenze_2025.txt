@@ -1,9 +1,17 @@
 OSS, NIB E LICENZE SETTORIALI — SISTEMA DI REGISTRAZIONE IMPRESE
 GUIDA AL SINGLE SUBMISSION SYSTEM E AL RISK-BASED APPROACH
-INDONESIA 2024-2025
+INDONESIA 2025-2026
 
-Guida normativa verificata | Basata su PP 5/2021 (OSS), Perpres 49/2021
+Guida normativa verificata | Aggiornata a GR 28/2025 (PP 28/2025) e BKPM Reg 5/2025
 Prodotta da Bali Zero / Zantara Intelligence
+
+⚠️ AGGIORNAMENTO NORMATIVO (marzo 2026): Il TDUP (Tanda Daftar Usaha Pariwisata)
+non è più rilasciato come licenza locale autonoma dal Dinas Pariwisata. Dal GR
+28/2025 (PP 28/2025), le attività turistiche ottengono la PB UMKU (Perizinan
+Berusaha Untuk Menunjang Kegiatan Usaha) tramite OSS, con certificazione da
+parte di un LSPr (Lembaga Sertifikasi Profesi/Usaha) accreditato a livello
+nazionale. Fonte di verifica: claim NB3-C006/C007, GR 28/2025 + 6 fonti
+indipendenti (AGI Legal, Zenith, BPR, OSS-RBA guide, PP 28/2025 testo completo).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -116,30 +124,42 @@ Esempi di attività ad alto rischio:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-4. TDUP — LICENZA TURISTICA PER BALI
+4. PB UMKU — PERIZINAN BERUSAHA UNTUK MENUNJANG KEGIATAN USAHA
+   (ex TDUP — aggiornato GR 28/2025)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Per le attività nel settore turistico a Bali, oltre alle licenze OSS
-standard, è richiesto il TDUP (Tanda Daftar Usaha Pariwisata). [COM-040]
+⚠️ NOTA TRANSIZIONE: Il TDUP (Tanda Daftar Usaha Pariwisata) NON ESISTE PIÙ
+come licenza locale autonoma rilasciata dal Dinas Pariwisata. Dal GR 28/2025
+(PP 28/2025), il sistema è stato sostituito dal PB UMKU tramite OSS + LSPr.
+Non recarsi al Dinas Pariwisata per richiedere un TDUP. [COM-040 aggiornato]
 
-COSA È IL TDUP:
-Il TDUP è il certificato di registrazione come impresa turistica,
-rilasciato dal Dinas Pariwisata della provincia di Bali.
+COSA È LA PB UMKU:
+La PB UMKU (Perizinan Berusaha Untuk Menunjang Kegiatan Usaha) è la
+licenza di supporto all'attività turistica, gestita interamente tramite
+il sistema OSS. A differenza del vecchio TDUP locale, la PB UMKU richiede
+una certificazione da parte di un LSPr (Lembaga Sertifikasi Profesi/Usaha),
+ente di certificazione accreditato a livello nazionale.
 
-CHI DEVE OTTENERLO:
+CHI DEVE OTTENERLA:
 - Alberghi, villa, guest house
-- Ristoranti e bar
-- Agenzie di viaggio
-- Attrezzature/servizi turistici
+- Ristoranti e bar classificati come attività turistiche
+- Agenzie di viaggio e tour operator
 - Spa e centri benessere legati al turismo
 - Attrazioni e attività turistiche
+- Servizi di supporto al settore turistico
 
-COME SI OTTIENE:
-Tramite DPMPTSP (Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu)
-o direttamente tramite portale OSS (in molti casi è integrato).
+COME SI OTTIENE (GR 28/2025):
+1. Registrazione su OSS (oss.go.id) con NIB già attivo
+2. Selezione del KBLI e del tipo di licenza turistica (PB UMKU)
+3. Caricamento documentazione richiesta tramite OSS
+4. Verifica e certificazione da parte di un LSPr accreditato
+   (il sistema OSS indica quale LSPr è competente per il settore)
+5. Rilascio del Sertifikat Standar Usaha Pariwisata da parte dell'LSPr
 
-TEMPI: 3-7 giorni dopo presentazione della documentazione.
+TEMPI: Variabili — dipendono dal processo di audit LSPr.
+       Non paragonabili ai vecchi "3-7 giorni" del TDUP locale.
+       Il processo online OSS è più strutturato ma richiede audit fisico.
 
 DOCUMENTAZIONE TIPICA:
 - NIB
@@ -147,6 +167,14 @@ DOCUMENTAZIONE TIPICA:
 - NPWP aziendale
 - Sertifikat standar OSS (se già ottenuto)
 - Deskripsi attività turistica + foto location
+- Documentazione per audit LSPr (varia per settore)
+
+NOTA LOCALE BALI:
+La transizione dal TDUP al sistema PB UMKU/LSPr potrebbe essere ancora
+in corso a livello operativo locale — alcuni uffici di Bali potrebbero
+ancora usare la terminologia "TDUP". La base normativa è chiara (GR 28/2025),
+ma verificare con il team Bali Zero lo stato attuale della transizione
+prima di indirizzare un cliente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -200,17 +228,19 @@ Per attività Tinggi: avviare iter per Izin formale.
 
 KBLI    Attività                   Rischio RBA        Licenze necessarie
 ──────────────────────────────────────────────────────────────────────────
-56101   Ristorante                 Menengah Rendah    NIB + SS + TDUP
-55194   Vila turistica             Menengah Rendah    NIB + SS + TDUP
-93139   Yoga/wellness studio       Rendah             NIB (+ TDUP se turismo)
+56101   Ristorante                 Menengah Rendah    NIB + SS + PB UMKU/LSPr (*)
+55194   Vila turistica             Menengah Rendah    NIB + SS + PB UMKU/LSPr (*)
+93139   Yoga/wellness studio       Rendah             NIB (+ PB UMKU se turismo) (*)
 62010   Sviluppo software          Rendah             NIB
 70201   Consulenza aziendale       Rendah             NIB
 47630   Negozio accessori          Rendah             NIB
-79120   Agenzia viaggi             Menengah Rendah    NIB + SS + TDUP
-86102   Clinica medica             Tinggi             NIB + Izin Operasional
+79120   Agenzia viaggi             Menengah Rendah    NIB + SS + PB UMKU/LSPr (*)
+86102   Clinica medica             Tinggi             NIB + Izin Operasionale
 85493   Scuola privata/corsi       Menengah Tinggi    NIB + SS verificato
 ──────────────────────────────────────────────────────────────────────────
 SS = Sertifikat Standar
+(*) PB UMKU via OSS + certificazione LSPr — sostituisce il vecchio TDUP locale
+    (GR 28/2025). Non più dal Dinas Pariwisata.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -259,7 +289,8 @@ Il team Bali Zero supporta la compilazione per i clienti WNA.
 CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
 COM-013, COM-014, COM-015, COM-016, COM-017, COM-018, COM-019, COM-040, COM-049
 
-Base normativa: PP 5/2021 (OSS RBA), Perpres 49/2021, UU 25/2007 Art. 25.
+Base normativa: GR 28/2025 / PP 28/2025 (PB UMKU, ex TDUP), PP 5/2021 (OSS RBA),
+Perpres 49/2021, UU 25/2007 Art. 25, BKPM Reg 5/2025.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
+Fine documento | Versione 2026-03-30 | Aggiornato da Zantara Intelligence (NLM NB-3)

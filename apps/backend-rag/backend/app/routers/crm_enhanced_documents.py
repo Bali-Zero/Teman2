@@ -142,6 +142,7 @@ async def create_document(
                 folder_hint = "02_Company"
             background_tasks.add_task(
                 _dispatch_ocr_by_folder,
+                pool,
                 client_id,
                 data.file_id,
                 folder_hint,
@@ -273,6 +274,7 @@ async def create_documents_bulk(
                             folder_hint = "02_Company"
                         background_tasks.add_task(
                             _dispatch_ocr_by_folder,
+                            pool,
                             client_id,
                             doc.file_id,
                             folder_hint,
@@ -471,7 +473,7 @@ async def extract_visa_data(
     if not file_id:
         raise HTTPException(status_code=400, detail="file_id required")
 
-    return await _auto_ocr_visa(client_id, file_id, doc_id)
+    return await _auto_ocr_visa(pool, client_id, file_id, doc_id)
 
 
 # ============================================
@@ -622,6 +624,7 @@ async def upload_document_base64(
             # Trigger OCR via dispatcher
             background_tasks.add_task(
                 _dispatch_ocr_by_folder,
+                pool,
                 client_id,
                 upload_result["id"],
                 folder_name,

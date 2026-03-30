@@ -21,6 +21,9 @@ import type {
   PortalApiResponse,
   LKPMDraftSummary,
   LKPMDraft,
+  ProcessTimeline,
+  DriveFilesResponse,
+  BillingResponse,
 } from "./portal.types";
 import type { TimelineResponse } from "../types/timeline.types";
 
@@ -311,5 +314,57 @@ export class PortalApi {
       },
     );
     return response;
+  }
+
+  // ============================================================================
+  // Process Timeline
+  // ============================================================================
+
+  async getProcessTimeline(practiceId: number): Promise<ProcessTimeline> {
+    const response = await this.client.request<PortalApiResponse<ProcessTimeline>>(
+      `/api/portal/process/${practiceId}/timeline`,
+      { method: "GET" },
+    );
+    return response.data!;
+  }
+
+  // ============================================================================
+  // Drive Files
+  // ============================================================================
+
+  async getDriveFiles(): Promise<DriveFilesResponse> {
+    const response = await this.client.request<PortalApiResponse<DriveFilesResponse>>(
+      "/api/portal/drive/files",
+      { method: "GET" },
+    );
+    return response.data!;
+  }
+
+  async getDriveSubfolderFiles(folderId: string): Promise<DriveFilesResponse> {
+    const response = await this.client.request<PortalApiResponse<DriveFilesResponse>>(
+      `/api/portal/drive/files/${folderId}/list`,
+      { method: "GET" },
+    );
+    return response.data!;
+  }
+
+  // ============================================================================
+  // Billing
+  // ============================================================================
+
+  async getBilling(): Promise<BillingResponse> {
+    const response = await this.client.request<PortalApiResponse<BillingResponse>>(
+      "/api/portal/billing",
+      { method: "GET" },
+    );
+    return response.data!;
+  }
+
+  async getInvoicePdfUrl(invoiceId: number): Promise<{ download_url: string; drive_file_id: string }> {
+    const response = await this.client.request<PortalApiResponse<{ download_url: string; drive_file_id: string }>>(
+      `/api/portal/billing/${invoiceId}/pdf-url`,
+      { method: "GET" },
+    );
+    return response.data!;
   }
 }

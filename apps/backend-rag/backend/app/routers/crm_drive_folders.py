@@ -569,6 +569,7 @@ async def upload_file_to_folder(
 
         background_tasks.add_task(
             _dispatch_ocr_by_folder,
+            pool,
             client_id,
             upload_result["id"],
             folder_name,

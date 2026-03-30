@@ -116,9 +116,9 @@ export default function CompanyDetailPage() {
         <h2 className="text-lg font-semibold" style={{ color: 'var(--bz-text-2)' }}>
           Company not found
         </h2>
-        <Button variant="ghost" className="mt-4" onClick={() => router.push('/portal/vault')}>
+        <Button variant="ghost" className="mt-4" onClick={() => router.push('/portal/companies')}>
           <ChevronLeft className="w-4 h-4 mr-1" />
-          Back to Vault
+          Back to Companies
         </Button>
       </div>
     );

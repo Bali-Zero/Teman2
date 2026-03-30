@@ -32,6 +32,10 @@ torch>=2.6.0  # Security: RCE via torch.load fixed in 2.6.0 (CVE-2025-32434)
 sentence-transformers>=5.3.0  # Updated 2026-03-14: tested compatible, CrossEncoder API stable, sparse embeddings support
 tiktoken>=0.5.0  # For accurate token estimation (optional, has fallback)
 
+# PII Detection (UU PDP compliance)
+presidio-analyzer>=2.2.362
+presidio-anonymizer>=2.2.362
+
 # Document Processing
 openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
 email-validator>=2.2.0

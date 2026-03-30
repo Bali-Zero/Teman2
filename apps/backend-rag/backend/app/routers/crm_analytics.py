@@ -28,6 +28,29 @@ router = APIRouter(prefix="/api/crm/analytics", tags=["crm-analytics"])
 
 
 # ================================================
+# DATE HELPERS
+# ================================================
+
+
+def _months_ago(n: int) -> datetime:
+    """Return first day of month N months ago (UTC)."""
+    now = datetime.now(tz=timezone.utc)
+    month = now.month - n
+    year = now.year
+    while month <= 0:
+        month += 12
+        year -= 1
+    return datetime(year, month, 1, tzinfo=timezone.utc)
+
+
+def _next_month_start(dt: datetime) -> datetime:
+    """Return first day of month after dt."""
+    if dt.month == 12:
+        return datetime(dt.year + 1, 1, 1, tzinfo=timezone.utc)
+    return datetime(dt.year, dt.month + 1, 1, tzinfo=timezone.utc)
+
+
+# ================================================
 # PYDANDIC MODELS
 # ================================================
 
@@ -192,85 +215,60 @@ async def get_team_performance(
 
     Returns:
         List of team members with performance metrics.
+
+    Performance: single aggregate SQL query with GROUP BY replaces the
+    previous N+1 pattern (4 queries × N team members).
     """
     try:
         async with db_pool.acquire() as conn:
             user_is_admin = is_crm_admin(current_user)
             user_email = current_user.get("email", "").lower()
 
-            if not user_is_admin:
-                # Non-admin can only see their own stats
-                members = [user_email]
+            # RBAC: non-admin sees only their own row; admin sees all members.
+            if user_is_admin:
+                where_clause = ""
+                params: list[Any] = []
             else:
-                # Get all team members who have clients
-                member_rows = await conn.fetch(
-                    "SELECT DISTINCT assigned_to FROM clients WHERE assigned_to IS NOT NULL",
-                )
-                members = [row["assigned_to"] for row in member_rows if row["assigned_to"]]
+                where_clause = "WHERE c.assigned_to = $1"
+                params = [user_email]
 
-            datetime.now(tz=timezone.utc) - timedelta(days=period_days)
+            # Single aggregate query — replaces the per-member loop.
+            query = f"""
+                SELECT
+                    c.assigned_to                                          AS member_email,
+                    COUNT(DISTINCT c.id)                                   AS total_clients,
+                    COUNT(DISTINCT c.id) FILTER (WHERE c.status = 'active') AS active_clients,
+                    COUNT(DISTINCT p.id) FILTER (WHERE p.status = 'completed') AS completed_cases,
+                    COALESCE(
+                        SUM(p.actual_price) FILTER (WHERE p.payment_status = 'paid'),
+                        0
+                    )                                                      AS revenue_generated
+                FROM clients c
+                LEFT JOIN practices p ON p.client_id = c.id
+                {where_clause}
+                GROUP BY c.assigned_to
+                ORDER BY revenue_generated DESC
+            """
+
+            rows = await conn.fetch(query, *params)
+
             results = []
-
-            for member in members:
-                # Total clients
-                total = (
-                    await conn.fetchval(
-                        "SELECT COUNT(*) FROM clients WHERE assigned_to = $1", member,
-                    )
-                    or 0
-                )
-
-                # Active clients
-                active = (
-                    await conn.fetchval(
-                        "SELECT COUNT(*) FROM clients WHERE assigned_to = $1 AND status = 'active'",
-                        member,
-                    )
-                    or 0
-                )
-
-                # Completed (cases completed)
-                completed = (
-                    await conn.fetchval(
-                        """
-                    SELECT COUNT(*) FROM practices p
-                    JOIN clients c ON p.client_id = c.id
-                    WHERE c.assigned_to = $1 AND p.status = 'completed'
-                    """,
-                        member,
-                    )
-                    or 0
-                )
-
-                # Conversion rate (active / total)
+            for row in rows:
+                if not row["member_email"]:
+                    continue
+                total = row["total_clients"] or 0
+                active = row["active_clients"] or 0
                 conversion_rate = (active / total * 100) if total > 0 else 0
-
-                # Revenue generated
-                revenue = (
-                    await conn.fetchval(
-                        """
-                    SELECT COALESCE(SUM(actual_price), 0) FROM practices p
-                    JOIN clients c ON p.client_id = c.id
-                    WHERE c.assigned_to = $1 AND p.payment_status = 'paid'
-                    """,
-                        member,
-                    )
-                    or 0
-                )
-
                 results.append(
                     {
-                        "member_email": member,
+                        "member_email": row["member_email"],
                         "total_clients": total,
                         "active_clients": active,
-                        "completed_cases": completed,
+                        "completed_cases": row["completed_cases"] or 0,
                         "conversion_rate": round(conversion_rate, 1),
-                        "revenue_generated": float(revenue),
+                        "revenue_generated": float(row["revenue_generated"] or 0),
                     },
                 )
-
-            # Sort by revenue
-            results.sort(key=lambda x: x["revenue_generated"], reverse=True)
 
             return results
 
@@ -321,10 +319,8 @@ async def get_revenue_summary(
             # Monthly breakdown (last 6 months)
             months = []
             for i in range(5, -1, -1):
-                month_start = (datetime.now(tz=timezone.utc).replace(day=1) - timedelta(days=i * 30)).replace(
-                    day=1,
-                )
-                month_end = (month_start + timedelta(days=32)).replace(day=1)
+                month_start = _months_ago(i)
+                month_end = _next_month_start(month_start)
                 month_label = month_start.strftime("%Y-%m")
 
                 month_query = f"""
@@ -461,10 +457,8 @@ async def get_client_trend(
 
             results = []
             for i in range(months - 1, -1, -1):
-                month_start = (datetime.now(tz=timezone.utc).replace(day=1) - timedelta(days=i * 30)).replace(
-                    day=1,
-                )
-                month_end = (month_start + timedelta(days=32)).replace(day=1)
+                month_start = _months_ago(i)
+                month_end = _next_month_start(month_start)
                 month_label = month_start.strftime("%b %Y")
 
                 # New clients

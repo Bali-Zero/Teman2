@@ -8,10 +8,11 @@ Indonesian passport, phone (+62), email.
 Compliance: UU PDP No. 27/2022 Art. 35, 36, 38
 """
 
+import json
 import logging
 from typing import Any
 
-from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
+from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer
 from presidio_anonymizer import AnonymizerEngine
 
 logger = logging.getLogger(__name__)
@@ -156,7 +157,95 @@ def redact_text(text: str, language: str = "en") -> tuple[str, int]:
     if len(results) > 0:
         logger.warning(
             f"PII redacted: {len(results)} entities found "
-            f"({', '.join(set(r.entity_type for r in results))})"
+            f"({', '.join({r.entity_type for r in results})})"
         )
 
     return anonymized.text, len(results)
+
+
+# ============================================================================
+# FastAPI Middleware (scoped to /api/agentic/* responses)
+# ============================================================================
+
+
+class PIIScannerMiddleware:
+    """
+    ASGI middleware that redacts PII from JSON responses on /api/agentic/* paths.
+
+    Intercepts the response body, deserializes JSON, redacts PII fields
+    ('answer', 'generation', 'response', 'text', 'message'), then re-serializes.
+    Non-JSON or non-agentic responses pass through untouched.
+
+    Compliance: UU PDP No. 27/2022 Art. 35, 36, 38
+    """
+
+    _SCOPED_PREFIX = "/api/agentic/"
+    _REDACT_FIELDS = {"answer", "generation", "response", "text", "message", "content"}
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path: str = scope.get("path", "")
+        if not path.startswith(self._SCOPED_PREFIX):
+            await self.app(scope, receive, send)
+            return
+
+        # Capture the response body
+        response_started = False
+        response_headers: list = []
+        response_status: int = 200
+        body_chunks: list[bytes] = []
+
+        async def capture_send(message: dict) -> None:
+            nonlocal response_started, response_headers, response_status
+            if message["type"] == "http.response.start":
+                response_started = True
+                response_status = message["status"]
+                response_headers = list(message.get("headers", []))
+            elif message["type"] == "http.response.body":
+                body_chunks.append(message.get("body", b""))
+
+        await self.app(scope, receive, capture_send)
+
+        raw_body = b"".join(body_chunks)
+
+        # Only attempt PII redaction on JSON responses
+        content_type = ""
+        for name, value in response_headers:
+            if name.lower() == b"content-type":
+                content_type = value.decode("utf-8", errors="ignore").lower()
+                break
+
+        redacted_body = raw_body
+        if "application/json" in content_type and raw_body:
+            try:
+                payload = json.loads(raw_body)
+                total_redacted = 0
+                for field in self._REDACT_FIELDS:
+                    if field in payload and isinstance(payload[field], str):
+                        cleaned, count = redact_text(payload[field])
+                        payload[field] = cleaned
+                        total_redacted += count
+                if total_redacted > 0:
+                    logger.info(
+                        f"[PIIScanner] Redacted {total_redacted} PII entities from agentic response on {path}"
+                    )
+                redacted_body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                pass  # Non-JSON body — pass through unchanged
+
+        # Update Content-Length if body changed
+        updated_headers = []
+        for name, value in response_headers:
+            if name.lower() == b"content-length":
+                updated_headers.append((b"content-length", str(len(redacted_body)).encode()))
+            else:
+                updated_headers.append((name, value))
+
+        await send({"type": "http.response.start", "status": response_status, "headers": updated_headers})
+        await send({"type": "http.response.body", "body": redacted_body})
