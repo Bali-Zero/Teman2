@@ -23,6 +23,7 @@ import type {
   LKPMDraft,
   ProcessTimeline,
   DriveFilesResponse,
+  BillingResponse,
 } from "./portal.types";
 import type { TimelineResponse } from "../types/timeline.types";
 
@@ -342,6 +343,26 @@ export class PortalApi {
   async getDriveSubfolderFiles(folderId: string): Promise<DriveFilesResponse> {
     const response = await this.client.request<PortalApiResponse<DriveFilesResponse>>(
       `/api/portal/drive/files/${folderId}/list`,
+      { method: "GET" },
+    );
+    return response.data!;
+  }
+
+  // ============================================================================
+  // Billing
+  // ============================================================================
+
+  async getBilling(): Promise<BillingResponse> {
+    const response = await this.client.request<PortalApiResponse<BillingResponse>>(
+      "/api/portal/billing",
+      { method: "GET" },
+    );
+    return response.data!;
+  }
+
+  async getInvoicePdfUrl(invoiceId: number): Promise<{ download_url: string; drive_file_id: string }> {
+    const response = await this.client.request<PortalApiResponse<{ download_url: string; drive_file_id: string }>>(
+      `/api/portal/billing/${invoiceId}/pdf-url`,
       { method: "GET" },
     );
     return response.data!;
