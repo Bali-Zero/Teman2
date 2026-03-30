@@ -66,22 +66,27 @@ async def list_companies(
     current_user: dict = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     """List all companies with optional filters"""
-    query = "SELECT * FROM companies WHERE 1=1"
-    params = []
+    query = """
+        SELECT c.*, COUNT(ccl.id) AS associates_count
+        FROM companies c
+        LEFT JOIN client_company_links ccl ON ccl.company_id = c.id
+        WHERE 1=1
+    """
+    params: list = []
 
     if search:
-        query += " AND (company_name ILIKE $1 OR nib ILIKE $1 OR npwp_company ILIKE $1)"
+        query += " AND (c.company_name ILIKE $1 OR c.nib ILIKE $1 OR c.npwp_company ILIKE $1)"
         params.append(f"%{search}%")
 
     if status:
-        query += f" AND status = ${len(params) + 1}"
+        query += f" AND c.status = ${len(params) + 1}"
         params.append(status)
 
     if kbli:
-        query += f" AND kbli_code = ${len(params) + 1}"
+        query += f" AND c.kbli_code = ${len(params) + 1}"
         params.append(kbli)
 
-    query += f" ORDER BY company_name LIMIT ${len(params) + 1} OFFSET ${len(params) + 2}"
+    query += f" GROUP BY c.id ORDER BY c.company_name LIMIT ${len(params) + 1} OFFSET ${len(params) + 2}"
     params.extend([limit, skip])
 
     async with db.acquire() as conn:
@@ -90,11 +95,7 @@ async def list_companies(
         companies = []
         for row in rows:
             comp = company_record_to_dict(row)
-            # Get associates count
-            count = await conn.fetchval(
-                "SELECT COUNT(*) FROM client_company_links WHERE company_id = $1", comp["id"],
-            )
-            comp["associates_count"] = count
+            comp["associates_count"] = row["associates_count"]
             companies.append(comp)
 
         return companies

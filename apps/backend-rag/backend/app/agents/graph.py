@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 # Global service instances (set by initialize_services)
 _search_service = None
 _llm_gateway = None
+_db_pool = None
 
 
 def set_search_service(service: Any) -> None:
@@ -48,6 +49,42 @@ def set_llm_gateway(gateway: Any) -> None:
     logger.info("[GRAPH] LLMGateway injected")
 
 
+def set_db_pool(pool: Any) -> None:
+    """Set DB pool instance for conversation history queries."""
+    global _db_pool
+    _db_pool = pool
+    logger.info("[GRAPH] DB pool injected")
+
+
+async def _load_conversation_history(client_id: int | None, limit: int = 10) -> list[str]:
+    """
+    Load the last `limit` messages from conversation_messages for a given client_id.
+
+    Returns a list of formatted strings: "[direction] content"
+    Returns [] if db_pool is unavailable or client_id is None.
+    """
+    if _db_pool is None or client_id is None:
+        return []
+    try:
+        async with _db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT direction, content
+                FROM conversation_messages
+                WHERE client_id = $1
+                ORDER BY created_at DESC
+                LIMIT $2
+                """,
+                client_id,
+                limit,
+            )
+        # Rows are newest-first; reverse to chronological order
+        return [f"[{row['direction']}] {row['content']}" for row in reversed(rows)]
+    except Exception as e:
+        logger.warning(f"[GRAPH] Failed to load conversation history for client {client_id}: {e}")
+        return []
+
+
 # ============================================================================
 # Node Implementations (Real Service Integration)
 # ============================================================================
@@ -60,7 +97,20 @@ async def retrieve_node(state: WorkflowState) -> WorkflowState:
     INTEGRATED: Uses SearchService.search() with Qdrant
     """
     question = state.get("question", "")
+    metadata = state.get("metadata") or {}
+    client_id: int | None = metadata.get("client_id") or metadata.get("user_id")
+    # Normalize: if it's a string int, cast it
+    if isinstance(client_id, str) and client_id.isdigit():
+        client_id = int(client_id)
+    elif not isinstance(client_id, int):
+        client_id = None
+
     logger.info(f"[RETRIEVE_NODE] Processing question: {question[:100]}")
+
+    # Load conversation history from DB (non-blocking: returns [] on failure)
+    conversation_history = await _load_conversation_history(client_id)
+    if conversation_history:
+        logger.info(f"[RETRIEVE_NODE] Loaded {len(conversation_history)} prior messages for client {client_id}")
 
     try:
         # Check if SearchService is available
@@ -71,12 +121,17 @@ async def retrieve_node(state: WorkflowState) -> WorkflowState:
                 f"Document 2 related to: {question}",
                 f"Document 3 related to: {question}",
             ]
+            mock_scores = [0.95, 0.87, 0.72]
+            if conversation_history:
+                history_block = "=== Conversation History ===\n" + "\n".join(conversation_history)
+                mock_documents = [history_block] + mock_documents
+                mock_scores = [1.0] + mock_scores
             execution_path = state.get("execution_path", [])
             execution_path.append("retrieve_mock")
             return {
                 **state,
                 "documents": mock_documents,
-                "retrieved_scores": [0.95, 0.87, 0.72],
+                "retrieved_scores": mock_scores,
                 "execution_path": execution_path,
                 "step_count": state.get("step_count", 0) + 1,
             }
@@ -117,6 +172,12 @@ async def retrieve_node(state: WorkflowState) -> WorkflowState:
 
         logger.info(f"[RETRIEVE_NODE] Retrieved {len(documents)} documents")
         logger.info(f"[RETRIEVE_NODE] Scores: {scores[:3]}...")
+
+        # Prepend conversation history as context documents (score 1.0 = always keep)
+        if conversation_history:
+            history_block = "=== Conversation History ===\n" + "\n".join(conversation_history)
+            documents = [history_block] + documents
+            scores = [1.0] + scores
 
         # Update execution tracking
         execution_path = state.get("execution_path", [])

@@ -48,13 +48,24 @@ class IntelligentRouter:
         self.clarification_service = ClarificationService(search_service=search_service)
 
         # Lazy import to avoid circular dependency
+        from backend.core.redis_manager import RedisManager
         from backend.services.rag.agentic import create_agentic_rag
+        from backend.services.search.semantic_cache import SemanticCache
+
+        redis_client = None
+        try:
+            redis_client = RedisManager.get_instance().get_async_client()
+        except Exception:
+            pass  # Redis not yet initialized; semantic_cache will be None
+
+        semantic_cache = SemanticCache(redis_client) if redis_client is not None else None
 
         self.orchestrator = create_agentic_rag(
             retriever=search_service,
             db_pool=db_pool,
             _web_search_client=None,  # FUTURE: Inject WebSearchTool when Tavily/Brave keys are configured
             clarification_service=self.clarification_service,
+            semantic_cache=semantic_cache,
         )
 
         logger.info("🎯 [IntelligentRouter] Initialized (NEXT-GEN AGENTIC RAG MODE)")

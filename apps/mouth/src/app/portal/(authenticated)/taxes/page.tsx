@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 import type { TaxOverview, TaxObligation, TaxHistoryItem } from '@/lib/api/portal/portal.types';
+import { StatusBadge } from '@/components/portal';
 
 export default function TaxesPage() {
   const { error } = useToast();
@@ -324,42 +325,6 @@ export default function TaxesPage() {
           assistance.
         </p>
       </section>
-    </div>
-  );
-}
-
-// Sub-components
-function StatusBadge({ status }: { status: 'compliant' | 'attention' | 'overdue' }) {
-  const config: Record<
-    string,
-    { icon: React.ElementType; label: string; style: React.CSSProperties }
-  > = {
-    compliant: {
-      icon: CheckCircle,
-      label: 'Compliant',
-      style: { background: 'rgba(16,185,129,0.12)', color: '#34d399' },
-    },
-    attention: {
-      icon: AlertTriangle,
-      label: 'Attention',
-      style: { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
-    },
-    overdue: {
-      icon: AlertTriangle,
-      label: 'Overdue',
-      style: { background: 'rgba(239,68,68,0.12)', color: '#f87171' },
-    },
-  };
-
-  const { icon: Icon, label, style } = config[status] ?? config.attention;
-
-  return (
-    <div
-      className="px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium"
-      style={style}
-    >
-      <Icon className="w-3.5 h-3.5" />
-      {label}
     </div>
   );
 }

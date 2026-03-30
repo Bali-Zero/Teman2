@@ -29,17 +29,21 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import type {
-  ClientProfile,
   FamilyMember,
   ClientDocument,
   Interaction,
-  DocumentCategory,
 } from "@/lib/api/crm/crm.types";
 import { getCountryFlag } from "@/lib/utils/nationality-flags";
+import {
+  useClientDetail,
+  useClientTimeline,
+  useDocumentCategories,
+  useInvalidateClient,
+} from "@/hooks/useClientDetail";
 
 // Local component imports
 import type { TabType, ModalType } from "./components/types";
-import { getTeamMemberAvatar } from "./components/constants";
+import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { formatCurrency } from "./components/utils";
 import { OverviewTab } from "./components/OverviewTab";
 import { DocumentsTab } from "./components/DocumentsTab";
@@ -61,12 +65,38 @@ export default function ClientDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const clientId = params?.id ? Number(params.id) : 0;
+  const { options: teamMemberOptions } = useTeamMemberOptions();
 
-  const [profile, setProfile] = useState<ClientProfile | null>(null);
+  const {
+    data: profile,
+    isLoading,
+    error: queryError,
+  } = useClientDetail(clientId);
+  const { data: timelineData } = useClientTimeline(clientId);
+  const { data: docCategoriesData } = useDocumentCategories();
+  const invalidateClient = useInvalidateClient(clientId);
+
+  // Local interactions state: seeded from query, extended optimistically on log
   const [interactions, setInteractions] = useState<Interaction[]>([]);
-  const [docCategories, setDocCategories] = useState<DocumentCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // Sync local interactions state when the timeline query data arrives/updates
+  useEffect(() => {
+    if (timelineData) {
+      setInteractions(timelineData);
+    }
+  }, [timelineData]);
+
+  const docCategories = docCategoriesData ?? [];
+  const error = queryError ? "Failed to load client data" : null;
+
+  // Mirror query error to toast (matches original Promise.all error behavior)
+  useEffect(() => {
+    if (queryError) {
+      logger.error("Failed to load client data:", {}, queryError as Error);
+      toast.error("Failed to load client data");
+    }
+  }, [queryError]);
+
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [activeModal, setActiveModal] = useState<ModalType>("none");
   const [editingDocument, setEditingDocument] = useState<ClientDocument | null>(
@@ -85,15 +115,6 @@ export default function ClientDetailPage() {
   const [isLogging, setIsLogging] = useState(false);
   const [logSaved, setLogSaved] = useState(false);
   const logTextareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const refreshProfile = async () => {
-    try {
-      const profileData = await api.crm.getClientProfile(clientId);
-      setProfile(profileData);
-    } catch (err) {
-      logger.error("Failed to refresh client data:", {}, err as Error);
-    }
-  };
 
   const submitLog = async () => {
     if (!logSummary.trim()) return;
@@ -114,7 +135,7 @@ export default function ClientDetailPage() {
       setLogSummary("");
       setShowLogPanel(false);
       // Refresh to update last_interaction_date in header
-      refreshProfile();
+      invalidateClient();
     } catch (err) {
       toast.error("Failed to log interaction", {
         description: (err as Error).message,
@@ -134,7 +155,7 @@ export default function ClientDetailPage() {
     try {
       const user = await api.getProfile();
       await api.crm.updateClient(clientId, { status: newStatus }, user.email);
-      await refreshProfile();
+      await invalidateClient();
       toast.success(`Status updated to ${newStatus}`);
     } catch (err) {
       toast.error("Failed to update status", {
@@ -158,36 +179,6 @@ export default function ClientDetailPage() {
     setIsMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!clientId) return;
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
-    Promise.all([
-      api.crm.getClientProfile(clientId),
-      api.crm.getClientTimeline(clientId, 50),
-      api.crm.getDocumentCategories().catch(() => []),
-    ])
-      .then(([profileData, interactionsData, categoriesData]) => {
-        if (cancelled) return;
-        setProfile(profileData);
-        setInteractions(interactionsData);
-        setDocCategories(categoriesData);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        logger.error("Failed to load client data:", {}, err as Error);
-        setError("Failed to load client data");
-        toast.error("Failed to load client data");
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [clientId]);
-
   // Read tab from URL params and set active tab
   useEffect(() => {
     const tabParam = searchParams?.get("tab");
@@ -207,6 +198,11 @@ export default function ClientDetailPage() {
       setActiveTab(tabParam as TabType);
     }
   }, [searchParams]);
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    router.replace(`/clients/${params.id}?tab=${tab}`, { scroll: false });
+  };
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -496,9 +492,14 @@ export default function ClientDetailPage() {
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bz-surface)] border border-[var(--bz-border)]"
               title={`Assigned to: ${client.assigned_to.split("@")[0]}`}
             >
-              {getTeamMemberAvatar(client.assigned_to) ? (
+              {teamMemberOptions.find((m) => m.value === client.assigned_to)
+                ?.avatar ? (
                 <img
-                  src={getTeamMemberAvatar(client.assigned_to)}
+                  src={
+                    teamMemberOptions.find(
+                      (m) => m.value === client.assigned_to,
+                    )?.avatar
+                  }
                   alt={client.assigned_to.split("@")[0]}
                   className="w-8 h-8 rounded-full object-cover ring-2 ring-green-500/30"
                 />
@@ -693,7 +694,7 @@ export default function ClientDetailPage() {
                     setTimeout(() => setLogSaved(false), 1500);
                     setLogSummary("");
                     setShowLogPanel(false);
-                    refreshProfile();
+                    invalidateClient();
                   } catch (err) {
                     toast.error("Failed to log", {
                       description: (err as Error).message,
@@ -809,7 +810,7 @@ export default function ClientDetailPage() {
             variant={activeTab === key ? "default" : "ghost"}
             size="sm"
             className="gap-2 whitespace-nowrap"
-            onClick={() => setActiveTab(key as TabType)}
+            onClick={() => handleTabChange(key as TabType)}
           >
             <Icon className="w-4 h-4" />
             {label}
@@ -831,13 +832,10 @@ export default function ClientDetailPage() {
             formatCurrency={formatCurrency}
             router={router}
             onEditClick={() => setActiveModal("edit_client")}
-            onRefresh={refreshProfile}
+            onRefresh={invalidateClient}
             clientId={clientId}
           />
-          <PortalMessages
-            clientId={clientId}
-            clientName={client.full_name}
-          />
+          <PortalMessages clientId={clientId} clientName={client.full_name} />
         </>
       )}
 
@@ -852,7 +850,7 @@ export default function ClientDetailPage() {
             setEditingDocument(doc);
             setActiveModal("edit_document");
           }}
-          onRefresh={refreshProfile}
+          onRefresh={invalidateClient}
         />
       )}
 
@@ -861,7 +859,7 @@ export default function ClientDetailPage() {
           clientId={clientId}
           practices={[...activePractices, ...completedPractices]}
           formatDate={formatDate}
-          onRefresh={refreshProfile}
+          onRefresh={invalidateClient}
         />
       )}
 
@@ -876,7 +874,7 @@ export default function ClientDetailPage() {
             setEditingFamilyMember(member);
             setActiveModal("edit_family");
           }}
-          onRefresh={refreshProfile}
+          onRefresh={invalidateClient}
         />
       )}
 
@@ -890,7 +888,7 @@ export default function ClientDetailPage() {
             setEditingDocument(doc);
             setActiveModal("edit_document");
           }}
-          onRefresh={refreshProfile}
+          onRefresh={invalidateClient}
         />
       )}
 
@@ -900,12 +898,17 @@ export default function ClientDetailPage() {
           client={client}
           documents={documents}
           formatDate={formatDate}
-          onRefresh={refreshProfile}
+          onRefresh={invalidateClient}
         />
       )}
 
       {activeTab === "tax" && (
-        <TaxTab clientId={clientId} formatDate={formatDate} client={profile?.client ?? null} companyLinks={company_links} />
+        <TaxTab
+          clientId={clientId}
+          formatDate={formatDate}
+          client={profile?.client ?? null}
+          companyLinks={company_links}
+        />
       )}
 
       {activeTab === "timeline" && (
@@ -923,7 +926,7 @@ export default function ClientDetailPage() {
         <EditClientModal
           client={profile.client}
           onClose={() => setActiveModal("none")}
-          onSave={refreshProfile}
+          onSave={invalidateClient}
         />
       )}
 
@@ -931,7 +934,7 @@ export default function ClientDetailPage() {
         <AddFamilyMemberModal
           clientId={clientId}
           onClose={() => setActiveModal("none")}
-          onSave={refreshProfile}
+          onSave={invalidateClient}
         />
       )}
 
@@ -943,7 +946,7 @@ export default function ClientDetailPage() {
             setActiveModal("none");
             setEditingFamilyMember(null);
           }}
-          onSave={refreshProfile}
+          onSave={invalidateClient}
         />
       )}
 
@@ -954,7 +957,7 @@ export default function ClientDetailPage() {
           familyMembers={family_members}
           clientHasDriveFolder={!!client.google_drive_folder_id}
           onClose={() => setActiveModal("none")}
-          onSave={refreshProfile}
+          onSave={invalidateClient}
         />
       )}
 
@@ -968,7 +971,7 @@ export default function ClientDetailPage() {
             setActiveModal("none");
             setEditingDocument(null);
           }}
-          onSave={refreshProfile}
+          onSave={invalidateClient}
         />
       )}
     </div>

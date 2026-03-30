@@ -6,6 +6,8 @@
 
 export { PortalBottomNav } from "./PortalBottomNav";
 
+export { StatusBadge } from "./StatusBadge";
+
 export {
   PortalErrorBoundary,
   withPortalErrorBoundary,
@@ -14,6 +16,8 @@ export {
   PortalPageLoader,
 } from "./PortalErrorBoundary";
 
+export { CountdownChip } from "./CountdownChip";
+
 export { PortalHeader } from "./PortalHeader";
 
 export {
@@ -21,3 +25,5 @@ export {
   PortalNotificationsList,
   PortalNotificationBadge,
 } from "./PortalNotifications";
+
+export { ProcessStepper } from "./ProcessStepper";

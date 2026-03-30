@@ -736,12 +736,12 @@ async def delete_client(
             # RBAC: Verify user has access to this client
             await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
-            # Soft delete (mark as inactive)
+            # Soft delete (mark as inactive + set deleted_at so list queries exclude it)
             row = await conn.fetchrow(
                 """
                 UPDATE clients
-                SET status = 'inactive', updated_at = NOW()
-                WHERE id = $1
+                SET status = 'inactive', updated_at = NOW(), deleted_at = NOW()
+                WHERE id = $1 AND deleted_at IS NULL
                 RETURNING id
                 """,
                 client_id,

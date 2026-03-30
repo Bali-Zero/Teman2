@@ -15,6 +15,14 @@ from backend.middleware.hybrid_auth import HybridAuthMiddleware
 from backend.middleware.rate_limiter import RateLimitMiddleware
 from backend.middleware.request_tracing import RequestTracingMiddleware
 
+try:
+    from backend.middleware.pii_scanner import PIIScannerMiddleware as _PIIScannerMiddleware
+
+    _pii_scanner_available = True
+except ImportError:
+    _PIIScannerMiddleware = None  # type: ignore[assignment]
+    _pii_scanner_available = False
+
 logger = logging.getLogger("zantara.backend")
 
 
@@ -84,6 +92,15 @@ def register_middleware(app: FastAPI) -> None:
     # Add Activity Logging middleware (logs all API calls for audit trail)
     app.add_middleware(ActivityLoggingMiddleware)
 
+    # Add PII Scanner middleware (redacts Indonesian PII from /api/agentic/* responses)
+    # UU PDP No. 27/2022 Art. 35, 36, 38 compliance
+    if _pii_scanner_available:
+        app.add_middleware(_PIIScannerMiddleware)
+        pii_label = " + PIIScanner"
+    else:
+        logger.warning("⚠️ presidio_analyzer not installed — PIIScanner middleware disabled")
+        pii_label = ""
+
     logger.info(
-        f"✅ Middleware registered: CORS + {compression} + Auth + Tracing + ErrorMonitoring + RateLimiting + ActivityLogging",
+        f"✅ Middleware registered: CORS + {compression} + Auth + Tracing + ErrorMonitoring + RateLimiting + ActivityLogging{pii_label}",
     )

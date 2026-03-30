@@ -1,9 +1,14 @@
 LKPM — LAPORAN KEGIATAN PENANAMAN MODAL
 OBBLIGHI DI REPORTING TRIMESTRALE DELLE PT PMA IN INDONESIA
-GUIDA OPERATIVA 2024-2025
+GUIDA OPERATIVA 2025-2026
 
-Guida normativa verificata | Basata su Perka BKPM 5/2021 e Peraturan BKPM
+Guida normativa verificata | Aggiornata a Peraturan BKPM 5/2025
 Prodotta da Bali Zero / Zantara Intelligence
+
+⚠️ AGGIORNAMENTO NORMATIVO (marzo 2026): La scadenza LKPM è stata modificata
+da BKPM Reg 5/2025. La precedente scadenza "7 giorni lavorativi" NON è più
+valida. La nuova scadenza è il 15 del mese successivo al trimestre.
+Fonte di verifica: claim NB3-C018, BKPM Regulation No. 5/2025.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -52,23 +57,25 @@ Anche se l'azienda non ha ancora avviato attività, il report va presentato
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-La presentazione deve avvenire entro 7 giorni lavorativi dalla fine
-di ogni trimestre solare. [COM-021]
+La presentazione deve avvenire entro il 15 del mese successivo alla
+fine di ogni trimestre solare. [COM-021 — aggiornato BKPM Reg 5/2025]
 
-CALENDARIO LKPM:
+CALENDARIO LKPM (aggiornato 2025):
 ──────────────────────────────────────────────────────────────
 Trimestre   Periodo coperto   Scadenza presentazione
 ──────────────────────────────────────────────────────────────
-Q1          Gennaio-Marzo     Entro 7 aprile
-Q2          Aprile-Giugno     Entro 7 luglio
-Q3          Luglio-Settembre  Entro 7 ottobre
-Q4          Ottobre-Dicembre  Entro 7 gennaio (anno successivo)
+Q1          Gennaio-Marzo     Entro il 15 aprile
+Q2          Aprile-Giugno     Entro il 15 luglio
+Q3          Luglio-Settembre  Entro il 15 ottobre
+Q4          Ottobre-Dicembre  Entro il 15 gennaio (anno successivo)
 ──────────────────────────────────────────────────────────────
 
-NOTA SUI GIORNI LAVORATIVI:
-"7 giorni lavorativi" = 7 giorni escludendo sabati, domeniche e
-festività nazionali indonesiane. In pratica, la finestra effettiva
-è di 1-2 settimane dalla fine del trimestre.
+NOTA AGGIORNAMENTO SCADENZA:
+La scadenza precedente ("7 giorni lavorativi dalla fine del trimestre",
+basata su Perka BKPM 5/2021) è stata SOSTITUITA da BKPM Reg 5/2025
+con la scadenza fissa del 15 del mese successivo. La nuova scadenza
+è più ampia e più chiara: non dipende dal conteggio dei giorni festivi.
+Fonte: BKPM Regulation No. 5 of 2025 (verificato da Acclime + BKPM ufficiale).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -218,7 +225,9 @@ tramite il sito oss.go.id (funzione "Lupa Password" o contatto DPMPTSP).
 CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
 COM-020, COM-021, COM-022
 
-Base normativa: Perka BKPM 5/2021 (LKPM), PP 5/2021 (OSS), UU 25/2007.
+Base normativa: Peraturan BKPM 5/2025 (LKPM — scadenza 15 del mese successivo),
+PP 5/2021 (OSS), UU 25/2007. Perka BKPM 5/2021 SUPERATA per quanto riguarda
+la scadenza LKPM.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
+Fine documento | Versione 2026-03-30 | Aggiornato da Zantara Intelligence (NLM NB-3)
