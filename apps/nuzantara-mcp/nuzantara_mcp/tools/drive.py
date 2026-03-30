@@ -36,7 +36,7 @@ def register(mcp, _call, _call_safe):
             Matching files ranked by relevance.
         """
         return await _call(
-            "/api/drive/search", params={"query": query, "limit": limit}
+            "/api/drive/search", params={"q": query, "limit": limit}
         )
 
     @mcp.tool()
