@@ -111,6 +111,7 @@ export const portalNavigation: NavSection[] = [
       { title: "Visa", href: "/portal/visa", icon: "Briefcase" },
       { title: "Taxes", href: "/portal/taxes", icon: "FileText" },
       { title: "LKPM", href: "/portal/lkpm", icon: "ClipboardCheck" },
+      { title: "Billing", href: "/portal/billing", icon: "Receipt" },
     ],
   },
   {
@@ -162,4 +163,5 @@ export const routeTitles: Record<string, string> = {
   "/portal/settings": "Settings",
   "/lkpm": "LKPM Reports",
   "/portal/lkpm": "Investment Reports",
+  "/portal/billing": "Billing",
 };
