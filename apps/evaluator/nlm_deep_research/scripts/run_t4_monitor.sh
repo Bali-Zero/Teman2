@@ -33,6 +33,16 @@ echo $$ > "$LOCK_FILE"
 trap "rm -f '$LOCK_FILE'" EXIT
 
 cd "$PROJECT_ROOT"
+
+# Load env vars from backend .env (needed for OPENAI_API_KEY, ANTHROPIC_API_KEY etc.)
+ENV_FILE="$PROJECT_ROOT/apps/backend-rag/.env"
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+    set +a
+fi
+
 echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [START] T4 monitor (PID $$)" >> "$LOG_FILE"
 
 PYTHONPATH=. "$PYTHON" -m apps.evaluator.nlm_deep_research.t4_monitor \

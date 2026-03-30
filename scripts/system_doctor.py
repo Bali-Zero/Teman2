@@ -1098,6 +1098,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="System Doctor — health collector & auto-fixer")
     parser.add_argument("--dry-run", action="store_true", help="Read-only, no auto-fixes")
     parser.add_argument("--verbose", action="store_true", help="Debug output to stderr")
+    parser.add_argument("--notify-telegram", action="store_true", help="Send Telegram alert on issues (used by cron)")
     args = parser.parse_args()
     VERBOSE = args.verbose
 
