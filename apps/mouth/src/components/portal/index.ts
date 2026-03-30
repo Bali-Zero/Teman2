@@ -16,6 +16,8 @@ export {
   PortalPageLoader,
 } from "./PortalErrorBoundary";
 
+export { CountdownChip } from "./CountdownChip";
+
 export { PortalHeader } from "./PortalHeader";
 
 export {
