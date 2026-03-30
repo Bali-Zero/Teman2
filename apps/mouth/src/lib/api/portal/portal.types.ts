@@ -357,3 +357,46 @@ export interface PortalApiResponse<T> {
   message?: string;
   error?: string;
 }
+
+// ============================================================================
+// Process Timeline Types
+// ============================================================================
+
+export interface ProcessTimelineStep {
+  status: string;
+  label: string;
+  completed: boolean;
+  is_current: boolean;
+  changed_at: string | null;
+  changed_by: string | null;
+}
+
+export interface ProcessTimeline {
+  practice_id: number;
+  practice_name: string;
+  practice_category: string;
+  current_status: string;
+  assigned_to: string | null;
+  start_date: string | null;
+  completion_date: string | null;
+  expiry_date: string | null;
+  steps: ProcessTimelineStep[];
+}
+
+// ============================================================================
+// Drive File Types
+// ============================================================================
+
+export interface DriveFolder {
+  id: string;
+  name: string;
+}
+
+export interface DriveFilesResponse {
+  root_id?: string;
+  root_name?: string;
+  folders: DriveFolder[];
+  total_files: number;
+  total_size_bytes?: number;
+  message?: string;
+}

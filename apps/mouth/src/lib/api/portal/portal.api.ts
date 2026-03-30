@@ -21,6 +21,8 @@ import type {
   PortalApiResponse,
   LKPMDraftSummary,
   LKPMDraft,
+  ProcessTimeline,
+  DriveFilesResponse,
 } from "./portal.types";
 import type { TimelineResponse } from "../types/timeline.types";
 
@@ -311,5 +313,37 @@ export class PortalApi {
       },
     );
     return response;
+  }
+
+  // ============================================================================
+  // Process Timeline
+  // ============================================================================
+
+  async getProcessTimeline(practiceId: number): Promise<ProcessTimeline> {
+    const response = await this.client.request<PortalApiResponse<ProcessTimeline>>(
+      `/api/portal/process/${practiceId}/timeline`,
+      { method: "GET" },
+    );
+    return response.data!;
+  }
+
+  // ============================================================================
+  // Drive Files
+  // ============================================================================
+
+  async getDriveFiles(): Promise<DriveFilesResponse> {
+    const response = await this.client.request<PortalApiResponse<DriveFilesResponse>>(
+      "/api/portal/drive/files",
+      { method: "GET" },
+    );
+    return response.data!;
+  }
+
+  async getDriveSubfolderFiles(folderId: string): Promise<DriveFilesResponse> {
+    const response = await this.client.request<PortalApiResponse<DriveFilesResponse>>(
+      `/api/portal/drive/files/${folderId}/list`,
+      { method: "GET" },
+    );
+    return response.data!;
   }
 }
