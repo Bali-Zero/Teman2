@@ -417,6 +417,109 @@ Your answer:"""
 # ============================================================================
 
 
+# ============================================================================
+# Self-RAG Reflection Nodes (activated for low confidence)
+# ============================================================================
+
+MAX_REFLECTION_RETRIES = 2  # Max query rewrites before accepting
+
+
+async def check_hallucination_node(state: WorkflowState) -> WorkflowState:
+    """
+    Self-RAG: Check if generation is grounded in retrieved documents.
+
+    Only activated when confidence is low (<0.30).
+    If hallucination detected, rewrites query and retries.
+    """
+    generation = state.get("generation", "")
+    filtered_docs = state.get("filtered_documents", [])
+    retries = state.get("reflection_retries", 0)
+
+    state["execution_path"] = state.get("execution_path", []) + ["check_hallucination"]
+
+    # Skip reflection if no generation or max retries reached
+    if not generation or retries >= MAX_REFLECTION_RETRIES:
+        state["hallucination_check"] = "skipped"
+        return state
+
+    # Check if generation references content from documents
+    doc_texts = " ".join(
+        (d.get("content", d.get("text", ""))[:200] if isinstance(d, dict) else str(d)[:200])
+        for d in filtered_docs
+    )
+
+    if not doc_texts:
+        state["hallucination_check"] = "no_docs"
+        return state
+
+    # Simple grounding check: does the generation contain terms from the docs?
+    doc_terms = set(doc_texts.lower().split())
+    gen_terms = set(generation.lower().split())
+    overlap = len(doc_terms & gen_terms)
+    grounding_score = overlap / max(len(gen_terms), 1)
+
+    state["grounding_score"] = grounding_score
+
+    if grounding_score < 0.30:
+        # Very low grounding — likely hallucination
+        state["hallucination_check"] = "failed"
+        logger.warning(
+            f"[SELF-RAG] Low grounding score ({grounding_score:.2f}), "
+            f"retry {retries + 1}/{MAX_REFLECTION_RETRIES}",
+        )
+    else:
+        state["hallucination_check"] = "passed"
+        logger.info(f"[SELF-RAG] Grounding check passed (score: {grounding_score:.2f})")
+
+    return state
+
+
+async def transform_query_node(state: WorkflowState) -> WorkflowState:
+    """
+    Self-RAG: Rewrite the query when hallucination is detected.
+
+    Adds specificity to the query to improve retrieval on retry.
+    """
+    original_query = state.get("question", "")
+    retries = state.get("reflection_retries", 0)
+
+    state["execution_path"] = state.get("execution_path", []) + ["transform_query"]
+    state["reflection_retries"] = retries + 1
+
+    # Simple query transformation: add context from what we know
+    filtered_docs = state.get("filtered_documents", [])
+    if filtered_docs:
+        first_doc = filtered_docs[0]
+        doc_snippet = (first_doc.get("content", first_doc.get("text", ""))[:100] if isinstance(first_doc, dict) else str(first_doc)[:100])
+        transformed = f"{original_query} specifically about {doc_snippet[:50]}"
+    else:
+        transformed = f"detailed information about {original_query}"
+
+    state["question"] = transformed
+    logger.info(
+        f"[SELF-RAG] Query transformed (retry {retries + 1}): {transformed[:80]}...",
+    )
+
+    return state
+
+
+def should_reflect_or_end(state: WorkflowState) -> str:
+    """
+    Decision: After hallucination check, retry or accept.
+
+    Only retries if:
+    - Hallucination check failed
+    - Haven't exceeded max retries
+    """
+    check = state.get("hallucination_check", "passed")
+    retries = state.get("reflection_retries", 0)
+
+    if check == "failed" and retries < MAX_REFLECTION_RETRIES:
+        return "transform_query"
+
+    return END
+
+
 def should_continue_to_generation(state: WorkflowState) -> str:
     """
     Decision function: Should we proceed to generation or end?
@@ -458,10 +561,12 @@ def create_rag_graph() -> StateGraph:
     # Initialize graph with WorkflowState schema
     workflow = StateGraph(WorkflowState)
 
-    # Add nodes
+    # Add nodes (including Self-RAG reflection)
     workflow.add_node("retrieve", retrieve_node)
     workflow.add_node("grade", grade_node)
     workflow.add_node("generate", generate_node)
+    workflow.add_node("check_hallucination", check_hallucination_node)
+    workflow.add_node("transform_query", transform_query_node)
 
     # Define edges
     workflow.set_entry_point("retrieve")
@@ -477,8 +582,21 @@ def create_rag_graph() -> StateGraph:
         },
     )
 
-    # Final edge: generate -> END
-    workflow.add_edge("generate", END)
+    # generate -> check_hallucination (Self-RAG reflection)
+    workflow.add_edge("generate", "check_hallucination")
+
+    # Conditional: check_hallucination -> END or transform_query -> retrieve (retry)
+    workflow.add_conditional_edges(
+        "check_hallucination",
+        should_reflect_or_end,
+        {
+            "transform_query": "transform_query",
+            END: END,
+        },
+    )
+
+    # transform_query loops back to retrieve
+    workflow.add_edge("transform_query", "retrieve")
 
     # Compile the graph
     compiled_graph = workflow.compile()

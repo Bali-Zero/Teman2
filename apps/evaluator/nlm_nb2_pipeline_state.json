@@ -140,5 +140,13 @@
     "baseline_nhs_calculated": true,
     "invariants_all_pass": true,
     "handoff_directory_created": true
-  }
+  },
+  "budget": {
+    "daily_queries": 2,
+    "weekly_calls": 2,
+    "last_reset_date": "2026-03-31",
+    "week_start": "2026-03-30"
+  },
+  "current_state": "COMPLETE",
+  "last_updated": "2026-03-30T23:31:16.038358+00:00"
 }

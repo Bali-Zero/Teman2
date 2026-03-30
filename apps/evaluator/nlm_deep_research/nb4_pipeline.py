@@ -462,15 +462,33 @@ class NB4Pipeline:
         source_count = self.registry.total_count
 
         # Compute NHS for health tracking
+        # NotebookHealthInput requires: active_count, sources (List[Source]),
+        # clusters_with_claims, categories_with_claims,
+        # duplicates_found_this_week, sources_evaluated_this_week
         try:
+            from .pipeline import _dict_to_source  # reuse NB-2 converter
+
+            source_objs = []
+            for sid, sd in self.registry.sources.items():
+                try:
+                    source_objs.append(_dict_to_source(sid, sd))
+                except Exception:
+                    pass
+
+            categories_seen = len({
+                c.get("category", "") for c in claims if c.get("category")
+            })
             nhs_input = NotebookHealthInput(
-                source_count=source_count,
                 active_count=self.registry.active_count,
-                verified_claims_count=total_claims,
-                target_sources=70,
+                sources=source_objs,
+                clusters_with_claims=min(1, len(claims)),  # approximate
+                categories_with_claims=categories_seen,
+                duplicates_found_this_week=0,
+                sources_evaluated_this_week=max(1, len(claims)),
             )
-            nhs = compute_nhs(nhs_input)
-            nhs_label = classify_nhs(nhs)
+            nhs_result = compute_nhs(nhs_input)
+            nhs = nhs_result.nhs_total
+            nhs_label = classify_nhs(nhs).value
         except Exception:
             nhs = 0.0
             nhs_label = "UNKNOWN"

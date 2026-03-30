@@ -96,3 +96,8 @@ class WorkflowState(TypedDict, total=False):
     step_count: int | None
     timestamp: datetime | None
     execution_path: list[str] | None  # Track which nodes were executed
+
+    # Self-RAG reflection
+    hallucination_check: str | None  # "passed" | "failed" | "skipped" | "no_docs"
+    grounding_score: float | None  # 0.0-1.0 overlap between generation and docs
+    reflection_retries: int | None  # Number of query rewrites performed

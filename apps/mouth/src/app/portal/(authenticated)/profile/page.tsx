@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Loader2,
   User,
   Mail,
   Phone,
@@ -152,7 +151,31 @@ export default function ProfilePage() {
     );
   }
 
-  if (!profile) return null;
+  if (!profile) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <section>
+          <h1 className="text-2xl font-bold tracking-tight">Your Profile</h1>
+          <p style={{ color: 'var(--bz-text-2)' }}>View your personal information</p>
+        </section>
+        <section
+          className="rounded-xl border border-dashed p-12 text-center"
+          style={{
+            background: 'rgba(30,30,35,0.7)',
+            borderColor: 'rgba(255,255,255,0.05)',
+          }}
+        >
+          <User className="w-16 h-16 mx-auto mb-4 opacity-30" style={{ color: 'var(--bz-text-2)' }} />
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--bz-text-2)' }}>
+            Unable to load profile
+          </h2>
+          <p className="text-sm mt-1" style={{ color: 'var(--bz-text-3)' }}>
+            Please refresh the page or contact support if the issue persists.
+          </p>
+        </section>
+      </div>
+    );
+  }
 
   // Calculate alerts
   const passportValidity = getPassportValidityColor(profile.passportExpiry);

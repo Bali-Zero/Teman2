@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """
-FASE 1 — Exa Intelligence Scraper
+FASE 1 — Intelligence Scraper (xAI + Exa + CDP)
 Target: Social sentiment (X/Reddit) + Indonesian news/gov sources — last 72h
 Output: raw intelligence JSON
+
+Fallback chain:
+  1. xAI x_search (primary) — native X/Twitter firehose, citations, sentiment
+  2. Exa (secondary) — neural search, highlights, Reddit coverage
+  3. Chrome CDP (last resort) — browser automation via Grok web UI
 
 Best practices applied (Exa docs, Mar 2026):
 - Neural queries phrased as statements ending with ":" (not questions)
@@ -16,10 +21,13 @@ Best practices applied (Exa docs, Mar 2026):
 import json
 import argparse
 import os
+import re
 import sys
 import time
 from pathlib import Path
 from datetime import datetime, timedelta
+
+import httpx
 
 # ── Exa query design: statement-form performs better than question-form ─────
 # BAD:  "What are problems with Coretax in Indonesia?"
@@ -56,6 +64,260 @@ KEYWORDS = [
     "coretax error", "kitas delay", "OSS stuck",
     "izin usaha", "perizinan", "pajak frustasi",
 ]
+
+# ── xAI Responses API configuration ────────────────────────────────────────
+XAI_API_URL = "https://api.x.ai/v1/responses"
+XAI_MODEL = "grok-4-1-fast-reasoning"
+
+
+def _parse_xai_response(
+    output_text: str,
+    annotations: list[dict],
+    source: str = "social",
+) -> list[dict]:
+    """
+    Parse xAI response into our standard result format.
+    Tries JSON parsing first, falls back to annotation extraction.
+    """
+    platform = "xai-x_search" if source == "social" else "xai-web_search"
+    results: list[dict] = []
+
+    # Attempt 1: Parse structured JSON array from model output
+    if "[" in output_text and "]" in output_text:
+        try:
+            json_str = output_text[output_text.find("["):output_text.rfind("]") + 1]
+            raw_items = json.loads(json_str)
+            if isinstance(raw_items, list) and len(raw_items) > 0:
+                for item in raw_items:
+                    results.append({
+                        "source": source,
+                        "platform": platform,
+                        "text": item.get("text", ""),
+                        "title": item.get("title", ""),
+                        "author": item.get("author", ""),
+                        "url": item.get("url", ""),
+                        "timestamp": item.get("timestamp", ""),
+                        "sentiment": item.get("sentiment"),
+                        "pain_point": item.get("pain_point"),
+                    })
+                return results
+        except (json.JSONDecodeError, KeyError, TypeError):
+            pass
+
+    # Attempt 2: Extract from annotations (url_citation) — the most common path
+    # The model returns prose with inline [N](url) citations; annotations list each one
+    if annotations:
+        seen_urls: set[str] = set()
+        for ann in annotations:
+            if ann.get("type") == "url_citation":
+                url = ann.get("url", "")
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+
+                # Extract surrounding text as snippet
+                start = max(0, ann.get("start_index", 0) - 200)
+                end = min(len(output_text), ann.get("end_index", 0) + 50)
+                snippet = output_text[start:end].strip()
+                # Clean markdown citation markers
+                snippet = re.sub(r'\[\[\d+\]\]\([^)]+\)', '', snippet).strip()
+                snippet = re.sub(r'\[(\d+)\]\([^)]+\)', '', snippet).strip()
+
+                results.append({
+                    "source": source,
+                    "platform": platform,
+                    "text": snippet[:500],
+                    "title": ann.get("title", ""),
+                    "author": "",
+                    "url": url,
+                    "timestamp": "",
+                    "sentiment": None,
+                    "pain_point": None,
+                })
+        if results:
+            return results
+
+    # Attempt 3: Return raw text as single result
+    if output_text.strip():
+        results.append({
+            "source": source,
+            "platform": "xai-raw",
+            "text": output_text[:2000],
+            "title": "",
+            "author": "",
+            "url": "",
+            "timestamp": "",
+            "sentiment": None,
+            "pain_point": None,
+        })
+
+    return results
+
+
+def scrape_social_via_xai(api_key: str, queries: list[str], cutoff: datetime) -> list[dict]:
+    """
+    Primary scraper: xAI x_search API for X/Twitter social sentiment.
+    Returns results in the same format as Exa functions.
+    """
+    if not api_key:
+        return []
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    from_date = cutoff.strftime("%Y-%m-%d")
+    to_date = datetime.now().strftime("%Y-%m-%d")
+    results: list[dict] = []
+    total_cost_usd = 0.0
+
+    for query in queries:
+        try:
+            payload = {
+                "model": XAI_MODEL,
+                "input": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an intelligence analyst monitoring Indonesian business "
+                            "and immigration topics on X/Twitter. For each relevant post found, "
+                            "include the post URL as a citation. Focus on sentiment, pain points, "
+                            "and specific complaints from expats and businesses."
+                        ),
+                    },
+                    {"role": "user", "content": query},
+                ],
+                "tools": [
+                    {
+                        "type": "x_search",
+                        "from_date": from_date,
+                        "to_date": to_date,
+                    }
+                ],
+            }
+
+            resp = httpx.post(
+                XAI_API_URL,
+                headers=headers,
+                json=payload,
+                timeout=60.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+            # Extract output text from Responses API format
+            output_text = ""
+            annotations: list[dict] = []
+            for item in data.get("output", []):
+                if item.get("type") == "message":
+                    for content in item.get("content", []):
+                        if content.get("type") == "output_text":
+                            output_text = content.get("text", "")
+                            annotations = content.get("annotations", [])
+
+            parsed = _parse_xai_response(output_text, annotations, source="social")
+            results.extend(parsed)
+
+            # Track cost
+            usage = data.get("usage", {})
+            cost_ticks = usage.get("cost_in_usd_ticks", 0)
+            cost_usd = cost_ticks / 10_000_000_000
+            total_cost_usd += cost_usd
+            sources = usage.get("num_sources_used", 0)
+            tool_details = usage.get("server_side_tool_usage_details", {})
+            x_calls = tool_details.get("x_search_calls", 0)
+            print(
+                f"  [xai-x_search] {query[:55]}... "
+                f"-> {len(parsed)} results, {x_calls} searches, ${cost_usd:.4f}",
+                file=sys.stderr,
+            )
+
+        except httpx.HTTPStatusError as e:
+            print(f"  [xai-x_search] HTTP {e.response.status_code}: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"  [xai-x_search] error: {e}", file=sys.stderr)
+
+    if total_cost_usd > 0:
+        print(f"  [xai-x_search] total cost: ${total_cost_usd:.4f}", file=sys.stderr)
+
+    return results
+
+
+def scrape_news_via_xai(api_key: str, queries: list[str], cutoff: datetime) -> list[dict]:
+    """
+    xAI web_search for Indonesian news sources.
+    Filters to our trusted Indonesian news domains (max 5 per request, batched).
+    """
+    if not api_key:
+        return []
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    from_date = cutoff.strftime("%Y-%m-%d")
+    results: list[dict] = []
+
+    # Split NEWS_DOMAINS into batches of 5 (API limit)
+    domain_batches = [NEWS_DOMAINS[i:i + 5] for i in range(0, len(NEWS_DOMAINS), 5)]
+
+    for query in queries:
+        for domains in domain_batches:
+            try:
+                payload = {
+                    "model": XAI_MODEL,
+                    "input": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are an intelligence analyst monitoring Indonesian "
+                                "business regulations and government policy. Extract news "
+                                "articles about the topic. Include URLs as citations."
+                            ),
+                        },
+                        {"role": "user", "content": query},
+                    ],
+                    "tools": [
+                        {
+                            "type": "web_search",
+                            "allowed_domains": domains,
+                        }
+                    ],
+                }
+
+                resp = httpx.post(
+                    XAI_API_URL,
+                    headers=headers,
+                    json=payload,
+                    timeout=60.0,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                output_text = ""
+                annotations: list[dict] = []
+                for item in data.get("output", []):
+                    if item.get("type") == "message":
+                        for content in item.get("content", []):
+                            if content.get("type") == "output_text":
+                                output_text = content.get("text", "")
+                                annotations = content.get("annotations", [])
+
+                parsed = _parse_xai_response(output_text, annotations, source="news")
+                results.extend(parsed)
+
+                print(
+                    f"  [xai-web_search] {query[:40]}... [{','.join(domains[:2])}...] "
+                    f"-> {len(parsed)}",
+                    file=sys.stderr,
+                )
+
+            except Exception as e:
+                print(f"  [xai-web_search] error: {e}", file=sys.stderr)
+
+    return results
 
 
 def _make_exa(api_key: str):
@@ -309,7 +571,7 @@ def dedup(items: list) -> list:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="War Room — Exa Intelligence Scraper")
+    parser = argparse.ArgumentParser(description="War Room — Intelligence Scraper")
     parser.add_argument("--topic", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--force", action="store_true")
@@ -317,30 +579,51 @@ def main() -> None:
     args = parser.parse_args()
 
     cutoff = datetime.now() - timedelta(hours=args.window_hours)
-    print(f"\n🔍 Exa Intelligence Scraper", file=sys.stderr)
+    print(f"\n[scraper] Intelligence Scraper", file=sys.stderr)
     print(f"   Topic:  {args.topic}", file=sys.stderr)
     print(f"   Window: {args.window_hours}h (since {cutoff.strftime('%Y-%m-%d %H:%M')})", file=sys.stderr)
 
+    xai_key = os.environ.get("XAI_API_KEY", "")
     exa_key = os.environ.get("EXA_API_KEY", "")
-    all_results = []
+    all_results: list[dict] = []
+    mode = "unknown"
 
+    # ── Priority 1: xAI x_search + web_search (API, native X access, cheapest) ──
+    if xai_key:
+        mode = "xai-api"
+        print(f"   Mode:   xAI Responses API (x_search + web_search)", file=sys.stderr)
+
+        social = scrape_social_via_xai(xai_key, SOCIAL_QUERIES, cutoff)
+        all_results.extend(social)
+        print(f"   Social (xAI): {len(social)} results", file=sys.stderr)
+
+        news = scrape_news_via_xai(xai_key, NEWS_QUERIES, cutoff)
+        all_results.extend(news)
+        print(f"   News (xAI):   {len(news)} results", file=sys.stderr)
+
+    # ── Priority 2: Exa (neural search, highlights — good for Reddit) ──
     if exa_key:
         exa = _make_exa(exa_key)
-        print(f"   Mode:   Exa API (neural search, highlights, category filters)", file=sys.stderr)
+        if not xai_key:
+            # Exa is secondary: social + news only if no xAI
+            mode = "exa-api"
+            print(f"   Mode:   Exa API (neural search, highlights)", file=sys.stderr)
+            social = scrape_social_via_exa(exa, cutoff)
+            all_results.extend(social)
+            print(f"   Social (Exa): {len(social)} results", file=sys.stderr)
+            news = scrape_news_via_exa(exa, cutoff)
+            all_results.extend(news)
+            print(f"   News (Exa):   {len(news)} results", file=sys.stderr)
 
-        social = scrape_social_via_exa(exa, cutoff)
-        all_results.extend(social)
-        print(f"   Social: {len(social)} results", file=sys.stderr)
-
+        # Reddit always via Exa (xAI x_search doesn't cover Reddit)
         reddit = scrape_reddit_via_exa(exa, cutoff)
         all_results.extend(reddit)
-        print(f"   Reddit: {len(reddit)} results", file=sys.stderr)
+        print(f"   Reddit (Exa): {len(reddit)} results", file=sys.stderr)
 
-        news = scrape_news_via_exa(exa, cutoff)
-        all_results.extend(news)
-        print(f"   News:   {len(news)} results", file=sys.stderr)
-    else:
-        print("   Mode:   XAI CDP fallback (no EXA_API_KEY)", file=sys.stderr)
+    # ── Priority 3: Chrome CDP fallback (last resort) ──
+    if not xai_key and not exa_key:
+        mode = "xai-cdp"
+        print("   Mode:   XAI CDP fallback (no API keys)", file=sys.stderr)
         all_results = scrape_via_xai_cdp(args.topic, cutoff)
 
     all_results = dedup(all_results)
@@ -349,20 +632,30 @@ def main() -> None:
         "topic": args.topic,
         "scraped_at": datetime.now().isoformat(),
         "window_hours": args.window_hours,
-        "mode": "exa-api" if exa_key else "xai-cdp",
+        "mode": mode,
         "count": len(all_results),
         "breakdown": {
-            "social": sum(1 for r in all_results if r.get("platform") in ("tweet", "x-domain", "xai-cdp", "xai-cdp-raw")),
+            "social_xai": sum(1 for r in all_results if r.get("platform", "").startswith("xai-x")),
+            "social_exa": sum(1 for r in all_results if r.get("platform") in ("tweet", "x-domain")),
             "reddit": sum(1 for r in all_results if r.get("platform") == "reddit"),
-            "news": sum(1 for r in all_results if r.get("source") == "news"),
+            "news_xai": sum(1 for r in all_results if r.get("platform") == "xai-web_search"),
+            "news_exa": sum(1 for r in all_results if r.get("platform") in ("news-index", "id-domains")),
+            "cdp": sum(1 for r in all_results if r.get("platform", "").startswith("xai-cdp")),
+            "raw": sum(1 for r in all_results if r.get("platform") == "xai-raw"),
         },
         "data": all_results,
     }
 
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text(json.dumps(output, ensure_ascii=False, indent=2))
-    print(f"\n✅ {len(all_results)} items → {args.output}", file=sys.stderr)
-    print(f"   social={output['breakdown']['social']} reddit={output['breakdown']['reddit']} news={output['breakdown']['news']}", file=sys.stderr)
+    print(f"\n[OK] {len(all_results)} items -> {args.output}", file=sys.stderr)
+    breakdown = output["breakdown"]
+    print(
+        f"   xai_social={breakdown['social_xai']} exa_social={breakdown['social_exa']} "
+        f"reddit={breakdown['reddit']} xai_news={breakdown['news_xai']} "
+        f"exa_news={breakdown['news_exa']}",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":

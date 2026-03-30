@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "notebook_id": "NB-2",
-  "last_updated": "2026-03-28T18:30:00+08:00",
+  "last_updated": "2026-03-30T23:31:16.038918+00:00",
   "summary": {
     "total_tracked": 44,
     "active": 44,
@@ -45,7 +45,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.671,
+        "svs_total": 0.69,
         "svs_classification": "VALUABLE",
         "times_cited": 2,
         "svs_breakdown": {
@@ -94,7 +94,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -140,7 +140,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.361,
+        "svs_total": 0.409,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -186,7 +186,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -231,7 +231,7 @@
         "promoted": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.3,
+        "svs_total": 0.4,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -276,8 +276,8 @@
         "promoted": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.5,
-        "svs_classification": "VALUABLE",
+        "svs_total": 0.4,
+        "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
           "v_tier": 1.0,
@@ -323,7 +323,7 @@
         "promoted": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.3,
+        "svs_total": 0.401,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -369,7 +369,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -415,7 +415,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.861,
+        "svs_total": 0.846,
         "svs_classification": "ESSENTIAL",
         "times_cited": 6,
         "svs_breakdown": {
@@ -468,7 +468,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.808,
+        "svs_total": 0.811,
         "svs_classification": "ESSENTIAL",
         "times_cited": 3,
         "svs_breakdown": {
@@ -518,7 +518,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.721,
+        "svs_total": 0.715,
         "svs_classification": "ESSENTIAL",
         "times_cited": 2,
         "svs_breakdown": {
@@ -567,7 +567,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -613,7 +613,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.819,
+        "svs_total": 0.816,
         "svs_classification": "ESSENTIAL",
         "times_cited": 4,
         "svs_breakdown": {
@@ -664,7 +664,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -710,7 +710,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -756,7 +756,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -802,7 +802,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -848,7 +848,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -894,7 +894,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -940,7 +940,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.596,
+        "svs_total": 0.69,
         "svs_classification": "VALUABLE",
         "times_cited": 2,
         "svs_breakdown": {
@@ -989,7 +989,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.361,
+        "svs_total": 0.409,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1035,7 +1035,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1081,8 +1081,8 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.696,
-        "svs_classification": "VALUABLE",
+        "svs_total": 0.715,
+        "svs_classification": "ESSENTIAL",
         "times_cited": 2,
         "svs_breakdown": {
           "v_tier": 0.9,
@@ -1130,7 +1130,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.361,
+        "svs_total": 0.409,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1176,8 +1176,8 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.621,
-        "svs_classification": "VALUABLE",
+        "svs_total": 0.715,
+        "svs_classification": "ESSENTIAL",
         "times_cited": 2,
         "svs_breakdown": {
           "v_tier": 0.9,
@@ -1225,7 +1225,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1271,7 +1271,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1317,7 +1317,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1363,7 +1363,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1409,7 +1409,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1455,7 +1455,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.485,
+        "svs_total": 0.618,
         "svs_classification": "VALUABLE",
         "times_cited": 1,
         "svs_breakdown": {
@@ -1503,7 +1503,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1549,7 +1549,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1595,7 +1595,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1641,7 +1641,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1687,7 +1687,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1733,7 +1733,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1779,7 +1779,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.399,
+        "svs_total": 0.446,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1826,8 +1826,8 @@
         "last_confirmed_valid": "2026-03-28T17:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.425,
-        "svs_classification": "MARGINAL",
+        "svs_total": 0.472,
+        "svs_classification": "VALUABLE",
         "times_cited": 0,
         "svs_breakdown": {
           "v_tier": 0.5,
@@ -1873,7 +1873,7 @@
         "last_confirmed_valid": "2026-03-28T17:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.486,
+        "svs_total": 0.619,
         "svs_classification": "VALUABLE",
         "times_cited": 1,
         "svs_breakdown": {
@@ -1922,8 +1922,8 @@
         "last_confirmed_valid": "2026-03-28T17:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.425,
-        "svs_classification": "MARGINAL",
+        "svs_total": 0.472,
+        "svs_classification": "VALUABLE",
         "times_cited": 0,
         "svs_breakdown": {
           "v_tier": 0.5,
@@ -1969,8 +1969,8 @@
         "last_confirmed_valid": "2026-03-28T17:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.425,
-        "svs_classification": "MARGINAL",
+        "svs_total": 0.472,
+        "svs_classification": "VALUABLE",
         "times_cited": 0,
         "svs_breakdown": {
           "v_tier": 0.5,
@@ -2016,8 +2016,8 @@
         "last_confirmed_valid": "2026-03-28T18:15:00+08:00"
       },
       "scores": {
-        "svs_total": 0.623,
-        "svs_classification": "VALUABLE",
+        "svs_total": 0.841,
+        "svs_classification": "ESSENTIAL",
         "times_cited": 2,
         "svs_breakdown": {
           "v_tier": 1.0,
@@ -2068,8 +2068,8 @@
         "last_confirmed_valid": null
       },
       "scores": {
-        "svs_total": 0.5,
-        "svs_classification": "VALUABLE",
+        "svs_total": 0.41,
+        "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
           "v_tier": 1.0,

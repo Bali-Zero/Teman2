@@ -111,9 +111,18 @@ class RateLimiter:
                 }
 
         except Exception as e:
-            logger.error(f"Rate limit check error: {e}")
-            # On error, allow request (fail open)
-            return True, {"limit": limit, "remaining": limit, "reset": current_time + window}
+            logger.warning(f"Rate limit Redis error, falling back to in-memory: {e}")
+            # Fail-safe: use in-memory with stricter limits (half the normal limit)
+            safe_limit = max(1, limit // 2)
+            if key not in _rate_limit_storage:
+                _rate_limit_storage[key] = []
+            _rate_limit_storage[key] = [t for t in _rate_limit_storage[key] if t > window_start]
+            count = len(_rate_limit_storage[key])
+            allowed = count < safe_limit
+            if allowed:
+                _rate_limit_storage[key].append(current_time)
+            remaining = max(0, safe_limit - count - 1)
+            return allowed, {"limit": safe_limit, "remaining": remaining, "reset": current_time + window}
 
 
 # Global rate limiter instance

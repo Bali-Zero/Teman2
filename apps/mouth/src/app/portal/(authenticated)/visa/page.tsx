@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Loader2,
   Plane,
   Calendar,
   CheckCircle,
