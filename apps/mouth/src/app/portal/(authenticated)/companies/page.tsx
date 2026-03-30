@@ -3,13 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Loader2,
   Building2,
   ChevronRight,
   CheckCircle,
   Clock,
   Shield,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';

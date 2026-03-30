@@ -20,10 +20,10 @@ fi
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] NB-5 T4 monitor starting..." >> "$LOG_FILE"
 
-# Run T4 monitor for NB-5
+# Run T4 monitor for NB-5 Property & Real Estate
+# notebook-id = d9438180-5e63-4e2a-a473-6061101f6a8d (from t4_nb5_config.json)
 python -m apps.evaluator.nlm_deep_research.t4_monitor \
-    --nb NB-5 \
-    --config apps/evaluator/nlm_deep_research/t4_nb5_config.json \
+    --notebook-id "d9438180-5e63-4e2a-a473-6061101f6a8d" \
     2>&1 | tee -a "$LOG_FILE"
 
 EXIT_CODE=${PIPESTATUS[0]}

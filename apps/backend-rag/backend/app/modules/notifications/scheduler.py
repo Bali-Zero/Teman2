@@ -122,7 +122,7 @@ class NotificationScheduler:
                             INSERT INTO notification_alerts
                             (client_id, alert_type, status, message, email_subject, email_body, created_at)
                             VALUES ($1, $2, $3, $4, $5, $6, $7)
-                            ON CONFLICT (client_id, alert_type, DATE(created_at))
+                            ON CONFLICT (client_id, alert_type, created_date)
                             DO NOTHING
                             """,
                             alert.client_id,
