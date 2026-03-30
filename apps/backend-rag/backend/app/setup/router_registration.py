@@ -85,6 +85,7 @@ def include_routers(api: FastAPI) -> None:
         oracle_universal,
         performance,
         portal,
+        portal_drive,
         portal_invite,
         portal_process_timeline,
         portal_taxes,
@@ -166,6 +167,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Portal routers (Client-facing)
     api.include_router(portal.router)
+    api.include_router(portal_drive.router)
     api.include_router(portal_invite.router)
     api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
