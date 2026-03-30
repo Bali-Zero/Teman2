@@ -259,14 +259,14 @@ async def calculate_sla_compliance(
             SELECT
                 pt.code as practice_type,
                 pt.name as practice_name,
-                pt.duration_days as expected_duration,
+                pt.typical_duration_days as expected_duration,
                 COUNT(*) as total_completed,
                 COUNT(*) FILTER (
-                    WHERE EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400 <= pt.duration_days
+                    WHERE EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400 <= pt.typical_duration_days
                 ) as within_sla,
                 ROUND(
                     COUNT(*) FILTER (
-                        WHERE EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400 <= pt.duration_days
+                        WHERE EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400 <= pt.typical_duration_days
                     )::numeric / NULLIF(COUNT(*), 0) * 100,
                     2
                 ) as sla_compliance_pct
@@ -274,7 +274,7 @@ async def calculate_sla_compliance(
             JOIN practice_types pt ON p.practice_type_id = pt.id
             WHERE p.status = 'completed'
               AND p.completion_date IS NOT NULL
-              AND pt.duration_days IS NOT NULL
+              AND pt.typical_duration_days IS NOT NULL
         """
         params = []
 
@@ -290,7 +290,7 @@ async def calculate_sla_compliance(
             query += f" AND p.inquiry_date <= ${len(params) + 1}"
             params.append(end_date)
 
-        query += " GROUP BY pt.code, pt.name, pt.duration_days ORDER BY sla_compliance_pct DESC"
+        query += " GROUP BY pt.code, pt.name, pt.typical_duration_days ORDER BY sla_compliance_pct DESC"
 
         rows = await conn.fetch(query, *params)
 
