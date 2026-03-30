@@ -16,6 +16,7 @@ import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 import type { PortalCompany } from '@/lib/api/portal/portal.types';
+import { StatusBadge } from '@/components/portal';
 
 export default function CompaniesPage() {
   const router = useRouter();
@@ -279,35 +280,5 @@ function CompanyCard({
         </div>
       </div>
     </article>
-  );
-}
-
-function StatusBadge({ status }: { status: 'active' | 'pending' }) {
-  const config: Record<
-    string,
-    { icon: React.ElementType; label: string; style: React.CSSProperties }
-  > = {
-    active: {
-      icon: CheckCircle,
-      label: 'Active',
-      style: { background: 'rgba(16,185,129,0.12)', color: '#34d399' },
-    },
-    pending: {
-      icon: Clock,
-      label: 'Pending',
-      style: { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
-    },
-  };
-
-  const { icon: Icon, label, style } = config[status] ?? config.pending;
-
-  return (
-    <div
-      className="px-2 py-1 rounded-full flex items-center gap-1 text-xs font-medium"
-      style={style}
-    >
-      <Icon className="w-3 h-3" />
-      {label}
-    </div>
   );
 }
