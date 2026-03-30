@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",
+  "notebook_name": "NB-6: Operations & Compliance Indonesia",
+  "current_state": "COMPLETE",
+  "degradation_level": "NOMINAL",
+  "last_updated": "2026-03-30T23:48:25.983595+00:00",
+  "budget": {
+    "daily_queries": 2,
+    "weekly_calls": 2,
+    "week_start": "2026-W13"
+  },
+  "circuit_breakers": {
+    "CB_NLM": {
+      "state": "CLOSED",
+      "failure_count": 0,
+      "last_failure": null,
+      "opened_at": null,
+      "auto_close_after_hours": 4
+    },
+    "CB_SOURCE": {
+      "state": "CLOSED",
+      "failure_count": 0,
+      "last_failure": null,
+      "opened_at": null,
+      "manual_close_only": true
+    },
+    "CB_INTEGRATION": {
+      "state": "CLOSED",
+      "failure_count": 0,
+      "last_failure": null,
+      "opened_at": null,
+      "auto_close_after_hours": 12
+    }
+  },
+  "last_run": null,
+  "cluster_history": [
+    {
+      "date": "2026-03-31",
+      "cluster": "B",
+      "run_id": "4b1f37a5-7fd3-435d-9552-5309116e0b81"
+    }
+  ]
+}
