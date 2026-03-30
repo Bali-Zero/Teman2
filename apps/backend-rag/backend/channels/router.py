@@ -8,6 +8,7 @@ Author: Claude Sonnet
 Date: 2026-02-10
 """
 
+import json
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -109,6 +110,15 @@ class ChannelRouter:
                 f"(user={message.user_id}, text_length={len(message.text)})",
             )
 
+            # 2.5 Persist inbound message to conversation history (UU PDP: audit trail)
+            await self._persist_message(
+                channel=channel,
+                direction="inbound",
+                sender_id=message.user_id,
+                content=message.text,
+                metadata=message.metadata,
+            )
+
             # 3. Deduplication check (prevents webhook retries, read receipts, etc.)
             if message_deduplicator and await message_deduplicator.is_duplicate(
                 channel, message.user_id, message.text,
@@ -191,6 +201,42 @@ class ChannelRouter:
             List of channel names (e.g., ["telegram", "whatsapp", "web"])
         """
         return list(self.adapters.keys())
+
+    async def _persist_message(
+        self,
+        channel: str,
+        direction: str,
+        sender_id: str,
+        content: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Persist message to conversation_messages table for cross-channel history.
+
+        Non-blocking: failures are logged but don't break the message flow.
+        """
+        try:
+            db_pool = getattr(self, "_db_pool", None)
+            if db_pool is None:
+                return  # DB not available, skip silently
+
+            # Resolve client_id from sender metadata if available
+            client_id = (metadata or {}).get("client_id")
+
+            await db_pool.execute(
+                """
+                INSERT INTO conversation_messages (client_id, channel, direction, sender_id, content, metadata)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                """,
+                client_id,
+                channel,
+                direction,
+                sender_id,
+                content[:10000],  # Limit content size
+                json.dumps(metadata or {}),
+            )
+        except Exception as e:
+            logger.debug(f"[PERSIST] Could not save message: {e}")
 
     def is_channel_registered(self, channel: str) -> bool:
         """
