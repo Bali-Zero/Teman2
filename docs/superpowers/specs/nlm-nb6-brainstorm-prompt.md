@@ -415,8 +415,8 @@ Trading: 46900 (wholesale, MEDIUM), 47911 (e-commerce, MEDIUM).
 **OPS-020**
 **Category:** BPJS — TKA JP (Pension) Program Gray Area
 **Priority:** HIGH
-**Claim:** The obligation to enroll foreign TKA workers in the BPJS Ketenagakerjaan JP (Jaminan Pensiun / Pension) program is legally contested. PP 45/2015 Pasal 5(2) exempts TKA from JP enrollment if Indonesia has a bilateral social security totalization agreement with their home country; however, Indonesia currently has no such agreements in force with any country. The strict legal interpretation therefore requires TKA JP enrollment, but Permenaker 11/2019 creates an ambiguity by implying exemption where equivalent home-country coverage exists. Different BPJS Ketenagakerjaan regional offices in Bali apply this inconsistently: practitioners should enroll by default and seek formal written guidance from the local BPJS office if they wish to claim exemption.
-**Source hint:** PP 45/2015 Pasal 5; Permenaker 11/2019
+**Claim:** The obligation to enroll foreign TKA workers in the BPJS Ketenagakerjaan JP (Jaminan Pensiun / Pension) program is legally contested. PP 45/2015 Pasal 5(2) exempts TKA from JP enrollment if Indonesia has a bilateral social security totalization agreement with their home country; however, Indonesia currently has no such agreements in force with any country. The strict legal interpretation therefore requires TKA JP enrollment. TKA are explicitly excluded from JKP (Jaminan Kehilangan Pekerjaan — unemployment insurance, PP 37/2021) which is WNI-only; but JP (pension) remains in the gray area. Different BPJS Ketenagakerjaan regional offices in Bali apply JP enrollment inconsistently for TKA: practitioners should enroll by default and seek formal written guidance from the local BPJS office if they wish to claim exemption. Note: the operative regulation is **PP 34/2021 + Permenaker 8/2021** for TKA procedures, NOT Permenaker 11/2019 (which governs outsourcing/alih daya contracts, not foreign worker permits).
+**Source hint:** PP 45/2015 Pasal 5; PP 34/2021; Permenaker 8/2021; PP 37/2021 Pasal 2 (JKP WNI-only)
 
 ---
 
@@ -459,8 +459,8 @@ Trading: 46900 (wholesale, MEDIUM), 47911 (e-commerce, MEDIUM).
 **OPS-025**
 **Category:** Wages — UMK/UMP Compliance
 **Priority:** CRITICAL
-**Claim:** Employers in Bali must pay at least the applicable Upah Minimum Kabupaten/Kota (UMK) or Upah Minimum Provinsi (UMP Bali) — whichever is higher — to all Indonesian employees. Badung regency (where most Bali Zero client businesses operate) has its own UMK distinct from Denpasar, Gianyar, and other regencies. UMK is updated annually by the Bali Governor's decree, effective January 1. Paying below UMK is a criminal offense under UU 6/2023 Pasal 185, and back-payment obligations are retroactive to the date of violation. TKA minimum wages follow a separate framework (market rate, not UMK).
-**Source hint:** UU 6/2023 Pasal 88C-88F; PP 36/2021 (wages); Annual Bali Governor Decree on UMK
+**Claim:** Employers in Bali must pay at least the applicable Upah Minimum Kabupaten/Kota (UMK) or Upah Minimum Provinsi (UMP Bali) — whichever is higher — to all Indonesian employees. **2026 figures (SK Gubernur Bali 1021/03-M/HK/2025, 23 December 2025):** UMP Bali IDR 3,111,179.60 | UMK Denpasar IDR 3,499,878.78 | UMK Badung IDR 3,509,371.36 | UMK Gianyar IDR 3,316,798.09 | UMK Tabanan IDR 3,108,067.78 | UMK Klungkung IDR 3,041,978.82 | UMK Bangli IDR 3,007,506.72 | UMK Karangasem IDR 3,005,467.28 | UMK Buleleng IDR 3,000,797.64 | UMK Jembrana IDR 3,000,040.00. UMK is effective January 1 each year. Paying below UMK is a criminal offense under UU 6/2023 Pasal 185, and back-payment obligations are retroactive to the date of violation. TKA minimum wages follow a separate framework (market rate, not UMK).
+**Source hint:** UU 6/2023 Pasal 88C-88F; PP 36/2021 (wages); SK Gubernur Bali 1021/03-M/HK/2025 (23 Dec 2025)
 
 ---
 
@@ -684,6 +684,30 @@ Trading: 46900 (wholesale, MEDIUM), 47911 (e-commerce, MEDIUM).
 
 ---
 
+**OPS-051**
+**Category:** Labor — JKP (Jaminan Kehilangan Pekerjaan — Unemployment Insurance)
+**Priority:** HIGH
+**Claim:** JKP (PP 37/2021) is an unemployment insurance program that applies exclusively to Indonesian WNI workers — **TKA are explicitly excluded**. Effective contribution rate: 0.46% of gross salary (0.22% employer + 0.24% employee), funded by reallocation from existing JKK/JKM contributions with **zero net new cost to employers** — it is a recomposition of existing BPJS Ketenagakerjaan contributions, not an additional levy. Benefits: up to 45% salary replacement for 3 months (PP 6/2025 raised the benefit ceiling from 45% to 60%). Enrollment is automatic for all BPJS Ketenagakerjaan-registered WNI employees — no separate registration required. Companies do not need to create new payroll line items for JKP contributions as they are embedded in the restructured JKK/JKM rates.
+**Source hint:** PP 37/2021 Pasal 2 (WNI-only); PP 6/2025 (benefit increase to 60%); Permenaker 7/2021 (implementation)
+
+---
+
+**OPS-052**
+**Category:** OSS/Licensing — KBLI PMA Closures in Bali (Partial, 2025-2026)
+**Priority:** HIGH
+**Claim:** As of March 2026, Bali's DPMPTSP has proposed 7 KBLI categories for PMA closure to the Ministry of Investment, but only **1 has been formally approved**: KBLI **70209** (other business management consulting activities). The Bali Governor's Circular No. B.27.500.18/18066/INV/DPMPTSP (December 2025) operationally blocks new NIB issuance for PMA entities under KBLI 70209. DPRD Bali confirmed a **transition period** for existing operators. The remaining 6 proposed categories — including motorcycle rental, certain retail trade (KBLI 47xxx), photography services, travel agencies (biro perjalanan wisata), villa/real estate development (KBLI 68xxx), and one additional low-risk service sector — remain under national-level Ministry of Investment review and are NOT yet legally closed as of March 26, 2026. New PMA investors must verify current KBLI status with DPMPTSP Bali before NIB application in any of these categories.
+**Source hint:** SK Gubernur Bali B.27.500.18/18066/INV/DPMPTSP (Dec 2025); Radar Buleleng March 26, 2026; NusaBali Feb 21, 2026 (DPRD Bali transition period)
+
+---
+
+**OPS-053**
+**Category:** Tax — DTA Treaty Benefit Procedure (PMK 112/2025 — NEW)
+**Priority:** HIGH
+**Claim:** The old DGT-1/DGT-2 form system (PER-25/PJ/2018) for claiming Double Tax Agreement (DTA/P3B) reduced withholding tax rates has been **superseded by PMK 112/2025** (effective December 30, 2025). New procedure: (1) Foreign taxpayer completes the unified "DGT Form" (format per Lampiran PMK-112) confirming non-Indonesian tax residency, DTA-partner country residency, and no treaty abuse; (2) Form must be ratified by the foreign country's tax authority OR accompanied by a valid Certificate of Domicile (CoD) in English (name, issue date, authorized signature; validity stated in CoD, max 12 months, or month-of-issuance if no date); (3) Indonesian withholder uploads to **Coretax system, menu LA.03-03**, verifies entitlement, withholds at reduced treaty rate; (4) **Key change:** DGT Form can now be submitted retroactively during tax audit or assessment (no longer strictly pre-payment), provided substantive eligibility is met; (5) One lodgement receipt can be reused with multiple Indonesian payers during the same validity period. Special form approval: 10 calendar days (was 5 business days). 365-day ownership holding period applies for reduced dividend DTA rates.
+**Source hint:** PMK 112/2025 (30 Dec 2025); RSM Indonesia Client Alert March 2026; KPMG Indonesia Feb 2026; MUC Tax Feb 2026
+
+---
+
 ## PART III — RECOMMENDED SOURCE ARCHITECTURE FOR NB-6
 
 ### T0 — Primary Law Texts (Must-Have, Verbatim or Structured Extract)
@@ -758,11 +782,11 @@ These ambiguities are not answerable with certainty from current regulations. Ev
 
 ### AMBIGUITY-1: TKA Pension (JP) Enrollment — Mandatory or Exempt?
 
-**The conflict:** PP 45/2015 Pasal 5(2) exempts TKA from JP enrollment IF a bilateral social security totalization agreement exists between Indonesia and their home country. Since no such agreements are currently in force, the literal reading requires TKA JP enrollment. However, Permenaker 11/2019 and informal BPJS Ketenagakerjaan guidance have implied that TKA with equivalent home-country pension coverage can be administratively exempted. The law has not been amended to resolve this.
+**The conflict:** PP 45/2015 Pasal 5(2) exempts TKA from JP enrollment IF a bilateral social security totalization agreement exists between Indonesia and their home country. Since no such agreements are currently in force, the literal reading requires TKA JP enrollment. However, informal BPJS Ketenagakerjaan guidance in Bali has implied that TKA with equivalent home-country pension coverage can be administratively exempted. Note: Permenaker 11/2019 governs outsourcing/alih daya contracts (NOT TKA); the operative TKA regulation is PP 34/2021 + Permenaker 8/2021. The JP ambiguity arises from PP 45/2015 itself — no ministerial regulation has formally resolved it. Separately, TKA are **explicitly excluded** from JKP (unemployment insurance, PP 37/2021 Pasal 2) — that is not ambiguous.
 
 **Practical consequence:** A company that does not enroll TKA in JP based on the informal guidance faces a legally arguable back-payment claim and potential 2% per month BPJS contribution penalty if the formal interpretation is later enforced. Companies that enroll pay an additional 2% employer + 1% employee on salary up to the ceiling.
 
-**MD-4 flag text:** "The obligation for foreign TKA workers to enroll in BPJS Ketenagakerjaan JP (Pension) program is legally unresolved. PP 45/2015 exempts TKA only where a bilateral totalization agreement with Indonesia exists — and currently none are in force. However, informal administrative practice in Bali allows exemption with private pension documentation. Bali Zero recommends enrolling by default; formal written guidance from your local BPJS Ketenagakerjaan office is required before claiming exemption."
+**MD-4 flag text:** "The obligation for foreign TKA workers to enroll in BPJS Ketenagakerjaan JP (Pension) program is legally unresolved. PP 45/2015 exempts TKA only where a bilateral totalization agreement with Indonesia exists — and currently none are in force. Note: TKA are explicitly excluded from JKP (unemployment insurance) under PP 37/2021 — that is settled. The JP pension ambiguity remains. Informal administrative practice in Bali allows JP exemption with private pension documentation. Bali Zero recommends enrolling by default under PP 45/2015 as interpreted by PP 34/2021; formal written guidance from your local BPJS Ketenagakerjaan office is required before claiming exemption."
 
 ---
 
