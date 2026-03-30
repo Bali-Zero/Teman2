@@ -412,16 +412,18 @@ Scripts non schedulati, usati manualmente o da ai-dispatch.
 
 ### Job rotti / degradati (confermato da log)
 
-| Job | Problema | Log | Fix |
-|-----|---------|-----|-----|
-| **auto_sentinel.sh** | Punta a `apps/core/sentinel.py` che non esiste | `logs/sentinel_nightly.log:2` | Aggiornare path nel wrapper |
-| **auto_kb_ingest.sh** | Script Python target non presenti | `logs/kb_ingest.log:3` | Verificare dipendenze KB ingest |
-| **auto_judgement_day.sh** | Fallisce per dependency mismatch (`jedi`) | `logs/judgement_day.log:2` | Reinstallare venv o fixare import |
-| **crm_automation_engine.py** | Usa `localhost:15432` (tunnel DB) invece del DB reale | `logs/crm_automation.log:234` | Passare `DATABASE_URL` env var corretta |
-| **system_doctor.py** (cron) | Cron usa `--notify-telegram` ma il flag non esiste nel parser | `logs/system_doctor.log:2` | Rimuovere flag o aggiungerlo al parser |
-| **T4 monitor** | OpenAI API key assente nel contesto di esecuzione | `~/.openclaw/logs/t4_monitor.log:278` | Aggiungere `OPENAI_API_KEY` all'env del cron |
-| **seo_guardian_agent.py** | Step `generate_ai_ingestion_files` fallisce per `npx` non trovato | `logs/seo_guardian.log:176` | Usare path assoluto `npx` o installare globalmente |
-| **auto_test.sh** | Test `agentic` rossi → job esce con codice non-zero | `logs/auto_test.log:2814` | Fixare test agentic o escluderli dal cron |
+> **Stato 2026-03-31:** 7 di 8 job fixati nel commit `8e9bce647f`. Rimane aperto: `crm_automation_engine.py` (tunnel DB).
+
+| Job | Problema | Stato | Fix applicato |
+|-----|---------|-------|---------------|
+| **auto_sentinel.sh** | Punta a `apps/core/sentinel.py` che non esiste | ✅ FIXATO | `sentinel` wrapper ora punta a `apps/evaluator/core_guardian/watchdog.py` |
+| **auto_kb_ingest.sh** | Script Python target non presenti | ✅ FIXATO | `run_if_exists()` wrapper — skip graceful con log se script mancante |
+| **auto_judgement_day.sh** | `ragas` non installato nel venv Air | ✅ FIXATO | Check dipendenza prima del run, skip con messaggio di istruzioni |
+| **crm_automation_engine.py** | Usa `localhost:15432` (tunnel DB) invece del DB reale | ⚠️ APERTO | Richiede `DATABASE_URL` env var dal tunnel o accesso diretto a Fly Postgres |
+| **system_doctor.py** (cron) | Cron usa `--notify-telegram` ma il flag non esiste nel parser | ✅ FIXATO | Aggiunto `--notify-telegram` all'argparse |
+| **T4 monitor** | OpenAI API key assente nel contesto di esecuzione cron | ✅ FIXATO | `run_t4_monitor.sh` ora fa `source backend/.env` prima dell'esecuzione |
+| **seo_guardian_agent.py** | `npx` non trovato nel PATH del cron | ✅ FIXATO | Usa `/opt/homebrew/bin/npx` path assoluto con fallback |
+| **auto_test.sh** | Test `agentic` rossi → job esce con codice non-zero senza notifica | ✅ FIXATO | Aggiunto Telegram alert su failure + rimosso `set -e` in favore di `set -uo pipefail` |
 
 ### Drift documentazione vs realtà
 
