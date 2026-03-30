@@ -6,6 +6,8 @@
 
 export { PortalBottomNav } from "./PortalBottomNav";
 
+export { StatusBadge } from "./StatusBadge";
+
 export {
   PortalErrorBoundary,
   withPortalErrorBoundary,
