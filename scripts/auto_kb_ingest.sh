@@ -14,18 +14,30 @@ mkdir -p "$PROJECT_DIR/logs"
 echo "[$DATE] Starting Knowledge Base Ingestion..." >> "$LOG_FILE"
 cd "$PROJECT_DIR" # Run from root for imports
 
+run_if_exists() {
+    local script="$1"
+    shift
+    if [ -f "$script" ]; then
+        export PYTHONPATH="$PROJECT_DIR/apps/backend-rag/backend:${PYTHONPATH:-}"
+        "$PYTHON_EXEC" "$script" "$@" >> "$LOG_FILE" 2>&1
+        return $?
+    else
+        echo "[$DATE] ⚠️  SKIP: $script not found" >> "$LOG_FILE"
+        return 0
+    fi
+}
+
 # 1. Intelligent Visa Agent (Vision + Map + Notifications)
 echo "[$DATE] Running Intelligent Visa Agent..." >> "$LOG_FILE"
-export PYTHONPATH="$PROJECT_DIR/apps/backend-rag/backend:$PYTHONPATH"
-"$PYTHON_EXEC" apps/kb/intelligent_visa_agent.py >> "$LOG_FILE" 2>&1
+run_if_exists "apps/kb/intelligent_visa_agent.py"
 
 # 2. Peraturan Spider (Laws) - Standard Update
 echo "[$DATE] Running Peraturan Spider..." >> "$LOG_FILE"
-"$PYTHON_EXEC" apps/kb/peraturan_spider.py --limit 10 >> "$LOG_FILE" 2>&1
+run_if_exists "apps/kb/peraturan_spider.py" --limit 10
 
 # 3. Putusan Spider (Court) - Standard Update
 echo "[$DATE] Running Putusan Spider..." >> "$LOG_FILE"
-"$PYTHON_EXEC" apps/kb/putusan_spider.py >> "$LOG_FILE" 2>&1
+run_if_exists "apps/kb/putusan_spider.py"
 
 echo "[$DATE] ✅ KB Ingestion Cycle Complete." >> "$LOG_FILE"
 echo "----------------------------------------" >> "$LOG_FILE"

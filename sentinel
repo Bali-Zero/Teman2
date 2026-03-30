@@ -1,4 +1,4 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")"
-exec apps/backend-rag/venv/bin/python3 apps/core/sentinel.py "$@"
+exec apps/backend-rag/venv/bin/python3 apps/evaluator/core_guardian/watchdog.py "$@"
