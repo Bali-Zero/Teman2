@@ -1118,7 +1118,7 @@ async def initialize_services(app: FastAPI) -> None:
     # 12. LangGraph Agent Layer - Inject services into workflow nodes
     logger.debug("Injecting services into LangGraph agent nodes...")
     try:
-        from backend.app.agents.graph import set_llm_gateway, set_search_service
+        from backend.app.agents.graph import set_db_pool, set_llm_gateway, set_search_service
         from backend.services.rag.agentic.llm_gateway import LLMGateway
 
         # Inject SearchService (already initialized)
@@ -1127,6 +1127,11 @@ async def initialize_services(app: FastAPI) -> None:
             logger.info("✅ SearchService injected into LangGraph agent nodes")
         else:
             logger.warning("⚠️ SearchService not available for LangGraph agent injection")
+
+        # Inject DB pool for conversation history
+        if db_pool:
+            set_db_pool(db_pool)
+            logger.info("✅ DB pool injected into LangGraph agent nodes (conversation history)")
 
         # Create and inject LLMGateway
         try:
