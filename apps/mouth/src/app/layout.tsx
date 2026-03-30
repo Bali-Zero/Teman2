@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import Script from "next/script";
 import { Toaster } from "sonner";
 import {
   OrganizationJsonLd,
@@ -165,7 +166,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         {/* ⚡ Performance: Preconnect to critical domains */}
         <link rel="preconnect" href="https://nuzantara-rag.fly.dev" />
@@ -222,6 +223,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}
+        suppressHydrationWarning
       >
         <QueryProvider>
           <WebVitalsMonitor />
@@ -249,9 +251,12 @@ export default function RootLayout({
           />
         </QueryProvider>
         {/* Service Worker Registration */}
-        <script
+        <Script
+          id="sw-register"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
-            __html: "if('serviceWorker'in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});})}",
+            __html:
+              "if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){})}",
           }}
         />
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
