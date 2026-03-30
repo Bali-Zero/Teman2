@@ -208,6 +208,11 @@ export default function ClientDetailPage() {
     }
   }, [searchParams]);
 
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    router.replace(`/clients/${params.id}?tab=${tab}`, { scroll: false });
+  };
+
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
     // Return placeholder during SSR to avoid hydration mismatch
@@ -809,7 +814,7 @@ export default function ClientDetailPage() {
             variant={activeTab === key ? "default" : "ghost"}
             size="sm"
             className="gap-2 whitespace-nowrap"
-            onClick={() => setActiveTab(key as TabType)}
+            onClick={() => handleTabChange(key as TabType)}
           >
             <Icon className="w-4 h-4" />
             {label}
