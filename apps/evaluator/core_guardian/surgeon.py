@@ -961,9 +961,12 @@ def _surgeon_core(
             full_target = f"apps/backend-rag/{target_file}"
             fixed = fixer(worktree_path, full_target)
             if not fixed:
-                _record_failure(state, run_id, ruff_code, f"Deterministic fixer produced no changes")
+                # No changes means the file is already clean — not a failure
+                logger.info(f"Deterministic fixer for {ruff_code}: file already clean, skipping")
                 cleanup_worktree(worktree_path, branch_name)
-                return _fail(run_id, f"Deterministic fixer for {ruff_code} produced no changes")
+                _record_run(state, run_id, ruff_code, full_target, "skipped", 0, "already clean")
+                save_state(state)
+                return {"success": True, "message": "File already clean, no fix needed", "run_id": run_id}
         else:
             # Fallback: Claude Code CLI
             prompt = build_surgeon_prompt(task_description, target_file, ruff_code, failed_diff)

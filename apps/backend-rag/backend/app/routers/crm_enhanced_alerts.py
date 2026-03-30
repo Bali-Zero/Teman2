@@ -68,7 +68,10 @@ async def get_all_expiry_alerts(
 
 
 @router.get("/expiry-alerts/summary")
-async def get_expiry_alerts_summary(pool: Any = Depends(get_database_pool)) -> dict[str, Any]:
+async def get_expiry_alerts_summary(
+    pool: Any = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
     """Get summary counts of expiry alerts for dashboard."""
     async with pool.acquire() as conn:
         summary = await conn.fetchrow(

@@ -51,4 +51,3 @@ async def upgrade(pool) -> None:
 async def downgrade(pool) -> None:
     async with pool.acquire() as conn:
         await conn.execute(DOWNGRADE_SQL)
-"""

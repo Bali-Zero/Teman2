@@ -85,7 +85,10 @@ def include_routers(api: FastAPI) -> None:
         oracle_universal,
         performance,
         portal,
+        portal_billing,
+        portal_drive,
         portal_invite,
+        portal_process_timeline,
         portal_taxes,
         portal_visa,
         prime,
@@ -96,6 +99,7 @@ def include_routers(api: FastAPI) -> None:
         team_activity,
         team_analytics,
         team_drive,
+        team_members,
         telegram,
         telegram_webhook,
         twitter,
@@ -164,7 +168,10 @@ def include_routers(api: FastAPI) -> None:
 
     # Portal routers (Client-facing)
     api.include_router(portal.router)
+    api.include_router(portal_billing.router)
+    api.include_router(portal_drive.router)
     api.include_router(portal_invite.router)
+    api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)
 
@@ -268,6 +275,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(team.router)  # Team member visibility management
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
+    api.include_router(team_members.router)  # [NEW] Team members list for CRM dropdowns
     api.include_router(media.router)
     # api.include_router(audio.router)  # Already included in app_factory.py with prefix="/api"
     api.include_router(voice.router)  # Fast voice endpoint for realtime voice AI

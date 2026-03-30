@@ -22,6 +22,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileUploadField } from '@/components/documents/FileUploadField';
 import type { ClientRequiredDocument } from '@/lib/types/required-documents';
+import { ProcessStepper } from '@/components/portal';
+import { usePortalProcessTimeline } from '@/hooks/usePortalProcessTimeline';
 
 // Status configurations
 const STATUS_CONFIG = {
@@ -211,6 +213,10 @@ function ProcessCard({
   onUploadClick: (doc: ClientRequiredDocument) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [showTimeline, setShowTimeline] = useState(false);
+  const { data: timeline, isLoading: isLoadingTimeline } = usePortalProcessTimeline(
+    showTimeline ? process.practiceId : null
+  );
 
   const pendingCount = process.documents.filter((d) => d.status === 'pending').length;
   const uploadedCount = process.documents.filter((d) => d.status === 'uploaded').length;
@@ -267,6 +273,33 @@ function ProcessCard({
           {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
         </div>
       </button>
+
+      {/* Timeline Section */}
+      {isExpanded && (
+        <div className="px-4 py-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <button
+            onClick={() => setShowTimeline(!showTimeline)}
+            className="text-xs font-medium flex items-center gap-1 transition-opacity hover:opacity-80"
+            style={{ color: 'var(--bz-accent-warm)' }}
+          >
+            {showTimeline ? 'Hide Timeline' : 'View Timeline'}
+          </button>
+          {showTimeline && (
+            <div className="mt-3">
+              {isLoadingTimeline ? (
+                <div className="flex items-center gap-2 py-2">
+                  <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--bz-accent-warm)', borderTopColor: 'transparent' }} />
+                  <span className="text-xs" style={{ color: 'var(--bz-text-2)' }}>Loading timeline...</span>
+                </div>
+              ) : timeline?.steps ? (
+                <ProcessStepper steps={timeline.steps} />
+              ) : (
+                <p className="text-xs py-2" style={{ color: 'var(--bz-text-3)' }}>No timeline data available</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Documents List */}
       {isExpanded && (

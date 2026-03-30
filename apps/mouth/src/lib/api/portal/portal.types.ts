@@ -357,3 +357,78 @@ export interface PortalApiResponse<T> {
   message?: string;
   error?: string;
 }
+
+// ============================================================================
+// Process Timeline Types
+// ============================================================================
+
+export interface ProcessTimelineStep {
+  status: string;
+  label: string;
+  completed: boolean;
+  is_current: boolean;
+  changed_at: string | null;
+  changed_by: string | null;
+}
+
+export interface ProcessTimeline {
+  practice_id: number;
+  practice_name: string;
+  practice_category: string;
+  current_status: string;
+  assigned_to: string | null;
+  start_date: string | null;
+  completion_date: string | null;
+  expiry_date: string | null;
+  steps: ProcessTimelineStep[];
+}
+
+// ============================================================================
+// Drive File Types
+// ============================================================================
+
+export interface DriveFolder {
+  id: string;
+  name: string;
+}
+
+export interface DriveFilesResponse {
+  root_id?: string;
+  root_name?: string;
+  folders: DriveFolder[];
+  total_files: number;
+  total_size_bytes?: number;
+  message?: string;
+}
+
+// ============================================================================
+// Billing Types
+// ============================================================================
+
+export interface PortalInvoice {
+  id: number;
+  invoice_number: string;
+  amount_idr: number;
+  invoice_source: string;
+  has_pdf: boolean;
+  drive_web_link: string | null;
+  email_sent: boolean;
+  generated_at: string | null;
+  created_at: string | null;
+  practice_id: number;
+  practice_name: string;
+  practice_category: string;
+  payment_status: string;
+}
+
+export interface BillingSummary {
+  total_invoiced: number;
+  total_paid: number;
+  total_pending: number;
+  count: number;
+}
+
+export interface BillingResponse {
+  invoices: PortalInvoice[];
+  summary: BillingSummary;
+}

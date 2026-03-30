@@ -11,7 +11,6 @@ Architecture:
 """
 
 import hashlib
-import json
 import logging
 import time
 from collections import OrderedDict

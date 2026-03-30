@@ -5,8 +5,7 @@ Tests Indonesian PII detection: KTP (16 digits), NPWP (old + new 16-digit),
 Passport, Phone (+62), Email, Person names.
 """
 
-import pytest
-from backend.middleware.pii_scanner import scan_text, redact_text
+from backend.middleware.pii_scanner import redact_text, scan_text
 
 
 class TestScanText:
