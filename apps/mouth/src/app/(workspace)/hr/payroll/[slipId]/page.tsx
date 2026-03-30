@@ -1,24 +1,24 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, FileText } from 'lucide-react';
-import { getPayslipDetail } from '@/lib/api/hr/hr';
-import type { PayslipDetail, Deduction } from '@/types/hr';
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, FileText } from "lucide-react";
+import { getPayslipDetail } from "@/lib/api/hr/hr";
+import type { PayslipDetail, Deduction } from "@/types/hr";
 
 function formatIDR(amount: number): string {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
     maximumFractionDigits: 0,
   }).format(amount);
 }
 
 const statusColors: Record<string, string> = {
-  draft: 'bg-zinc-500/10 text-zinc-400 border-zinc-700',
-  calculated: 'bg-blue-500/10 text-blue-400 border-blue-800',
-  approved: 'bg-amber-500/10 text-amber-400 border-amber-800',
-  paid: 'bg-emerald-500/10 text-emerald-400 border-emerald-800',
+  draft: "bg-zinc-500/10 text-zinc-400 border-zinc-700",
+  calculated: "bg-blue-500/10 text-blue-400 border-blue-800",
+  approved: "bg-amber-500/10 text-amber-400 border-amber-800",
+  paid: "bg-emerald-500/10 text-emerald-400 border-emerald-800",
 };
 
 function PayslipSkeleton() {
@@ -77,13 +77,13 @@ export default function PayslipDetailPage({
       try {
         const id = parseInt(slipId, 10);
         if (isNaN(id)) {
-          setError('Invalid payslip ID');
+          setError("Invalid payslip ID");
           return;
         }
         const data = await getPayslipDetail(id);
         setSlip(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load payslip');
+        setError(err instanceof Error ? err.message : "Failed to load payslip");
       } finally {
         setLoading(false);
       }
@@ -108,7 +108,7 @@ export default function PayslipDetailPage({
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center">
           <FileText size={40} className="mx-auto text-zinc-600 mb-3" />
           <p className="text-zinc-400 text-lg font-medium">
-            {error || 'Payslip not found'}
+            {error || "Payslip not found"}
           </p>
           <p className="text-zinc-600 text-sm mt-1">
             The requested payslip could not be loaded.
@@ -140,7 +140,7 @@ export default function PayslipDetailPage({
     slip.allowance_total_idr +
     slip.thr_idr;
 
-  const periodLabel = `${String(slip.payroll_month).padStart(2, '0')}/${slip.payroll_year}`;
+  const periodLabel = `${String(slip.payroll_month).padStart(2, "0")}/${slip.payroll_year}`;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -171,7 +171,7 @@ export default function PayslipDetailPage({
                 {periodLabel}
               </p>
               <span
-                className={`inline-block text-xs px-2 py-0.5 rounded-full border mt-1 ${statusColors[slip.period_status] || 'bg-zinc-500/10 text-zinc-400 border-zinc-700'}`}
+                className={`inline-block text-xs px-2 py-0.5 rounded-full border mt-1 ${statusColors[slip.period_status] || "bg-zinc-500/10 text-zinc-400 border-zinc-700"}`}
               >
                 {slip.period_status}
               </span>
@@ -269,9 +269,7 @@ export default function PayslipDetailPage({
                 </div>
               ))}
               <div className="flex justify-between pt-2 border-t border-zinc-800/50">
-                <span className="text-sm text-zinc-500">
-                  Total Kontribusi
-                </span>
+                <span className="text-sm text-zinc-500">Total Kontribusi</span>
                 <span className="text-sm text-zinc-500 tabular-nums">
                   {formatIDR(totalEmployerContributions)}
                 </span>
