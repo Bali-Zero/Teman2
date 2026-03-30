@@ -1,707 +1,808 @@
-# NB-6: Operations & Business Management Indonesia 2025 — Brainstorming Brief
+# NB-6 — Operations & Business Management Indonesia 2025
 
-> **Date:** 2026-03-30
-> **Author:** Claude Sonnet 4.6 (research + architecture synthesis)
-> **Reference Model:** NB-2 Immigration & Visa (55 sources, 36 claims, NHS 0.801, pipeline live)
-> **Research Method:** 10 parallel Brave Search queries (2025-2026 sources) + regulatory cross-referencing
+## Brainstorm Prompt for NotebookLM Notebook Architecture
 
----
-
-## 0. EXECUTIVE SUMMARY
-
-NB-6 covers the **operational compliance stack** that every PT PMA in Indonesia must run continuously after incorporation. Unlike NB-3 (Company Setup) which ends at NIB issuance, NB-6 starts where NB-3 ends: the ongoing obligations of a live company — HR, payroll, social security, manpower reporting, investment reporting, banking, accounting, and annual corporate governance.
-
-This is Bali Zero's highest-volume advisory domain. Every foreign client who has set up a company eventually asks: "We're running now — what do we need to do every month, quarter, and year?"
-
-**Regulatory churn is HIGH:** 2024-2026 brought PP 28/2025 (OSS reform), PP 6/2025 (BPJS JKK/JKP overhaul), BKPM 5/2025 (capital reduction), Regulation 49/2025 (Kemenkumham annual reporting), Coretax DJP (new tax system from Jan 2025), and KBLI 2025 (mandatory by 18 June 2026). NB-6 must track all of these live.
+**Date:** 2026-03-30
+**Author:** Claude Code (Sonnet 4.6) — Expert deep-reasoning session
+**Purpose:** Knowledge base design for Bali Zero NB-6 operational compliance notebook
+**Scope:** Post-setup operational compliance for PT PMA, HR/payroll, TKA permits, BPJS, banking, accounting, OSS-RBA
+**Reference:** NB-2 Immigration & Visa (55 sources, 36 claims, NHS 0.801) as model for depth standard
 
 ---
 
-## 1. TOPIC CIRCUMFERENCE
+## PART I — DEEP REASONING: CHAIN OF THOUGHT
 
-### What is INSIDE NB-6
+### 1. Client Journey After Company Setup — Full Operational Timeline
 
-| Cluster                       | Sub-topics                                                                                                                                                                                                                 |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **HR & Manpower**             | Employment contracts (PKWT/PKWTT), probation rules, termination (PHK), severance (pesangon), Wajib Lapor Ketenagakerjaan (WLKP), manpower office registration                                                              |
-| **Foreign Workers (TKA)**     | RPTKA procedure, HPK RPTKA → Pengesahan RPTKA (new 2-step post-Notification abolition), VITAS/KITAS coordination, DKP-TKA levy (USD 100/month), sponsor company obligations, TKA ratio limits                              |
-| **Payroll & Social Security** | BPJS Ketenagakerjaan (JHT, JKK, JKM, JP, JKP) rates, BPJS Kesehatan employer/employee split, PPh 21/26 withholding for local and foreign employees, THR (religious holiday allowance) calculations, payroll cut-off cycles |
-| **Minimum Wage**              | UMP/UMK annual updates (Bali 2026 figures), UMSK sectoral minimums (hotel sector in Badung), wage enforcement                                                                                                              |
-| **Investment Reporting**      | LKPM (quarterly for medium/large, semi-annual for small), OSS-RBA submission portal, BKPM deadlines, sanctions for non-submission                                                                                          |
-| **Corporate Governance**      | RUPS/AGMS annual obligation (max 6 months after FY end), Regulation 49/2025 SABH reporting, AHU blocking risk, notarial process for annual report                                                                          |
-| **Accounting & Audit**        | SAK/SAK ETAP applicability, statutory audit threshold (Rp 50B assets/turnover per UU PT Pasal 68), Big-4 vs local KAP, annual financial statement deadlines                                                                |
-| **Corporate Tax Filing**      | SPT Tahunan Badan deadline (30 April), Coretax DJP migration (Jan 2025), monthly SPT masa obligations, transfer pricing documentation (PMK 172/2023)                                                                       |
-| **Banking Operations**        | PT PMA corporate account opening requirements (NIB + NPWP + akta + KITAS for director), mandatory corporate account rule, BCA/Mandiri/BNI specific requirements                                                            |
-| **OSS Compliance**            | NIB maintenance, KBLI update obligation by 18 June 2026 (KBLI 2025 transition), PP 28/2025 OSS RBA full rollout, change-of-data procedures                                                                                 |
+**Day 1 — Legal Existence (AHU + NIB)**
 
-### What is OUTSIDE NB-6 (belongs to other notebooks)
+The moment Kemenkumham issues the SK Pengesahan Pendirian PT PMA, the entity legally exists but cannot operate. The sequence is non-negotiable:
 
-| Topic                                                      | Correct Notebook             |
-| ---------------------------------------------------------- | ---------------------------- |
-| Company formation (PT PMA incorporation, AHU registration) | NB-3: Company Setup          |
-| Tax rates, PPh Badan, VAT calculation methodology          | NB-4: Tax & Fiscal           |
-| Visa types, KITAS application process for the individual   | NB-2: Immigration & Visa     |
-| Property leasing, land rights, villa operations            | NB-5: Property & Real Estate |
-| KBLI classification lookup, business activity eligibility  | KB KBLI 2025                 |
+1. AHU approval → Akta Pendirian certified → Notary delivers to founders
+2. OSS-RBA: Founder submits NIB application using AHU data, selects KBLI codes
+3. NIB issued: replaces legacy SIUP, TDP, API-U licenses in one document
+4. Risk assessment triggers: LOW = NIB sufficient; MEDIUM = Sertifikat Standar needed; HIGH = Izin needed before operations
+5. NPWP Badan (corporate tax number) obtained from KPP (Tax Office) — required for bank account, invoicing, payroll
 
-### Border Cases (dual ownership — NB-6 takes operational side)
+**Critical trap at Day 1:** KBLI code selection at NIB is difficult to change post-issuance. Wrong KBLI = wrong risk level = wrong license pathway = possible operating without required Izin.
 
-| Topic            | NB-6 owns                                  | Other NB owns                            |
-| ---------------- | ------------------------------------------ | ---------------------------------------- |
-| TKA RPTKA        | Procedure, renewal, company obligations    | NB-2 owns individual KITAS application   |
-| BPJS for TKA     | Enrollment obligation, employer rates      | NB-2 owns visa status eligibility        |
-| Transfer Pricing | TP Doc obligation trigger, filing deadline | NB-4 owns actual calculation methodology |
-| OSS NIB changes  | Maintenance and update procedure           | NB-3 owns initial NIB issuance           |
+**Week 1-2 — Banking**
+
+Corporate bank account cannot be opened without: AHU-certified deed, NIB, NPWP badan, legalized foreign shareholder documents. Timeline: 2-4 weeks minimum at most banks. Blockers: foreign director presence or valid PoA; PPATK enhanced due diligence for PMA structures.
+
+**Month 1 — Employee Registrations**
+
+- BPJS Ketenagakerjaan registration: mandatory from first employee's first day of work
+- BPJS Kesehatan registration: same trigger
+- Disnaker registration: company with employees must notify local Dinas Tenaga Kerja
+- PPh 21 payroll withholding: begins with first salary payment, monthly report by 20th following month
+
+**Month 1-3 — TKA Process (if foreign workers)**
+
+- RPTKA application to Kemnaker BEFORE any foreign national begins work
+- DKP-TKA levy payment (USD 100/position/month) after RPTKA approval
+- KITAS application to Imigrasi after RPTKA + DKP-TKA proof
+- STM (police report) within 14 days of KITAS holder's arrival in regency
+
+**Month 1-3 — Labor Compliance**
+
+- Wajib Lapor Ketenagakerjaan (WLK) via wajiblapor.kemnaker.go.id: annual filing, first filing within 30 days of having employees
+- If 10+ employees: Peraturan Perusahaan (Company Regulation) must be drafted, ratified by Disnaker within 60 days
+- If collective agreement: PKB (Perjanjian Kerja Bersama) replaces PP
+
+**Quarter 1 — First LKPM**
+
+Within 10 working days after Q1 end (April 10): first quarterly LKPM filed via OSS portal. Companies with investment > IDR 500 million (virtually all PT PMA) must file. Failure chain: SP1 → SP2 → license revocation.
+
+**Month 6 — First Tax Obligations**
+
+- PPh Pasal 25 installments: based on prior year or estimated current year profit
+- PPN (VAT) registration: mandatory once annual turnover exceeds IDR 4.8 billion (PKP threshold); voluntary below threshold
+- E-faktur setup via DJP Coretax: required before issuing tax invoices
+
+**Year 1 — Annual Compliance Stack**
+
+- Annual GMS (RUPS Tahunan): within 6 months of fiscal year end (June 30 for Dec 31 FY) — UU 40/2007 Pasal 78
+- Annual LKPM: January 31 of following year
+- Annual SPT Badan: April 30 of following year (fiscal year = calendar year)
+- AHU Annual Report: within 6 months of fiscal year end
+- BPJS contribution adjustments: new UMP/UMK effective January 1 each year
+- RPTKA renewal: 30 days before expiry (typically 2-year cycle)
+- KITAS renewal: before expiry, aligned with RPTKA
 
 ---
 
-## 2. KEY REGULATORY FINDINGS (from 2025-2026 research)
+### 2. Most Dangerous Compliance Traps
 
-### 2.1 BPJS Ketenagakerjaan — Rates & 2025 Changes
+**TRAP 1 — Working Before RPTKA/IMTA (Criminal)**
+Foreign director performing operational work without Notifikasi TKA = criminal liability for employer. UU 6/2023 Pasal 185: up to IDR 500 million + 5 years imprisonment. Extremely common: founders work 6-12 months before processing. Risk multiplied if foreign founder is both commissioner (no IMTA needed for attendance) AND de facto operations manager (needs IMTA).
 
-**Current rates (PP 6/2025, effective 2025):**
+**TRAP 2 — BPJS Non-Enrollment (Criminal + Administrative)**
+UU 24/2011 Pasal 55: criminal sanction up to IDR 1 billion or 8 years for employer who does not enroll employees in BPJS. Administrative: company blocked from OSS license renewals, government contract bids, and in Bali, from obtaining certain Dinas Pariwisata licenses. BPJS enforcement increasing post-2022 with cross-agency data sharing.
 
-| Program                            | Employer                                           | Employee | Total  | Base                      |
-| ---------------------------------- | -------------------------------------------------- | -------- | ------ | ------------------------- |
-| JHT (Jaminan Hari Tua)             | 3.7%                                               | 2.0%     | 5.7%   | Monthly wage              |
-| JKK (Jaminan Kecelakaan Kerja)     | 0.24%–1.74%                                        | —        | varies | Monthly wage (risk-based) |
-| JKM (Jaminan Kematian)             | 0.30%                                              | —        | 0.30%  | Monthly wage              |
-| JP (Jaminan Pensiun)               | 2.0%                                               | 1.0%     | 3.0%   | Monthly wage (capped)     |
-| JKP (Jaminan Kehilangan Pekerjaan) | 0.14% (from JKK recomposition) + 0.22% gov subsidy | —        | 0.36%  | Monthly wage              |
+**TRAP 3 — Paying Below UMK**
+Bali has multiple UMK levels by regency: Denpasar, Badung, Gianyar, Tabanan differ. Governor's decree issued late November each year, effective January 1. Criminal: Pasal 185 UU 6/2023. Back-pay obligations are retroactive to violation date.
 
-**Critical 2025 changes (PP 6/2025):**
+**TRAP 4 — LKPM Non-Filing**
+Quarterly LKPM is the most commonly neglected obligation. OSS sends digital warnings that founders ignore. Investment license revocation happens after two unresponded Surat Peringatan. Recovery after revocation is complex and expensive.
 
-- JKP benefit increased: **60% of reported salary for 6 months** (was 45% for 3 months + 25% for 3 months, max Rp 5 million)
-- JKP is now funded by recomposing 0.14% from JKK (not from JKM as before)
-- Companies in labor-intensive industries: **50% JKK discount for 6 months** (promotional measure)
-- New protection: workers can claim JKP **even if employer has arrears on JKK payments** (Pasal 39 amendment)
+**TRAP 5 — Coretax SPT Non-Filing**
+Post-January 2025 Coretax rollout, many PT PMA missed monthly SPT deadlines. Penalties: Rp 500,000 per late monthly SPT (Pasal 7 KUP), 2% per month on underpaid tax (Pasal 9 KUP). DJP transitional amnesty has ended.
 
-**TKA (Foreign Worker) coverage:**
+**TRAP 6 — WLK Non-Filing**
+Wajib Lapor Ketenagakerjaan annual filing. Forgotten by 70%+ of small PT PMA. Without current WLK compliance certificate: cannot renew certain OSS licenses, cannot bid government contracts.
 
-- TKA who have worked **minimum 6 months** are mandatory BPJS Ketenagakerjaan participants
-- Same rates apply as local workers
-- TKA enrolled: JHT + JKK + JKM + JP (if PKWTT) + JKP
+**TRAP 7 — Foreign Shareholder Documents Not Properly Legalized**
+AHU requires apostille (Hague members) or KBRI/KJRI legalization (non-Hague). Improperly legalized documents make establishment challengeable and bank account opening impossible.
 
-**BPJS Kesehatan (Health Insurance):**
-
-- Employer contribution: **4% of salary**
-- Employee contribution: **1% of salary**
-- Wage ceiling for BPJS Kesehatan calculation: **Rp 12 million/month**
-
-**Common compliance pitfall:** Many PT PMAs enroll TKA in BPJS Ketenagakerjaan but fail the BPJS Kesehatan enrollment simultaneously. Both are mandatory and the Disnaker inspection checks both at the same time.
-
-### 2.2 Minimum Wage — Bali 2026
-
-**UMP Bali 2026:** Rp 3,207,459/month (increase of **+7.04%** from 2025)
-**Effective:** 1 January 2026
-**Legal basis:** Keputusan Gubernur Bali Nomor 1021/03-M/HK/2025 (23 December 2025)
-
-**UMK Bali 2026 by Kabupaten/Kota:**
-
-| Region           | UMK 2026 (Rp/month)    |
-| ---------------- | ---------------------- |
-| Badung           | 3,791,002.57 (highest) |
-| Denpasar         | ~3,500,000             |
-| Gianyar          | ~3,320,000             |
-| Other kabupatens | ≥ UMP 3,207,459        |
-
-**UMSK (Sectoral) Badung 2026:** Hotel bintang 4-5: Rp 3,828,912.60/month
-
-**Compliance pitfall:** Many small PT PMAs in Bali pay at UMP but are in Badung (where most Bali Zero clients operate). They must use UMK Badung, not UMP Bali. Gap is ~Rp 580,000/month per employee.
-
-### 2.3 TKA / RPTKA — 2025 Procedure
-
-**Current framework (post-Permenaker reform):**
-
-- IMTA (old work permit) has been **abolished**
-- RPTKA is the **sole work authorization document** for foreign workers
-- New 2-step process replaced old single Notification system:
-  1. **HPK RPTKA** (Hasil Penilaian Kelayakan — Feasibility Assessment Result)
-  2. **Pengesahan RPTKA** (Attestation/Approval)
-- After RPTKA approval: employer requests **VITAS** from Ditjen Imigrasi, then **e-ITAS**
-- Portal: **tka-online.kemnaker.go.id** (integrated with OSS and Ditjen Imigrasi SIMKIM)
-- RPTKA duration = employment contract duration (max same as RPTKA validity)
-
-**DKP-TKA Levy:** USD 100 per TKA per month (paid by employer, per Permenaker)
-
-**Key requirements for RPTKA:**
-
-- Proof that the skill is **unavailable in Indonesian labor market**
-- Company documents: NIB, NPWP, akta pendirian, SK Kemenkumham
-- Must identify **local workforce counterpart** (pendamping TKA) for technology transfer
-- TKA cannot hold certain protected positions (e.g., HR Director in Indonesian operations)
-
-**2025 digital update:** Paper-based permits **fully replaced** by eVISA and e-ITAS. All applications through immigration portal electronically.
-
-**Common pitfall:** Companies that previously used the old Notification system (single-step) try to use the same process — it no longer exists. The HPK RPTKA step is now mandatory before Pengesahan, adding ~2-4 weeks to the process.
-
-### 2.4 OSS / PP 28/2025 / KBLI 2025
-
-**PP 28/2025 (effective 5 October 2025):** Full OSS RBA rollout
-
-- OSS RBA is now fully operative under the new framework
-- PT PMA must maintain active NIB and update data when business activities change
-- Change of KBLI requires new OSS data submission + potential additional investment value declaration
-
-**BKPM Regulation 5/2025 (critical capital change):**
-
-- Minimum **paid-up capital** reduced: IDR 10 billion → **IDR 2.5 billion** at incorporation
-- Minimum **investment value** per KBLI per project location: **still IDR 10 billion** (unchanged, excluding land+buildings)
-- This is a common misconception: the capital requirement changed but the investment commitment did not
-
-**KBLI 2025 transition:**
-
-- KBLI 2025 published 18 December 2025 (Peraturan BPS 7/2025)
-- All companies must update their OSS/NIB to KBLI 2025 codes by **18 June 2026** (6-month transition)
-- KBLI 2020 codes no longer valid after that date
-- "One-to-many" splits mean some KBLI codes have been broken into multiple new codes
-- PT PMAs with multiple KBLI splits may need to increase investment declarations per new KBLI
-
-**Compliance pitfall:** PT PMAs that were registered under KBLI 2020 and have not updated will have invalid licensing after 18 June 2026. This is a widespread risk across Bali Zero's client base.
-
-### 2.5 Banking — PT PMA Account Opening
-
-**Mandatory rule:** Every registered Indonesian company (PT PMA included) **must have its own corporate bank account**. Personal accounts cannot be used for business transactions.
-
-**Key requirements (2025 standard across BCA, Mandiri, BNI, BRI):**
-
-- Company documents: akta pendirian + SK Kemenkumham, NIB, NPWP
-- Board resolution authorizing account signatories
-- Director's **KITAS** (if foreign director) — **KITAS holder required**, not merely visa holder
-- Director's Indonesian **NPWP** (individual)
-- Passport + recent photos
-
-**BCA-specific Bali 2025 note:** Some BCA branches in Bali have tightened policies and **refuse B211A (investor) visa holders** as sole signatories. KITAS is required.
-
-**Timeline:** Account opening typically 1-3 weeks after all documents are complete. Mandiri and BNI tend to be more accessible to new PT PMAs than BCA in Bali.
-
-**Common pitfall:** Foreign directors who are commissioners only (no KITAS) cannot open the account themselves. The operational director (who holds KITAS) must be the primary signatory.
-
-### 2.6 Accounting, Audit & Financial Reporting
-
-**Statutory audit threshold (UU PT No. 40/2007 Pasal 68):**
-
-- Companies with **assets OR turnover ≥ Rp 50 billion** must have annual financial statements audited by a registered KAP (Kantor Akuntan Publik / Public Accounting Firm)
-- Most early-stage PT PMAs are below this threshold
-- However: PT PMA with foreign parent may have **group consolidation requirements** that trigger audit regardless of local threshold
-
-**Accounting standards:**
-
-- **SAK** (Standar Akuntansi Keuangan) — full IFRS-converged, for larger companies
-- **SAK ETAP** — simplified standard for entities without public accountability (most PT PMAs in early stage)
-- **SAK EMKM** — for micro/small enterprises (rarely applicable to PT PMA)
-
-**Financial year:** Standard calendar year (Jan-Dec). PT PMA can request different FY but calendar year is default and most common.
-
-**Key deadlines:**
-
-- Annual financial statements: prepared and approved within 6 months after FY end (by 30 June)
-- If audit required: auditor engagement typically needs 2-3 months → start engagement by March
-
-### 2.7 Corporate Tax Filing — Coretax Migration
-
-**SPT Tahunan Badan (Annual Corporate Tax Return):**
-
-- Deadline: **30 April** each year (for prior calendar year)
-- FY2025 SPT Tahunan Badan → due **30 April 2026**
-- Monthly obligations: SPT Masa (PPh 21, PPh 23, PPh 25, PPN) → 10th or 20th of following month
-
-**Coretax DJP — CRITICAL CHANGE (effective 1 January 2025):**
-
-- New core tax administration system replaces all previous DJP portals
-- FY2024 tax returns: still filed through old system (pajak.go.id)
-- FY2025 tax returns: **must be filed through Coretax DJP**
-- System experienced significant technical issues throughout 2025 (DPR acknowledged it was "not fully ready")
-- DJP granted relaxation: late filing penalties waived until 30 April 2026 for FY2025 returns
-- Companies should register their NPWP on Coretax early and resolve any account migration issues
-
-**Transfer Pricing (PMK 172/2023):**
-
-- PT PMAs with related-party transactions must comply with PMK 172/2023 (TP documentation)
-- TP Doc obligation triggers: transactions with related parties above thresholds in Article 16 PMK 172/2023
-- **Master File + Local File required** for qualifying taxpayers
-- Country-by-Country Report (CbCR) for groups with consolidated revenue ≥ Rp 11 trillion
-- PMK-112/2025 update: non-resident related parties claiming DTAA benefits must satisfy new substantive eligibility requirements
-
-### 2.8 LKPM — Investment Activity Report
-
-**Obligation:** Every PT PMA (investor) must submit LKPM via OSS portal to BKPM/DPMPTSP
-
-**Frequency:**
-
-- **Medium and large businesses** (modal usaha > Rp 10 billion): **quarterly** (every 3 months)
-- **Small businesses** (modal usaha Rp 5-10 billion): **semi-annually** (every 6 months)
-
-**Deadlines (quarterly schedule):**
-
-- Q1 (Jan–Mar): due by **10 April**
-- Q2 (Apr–Jun): due by **10 July**
-- Q3 (Jul–Sep): due by **10 October**
-- Q4 (Oct–Dec): due by **10 January** of next year
-
-**Q4 2025 deadline:** 10 January 2026 (confirmed via Surabaya DPMPTSP and Prolegal.id)
-
-**PP 28/2025 note:** LKPM system remains under oss.go.id but has been migrated to the updated PP 28/2025 framework. Companies with transition data (prior to 5 October 2025) have a separate handling path.
-
-**Sanctions:** Administrative sanctions from DPMPTSP, potential NIB suspension. Non-submitting companies are flagged in OSS and may face investment license invalidation.
-
-**Common pitfall:** Many PT PMAs submit LKPM for the first year and then forget the quarterly obligation. The system does not automatically remind. DPMPTSP in Badung is known for active enforcement.
-
-### 2.9 WLKP — Manpower Reporting
-
-**Legal basis:** UU No. 7/1981 on Mandatory Manpower Reporting
-**System:** wajiblapor.kemnaker.go.id (SIAPkerja/Sisnaker login)
-
-**Obligation:** Every company with employees must register and update manpower data annually
-
-**What to report:** Company profile, workforce headcount, job categories, TKA employed, working conditions, welfare programs (including BPJS enrollment confirmation)
-
-**Key compliance pitfall:** The WLKP registration is separate from BPJS enrollment. A company can be BPJS-compliant but still non-compliant on WLKP. Disnaker inspections check both.
-
-### 2.10 Corporate Governance — Regulation 49/2025
-
-**Peraturan Menteri Hukum No. 49/2025 (Kemenkumham):**
-
-- **Mandatory annual report** to AHU (Administrasi Hukum Umum / Ministry of Justice)
-- Replaces Regulation 21/2021
-- Requires: Annual RUPS/GMS held within **6 months after FY end** (by 30 June)
-- Annual report approved and submitted via **SABH** (Sistem Administrasi Badan Hukum) within **30 days after notarisation**
-- Notarisation of GMS minutes must go through a registered notary
-
-**Sanctions for non-compliance:**
-
-- AHU system blocks corporate actions: cannot register director/shareholder changes, cannot process share transfers, banking relationships at risk
-- Company effectively becomes "legally frozen" for any structural changes
-
-**New 2026 requirement:** Annual GMS must now be **reported to AHU** (previously only minutes needed to be kept). This is a new administrative obligation that many PT PMAs are unaware of.
-
-**Deadline for FY2025:** RUPS by 30 June 2026, SABH submission by ~30 July 2026.
+**TRAP 8 — PKP Threshold Crossed Without Registration**
+PKP (VAT registrant) threshold: IDR 4.8 billion/year. Company that crosses threshold without registering cannot issue valid tax invoices retroactively, cannot recover input VAT, faces retroactive PPN liability.
 
 ---
 
-## 3. SOURCE STRUCTURE DESIGN
+### 3. TKA / Work Permit Lifecycle — Full Procedure
 
-### 3.1 T0 Sources — Regulation Full Text (6 documents)
+**Step 1: RPTKA — Quota Approval**
 
-These are the canonical legal/regulatory texts to be added as **full text** sources in NB-6. They provide the citation backbone.
+- Portal: TKAonline.kemnaker.go.id
+- Required: NIB, AHU deed, NPWP badan, detailed job description, org chart, proof that no Indonesian can fill role, TKA educational qualifications, location details
+- Duration: 5-7 working days if complete; 14-21 days if queries raised
+- RPTKA specifies: position title, number of foreign workers, max duration (max 2 years), work location (kabupaten/kota)
+- Extensions: new RPTKA application 30 days before expiry; no grace period for expired RPTKA
+- Commissioner distinction: RUPS attendance only = no RPTKA; daily management = RPTKA mandatory
 
-| #    | Document                                                                                               | Legal Basis                                    | Why T0                                                                                                                             |
-| ---- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| T0-1 | **PP 6/2025** — Peraturan Pemerintah tentang Penyelenggaraan Program Jaminan Kehilangan Pekerjaan      | PP No. 6 Tahun 2025 (amends PP 37/2021)        | JKK/JKP reform — governs BPJS Ketenagakerjaan rates and benefits. Full text at bpjsketenagakerjaan.go.id/assets/uploads/peraturan/ |
-| T0-2 | **PP 28/2025** — Peraturan Pemerintah tentang Penyelenggaraan Perizinan Berusaha Berbasis Risiko       | PP No. 28 Tahun 2025                           | OSS RBA full rollout — governs NIB, KBLI updates, licensing obligations. Effective 5 Oct 2025                                      |
-| T0-3 | **Peraturan Menteri Hukum No. 49/2025** — Syarat dan Tata Cara Pendirian, Perubahan, dan Pembubaran PT | Permenkumham 49/2025                           | Annual reporting, SABH, AHU blocking — governs corporate governance obligations. Replaces Regulation 21/2021                       |
-| T0-4 | **PMK 172/2023** — Transfer Pricing Documentation                                                      | Peraturan Menteri Keuangan No. 172/PMK.03/2023 | TP Doc — governs transfer pricing obligations for PT PMA with related-party transactions. Current operative TP framework           |
-| T0-5 | **Peraturan BPS No. 7/2025** — KBLI 2025                                                               | BPS 7/2025 (published 18 Dec 2025)             | KBLI 2025 transition — mandatory code update by 18 June 2026. Classification foundation for all licensing                          |
-| T0-6 | **Permenaker tentang RPTKA** — Tata Cara Pengesahan RPTKA                                              | Permenaker No. 8/2021 + update circulars       | TKA work permit procedure — governs RPTKA, HPK, attestation, and related obligations                                               |
+**Step 2: Notifikasi TKA (formerly IMTA)**
 
-### 3.2 URL Sources — Official Portals & Authoritative Guides (18 sources)
+- Issued automatically upon RPTKA approval and DKP-TKA payment receipt upload
+- One Notifikasi per foreign worker per approved position
+- Tied to RPTKA; if RPTKA lapses, Notifikasi also lapses
 
-#### Official Government Portals (8)
+**Step 3: DKP-TKA Levy**
 
-| #    | URL                                                                                                                                             | Content                                    | Authority              |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ---------------------- |
-| U-01 | https://tka-online.kemnaker.go.id/syarat.asp                                                                                                    | RPTKA requirements, procedure, documents   | T1 — Kemnaker official |
-| U-02 | https://tka-online.kemnaker.go.id/doc/petunjuk.pdf                                                                                              | Full RPTKA guide (PDF), step-by-step       | T1 — Kemnaker official |
-| U-03 | https://oss.go.id/en/panduan/635970086345c7d71a8144b2                                                                                           | LKPM guide (OSS RBA)                       | T1 — OSS/BKPM official |
-| U-04 | https://oss.go.id/id/pengumuman/kewajiban-penyampaian-lkpm-periode-triwulan-iii-tahun-2025                                                      | LKPM Q3 2025 announcement                  | T1 — OSS/BKPM official |
-| U-05 | https://wajiblapor.kemnaker.go.id/                                                                                                              | WLKP system (SIAPkerja)                    | T1 — Kemnaker official |
-| U-06 | https://www.bpjsketenagakerjaan.go.id/artikel/18913/artikel-berapa-besaran-iuran-jht,-jkk,-jkm,-jp-dan-jkp                                      | BPJS Ketenagakerjaan — official rate table | T1 — BPJS official     |
-| U-07 | https://www.bpjsketenagakerjaan.go.id/artikel/18600/artikel-aturan-baru-jkp-dan-jkk-2025-perlindungan-jkp-naik,-iuran-jkk-diskon-50-persen.bpjs | PP 6/2025 JKP/JKK reform announcement      | T1 — BPJS official     |
-| U-08 | https://www.pajak.go.id/en/node/118848                                                                                                          | Coretax SPT Tahunan changes (DJP)          | T1 — DJP official      |
+- Rate: USD 100 per approved position per month
+- Calculated on full RPTKA duration (e.g., 24 months = USD 2,400 per position)
+- Payment via Mandiri or BNI, using SSPD form
+- DKP-TKA is employer's cost, NOT deductible from employee salary
+- Failure to pay: RPTKA approval withheld; criminal exposure
 
-#### Authoritative Analysis & Compliance Guides (10)
+**Step 4: VITAS / KITAS Process**
 
-| #    | URL                                                                                                                                                | Content                                                  | Authority                                    |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------- |
-| U-09 | https://ilaglobalconsulting.com/annual-gms-reporting-in-indonesia-new-2026-rules-and-ahu-blocking-risks/                                           | Regulation 49/2025 — Annual GMS and AHU blocking risk    | T2 — ILA Global (Bali-based compliance firm) |
-| U-10 | https://sevenstonesindonesia.com/blog/annual-reporting-now-mandatory-what-indonesias-new-company-regulation-means-for-pt-pmdn-pt-pma-in-2025-2026/ | Regulation 49/2025 full analysis for PT PMA              | T2 — Seven Stones Indonesia (Bali)           |
-| U-11 | https://sasbali.com/regulation-49-2025-annual-report-indonesia/                                                                                    | Regulation 49/2025 deadlines and SABH procedure          | T2 — SAS Bali (Bali-based legal)             |
-| U-12 | https://cptcorporate.com/annual-compliance-requirements-pt-pma-companies-indonesia/                                                                | Complete annual compliance checklist for PT PMA (2025)   | T2 — CPT Corporate                           |
-| U-13 | https://golaw.id/blog/kbli-2025-update-oss-kode-usaha-berubah-apa-dampaknya-bagi-legalitas-anda/                                                   | KBLI 2025 impact for OSS licensing                       | T2 — GoLaw.id                                |
-| U-14 | https://bplawyers.co.id/2025/10/14/wajib-lapor-ketenagakerjaan-perusahaan-wlkp-kapan-dan-bagaimana-caranya/                                        | WLKP obligation — when and how                           | T2 — BP Lawyers                              |
-| U-15 | https://www.pnbimmigrationlawfirm.com/work-permit-indonesia-2025-complete-guide/                                                                   | Work permit 2025 complete guide (HPK + Pengesahan RPTKA) | T2 — PNB Immigration (Jakarta law firm)      |
-| U-16 | https://nusantaralegal.com/overview-of-bkpm-5-2025-reduction-of-minimum-paid-up-capital-for-foreign-owned-company/                                 | BKPM 5/2025 capital reduction — analysis                 | T2 — Nusantara Legal                         |
-| U-17 | https://indonesia.acclime.com/guides/transfer-pricing/                                                                                             | Transfer pricing Indonesia (PMK-172/2023 + PMK-112/2025) | T2 — Acclime Indonesia                       |
-| U-18 | https://databoks.katadata.co.id/en/employment/statistics/69533224de5da/2026-minimum-wages-in-bali-badung-regency-is-the-highest                    | 2026 UMK Bali statistics (all 9 kabupatens)              | T2 — Katadata (verified data aggregator)     |
+- Entry route A: VITAS at Indonesian consulate overseas → convert to KITAS upon arrival
+- Entry route B: Tourist/B211A visit visa → convert to KITAS (permitted since 2022)
+- KITAS application: passport (18+ months validity), sponsor letter, deed, NIB, RPTKA/Notifikasi, DKP-TKA proof, photos
+- Processing: 14-30 working days
+- KITAS validity: 6 months, 1 year, or 2 years (aligned with RPTKA)
+- STM (Surat Tanda Melapor) from Polres: mandatory within 14 days of arrival in regency
 
-### 3.3 Text Claim Sources — Operational Knowledge (8 sources)
+**Step 5: Post-KITAS Obligations**
 
-These cover **operational procedures** not well-documented via URLs, extracted from Bali Zero's advisory experience and synthesis of multiple sources.
+- NPWP pribadi (personal tax number) at local KPP if income in Indonesia
+- BPJS Ketenagakerjaan enrollment (JKK, JKM, JHT mandatory; JP — gray area)
+- BPJS Kesehatan enrollment (mandatory unless private insurance exemption obtained)
+- PPh 21/26 withholding by employer on monthly salary
 
-| #    | Title                                                    | Content Summary                                                                                                                                                                                                                                                                                                          | Rationale                                                                                                |
-| ---- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| TC-1 | **BPJS Enrollment Sequence for PT PMA**                  | Step-by-step: order of enrollment (Kesehatan first vs Ketenagakerjaan), required documents per program, online vs in-person, timeline, common rejection reasons (address mismatch, director KITAS expiry)                                                                                                                | Procedural — not covered by any single URL; extracted from multi-source synthesis                        |
-| TC-2 | **UMK vs UMP vs UMSK Decision Matrix**                   | When to apply UMK vs UMP (depends on kabupaten of operations, not company HQ), UMSK sectors in Badung (hotel 4-5 star), enforcement pattern by Disnaker Badung, formula for companies operating in multiple kabupaten                                                                                                    | Bali-specific — critical distinction missed by most generic guides                                       |
-| TC-3 | **RPTKA Renewal vs New Application**                     | Difference in procedure for first RPTKA vs renewal, what triggers a new application (job description change, company restructure), grace period for renewal, HPK RPTKA timing (2-4 weeks), coordination with KITAS renewal at immigration                                                                                | Procedural gap — sources cover new applications but not renewal cycle                                    |
-| TC-4 | **LKPM Data Entry Guide for Service Companies**          | What to enter in "realisasi investasi" when company has no fixed assets (common for consulting/service PT PMAs), how to report staff costs, office expenses, intangibles; OSS portal field-by-field guide; common rejection reasons                                                                                      | Field-specific — OSS portal UI is poorly documented                                                      |
-| TC-5 | **Coretax DJP Migration Checklist**                      | Steps to migrate existing NPWP to Coretax, certificate renewal, SPT Masa filing (PPh 21, 23, 25, PPN) for FY2025 via Coretax, transition table (old portal → new portal by SPT type), known bugs and workarounds as of Q1 2026                                                                                           | Operational — Coretax migration is causing widespread compliance failures; no authoritative guide exists |
-| TC-6 | **PT PMA Corporate Bank Account — Bali Practice**        | Real-world bank choice matrix (BCA vs Mandiri vs BNI vs BRI for PT PMA in Bali), branch-specific policies (BCA Renon, Kuta, Seminyak have different policies), signatory options when director is on B211A visa vs KITAS, multi-currency account availability                                                            | Ground-truth — ILA Global note confirmed BCA Bali tightening; comprehensive comparison not public        |
-| TC-7 | **Annual Compliance Calendar for PT PMA (Bali, FY2025)** | Month-by-month checklist: LKPM deadlines, BPJS payment dates (15th of month), SPT Masa deadlines (20th for PPh, 31st for PPN), WLKP annual renewal, RUPS deadline (30 June), Regulation 49/2025 SABH filing, SPT Tahunan Badan (30 April), KBLI 2025 transition (18 June 2026)                                           | High utility — synthesizes 10+ regulatory calendars into one actionable document                         |
-| TC-8 | **THR Calculation Rules 2025**                           | THR (Tunjangan Hari Raya) — obligation (minimum 1x monthly salary for >12 months tenure, prorated for <12 months), deadline (H-7 before Hari Raya Idul Fitri), DHR for non-Muslim employees (Christmas/Nyepi), TKA eligibility (same as local workers after >12 months), PKWT vs PKWTT differences, PPh 21 impact on THR | Recurring compliance obligation with annual enforcement drive by Kemnaker                                |
+**Step 6: Annual Renewal**
 
-### 3.4 Master Documents (3)
+- Apply 30 days before KITAS expiry
+- If RPTKA expired: new RPTKA + new DKP-TKA first, then KITAS renewal
+- Overstaying KITAS: IDR 1 million/day immigration fine; employer also liable
 
-| #    | Title                                      | Content                                                                                                                                                                                                                                                                                                                                                                                                   | Role                                                                          |
-| ---- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| MD-1 | **NB-6 Change Log 2024-2026**              | Chronological log of all regulatory changes: PP 6/2025 (BPJS JKP/JKK), BKPM 5/2025 (capital), PP 28/2025 (OSS), Regulation 49/2025 (AHU), KBLI 2025 (classification), Coretax DJP (tax system), UMP/UMK Bali 2026. Each entry: date, regulation number, what changed, effective date, compliance deadline                                                                                                 | Cited in "what has changed recently" queries. Updated quarterly.              |
-| MD-3 | **NB-6 Cross-Domain Bridge**               | Maps where NB-6 topics reference other notebooks: TKA procedure references NB-2 (KITAS), capital structure references NB-3 (PT PMA setup), corporate tax rates reference NB-4 (Tax & Fiscal), villa operations reference NB-5 (Property). Prevents duplicate coverage and ensures consistent answers when topics span notebooks.                                                                          | Cited in multi-domain queries. Prevents NLM hallucinating on adjacent topics. |
-| MD-4 | **NB-6 Open Questions & Monitoring Flags** | Active uncertainties requiring T4 monitoring: (1) Coretax full operability timeline — DPR said "not ready" but when fully ready? (2) KBLI 2025 transition enforcement — what happens after 18 June 2026? (3) DKP-TKA levy rate changes — USD 100/month stable or under review? (4) OSS-LKPM integration post-PP 28/2025 — new reporting fields? (5) PP 6/2025 JKK discount sectors — which specific KBLI? | Active intelligence gaps tracked by T4 monitor.                               |
+**Step 7: Exit / Termination**
+
+- EPO (Exit Permit Only) from Imigrasi if departing before KITAS expiry
+- Notify Disnaker (Laporan Pengakhiran TKA), de-register BPJS, issue final payslip
+- RPTKA cancellation: notify TKAonline within 14 days
+
+**Prohibited Positions:**
+Permenaker 349/MEN/XII/2018 as updated by PP 34/2021: HR Manager/Director and certain operational labor roles permanently prohibited for TKA regardless of company structure.
 
 ---
 
-## 4. CLUSTER MAP FOR QUERY DESIGN
+### 4. Banking Complexity for PT PMA
 
-NB-6 has **5 query clusters**, to be rotated weekly (Mon-Fri, 2 queries/day = ~10 queries/week):
+**Why It's Hard:**
+Indonesian banks perform enhanced CDD on PT PMA per OJK regulations and PPATK AML requirements. Foreign ownership structure triggers UBO verification, source-of-funds declaration, FATCA/CRS self-certifications. Most bank staff lack PMA-specific English-language experience. KYC refresh required every 2 years.
 
-| Cluster                               | Weekly Slot | Sub-topics                                               | Sample L2 Query                                                        |
-| ------------------------------------- | ----------- | -------------------------------------------------------- | ---------------------------------------------------------------------- |
-| **A: Social Security & HR**           | Monday      | BPJS Ketenagakerjaan, BPJS Kesehatan, WLKP, minimum wage | "Perubahan iuran BPJS Ketenagakerjaan 2025 untuk pekerja asing PT PMA" |
-| **B: Foreign Workers**                | Tuesday     | RPTKA, HPK, DKP-TKA, KITAS coordination                  | "Prosedur terbaru pengesahan RPTKA 2025 Kemnaker HPK"                  |
-| **C: Investment Compliance**          | Wednesday   | LKPM, OSS NIB updates, KBLI 2025 transition              | "LKPM triwulan OSS RBA 2025 perubahan PP 28/2025"                      |
-| **D: Tax & Accounting**               | Thursday    | Coretax, SPT Tahunan, transfer pricing, audit            | "Coretax DJP SPT Tahunan Badan 2025 prosedur filing"                   |
-| **E: Corporate Governance & Banking** | Friday      | Regulation 49/2025, RUPS, SABH, bank account             | "Regulation 49/2025 AHU annual GMS reporting PT PMA 2026"              |
+**Documents Required:**
 
----
+- AHU-certified deed, NIB, NPWP badan, applicable OSS license
+- KITAS + Passport of all signatory directors
+- Board resolution authorizing account opening
+- UBO declaration (Peraturan OJK 12/2017)
+- Source of funds declaration
+- For foreign shareholders: apostilled or KBRI-legalized corporate documents from home jurisdiction
+- FATCA/CRS self-certifications
 
-## 5. ADJACENT NOTEBOOK HANDOFF POINTS
+**Bank Selection by Use Case:**
 
-| From NB-6 Query →                        | Hand off to  | Reason                                                             |
-| ---------------------------------------- | ------------ | ------------------------------------------------------------------ |
-| "What visa does a director need?"        | NB-2         | KITAS type for directors (E25/E28) — NB-2 owns visa classification |
-| "What is the corporate income tax rate?" | NB-4         | PPh Badan 22%, VAT 12% — NB-4 owns rates                           |
-| "Can a foreigner own the company?"       | NB-3         | Positive list, PMA eligibility — NB-3 owns company formation       |
-| "Can I operate my villa as a PT PMA?"    | NB-5         | Operational licenses for villa/property — NB-5 owns this           |
-| "What KBLI code is my business?"         | KB KBLI 2025 | Classification lookup — KBLI KB owns this                          |
+- Day-to-day IDR operations: BCA (best digital banking), Mandiri (government payments)
+- USD operations / international remittances: BNI, OCBC Indonesia (most international-friendly)
+- Singapore-owned PT PMA: DBS Indonesia
+- Chinese-owned PT PMA: Bank of China Indonesia (BCI)
 
----
+**Forex Controls (Bank Indonesia PBI 21/2019):**
 
-## 6. GAP ANALYSIS vs NB-4 (Tax)
-
-NB-4 covers tax calculation and rates. NB-6 covers tax **compliance procedures**. The distinction:
-
-| Topic                                    | NB-4 owns | NB-6 owns                            |
-| ---------------------------------------- | --------- | ------------------------------------ |
-| PPh Badan rate (22%)                     | Yes       | Reference only                       |
-| VAT (PPN) rate (12%)                     | Yes       | Reference only                       |
-| SPT Tahunan Badan deadline               | Reference | Yes (April 30)                       |
-| Coretax migration procedure              | No        | Yes                                  |
-| TP Doc content (Master File, Local File) | Yes       | Filing deadline + trigger thresholds |
-| PPh 21 withholding calculation           | Yes       | Employer obligation to withhold      |
-| BPJS as deductible expense               | Yes       | BPJS enrollment obligation           |
+- Transactions > USD 100,000: underlying documents required (invoice, contract)
+- Dividend remittance: 20% PPh 26 withholding (reduced by DTA); BI report for amounts > USD 100,000
+- Capital repatriation: BI report required
+- Forex hedging for companies with forex liabilities > USD 250,000: PBI 22/2018 compliance
 
 ---
 
-## 7. ESTIMATED SOURCE COUNTS & NHS PROJECTION
+### 5. BPJS Gray Areas
 
-| Category                       | Count  | Notes                        |
-| ------------------------------ | ------ | ---------------------------- |
-| T0 regulation texts            | 6      | High-density, long documents |
-| URL sources (T1 official)      | 8      | Government portals           |
-| URL sources (T2 authoritative) | 10     | Law firms + compliance firms |
-| Text claim sources (TC)        | 8      | Operational procedures       |
-| Master Documents               | 3      | MD-1, MD-3, MD-4             |
-| **TOTAL initial corpus**       | **35** | Well within 70-source cap    |
+**Programs and Applicability for TKA:**
 
-**NHS projection:** With 35 sources covering 5 well-defined clusters with clear regulatory backing:
+| Program             | Employer % | Employee % | TKA Obligation                                 |
+| ------------------- | ---------- | ---------- | ---------------------------------------------- |
+| JKK (Work Accident) | 0.24-1.74% | 0%         | MANDATORY                                      |
+| JKM (Death)         | 0.30%      | 0%         | MANDATORY                                      |
+| JHT (Old Age)       | 3.70%      | 2.00%      | MANDATORY (>6 months employment)               |
+| JP (Pension)        | 2.00%      | 1.00%      | GRAY AREA — no bilateral agreement in force    |
+| BPJS Kesehatan      | 4.00%      | 1.00%      | MANDATORY (unless private insurance exemption) |
 
-- Expected NHS at T+30 days: **0.76-0.82**
-- Reference: NB-2 achieved NHS 0.801 with 55 sources at T+30
+**JP for TKA:** PP 45/2015 Pasal 5(2) exempts TKA from JP where bilateral totalization agreement exists — but Indonesia has none currently in force. Strict reading = mandatory. Permenaker 11/2019 implies exemption with equivalent home-country coverage. BPJS regional offices in Bali apply inconsistently. Recommendation: enroll by default.
 
-**Rationale for lower count than NB-2:** Operations management has higher-quality T0 documents (full regulation texts) and less URL fragmentation than immigration law. Quality over quantity.
+**BPJS Kesehatan Exemption:** Peraturan BPJS Kesehatan 4/2014: exemption possible with equivalent private insurance + formal application to regional BPJS office. Rarely granted in Bali. Default = enroll.
 
----
-
-## 8. COMMON COMPLIANCE PITFALLS SUMMARY (for claim extraction)
-
-These are the top 10 failure patterns seen among Bali Zero PT PMA clients:
-
-1. **UMK vs UMP confusion** — paying UMP Bali instead of UMK Badung, gap of ~Rp 580K/month
-2. **BPJS incomplete** — enrolling in Ketenagakerjaan but not Kesehatan (or vice versa)
-3. **TKA RPTKA not renewed** — treating RPTKA as one-time; it must match employment contract duration and be renewed
-4. **LKPM forgotten after first year** — quarterly obligation missed, OSS flags company
-5. **KBLI 2025 not updated** — operating on KBLI 2020 codes past 18 June 2026
-6. **No corporate bank account at incorporation** — using director's personal account for first months
-7. **WLKP never filed** — BPJS enrolled but Kemnaker manpower registry empty
-8. **Annual RUPS not held or not notarized** — Regulation 49/2025 AHU blocking risk
-9. **Coretax not set up** — FY2025 SPT Masa filed through old portal (creates reconciliation issues)
-10. **DKP-TKA levy arrears** — USD 100/month per TKA, often not factored into budget
+**Salary Ceilings:** BPJS Kesehatan: IDR 12,000,000/month (Perpres 82/2018). BPJS Ketenagakerjaan: updated annually per Peraturan Direksi BPJS. Verify each January.
 
 ---
 
-## 9. KEY SOURCES FOR IMMEDIATE INGESTION
+### 6. Accounting and Audit Obligations
 
-Priority order for first NB-6 population sprint:
+**Standard Selection:**
 
-1. PP 6/2025 full text (T0-1) — from bpjsketenagakerjaan.go.id
-2. BPJS Ketenagakerjaan official rate article (U-06)
-3. BPJS PP 6/2025 JKP/JKK announcement (U-07)
-4. TC-7 (Annual Compliance Calendar) — write and ingest as text source
-5. LKPM OSS guide (U-03)
-6. Regulation 49/2025 analysis (U-09, U-10, U-11) — ingest all 3 for corroboration
-7. UMK 2026 Bali (U-18) + Disnaker Bali official PDF
-8. RPTKA guide Kemnaker (U-01, U-02)
-9. KBLI 2025 transition (U-13)
-10. Coretax DJP SPT changes (U-08)
-11. MD-1 Change Log (write first, critical for context)
+- SAK EMKM: assets < IDR 50 billion, revenue < IDR 150 billion, no public accountability. Simplified: no deferred tax, cost model only, no segment reporting. May conflict with foreign parent IFRS consolidation.
+- SAK-EP (Entitas Privat): medium complexity.
+- Full PSAK/IFRS: required for large entities or public accountability.
 
----
+**When Audit is Mandatory (UU 40/2007 Pasal 68):**
+Total assets > IDR 50 billion, publicly listed PT, or PT that issued bonds to public. Most PT PMA below threshold not legally required to audit. Practical triggers: bank loan covenants, foreign parent consolidation, high-risk OSS license compliance.
 
-## 10. OPEN QUESTIONS (for MD-4)
+**LKPM Filing Deadlines:**
+Q1 (Jan-Mar): April 10; Q2 (Apr-Jun): July 10; Q3 (Jul-Sep): October 10; Q4 (Oct-Dec): January 10. Annual: January 31. Via oss.go.id. Penalty regime: SP1 → SP2 → license revocation.
 
-1. **Coretax stability:** Is Coretax DJP now fully operational for all SPT types including Badan (corporate)? DPR confirmed it was not ready in early 2025. Status in Q1 2026?
-2. **KBLI 2025 enforcement:** What are the actual sanctions after 18 June 2026 for companies that haven't updated? License suspension? NIB invalidation? Grace period?
-3. **DKP-TKA rate:** USD 100/month has been stable but there are parliamentary discussions about revising the levy. Any Permenaker update in 2025?
-4. **OSS LKPM new fields post-PP 28/2025:** Has the LKPM form changed structurally under the new PP 28 framework, or is it the same form in a new portal?
-5. **BPJS JKK 50% discount:** Which specific KBLI codes qualify as "labor-intensive industries" for the JKK 50% discount? No official list found in search results.
-6. **UMP Bali 2027:** Formula for UMP calculation changed under PP 51/2023. What is the projection for UMP 2027 Bali based on growth formula?
-7. **Regulation 49/2025 retroactive:** Does the SABH reporting obligation apply retroactively to companies that held RUPS in 2025 before the regulation? Unclear from current sources.
-8. **PMK-112/2025 DTAA impact:** For PT PMAs with a parent in Netherlands, Singapore, Australia — what are the new substantive eligibility requirements for treaty benefits under PMK-112/2025?
+**Coretax (as of January 2025):**
+All SPT via coretax.pajak.go.id. E-Faktur issued through Coretax. Monthly: PPh 21 by 20th; PPh 25 payment by 15th; PPh 23/26 by 20th; PPN by 31st. Annual: SPT Badan by April 30; SPT Pribadi (directors) by March 31. Legacy e-Filing decommissioned.
+
+**AHU Annual Report:** Separate from SPT; filed via ahu.go.id within 6 months of fiscal year end. Penalty: removal from AHU registry if unfiled.
 
 ---
 
-## 11. ADJACENT NOTEBOOK HEALTH STATUS (context for NB-6 design)
+### 7. OSS-RBA PP 28/2025 Practical Impact
 
-| Notebook                     | Status                                              | Relevance to NB-6                           |
-| ---------------------------- | --------------------------------------------------- | ------------------------------------------- |
-| NB-2: Immigration & Visa     | LIVE (NHS 0.801, pipeline active)                   | TKA KITAS pipeline, RPTKA ↔ KITAS handoff   |
-| NB-3: Company Setup          | Design phase (or early)                             | NB-6 starts where NB-3 ends                 |
-| NB-4: Tax & Fiscal           | Design phase (brainstorm prompt created 2026-03-29) | Tax rates owned by NB-4, procedures by NB-6 |
-| NB-5: Property & Real Estate | Design phase (brainstorm prompt created 2026-03-29) | Villa operations licensing overlap          |
+**PP 28/2025** replaced PP 5/2021. More KBLI now require verified (not self-declared) Sertifikat Standar. Key KBLI for Bali Zero clients:
+
+Consulting: 70209 (management consulting, MEDIUM), 74901 (business advisory, LOW), 62010 (software dev, LOW).
+Property/Hospitality: 55192 (villa rental, HIGH — TDUP required BEFORE operations), 56101 (restaurant, HIGH).
+Trading: 46900 (wholesale, MEDIUM), 47911 (e-commerce, MEDIUM).
+
+**Risk tier practical impact:**
+
+- LOW: NIB only, operate immediately.
+- MEDIUM: NIB + Sertifikat Standar (self-declare, can operate but subject to retroactive verification).
+- HIGH: NIB + Izin — must be obtained BEFORE operations begin.
 
 ---
 
-_Brief generated 2026-03-30 by Claude Sonnet 4.6_
-_Research: 10 Brave Search queries (2025-2026 sources), 12 result pages analyzed_
-_All figures verified against primary sources where possible; Open Questions section flags unverified items_
+## PART II — 50 OPERATIONAL CLAIM GAPS (OPS-001 → OPS-050)
+
+### A. POST-SETUP TIMELINE & TRIGGERS
 
 ---
 
-## 12. DEEP RESEARCH SUPPLEMENT (2026-03-30, Exa Search)
-
-_Added by Claude Sonnet 4.6 — 8 parallel Exa searches + 4 crawls, 50+ sources analyzed_
-_This section enriches and corroborates the above with specific figures, source URLs, and new gaps found._
-
-### 12.1 BPJS — Exact Rate Table Confirmed (from KantorKu + ProCapita crawls)
-
-The following table is confirmed from two independent sources (kantorku.id Oct 2025, procapita.co.id Feb 2026):
-
-| Program        | Employer    | Employee | Notes                                                        |
-| -------------- | ----------- | -------- | ------------------------------------------------------------ |
-| JHT            | 3.7%        | 2.0%     | No salary cap                                                |
-| JKK            | 0.24%–1.74% | —        | Risk-based; office = 0.24%                                   |
-| JKM            | 0.3%        | —        | No salary cap                                                |
-| JP             | 2.0%        | 1.0%     | Capped at Rp 10,547,400/month (March 2025, updated annually) |
-| BPJS Kesehatan | 4.0%        | 1.0%     | Capped at Rp 12,000,000/month                                |
-
-**JP pension cap confirmed at Rp 10,547,400/month (March 2025).** Max employer JP contribution = Rp 210,948/month. Max employee JP contribution = Rp 105,474/month.
-
-**BPJS Kesehatan max cost confirmed**: Employer max Rp 480,000/month, employee max Rp 120,000/month.
-
-**All BPJS contributions due by 15th of the following month.** Late payment = 2%/month penalty.
-
-**Foreign workers (TKA)**: Enrollment in BPJS Kesehatan mandatory after **6 months** in Indonesia (confirmed by bangsaonline.com Sep 2025, citing presidential regulation from Jan 2019). BPJS Ketenagakerjaan also mandatory for TKA on KITAS with employment contract.
-
-**Note on director-shareholder ambiguity**: Whether a foreign director who receives only dividends (no employment salary) must enroll in BPJS remains a gap — practically many PT PMAs enroll all working directors regardless.
-
-**New source for NB-6 ingestion**: https://procapita.co.id/our-insights/bpjs-in-indonesia-explained/ (English, Feb 2026, worked calculation example)
-
-### 12.2 Minimum Wage — Exact Figures Confirmed
-
-| Region                                            | UMK 2026 (Rp/month) | % Increase |
-| ------------------------------------------------- | ------------------- | ---------- |
-| **Badung**                                        | **3,791,002.57**    | +7.26%     |
-| **Denpasar**                                      | **3,499,878.78**    | —          |
-| **Gianyar**                                       | **3,316,798.48**    | —          |
-| **Tabanan**                                       | **3,287,678.87**    | —          |
-| Klungkung, Karangasem, Bangli, Jembrana, Buleleng | 3,207,459 (= UMP)   | —          |
-| **UMP Bali**                                      | **3,207,459**       | **+7.04%** |
-
-**Governor Decree**: Keputusan Gubernur Bali No. 1011/03-M/HK/2025 (earlier doc) / also referenced as No. 1021/03-M/HK/2025 — two sources cite slightly different decree numbers for same figures. Confirm exact number from official Disnaker Bali source.
-
-**Tourism sectoral wage (UMSP)**: Star-rated Hotel sector = Rp 3,267,693/month. Superseded by UMK in Badung (Rp 3,791,002 > Rp 3,267,693).
-
-**Daily wage calculation**: Monthly ÷ 25 (6-day week) or ÷ 21 (5-day week). UMP applies to daily workers proportionally.
-
-**Work location governs (not company domicile)**: A villa in Seminyak registered in Denpasar must pay Badung UMK for staff working in Badung. Gap = ~Rp 291K/month per employee vs Denpasar UMK.
-
-**New sources for NB-6 ingestion**:
-
-- https://data.goodstats.id/statistic/daftar-umk-bali-2026-kab-badung-paling-tinggi-LPzs0
-- https://balivisa.co/minimum-wage-in-bali-2026-practical-guide-for-employers-and-workers/
-- https://balivisa.co/salary-scales-in-bali-2026-what-employers-should-know/
-
-### 12.3 RPTKA / Work Permit — Fee Table Confirmed
-
-From Flado.id (crawled 2026):
-
-| KITAS Duration | DKP-TKA Levy (USD) | IDR Equivalent (at Sep 2024 rate) |
-| -------------- | ------------------ | --------------------------------- |
-| 6 months       | $600               | ~Rp 9,291,000                     |
-| 1 year         | $1,200             | ~Rp 18,582,000                    |
-| 2 years        | $2,400             | ~Rp 37,164,000                    |
-
-**Service fee for RPTKA + DPKK + IMTA (agency)**: Rp 4,000,000 total (5 working days processing).
-
-**KITAS categories for directors/executives** (updated 2025 classification):
-
-- E25A: Commissioner, E25B: Director, E25C: Vice Director, E25D: General Manager, E25E: Manager, E25F: Supervisor
-- E24 series: Digital Worker KITAS (new category for digital nomads/remote workers)
-- E23 series: Standard employment KITAS by sector
-
-**1-year Working KITAS**: extendable 4 times (max 5 total years).
-**2-year Working KITAS**: extendable 2 times (max 6 total years).
-**After extensions**: eligible for KITAP (5-year Permanent Stay Permit).
-
-**DPKK = DKP-TKA**: Terminology used interchangeably. Full name: Dana Pengembangan Keahlian dan Keterampilan. **Employer pays, cannot deduct from employee salary.**
-
-**2-step process confirmed** (HPK RPTKA then Pengesahan RPTKA): tka-online.kemnaker.go.id, adds ~2–4 weeks vs old single-step process.
-
-**New sources for NB-6 ingestion**:
-
-- https://flado.id/comprehensive-guide-to-obtaining-a-work-permit-in-indonesia-rptka-notification-and-kitas/ (fee table + KITAS categories)
-- https://thebalilawyer.com/what-is-dpkk-in-indonesia/ (DPKK comprehensive explanation)
-- https://cptcorporate.com/understanding-the-rptka-process-for-hiring-foreign-employees-in-indonesia/ (RPTKA process detail)
-
-### 12.4 OSS-RBA / PP 28/2025 — Risk Classification Confirmed
-
-**4 Risk levels**: Low (NIB only), Medium-Low (NIB + self-declared Standard Certificate), Medium-High (NIB + government-verified Standard Certificate), High (NIB + full Business License).
-
-**Common KBLI codes for Bali expat businesses** confirmed from Exa research:
-
-- KBLI 56101 (Restoran): **Medium-Low** risk. Requires NIB + Sertifikat Standar (self-declaration). Most common PT PMA F&B code.
-- KBLI 55101 (Hotel Bintang): Higher risk, requires additional permits from Dinas Pariwisata.
-- KBLI 70209 (Management Consulting): Low-Medium risk depending on scale.
-
-**Wrong KBLI penalties**: Administrative sanctions, permit revocation, potential criminal liability. BKPM/DPMPTSP actively auditing KBLI compliance. Source: siplawfirm.id (Jan 2026).
-
-**KBLI 2025 effective date**: Published 18 December 2025. Mandatory migration by **18 June 2026** (6-month window). After that date, KBLI 2020 codes invalid in OSS.
-
-**New sources for NB-6 ingestion**:
-
-- https://www.beginisob.com/2025/11/panduan-izin-usaha-restoran-kafe-via.html (KBLI 56101 restaurant guide)
-- https://smartlegal.id/badan-usaha/registrasi-oss/2026/01/14/memahami-oss-rba-2026-dan-peran-kbli-dalam-menentukan-tingkat-risiko-usaha-sl/ (OSS RBA 2026 KBLI role)
-
-### 12.5 Annual GMS / AHU Blocking — Regulation 49/2025 Confirmed (from ILA Global crawl)
-
-**Key facts from Permenkumham 49/2025** (fully confirmed from crawl of ilaglobalconsulting.com):
-
-1. **Every Annual GMS must now be reported** to AHU Online (SABH system), regardless of whether corporate data changed. This is the critical change vs old practice.
-2. **Three mandatory steps**: (1) Hold GMS within 6 months of FY end → (2) Notarial Deed of resolution → (3) Upload to AHU Online within **30 calendar days** of deed signing.
-3. **AHU blocking** prevents: director/commissioner changes, capital changes, articles amendment, bank KYC updates, OSS/OJK license renewal.
-4. **Documents required for AHU Online upload**: Notarial Deed, Annual Report PDF, Beneficial Owner Declaration (NEW — mandatory), Power of Attorney, PNBP payment proof.
-5. **PNBP fee**: Non-Tax State Revenue fee required — exact amount not specified in source, needs official AHU portal confirmation.
-6. **Retroactive question**: Regulation 49/2025 effective late 2025. For FY2024 GMS already held before the regulation — status unclear. Safe practice: file anyway.
-
-**Timeline for FY2025 compliance**:
-
-- GMS must be held by **30 June 2026**
-- Notarial deed must be prepared immediately after GMS
-- AHU Online notification by **~30 July 2026** (30 days after deed)
-
-**New source for NB-6 ingestion**: https://ilaglobalconsulting.com/annual-gms-reporting-in-indonesia-new-2026-rules-and-ahu-blocking-risks/ (full crawl, confirmed all details)
-
-### 12.6 Banking for PT PMA — Practice Confirmed
-
-**Standard document checklist** (confirmed from mamsolutions.net Feb 2026):
-
-- Akta Pendirian + SK Kemenkumham + NIB + NPWP (company) + Domicile Letter
-- Board resolution for account signatories
-- Passports (foreign directors/shareholders) + KTP (local directors)
-- NPWP individual (directors)
-- UBO (Ultimate Beneficial Owner) declaration — **increasingly required by all banks**
-- Business plan / activity description (some banks)
-- Organizational structure
-
-**Timeline**: PT PMA standard: 10–20 working days. High-risk industries: longer.
-
-**KITAS requirement**: Foreign directors without KITAS face difficulties signing for corporate accounts. The recommendation (ezpzindonesia.com) is that the operational director (with KITAS) be the primary signatory.
-
-**Minimum deposits**: IDR accounts: Rp 1M–10M. Foreign currency: USD 100–1,000.
-
-**Multi-currency**: Available at BCA, Mandiri, CIMB, Standard Chartered, HSBC. Additional BI compliance for USD accounts.
-
-**New source for NB-6 ingestion**: https://mamsolutions.net/2026/02/02/opening-a-corporate-bank-account-in-indonesia/
-
-### 12.7 WLKP — Portal & Deadline Confirmed (from BP Lawyers crawl)
-
-**Portal**: wajiblapor.kemnaker.go.id (login via SIAPkerja/Sisnaker ID)
-**Annual deadline**: **December of each year** (annual renewal of manpower data)
-**Event-based deadlines**: Within 30 days of company founding, relocation, or closure
-**Sanction**: Criminal fine up to Rp 1,000,000 or max 3 months imprisonment (treated as tindak pidana ringan / minor criminal offense in practice)
-**Data reported**: Company identity, workforce headcount by position/gender/age, employment status (PKWT vs PKWTT), TKA employed, social security program participation
-
-**Common gap**: Companies that enroll in BPJS but never file WLKP. Disnaker inspection checks both simultaneously.
-
-### 12.8 Accounting — Audit Threshold & Coretax Confirmed
-
-**Mandatory audit threshold** (UU PT No. 40/2007 Pasal 68):
-
-- Assets OR turnover ≥ **Rp 50 billion** triggers mandatory KAP audit
-- OR if company issues public securities or raises public funds
-- Early-stage PT PMAs typically below threshold
-
-**SAK standards hierarchy**: SAK (full IFRS-converged, for large/public companies) → SAK ETAP (entities without public accountability, most PT PMAs) → SAK EMKM (micro/small only). KPMG Indonesia publishes annual SAK overview — Oct 2025 edition available at assets.kpmg.com.
-
-**Coretax**: Launched January 2025. FY2025 SPT Tahunan Badan must be filed via Coretax (due April 30, 2026). System had significant stability issues throughout 2025. DJP granted penalty waivers for late FY2025 filings through April 30, 2026.
-
-**New sources for NB-6 ingestion**:
-
-- https://assets.kpmg.com/content/dam/kpmg/id/pdf/2025/10/id-sak-indonesia-oct-2025.pdf (KPMG SAK Indonesia overview PDF)
-- https://www.lmiconsultancy.com/steps-to-file-corporate-annual-income-tax-return-in-indonesia/ (Coretax filing guide)
-- https://cptcorporate.com/annual-compliance-requirements-pt-pma-companies-indonesia/ (complete PT PMA annual compliance 2025)
-
-### 12.9 LKPM — Deadline Discrepancy Noted
-
-**Discrepancy identified** between existing brief (Section 2.8) and new Exa research:
-
-- Section 2.8 cites LKPM deadlines as **10th of the month** after quarter end (Q1 → 10 April)
-- New sources (investinasia.id Feb 2026, xpnd.co.id Feb 2026, businesshubasia.com Mar 2026) cite **15th of the month** after quarter end
-
-**Recommended action**: Verify against official OSS portal announcements. The **15th** deadline appears in multiple 2026 sources and may reflect a recent update under PP 28/2025. Use 10th as safe internal deadline, 15th as official deadline until confirmed.
-
-**LKPM thresholds for quarterly vs semi-annual** (from xpnd.co.id):
-
-- Investment realization exceeding Rp 10 billion → quarterly
-- Below Rp 10 billion → semi-annual
-
-**Q1 2026 LKPM alert**: Multiple compliance services issued alerts in March 2026 — deadline was April 15, 2026.
-
-**New sources for NB-6 ingestion**:
-
-- https://investinasia.id/blog/quarterly-lkpm-guide-for-pma-companies-in-indonesia/ (Feb 2026)
-- https://businesshubasia.com/lkpm-submission-deadline-2026/ (Mar 2026 — urgent alert)
-- https://schinderlawfirm.com/blog/mandatory-lkpm-2026-reporting-obligation-under-indonesian-investment-regulations/ (Jan 2026)
-
-### 12.10 New/Updated Open Questions (supplement to Section 10)
-
-9. **Governor Decree number discrepancy**: Two sources cite different decree numbers for Bali UMP 2026 (1011/03-M/HK/2025 vs 1021/03-M/HK/2025). Verify exact number from Disnaker Bali official source.
-
-10. **LKPM deadline 10th vs 15th**: Reconcile conflicting deadline — check OSS official announcement for PP 28/2025 updated LKPM schedule.
-
-11. **UMSK Badung hotel sector**: One source cites Rp 3,267,693 (general star hotel UMSP), another cites Rp 3,828,912.60 (4-5 star hotel in Badung specifically). Clarify whether there are two different sectoral minimums or a single one.
-
-12. **BPJS enrollment trigger for TKA**: "More than 6 months" — does this mean 6 months from entry into Indonesia or 6 months from start of employment? Clarify for cases where TKA has been in Indonesia previously on other visas.
-
-13. **Annual report format for AHU Online**: Whether the Annual Report uploaded to SABH must follow a prescribed format or is free-form. No official template found.
-
-### 12.11 Recommended Additional Sources for NB-6 (from this research session)
-
-**High-priority new URLs not in Section 3.2 above:**
-
-| Priority | URL                                                                                                                                        | Content                                          | Why Add                                        |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ | ---------------------------------------------- |
-| HIGH     | https://procapita.co.id/our-insights/bpjs-in-indonesia-explained/                                                                          | BPJS complete 2026 guide with worked calculation | English, Feb 2026, excellent for client-facing |
-| HIGH     | https://flado.id/comprehensive-guide-to-obtaining-a-work-permit-in-indonesia-rptka-notification-and-kitas/                                 | Work permit complete guide + fee tables 2026     | Fee table, KITAS categories, onshore procedure |
-| HIGH     | https://balivisa.co/minimum-wage-in-bali-2026-practical-guide-for-employers-and-workers/                                                   | Bali minimum wage 2026 complete guide            | All UMK figures, UMSP, compliance pitfalls     |
-| HIGH     | https://mamsolutions.net/2026/02/02/opening-a-corporate-bank-account-in-indonesia/                                                         | PT PMA bank account guide                        | Document checklist, timelines, FAQ             |
-| MED      | https://thebalilawyer.com/what-is-dpkk-in-indonesia/                                                                                       | DPKK/DKP-TKA explanation                         | Complements RPTKA sources                      |
-| MED      | https://kantorku.id/blog/premi-bpjs-ketenagakerjaan/                                                                                       | BPJS rate table (Indonesian)                     | Indonesian-language citation corroboration     |
-| MED      | https://smartlegal.id/badan-usaha/registrasi-oss/2026/01/14/memahami-oss-rba-2026-dan-peran-kbli-dalam-menentukan-tingkat-risiko-usaha-sl/ | OSS RBA 2026 KBLI role                           | Updated OSS-RBA explanation                    |
-| MED      | https://businesshubasia.com/lkpm-submission-deadline-2026/                                                                                 | LKPM Q1 2026 deadline alert                      | Recent deadline confirmation (Mar 2026)        |
-| LOW      | https://www.beginisob.com/2025/11/panduan-izin-usaha-restoran-kafe-via.html                                                                | Restaurant KBLI 56101 guide                      | KBLI-specific — may overlap with KB KBLI       |
+**OPS-001**
+**Category:** Corporate Formation — Post-Setup Triggers
+**Priority:** CRITICAL
+**Claim:** A PT PMA's NIB does not automatically authorize commencement of business activities for medium or high-risk KBLI classifications. Companies with KBLI classified as medium risk under PP 28/2025 must obtain a Sertifikat Standar (self-declared or verified) before operations begin, while high-risk KBLI require a full Izin (business license) that must be granted before any commercial activity. Commencing operations without the appropriate license tier constitutes a criminal offense under UU Cipta Kerja regardless of NIB issuance status.
+**Source hint:** PP 28/2025 Pasal 12-18; PP 5/2021 Pasal 9-13 (predecessor framework)
 
 ---
 
-_Supplement generated 2026-03-30 by Claude Sonnet 4.6_
-_Research method: 8 parallel Exa advanced searches + 4 page crawls, 50+ sources analyzed_
-_Key new findings: exact BPJS JP cap, confirmed UMK figures, DKP-TKA fee table, AHU blocking mechanism detail, LKPM deadline discrepancy flagged_
+**OPS-002**
+**Category:** Tax — NPWP Registration Timing
+**Priority:** CRITICAL
+**Claim:** A PT PMA must obtain its NPWP Badan (corporate taxpayer identification number) from the local KPP (Tax Office) as a concurrent obligation with NIB issuance, not a subsequent one. Conducting any business transaction, issuing invoices, or entering into contracts without an active NPWP Badan constitutes tax non-compliance under UU 6/1983 (KUP) as amended. The NPWP Badan is also a prerequisite for opening a corporate bank account, enrolling in BPJS, and registering for PPN (VAT).
+**Source hint:** UU 6/1983 (KUP) Pasal 2; Perdirjen Pajak PER-20/PJ/2013
+
+---
+
+**OPS-003**
+**Category:** Investment Reporting — LKPM Quarterly
+**Priority:** CRITICAL
+**Claim:** All PT PMA with investment value above IDR 500 million are required to file quarterly LKPM (Laporan Kegiatan Penanaman Modal) via the OSS portal within 10 working days after each quarter ends. The quarterly deadlines are April 10, July 10, October 10, and January 10. Failure to file triggers a formal warning (Surat Peringatan) escalation from BKPM/DPMPTSP that, if unresolved across two warnings, leads to business license revocation affecting all KBLI activities under the NIB.
+**Source hint:** Peraturan BKPM 5/2021 Pasal 26-29; Peraturan BKPM 4/2021
+
+---
+
+**OPS-004**
+**Category:** Investment Reporting — Annual LKPM
+**Priority:** HIGH
+**Claim:** In addition to quarterly LKPM, all investment-grade PT PMA must submit an annual LKPM by January 31 of the following year. The annual LKPM covers the full calendar year's investment realization, employment figures (including TKA count), production and sales data, and any constraints encountered. The annual LKPM is distinct from the quarterly filings and cannot be substituted by them. Non-submission of the annual LKPM is an independent trigger for the BKPM sanction escalation pathway.
+**Source hint:** Peraturan BKPM 5/2021 Pasal 30; BKPM Circular 2022
+
+---
+
+**OPS-005**
+**Category:** Corporate Governance — Annual GMS
+**Priority:** HIGH
+**Claim:** Every PT PMA is required under UU 40/2007 Pasal 78 to hold an Annual General Meeting of Shareholders (RUPS Tahunan) within 6 months after the end of each fiscal year — meaning by June 30 for companies using a December 31 fiscal year end. The RUPS must approve the annual financial statements and the board's accountability report. Failure to hold RUPS Tahunan within the statutory period renders board members personally liable under UU 40/2007 Pasal 79 and exposes the company to potential shareholder claims.
+**Source hint:** UU 40/2007 Pasal 78-79; UU 40/2007 Pasal 69
+
+---
+
+**OPS-006**
+**Category:** Corporate Governance — AHU Annual Report
+**Priority:** HIGH
+**Claim:** PT PMA must file an annual corporate report with Kemenkumham through the AHU (Administrasi Hukum Umum) online system within 6 months of each fiscal year end. This filing is entirely separate from tax returns (SPT) and LKPM, contains information on shareholding structure, board composition, financial summary, and business activities, and must be made even if the company had zero revenue. Non-filing results in administrative warning from AHU and eventually removal from the registered companies database, which can trigger bank account freezes and contract invalidation.
+**Source hint:** PP 14/2012 as amended; Permenkumham 17/2016
+
+---
+
+**OPS-007**
+**Category:** Labor — Wajib Lapor Ketenagakerjaan
+**Priority:** HIGH
+**Claim:** All companies employing one or more workers in Indonesia must file a Wajib Lapor Ketenagakerjaan (WLK) via the Kemnaker portal (wajiblapor.kemnaker.go.id) within 30 days of first employing anyone, and then annually thereafter by January 31. The WLK covers: company identity, number of employees by category, wages, BPJS status, and working hours system. Non-compliance is a criminal offense under UU 7/1981 Pasal 10, and the WLK compliance certificate is increasingly required for OSS license renewals and government contracts in Bali regencies.
+**Source hint:** UU 7/1981; Permenaker 18/2017
+
+---
+
+**OPS-008**
+**Category:** Labor — Company Regulation (Peraturan Perusahaan)
+**Priority:** MEDIUM
+**Claim:** A PT PMA employing 10 or more workers must draft a Peraturan Perusahaan (PP/Company Regulation) covering working hours, overtime, leaves, wages, disciplinary procedures, and worker rights, and submit it to the local Dinas Tenaga Kerja for ratification within 60 days of the threshold being met. The PP is legally binding on both employer and employees once ratified and replaces ad hoc employment terms. A company with 10+ employees operating without a ratified PP is in violation of PP 35/2021 and faces administrative sanctions.
+**Source hint:** PP 35/2021 Pasal 9-13; UU 6/2023 Pasal 108-110
+
+---
+
+**OPS-009**
+**Category:** Tax — PPN Registration Threshold
+**Priority:** HIGH
+**Claim:** A PT PMA whose cumulative annual taxable revenue reaches IDR 4.8 billion must register as a PKP (Pengusaha Kena Pajak / VAT registrant) with DJP and begin issuing e-Faktur Pajak (electronic VAT invoices) via the Coretax system. Voluntary registration below this threshold is permitted and advantageous if the company has significant input VAT to recover. Failure to register after crossing the threshold means all invoices issued during the non-registration period are legally invalid for VAT credit purposes, and the company faces retroactive PPN liability plus penalty.
+**Source hint:** UU 42/2009 PPN Pasal 3A; PMK 197/PMK.03/2013 (PKP threshold)
+
+---
+
+**OPS-010**
+**Category:** Tax — Coretax Migration Obligations
+**Priority:** HIGH
+**Claim:** Since January 1, 2025, all tax filings, payments, and e-Faktur issuance for Indonesian taxpayers including PT PMA must be conducted through the Coretax system (coretax.pajak.go.id). The legacy e-SPT and e-Filing systems are decommissioned. PT PMA must register their authorized tax representative on Coretax, migrate to the NIK-based individual NPWP for personal directors, and ensure their e-Faktur system is integrated. DJP provided a transitional amnesty in early 2025 for technical failures but this period has ended; all PT PMA must now be fully operational on Coretax.
+**Source hint:** PMK 81/2024 (Coretax); SE-10/PJ/2025 (transitional guidance)
+
+---
+
+### B. TKA / WORK PERMIT
+
+---
+
+**OPS-011**
+**Category:** TKA — RPTKA Mandatory Pre-Work Trigger
+**Priority:** CRITICAL
+**Claim:** An employer in Indonesia must obtain RPTKA (Rencana Penggunaan Tenaga Kerja Asing) approval from Kemnaker before any foreign national begins performing work activities, regardless of their immigration visa status or equity ownership in the company. The RPTKA requirement applies to working directors, technical specialists, and consultants — it does not apply only to employees in the traditional sense. A foreign shareholder who is simultaneously the operating director and performs management work requires RPTKA; failure to obtain it before work begins exposes the company to criminal sanction under UU 6/2023 Pasal 185 (up to IDR 500 million + 5 years imprisonment for the employer).
+**Source hint:** PP 34/2021 Pasal 4-8; Permenaker 8/2021; UU 6/2023 Pasal 185
+
+---
+
+**OPS-012**
+**Category:** TKA — Commissioner vs Director Distinction
+**Priority:** CRITICAL
+**Claim:** A foreign national serving only as Komisaris (Commissioner) in a PT PMA and whose activities are limited to attending shareholder meetings and exercising supervisory rights does not require RPTKA or IMTA/Notifikasi TKA under PP 34/2021. However, once the same person performs any operational or management functions — signing contracts, directing employees, attending client meetings, or managing finances — they legally cross into the definition of "foreign worker" and require full TKA documentation. This distinction is critical because most Bali Zero clients have foreign founders who are Komisaris but functionally manage day-to-day operations, creating hidden criminal exposure.
+**Source hint:** PP 34/2021 Pasal 3(2); Permenaker 8/2021 Lampiran Jabatan Terlarang
+
+---
+
+**OPS-013**
+**Category:** TKA — DKP-TKA Levy
+**Priority:** CRITICAL
+**Claim:** Employers of foreign workers must pay the DKP-TKA (Dana Kompensasi Penggunaan Tenaga Kerja Asing) levy of USD 100 per approved position per month, calculated for the full duration of the RPTKA approval period, prior to KITAS application. For a standard 2-year RPTKA, this equals USD 2,400 per foreign worker position, paid upfront to a government account at Bank Mandiri or BNI using the SSPD form. DKP-TKA is a mandatory employer obligation, is not deductible from the employee's salary, and failure to pay before KITAS application results in the application being rejected by Imigrasi.
+**Source hint:** PP 34/2021 Pasal 25-28; Permenaker 8/2021 Pasal 27
+
+---
+
+**OPS-014**
+**Category:** TKA — KITAS Duration Alignment
+**Priority:** HIGH
+**Claim:** The duration of a KITAS TKA (Limited Stay Permit for Foreign Worker) must be aligned with and cannot exceed the duration of the underlying RPTKA approval. If a RPTKA is approved for 1 year, the KITAS can only be issued for up to 1 year — even if the foreign worker requests a 2-year KITAS. Renewal of KITAS requires a valid RPTKA in force; if the RPTKA has expired, the employer must apply for a new RPTKA (including new DKP-TKA payment) before the KITAS renewal can be processed.
+**Source hint:** PP 31/2013 Keimigrasian Pasal 52; Permenaker 8/2021
+
+---
+
+**OPS-015**
+**Category:** TKA — Prohibited Positions List
+**Priority:** HIGH
+**Claim:** Permenaker 349/MEN/XII/2018 (Daftar Jabatan Terlarang) as updated by PP 34/2021 prohibits employment of foreign workers in specific positions regardless of company type or shareholder structure. Permanently prohibited positions include: Director/Manager of Human Resources (Personnel Director, HRD Manager), any supervisory role over Indonesian workforce management, and certain operational labor roles. PT PMA with foreign HR heads are in violation; the HR role must be filled by an Indonesian national. This restriction cannot be waived even with RPTKA application.
+**Source hint:** PP 34/2021 Pasal 6 + Lampiran; Permenaker 349/MEN/XII/2018
+
+---
+
+**OPS-016**
+**Category:** TKA — STM Police Report Obligation
+**Priority:** MEDIUM
+**Claim:** Every KITAS holder (including TKA) must register with the local Polres (Resort Police) and obtain a Surat Tanda Melapor (STM) within 14 days of arriving in their registered regency of residence. This obligation is separate from and in addition to KITAS and SKTT (Surat Keterangan Tempat Tinggal from Imigrasi). Non-compliance with STM registration is an immigration violation and can result in KITAS complications at renewal or criminal prosecution under UU 6/2011 Keimigrasian.
+**Source hint:** UU 6/2011 Keimigrasian Pasal 71-72; Perkapolri regarding STM
+
+---
+
+**OPS-017**
+**Category:** TKA — RPTKA Renewal Timeline
+**Priority:** HIGH
+**Claim:** RPTKA renewal applications must be submitted to Kemnaker at least 30 calendar days before the current RPTKA expiry date. There is no legal grace period for expired RPTKA — once expired, the foreign worker must legally cease all work activities until a new RPTKA is approved. A gap between RPTKA expiry and new approval leaves the employer in criminal exposure under Pasal 185 UU 6/2023 for each day the foreign worker continues to work without valid authorization. Proactive 60-day advance filing is strongly recommended.
+**Source hint:** Permenaker 8/2021 Pasal 15; PP 34/2021
+
+---
+
+**OPS-018**
+**Category:** TKA — Exit / EPO Obligation
+**Priority:** MEDIUM
+**Claim:** When a foreign TKA worker permanently departs Indonesia before their KITAS expiry, the employer must: (1) notify the TKAonline system with a Laporan Pengakhiran TKA within 14 days of departure; (2) arrange an EPO (Exit Permit Only) from Imigrasi which cancels the KITAS and records the departure; (3) de-register the worker from BPJS Ketenagakerjaan and BPJS Kesehatan; and (4) issue the final payslip and all withheld JHT claims. Failing to file Laporan Pengakhiran TKA while the RPTKA position remains "filled" can block future RPTKA applications for the same position.
+**Source hint:** Permenaker 8/2021 Pasal 19-20; PP 34/2021
+
+---
+
+### C. BPJS
+
+---
+
+**OPS-019**
+**Category:** BPJS — Mandatory Enrollment Trigger
+**Priority:** CRITICAL
+**Claim:** BPJS Ketenagakerjaan (Work Accident/JKK, Death/JKM, Old Age/JHT, and Pension/JP programs) and BPJS Kesehatan are mandatory for all employees — including both WNI (Indonesian citizens) and TKA (foreign workers on KITAS) — from the first day of employment, with no grace period or threshold on company size. There is no minimum employee headcount that triggers the obligation: even a company with one employee must enroll. Criminal sanction for non-enrollment: up to IDR 1 billion fine or 8 years imprisonment under UU 24/2011 Pasal 55.
+**Source hint:** UU 24/2011 Pasal 14, 55; PP 44/2015; PP 46/2015
+
+---
+
+**OPS-020**
+**Category:** BPJS — TKA JP (Pension) Program Gray Area
+**Priority:** HIGH
+**Claim:** The obligation to enroll foreign TKA workers in the BPJS Ketenagakerjaan JP (Jaminan Pensiun / Pension) program is legally contested. PP 45/2015 Pasal 5(2) exempts TKA from JP enrollment if Indonesia has a bilateral social security totalization agreement with their home country; however, Indonesia currently has no such agreements in force with any country. The strict legal interpretation therefore requires TKA JP enrollment, but Permenaker 11/2019 creates an ambiguity by implying exemption where equivalent home-country coverage exists. Different BPJS Ketenagakerjaan regional offices in Bali apply this inconsistently: practitioners should enroll by default and seek formal written guidance from the local BPJS office if they wish to claim exemption.
+**Source hint:** PP 45/2015 Pasal 5; Permenaker 11/2019
+
+---
+
+**OPS-021**
+**Category:** BPJS — Kesehatan TKA Exemption Process
+**Priority:** HIGH
+**Claim:** Foreign TKA workers may be exempted from BPJS Kesehatan enrollment only if they hold private health insurance providing coverage at least equivalent to BPJS Kesehatan benefits (including inpatient, outpatient, and maternity) AND the employer formally applies for exemption at the regional BPJS Kesehatan office with supporting insurance policy documentation. This exemption is authorized under Peraturan BPJS Kesehatan 4/2014 but is rarely granted in Bali — most regional offices require enrollment regardless. Companies paying both BPJS Kesehatan and private insurance for TKA bear double costs with no legal mechanism for offset.
+**Source hint:** Peraturan BPJS Kesehatan 4/2014 Pasal 16-17; Permenaker 16/2015
+
+---
+
+**OPS-022**
+**Category:** BPJS — Contribution Salary Ceilings
+**Priority:** MEDIUM
+**Claim:** BPJS contributions are calculated on gross salary but are subject to statutory ceilings above which no additional contribution is required. For BPJS Kesehatan: the ceiling is IDR 12,000,000/month gross salary (per Perpres 82/2018 and its amendments), making the maximum monthly employer contribution IDR 480,000 and employee IDR 120,000. For BPJS Ketenagakerjaan JHT: ceiling is updated periodically — practitioners must verify the current Peraturan Direksi BPJS Ketenagakerjaan each January. For TKA with salaries above IDR 50-100 million/month, these ceilings represent significant savings versus uncapped calculation.
+**Source hint:** Perpres 82/2018 Pasal 30; PP 44/2015; Peraturan Direksi BPJS Ketenagakerjaan annual updates
+
+---
+
+**OPS-023**
+**Category:** BPJS — BPJS Penalty and License Blocking
+**Priority:** HIGH
+**Claim:** Since 2022, Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu (DPMPTSP) in most Bali regencies cross-checks BPJS compliance status before approving OSS license renewals for medium and high-risk KBLI. Companies with delinquent BPJS contributions or missing enrollment certificates will have their Sertifikat Standar or Izin renewal blocked, effectively shutting down operations. BPJS Kesehatan also blocks access to government services, banking KYC renewals at some banks, and work permit renewals (RPTKA review by Kemnaker increasingly cross-checks BPJS status).
+**Source hint:** Perpres 82/2018 Pasal 42-44; BPJS Ketenagakerjaan enforcement circulars 2022-2024
+
+---
+
+**OPS-024**
+**Category:** BPJS — JHT Disbursement for Departing TKA
+**Priority:** MEDIUM
+**Claim:** A foreign TKA worker whose employment in Indonesia terminates (either by contract end, resignation, or departure) is entitled to withdraw their entire JHT (Jaminan Hari Tua / Old Age Savings) balance, which includes all employer contributions (3.7% of salary) and employee contributions (2%) plus investment returns. TKA JHT withdrawal does not require waiting until retirement age — it can be claimed immediately upon employment termination and departure from Indonesia. Employers must actively initiate the BPJS de-registration and withdrawal process for departing TKA within 30 days of employment end.
+**Source hint:** PP 46/2015 Pasal 26; Peraturan BPJS Ketenagakerjaan 4/2015
+
+---
+
+### D. WAGE & EMPLOYMENT CONDITIONS
+
+---
+
+**OPS-025**
+**Category:** Wages — UMK/UMP Compliance
+**Priority:** CRITICAL
+**Claim:** Employers in Bali must pay at least the applicable Upah Minimum Kabupaten/Kota (UMK) or Upah Minimum Provinsi (UMP Bali) — whichever is higher — to all Indonesian employees. Badung regency (where most Bali Zero client businesses operate) has its own UMK distinct from Denpasar, Gianyar, and other regencies. UMK is updated annually by the Bali Governor's decree, effective January 1. Paying below UMK is a criminal offense under UU 6/2023 Pasal 185, and back-payment obligations are retroactive to the date of violation. TKA minimum wages follow a separate framework (market rate, not UMK).
+**Source hint:** UU 6/2023 Pasal 88C-88F; PP 36/2021 (wages); Annual Bali Governor Decree on UMK
+
+---
+
+**OPS-026**
+**Category:** Wages — PKWT (Fixed Term Contract) Restrictions
+**Priority:** HIGH
+**Claim:** Under PP 35/2021 (implementing UU 6/2023 Cipta Kerja), fixed-term employment contracts (PKWT) for Indonesian workers are limited to a maximum of 5 years total duration, including all extensions (increased from 3 years under UU 13/2003). PKWT must be in writing, specify the work scope or time period, and registered with Disnaker within 3 working days of signing. A PKWT that does not comply with these requirements converts automatically (by operation of law) to a permanent employment contract (PKWTT), triggering full severance obligations.
+**Source hint:** PP 35/2021 Pasal 3-8; UU 6/2023 Pasal 56-61
+
+---
+
+**OPS-027**
+**Category:** Wages — Uang Pesangon (Severance Pay) for PKWTT
+**Priority:** HIGH
+**Claim:** Termination of permanent Indonesian employees (PKWTT) triggers mandatory severance obligations under PP 35/2021 based on years of service: from 1x PMTK (1 month gross salary/year of service x statutory multipliers) up to 9x PMTK for long-tenure employees, plus service appreciation (uang penghargaan masa kerja) and compensation (uang penggantian hak) for unconsumed leave. The total package varies by termination reason (mutual agreement, performance, company losses, force majeure). Underpaying or withholding severance is a criminal offense. Many foreign employers apply home-country termination frameworks without awareness of Indonesian mandatory minimums.
+**Source hint:** PP 35/2021 Pasal 40-58; UU 6/2023 Pasal 156
+
+---
+
+**OPS-028**
+**Category:** Labor — Overtime Calculation
+**Priority:** MEDIUM
+**Claim:** Overtime compensation in Indonesia is calculated as a premium on the basic hourly wage (upah per jam), derived from the formula: upah per jam = 1/173 of monthly basic wage. The premium is: first overtime hour = 1.5x hourly wage; subsequent hours = 2x hourly wage; overtime on holidays/rest days = 2x minimum for first 8 hours, 3x beyond that. Maximum overtime: 4 hours/day, 18 hours/week (PP 35/2021 — increased from 14 hours/week under UU 13/2003). Employers must obtain written employee consent for each overtime instance. Systematic unpaid overtime is a criminal violation.
+**Source hint:** PP 35/2021 Pasal 27-31; Kepmenaker 102/2004 (formula, still in effect)
+
+---
+
+### E. TAX COMPLIANCE
+
+---
+
+**OPS-029**
+**Category:** Tax — PPh 21 Payroll Withholding
+**Priority:** CRITICAL
+**Claim:** PT PMA employing Indonesian workers must withhold PPh Pasal 21 (income tax) from each salary payment, remit the withheld amount to DJP by the 10th of the following month, and file SPT Masa PPh 21 via Coretax by the 20th of the following month. The 2024 employment income tax reform (effective January 2024) changed the calculation method: average effective rates (TER) are now used for monthly withholding, with year-end true-up via SPT 1721. Employers must issue Bukti Potong PPh 21 to each employee by February 28/29. Late remittance: 2% per month penalty.
+**Source hint:** PMK 168/PMK.03/2023 (TER method); UU 36/2008 PPh Pasal 21; Coretax SPT 21 guidelines
+
+---
+
+**OPS-030**
+**Category:** Tax — PPh 26 Dividend Withholding
+**Priority:** HIGH
+**Claim:** When a PT PMA remits dividends to its foreign shareholders, the company must withhold PPh Pasal 26 at 20% of gross dividend amount before remittance. This rate can be reduced by applicable Double Taxation Agreement (DTA/P3B) between Indonesia and the shareholder's country of residence — common DTA rates: Singapore 10-15%, Netherlands 10%, Australia 15%, UK 10%, Germany 10%, Japan 10%. To benefit from DTA reduced rates, the foreign shareholder must provide a Certificate of Domicile (Form DGT) validated by their home country tax authority to the PT PMA's tax department before payment. Without valid DGT: flat 20% applies.
+**Source hint:** UU 36/2008 PPh Pasal 26; PMK 18/PMK.03/2021 (DGT); Indonesia P3B network
+
+---
+
+**OPS-031**
+**Category:** Tax — Transfer Pricing Documentation
+**Priority:** HIGH
+**Claim:** PT PMA that conduct transactions with affiliated parties (related parties, including the foreign parent company, sister companies, or shareholders above 25% ownership) must prepare Transfer Pricing Documentation (TP Doc) annually if: (a) gross revenue exceeds IDR 50 billion, or (b) the value of affiliate transactions exceeds IDR 20 billion for goods, or IDR 5 billion for services/royalties/financial transactions. The TP Doc must comply with PMK 213/2016 framework (Local File + Master File requirements). Non-preparation exposes the company to DJP reassessment and penalties of 100-200% of underpaid tax.
+**Source hint:** PMK 213/PMK.03/2016; UU 36/2008 Pasal 18(3)
+
+---
+
+**OPS-032**
+**Category:** Tax — PPN (VAT) Monthly Compliance
+**Priority:** HIGH
+**Claim:** PT PMA registered as PKP (VAT registrant) must issue e-Faktur Pajak for all taxable supplies, collect 12% PPN (rate as of January 2025 under UU 7/2021 HPP), claim input VAT credits on eligible business purchases, and file SPT Masa PPN by the 31st of the following month via Coretax. Input VAT credits expire if not claimed within 3 months of the purchase e-Faktur date. All e-Faktur must be issued through Coretax's e-Faktur module and cannot be issued retroactively — failure to issue valid e-Faktur at time of supply means the customer cannot claim the input VAT.
+**Source hint:** UU 42/2009 PPN; UU 7/2021 HPP (12% rate); PMK 18/2021; Perdirjen Pajak PER-03/PJ/2022
+
+---
+
+**OPS-033**
+**Category:** Tax — SPT Tahunan Badan Deadline
+**Priority:** CRITICAL
+**Claim:** PT PMA must file its annual corporate income tax return (SPT Tahunan Badan) via Coretax by April 30 of the following year (for fiscal year = calendar year). The standard corporate income tax rate is 22% of net taxable income (PPh Badan). Monthly PPh 25 installments (based on prior year or estimated current year) are credited against this annual liability. If annual tax exceeds total PPh 25 paid, the difference (PPh 29) must be paid before SPT filing. Late filing: IDR 1,000,000 penalty per late annual SPT; underpayment: 2% per month from filing deadline.
+**Source hint:** UU 36/2008 PPh Pasal 25, 29; UU 6/1983 KUP Pasal 7, 9
+
+---
+
+### F. BANKING & FOREX
+
+---
+
+**OPS-034**
+**Category:** Banking — PT PMA Account Opening Requirements
+**Priority:** HIGH
+**Claim:** Indonesian banks are required by OJK (Otoritas Jasa Keuangan) regulations to perform enhanced Customer Due Diligence (CDD) on PT PMA, including identification and verification of all Ultimate Beneficial Owners (UBO) with ownership or control at or above 25%. For PT PMA with foreign majority shareholders, this requires apostilled or KBRI-legalized corporate documents from the foreign shareholder's home jurisdiction, source-of-funds declarations, and FATCA/CRS self-certifications for US persons or CRS-reportable accounts. Account opening typically takes 2-6 weeks from complete submission, and accounts may be frozen or closed if KYC refresh (required every 2 years) is not completed.
+**Source hint:** Peraturan OJK 12/POJK.01/2017 (AML/CFT); FATCA regulations; CRS OECD standard
+
+---
+
+**OPS-035**
+**Category:** Banking — Dividend Repatriation Forex Process
+**Priority:** HIGH
+**Claim:** Remittance of dividends from PT PMA to foreign shareholders requires: (1) withholding of PPh 26 and remittance to DJP; (2) Bank Indonesia reporting under the foreign exchange traffic monitoring system (PBI 21/2019) for amounts above USD 100,000; and (3) underlying documentation including audited or management financial statements, RUPS resolution approving dividend distribution, and DGT form if applying DTA reduced tax rate. The bank cannot process the remittance without this documentation package. Processing time at major banks: 3-7 working days after complete documentation.
+**Source hint:** PBI 21/2019; PMK 18/2021 (PPh 26); UU 40/2007 Pasal 71-73 (dividend distribution)
+
+---
+
+**OPS-036**
+**Category:** Banking — PPATK Reporting Obligations
+**Priority:** MEDIUM
+**Claim:** PT PMA transacting above IDR 500 million in a single transaction or aggregated transactions within one business day with the same counterparty must have their bank file a Laporan Transaksi Keuangan (LTK / Cash Transaction Report) to PPATK (Financial Intelligence Unit). Additionally, any transaction pattern that appears suspicious triggers a Laporan Transaksi Keuangan Mencurigakan (LTKM / Suspicious Transaction Report) by the bank. PT PMA management must cooperate with bank documentation requests to support PPATK reporting obligations without delay.
+**Source hint:** UU 8/2010 TPPU Pasal 23-25; Peraturan BI 2/2000 (as updated)
+
+---
+
+### G. ACCOUNTING & AUDIT
+
+---
+
+**OPS-037**
+**Category:** Accounting — Standard Selection Impact
+**Priority:** MEDIUM
+**Claim:** PT PMA must choose between SAK EMKM (simplified, for entities with assets < IDR 50 billion and no public accountability), SAK-EP (Entitas Privat, moderate complexity), and full PSAK/IFRS (required for large entities or those with public accountability) at the time of first financial statement preparation. The choice has practical implications: SAK EMKM disallows deferred tax assets/liabilities, uses cost model only for property/equipment, and omits segment reporting — this may conflict with foreign parent consolidation requirements that mandate IFRS-compliant local books, necessitating dual-track accounting and higher audit costs.
+**Source hint:** SAK EMKM (IAI 2016, revised 2021); PSAK 1 (IAI); Perdirjen Pajak on SAK-tax reconciliation
+
+---
+
+**OPS-038**
+**Category:** Accounting — When Audit is Mandatory
+**Priority:** MEDIUM
+**Claim:** Under UU 40/2007 Pasal 68, audit by a licensed KAP (Kantor Akuntan Publik) is legally mandatory for PT with total assets exceeding IDR 50 billion, publicly listed PT, or PT that has issued bonds to the public. Most small-to-medium PT PMA are below this threshold and are not legally required to audit. However, practical audit triggers include: bank loan covenants requiring audited statements, foreign parent consolidation requirements, OSS-related compliance demonstrations for high-risk KBLI, and BKPM investment dispute resolution. Engaging an unregistered auditor (not registered with OJK) for mandatory audits renders the audit legally void.
+**Source hint:** UU 40/2007 Pasal 68; Peraturan OJK 13/POJK.03/2017 (KAP registration)
+
+---
+
+**OPS-039**
+**Category:** Accounting — E-Faktur and Accounting Integration
+**Priority:** MEDIUM
+**Claim:** PT PMA registered as PKP must reconcile its VAT accounting records with Coretax's e-Faktur data on a monthly basis before filing SPT Masa PPN. Coretax pre-populates the Daftar Pajak Masukan (input VAT listing) from supplier e-Faktur and the Daftar Pajak Keluaran (output VAT listing) from the company's issued e-Faktur. Discrepancies between Coretax data and accounting records must be resolved before filing — unresolved mismatches trigger DJP queries and potential VAT assessment. Accounting software (Accurate, Jurnal, SAP) must be integrated with Coretax for real-time e-Faktur synchronization.
+**Source hint:** PMK 18/2021; Perdirjen Pajak PER-03/PJ/2022; SE DJP Coretax implementation guide 2025
+
+---
+
+### H. OSS-RBA / LICENSING
+
+---
+
+**OPS-040**
+**Category:** OSS — High-Risk KBLI Prohibition Before Izin
+**Priority:** CRITICAL
+**Claim:** For KBLI categories classified as HIGH risk under PP 28/2025 (including villa/homestay operations KBLI 55192, restaurants KBLI 56101, bars KBLI 56301, health clinics KBLI 86901, and certain wellness centers), operations must not commence until the full Izin has been granted by the relevant government authority. Unlike medium-risk businesses that can self-declare and begin operations pending verification, high-risk operators who commence without Izin commit an administrative violation that can result in immediate operational closure orders (Perintah Penutupan) from Satpol PP and criminal prosecution under sector-specific regulations.
+**Source hint:** PP 28/2025 Pasal 18-22; UU 10/2009 (Kepariwisataan); Permenpar licensing regulations
+
+---
+
+**OPS-041**
+**Category:** OSS — KBLI Code Selection Consequences
+**Priority:** CRITICAL
+**Claim:** KBLI codes selected at NIB issuance through OSS-RBA determine the company's license pathway, applicable regulations, and mandatory permits for the entire life of the NIB. Adding new KBLI codes post-NIB requires a formal amendment through OSS (accessible and relatively straightforward), but changing to a fundamentally different KBLI (e.g., from LOW risk to HIGH risk) requires not only OSS amendment but also new sector-specific licensing steps that may take 3-6 months to complete. Selecting an incorrect KBLI — typically one with lower risk level that does not accurately describe the business — may constitute false declaration and expose directors to criminal liability under UU Administrasi Pemerintahan.
+**Source hint:** PP 28/2025; Permenko 8/2022 (OSS procedures); OSS-RBA Technical Guidance 2025
+
+---
+
+**OPS-042**
+**Category:** OSS — Sertifikat Standar Self-Declaration Liability
+**Priority:** HIGH
+**Claim:** For medium-risk KBLI, the Sertifikat Standar self-declaration mechanism in PP 28/2025 allows companies to commence operations immediately upon self-certifying compliance with applicable business standards. However, this shifts significant legal liability to the company: if a government verification team subsequently finds non-compliance with the declared standards (equipment standards, staff qualifications, safety protocols), the Sertifikat Standar can be revoked retroactively, and if the non-compliance existed at the time of self-declaration, criminal prosecution for false declaration is theoretically possible. Companies must genuinely meet all standards before self-declaring, not treat self-declaration as a pre-compliance shortcut.
+**Source hint:** PP 28/2025 Pasal 13-16; UU Administrasi Pemerintahan 30/2014 Pasal 17
+
+---
+
+**OPS-043**
+**Category:** OSS — TDUP for Tourism Businesses
+**Priority:** HIGH
+**Claim:** All tourism businesses operating in Bali — including villas, homestays, hotels, restaurants, travel agents, spas, and dive operators — require a Tanda Daftar Usaha Pariwisata (TDUP) issued by the local Dinas Pariwisata (Tourism Office), which is a sector-specific license required in addition to and separate from the NIB/OSS license. TDUP is issued per-location (not per-company), meaning a company operating villas at three different addresses needs three separate TDUPs. The TDUP is valid for 3 years and must be renewed; renewal requires proof of BPJS compliance, tax good-standing certificate (SKF), and LKPM filing history.
+**Source hint:** UU 10/2009 Kepariwisataan Pasal 15-16; Perda Bali on tourism licensing; Permenpar 18/2016
+
+---
+
+**OPS-044**
+**Category:** OSS — License Renewal Cross-Check System
+**Priority:** HIGH
+**Claim:** The OSS-RBA system as upgraded under PP 28/2025 integrates data cross-checks with multiple government databases before processing license renewals: BPJS Ketenagakerjaan and Kesehatan compliance status, DJP tax good-standing certificate (SKF — Surat Keterangan Fiskal), LKPM filing history from BKPM, and Disnaker WLK compliance. A company with delinquency in any of these systems will face blocked renewal of their Sertifikat Standar or Izin. The SKF (tax clearance certificate) can be obtained from Coretax and is valid for 1 month — it must be current at the time of renewal application.
+**Source hint:** PP 28/2025 Pasal 68-72; PER-03/PJ/2023 (SKF issuance)
+
+---
+
+### I. SPECIAL SITUATIONS
+
+---
+
+**OPS-045**
+**Category:** Corporate — Share Transfer in PT PMA
+**Priority:** HIGH
+**Claim:** Transfer of shares in a PT PMA between shareholders requires: (1) RUPS approval (unless deed of establishment waives pre-emption rights); (2) notarial deed of share transfer; (3) AHU approval of the deed change; and (4) if the transfer changes the PT PMA's foreign ownership ratio or introduces new foreign shareholders, notification to BKPM via OSS and potentially re-approval of investment license if crossing Positive Investment List thresholds. PPh on gain: seller (individual) pays 0.1% final income tax on transaction value (Pasal 4(2) PPh). Missing any of these steps renders the transfer legally incomplete and the new shareholder has no legal standing.
+**Source hint:** UU 40/2007 Pasal 55-60; PP 44/2021 (investment positive list); PMK 258/PMK.03/2008 (share transfer tax)
+
+---
+
+**OPS-046**
+**Category:** Corporate — PT PMA Dissolution Obligations
+**Priority:** MEDIUM
+**Claim:** Voluntarily dissolving a PT PMA requires: RUPS resolution to dissolve; appointment of liquidator; tax clearance certificate from DJP; settlement of all employees (full severance under PP 35/2021); BPJS de-registration and benefit settlement; cancellation of RPTKA and KITAS for all TKA; OSS NIB cancellation; and final liquidation report submitted to AHU and announced in a newspaper of record. The total dissolution timeline is typically 6-18 months due to tax clearance processing. Companies that abandon their PT PMA without formal dissolution face continued tax obligations and potential personal director liability for unfiled returns.
+**Source hint:** UU 40/2007 Pasal 142-152 (dissolution); PMK 52/PMK.03/2009 (tax clearance)
+
+---
+
+**OPS-047**
+**Category:** Labor — Masa Percobaan (Probation) Restrictions
+**Priority:** MEDIUM
+**Claim:** Indonesian labor law under UU 6/2023 permits a maximum probation period of 3 months for permanent employees (PKWTT). Probation must be stated explicitly in the employment contract before work commences — oral probation is legally unenforceable. During probation, employers may terminate without severance provided the employment contract clearly states probation conditions. Critically: there is NO probation period allowed for fixed-term contract employees (PKWT) — including PKWT for foreign TKA on KITAS. If a PKWT includes a probation clause, that clause is void, and termination during the "probation period" triggers full PKWT compensation obligations.
+**Source hint:** PP 35/2021 Pasal 58-60; UU 6/2023 Pasal 58
+
+---
+
+**OPS-048**
+**Category:** Tax — PPh 23 on Services Payments
+**Priority:** HIGH
+**Claim:** A PT PMA paying for services from Indonesian vendors or individuals must withhold PPh Pasal 23 at 2% of the gross payment value (for vendors with NPWP) or 4% (without NPWP). PPh 23 applies to: consulting fees, management fees, technical services, rental payments, royalties, and prizes. The withholding must be remitted by the 10th of the following month and reported in SPT Masa PPh 23 by the 20th via Coretax. PT PMA that pay service vendors without deducting PPh 23 bear the withheld tax liability themselves (grossed-up) plus 2% per month penalty. This is one of the most common tax compliance errors in small PT PMA.
+**Source hint:** UU 36/2008 PPh Pasal 23; PMK 141/PMK.03/2015
+
+---
+
+**OPS-049**
+**Category:** Labor — PPh 21/26 for TKA (Foreign Employee Taxation)
+**Priority:** HIGH
+**Claim:** Foreign TKA workers employed in Indonesia for more than 183 days in a 12-month period are considered tax residents and are subject to Indonesian PPh Pasal 21 on their Indonesia-sourced income, using progressive tax brackets (5%, 15%, 25%, 30%, 35% under UU 7/2021 HPP). Short-term TKA (under 183 days) are non-residents subject to PPh Pasal 26 at 20% flat (reduced by DTA). The 183-day threshold is calculated on a rolling 12-month basis, not per calendar year. Both employer and TKA must be aware of this threshold as it fundamentally changes the withholding calculation and DTA credit implications.
+**Source hint:** UU 36/2008 PPh Pasal 2, 21, 26; PMK 168/PMK.03/2023; applicable P3B/DTA agreements
+
+---
+
+**OPS-050**
+**Category:** Compliance — SKF (Tax Good-Standing Certificate)
+**Priority:** HIGH
+**Claim:** A Surat Keterangan Fiskal (SKF / tax clearance certificate) is required for an increasing range of transactions: PT PMA license renewals (via OSS cross-check under PP 28/2025), bid submission for government contracts above IDR 2 billion, banking transactions in certain banks for loan applications, and dividend remittance documentation. SKF is issued by DJP through Coretax upon application, is valid for 1 month, and confirms the taxpayer has filed all required SPT and has no outstanding material tax obligations. A company with unfiled monthly SPT or outstanding tax assessments cannot obtain SKF, creating a compliance cascade where one delinquency blocks multiple business activities simultaneously.
+**Source hint:** PER-03/PJ/2023 (SKF); PP 28/2025 Pasal 68; PMK 39/PMK.03/2018 (government procurement)
+
+---
+
+## PART III — RECOMMENDED SOURCE ARCHITECTURE FOR NB-6
+
+### T0 — Primary Law Texts (Must-Have, Verbatim or Structured Extract)
+
+These are the ground-truth legal texts that anchor all claims. Every Zantara answer on operations should trace back to at least one of these.
+
+| Document                                               | Why Critical                                               |
+| ------------------------------------------------------ | ---------------------------------------------------------- |
+| UU 6/2023 Cipta Kerja (relevant chapters)              | Master law amending labor, investment, licensing framework |
+| PP 35/2021 (PKWT, PKWTT, alih daya, waktu kerja, PHK)  | Complete labor employment conditions                       |
+| PP 36/2021 (Wages — UMP, UMK, struktur dan skala upah) | Wage compliance framework                                  |
+| PP 34/2021 (TKA — RPTKA, DKP-TKA, Jabatan Terlarang)   | Complete foreign worker employment regulation              |
+| PP 37/2021 (Jaminan Kehilangan Pekerjaan — JKP)        | New unemployment insurance program post-Cipta Kerja        |
+| PP 28/2025 (OSS-RBA risk classifications)              | Current licensing framework                                |
+| PP 44/2015 (BPJS Ketenagakerjaan JKK, JKM)             | Work accident and death insurance                          |
+| PP 45/2015 (BPJS JP — Pension)                         | Pension program including TKA provisions                   |
+| PP 46/2015 (BPJS JHT — Old Age Savings)                | JHT withdrawal rules for TKA                               |
+| UU 24/2011 (BPJS)                                      | Master BPJS law and criminal sanctions                     |
+| UU 40/2007 (Perseroan Terbatas)                        | PT corporate governance, dissolution, GMS                  |
+| UU 36/2008 PPh (as amended by UU 7/2021 HPP)           | Income tax framework                                       |
+| UU 42/2009 PPN (as amended by UU 7/2021 HPP)           | VAT framework                                              |
+| UU 6/1983 KUP (as amended)                             | Tax administration, penalties, deadlines                   |
+| UU 8/2010 TPPU                                         | Anti-money laundering, PPATK obligations                   |
+| UU 7/1981 (Wajib Lapor Ketenagakerjaan)                | WLK obligation                                             |
+| Permenaker 8/2021 (TKA Notifikasi procedure)           | Current RPTKA/Notifikasi process                           |
+| PMK 168/PMK.03/2023 (PPh 21 TER method)                | Current payroll tax withholding method                     |
+| PMK 213/PMK.03/2016 (Transfer Pricing Documentation)   | TP Doc requirements                                        |
+| Perpres 82/2018 (BPJS Kesehatan iuran)                 | Current BPJS Kesehatan contribution rates                  |
+
+### T1 — Regulatory Guidance Texts (High-Value URLs for Live Sources)
+
+| Source                          | URL / Access Point                                |
+| ------------------------------- | ------------------------------------------------- |
+| OSS-RBA Official Portal         | oss.go.id — KBLI risk classification database     |
+| Kemnaker TKA Online             | tkaonline.kemnaker.go.id — RPTKA submission guide |
+| DJP Coretax Guide               | coretax.pajak.go.id — tax filing procedures       |
+| BKPM/BPKM LKPM Guide            | oss.go.id LKPM section                            |
+| Wajib Lapor Ketenagakerjaan     | wajiblapor.kemnaker.go.id                         |
+| AHU Online Corporate Reports    | ahu.go.id                                         |
+| BPJS Ketenagakerjaan Portal     | bpjsketenagakerjaan.go.id employer guide          |
+| BPJS Kesehatan Portal           | bpjs-kesehatan.go.id employer guide               |
+| Bank Indonesia FX Regulations   | bi.go.id PBI 21/2019                              |
+| OJK AML/KYC Regulations         | ojk.go.id POJK 12/2017                            |
+| Indonesia P3B (DTA) Network     | pajak.go.id P3B network                           |
+| Dinas Pariwisata Bali TDUP      | disparda.baliprov.go.id                           |
+| Annual UMK Bali Governor Decree | jdih.baliprov.go.id — search "UMK [year]"         |
+
+### T2 — Text Claim Packages (NB-6 Custom MDs — Inline Sources)
+
+| Package ID | Title                           | Content                                                                               |
+| ---------- | ------------------------------- | ------------------------------------------------------------------------------------- |
+| MD-NB6-01  | Operational Compliance Calendar | Month-by-month compliance calendar for PT PMA Year 1 and recurring annual cycle       |
+| MD-NB6-02  | TKA Lifecycle Workflow          | Complete RPTKA → Notifikasi → DKP-TKA → KITAS → Renewal → Exit with timelines         |
+| MD-NB6-03  | BPJS Quick Reference Table      | Program-by-program rates, ceilings, TKA applicability, gray area guidance             |
+| MD-NB6-04  | LKPM Field Guide                | What to report, how to calculate investment realization, data sources, penalty matrix |
+| MD-NB6-05  | Banking Checklist by Bank       | Per-bank document requirements, timeline, contacts for PT PMA accounts                |
+| MD-NB6-06  | UMK/UMP Annual Reference        | Current Bali UMP and per-regency UMK with historical 3-year trend                     |
+| MD-NB6-07  | KBLI Risk Tier Sheet            | Top 30 KBLI codes used by Bali Zero clients with risk level, license needed, timeline |
+| MD-NB6-08  | Tax Calendar + Penalty Matrix   | All tax deadlines, forms, Coretax steps, and penalty calculation                      |
+| MD-NB6-09  | Severance Calculation Guide     | PKWTT termination scenarios with worked examples                                      |
+| MD-NB6-10  | DTA Reduced Rate Reference      | PT PMA dividend withholding rates by country of shareholder domicile                  |
+| MD-NB6-11  | Compliance Traps Red Sheet      | The 8 critical traps with criminal exposure, detection risk, and remediation path     |
+| MD-NB6-12  | TDUP/Tourism License Guide      | Full TDUP process for Bali — required documents, Dinas Pariwisata contacts, renewal   |
+
+---
+
+## PART IV — 3 GENUINE LEGAL AMBIGUITIES (MD-4 FLAG REQUIRED)
+
+These ambiguities are not answerable with certainty from current regulations. Every Zantara response touching these topics must include explicit uncertainty disclosure.
+
+---
+
+### AMBIGUITY-1: TKA Pension (JP) Enrollment — Mandatory or Exempt?
+
+**The conflict:** PP 45/2015 Pasal 5(2) exempts TKA from JP enrollment IF a bilateral social security totalization agreement exists between Indonesia and their home country. Since no such agreements are currently in force, the literal reading requires TKA JP enrollment. However, Permenaker 11/2019 and informal BPJS Ketenagakerjaan guidance have implied that TKA with equivalent home-country pension coverage can be administratively exempted. The law has not been amended to resolve this.
+
+**Practical consequence:** A company that does not enroll TKA in JP based on the informal guidance faces a legally arguable back-payment claim and potential 2% per month BPJS contribution penalty if the formal interpretation is later enforced. Companies that enroll pay an additional 2% employer + 1% employee on salary up to the ceiling.
+
+**MD-4 flag text:** "The obligation for foreign TKA workers to enroll in BPJS Ketenagakerjaan JP (Pension) program is legally unresolved. PP 45/2015 exempts TKA only where a bilateral totalization agreement with Indonesia exists — and currently none are in force. However, informal administrative practice in Bali allows exemption with private pension documentation. Bali Zero recommends enrolling by default; formal written guidance from your local BPJS Ketenagakerjaan office is required before claiming exemption."
+
+---
+
+### AMBIGUITY-2: Commissioner Work Activities — The Operational Line
+
+**The conflict:** PP 34/2021 Pasal 3(2) clearly exempts Komisaris (Commissioners) from TKA/RPTKA requirements. However, neither PP 34/2021 nor any Permenaker provides a clear, objective definition of what activities cross the line from "supervisory/ownership activities" (exempt) to "work activities" (requiring RPTKA). Attending RUPS, reading financial reports, and voting on board resolutions are clearly exempt. Sending emails to employees, signing vendor contracts, and attending client meetings are clearly "work." But participating in strategy sessions, reviewing marketing materials, or providing technical input to staff sits in an undefined middle zone.
+
+**Practical consequence:** A Kemnaker inspector with broad discretion can argue that almost any active involvement constitutes "work" and trigger criminal prosecution under Pasal 185 UU 6/2023. There is no safe harbor defined for foreign commissioners who are genuinely engaged in strategic oversight.
+
+**MD-4 flag text:** "The boundary between permissible Komisaris activities (no RPTKA needed) and work activities (RPTKA required) for foreign PT PMA shareholders is not legally defined with precision. The safest interpretation is that any regular, sustained activity directing the company's operations — even without formal employment — requires RPTKA. Bali Zero strongly advises obtaining RPTKA for all foreign shareholders who will be regularly present in Indonesia and involved in business activities beyond purely formal RUPS attendance."
+
+---
+
+### AMBIGUITY-3: Retroactive PPN Liability for Late PKP Registration
+
+**The conflict:** UU 42/2009 PPN Pasal 3A requires companies to self-register as PKP (VAT registrant) when crossing the IDR 4.8 billion threshold. However, the law is silent on what happens to the VAT-able supplies made BEFORE registration but AFTER the threshold was crossed. DJP's enforcement practice has varied: some tax audits have assessed retroactive output VAT on the pre-registration period (company owes PPN on all supplies since threshold crossing, cannot pass it to customers who already paid without VAT), plus penalties. Other audits have only assessed from the date of first notification.
+
+**Practical consequence:** A PT PMA with fast revenue growth that delays PKP registration by even 6 months after crossing IDR 4.8 billion faces potential retroactive PPN assessment on that 6-month revenue, which can represent a material liability especially for margin-thin businesses. The KUP 5-year statute of limitations means this retroactive exposure can span multiple years.
+
+**MD-4 flag text:** "Whether DJP will assess retroactive PPN liability for the period between crossing the PKP registration threshold (IDR 4.8 billion annual revenue) and actual PKP registration depends on the specific tax audit team and DJP's enforcement policy at that time, which has been inconsistently applied. Companies approaching the threshold should proactively register as PKP before crossing it to eliminate retroactive risk entirely. Consult a licensed Konsultan Pajak (Tax Consultant) registered with DJP for position-specific advice."
+
+---
+
+## PART V — NB-6 QUERY ACTIVATION PROMPTS
+
+When configuring NB-6's AI chat, seed these as initial queries to calibrate depth and coverage:
+
+1. "What are all compliance obligations for a PT PMA in its first 90 days of operations, in priority order?"
+2. "A foreign founder is acting as Komisaris but runs the business daily without RPTKA. What is the legal exposure and what remediation steps are required?"
+3. "What is the exact DKP-TKA calculation and payment procedure for a 2-year RPTKA for 2 foreign workers?"
+4. "Which BPJS programs are mandatory for a foreign TKA, and what is the JP pension enrollment situation?"
+5. "What banks in Bali accept PT PMA account openings and what documents do they require?"
+6. "When is annual audit mandatory for a PT PMA and what are the SAK standard options?"
+7. "What is the LKPM quarterly filing deadline and what happens if missed for 2 consecutive quarters?"
+8. "Our PT PMA crossed IDR 4.8 billion revenue last month. What tax steps must we take immediately?"
+9. "We have a villa rental business (KBLI 55192) — what licenses do we need beyond the NIB?"
+10. "What dividend withholding tax rate applies when remitting profits to a Singapore shareholder?"
+
+---
+
+_End of NB-6 Brainstorm Prompt_
+_Total: 50 operational claims (OPS-001 to OPS-050), 3 legal ambiguities, 1 source architecture (20 T0 laws + 13 T1 URLs + 12 T2 claim packages), 10 activation prompts_
+_Prepared: 2026-03-30 | Author: Claude Code (Sonnet 4.6) on Pro_
