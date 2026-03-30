@@ -1,7 +1,10 @@
 """Tests for Semantic Cache."""
-import pytest
 from backend.services.caching.semantic_cache import (
-    get_cached_response, cache_response, invalidate_cache, get_cache_stats, _L1_CACHE
+    _L1_CACHE,
+    cache_response,
+    get_cache_stats,
+    get_cached_response,
+    invalidate_cache,
 )
 
 
