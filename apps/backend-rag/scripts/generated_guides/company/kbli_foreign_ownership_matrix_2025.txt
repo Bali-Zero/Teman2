@@ -1,9 +1,14 @@
 KBLI E PROPRIETÀ STRANIERA — MATRICE TERBUKA / TERBATAS / TERTUTUP
 GUIDA AGLI INVESTIMENTI STRANIERI PER SETTORE DI ATTIVITÀ IN INDONESIA
-2024-2025
+2025-2026
 
-Guida normativa verificata | Basata su Perpres 10/2021 e Perpres 49/2021
+Guida normativa verificata | Aggiornata a BPS 7/2025 + Perpres 14/2024
 Prodotta da Bali Zero / Zantara Intelligence
+
+⚠️ AGGIORNAMENTO NORMATIVO (marzo 2026): KBLI 73100 (Periklanan / Advertising)
+è stato riclassificato da TERBUKA a TERBATAS (max 49% WNA) per effetto di
+BPS 7/2025 + Perpres 14/2024. Non fare riferimento a Perpres 10/2021 per questo
+KBLI: è stato superato. Fonte di verifica: claim NB3-C019, BPS 7/2025 + 2 fonti.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -73,13 +78,10 @@ SERVIZI CREATIVI E DIGITALI:
 - KBLI 62010 — Aktivitas Pemrograman Komputer (sviluppo software)
 - KBLI 62020 — Konsultasi Komputer dan Manajemen TI
 - KBLI 62099 — Aktivitas TI Lainnya
-- KBLI 73100 — Periklanan (agenzia pubblicitaria)
-  ⚠️ TERBATAS: max 49% WNA — kemitraan con ente locale obbligatoria
-  (Fonte: BPS 7/2025 + Perpres 14/2024 — non confondere con Perpres 10/2021
-   che classificava TERBUKA: superato da aggiornamento 2024-2025)
 - KBLI 73201 — Penelitian Pasar (ricerche di mercato) — TERBUKA 100%
 - KBLI 74100 — Aktivitas Desain Khusus
 - KBLI 90001 — Seni Pertunjukan (performing arts)
+NOTA: KBLI 73100 (Periklanan / Advertising) è TERBATAS max 49% — vedi sezione 3.
 
 SERVIZI IMMOBILIARI (limitazioni operative separano proprietà da gestione):
 - KBLI 68200 — Aktivitas Real Estat atas Dasar Balas Jasa
@@ -285,8 +287,13 @@ la versione aggiornata al momento della pratica.
 CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
 COM-024, COM-025, COM-026, COM-027, COM-028
 
-Per il riferimento completo alle norme: Perpres 10/2021 (Lista Investimenti),
+Per il riferimento completo alle norme: BPS 7/2025 (aggiornamento lista),
+Perpres 14/2024 (modifica classificazioni), Perpres 10/2021 (Lista Investimenti base),
 Perpres 49/2021 (Capital Requirement PT PMA).
 
+⚠️ VERIFICARE SEMPRE la classificazione KBLI con il team Bali Zero prima di
+strutturare una PT PMA. Le classificazioni possono essere aggiornate da nuovi
+Perpres senza preavviso. Questo documento viene aggiornato con le verifiche NLM.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence
+Fine documento | Versione 2026-03-30 | Aggiornato da Zantara Intelligence (NLM NB-3)

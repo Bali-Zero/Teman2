@@ -484,10 +484,10 @@ Organized by category. Each claim includes: ID, category, claim text, priority, 
 - Q1 LKPM deadline: April 15 (for Jan–Mar period)
 - Apr 30: SPT Tahunan Badan
 - Q2 LKPM deadline: July 15
-- Jul 31: RUPS Tahunan (6-month deadline for Dec fiscal year end)
+- Jun 30: RUPS Tahunan (6-month statutory deadline per UU 40/2007 Pasal 78 for Dec 31 fiscal year end — NOT July 31)
 - Q3 LKPM deadline: October 15
 - Q4 LKPM deadline: January 15 (following year)
-- Dec (variable): THR payment for Natal/Christmas workers; Hari Raya THR for Muslim employees (Ramadan period, 7 days before Idul Fitri)
+- Dec (variable): THR payment for Natal/Christmas workers; Hari Raya THR for Muslim employees (Ramadan period, 7 days before Idul Fitri); **Note for Bali clients:** Hindu-Balinese employees are entitled to THR for their religious holiday (Galungan or Nyepi) — Bali-specific obligation that may create two THR payment events per year
   **Gap reason:** NB-3 has individual deadlines scattered across sources. No unified calendar exists. This is the most-requested reference from post-setup clients.
 
 ---
