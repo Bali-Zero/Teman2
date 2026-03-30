@@ -40,60 +40,12 @@ import {
   type CreateClientInput,
 } from '@/lib/api/crm/crm.schemas';
 import { cropToSquare } from '@/lib/utils/imageResize';
-
-// Team members - ideally fetch from API
-const TEAM_MEMBERS = [
-  {
-    value: 'adit@balizero.com',
-    label: 'Adit',
-    avatar: '/avatars/team/adit.png',
-  },
-  { value: 'ari@balizero.com', label: 'Ari', avatar: '/avatars/team/ari.png' },
-  {
-    value: 'krisna@balizero.com',
-    label: 'Krisna',
-    avatar: '/avatars/team/krisna.png',
-  },
-  { value: 'dea@balizero.com', label: 'Dea', avatar: '/avatars/team/dea.png' },
-  { value: 'zero@balizero.com', label: 'Anton' },
-  { value: 'damar@balizero.com', label: 'Damar' },
-  { value: 'vino@balizero.com', label: 'Vino' },
-  {
-    value: 'ruslana@balizero.com',
-    label: 'Ruslana',
-    avatar: '/avatars/team/ruslana.jpg',
-  },
-  {
-    value: 'anna@balizero.com',
-    label: 'Anna',
-    avatar: '/avatars/team/anna.jpeg',
-  },
-  {
-    value: 'marta@balizero.com',
-    label: 'Marta',
-    avatar: '/avatars/team/marta.jpeg',
-  },
-  {
-    value: 'olena@balizero.com',
-    label: 'Olena',
-    avatar: '/avatars/team/olena.jpeg',
-  },
-  { value: 'veronika@balizero.com', label: 'Veronika' },
-  { value: 'dewaayu@balizero.com', label: 'Dewa Ayu' },
-  { value: 'faysha@balizero.com', label: 'Faysha' },
-  { value: 'kadek@balizero.com', label: 'Kadek' },
-  { value: 'angel@balizero.com', label: 'Angel' },
-  { value: 'surya@balizero.com', label: 'Surya' },
-  {
-    value: 'sahira@balizero.com',
-    label: 'Sahira',
-    avatar: '/avatars/team/sahira.png',
-  },
-];
+import { useTeamMemberOptions } from '@/hooks/useTeamMembers';
 
 export default function NewClientPage() {
   const router = useRouter();
   const { error: toastError } = useToast();
+  const { options: teamMemberOptions } = useTeamMemberOptions();
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [activeSection, setActiveSection] = useState<'basic' | 'personal' | 'crm'>('basic');
@@ -684,7 +636,7 @@ export default function NewClientPage() {
                     className={selectClass}
                   >
                     <option value="">Unassigned</option>
-                    {TEAM_MEMBERS.map((member) => (
+                    {teamMemberOptions.map((member) => (
                       <option key={member.value} value={member.value}>
                         {member.label}
                       </option>
@@ -790,7 +742,7 @@ export default function NewClientPage() {
             )}
             {formData.assigned_to && (
               <span className="px-2 py-1 rounded bg-[var(--accent)]/20 text-[var(--accent)]">
-                → {TEAM_MEMBERS.find((m) => m.value === formData.assigned_to)?.label}
+                → {teamMemberOptions.find((m) => m.value === formData.assigned_to)?.label ?? formData.assigned_to.split('@')[0]}
               </span>
             )}
             {formData.service_interest && formData.service_interest.length > 0 && (

@@ -39,7 +39,7 @@ import { getCountryFlag } from "@/lib/utils/nationality-flags";
 
 // Local component imports
 import type { TabType, ModalType } from "./components/types";
-import { getTeamMemberAvatar } from "./components/constants";
+import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { formatCurrency } from "./components/utils";
 import { OverviewTab } from "./components/OverviewTab";
 import { DocumentsTab } from "./components/DocumentsTab";
@@ -61,6 +61,7 @@ export default function ClientDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const clientId = params?.id ? Number(params.id) : 0;
+  const { options: teamMemberOptions } = useTeamMemberOptions();
 
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
@@ -501,9 +502,9 @@ export default function ClientDetailPage() {
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bz-surface)] border border-[var(--bz-border)]"
               title={`Assigned to: ${client.assigned_to.split("@")[0]}`}
             >
-              {getTeamMemberAvatar(client.assigned_to) ? (
+              {teamMemberOptions.find((m) => m.value === client.assigned_to)?.avatar ? (
                 <img
-                  src={getTeamMemberAvatar(client.assigned_to)}
+                  src={teamMemberOptions.find((m) => m.value === client.assigned_to)?.avatar}
                   alt={client.assigned_to.split("@")[0]}
                   className="w-8 h-8 rounded-full object-cover ring-2 ring-green-500/30"
                 />

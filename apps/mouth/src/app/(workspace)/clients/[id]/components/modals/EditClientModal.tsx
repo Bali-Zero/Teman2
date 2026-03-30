@@ -9,7 +9,7 @@ import { cropToSquare } from '@/lib/utils/imageResize';
 import type { Client } from '@/lib/api/crm/crm.types';
 import { COMMON_NATIONALITIES, CLIENT_STATUSES } from '@/lib/api/crm/crm.types';
 import { Modal } from '../Modal';
-import { TEAM_MEMBERS } from '../constants';
+import { useTeamMemberOptions } from '@/hooks/useTeamMembers';
 import { COUNTRY_CODES, extractCountryCode } from '../utils';
 
 export function EditClientModal({
@@ -21,6 +21,7 @@ export function EditClientModal({
   onClose: () => void;
   onSave: () => void;
 }) {
+  const { options: teamMemberOptions } = useTeamMemberOptions();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     full_name: client.full_name || '',
@@ -271,7 +272,7 @@ export function EditClientModal({
             className={inputClass}
           >
             <option value="">Unassigned</option>
-            {TEAM_MEMBERS.map((m) => (
+            {teamMemberOptions.map((m) => (
               <option key={m.value} value={m.value}>
                 {m.label}
               </option>
