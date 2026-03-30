@@ -5,12 +5,11 @@ import {
   Loader2,
   Plane,
   Calendar,
-  CheckCircle,
-  AlertTriangle,
   FileText,
   Clock,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { StatusBadge } from '@/components/portal';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
@@ -312,46 +311,6 @@ export default function VisaPage() {
 }
 
 // Sub-components
-function StatusBadge({ status }: { status: 'active' | 'pending' | 'warning' | 'expired' }) {
-  const config: Record<
-    string,
-    { icon: React.ElementType; label: string; style: React.CSSProperties }
-  > = {
-    active: {
-      icon: CheckCircle,
-      label: 'Active',
-      style: { background: 'rgba(16,185,129,0.12)', color: '#34d399' },
-    },
-    pending: {
-      icon: Clock,
-      label: 'Pending',
-      style: { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
-    },
-    warning: {
-      icon: AlertTriangle,
-      label: 'Expiring Soon',
-      style: { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
-    },
-    expired: {
-      icon: AlertTriangle,
-      label: 'Expired',
-      style: { background: 'rgba(239,68,68,0.12)', color: '#f87171' },
-    },
-  };
-
-  const { icon: Icon, label, style } = config[status] ?? config.pending;
-
-  return (
-    <div
-      className="px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-medium"
-      style={style}
-    >
-      <Icon className="w-3.5 h-3.5" />
-      {label}
-    </div>
-  );
-}
-
 function InfoRow({
   label,
   value,
