@@ -28,6 +28,29 @@ router = APIRouter(prefix="/api/crm/analytics", tags=["crm-analytics"])
 
 
 # ================================================
+# DATE HELPERS
+# ================================================
+
+
+def _months_ago(n: int) -> datetime:
+    """Return first day of month N months ago (UTC)."""
+    now = datetime.now(tz=timezone.utc)
+    month = now.month - n
+    year = now.year
+    while month <= 0:
+        month += 12
+        year -= 1
+    return datetime(year, month, 1, tzinfo=timezone.utc)
+
+
+def _next_month_start(dt: datetime) -> datetime:
+    """Return first day of month after dt."""
+    if dt.month == 12:
+        return datetime(dt.year + 1, 1, 1, tzinfo=timezone.utc)
+    return datetime(dt.year, dt.month + 1, 1, tzinfo=timezone.utc)
+
+
+# ================================================
 # PYDANDIC MODELS
 # ================================================
 
@@ -321,10 +344,8 @@ async def get_revenue_summary(
             # Monthly breakdown (last 6 months)
             months = []
             for i in range(5, -1, -1):
-                month_start = (datetime.now(tz=timezone.utc).replace(day=1) - timedelta(days=i * 30)).replace(
-                    day=1,
-                )
-                month_end = (month_start + timedelta(days=32)).replace(day=1)
+                month_start = _months_ago(i)
+                month_end = _next_month_start(month_start)
                 month_label = month_start.strftime("%Y-%m")
 
                 month_query = f"""
@@ -461,10 +482,8 @@ async def get_client_trend(
 
             results = []
             for i in range(months - 1, -1, -1):
-                month_start = (datetime.now(tz=timezone.utc).replace(day=1) - timedelta(days=i * 30)).replace(
-                    day=1,
-                )
-                month_end = (month_start + timedelta(days=32)).replace(day=1)
+                month_start = _months_ago(i)
+                month_end = _next_month_start(month_start)
                 month_label = month_start.strftime("%b %Y")
 
                 # New clients
