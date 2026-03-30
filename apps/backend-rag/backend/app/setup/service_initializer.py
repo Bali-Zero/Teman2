@@ -893,6 +893,7 @@ async def initialize_channel_router(
         # Initialize ChannelRouter
         channel_router = ChannelRouter(conversation_engine)
         app.state.channel_router = channel_router
+        channel_router._db_pool = db_pool  # Enable conversation persistence
         logger.info("✅ ChannelRouter initialized")
 
         # Register Telegram adapter (if configured)
@@ -1035,19 +1036,9 @@ async def initialize_services(app: FastAPI) -> None:
     # 2.5 FAQ Cache (non-critical, graceful degradation)
     await initialize_faq_cache_service(app)
 
-    # 3. RAG components
+    # 3. RAG components (CulturalRAGService initialized inside _init_rag_components)
     query_router = await _init_rag_components(app, search_service)
-
-    from backend.services.misc.cultural_rag_service import CulturalRAGService
-
-    cultural_insights_service = getattr(app.state, "cultural_insights", None)
-    if cultural_insights_service:
-        cultural_rag_service = CulturalRAGService(
-            cultural_insights_service=cultural_insights_service,
-        )
-    else:
-        # Fallback to search_service for backward compatibility
-        cultural_rag_service = CulturalRAGService(search_service=search_service)
+    cultural_rag_service = app.state.cultural_rag  # Already set by _init_rag_components
 
     # 4. Specialized agents
     (

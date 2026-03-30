@@ -104,7 +104,7 @@ async def notify_zero_conversation_log(
 
     log_text = f"""💬 **WhatsApp Bot Conversation Log**
 
-**Cliente:** {display_name} (+{phone}) {lang_flag}
+**Cliente:** {display_name} (+{phone[:4]}***{phone[-2:] if len(phone) > 4 else ''}) {lang_flag}
 
 **Domanda:**
 _{client_msg_preview}_
@@ -194,7 +194,7 @@ async def notify_human_telegram(
 
     notification_text = f"""{emoji} **WhatsApp Escalation**
 
-**Da:** {display_name} (+{phone})
+**Da:** {display_name} (+{phone[:4]}***{phone[-2:] if len(phone) > 4 else ""})
 **Motivo:** {reason.replace("_", " ").title()}
 
 **Messaggio:**

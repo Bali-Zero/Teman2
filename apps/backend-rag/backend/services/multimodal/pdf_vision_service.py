@@ -117,10 +117,16 @@ class PDFVisionService:
                 return result
 
             # 5. Fallback to Gemini Vision
+            # ⚠️ UU PDP COMPLIANCE: This sends document images to Google servers (cross-border transfer)
+            # Art. 56 requires safeguards for cross-border data transfer
+            logger.warning(
+                f"⚠️ [CROSS-BORDER] Ollama local OCR failed, falling back to Gemini API "
+                f"for {local_path} p.{page_number}. Document image will be sent to Google servers."
+            )
             result = await self._analyze_via_gemini(prompt, image_base64)
             if result:
                 logger.info(
-                    f"👁️ Vision analysis complete via Gemini for {local_path} p.{page_number}",
+                    f"👁️ Vision analysis complete via Gemini (CROSS-BORDER) for {local_path} p.{page_number}",
                 )
                 if is_drive_file and os.path.exists(local_path):
                     os.remove(local_path)
