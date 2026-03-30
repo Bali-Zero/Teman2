@@ -52,7 +52,7 @@ Corporate bank account cannot be opened without: AHU-certified deed, NIB, NPWP b
 
 **Quarter 1 — First LKPM**
 
-Within 10 working days after Q1 end (April 10): first quarterly LKPM filed via OSS portal. Companies with investment > IDR 500 million (virtually all PT PMA) must file. Failure chain: SP1 → SP2 → license revocation.
+By April 15 (per Perka BKPM 5/2025 Pasal 285): first quarterly LKPM filed via OSS portal. Companies with investment > IDR 500 million (virtually all PT PMA) must file. Failure chain: SP1 → SP2 → license revocation.
 
 **Month 6 — First Tax Obligations**
 
@@ -87,7 +87,7 @@ Bali has multiple UMK levels by regency: Denpasar, Badung, Gianyar, Tabanan diff
 Quarterly LKPM is the most commonly neglected obligation. OSS sends digital warnings that founders ignore. Investment license revocation happens after two unresponded Surat Peringatan. Recovery after revocation is complex and expensive.
 
 **TRAP 5 — Coretax SPT Non-Filing**
-Post-January 2025 Coretax rollout, many PT PMA missed monthly SPT deadlines. Penalties: Rp 500,000 per late monthly SPT (Pasal 7 KUP), 2% per month on underpaid tax (Pasal 9 KUP). DJP transitional amnesty has ended.
+Post-January 2025 Coretax rollout, many PT PMA missed monthly SPT deadlines. Penalties: Rp 500,000 per late monthly SPT (Pasal 7 KUP), 2% per month on underpaid tax (Pasal 9 KUP). DJP has issued rolling penalty waivers under KEP-67/PJ/2025 and subsequent circulars — as of Q1 2026 specific waivers for SPT Tahunan filing remain active. Verify current DJP SE/KEP before advising clients on penalty exposure; the Coretax system remains technically troubled with 22 known issues acknowledged by DJP as of March 2026.
 
 **TRAP 6 — WLK Non-Filing**
 Wajib Lapor Ketenagakerjaan annual filing. Forgotten by 70%+ of small PT PMA. Without current WLK compliance certificate: cannot renew certain OSS licenses, cannot bid government contracts.
@@ -221,7 +221,7 @@ Indonesian banks perform enhanced CDD on PT PMA per OJK regulations and PPATK AM
 Total assets > IDR 50 billion, publicly listed PT, or PT that issued bonds to public. Most PT PMA below threshold not legally required to audit. Practical triggers: bank loan covenants, foreign parent consolidation, high-risk OSS license compliance.
 
 **LKPM Filing Deadlines:**
-Q1 (Jan-Mar): April 10; Q2 (Apr-Jun): July 10; Q3 (Jul-Sep): October 10; Q4 (Oct-Dec): January 10. Annual: January 31. Via oss.go.id. Penalty regime: SP1 → SP2 → license revocation.
+Q1 (Jan-Mar): **April 15**; Q2 (Apr-Jun): **July 15**; Q3 (Jul-Sep): **October 15**; Q4 (Oct-Dec): **January 15**. Annual: January 31. Via oss.go.id. Per Perka BKPM 5/2025 Pasal 285 ayat (3) — deadline changed from "10 working days" (old Perka 5/2021) to fixed calendar date (15th of following month). Penalty regime: SP1 → SP2 → license revocation.
 
 **Coretax (as of January 2025):**
 All SPT via coretax.pajak.go.id. E-Faktur issued through Coretax. Monthly: PPh 21 by 20th; PPh 25 payment by 15th; PPh 23/26 by 20th; PPN by 31st. Annual: SPT Badan by April 30; SPT Pribadi (directors) by March 31. Legacy e-Filing decommissioned.
@@ -271,8 +271,8 @@ Trading: 46900 (wholesale, MEDIUM), 47911 (e-commerce, MEDIUM).
 **OPS-003**
 **Category:** Investment Reporting — LKPM Quarterly
 **Priority:** CRITICAL
-**Claim:** All PT PMA with investment value above IDR 500 million are required to file quarterly LKPM (Laporan Kegiatan Penanaman Modal) via the OSS portal within 10 working days after each quarter ends. The quarterly deadlines are April 10, July 10, October 10, and January 10. Failure to file triggers a formal warning (Surat Peringatan) escalation from BKPM/DPMPTSP that, if unresolved across two warnings, leads to business license revocation affecting all KBLI activities under the NIB.
-**Source hint:** Peraturan BKPM 5/2021 Pasal 26-29; Peraturan BKPM 4/2021
+**Claim:** All PT PMA with investment value above IDR 500 million are required to file quarterly LKPM (Laporan Kegiatan Penanaman Modal) via the OSS portal by the 15th of the month following each quarter end: April 15, July 15, October 15, and January 15. Failure to file triggers a formal warning (Surat Peringatan) escalation from BKPM/DPMPTSP that, if unresolved across two warnings, leads to business license revocation affecting all KBLI activities under the NIB.
+**Source hint:** Perka BKPM 5/2025 Pasal 285 ayat (3) — supersedes Peraturan BKPM 5/2021 Pasal 26-29
 
 ---
 
@@ -347,8 +347,8 @@ Trading: 46900 (wholesale, MEDIUM), 47911 (e-commerce, MEDIUM).
 **OPS-012**
 **Category:** TKA — Commissioner vs Director Distinction
 **Priority:** CRITICAL
-**Claim:** A foreign national serving only as Komisaris (Commissioner) in a PT PMA and whose activities are limited to attending shareholder meetings and exercising supervisory rights does not require RPTKA or IMTA/Notifikasi TKA under PP 34/2021. However, once the same person performs any operational or management functions — signing contracts, directing employees, attending client meetings, or managing finances — they legally cross into the definition of "foreign worker" and require full TKA documentation. This distinction is critical because most Bali Zero clients have foreign founders who are Komisaris but functionally manage day-to-day operations, creating hidden criminal exposure.
-**Source hint:** PP 34/2021 Pasal 3(2); Permenaker 8/2021 Lampiran Jabatan Terlarang
+**Claim:** A foreign national serving only as Komisaris (Commissioner) in a PT PMA and whose activities are limited to attending shareholder meetings and exercising supervisory rights does not require RPTKA or IMTA/Notifikasi TKA under PP 34/2021. However, once the same person performs any operational or management functions — signing contracts, directing employees, attending client meetings, or managing finances — they legally cross into the definition of "foreign worker" and require full TKA documentation. This distinction is critical because most Bali Zero clients have foreign founders who are Komisaris but functionally manage day-to-day operations, creating hidden criminal exposure. **Investor KITAS pathway (practical note):** A foreign Commissioner whose personal shareholding value is ≥ IDR 10 billion is eligible for an Investor KITAS (not Work KITAS), which permits lawful residence in Indonesia with no RPTKA requirement regardless of RUPS attendance frequency. This is the most common compliance pathway for foreign founder-Commissioners in Bali Zero client companies and should be proactively advised. For shareholding below IDR 10 billion, a Work KITAS backed by RPTKA is required if the Commissioner intends to reside in or regularly enter Indonesia.
+**Source hint:** PP 34/2021 Pasal 3(2); Permenaker 8/2021 Lampiran Jabatan Terlarang; Perka BKPM re: Investor KITAS IDR 10B threshold
 
 ---
 
