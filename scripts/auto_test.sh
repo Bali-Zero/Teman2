@@ -5,7 +5,7 @@
 # Requires Ollama for real LLM tests
 #
 
-set -e
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -102,10 +102,17 @@ fi
 log "=== Unified Test Run Completed ==="
 log "Agent tests — Passed: $PASSED | Failed: $FAILED"
 
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-7849498029:AAEjuP_uPt6KqD23Y8tVXVKnygJX8_TzW2g}"
+TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-1125336968}"
+
 if [ $FAILED -eq 0 ]; then
-    echo -e "${GREEN}✅ All tests passed (Passed: $PASSED)${NC}"
+    log "✅ All tests passed (Passed: $PASSED)"
     exit 0
 else
-    echo -e "${RED}❌ Failures: ${FAILED_TESTS[*]}${NC}"
+    log "❌ Test failures: ${FAILED_TESTS[*]}"
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${TELEGRAM_CHAT_ID}" \
+        -d "text=⚠️ *Air Auto-Test FAILED* — $FAILED suite(s): ${FAILED_TESTS[*]}%0ACheck: ~/Projects/nuzantara/logs/auto_test.log" \
+        -d "parse_mode=Markdown" > /dev/null 2>&1 || true
     exit 1
 fi

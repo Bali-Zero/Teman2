@@ -14,6 +14,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -293,8 +294,11 @@ async def run_agent(dry_run: bool = False, observe_first: bool = False) -> dict:
             if action_type == "generate_ai_ingestion_files":
                 log_decision(f"  ACT [LOW]: Running AI Ingestion Generator...")
                 mouth_dir = PROJECT_ROOT / "apps" / "mouth"
-                # Use npx tsx to run the script
-                cmd = ["npx", "tsx", "scripts/generate-llms-full.ts"]
+                # Use npx tsx to run the script (use absolute path for cron compatibility)
+                npx_bin = "/opt/homebrew/bin/npx"
+                if not os.path.exists(npx_bin):
+                    npx_bin = "npx"  # fallback to PATH
+                cmd = [npx_bin, "tsx", "scripts/generate-llms-full.ts"]
                 
                 if dry_run:
                     result = {"success": True, "dry_run": True}
