@@ -219,21 +219,13 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
     return response_text
 
 
-async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
+async def _auto_ocr_passport(db_pool: Any, client_id: int, file_id: str) -> dict:
     """
     Automatically run OCR on passport image and update client record.
     Runs in background after document upload.
-    Creates its own db connection to avoid pool lifecycle issues.
+    Uses the shared app-level pool passed in to avoid connection churn.
     """
-    import os
-
-    import asyncpg
-
-    db_pool = None
     try:
-        # Create own pool for background task
-        db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
-
         # Get client name for verification
         async with db_pool.acquire() as conn:
             client = await conn.fetchrow("SELECT full_name FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id)
@@ -353,24 +345,15 @@ async def _auto_ocr_passport(client_id: int, file_id: str) -> dict:
     except Exception as e:
         logger.error(f"Auto OCR failed for client {client_id}: {e}")
         return {"success": False, "error": str(e)}
-    finally:
-        if db_pool:
-            await db_pool.close()
 
 
-async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None) -> dict:
     """
     OCR on visa/KITAS/KITAP document → extract visa_type, expiry, number.
     Updates documents.expiry_date and documents.ocr_extracted_data.
+    Uses the shared app-level pool passed in to avoid connection churn.
     """
-    import os
-
-    import asyncpg
-
-    db_pool = None
     try:
-        db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
-
         # Download from Drive + OCR (CLI free → API fallback)
         image_data, mime_type = await _download_drive_file(file_id)
 
@@ -443,24 +426,15 @@ async def _auto_ocr_visa(client_id: int, file_id: str, doc_id: int | None = None
     except Exception as e:
         logger.error(f"Auto OCR visa failed for client {client_id}: {e}")
         return {"success": False, "error": str(e)}
-    finally:
-        if db_pool:
-            await db_pool.close()
 
 
-async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+async def _auto_ocr_nib(db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None) -> dict:
     """
     OCR on NIB (Nomor Induk Berusaha) document → extract NIB number, company_name, KBLI codes.
     Updates companies table if client has a linked company.
+    Uses the shared app-level pool passed in to avoid connection churn.
     """
-    import os
-
-    import asyncpg
-
-    db_pool = None
     try:
-        db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
-
         # Download from Drive + OCR (CLI free → API fallback)
         image_data, mime_type = await _download_drive_file(file_id)
 
@@ -529,24 +503,15 @@ async def _auto_ocr_nib(client_id: int, file_id: str, doc_id: int | None = None)
     except Exception as e:
         logger.error(f"Auto OCR NIB failed for client {client_id}: {e}")
         return {"success": False, "error": str(e)}
-    finally:
-        if db_pool:
-            await db_pool.close()
 
 
-async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+async def _auto_ocr_npwp(db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None) -> dict:
     """
     OCR on NPWP (tax ID) document → extract NPWP number, address, KPP.
     Updates clients or companies table.
+    Uses the shared app-level pool passed in to avoid connection churn.
     """
-    import os
-
-    import asyncpg
-
-    db_pool = None
     try:
-        db_pool = await asyncpg.create_pool(os.environ["DATABASE_URL"], min_size=1, max_size=2)
-
         # Download from Drive + OCR (CLI free → API fallback)
         image_data, mime_type = await _download_drive_file(file_id)
 
@@ -623,12 +588,10 @@ async def _auto_ocr_npwp(client_id: int, file_id: str, doc_id: int | None = None
     except Exception as e:
         logger.error(f"Auto OCR NPWP failed for client {client_id}: {e}")
         return {"success": False, "error": str(e)}
-    finally:
-        if db_pool:
-            await db_pool.close()
 
 
 async def _dispatch_ocr_by_folder(
+    db_pool: Any,
     client_id: int,
     file_id: str,
     folder_name: str,
@@ -651,7 +614,7 @@ async def _dispatch_ocr_by_folder(
         return {
             "dispatched": True,
             "handler": "passport",
-            "result": await _auto_ocr_passport(client_id, file_id),
+            "result": await _auto_ocr_passport(db_pool, client_id, file_id),
         }
 
     # Visa / KITAS / KITAP detection
@@ -678,7 +641,7 @@ async def _dispatch_ocr_by_folder(
             return {
                 "dispatched": True,
                 "handler": "visa",
-                "result": await _auto_ocr_visa(client_id, file_id, doc_id),
+                "result": await _auto_ocr_visa(db_pool, client_id, file_id, doc_id),
             }
 
     # NIB detection
@@ -687,7 +650,7 @@ async def _dispatch_ocr_by_folder(
         return {
             "dispatched": True,
             "handler": "nib",
-            "result": await _auto_ocr_nib(client_id, file_id, doc_id),
+            "result": await _auto_ocr_nib(db_pool, client_id, file_id, doc_id),
         }
 
     # NPWP detection
@@ -696,7 +659,7 @@ async def _dispatch_ocr_by_folder(
         return {
             "dispatched": True,
             "handler": "npwp",
-            "result": await _auto_ocr_npwp(client_id, file_id, doc_id),
+            "result": await _auto_ocr_npwp(db_pool, client_id, file_id, doc_id),
         }
 
     logger.debug(f"OCR dispatch: no handler matched for file {filename} in {folder_name}")
