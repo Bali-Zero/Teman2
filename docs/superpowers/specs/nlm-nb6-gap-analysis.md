@@ -683,5 +683,84 @@ These are solid, sourced claims in NB-3. NB-6 should reference them but not cont
 
 ---
 
+---
+
+## APPENDIX B — PHASE 2/3 GAP RESOLUTIONS (2026-03-31)
+
+The following gaps were identified during verification pass 2 and resolved via multi-agent research (Exa + Brave + NLM):
+
+### GAP-R1: Permenaker 11/2019 — CORRECTION
+
+**Status:** RESOLVED — incorrect source reference corrected
+
+**Finding:** Permenaker 11/2019 governs **outsourcing/alih daya** contracts (perjanjian pemborongan pekerjaan / penyediaan jasa pekerja), NOT TKA work permits. It was incorrectly cited in OPS-020 as related to JP pension exemption for TKA. The correct operative TKA regulation is **PP 34/2021 + Permenaker 8/2021** (replacement of Permenaker 10/2018). NB-6 references to Permenaker 11/2019 in TKA context have been corrected.
+
+**Action:** OPS-020 source hint updated; AMBIGUITY-1 corrected.
+
+---
+
+### GAP-R2: UMK Denpasar 2026 — RESOLVED
+
+**Status:** FULLY RESOLVED
+
+**Finding:** Official figures from **SK Gubernur Bali 1021/03-M/HK/2025** (23 December 2025):
+
+| Regency    | UMK 2026         |
+| ---------- | ---------------- |
+| Badung     | IDR 3,509,371.36 |
+| Denpasar   | IDR 3,499,878.78 |
+| Gianyar    | IDR 3,316,798.09 |
+| Tabanan    | IDR 3,108,067.78 |
+| Klungkung  | IDR 3,041,978.82 |
+| Bangli     | IDR 3,007,506.72 |
+| Karangasem | IDR 3,005,467.28 |
+| Buleleng   | IDR 3,000,797.64 |
+| Jembrana   | IDR 3,000,040.00 |
+| UMP Bali   | IDR 3,111,179.60 |
+
+**Action:** OPS-025 in brainstorm-prompt updated with full figures.
+
+---
+
+### GAP-R3: JKP (PP 37/2021) — RESOLVED
+
+**Status:** FULLY RESOLVED
+
+**Finding:** JKP (Jaminan Kehilangan Pekerjaan) = unemployment insurance. Key facts:
+
+- **WNI-only** — TKA explicitly excluded (PP 37/2021 Pasal 2)
+- Contribution: 0.46% total (0.22% employer + 0.24% employee) — **recomposition of existing JKK/JKM rates, zero new net cost**
+- PP 6/2025 raised benefit ceiling from 45% → 60% salary replacement
+- Auto-enrolled for all BPJS Ketenagakerjaan WNI workers, no separate registration
+
+**Action:** New OPS-051 added to brainstorm-prompt.
+
+---
+
+### GAP-R4: KBLI PMA Closures in Bali — PARTIALLY RESOLVED
+
+**Status:** PARTIALLY RESOLVED (only KBLI 70209 confirmed; 6 others still proposals)
+
+**Finding:** As of March 26, 2026:
+
+- Only **KBLI 70209** (other business management consulting) is formally approved for PMA closure via Gubernur Circular B.27.500.18/18066/INV/DPMPTSP (December 2025)
+- 6 other sectors (motorcycle rental, retail KBLI 47xxx, photography, travel agencies, villa/real estate KBLI 68xxx + 1 other) remain proposals under Ministry of Investment national-level review
+- DPRD Bali confirmed transition period for existing operators
+
+**Action:** New OPS-052 added to brainstorm-prompt.
+
+---
+
+### GAP-R5: DGT Form Procedure — FULLY RESOLVED
+
+**Status:** FULLY RESOLVED
+
+**Finding:** PMK 112/2025 (effective December 30, 2025) supersedes PER-25/PJ/2018. New unified DGT Form via Coretax menu LA.03-03. Key change: retroactive submission now allowed during audit/assessment. CoD validity: max 12 months or month-of-issuance. 365-day ownership rule for reduced dividend DTA rates.
+
+**Action:** New OPS-053 added to brainstorm-prompt.
+
+---
+
+_Phase 2 resolution completed: 2026-03-31 | 5 gaps processed: 1 corrected source, 3 fully resolved, 1 partially resolved_
 _Generated: 2026-03-30 | Machine: Pro (nuzantara@Nuzantara) | Source: NB-3 cross-query gap analysis_
-_Next step: Use this document to build NB-6 source content across 7 clusters (47 gaps, 13 CRITICAL)_
+_Next step: Use this document to build NB-6 source content across 7 clusters (47 gaps + 3 new OPS-051/052/053, 13 CRITICAL)_
