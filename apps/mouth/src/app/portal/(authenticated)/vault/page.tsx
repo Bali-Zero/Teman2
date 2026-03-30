@@ -9,7 +9,9 @@ import {
   Filter,
   X,
   Check,
+  FolderOpen,
 } from "lucide-react";
+import { usePortalDriveFiles } from "@/hooks/usePortalDriveFiles";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,8 @@ export default function VaultPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const { data: driveData, isLoading: isLoadingDrive } = usePortalDriveFiles();
+  const [activeTab, setActiveTab] = useState<'uploaded' | 'drive'>('uploaded');
 
   const categories = ["all", "passport", "visa", "tax", "company", "other"];
 
@@ -173,271 +177,343 @@ export default function VaultPage() {
         </p>
       </section>
 
-      {/* Upload Section */}
-      <section
-        className="rounded-lg border border-dashed p-6 text-center"
-        style={{
-          borderColor: "rgba(201,169,110,0.4)",
-          background: "rgba(201,169,110,0.05)",
-        }}
-      >
-        <label
-          htmlFor="file-upload"
-          className="flex flex-col items-center gap-2 cursor-pointer"
+      {/* Tab Switcher */}
+      <section className="flex gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
+        <button
+          onClick={() => setActiveTab('uploaded')}
+          className="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          style={activeTab === 'uploaded' ? {
+            background: 'rgba(201,169,110,0.15)',
+            color: 'var(--bz-accent-warm)',
+          } : {
+            color: 'var(--bz-text-2)',
+          }}
         >
-          {isUploading ? (
-            <Loader2
-              className="w-10 h-10 animate-spin"
-              style={{ color: "var(--bz-accent-warm)" }}
-            />
-          ) : (
-            <Upload
-              className="w-10 h-10"
-              style={{ color: "var(--bz-accent-warm)" }}
-            />
-          )}
-          <div className="text-sm font-medium">
-            {isUploading ? "Uploading..." : "Click to upload document"}
-          </div>
-          <div className="text-xs" style={{ color: "var(--bz-text-2)" }}>
-            PDF, JPG, PNG up to 10MB
-          </div>
-          <input
-            id="file-upload"
-            type="file"
-            className="hidden"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={handleFileUpload}
-            disabled={isUploading}
-          />
-        </label>
+          Uploaded ({filteredDocs.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('drive')}
+          className="flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+          style={activeTab === 'drive' ? {
+            background: 'rgba(201,169,110,0.15)',
+            color: 'var(--bz-accent-warm)',
+          } : {
+            color: 'var(--bz-text-2)',
+          }}
+        >
+          Drive Files ({driveData?.total_files ?? 0})
+        </button>
       </section>
 
-      {/* Filters */}
-      <section className="space-y-3">
-        <Input
-          type="text"
-          placeholder="Search documents..."
-          aria-label="Search documents"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full"
-        />
-
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              aria-pressed={selectedCategory === cat}
-              className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors"
-              style={
-                selectedCategory === cat
-                  ? {
-                      background:
-                        "linear-gradient(135deg, var(--bz-accent-warm), rgba(212,132,90,0.8))",
-                      color: "#0c0c0e",
-                      boxShadow: "0 4px 14px 0 rgba(212,132,90,0.39)",
-                    }
-                  : {
-                      background: "rgba(35,35,40,0.5)",
-                      backdropFilter: "blur(12px)",
-                      color: "var(--bz-text-2)",
-                    }
-              }
-            >
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Documents List */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2
-            className="text-sm font-semibold"
-            style={{ color: "var(--bz-text-2)" }}
+      {activeTab === 'uploaded' ? (
+        <>
+          {/* Upload Section */}
+          <section
+            className="rounded-lg border border-dashed p-6 text-center"
+            style={{
+              borderColor: "rgba(201,169,110,0.4)",
+              background: "rgba(201,169,110,0.05)",
+            }}
           >
-            {filteredDocs.length} Document{filteredDocs.length !== 1 ? "s" : ""}
-          </h2>
-          {(searchQuery || selectedCategory !== "all") && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedCategory("all");
-              }}
+            <label
+              htmlFor="file-upload"
+              className="flex flex-col items-center gap-2 cursor-pointer"
             >
-              <X className="w-4 h-4 mr-1" />
-              Clear filters
-            </Button>
-          )}
-        </div>
+              {isUploading ? (
+                <Loader2
+                  className="w-10 h-10 animate-spin"
+                  style={{ color: "var(--bz-accent-warm)" }}
+                />
+              ) : (
+                <Upload
+                  className="w-10 h-10"
+                  style={{ color: "var(--bz-accent-warm)" }}
+                />
+              )}
+              <div className="text-sm font-medium">
+                {isUploading ? "Uploading..." : "Click to upload document"}
+              </div>
+              <div className="text-xs" style={{ color: "var(--bz-text-2)" }}>
+                PDF, JPG, PNG up to 10MB
+              </div>
+              <input
+                id="file-upload"
+                type="file"
+                className="hidden"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+              />
+            </label>
+          </section>
 
-        {filteredDocs.length === 0 ? (
-          <div
-            className="text-center py-12"
-            style={{ color: "var(--bz-text-2)" }}
-          >
-            <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>No documents found</p>
-            {documents.length === 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadDocuments}
-                className="mt-3"
+          {/* Filters */}
+          <section className="space-y-3">
+            <Input
+              type="text"
+              placeholder="Search documents..."
+              aria-label="Search documents"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full"
+            />
+
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  aria-pressed={selectedCategory === cat}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors"
+                  style={
+                    selectedCategory === cat
+                      ? {
+                          background:
+                            "linear-gradient(135deg, var(--bz-accent-warm), rgba(212,132,90,0.8))",
+                          color: "#0c0c0e",
+                          boxShadow: "0 4px 14px 0 rgba(212,132,90,0.39)",
+                        }
+                      : {
+                          background: "rgba(35,35,40,0.5)",
+                          backdropFilter: "blur(12px)",
+                          color: "var(--bz-text-2)",
+                        }
+                  }
+                >
+                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Documents List */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2
+                className="text-sm font-semibold"
+                style={{ color: "var(--bz-text-2)" }}
               >
-                Refresh
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredDocs.map((doc) => (
+                {filteredDocs.length} Document{filteredDocs.length !== 1 ? "s" : ""}
+              </h2>
+              {(searchQuery || selectedCategory !== "all") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedCategory("all");
+                  }}
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Clear filters
+                </Button>
+              )}
+            </div>
+
+            {filteredDocs.length === 0 ? (
               <div
-                key={doc.id}
-                className="rounded-lg border p-4 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 backdrop-blur-xl"
-                style={{
-                  background: "rgba(30,30,35,0.7)",
-                  borderColor: "rgba(255,255,255,0.05)",
-                }}
+                className="text-center py-12"
+                style={{ color: "var(--bz-text-2)" }}
               >
-                <div className="flex items-start gap-3">
-                  <div
-                    className="p-2 rounded-md"
-                    style={{ background: "rgba(201,169,110,0.12)" }}
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>No documents found</p>
+                {documents.length === 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadDocuments}
+                    className="mt-3"
                   >
-                    <FileText
-                      className="w-5 h-5"
-                      style={{ color: "var(--bz-accent-warm)" }}
-                    />
+                    Refresh
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredDocs.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="rounded-lg border p-4 transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 backdrop-blur-xl"
+                    style={{
+                      background: "rgba(30,30,35,0.7)",
+                      borderColor: "rgba(255,255,255,0.05)",
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="p-2 rounded-md"
+                        style={{ background: "rgba(201,169,110,0.12)" }}
+                      >
+                        <FileText
+                          className="w-5 h-5"
+                          style={{ color: "var(--bz-accent-warm)" }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3
+                          className="font-semibold text-sm truncate"
+                          title={doc.name}
+                        >
+                          {doc.name}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full font-medium"
+                            style={getStatusStyle(doc.status)}
+                          >
+                            {doc.status}
+                          </span>
+                          <span
+                            className="text-xs"
+                            style={{ color: "var(--bz-text-2)" }}
+                          >
+                            {doc.category}
+                          </span>
+                          <span
+                            className="text-xs"
+                            style={{ color: "var(--bz-text-2)" }}
+                          >
+                            •
+                          </span>
+                          <span
+                            className="text-xs"
+                            style={{ color: "var(--bz-text-2)" }}
+                          >
+                            {doc.size}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <span
+                            className="text-xs"
+                            style={{ color: "var(--bz-text-2)" }}
+                          >
+                            Uploaded: {formatDate(doc.uploadDate)}
+                          </span>
+                          {(() => {
+                            const ageDays = Math.floor(
+                              (Date.now() - new Date(doc.uploadDate).getTime()) /
+                                86400000,
+                            );
+                            if (ageDays < 7) return null;
+                            const label =
+                              ageDays >= 365
+                                ? `${Math.floor(ageDays / 365)}y ago`
+                                : ageDays >= 30
+                                  ? `${Math.floor(ageDays / 30)}mo ago`
+                                  : `${ageDays}d ago`;
+                            return (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded-full"
+                                style={{
+                                  background: "rgba(255,255,255,0.04)",
+                                  color: "var(--bz-text-3)",
+                                }}
+                              >
+                                {label}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        {doc.expiryDate &&
+                          (() => {
+                            const daysLeft = Math.ceil(
+                              (new Date(doc.expiryDate).getTime() - Date.now()) /
+                                86400000,
+                            );
+                            const isExpired = daysLeft < 0;
+                            const chipColor = isExpired
+                              ? "bg-red-500/20 text-red-400"
+                              : daysLeft <= 30
+                                ? "bg-red-500/15 text-red-400"
+                                : daysLeft <= 90
+                                  ? "bg-amber-500/15 text-amber-400"
+                                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)]";
+                            const chipLabel = isExpired
+                              ? `Expired ${Math.abs(daysLeft)}d ago`
+                              : daysLeft === 0
+                                ? "Expires today"
+                                : daysLeft <= 365
+                                  ? `⏰ ${daysLeft}d left`
+                                  : `${Math.floor(daysLeft / 30)}mo left`;
+                            return (
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span
+                                  className="text-xs"
+                                  style={{ color: "var(--bz-text-2)" }}
+                                >
+                                  Expires: {formatDate(doc.expiryDate)}
+                                </span>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${chipColor}`}
+                                  title={formatDate(doc.expiryDate)}
+                                >
+                                  {chipLabel}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                      </div>
+                      {doc.downloadUrl && (
+                        <Button variant="ghost" size="icon" asChild>
+                          <a
+                            href={doc.downloadUrl}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Download document"
+                          >
+                            <Download className="w-4 h-4" />
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      ) : (
+        /* Drive Files Tab */
+        <section className="space-y-3">
+          {isLoadingDrive ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-lg border p-4 h-16 animate-pulse"
+                  style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }} />
+              ))}
+            </div>
+          ) : !driveData?.folders?.length && !driveData?.total_files ? (
+            <div className="text-center py-12" style={{ color: 'var(--bz-text-2)' }}>
+              <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>No Drive folder linked to your account</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--bz-text-3)' }}>
+                Contact your case manager to set up document sharing.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {driveData?.folders?.map((folder) => (
+                <div
+                  key={folder.id}
+                  className="rounded-lg border p-4 flex items-center gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                  style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
+                >
+                  <div className="p-2 rounded-md" style={{ background: 'rgba(201,169,110,0.12)' }}>
+                    <FolderOpen className="w-5 h-5" style={{ color: 'var(--bz-accent-warm)' }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3
-                      className="font-semibold text-sm truncate"
-                      title={doc.name}
-                    >
-                      {doc.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-full font-medium"
-                        style={getStatusStyle(doc.status)}
-                      >
-                        {doc.status}
-                      </span>
-                      <span
-                        className="text-xs"
-                        style={{ color: "var(--bz-text-2)" }}
-                      >
-                        {doc.category}
-                      </span>
-                      <span
-                        className="text-xs"
-                        style={{ color: "var(--bz-text-2)" }}
-                      >
-                        •
-                      </span>
-                      <span
-                        className="text-xs"
-                        style={{ color: "var(--bz-text-2)" }}
-                      >
-                        {doc.size}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span
-                        className="text-xs"
-                        style={{ color: "var(--bz-text-2)" }}
-                      >
-                        Uploaded: {formatDate(doc.uploadDate)}
-                      </span>
-                      {(() => {
-                        const ageDays = Math.floor(
-                          (Date.now() - new Date(doc.uploadDate).getTime()) /
-                            86400000,
-                        );
-                        if (ageDays < 7) return null;
-                        const label =
-                          ageDays >= 365
-                            ? `${Math.floor(ageDays / 365)}y ago`
-                            : ageDays >= 30
-                              ? `${Math.floor(ageDays / 30)}mo ago`
-                              : `${ageDays}d ago`;
-                        return (
-                          <span
-                            className="text-[10px] px-1.5 py-0.5 rounded-full"
-                            style={{
-                              background: "rgba(255,255,255,0.04)",
-                              color: "var(--bz-text-3)",
-                            }}
-                          >
-                            {label}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    {doc.expiryDate &&
-                      (() => {
-                        const daysLeft = Math.ceil(
-                          (new Date(doc.expiryDate).getTime() - Date.now()) /
-                            86400000,
-                        );
-                        const isExpired = daysLeft < 0;
-                        const chipColor = isExpired
-                          ? "bg-red-500/20 text-red-400"
-                          : daysLeft <= 30
-                            ? "bg-red-500/15 text-red-400"
-                            : daysLeft <= 90
-                              ? "bg-amber-500/15 text-amber-400"
-                              : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)]";
-                        const chipLabel = isExpired
-                          ? `Expired ${Math.abs(daysLeft)}d ago`
-                          : daysLeft === 0
-                            ? "Expires today"
-                            : daysLeft <= 365
-                              ? `⏰ ${daysLeft}d left`
-                              : `${Math.floor(daysLeft / 30)}mo left`;
-                        return (
-                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <span
-                              className="text-xs"
-                              style={{ color: "var(--bz-text-2)" }}
-                            >
-                              Expires: {formatDate(doc.expiryDate)}
-                            </span>
-                            <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${chipColor}`}
-                              title={formatDate(doc.expiryDate)}
-                            >
-                              {chipLabel}
-                            </span>
-                          </div>
-                        );
-                      })()}
+                    <p className="text-sm font-medium truncate">{folder.name}</p>
                   </div>
-                  {doc.downloadUrl && (
-                    <Button variant="ghost" size="icon" asChild>
-                      <a
-                        href={doc.downloadUrl}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="Download document"
-                      >
-                        <Download className="w-4 h-4" />
-                      </a>
-                    </Button>
-                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+              ))}
+              <p className="text-xs text-center pt-2" style={{ color: 'var(--bz-text-3)' }}>
+                {driveData?.total_files ?? 0} files &bull; {driveData?.root_name ?? 'Drive'}
+              </p>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
