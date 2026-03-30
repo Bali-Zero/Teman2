@@ -36,14 +36,12 @@ const SENTIMENT_BG = {
 };
 
 import { getCountryFlag } from '@/lib/utils/nationality-flags';
-import {
-  getTeamMemberAvatar,
-  TEAM_MEMBERS,
-} from '@/app/(workspace)/clients/[id]/components/constants';
+import { useTeamMemberOptions } from '@/hooks/useTeamMembers';
 
 export const ClientCard = React.memo(
   ({ client, isDragging }: ClientCardProps) => {
     const router = useRouter();
+    const { options: teamMemberOptions } = useTeamMemberOptions();
     const [isMounted, setIsMounted] = useState(false);
 
     // Fix hydration mismatch: only render dates on client
@@ -82,9 +80,9 @@ export const ClientCard = React.memo(
 
     // Assigned team member
     const assignedMember = client.assigned_to
-      ? TEAM_MEMBERS.find((m) => m.value === client.assigned_to)
+      ? teamMemberOptions.find((m) => m.value === client.assigned_to)
       : null;
-    const assignedAvatar = client.assigned_to ? getTeamMemberAvatar(client.assigned_to) : null;
+    const assignedAvatar = assignedMember?.avatar ?? null;
     const assignedName = assignedMember?.label || client.assigned_to?.split('@')[0] || null;
 
     return (
