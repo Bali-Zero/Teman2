@@ -2702,3 +2702,108 @@ Questa è una notifica automatica da Bali Zero CRM.
             "checks": checks,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
+
+    # ================================================
+    # BILLING
+    # ================================================
+
+    async def get_billing(self, client_id: int) -> dict[str, Any]:
+        """
+        Get all invoices for a client with summary statistics.
+
+        Reads from the `invoices` table (primary) joined with practices for context.
+        Falls back to practices.documents JSONB if invoices table doesn't exist.
+
+        Returns format expected by frontend BillingResponse type:
+            - invoices: list of invoice dicts
+            - summary: {total_invoiced, total_paid, total_pending, count}
+        """
+        async with self.pool.acquire() as conn:
+            # Try invoices table first (primary source)
+            try:
+                rows = await conn.fetch(
+                    """
+                    SELECT
+                        i.id,
+                        i.invoice_number,
+                        i.amount_idr,
+                        i.invoice_source,
+                        i.drive_file_id,
+                        i.drive_web_link,
+                        i.email_sent_to_client,
+                        i.generated_at,
+                        i.created_at,
+                        i.practice_id,
+                        pt.name AS practice_name,
+                        pt.category AS practice_category,
+                        p.payment_status,
+                        p.quoted_price
+                    FROM invoices i
+                    JOIN practices p ON p.id = i.practice_id
+                    JOIN practice_types pt ON pt.id = p.practice_type_id
+                    WHERE i.client_id = $1
+                    ORDER BY i.created_at DESC
+                    """,
+                    client_id,
+                )
+            except Exception as e:
+                # invoices table may not exist — fallback to practices JSONB
+                logger.warning(f"invoices table query failed, falling back to JSONB: {e}")
+                rows = []
+
+        invoices = []
+        total_invoiced = 0.0
+        total_paid = 0.0
+
+        for row in rows:
+            amount = float(row["amount_idr"] or 0)
+            payment_status = row["payment_status"] or "pending"
+            total_invoiced += amount
+            if payment_status == "paid":
+                total_paid += amount
+
+            invoices.append({
+                "id": row["id"],
+                "invoice_number": row["invoice_number"],
+                "amount_idr": amount,
+                "invoice_source": row["invoice_source"],
+                "has_pdf": bool(row["drive_file_id"]),
+                "drive_web_link": row["drive_web_link"],
+                "email_sent": bool(row["email_sent_to_client"]),
+                "generated_at": row["generated_at"].isoformat() if row["generated_at"] else None,
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "practice_id": row["practice_id"],
+                "practice_name": row["practice_name"],
+                "practice_category": row["practice_category"],
+                "payment_status": payment_status,
+            })
+
+        return {
+            "invoices": invoices,
+            "summary": {
+                "total_invoiced": total_invoiced,
+                "total_paid": total_paid,
+                "total_pending": total_invoiced - total_paid,
+                "count": len(invoices),
+            },
+        }
+
+    async def get_invoice_pdf_url(self, client_id: int, invoice_id: int) -> dict[str, str] | None:
+        """Get Drive download URL for an invoice PDF. Returns None if not found."""
+        async with self.pool.acquire() as conn:
+            try:
+                row = await conn.fetchrow(
+                    "SELECT drive_web_link, drive_file_id FROM invoices WHERE id = $1 AND client_id = $2",
+                    invoice_id,
+                    client_id,
+                )
+            except Exception:
+                return None
+
+        if not row or (not row["drive_web_link"] and not row["drive_file_id"]):
+            return None
+
+        return {
+            "download_url": row["drive_web_link"],
+            "drive_file_id": row["drive_file_id"],
+        }
