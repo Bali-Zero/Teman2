@@ -419,7 +419,7 @@ Scripts non schedulati, usati manualmente o da ai-dispatch.
 | **auto_sentinel.sh** | Punta a `apps/core/sentinel.py` che non esiste | ✅ FIXATO | `sentinel` wrapper ora punta a `apps/evaluator/core_guardian/watchdog.py` |
 | **auto_kb_ingest.sh** | Script Python target non presenti | ✅ FIXATO | `run_if_exists()` wrapper — skip graceful con log se script mancante |
 | **auto_judgement_day.sh** | `ragas` non installato nel venv Air | ✅ FIXATO | Check dipendenza prima del run, skip con messaggio di istruzioni |
-| **crm_automation_engine.py** | Usa `localhost:15432` (tunnel DB) invece del DB reale | ⚠️ APERTO | Richiede `DATABASE_URL` env var dal tunnel o accesso diretto a Fly Postgres |
+| **crm_automation_engine.py** | Usa `localhost:15432` (tunnel DB) invece del DB reale | ✅ FIXATO | LaunchAgent `com.nuzantara.fly-pg-tunnel` mantiene `fly proxy 15432:5432` sempre attivo su Air (KeepAlive=true) |
 | **system_doctor.py** (cron) | Cron usa `--notify-telegram` ma il flag non esiste nel parser | ✅ FIXATO | Aggiunto `--notify-telegram` all'argparse |
 | **T4 monitor** | OpenAI API key assente nel contesto di esecuzione cron | ✅ FIXATO | `run_t4_monitor.sh` ora fa `source backend/.env` prima dell'esecuzione |
 | **seo_guardian_agent.py** | `npx` non trovato nel PATH del cron | ✅ FIXATO | Usa `/opt/homebrew/bin/npx` path assoluto con fallback |
