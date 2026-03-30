@@ -86,6 +86,7 @@ def include_routers(api: FastAPI) -> None:
         performance,
         portal,
         portal_invite,
+        portal_process_timeline,
         portal_taxes,
         portal_visa,
         prime,
@@ -166,6 +167,7 @@ def include_routers(api: FastAPI) -> None:
     # Portal routers (Client-facing)
     api.include_router(portal.router)
     api.include_router(portal_invite.router)
+    api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)
 
