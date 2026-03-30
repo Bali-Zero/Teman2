@@ -25,3 +25,5 @@ export {
   PortalNotificationsList,
   PortalNotificationBadge,
 } from "./PortalNotifications";
+
+export { ProcessStepper } from "./ProcessStepper";
