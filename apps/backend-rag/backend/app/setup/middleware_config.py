@@ -12,6 +12,7 @@ from backend.app.setup.cors_config import register_cors_middleware
 from backend.middleware.activity_logging import ActivityLoggingMiddleware
 from backend.middleware.error_monitoring import ErrorMonitoringMiddleware
 from backend.middleware.hybrid_auth import HybridAuthMiddleware
+from backend.middleware.pii_scanner import PIIScannerMiddleware
 from backend.middleware.rate_limiter import RateLimitMiddleware
 from backend.middleware.request_tracing import RequestTracingMiddleware
 
@@ -84,6 +85,10 @@ def register_middleware(app: FastAPI) -> None:
     # Add Activity Logging middleware (logs all API calls for audit trail)
     app.add_middleware(ActivityLoggingMiddleware)
 
+    # Add PII Scanner middleware (redacts Indonesian PII from /api/agentic/* responses)
+    # UU PDP No. 27/2022 Art. 35, 36, 38 compliance
+    app.add_middleware(PIIScannerMiddleware)
+
     logger.info(
-        f"✅ Middleware registered: CORS + {compression} + Auth + Tracing + ErrorMonitoring + RateLimiting + ActivityLogging",
+        f"✅ Middleware registered: CORS + {compression} + Auth + Tracing + ErrorMonitoring + RateLimiting + ActivityLogging + PIIScanner",
     )
