@@ -169,10 +169,15 @@ log "📌 Topic: $TOPIC"
 # FASE 1 — CHATGPT RESEARCH
 # ══════════════════════════════════════════════════════════
 log ""
-log "━━━ FASE 1: RESEARCH (ChatGPT + Exa + Gemini parallelo) (T+00:00) ━━━"
+log "━━━ FASE 1: RESEARCH (ChatGPT + Exa + Gemini + xAI + NLM parallelo) (T+00:00) ━━━"
 
 if ! $DRY_RUN; then
-  # Launch all 3 researchers in parallel
+  # Load GROK_API_KEY from .env if not in environment
+  if [[ -z "${GROK_API_KEY:-}" ]]; then
+    export GROK_API_KEY=$(grep '^GROK_API_KEY=' "$WAR_ROOM/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
+  fi
+
+  # Launch all 5 researchers in parallel
   run_phase "chatgpt_researcher" 600 \
     "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/01_chatgpt_researcher.py" \
     --topic "$TOPIC" \
@@ -195,10 +200,26 @@ if ! $DRY_RUN; then
     &
   GEMINI_PID=$!
 
+  run_phase "xai_researcher" 120 \
+    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/10_xai_researcher.py" \
+    --topic "$TOPIC" \
+    --output "$OUTPUT/raw/xai_dump.json" \
+    &
+  XAI_PID=$!
+
+  run_phase "nlm_researcher" 240 \
+    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/11_nlm_researcher.py" \
+    --topic "$TOPIC" \
+    --output "$OUTPUT/raw/nlm_dump.json" \
+    &
+  NLM_PID=$!
+
   # Wait for all (non-blocking failures)
   wait $CHATGPT_PID 2>/dev/null || log "⚠️  ChatGPT research fallito"
   wait $EXA_PID 2>/dev/null || log "⚠️  Exa research fallito"
   wait $GEMINI_PID 2>/dev/null || log "⚠️  Gemini research fallito"
+  wait $XAI_PID 2>/dev/null || log "⚠️  xAI research fallito"
+  wait $NLM_PID 2>/dev/null || log "⚠️  NLM research fallito"
 
   if [[ -f "$OUTPUT/raw/chatgpt_dump.json" ]]; then
     CHATGPT_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/chatgpt_dump.json')); print(d.get('count', 0))" 2>/dev/null || echo "0")
@@ -211,6 +232,14 @@ if ! $DRY_RUN; then
   if [[ -f "$OUTPUT/raw/gemini_dump.json" ]]; then
     GEMINI_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/gemini_dump.json')); print(d.get('count', 0))" 2>/dev/null || echo "0")
     log "✅ Gemini: $GEMINI_COUNT legal facts"
+  fi
+  if [[ -f "$OUTPUT/raw/xai_dump.json" ]]; then
+    XAI_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/xai_dump.json')); print(d.get('count', 0))" 2>/dev/null || echo "0")
+    log "✅ xAI Grok: $XAI_COUNT signals (facts + X)"
+  fi
+  if [[ -f "$OUTPUT/raw/nlm_dump.json" ]]; then
+    NLM_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/nlm_dump.json')); print(d.get('count', 0))" 2>/dev/null || echo "0")
+    log "✅ NLM NB-7: $NLM_COUNT content strategy insights"
   fi
 fi
 
@@ -229,6 +258,8 @@ for name, path in [
     ('chatgpt', output_raw / 'chatgpt_dump.json'),
     ('exa',     output_raw / 'exa_dump.json'),
     ('gemini',  output_raw / 'gemini_dump.json'),
+    ('xai',     output_raw / 'xai_dump.json'),
+    ('nlm',     output_raw / 'nlm_dump.json'),
     ('intel',   output_raw / 'intel_preseed.json'),
 ]:
     if not path.exists():
