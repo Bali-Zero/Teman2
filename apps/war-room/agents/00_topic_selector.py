@@ -1,133 +1,303 @@
 #!/usr/bin/env python3
 """
-FASE 0 — Topic Selector
-=======================
-Analizza gli articoli recenti dall'intel scraper + Google Trends (via Gemini CLI)
-e sceglie il topic ottimale per il carousel Bali Zero.
+FASE 0 — Topic Selector (Multi-Source)
+=======================================
+Collects signals from 4 parallel sources, then DeepSeek synthesizes the best topic.
+
+Sources:
+  1. Exa AI search — Indonesian news + legal domains, last 72h
+  2. NLM NB-7 query — audience pain points + content gaps
+  3. xAI Grok — X/Twitter trending signals on Indonesia business
+  4. Intel pre-seed — local scraper enriched articles (if fresh)
+
+Synthesis:
+  DeepSeek (via API) — reads all signals, picks ONE topic with angle + rationale
+  Fallback: deterministic scoring on intel articles
 
 Input:  intel_output_latest.json (bali-intel-scraper)
 Output: output/strategy/selected_topic.json
   {
-    "topic": "string — topic strategico formulato per carousel",
+    "topic": "string — topic strategico formulato per carousel (max 65 chars)",
     "angle": "string — angolo asimmetrico per foreign investors",
     "why":   "string — perché questo topic ora",
-    "trend_signal": "string — segnale Google Trends se disponibile",
-    "source_articles": ["title1", "title2", ...]
+    "trend_signal": "string — segnale trend se disponibile",
+    "source_articles": ["title1", "title2", "title3"],
+    "sources_used": ["exa", "nlm", "xai", "intel"]
   }
 """
 import json
 import sys
+import os
 import argparse
 import subprocess
-from pathlib import Path
+import urllib.request
+import urllib.error
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from pathlib import Path
 
 
-GEMINI_BIN = "gemini"
+# ── Config ────────────────────────────────────────────────────────────────────
+NLM_NB7_ID   = "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8"   # NB-7 content strategy
+XAI_BASE_URL = "https://api.x.ai/v1"
+GROK_MODEL   = "grok-3"
+DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
+EXA_BASE_URL = "https://api.exa.ai"
 
-TOPIC_SELECTOR_PROMPT = """STEP 1 — Search Google Trends now:
-Search Google Trends for these terms this week in Indonesia: "Coretax", "KITAS", "OSS perizinan", "pajak Indonesia", "visa Bali", "PT PMA", "KBLI 2025". Note which terms are rising.
+INDONESIAN_LEGAL_DOMAINS = [
+    "hukumonline.com", "ddtc.co.id", "ddtcnews.com",
+    "bisnis.com", "cnbcindonesia.com", "thejakartapost.com",
+    "imigrasi.go.id", "bkpm.go.id", "pajak.go.id", "oss.go.id",
+]
 
-STEP 2 — Search Google for breaking news:
-Search: "Indonesia business regulation site:hukumonline.com OR site:ddtcnews.com OR site:bisnis.com last 7 days". Extract the top 3 most urgent stories.
+SYNTHESIS_PROMPT = """You are the editorial director of Bali Zero, an Indonesian business services firm targeting foreign investors and expats in Bali.
 
-STEP 3 — Cross-reference with this intel from today:
-{intel_articles}
+You have received intelligence from multiple sources this morning. Your job: pick ONE topic for a carousel post.
 
-STEP 4 — Pick ONE topic. Rules:
-- Must directly affect foreign investors or expats in Bali (visa, tax, permits, property ownership)
-- Must have a rising trend signal OR a hard deadline in the next 30 days
-- Must have a non-obvious "second consequence" (not just the headline)
+RULES for the best topic:
+- Must directly affect foreign investors or expats in Bali (visa, tax, permits, property, company setup)
+- Must have urgency: rising trend, hard deadline in 30 days, or enforcement risk
+- Must have an asymmetric angle — the "second-order consequence" most people are missing
+- Max 65 characters for the topic string
 - Formulate as a strategic angle, NOT a news headline
 
 GOOD: "Coretax Deadline: The Gap Nobody Warned You About"
 GOOD: "New KBLI Rules Are Quietly Voiding Existing PT PMAs"
 BAD: "Indonesia Coretax update" (too generic)
-BAD: "Bali visa news" (too vague)
 
-Output ONLY this JSON — no other text, no explanation:
+INTELLIGENCE:
+{signals}
+
+Output ONLY this JSON — no markdown, no explanation:
 {{
   "topic": "strategic angle max 65 chars",
   "angle": "the second-order consequence nobody is covering (1 sentence)",
   "why": "timing/urgency — why this week specifically (1 sentence)",
-  "trend_signal": "exact trend data you found (rising/stable/breakout + search volume if available)",
-  "source_articles": ["article title 1", "article title 2", "article title 3"]
+  "trend_signal": "strongest trend signal found (or 'no trend data')",
+  "source_articles": ["title 1", "title 2", "title 3"]
 }}"""
 
 
-def run_gemini(prompt: str, timeout: int = 180) -> str:
-    """Call Gemini CLI — has native Google Search + Trends access."""
-    result = subprocess.run(
-        [GEMINI_BIN, "-p", prompt],
-        capture_output=True, text=True, timeout=timeout
+def fetch_exa_signals(topic_hint: str, api_key: str) -> list:
+    """Exa AI search — Indonesian news last 72h."""
+    if not api_key:
+        print("  ⚠️  EXA_API_KEY not set — skipping Exa", file=sys.stderr)
+        return []
+
+    queries = [
+        f"{topic_hint} Indonesia business regulation" if topic_hint else "Indonesia business regulation expat investor 2026",
+        "Indonesia visa KITAS permit regulation 2026",
+        "Indonesia tax pajak regulation update 2026",
+    ]
+
+    import httpx
+    results = []
+    from datetime import timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    for q in queries[:2]:  # 2 queries max
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.post(
+                    f"{EXA_BASE_URL}/search",
+                    json={
+                        "query": q,
+                        "num_results": 8,
+                        "type": "neural",
+                        "start_published_date": cutoff,
+                        "include_domains": INDONESIAN_LEGAL_DOMAINS[:6],
+                        "contents": {"text": {"max_characters": 500}},
+                    },
+                    headers={"x-api-key": api_key, "Content-Type": "application/json"},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    for r in data.get("results", []):
+                        results.append({
+                            "title": r.get("title", ""),
+                            "brief": (r.get("text") or r.get("snippet") or "")[:300],
+                            "source": r.get("url", ""),
+                            "_src": "exa",
+                        })
+        except Exception as e:
+            print(f"  ⚠️  Exa query failed: {e}", file=sys.stderr)
+
+    print(f"  ✅ Exa: {len(results)} articles", file=sys.stderr)
+    return results
+
+
+def fetch_nlm_signals(topic_hint: str) -> list:
+    """NLM NB-7 query — content strategy + audience pain points."""
+    query = (
+        f"What are the most pressing concerns for foreign investors and expats in Bali right now"
+        + (f" regarding {topic_hint}" if topic_hint else "")
+        + "? List top 3-5 pain points or questions they have this week. Be specific."
     )
-    if result.returncode == 0 and result.stdout.strip():
-        return result.stdout.strip()
-    raise RuntimeError(f"Gemini error (rc={result.returncode}): {result.stderr[:200]}")
+    try:
+        result = subprocess.run(
+            ["nlm", "query", "notebook", NLM_NB7_ID, query, "--timeout", "60"],
+            capture_output=True, text=True, timeout=90
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            raise RuntimeError(result.stderr.strip() or "empty response")
+
+        output = result.stdout.strip()
+        try:
+            data = json.loads(output)
+            if "value" in data and isinstance(data["value"], dict):
+                data = data["value"]
+            answer = data.get("answer", output)
+        except json.JSONDecodeError:
+            answer = output
+
+        signals = []
+        for line in answer.splitlines():
+            line = line.strip(" •-*0123456789.")
+            if len(line) > 20:
+                signals.append({"title": line[:120], "brief": "", "_src": "nlm"})
+
+        print(f"  ✅ NLM NB-7: {len(signals)} pain points", file=sys.stderr)
+        return signals[:5]
+
+    except Exception as e:
+        print(f"  ⚠️  NLM NB-7 failed: {e}", file=sys.stderr)
+        return []
 
 
-def run_qwen_fallback(articles: list, topic_hint: str = "") -> dict:
-    """Fallback: Qwen local — analisi senza Google Trends."""
-    import urllib.request, urllib.error
+def fetch_xai_signals(topic_hint: str, api_key: str) -> list:
+    """xAI Grok — X/Twitter trending signals on Indonesia business."""
+    if not api_key:
+        print("  ⚠️  GROK_API_KEY not set — skipping xAI", file=sys.stderr)
+        return []
 
-    titles = [a.get("title", "") for a in articles[:10]]
-    categories = list(set(a.get("category", "") for a in articles if a.get("category")))
+    prompt = (
+        f"Search X/Twitter for the most discussed topics among expats and foreign investors in Indonesia/Bali this week"
+        + (f", especially about {topic_hint}" if topic_hint else "")
+        + ". Focus on: visa changes, tax enforcement, business permits, property rules. "
+        "List top 5 trending topics/concerns with their urgency level. Be concise."
+    )
 
-    # Trova topic dominante per frequenza categoria
+    try:
+        import httpx
+        with httpx.Client(timeout=60) as client:
+            resp = client.post(
+                f"{XAI_BASE_URL}/chat/completions",
+                json={
+                    "model": GROK_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.2,
+                    "max_tokens": 600,
+                },
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+            )
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"].strip()
+
+        signals = []
+        for line in content.splitlines():
+            line = line.strip(" •-*0123456789.")
+            if len(line) > 20:
+                signals.append({"title": line[:150], "brief": "", "_src": "xai"})
+
+        print(f"  ✅ xAI Grok: {len(signals)} X signals", file=sys.stderr)
+        return signals[:5]
+
+    except Exception as e:
+        print(f"  ⚠️  xAI Grok failed: {e}", file=sys.stderr)
+        return []
+
+
+def synthesize_with_deepseek(all_signals: list, api_key: str) -> dict | None:
+    """DeepSeek — synthesizes all signals into best topic."""
+    if not api_key:
+        print("  ⚠️  DEEPSEEK_API_KEY not set — skipping DeepSeek synthesis", file=sys.stderr)
+        return None
+
+    # Group signals by source for clarity
+    by_source = {}
+    for s in all_signals:
+        src = s.get("_src", "unknown")
+        by_source.setdefault(src, []).append(s)
+
+    signals_text = ""
+    for src, items in by_source.items():
+        signals_text += f"\n[{src.upper()} — {len(items)} signals]\n"
+        for s in items[:5]:
+            title = s.get("title", "")
+            brief = s.get("brief", "")[:150]
+            signals_text += f"  • {title}"
+            if brief:
+                signals_text += f": {brief}"
+            signals_text += "\n"
+
+    prompt = SYNTHESIS_PROMPT.replace("{signals}", signals_text.strip())
+
+    try:
+        payload = json.dumps({
+            "model": "deepseek-chat",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 600,
+            "temperature": 0.3,
+        }).encode()
+
+        req = urllib.request.Request(
+            DEEPSEEK_URL,
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            }
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = json.loads(resp.read())
+            content = data["choices"][0]["message"]["content"].strip()
+
+        # Extract JSON
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+        elif "{" in content:
+            start, end = content.find("{"), content.rfind("}") + 1
+            content = content[start:end]
+
+        result = json.loads(content)
+        print(f"  ✅ DeepSeek synthesis: {result.get('topic', '')[:50]}", file=sys.stderr)
+        return result
+
+    except Exception as e:
+        print(f"  ⚠️  DeepSeek synthesis failed: {e}", file=sys.stderr)
+        return None
+
+
+def deterministic_fallback(articles: list, topic_hint: str = "") -> dict:
+    """Last-resort: pick best article from intel scraper by score."""
     from collections import Counter
-    cat_counts = Counter(a.get("category", "OTHER") for a in articles)
+    cat_counts = Counter(a.get("category") or a.get("qwen_category", "OTHER") for a in articles)
     dominant_cat = cat_counts.most_common(1)[0][0] if cat_counts else "GENERAL"
 
-    # Trova articolo con score più alto nella categoria dominante
-    top_articles = [a for a in articles if a.get("category") == dominant_cat]
-    top_articles.sort(key=lambda x: x.get("qwen_score", 0), reverse=True)
-    best = top_articles[0] if top_articles else (articles[0] if articles else {})
-
+    top = sorted(articles, key=lambda a: a.get("qwen_score", 0), reverse=True)
+    best = top[0] if top else {}
     topic = topic_hint or best.get("title", "Indonesia Business Intelligence")[:60]
 
-    prompt = f"""You are an editor for Bali Zero, targeting foreign investors in Bali.
-
-Top articles this week (category: {dominant_cat}):
-{json.dumps([a.get('title','') for a in top_articles[:5]], ensure_ascii=False)}
-
-Reformulate the dominant topic as a strategic carousel angle for foreign investors.
-Output ONLY JSON: {{"topic": "...", "angle": "...", "why": "...", "trend_signal": "no trends data", "source_articles": [...]}}"""
-
-    for model in ["qwen3.5:9b", "gemma3:12b"]:
-        try:
-            payload = json.dumps({
-                "model": model, "prompt": prompt, "stream": False,
-                "options": {"temperature": 0.3, "num_predict": 400}
-            }).encode()
-            req = urllib.request.Request(
-                "http://localhost:11434/api/generate",
-                data=payload, headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=60) as r:
-                resp = json.loads(r.read())
-                text = resp.get("response", "").strip()
-                # Extract JSON
-                if "{" in text:
-                    start, end = text.find("{"), text.rfind("}") + 1
-                    return json.loads(text[start:end])
-        except Exception:
-            continue
-
-    # Hard fallback
     return {
         "topic": topic,
-        "angle": f"Key regulatory implications of {dominant_cat} for foreign investors",
-        "why": "Most covered topic in today's Indonesian business news",
-        "trend_signal": "no trends data",
-        "source_articles": titles[:3]
+        "angle": f"Key regulatory implications for foreign investors",
+        "why": "Top story in today's Indonesian business intelligence",
+        "trend_signal": "no trend data (deterministic fallback)",
+        "source_articles": [a.get("title", "") for a in top[:3]],
+        "sources_used": ["intel_fallback"],
     }
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--intel",   required=True,  help="Path a intel_output_latest.json")
-    parser.add_argument("--output",  required=True,  help="Path output selected_topic.json")
-    parser.add_argument("--hint",    default="",     help="Topic hint opzionale (override parziale)")
+    parser.add_argument("--intel",  required=True, help="Path a intel_output_latest.json")
+    parser.add_argument("--output", required=True, help="Path output selected_topic.json")
+    parser.add_argument("--hint",   default="",    help="Topic hint opzionale")
     args = parser.parse_args()
 
     intel_path = Path(args.intel)
@@ -140,73 +310,73 @@ def main():
     if not articles:
         articles = data.get("articles", [])
 
-    if not articles:
-        print("❌ No articles in intel file", file=sys.stderr)
-        sys.exit(1)
-
-    # Top 15 per score
     articles.sort(key=lambda a: a.get("qwen_score", 0), reverse=True)
-    top15 = articles[:15]
-
-    print(f"🎯 Topic Selector — {len(top15)} articles analized", file=sys.stderr)
-
-    # Build intel summary for Gemini
-    intel_summary = []
-    for a in top15:
-        enrich = a.get("enrichment", {})
-        brief = enrich.get("executive_brief") or enrich.get("the_facts") or ""
-        intel_summary.append({
-            "title":    a.get("title", ""),
+    top_articles = articles[:15]
+    intel_signals = [
+        {
+            "title": a.get("title", ""),
+            "brief": str((a.get("enrichment") or {}).get("executive_brief") or
+                         (a.get("enrichment") or {}).get("the_facts") or "")[:200],
             "category": a.get("category") or a.get("qwen_category", ""),
-            "score":    a.get("qwen_score", 0),
-            "brief":    str(brief)[:200],
-            "source":   a.get("url", "")[:80],
-        })
+            "_src": "intel",
+        }
+        for a in top_articles
+    ]
 
-    intel_str = json.dumps(intel_summary, ensure_ascii=False, indent=2)
-    prompt = TOPIC_SELECTOR_PROMPT.replace("{intel_articles}", intel_str)
-    if args.hint:
-        prompt += f"\n\nUSER HINT: The user suggests focusing on: {args.hint}"
+    # API keys
+    exa_key       = os.environ.get("EXA_API_KEY", "")
+    grok_key      = os.environ.get("GROK_API_KEY", "")
+    deepseek_key  = os.environ.get("DEEPSEEK_API_KEY", "")
 
+    print(f"🎯 Topic Selector (multi-source) — {len(top_articles)} intel articles", file=sys.stderr)
+    print(f"   Sources: intel ✅ | exa {'✅' if exa_key else '❌'} | nlm ✅ | xai {'✅' if grok_key else '❌'} | deepseek {'✅' if deepseek_key else '❌'}", file=sys.stderr)
+
+    # ── Fetch all signals in parallel ──────────────────────────────────────────
+    all_signals = list(intel_signals)
+    sources_used = ["intel"]
+
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        futures = {
+            ex.submit(fetch_exa_signals, args.hint, exa_key): "exa",
+            ex.submit(fetch_nlm_signals, args.hint): "nlm",
+            ex.submit(fetch_xai_signals, args.hint, grok_key): "xai",
+        }
+        for f in as_completed(futures):
+            src = futures[f]
+            try:
+                signals = f.result()
+                if signals:
+                    all_signals.extend(signals)
+                    sources_used.append(src)
+            except Exception as e:
+                print(f"  ⚠️  {src} fetch failed: {e}", file=sys.stderr)
+
+    print(f"   Total signals: {len(all_signals)} from {sources_used}", file=sys.stderr)
+
+    # ── Synthesize with DeepSeek ───────────────────────────────────────────────
     result = None
-
-    # Try Gemini (has Google Trends access)
-    print("🔍 Querying Gemini + Google Trends...", file=sys.stderr)
-    try:
-        response = run_gemini(prompt, timeout=180)
-
-        # Extract JSON
-        if "```json" in response:
-            response = response.split("```json")[1].split("```")[0].strip()
-        elif "{" in response:
-            start, end = response.find("{"), response.rfind("}") + 1
-            response = response[start:end]
-
-        result = json.loads(response)
-        print(f"✅ Gemini selected topic: {result.get('topic')}", file=sys.stderr)
-        print(f"   Trend signal: {result.get('trend_signal', 'N/A')}", file=sys.stderr)
-
-    except subprocess.TimeoutExpired:
-        print("⚠️  Gemini timeout — usando Qwen fallback", file=sys.stderr)
-    except RuntimeError as e:
-        print(f"⚠️  Gemini unavailable: {e} — usando Qwen fallback", file=sys.stderr)
-    except (json.JSONDecodeError, ValueError) as e:
-        print(f"⚠️  Gemini JSON invalido: {e} — usando Qwen fallback", file=sys.stderr)
+    if deepseek_key and all_signals:
+        print("🧠 DeepSeek synthesis...", file=sys.stderr)
+        result = synthesize_with_deepseek(all_signals, deepseek_key)
 
     if not result:
-        print("🔄 Qwen local fallback (no trends)...", file=sys.stderr)
-        result = run_qwen_fallback(top15, args.hint)
-        print(f"✅ Qwen selected topic: {result.get('topic')}", file=sys.stderr)
+        print("↩️  Deterministic fallback (no DeepSeek or synthesis failed)", file=sys.stderr)
+        result = deterministic_fallback(top_articles, args.hint)
 
     # Add metadata
     result["selected_at"] = datetime.now().isoformat()
-    result["articles_analyzed"] = len(top15)
+    result["articles_analyzed"] = len(top_articles)
+    result["signals_total"] = len(all_signals)
+    result.setdefault("sources_used", sources_used)
 
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2))
-    print(f"✅ Topic → {args.output}", file=sys.stderr)
 
-    # Print topic to stdout per pipeline.sh
+    print(f"✅ Topic: {result['topic']}", file=sys.stderr)
+    print(f"   Angle: {result.get('angle','')[:80]}", file=sys.stderr)
+    print(f"   Trend: {result.get('trend_signal','')[:60]}", file=sys.stderr)
+
+    # Stdout per pipeline.sh
     print(result["topic"])
 
 

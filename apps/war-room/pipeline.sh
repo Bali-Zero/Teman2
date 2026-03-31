@@ -166,25 +166,16 @@ fi
 log "📌 Topic: $TOPIC"
 
 # ══════════════════════════════════════════════════════════
-# FASE 1 — CHATGPT RESEARCH
+# FASE 1 — RESEARCH PARALLELA (Exa + xAI + NLM)
+# ChatGPT e Gemini researcher rimossi (inaffidabili)
 # ══════════════════════════════════════════════════════════
 log ""
-log "━━━ FASE 1: RESEARCH (ChatGPT + Exa + Gemini + xAI + NLM parallelo) (T+00:00) ━━━"
+log "━━━ FASE 1: RESEARCH (Exa + xAI + NLM parallelo) (T+00:00) ━━━"
 
 if ! $DRY_RUN; then
-  # Load GROK_API_KEY from .env if not in environment
-  if [[ -z "${GROK_API_KEY:-}" ]]; then
-    export GROK_API_KEY=$(grep '^GROK_API_KEY=' "$WAR_ROOM/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
-  fi
-
-  # Launch all 5 researchers in parallel
-  run_phase "chatgpt_researcher" 600 \
-    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/01_chatgpt_researcher.py" \
-    --topic "$TOPIC" \
-    --output "$OUTPUT/raw/chatgpt_dump.json" \
-    --sentiment-output "$OUTPUT/raw/social_dump.json" \
-    &
-  CHATGPT_PID=$!
+  # Load API keys from .env if not in environment
+  [[ -z "${GROK_API_KEY:-}" ]] && export GROK_API_KEY=$(grep '^GROK_API_KEY=' "$WAR_ROOM/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
+  [[ -z "${EXA_API_KEY:-}" ]] && export EXA_API_KEY=$(grep '^EXA_API_KEY=' "$WAR_ROOM/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
 
   run_phase "exa_researcher" 300 \
     "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/09_exa_researcher.py" \
@@ -192,13 +183,6 @@ if ! $DRY_RUN; then
     --output "$OUTPUT/raw/exa_dump.json" \
     &
   EXA_PID=$!
-
-  run_phase "gemini_researcher" 240 \
-    "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/02_gemini_researcher.py" \
-    --topic "$TOPIC" \
-    --output "$OUTPUT/raw/gemini_dump.json" \
-    &
-  GEMINI_PID=$!
 
   run_phase "xai_researcher" 120 \
     "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/10_xai_researcher.py" \
@@ -215,23 +199,13 @@ if ! $DRY_RUN; then
   NLM_PID=$!
 
   # Wait for all (non-blocking failures)
-  wait $CHATGPT_PID 2>/dev/null || log "⚠️  ChatGPT research fallito"
   wait $EXA_PID 2>/dev/null || log "⚠️  Exa research fallito"
-  wait $GEMINI_PID 2>/dev/null || log "⚠️  Gemini research fallito"
   wait $XAI_PID 2>/dev/null || log "⚠️  xAI research fallito"
   wait $NLM_PID 2>/dev/null || log "⚠️  NLM research fallito"
 
-  if [[ -f "$OUTPUT/raw/chatgpt_dump.json" ]]; then
-    CHATGPT_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/chatgpt_dump.json')); print(d.get('count', 0))" 2>/dev/null || echo "0")
-    log "✅ ChatGPT: $CHATGPT_COUNT facts"
-  fi
   if [[ -f "$OUTPUT/raw/exa_dump.json" ]]; then
     EXA_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/exa_dump.json')); print(len(d.get('facts', d.get('results', []))))" 2>/dev/null || echo "0")
     log "✅ Exa: $EXA_COUNT facts"
-  fi
-  if [[ -f "$OUTPUT/raw/gemini_dump.json" ]]; then
-    GEMINI_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/gemini_dump.json')); print(d.get('count', 0))" 2>/dev/null || echo "0")
-    log "✅ Gemini: $GEMINI_COUNT legal facts"
   fi
   if [[ -f "$OUTPUT/raw/xai_dump.json" ]]; then
     XAI_COUNT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/xai_dump.json')); print(d.get('count', 0))" 2>/dev/null || echo "0")
@@ -255,9 +229,7 @@ seen_titles = set()
 sources_used = []
 
 for name, path in [
-    ('chatgpt', output_raw / 'chatgpt_dump.json'),
     ('exa',     output_raw / 'exa_dump.json'),
-    ('gemini',  output_raw / 'gemini_dump.json'),
     ('xai',     output_raw / 'xai_dump.json'),
     ('nlm',     output_raw / 'nlm_dump.json'),
     ('intel',   output_raw / 'intel_preseed.json'),
@@ -303,6 +275,7 @@ if ! $DRY_RUN; then
     --sentiment "$OUTPUT/raw/social_dump.json" \
     --research "$OUTPUT/raw/merged_dump.json" \
     --output "$OUTPUT/raw/processed_dump.json" \
+    2>>"$LOG_FILE" \
     || log "⚠️  Qwen pre-processor fallito — uso merged_dump direttamente"
 
   # Fallback: se processed_dump non esiste, usa merged_dump
@@ -310,7 +283,11 @@ if ! $DRY_RUN; then
     cp "$OUTPUT/raw/merged_dump.json" "$OUTPUT/raw/processed_dump.json"
     log "   ↩️  Fallback: processed_dump = merged_dump"
   fi
-  log "✅ Pre-processing completato"
+
+  # Log preprocessor mode (deterministic vs qwen)
+  PREPROC_BY=$(python3 -c "import json; print(json.load(open('$OUTPUT/raw/processed_dump.json')).get('preprocessed_by','unknown'))" 2>/dev/null || echo "unknown")
+  PREPROC_OUT=$(python3 -c "import json; d=json.load(open('$OUTPUT/raw/processed_dump.json')); s=d.get('stats',{}); print(f\"{s.get('output_count','?')}/{s.get('input_count','?')} facts\")" 2>/dev/null || echo "?")
+  log "✅ Pre-processing completato [$PREPROC_BY] — $PREPROC_OUT"
 fi
 
 # ══════════════════════════════════════════════════════════
