@@ -132,6 +132,18 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"⚠️ Failed to initialize Workflow Queue: {e}")
 
+        # Initialize Legal Full Ingestion Worker
+        try:
+            from backend.services.ingestion.legal_full_ingestion_worker import (
+                run_worker as legal_run_worker,
+            )
+
+            legal_worker_task = asyncio.create_task(legal_run_worker(app.state.db_pool, app.state))
+            app.state._legal_worker_task = legal_worker_task
+            logger.info("✅ Legal ingestion worker started (PG SKIP LOCKED)")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to initialize Legal Ingestion Worker: {e}")
+
     # Schedule background initialization
     init_task = asyncio.create_task(_background_init())
     app.state._init_task = init_task
@@ -160,6 +172,14 @@ async def lifespan(app: FastAPI):
         with suppress(asyncio.CancelledError):
             await workflow_worker_task
         logger.info("✅ Workflow queue worker stopped")
+
+    # Shutdown Legal Ingestion Worker
+    legal_worker_task = getattr(app.state, "_legal_worker_task", None)
+    if legal_worker_task and not legal_worker_task.done():
+        legal_worker_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await legal_worker_task
+        logger.info("✅ Legal ingestion worker stopped")
 
     # Close LangGraph checkpointer psycopg3 pool
     try:
