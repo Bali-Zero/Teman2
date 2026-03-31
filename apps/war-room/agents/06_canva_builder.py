@@ -131,10 +131,7 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
             "page_index": page_index,
         })
 
-        # Body: solo se l'elemento esiste per questa pagina
-        if body_id is None:
-            continue
-
+        # Body
         body_parts = []
         if is_cover and subhead:
             body_parts.append(subhead)
@@ -143,12 +140,25 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
 
         body_text = "\n".join(body_parts) if body_parts else ""
         if body_text:
-            ops.append({
-                "type": "replace_text",
-                "element_id": body_id,
-                "text": body_text,
-                "page_index": page_index,
-            })
+            if body_id is not None:
+                # ID noto → operazione diretta
+                ops.append({
+                    "type": "replace_text",
+                    "element_id": body_id,
+                    "text": body_text,
+                    "page_index": page_index,
+                })
+            else:
+                # ID non ancora mappato → includi con element_id=null
+                # Claude nell'app trova l'ID via start-editing-transaction (step 2 remap)
+                ops.append({
+                    "type": "replace_text",
+                    "element_id": None,
+                    "text": body_text,
+                    "page_index": page_index,
+                    "_needs_remap": True,
+                    "_note": f"body element_id unknown for page {page_index} — retrieve from start-editing-transaction",
+                })
 
         # BUG5 FIX: se la slide ha generated_image_path (iniettato da FASE 3),
         # aggiunge operazione pending_image per applicazione manuale/futura.
