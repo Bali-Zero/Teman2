@@ -105,6 +105,9 @@ from nuzantara_mcp.workflows.heartbeat import register as register_heartbeat
 # --- Observability ---
 from nuzantara_mcp.tools.langsmith import register as register_langsmith
 
+# --- Legal Ingestion ---
+from nuzantara_mcp.tools.legal import register as register_legal
+
 # --- Federation ---
 from nuzantara_mcp.tools.federation import register as register_federation
 
@@ -140,6 +143,9 @@ register_heartbeat(mcp, _call, _call_safe)
 
 # Observability
 register_langsmith(mcp, _call, _call_safe)
+
+# Legal ingestion pipeline
+register_legal(mcp, _call, _call_safe)
 
 # Federation inter-node bus
 register_federation(mcp, _call, _call_safe)
