@@ -444,3 +444,22 @@ export interface UpdateProfileRequest {
   address?: string;
   language?: string;
 }
+
+// ============================================================================
+// Notification Types
+// ============================================================================
+
+export interface PortalNotification {
+  id: number;
+  type: string;
+  title: string;
+  body: string | null;
+  data: string | null;
+  read: boolean;
+  created_at: string | null;
+}
+
+export interface NotificationsResponse {
+  notifications: PortalNotification[];
+  unread_count: number;
+}
