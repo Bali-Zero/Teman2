@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -11,18 +11,41 @@ import {
   LayoutDashboard,
   Users,
 } from "lucide-react";
+import { api } from "@/lib/api";
 
-const navItems = [
-  { href: "/hr", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/hr/employees", label: "Employees", icon: Users },
-  { href: "/hr/bonuses", label: "Bonuses", icon: Gift },
-  { href: "/hr/payroll", label: "Payroll", icon: Banknote },
-  { href: "/hr/leave", label: "Leave", icon: Calendar },
-  { href: "/hr/settings", label: "Settings", icon: Settings },
+const ADMIN_EMAILS = [
+  "zero@balizero.com",
+  "asya@balizero.com",
+  "antonellosiano@gmail.com",
+];
+
+const allNavItems = [
+  { href: "/hr", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
+  { href: "/hr/employees", label: "Employees", icon: Users, adminOnly: true },
+  { href: "/hr/bonuses", label: "Bonuses", icon: Gift, adminOnly: false },
+  { href: "/hr/payroll", label: "Payroll", icon: Banknote, adminOnly: false },
+  { href: "/hr/leave", label: "Leave", icon: Calendar, adminOnly: false },
+  { href: "/hr/settings", label: "Settings", icon: Settings, adminOnly: true },
 ];
 
 export default function HRLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    api
+      .getProfile()
+      .then((user: { email: string }) => {
+        setIsAdmin(ADMIN_EMAILS.includes(user.email));
+      })
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, []);
+
+  const navItems = loaded
+    ? allNavItems.filter((item) => !item.adminOnly || isAdmin)
+    : allNavItems.filter((item) => !item.adminOnly);
 
   return (
     <div className="flex flex-col md:flex-row h-full">
