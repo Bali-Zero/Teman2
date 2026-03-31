@@ -144,7 +144,7 @@ A practice has moved to the **Document Collection** phase and needs your attenti
 A document request email has already been sent to the client automatically.
 
 🎯 Quick Access:
-https://zantara-crm.vercel.app/process/{practice_data["id"]}
+https://kita.balizero.com/process/{practice_data["id"]}
 
 Let's keep things moving!
 
@@ -152,31 +152,7 @@ Cheers,
 Zantara CRM 🤖
 """
 
-        # Primary: Brevo
-        try:
-            html_body = body.replace("\n", "<br>")
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    _EMAIL_API_URL,
-                    headers={"X-API-Key": _EMAIL_API_KEY},
-                    json={"to": team_leader_email, "subject": subject, "body": html_body},
-                )
-                response.raise_for_status()
-            logger.info(
-                f"Team leader waiting-docs notification sent to {team_leader_email} via Brevo",
-            )
-            return
-        except Exception as brevo_error:
-            logger.warning(
-                f"Brevo failed for waiting-docs team notification, trying Zoho: {brevo_error}",
-            )
-
-        # Fallback: Zoho
-        await self.zoho_email_service.send_email(
-            to_email=team_leader_email,
-            subject=subject,
-            body=body,
-        )
+        await self._send_with_brevo_fallback(team_leader_email, subject, body)
 
     async def _send_client_documents_request(
         self,
@@ -224,8 +200,28 @@ The Zantara Indonesia Team
 📧 support@balizero.com | 🌐 www.balizero.com
 """
 
+        await self._send_with_brevo_fallback(client_email, subject, body)
+
+    async def _send_with_brevo_fallback(
+        self, to_email: str, subject: str, body: str,
+    ) -> None:
+        """Send email via Brevo (primary), fall back to Zoho if Brevo fails."""
+        try:
+            html_body = body.replace("\n", "<br>")
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    _EMAIL_API_URL,
+                    headers={"X-API-Key": _EMAIL_API_KEY},
+                    json={"to": to_email, "subject": subject, "body": html_body},
+                )
+                response.raise_for_status()
+            logger.info(f"Email sent to {to_email} via Brevo")
+            return
+        except Exception as brevo_error:
+            logger.warning(f"Brevo failed for {to_email}, trying Zoho: {brevo_error}")
+
         await self.zoho_email_service.send_email(
-            to_email=client_email,
+            to_email=to_email,
             subject=subject,
             body=body,
         )
