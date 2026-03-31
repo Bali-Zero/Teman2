@@ -332,15 +332,10 @@ describe("CrmApi", () => {
 
         mockClient.request.mockResolvedValue(mockResponse);
 
-        const result = await crmApi.createPractice(
-          newPractice,
-          "admin@balizero.com",
-        );
+        const result = await crmApi.createPractice(newPractice);
 
         expect(mockClient.request).toHaveBeenCalledWith(
-          expect.stringContaining(
-            "/api/crm/practices/?created_by=admin%40balizero.com",
-          ),
+          "/api/crm/practices/",
           expect.objectContaining({
             method: "POST",
             body: JSON.stringify(newPractice),
@@ -366,16 +361,10 @@ describe("CrmApi", () => {
 
         mockClient.request.mockResolvedValue(mockResponse);
 
-        const result = await crmApi.updatePractice(
-          1,
-          updates,
-          "admin@balizero.com",
-        );
+        const result = await crmApi.updatePractice(1, updates);
 
         expect(mockClient.request).toHaveBeenCalledWith(
-          expect.stringContaining(
-            "/api/crm/practices/1/?updated_by=admin%40balizero.com",
-          ),
+          "/api/crm/practices/1/",
           expect.objectContaining({
             method: "PATCH",
             body: JSON.stringify(updates),

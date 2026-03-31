@@ -1,90 +1,93 @@
-# 🚨 BALI ZERO WAR ROOM
+# BALI ZERO WAR ROOM
 
 **Automated Marketing & Journalism Pipeline**
-_Giornalismo investigativo multi-agente → carousel Instagram in 5-10 minuti_
+_Multi-source intelligence → carousel Instagram in 10-15 minuti_
 
 ---
 
 ## Architettura
 
 ```
-T+00:00 → FASE 1:   Grok 4 (X/Twitter 72h) + Manus AI (gov/fiscal sources) — parallelo
-T+01:30 → FASE 1.5: Qwen3.5-27B pre-processor (locale, gratuito) — dedup + classify
-T+02:00 → FASE 2:   Gemini 3.1 Pro Deep Think → 3 concept asimmetrici
-T+03:00 → FASE 2:   Claude Opus 4.6 → pick best → validate → JSON slides + image prompts
-T+05:00 → FASE 3:   browser-use → gemini.google.com (zero@balizero.com Ultra) → immagini
-T+07:00 → FASE 4:   Python + AppleScript → Keynote 1080x1350 → export JPG
-T+10:00 → FASE 5:   gog upload Google Drive → WhatsApp notification team
+FASE 0  → Topic Selector    Exa + NLM NB-7 + xAI Grok (parallelo) → DeepSeek synthesis
+FASE 1  → Research          Exa + xAI + NLM (parallelo) → merged_dump.json
+FASE 1.5→ Pre-processor     DeepSeek R1:32b locale (o deterministic fallback)
+FASE 2  → Brain-Trust       Gemini strategist → 3 concept → Claude director → JSON slides
+FASE 3  → Images            Fireworks Flux.1 Dev — 1 cover + 5 slide (1440×1800)
+FASE 4  → Canva             Python MCP → design DAHE6lx1lf8 → canva_pending.json
+FASE 5  → Delivery          Telegram → Zero (IT) + Damar (ID) — singola notifica
 ```
 
 ## Utilizzo
 
 ```bash
-# Pipeline completa
+# Pipeline completa (topic auto da intel scraper)
+./pipeline.sh
+
+# Topic manuale
 ./pipeline.sh "Coretax 2025"
 
-# Senza Manus (risparmia crediti)
-./pipeline.sh "KBLI error blocca visto" --skip-manus
-
-# Test senza azioni reali
+# Dry run (nessuna azione reale)
 ./pipeline.sh "OSS perizinan" --dry-run
 ```
 
-## Struttura
+## Struttura agenti
 
 ```
-war_room/
-├── pipeline.sh              # Orchestratore master
-├── config/
-│   ├── brand.json           # Canvas, font, colori, delivery
-│   └── prompts.json         # Tutti i prompt per ogni agente
-├── agents/
-│   ├── 01_grok_scraper.py   # X/Twitter 72h via browser-use
-│   ├── 02_manus_launcher.py # Manus AI (⚠️ conferma richiesta)
-│   ├── 015_qwen_preprocessor.py  # Qwen3.5-27B locale (gratis)
-│   ├── 03_gemini_strategist.py   # Gemini 3.1 Pro → 3 concept
-│   ├── 04_claude_director.py     # Claude Opus → copy + JSON
-│   ├── 05_gemini_images.py       # Gemini Ultra → immagini
-│   ├── 06_keynote_builder.py     # Python + AppleScript → .key + JPG
-│   └── 07_delivery.sh            # Drive + WhatsApp
-├── assets/
-│   └── bz_logo_clear.png    # Logo (copia qui)
-└── output/
-    ├── raw/                 # Dump Grok + Manus
-    ├── strategy/            # 3 concept Gemini
-    ├── copy/                # slides.json da Claude
-    ├── images/              # Immagini da Gemini Ultra
-    ├── keynote/             # .key + JPG esportati
-    └── master/              # Output finale (ZIP + Drive)
+agents/
+├── 00_topic_selector.py      # Multi-source: Exa + NLM + xAI → DeepSeek synthesis
+├── 09_exa_researcher.py      # Exa AI — Indonesian legal/news domains, 72h
+├── 10_xai_researcher.py      # xAI Grok — X/Twitter signals Indonesia
+├── 11_nlm_researcher.py      # NLM NB-7 — audience pain points
+├── 015_qwen_preprocessor.py  # DeepSeek R1:32b locale (window 01:00-06:05 WITA)
+├── 03_gemini_strategist.py   # Gemini → 3 concept asimmetrici
+├── 04_claude_director.py     # Claude Opus → copy + JSON slides + NLM validation
+├── 05_image_brainstorm.py    # Fireworks Flux.1 Dev — 6 immagini 1440×1800
+├── 06_canva_builder.py       # MCP Canva → template DAHE6lx1lf8 (11 slide)
+└── 07_delivery.sh            # Telegram: Zero (IT) + Damar (ID)
 ```
 
-## Modelli Utilizzati
+## Modelli
 
-| Fase | Modello         | Costo         | Ruolo                |
-| ---- | --------------- | ------------- | -------------------- |
-| 1    | Grok 4          | $0 (Premium+) | Sentiment X/Twitter  |
-| 1    | Manus AI        | ⚠️ crediti    | Ricerca gov/fiscale  |
-| 1.5  | Qwen3.5-27B     | $0 (locale)   | Pre-processing       |
-| 2a   | Gemini 3.1 Pro  | $0 (Ultra)    | Strategia            |
-| 2b   | Claude Opus 4.6 | $0 (MAX)      | Copy + validazione   |
-| 3    | Gemini Ultra    | $0 (Ultra)    | Generazione immagini |
-| 4    | AppleScript/JXA | $0            | Keynote automation   |
+| Fase | Modello         | Provider      | Ruolo                     |
+| ---- | --------------- | ------------- | ------------------------- |
+| 0    | DeepSeek Chat   | DeepSeek API  | Topic synthesis           |
+| 0    | Grok-3          | xAI API       | X/Twitter signals         |
+| 1    | Exa Neural      | Exa API       | News search               |
+| 1.5  | DeepSeek R1:32b | Ollama locale | Pre-processing (finestra) |
+| 2a   | Gemini Pro      | Google API    | Concept strategici        |
+| 2b   | Claude Opus 4.6 | Anthropic API | Copy + JSON slides        |
+| 3    | Flux.1 Dev      | Fireworks API | Immagini 1440×1800        |
+| 4    | MCP Canva       | Canva API     | Carousel builder          |
 
-**Costo totale pipeline: €0** ✅
+## Canva Template DAHE6lx1lf8 — Layout slide
 
-## Configurazione Brand
+| Slide | Layout                      | Body slot |
+| ----- | --------------------------- | --------- |
+| 1     | Cover full-bleed            | Sì        |
+| 2-3   | Split image + testo         | Sì        |
+| 4     | Immagine manuale + testo    | Sì        |
+| 5-8   | Testo + immagine            | Sì        |
+| 9     | Heading-only (no body slot) | No        |
+| 10    | Testo standard              | Sì        |
+| 11    | CTA logo+tagline (no body)  | No        |
 
-- Canvas: 1080x1350pt (Instagram Portrait 4:5)
-- Background: `#373d42` (Antracite)
-- Font titoli: LeagueSpartan-ExtraBold (fallback: Impact)
-- Font corpo: Montserrat-Medium (fallback: Helvetica Neue)
-- Logo: `assets/bz_logo_clear.png` → X=458, Y=1150
-- Darkening cover: 30%
+Slide 4 e 9: immagini inserite manualmente nel template (non da Fireworks).
 
-## ⚠️ Note Operative
+## Applicazione Canva
 
-1. **Manus AI**: richiede conferma esplicita prima dell'uso (crediti limitati)
-2. **Logo**: copia `bz_logo_clear.png` in `~/war_room/assets/`
-3. **Chrome profile**: Gemini images usa il profilo loggato come zero@balizero.com
-4. **Claude proxy**: richiede Claude Desktop aperto su localhost:3456
-5. **Qwen3.5**: `ollama pull qwen3.5:27b` se non già scaricato
+Dopo pipeline completata, aprire `~/Desktop/APPLICA_WAR_ROOM.md` in Claude app desktop (Pro).
+
+## Env vars richieste
+
+```
+OPENAI_API_KEY         # Claude director (via OpenRouter)
+ANTHROPIC_API_KEY      # Claude Opus
+GEMINI_API_KEY         # Gemini strategist
+FIREWORKS_API_KEY      # Image generation
+EXA_API_KEY            # Exa researcher
+GROK_API_KEY           # xAI Grok
+DEEPSEEK_API_KEY       # Topic synthesis
+TELEGRAM_BOT_TOKEN     # Delivery
+TELEGRAM_GROUP_ID      # Chat ID Zero
+CANVA_API_KEY          # Canva MCP
+```
