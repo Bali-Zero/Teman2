@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "notebook_id": "NB-3",
-  "last_updated": "2026-03-30T00:00:00Z",
+  "last_updated": "2026-03-31T01:43:21.185536+00:00",
   "summary": {
-    "total_tracked": 51,
-    "active": 51,
+    "total_tracked": 47,
+    "active": 47,
     "quarantine": 0,
     "archived": 0
   },
@@ -305,7 +305,9 @@
       "category": "working",
       "cluster": "A",
       "stage": "ACTIVE",
-      "flags": { "pinned": true }
+      "flags": {
+        "pinned": true
+      }
     },
     "a06855fb": {
       "title": "Capital Requirements (BZ)",
@@ -313,7 +315,9 @@
       "category": "working",
       "cluster": "A",
       "stage": "ACTIVE",
-      "flags": { "pinned": true }
+      "flags": {
+        "pinned": true
+      }
     },
     "7e7cbe03": {
       "title": "Akta Perubahan (BZ)",
@@ -321,7 +325,9 @@
       "category": "working",
       "cluster": "D",
       "stage": "ACTIVE",
-      "flags": { "pinned": true }
+      "flags": {
+        "pinned": true
+      }
     },
     "0d22657c": {
       "title": "KBLI 2025 Catalogo (BZ)",
@@ -329,7 +335,9 @@
       "category": "reference",
       "cluster": "C",
       "stage": "ACTIVE",
-      "flags": { "pinned": true }
+      "flags": {
+        "pinned": true
+      }
     },
     "4539bbfb": {
       "title": "KBLI Foreign Ownership Matrix (BZ)",
@@ -337,7 +345,9 @@
       "category": "reference",
       "cluster": "C",
       "stage": "ACTIVE",
-      "flags": { "pinned": true }
+      "flags": {
+        "pinned": true
+      }
     },
     "bbcc93d9": {
       "title": "LKPM Reporting (BZ)",
@@ -345,7 +355,9 @@
       "category": "working",
       "cluster": "E",
       "stage": "ACTIVE",
-      "flags": { "pinned": true }
+      "flags": {
+        "pinned": true
+      }
     },
     "4d3fd534": {
       "title": "OSS NIB Licenze (BZ)",
@@ -353,7 +365,9 @@
       "category": "working",
       "cluster": "C",
       "stage": "ACTIVE",
-      "flags": { "pinned": true }
+      "flags": {
+        "pinned": true
+      }
     },
     "db910963": {
       "title": "PT Lokal CV Procedura (BZ)",
@@ -361,7 +375,9 @@
       "category": "working",
       "cluster": "B",
       "stage": "ACTIVE",
-      "flags": { "pinned": true }
+      "flags": {
+        "pinned": true
+      }
     },
     "73c09293": {
       "title": "PT PMA FAQ (BZ)",
@@ -369,7 +385,9 @@
       "category": "working",
       "cluster": "A",
       "stage": "ACTIVE",
-      "flags": { "pinned": true }
+      "flags": {
+        "pinned": true
+      }
     }
   }
 }

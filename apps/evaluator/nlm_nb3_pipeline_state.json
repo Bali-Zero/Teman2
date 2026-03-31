@@ -3,7 +3,7 @@
   "notebook_id": "933509f9-1561-403d-bd44-4a7a67a36df2",
   "notebook_name": "NB-3: Company Setup — Indonesia 2025",
   "created_at": "2026-03-30T00:00:00Z",
-  "last_updated": "2026-03-30T00:00:00Z",
+  "last_updated": "2026-03-31T01:43:21.185285+00:00",
   "pipeline_status": "TESTING",
   "degradation_level": "NOMINAL",
   "schedule": {
@@ -109,23 +109,26 @@
     }
   },
   "circuit_breakers": {
-    "CB-NLM": {
+    "CB_NLM": {
       "state": "CLOSED",
       "failure_count": 0,
       "last_failure": null,
-      "opened_at": null
+      "opened_at": null,
+      "auto_close_after_hours": 4
     },
-    "CB-SOURCE": {
+    "CB_SOURCE": {
       "state": "CLOSED",
       "failure_count": 0,
       "last_failure": null,
-      "opened_at": null
+      "opened_at": null,
+      "manual_close_only": true
     },
-    "CB-INTEGRATION": {
+    "CB_INTEGRATION": {
       "state": "CLOSED",
       "failure_count": 0,
       "last_failure": null,
-      "opened_at": null
+      "opened_at": null,
+      "auto_close_after_hours": 12
     }
   },
   "nhs_history": [],
@@ -140,5 +143,18 @@
     "phase_6_handoff": "PENDING",
     "phase_7_failure_recovery": "PENDING",
     "go_no_go": "PENDING"
-  }
+  },
+  "budget": {
+    "weekly_calls": 2,
+    "week_start": "2026-W13",
+    "daily_queries": 2
+  },
+  "cluster_history": [
+    {
+      "date": "2026-03-31",
+      "cluster": "B",
+      "run_id": "e63d1110-532a-4ccb-9552-8599d1b217fc"
+    }
+  ],
+  "current_state": "COMPLETE"
 }
