@@ -328,6 +328,7 @@ async def _send_via_zoho_smtp(
         from backend.app.modules.notifications.service import SMTPProvider
 
         provider = SMTPProvider()
+        # zantara@ is now an alias of zero@ (SMTP_USER), so Zoho allows sending as zantara@
         return await provider.send_email(
             to_email=to_email,
             subject=subject,
