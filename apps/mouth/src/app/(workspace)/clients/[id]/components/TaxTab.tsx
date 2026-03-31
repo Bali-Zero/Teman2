@@ -467,11 +467,13 @@ export function TaxTab({
   formatDate,
   client,
   companyLinks,
+  onRefresh,
 }: {
   clientId: number;
   formatDate: (d: string) => string;
   client: Client | null;
   companyLinks?: ClientCompanyLink[];
+  onRefresh?: () => Promise<void> | void;
 }) {
   const [selectedYear, setSelectedYear] = useState<TaxYear>(new Date().getFullYear());
   const [activeSection, setActiveSection] = useState<TaxSection>('personal');
@@ -498,6 +500,7 @@ export function TaxTab({
           year: selectedYear,
         });
         toast.success(`${docType} uploaded successfully`);
+        await onRefresh?.();
       } catch (err) {
         setUploadError(`Failed to upload ${docType}: ${(err as Error).message}`);
         toast.error('Upload failed', { description: (err as Error).message });
@@ -505,7 +508,7 @@ export function TaxTab({
         setIsUploading(false);
       }
     },
-    [clientId, selectedYear]
+    [clientId, selectedYear, onRefresh]
   );
 
   return (

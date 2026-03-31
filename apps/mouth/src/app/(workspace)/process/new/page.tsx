@@ -346,7 +346,6 @@ export default function NewPracticePage() {
 
       const createdPractice = await api.crm.createPractice(
         backendData,
-        user.email,
       );
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 interface TeamMember {
+  id: string | null;
   email: string;
   full_name: string;
   role: string;

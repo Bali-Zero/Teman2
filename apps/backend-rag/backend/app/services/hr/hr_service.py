@@ -399,7 +399,7 @@ class HRService:
         async with self.db_pool.acquire() as conn:
             payslip = await conn.fetchrow("""
                 SELECT ps.*, tm.full_name, tm.email,
-                       pp.payroll_month, pp.payroll_year
+                       pp.payroll_month, pp.payroll_year, pp.status as period_status
                 FROM hr_payslips ps
                 JOIN hr_employees e ON e.id = ps.employee_id
                 JOIN team_members tm ON tm.id = e.team_member_id
