@@ -6,12 +6,20 @@ Handles automated notifications when practice status changes:
 - 'completed': Process finished, documents delivered
 """
 
+import os
 from typing import Any
 
 import asyncpg
+import httpx
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.zoho_email_service import ZohoEmailService
+
+# Internal email API — uses Brevo, from=zantara@balizero.com
+_EMAIL_API_URL = os.getenv(
+    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+)
+_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
 
 logger = get_logger(__name__)
 
@@ -173,11 +181,7 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 🌐 Visit us at www.balizero.com
 """
 
-        await self.zoho_email_service.send_email(
-            to_email=client_email,
-            subject=subject,
-            body=body,
-        )
+        await self._send_with_brevo_fallback(client_email, subject, body)
 
     async def _send_team_leader_notification(
         self,
@@ -210,7 +214,7 @@ Your Mission (should you choose to accept it 😄):
 4. Keep the client in the loop via WhatsApp—they love updates!
 
 🎯 Quick Access:
-https://zantara-crm.vercel.app/process
+https://kita.balizero.com/process
 
 You've got this! We know you'll handle this case with your usual excellence.
 
@@ -224,8 +228,30 @@ Zantara CRM 🤖
 P.S. The client is excited to get started—let's make it a great experience! ✨
 """
 
+        await self._send_with_brevo_fallback(team_leader_email, subject, body)
+
+    async def _send_with_brevo_fallback(
+        self, to_email: str, subject: str, body: str,
+    ) -> None:
+        """Send email via Brevo (primary), fall back to Zoho if Brevo fails."""
+        # Primary: Brevo
+        try:
+            html_body = body.replace("\n", "<br>")
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    _EMAIL_API_URL,
+                    headers={"X-API-Key": _EMAIL_API_KEY},
+                    json={"to": to_email, "subject": subject, "body": html_body},
+                )
+                response.raise_for_status()
+            logger.info(f"Email sent to {to_email} via Brevo")
+            return
+        except Exception as brevo_error:
+            logger.warning(f"Brevo failed for {to_email}, trying Zoho: {brevo_error}")
+
+        # Fallback: Zoho
         await self.zoho_email_service.send_email(
-            to_email=team_leader_email,
+            to_email=to_email,
             subject=subject,
             body=body,
         )
