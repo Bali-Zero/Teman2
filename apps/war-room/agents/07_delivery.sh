@@ -83,13 +83,26 @@ for CID in "${CHAT_ID_ARRAY[@]}"; do
   CID=$(echo "$CID" | xargs)
   [[ -z "$CID" ]] && continue
 
+  # ── Canva pending (inline) ─────────────────────────────────────────────────
+  PENDING_FILE="$WAR_ROOM/output/canva/canva_pending.json"
+  CANVA_LINE=""
+  if [[ -f "$PENDING_FILE" ]]; then
+    PENDING_OPS=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('operations_count',0))" 2>/dev/null || echo "?")
+    if [[ "$CID" == "$DAMAR_CHAT_ID" ]]; then
+      CANVA_LINE="
+🎨 Canva: $PENDING_OPS operasi siap — buka Claude app desktop"
+    else
+      CANVA_LINE="
+🎨 Canva: $PENDING_OPS operazioni pronte — Claude app desktop (Pro) → APPLICA_WAR_ROOM.md"
+    fi
+  fi
+
   if [[ "$CID" == "$DAMAR_CHAT_ID" ]]; then
     MSG="🚨 *Bali Zero War Room selesai.*
 Topik: *$TOPIC*
 Slide: $SLIDE_COUNT | Nada: $TONE
 Gambar: $IMG_GENERATED/$IMG_TOTAL | NLM: $NLM_STATUS
-Siap untuk di-review dan publikasi.
-${CAPTION:+
+Siap untuk di-review dan publikasi.${CANVA_LINE}${CAPTION:+
 📝 Caption:
 $CAPTION}"
   else
@@ -97,25 +110,12 @@ $CAPTION}"
 Argomento: *$TOPIC*
 Slide: $SLIDE_COUNT | Tono: $TONE
 Immagini: $IMG_GENERATED/$IMG_TOTAL | NLM check: $NLM_STATUS
-In attesa di review per la pubblicazione.
-${CAPTION:+
+In attesa di review per la pubblicazione.${CANVA_LINE}${CAPTION:+
 📝 Caption:
 $CAPTION}"
   fi
 
   send_telegram "$CID" "$MSG"
 done
-
-# ── Canva pending notification ───────────────────────────────────────────────
-PENDING_FILE="$WAR_ROOM/output/canva/canva_pending.json"
-if [[ -f "$PENDING_FILE" ]]; then
-  PENDING_OPS=$("$PYTHON" -c "import json; print(json.load(open('$PENDING_FILE')).get('operations_count',0))" 2>/dev/null || echo "?")
-  CANVA_MSG="🎨 *Canva pronto per applicazione.*
-Topic: $TOPIC
-Operazioni: $PENDING_OPS
-Apri Claude app desktop (Pro) → usa APPLICA_WAR_ROOM.md"
-
-  send_telegram "${CHAT_ID_ARRAY[1]}" "$CANVA_MSG"
-fi
 
 echo "✅ Delivery completata — notifiche Telegram inviate"
