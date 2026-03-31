@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+pytest_plugins = ("anyio",)
+
 from backend.core.legal_config import (
     VALID_TIPO,
     resolve_nb_notebook_id,
@@ -41,7 +43,7 @@ def test_valid_tipo_contains_expected():
     assert "INVALID" not in VALID_TIPO
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_update_job_builds_correct_sql():
     """_update_job generates valid parameterized SQL."""
     conn = AsyncMock()
@@ -54,12 +56,24 @@ async def test_update_job_builds_correct_sql():
     assert 42 in call_args
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_process_one_job_empty_queue():
-    """Worker does nothing when queue is empty."""
-    db_pool = AsyncMock()
+    """Worker does nothing when queue is empty (_claim_job returns None)."""
+    from contextlib import asynccontextmanager
 
-    with patch("backend.services.ingestion.legal_full_ingestion_worker._claim_job", return_value=None):
-        from backend.services.ingestion.legal_full_ingestion_worker import _process_one_job
+    import backend.services.ingestion.legal_full_ingestion_worker as worker_mod
+    from backend.services.ingestion.legal_full_ingestion_worker import _process_one_job
+
+    mock_conn = AsyncMock()
+    mock_conn.transaction = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=None), __aexit__=AsyncMock(return_value=False)))
+
+    @asynccontextmanager
+    async def fake_acquire():
+        yield mock_conn
+
+    db_pool = MagicMock()
+    db_pool.acquire = fake_acquire
+
+    with patch.object(worker_mod, "_claim_job", new=AsyncMock(return_value=None)):
         await _process_one_job(db_pool, MagicMock())
         # No exception raised — queue empty is handled gracefully
