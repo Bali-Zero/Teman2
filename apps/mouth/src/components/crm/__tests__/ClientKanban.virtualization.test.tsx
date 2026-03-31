@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClientKanban } from "../ClientKanban";
 import type { Client } from "@/lib/api/crm/crm.types";
 
@@ -15,6 +16,15 @@ vi.mock("@tanstack/react-virtual", () => ({
     getTotalSize: () => 0,
   })),
 }));
+
+function renderWithQuery(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
 
 describe("ClientKanban Virtualization", () => {
   const mockClients: Client[] = Array.from({ length: 25 }, (_, i) => ({
@@ -30,7 +40,7 @@ describe("ClientKanban Virtualization", () => {
 
   it("should render without errors", () => {
     const handleStatusChange = vi.fn();
-    render(
+    renderWithQuery(
       <ClientKanban
         clients={mockClients}
         onStatusChange={handleStatusChange}
@@ -41,7 +51,7 @@ describe("ClientKanban Virtualization", () => {
 
   it("should show correct client count per column", () => {
     const handleStatusChange = vi.fn();
-    render(
+    renderWithQuery(
       <ClientKanban
         clients={mockClients}
         onStatusChange={handleStatusChange}
