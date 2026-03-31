@@ -69,6 +69,8 @@ export default function NewPracticePage() {
     { email: "sahira@balizero.com", name: "Sahira" },
     { email: "surya@balizero.com", name: "Surya" },
     { email: "vino@balizero.com", name: "Vino" },
+    { email: "dea@balizero.com", name: "Dea" },
+    { email: "ruslana@balizero.com", name: "Ruslana" },
   ];
   const ADMIN_EMAILS = ["zero@balizero.com", "asya@balizero.com", "antonellosiano@gmail.com"];
   const [assignableMembers, setAssignableMembers] = useState(ALL_TEAM_MEMBERS);
