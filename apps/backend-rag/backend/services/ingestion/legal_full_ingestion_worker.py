@@ -90,7 +90,12 @@ async def _download_pdf(url: str, tipo: str, nomor: str, anno: str) -> Path:
 
 
 def _build_drive_service() -> Any:
-    """Build Google Drive API service using service account credentials."""
+    """Build Google Drive API service using service account credentials.
+
+    Prefers DWD (Domain-Wide Delegation) via LEGAL_DRIVE_IMPERSONATE_USER env var
+    so the SA can upload to My Drive folders owned by that user. Falls back to
+    plain SA credentials (works only for Shared Drives).
+    """
     try:
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
@@ -106,9 +111,14 @@ def _build_drive_service() -> Any:
             creds_dict = json.loads(base64.b64decode(creds_json).decode())
 
         scopes = ["https://www.googleapis.com/auth/drive"]
+        impersonate_user = os.getenv("LEGAL_DRIVE_IMPERSONATE_USER", "")
         credentials = service_account.Credentials.from_service_account_info(
-            creds_dict, scopes=scopes
+            creds_dict,
+            scopes=scopes,
+            subject=impersonate_user if impersonate_user else None,
         )
+        if impersonate_user:
+            logger.info(f"🔑 Drive service: DWD as {impersonate_user}")
         return build("drive", "v3", credentials=credentials)
     except Exception as e:
         logger.warning(f"⚠️ Could not build Drive service: {e}")
@@ -267,12 +277,21 @@ async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:  # no
                 drive_file_id = "skipped"
                 drive_url = ""
             else:
-                root_folder_id = os.getenv("GOOGLE_DRIVE_ROOT_FOLDER_ID", "root")
+                # If LEGAL_DRIVE_ROOT_FOLDER_ID points directly to the PERATURAN folder,
+                # use it as-is. Otherwise fall back to creating PERATURAN inside the root.
+                legal_root = os.getenv("LEGAL_DRIVE_ROOT_FOLDER_ID", "")
+                fallback_root = os.getenv("GOOGLE_DRIVE_ROOT_FOLDER_ID", "root")
 
-                # Build folder path: PERATURAN/tipo/anno
-                peraturan_id = await asyncio.to_thread(
-                    _drive_get_or_create_folder, drive_service, DRIVE_LEGAL_ROOT, root_folder_id
-                )
+                if legal_root:
+                    # LEGAL_DRIVE_ROOT_FOLDER_ID IS the PERATURAN folder — build tipo/anno inside it
+                    peraturan_id = legal_root
+                else:
+                    # Create PERATURAN folder inside the generic root
+                    peraturan_id = await asyncio.to_thread(
+                        _drive_get_or_create_folder, drive_service, DRIVE_LEGAL_ROOT, fallback_root
+                    )
+
+                # Build folder path: tipo/anno inside PERATURAN
                 tipo_id = await asyncio.to_thread(
                     _drive_get_or_create_folder, drive_service, tipo, peraturan_id
                 )
