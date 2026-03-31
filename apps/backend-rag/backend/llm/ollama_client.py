@@ -139,46 +139,28 @@ async def ollama_chat_kg(
     timeout: float = 30.0,
 ) -> str | None:
     """
-    KG extraction via qwen3.5:27b using 2-step think fix.
+    KG extraction via qwen3.5:27b using native Ollama API with think:false.
 
-    Qwen3.5 generates <think>...</think> tokens before JSON via OpenAI-compat API,
-    causing empty output when format=schema is used directly (vLLM issue #37414).
-    Fix: Step 1 = stop at </think> to capture reasoning; Step 2 = prefill reasoning
-    in assistant turn then force JSON schema output.
+    NOTE: think:false works ONLY on native Ollama /api/chat endpoint (not OpenAI-compat).
+    This function uses the native endpoint directly, bypassing the vLLM issue #37414.
 
     Returns raw JSON string, or None if unavailable/failed.
     """
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
-            # Step 1: generate reasoning, stop at </think>
-            r1_resp = await client.post(
+            resp = await client.post(
                 f"{OLLAMA_BASE_URL}/api/chat",
                 json={
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
                     "stream": False,
-                    "options": {"stop": ["</think>"], "temperature": 0},
-                },
-            )
-            r1_resp.raise_for_status()
-            reasoning = r1_resp.json().get("message", {}).get("content", "") + "</think>"
-
-            # Step 2: prefill reasoning, force JSON schema output
-            r2_resp = await client.post(
-                f"{OLLAMA_BASE_URL}/api/chat",
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "user", "content": prompt},
-                        {"role": "assistant", "content": reasoning + "\n\n"},
-                    ],
-                    "stream": False,
+                    "think": False,
                     "format": json_schema,
                     "options": {"temperature": 0},
                 },
             )
-            r2_resp.raise_for_status()
-            return r2_resp.json().get("message", {}).get("content", "").strip() or None
+            resp.raise_for_status()
+            return resp.json().get("message", {}).get("content", "").strip() or None
 
     except httpx.ConnectError:
         logger.debug(f"Ollama not running at {OLLAMA_BASE_URL}")

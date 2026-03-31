@@ -585,7 +585,7 @@ class KGIncrementalExtractor:
             }
             model_name = os.environ.get("OPENAI_MODEL", "qwen3.5:27b")
             try:
-                raw = await ollama_chat_kg(prompt, _kg_schema, model=model_name, timeout=60.0)
+                raw = await ollama_chat_kg(prompt, _kg_schema, model=model_name, timeout=120.0)
                 if not raw:
                     return {"entities": [], "relationships": []}
                 return json.loads(raw)
