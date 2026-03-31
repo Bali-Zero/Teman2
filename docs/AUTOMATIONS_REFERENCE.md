@@ -1,63 +1,82 @@
 # NUZANTARA — AUTOMATIONS REFERENCE
 **Documento di riferimento definitivo per tutte le automazioni di sistema**
 
-> **Versione:** 1.1
-> **Data:** 2026-03-31
-> **Macchina origine:** Air (antonellosiano@Nuzantara-9)
-> **Fonti:** crontab -l + plutil plist + codice sorgente + Explore agent + **Codex GPT-5.4** (verifica log reali) + **DeepSeek R1 671b** (analisi rischi)
-> **Gemini:** rate limit 429 — non disponibile questa sessione
+> **Versione:** 2.0
+> **Data:** 2026-03-31 (aggiornato con Pro + Intel Scraper + War Room + Core Guardian)
+> **Macchine:** Air (antonellosiano@Nuzantara-9) + Pro (nuzantara@Nuzantara)
+> **Fonti:** crontab Pro+Air + plutil plist + codice sorgente + Explore agent + **Codex GPT-5.4** + **DeepSeek R1 671b**
 
 ---
 
 ## INDICE
 
 1. [Topologia Oraria](#1-topologia-oraria)
-2. [LaunchD (macOS Air — Always-On)](#2-launchd-macos-air--always-on)
-3. [Cron Jobs (Air)](#3-cron-jobs-air)
-4. [FastAPI Autonomous Scheduler (Fly.io)](#4-fastapi-autonomous-scheduler-flyio)
-5. [APScheduler — Notification Scheduler (Fly.io)](#5-apscheduler--notification-scheduler-flyio)
-6. [GitHub Actions (CI/CD)](#6-github-actions-cicd)
-7. [OpenClaw Agents (Air)](#7-openclaw-agents-air)
-8. [MCP Workflow Chains](#8-mcp-workflow-chains)
-9. [PostgreSQL Triggers (Fly.io DB)](#9-postgresql-triggers-flyio-db)
-10. [Webhook Handlers (Event-Driven)](#10-webhook-handlers-event-driven)
-11. [Script Locali (Manuali / On-Demand)](#11-script-locali-manuali--on-demand)
-12. [Criticità e Rischi](#12-criticità-e-rischi)
-13. [Mappa di Priorità](#13-mappa-di-priorità)
+2. [LaunchD — Air (Always-On)](#2-launchd-macos-air--always-on)
+3. [LaunchD — Pro (Always-On)](#3-launchd-macos-pro--always-on)
+4. [Cron Jobs (Air)](#4-cron-jobs-air)
+5. [Cron Jobs (Pro)](#5-cron-jobs-pro)
+6. [Intel Scraper + War Room Pipeline](#6-intel-scraper--war-room-pipeline)
+7. [Core Guardian V3](#7-core-guardian-v3)
+8. [FastAPI Autonomous Scheduler (Fly.io)](#8-fastapi-autonomous-scheduler-flyio)
+9. [APScheduler — Notification Scheduler (Fly.io)](#9-apscheduler--notification-scheduler-flyio)
+10. [GitHub Actions (CI/CD)](#10-github-actions-cicd)
+11. [OpenClaw Agents](#11-openclaw-agents)
+12. [MCP Workflow Chains](#12-mcp-workflow-chains)
+13. [PostgreSQL Triggers (Fly.io DB)](#13-postgresql-triggers-flyio-db)
+14. [Webhook Handlers (Event-Driven)](#14-webhook-handlers-event-driven)
+15. [Script Locali (Manuali / On-Demand)](#15-script-locali-manuali--on-demand)
+16. [Anomalie e Fix](#16-anomalie-e-fix)
+17. [Criticità e Rischi](#17-criticità-e-rischi)
+18. [Mappa di Priorità](#18-mappa-di-priorità)
 
 ---
 
 ## 1. TOPOLOGIA ORARIA
 
-Visualizzazione consolidata di tutti i job schedulati per ora WITA (UTC+8):
+Visualizzazione consolidata di TUTTI i job schedulati (Air + Pro + Fly.io), per ora WITA (UTC+8):
 
 ```
-WITA     UTC      JOB
-------   ------   -------------------------------------------------------
-00:30    16:30    RAG Canary #1 (embedding drift)
-01:00    17:00    [CRON] Ollama Start
-02:00    18:00    [LAUNCHD] Nightly Git Sync (Air↔Pro)
-02:15    18:15    [CRON] Auto Test Suite
-02:30    18:30    RAG Canary #2
-03:00    19:00    [CRON] Sentinel (auto-repair)
-05:00    21:00    [CRON] KB Ingest
-06:00    22:00    [LAUNCHD] Weekly Cleanup (Dom only)
-06:05    22:05    [CRON] Ollama Stop
-06:30    22:30    RAG Canary #3
-07:00    23:00    [CRON] CRM Automation Engine
-08:00    00:00    [CRON] System Doctor (daily report)
-08:00    00:00    Drive Token Watchdog #3
-09:00    01:00    [FASTAPI] Notification Daily Check
-09:00    01:00    [CRON] SEO Guardian (KBLI indexing)
-12:30    04:30    RAG Canary #4
-14:00    06:00    Drive Token Watchdog #4
-*/5min   */5min   [FASTAPI] Self-Healing Agent + [LAUNCHD] Docker Health (*/30m)
-*/1h     */1h     [FASTAPI] Notification Pending Send
-*/6h     */6h     [CRON] NLM T4 Monitor, Drive Watchdog, RAG Canary
-16:00    08:00    [CRON] Judgement Day (Dom only)
-Dom 06:00 Sab22:00 [CRON] RAGAS Eval settimanale
-On-push  On-push  [GH ACTIONS] Tests, Deploy, Security
-On-msg   On-msg   [WEBHOOK] WhatsApp, Telegram, Instagram, Web
+WITA     UTC      MACCHINA  JOB
+------   ------   --------  -------------------------------------------------------
+00:30    16:30    Air       RAG Canary #1 (embedding drift)
+01:00    17:00    Air       [CRON] Ollama Start
+01:00    17:00    Pro       [LAUNCHD] Intel Scraper + War Room nightly (com.balizero.intel.nightly)
+02:00    18:00    Air       [LAUNCHD] Nightly Git Sync (Air→Pro)
+02:15    18:15    Air       [CRON] Auto Test Suite
+02:20    18:20    Pro       [CRON] NLM NB4 Pipeline (Lun-Sab)
+02:30    18:30    Air       RAG Canary #2
+02:30    18:30    Pro       [CRON] NLM NB6 Pipeline (Lun-Sab)
+02:40    18:40    Pro       [CRON] NLM NB8 Pipeline (Lun-Sab)
+02:50    18:50    Pro       [CRON] NLM NB10 Pipeline (Lun-Sab)
+03:00    19:00    Air       [CRON] Sentinel → Core Guardian Watchdog
+03:00    19:00    Pro       [CRON] fly-backup.sh (pg_dump → Tigris)
+04:30    20:30    Pro       [CRON] NLM NB-1 Daily Bundle Refresh
+05:00    21:00    Air       [CRON] KB Ingest
+06:00    22:00    Air       [LAUNCHD] Weekly Cleanup (Dom only)
+06:05    22:05    Air       [CRON] Ollama Stop
+06:30    22:30    Air       RAG Canary #3
+06:30    22:30    Pro       [CRON] YT Monitor (ogni 6h)
+07:00    23:00    Air       [CRON] CRM Automation Engine
+08:00    00:00    Air       [CRON] System Doctor (daily report)
+08:00    00:00    Air       Drive Token Watchdog #3
+09:00    01:00    Fly.io    [FASTAPI] Notification Daily Check (APScheduler)
+09:00    01:00    Air       [CRON] SEO Guardian (KBLI indexing)
+10:00    02:00    Pro       [CRON] KG Builder (settimanale Dom)
+10:00    02:00    Pro       [CRON] Conversation Trainer (settimanale Dom)
+12:30    04:30    Air       RAG Canary #4
+14:00    06:00    Air       Drive Token Watchdog #4
+16:00    08:00    Air       [CRON] Judgement Day (Dom only)
+18:00    10:00    Pro       [CRON] NLM NB5 T4 Monitor (Mar+Gio)
+Dom06:00 Sab22:00 Air       [CRON] RAGAS Eval settimanale
+Dom13:30 Dom05:30 Pro       [CRON] Peraturan Ingestion settimanale
+*/5min   */5min   Pro       [CRON] Drive Poll + Intel Sentinel Bridge
+*/5min   */5min   Fly.io    [FASTAPI] Self-Healing Agent
+*/30min  */30min  Air       [LAUNCHD] Docker Health Check
+*/1h     */1h     Fly.io    [FASTAPI] Notification Pending Send
+*/6h     */6h     Air       NLM T4 Monitor, Drive Watchdog, RAG Canary
+*/30m    7-19WITA Pro       [CRON] Fly.io Health Check
+On-push  On-push  GitHub    [GH ACTIONS] Tests, Deploy, Security
+On-msg   On-msg   Fly.io    [WEBHOOK] WhatsApp, Telegram, Instagram, Web
 ```
 
 ---
@@ -152,9 +171,55 @@ File: `~/Library/LaunchAgents/`
 | `homebrew.mxcl.redis` | Redis (porta 6379) | Always-On | ✅ |
 | `homebrew.mxcl.ollama` | Ollama LLM server | Always-On | ✅ |
 
+### 2.9 Fly Postgres Tunnel (Always-On) ← NUOVO 2026-03-31
+| Campo | Valore |
+|-------|--------|
+| **ID** | `com.nuzantara.fly-pg-tunnel` |
+| **Schedule** | Always-On (KeepAlive=true, ThrottleInterval=10s) |
+| **Comando** | `fly proxy 15432:5432 -a nuzantara-postgres --bind-addr 127.0.0.1` |
+| **Cosa fa** | Mantiene `localhost:15432` sempre aperto → consente a `crm_automation_engine.py` e altri script di connettersi a Fly Postgres senza tunnel manuale |
+| **Macchina** | Air |
+| **Stato** | ✅ ATTIVO |
+| **Log** | `logs/fly-pg-tunnel.log` |
+| **Plist** | `scripts/launchd/com.nuzantara.fly-pg-tunnel.plist` |
+
 ---
 
-## 3. CRON JOBS (Air)
+## 3. LAUNCHD (macOS Pro — Always-On)
+
+Servizi gestiti da macOS launchd su **Pro** (`nuzantara@Nuzantara`).
+File: `/Users/nuzantara/Library/LaunchAgents/`
+
+| ID | Cosa fa | Schedule | Stato |
+|----|---------|---------|-------|
+| `com.balizero.intel.nightly` | **Intel Scraper + War Room** — pipeline completa nightly (vedi §6) | 01:00 WITA | ✅ ATTIVO |
+| `com.balizero.nlm-bridge` | NLM Bridge — stato NotebookLM sync | Always-On | ✅ PID=15346 |
+| `com.balizero.post-publish-webhook` | Post-publish webhook — notifica dopo publish articolo | Always-On | ✅ PID=4213 |
+| `com.balizero.post-publish-poller` | Poller articoli pubblicati | Scheduled | ⚠️ PID=- |
+| `com.balizero.client-value-predictor` | Predittore valore clienti | Scheduled | ⚠️ PID=- |
+| `com.balizero.comfyui-server` | ComfyUI image generation server | KeepAlive (cond.) | ⚠️ PID=- |
+| `com.balizero.renewal-alerts` | Alert rinnovi (visa/passport) | Scheduled | ⚠️ PID=- |
+| `com.balizero.translate.hourly` | Traduzione automatica articoli | Ogni ora | ⚠️ PID=- |
+| `com.nuzantara.dlq-autopilot` | Dead Letter Queue autopilot | Scheduled | ⚠️ PID=- |
+| `com.nuzantara.prime-dashboard` | Prime dashboard server | Always-On | ✅ PID=4200 |
+| `com.nuzantara.prime-tunnel` | Prime tunnel (prime.balizero.com backend) | Always-On | ✅ PID=4199 |
+| `com.nuzantara.qwen-code-review` | Code review automatico con Qwen | On-trigger | ⚠️ PID=- |
+| `com.nuzantara.sentinel` | Sentinel Pro | Scheduled | ✅ PID=92155 |
+| `com.nuzantara.vector-reindex-check` | Verifica coerenza indici Qdrant | Scheduled | ⚠️ PID=- |
+| `com.nuzantara.zombie-hunter` | Elimina processi zombie | Scheduled | ⚠️ PID=- |
+| `com.cell.organism` | CELL Organism AI agent | Always-On | ✅ PID=57903 |
+| `com.claude-max-api` | Claude Max API bridge | Always-On | ✅ PID=4214 |
+| `ai.openclaw.gateway` | OpenClaw gateway Pro | Always-On | ✅ ATTIVO |
+| `ai.openclaw.monitor-air` | Monitor Air da Pro | Ogni 5min | ✅ ATTIVO |
+| `homebrew.mxcl.postgresql@17` | PostgreSQL 17 locale Pro | Always-On | ✅ |
+| `homebrew.mxcl.redis` | Redis locale Pro | Always-On | ✅ |
+| `homebrew.mxcl.ollama` | Ollama Pro (qwen3.5:27b ecc.) | Always-On | ✅ |
+
+> **Nota:** PID=- significa non in esecuzione in questo momento (scheduled o on-demand). KeepAlive=false = non si riavvia automaticamente.
+
+---
+
+## 4. CRON JOBS (Air)
 
 File: `crontab -l` su Air. Log in `~/Projects/nuzantara/logs/`.
 
@@ -202,7 +267,130 @@ File: `crontab -l` su Air. Log in `~/Projects/nuzantara/logs/`.
 
 ---
 
-## 4. FASTAPI AUTONOMOUS SCHEDULER (Fly.io)
+## 5. CRON JOBS (Pro)
+
+File: `crontab -l` su Pro (`nuzantara@Nuzantara`). Log in `/tmp/cron-*.log` e `~/logs/`.
+
+| Job | Cron | Schedule WITA | Script | Cosa fa |
+|-----|------|---------------|--------|---------|
+| **Fly Health Check** | `*/30 7-19 * * *` | 07:00-19:00 ogni 30min | `~/scripts/fly-health-check.sh` | Ping Fly.io health, alert Telegram se down |
+| **Drive Poll** | `*/5 * * * *` | ogni 5min | `~/scripts/openclaw-cron/drive-poll.sh` | Google Drive changes poll, page_token in DB |
+| **Intel Sentinel Bridge** | `*/5 * * * *` | ogni 5min | `~/scripts/intel-scraper-sentinel-bridge.sh` | Monitora log intel scraper + War Room, scrive heartbeat |
+| **Pro Heartbeat** | `0 * * * *` | ogni ora :00 | inline `touch + ssh air` | Pro e Air si pingano reciprocamente |
+| **Fly Backup** | `0 3 * * *` | 03:00 | `~/scripts/fly-backup.sh` | pg_dump Fly Postgres → Tigris `nuzantara-backups` |
+| **NLM NB-1 Daily Refresh** | `30 4 * * *` | 04:30 | `scripts/nlm_nb1_daily_refresh.py` | NotebookLM NB-1 bundle aggiornamento giornaliero |
+| **Expiry Alerter** | `0 8 * * *` | 08:00 | `scripts/expiry_alerter.py` | Alert scadenza passport/visa clienti (ridondante con APScheduler ma su Pro) |
+| **Legal Radar** | `0 0 * * 0` | Dom 08:00 | `scripts/legal_radar.py` | Monitora nuove leggi indonesiane (UU, PP, Permen) |
+| **KG Builder** | `0 2 * * 0` | Dom 02:00 | `~/scripts/openclaw-cron/knowledge-graph-builder.sh` | Rebuild Knowledge Graph settimanale (56K nodi, 161K edges) |
+| **Conversation Trainer** | `0 3 * * 0` | Dom 03:00 | `~/scripts/openclaw-cron/conversation-trainer.sh` | Fine-tuning conversazionale su dati settimana |
+| **YT Monitor** | `30 */6 * * *` | 06:30, 12:30, 18:30, 00:30 | `run_yt_monitor.sh` | Monitora canali YouTube per immigration content (NLM NB-2) |
+| **NLM NB4 Pipeline** | `20 2 * * 1-6` | 02:20 (Lun-Sab) | `run_nb4_pipeline.sh` | NotebookLM NB-4 research pipeline notturna |
+| **NLM NB5 T4 Monitor** | `0 18 * * 2,4` | 18:00 (Mar+Gio) | `run_nb5_t4_monitor.sh` | NB-5 gap analysis T4 monitor (Mar e Gio) |
+| **NLM NB6 Pipeline** | `30 2 * * 1-6` | 02:30 (Lun-Sab) | `run_nb6_pipeline.sh` | NotebookLM NB-6 pipeline |
+| **NLM NB8 Pipeline** | `40 2 * * 1-6` | 02:40 (Lun-Sab) | `run_nb8_pipeline.sh` | NotebookLM NB-8 pipeline |
+| **NLM NB10 Pipeline** | `50 2 * * 1-6` | 02:50 (Lun-Sab) | `run_nb10_pipeline.sh` | NotebookLM NB-10 pipeline |
+| **Peraturan Ingestion** | `30 21 * * 0` | Dom 05:30 (+1d) | `run_peraturan_ingestion.sh` | Ingest peraturan (leggi) in Qdrant settimanale |
+| **NLM Bridge Heartbeat** | `*/4 * * * *` | ogni 4min | inline JSON write | Scrive heartbeat JSON per NLM bridge state |
+| **OpenClaw State Bridge** | `*/5 * * * *` | ogni 5min | `~/scripts/openclaw-state-bridge.py` | Sincronizza stato agenti OpenClaw |
+| **LaunchAgent Bridge** | `*/5 * * * *` | ogni 5min | `~/scripts/launchagent-state-bridge.py` | Sincronizza stato LaunchAgents |
+| **Cache Cleanup** | `30 3 1,15 * *` | 1° e 15 ore 03:30 | inline npm+pip+brew | Pulizia cache npm, pip, brew ogni 2 settimane |
+
+---
+
+## 6. INTEL SCRAPER + WAR ROOM PIPELINE
+
+**La pipeline nightly più importante del sistema.** Gestita da `com.balizero.intel.nightly` su Pro.
+
+### Architettura
+
+```
+LaunchD 01:00 WITA
+    │
+    ├── Step 1: Intel Scraper (apps/bali-intel-scraper/)
+    │   ├── 609 fonti aggregate (news + gov sites + social)
+    │   ├── scripts/run_intel_pipeline.py --mode full --limit 15
+    │   ├── AI enrichment (Gemini Flash + sentiment + entità)
+    │   └── Push a staging queue (DB) per review umano
+    │
+    └── Step 2: War Room (apps/war-room/)
+        ├── pipeline.sh --auto
+        ├── agents: 00_topic_selector → 01_grok_scraper → 01_chatgpt_researcher
+        │          → 02_gemini_researcher → 03_gemini_strategist → 04_claude_director
+        │          → 05_gemini_images → 06_canva_builder → 07_delivery.sh
+        └── Output: Canva design aggiornato + Telegram delivery al gruppo
+```
+
+### Intel Scraper (apps/bali-intel-scraper/)
+
+| Campo | Valore |
+|-------|--------|
+| **Runtime** | Pro locale via LaunchD (NON su Fly.io) |
+| **Schedule** | 01:00 WITA ogni notte |
+| **Fonti** | 609 aggregate: news indonesiani, siti governativi imigrasi, business registry |
+| **Pipeline** | Scrape → NLP filter → AI enrichment (Gemini Flash) → staging queue |
+| **Sentinel** | `~/scripts/intel-scraper-sentinel-bridge.sh` ogni 5min legge log e scrive heartbeat |
+| **Log** | `~/.openclaw/workspace/logs/intel_nightly_YYYYMMDD.log` |
+| **Env** | `.env` in `apps/bali-intel-scraper/` (API keys, DB URL) |
+| **Alert** | Telegram group `-1003826235564` su failure |
+
+### War Room (apps/war-room/)
+
+| Campo | Valore |
+|-------|--------|
+| **Trigger** | Subito dopo Intel Scraper (step 2 dello stesso LaunchD job) |
+| **Agenti** | 10 agenti in sequenza (AI multi-model pipeline) |
+| **Output** | Canva design + Telegram post al gruppo ops |
+| **Lock** | `/tmp/warroom_pipeline.lock` (previene doppia istanza) |
+| **Esecuzione** | `pipeline.sh --auto` oppure `pipeline_v2.py "topic"` (A2A mode) |
+| **Canva Design** | `DAHE6lx1lf8` (default, override con `CANVA_DESIGN_ID=`) |
+| **Log** | `apps/war-room/logs/pipeline_YYYYMMDD_HHMMSS.log` |
+
+### Post-Publish Flow (Pro LaunchD)
+
+| Componente | Cosa fa |
+|------------|---------|
+| `com.balizero.post-publish-webhook` (Always-On) | Riceve webhook dopo publish articolo → notifica team |
+| `com.balizero.post-publish-poller` | Polling articoli pubblicati per analytics |
+
+---
+
+## 7. CORE GUARDIAN V3
+
+File: `apps/evaluator/core_guardian/`
+**Runtime:** Cron Air (03:00 via `auto_sentinel.sh` → `sentinel` wrapper → `watchdog.py`)
+
+### Architettura 3 livelli
+
+| Livello | File | Frequenza | Modello | Cosa fa |
+|---------|------|-----------|---------|---------|
+| **Watchdog (L1)** | `watchdog.py` | ogni 30min (giorno) / ogni 2h (notte) | Python puro — $0 | pytest junitxml, confronto baseline.json, circuit breaker, Telegram alert se regressione |
+| **Scout (L2)** | `scout.py` | On-demand / triggered da Watchdog | Nessuno | AST analysis: cache invalidation audit, unused imports, hardcoded secrets pattern |
+| **Surgeon (L3)** | `surgeon.py` | On-demand (worktree isolato) | Locale (Qwen) | Fix automatici deterministici: DTZ005, DTZ003, ANN204, ruff --fix |
+
+### Componenti ausiliari
+
+| File | Scopo |
+|------|-------|
+| `watchdog.py` | Entry point cron — pytest + baseline tracking |
+| `cron_guardian.py` | Cron job guardian — monitora salute dei cron job |
+| `learn.py` | Apprende pattern dai fix per migliorare Scout |
+| `observe.py` | Observer pattern — hook pre/post esecuzione |
+| `agent.py` | Agente Core Guardian autonomo |
+| `checks/` | Check deterministici AST-based |
+
+### Baseline e Metriche
+
+| Metrica | Baseline (2026-03-20) |
+|---------|-----------------------|
+| Test passed | 3,917 |
+| Ruff violations | 2,051 |
+| Baseline file | `.agent/decisions/baseline.json` |
+
+> **Nota:** Il Surgeon è lo step più aggressivo — opera in worktree isolato (`git worktree`), mai direttamente su `main`. I fix vengono proposti come PR o applicati solo se confidence > 0.95.
+
+---
+
+## 8. FASTAPI AUTONOMOUS SCHEDULER (Fly.io)
 
 File: `apps/backend-rag/backend/services/misc/autonomous_scheduler.py`
 Inizializzato in: `backend/app/setup/service_initializer.py`
@@ -230,7 +418,7 @@ Inizializzato in: `backend/app/setup/service_initializer.py`
 
 ---
 
-## 5. APSCHEDULER — NOTIFICATION SCHEDULER (Fly.io)
+## 9. APSCHEDULER — NOTIFICATION SCHEDULER (Fly.io)
 
 File: `apps/backend-rag/backend/app/modules/notifications/scheduler.py`
 Classe: `NotificationScheduler`
@@ -256,7 +444,7 @@ Classe: `NotificationScheduler`
 
 ---
 
-## 6. GITHUB ACTIONS (CI/CD)
+## 10. GITHUB ACTIONS (CI/CD)
 
 Directory: `.github/workflows/`
 
@@ -310,7 +498,7 @@ Directory: `.github/workflows/`
 
 ---
 
-## 7. OPENCLAW AGENTS (Air)
+## 11. OPENCLAW AGENTS
 
 Config: `~/.openclaw/openclaw.json`
 Gateway: `localhost:18789`
@@ -328,7 +516,7 @@ Gateway: `localhost:18789`
 
 ---
 
-## 8. MCP WORKFLOW CHAINS
+## 12. MCP WORKFLOW CHAINS
 
 File: `apps/nuzantara-mcp/nuzantara_mcp/workflows/chains.py`
 Eseguiti via OpenClaw (mcporter) o manuale.
@@ -346,7 +534,7 @@ Eseguiti via OpenClaw (mcporter) o manuale.
 
 ---
 
-## 9. POSTGRESQL TRIGGERS (Fly.io DB)
+## 13. POSTGRESQL TRIGGERS (Fly.io DB)
 
 Database: `nuzantara-postgres.flycast:5432/nuzantara_rag`
 
@@ -368,7 +556,7 @@ Database: `nuzantara-postgres.flycast:5432/nuzantara_rag`
 
 ---
 
-## 10. WEBHOOK HANDLERS (Event-Driven)
+## 14. WEBHOOK HANDLERS (Event-Driven)
 
 Tutti su Fly.io. Richiedono macchina attiva (cold start ~35s).
 
@@ -382,7 +570,7 @@ Tutti su Fly.io. Richiedono macchina attiva (cold start ~35s).
 
 ---
 
-## 11. SCRIPT LOCALI (Manuali / On-Demand)
+## 15. SCRIPT LOCALI (Manuali / On-Demand)
 
 Scripts non schedulati, usati manualmente o da ai-dispatch.
 
@@ -406,7 +594,7 @@ Scripts non schedulati, usati manualmente o da ai-dispatch.
 
 ---
 
-## 11b. ANOMALIE RILEVATE DA CODEX (verifica log reali — 2026-03-31)
+## 16. ANOMALIE RILEVATE DA CODEX (verifica log reali — 2026-03-31)
 
 > Codex GPT-5.4 ha letto i log effettivi in `logs/`. Questi sono problemi **confermati in produzione**.
 
@@ -438,7 +626,7 @@ Con `min_machines_running=1` la macchina Fly non si spegne → i task 24h sono *
 
 ---
 
-## 11c. ANALISI RISCHI DA DEEPSEEK R1 (chain-of-thought — 2026-03-31)
+### 16b. ANALISI RISCHI DA DEEPSEEK R1 (chain-of-thought — 2026-03-31)
 
 ### Rischi collision (confermati)
 - **Notifiche duplicate potenziali:** `notification_scheduler` APScheduler + eventuali cron Air che chiamano lo stesso endpoint → verificare assenza overlap
@@ -460,7 +648,7 @@ Costo: 0. Garantisce che la macchina sia calda alle 09:00 WITA.
 
 ---
 
-## 12. CRITICITÀ E RISCHI
+## 17. CRITICITÀ E RISCHI
 
 ### Rischi di Collision/Overlap
 
@@ -490,7 +678,7 @@ Costo: 0. Garantisce che la macchina sia calda alle 09:00 WITA.
 
 ---
 
-## 13. MAPPA DI PRIORITÀ
+## 18. MAPPA DI PRIORITÀ
 
 Ordinata per **impatto se smette di funzionare**:
 
@@ -506,46 +694,56 @@ Ordinata per **impatto se smette di funzionare**:
 ### ALTO (impatto entro 24h)
 | # | Automazione | Impatto |
 |---|------------|---------|
-| 6 | Drive Token Watchdog | OAuth scade silenziosamente → no documenti clienti |
-| 7 | Self-Healing Agent | Errori backend si accumulano senza auto-fix |
-| 8 | System Doctor | Nessun alert mattutino → problemi non rilevati |
-| 9 | CRM Automation Engine | Quality decay CRM: dati errati, no renewals |
+| 6 | Intel Scraper nightly | Nessun contenuto fresco → War Room vuota → no report |
+| 7 | Drive Token Watchdog | OAuth scade silenziosamente → no documenti clienti |
+| 8 | Self-Healing Agent | Errori backend si accumulano senza auto-fix |
+| 9 | System Doctor | Nessun alert mattutino → problemi non rilevati |
+| 10 | CRM Automation Engine | Quality decay CRM: dati errati, no renewals |
 
 ### MEDIO (impatto operativo)
 | # | Automazione | Impatto |
 |---|------------|---------|
-| 10 | GitHub Actions Deploy | Deploy manuali richiesti |
-| 11 | RAG Canary | Drift embedding non rilevato |
-| 12 | SEO Guardian | KBLI indexing arretrato |
-| 13 | KB Ingest | Knowledge base outdated |
-| 14 | Auto Test | Regressioni non rilevate |
+| 11 | GitHub Actions Deploy | Deploy manuali richiesti |
+| 12 | RAG Canary | Drift embedding non rilevato |
+| 13 | SEO Guardian | KBLI indexing arretrato |
+| 14 | KB Ingest | Knowledge base outdated |
+| 15 | Auto Test | Regressioni non rilevate |
+| 16 | Core Guardian V3 | Code quality decay non rilevato |
+| 17 | NLM Pipeline (NB-1/4/6/8/10) | Research knowledge base outdated |
+| 18 | War Room | Nessun Canva report automatico |
 
 ### BASSO (impatto a lungo termine)
 | # | Automazione | Impatto |
 |---|------------|---------|
-| 15 | RAGAS Eval | Nessun tracking qualità RAG settimanale |
-| 16 | Judgement Day | Nessun report settimanale |
-| 17 | NLM T4 Monitor | Social media monitoring gap |
-| 18 | MCP Chains | Workflow manuali invece di automatici |
+| 19 | RAGAS Eval | Nessun tracking qualità RAG settimanale |
+| 20 | Judgement Day | Nessun report settimanale |
+| 21 | NLM T4/YT Monitor | Social media + YouTube monitoring gap |
+| 22 | MCP Chains | Workflow manuali invece di automatici |
+| 23 | KG Builder | Knowledge Graph non aggiornato (Dom) |
+| 24 | Legal Radar | Nuove leggi non rilevate |
 
 ---
 
-## RIEPILOGO NUMERICO
+## RIEPILOGO NUMERICO (v2.0 — completo Air + Pro)
 
 | Categoria | Totale | Attivi | Disabilitati/Broken |
 |-----------|--------|--------|---------------------|
-| LaunchD (macOS Air) | 11 | 10 | 1 (CELL Health RED) |
-| Cron Jobs (Air) | 11 | 11 | 0 |
-| FastAPI Autonomous Scheduler | 8 | 5 | 3 (disabled) |
+| LaunchD Air | 12 | 11 | 1 (CELL Health RED) |
+| LaunchD Pro | 21 | 8 always-on | 13 scheduled/on-demand |
+| Cron Jobs Air | 11 | 11 | 0 (tutti fixati 2026-03-31) |
+| Cron Jobs Pro | 21 | 21 | 0 |
+| Intel Scraper + War Room | 2 (pipeline) | 2 | 0 |
+| Core Guardian V3 | 3 livelli | 2 attivi | 1 (Surgeon: bridge mancante) |
+| FastAPI Autonomous Scheduler | 8 | 5 | 3 (disabled in prod) |
 | APScheduler Notification | 2 | 2 | 0 |
 | GitHub Actions | 6 | 6 | 0 |
-| OpenClaw Agents | 3 | 3 | 0 |
+| OpenClaw Agents Air+Pro | 6 | 6 | 0 |
 | MCP Chains | 8 | 8 (definite) | 0 |
 | PostgreSQL Triggers | 2 | 2 | 0 |
 | Webhook Handlers | 5 | 4 | 1 (X/Twitter CRC) |
-| **TOTALE** | **56** | **51** | **4 + 3 disabled** |
+| **TOTALE AUTOMAZIONI** | **~107** | **~86** | **~17 disabled/broken** |
 
 ---
 
-*Documento generato il 2026-03-31. Aggiornare dopo ogni modifica significativa al sistema di automazioni.*
-*Fonti: `crontab -l`, `plutil plist`, codice sorgente backend, Explore agent.*
+*Documento v2.0 — 2026-03-31. Include Air + Pro + Intel Scraper + War Room + Core Guardian.*
+*Fonti: `crontab Air+Pro`, `plutil plist Air+Pro`, codice sorgente, Explore agent, Codex, DeepSeek R1.*
