@@ -5,6 +5,23 @@ import subprocess
 import time
 from typing import Optional
 
+# D1.4: idempotency token uses run-slot granularity (not date.today())
+# Token = f"{job_id}:{int(time.time() // interval_s)}"
+# For jobs running every 6h, this gives a unique slot per 6h window.
+# Falls back to daily (86400s) if interval_s is not set.
+DEFAULT_INTERVAL_S = 86400
+
+
+def make_idempotency_token(job_id: str, interval_s: Optional[int] = None) -> str:
+    """Return a stable dedup token for the current run-slot of a job.
+
+    Unlike date.today(), this is granular to the job's actual schedule interval,
+    preventing false deduplication of jobs that run multiple times per day.
+    """
+    effective_interval = interval_s or DEFAULT_INTERVAL_S
+    slot = int(time.time() // effective_interval)
+    return f"{job_id}:{slot}"
+
 DLQ_FILE = os.path.expanduser("~/.agent/decisions/dlq.json")
 NUZANTARA_ROOT = os.path.expanduser("~/Desktop/nuzantara")
 
