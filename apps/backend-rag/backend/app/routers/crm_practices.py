@@ -131,8 +131,45 @@ async def _create_hr_bonus_on_completed(
                 f"HR bonus created: practice={practice_id}, "
                 f"employee={assigned_to}, amount={rate['amount_idr']} IDR"
             )
+
+            # Notify HR admin (Asya) via email
+            await _notify_hr_bonus_pending(
+                assigned_to, practice_type_code, rate["amount_idr"], practice_id,
+            )
     except Exception as e:
         logger.warning(f"HR bonus hook failed for practice {practice_id}: {e}")
+
+
+async def _notify_hr_bonus_pending(
+    employee_email: str,
+    practice_type: str,
+    amount_idr: int,
+    practice_id: int,
+) -> None:
+    """Send email to HR admin (Asya) when a bonus needs approval."""
+    try:
+        from backend.app.modules.notifications.service import SendGridProvider
+
+        provider = SendGridProvider()
+        amount_fmt = f"Rp {amount_idr:,}".replace(",", ".")
+        practice_label = practice_type.replace("_", " ").title()
+
+        await provider.send_email(
+            to_email="asya@balizero.com",
+            subject=f"HR Bonus Pending: {practice_label} — {amount_fmt}",
+            html_body=(
+                f"<p>A new bonus entry needs your approval.</p>"
+                f"<p><strong>Employee:</strong> {employee_email}<br>"
+                f"<strong>Practice:</strong> {practice_label} (#{practice_id})<br>"
+                f"<strong>Amount:</strong> {amount_fmt}</p>"
+                f'<p><a href="https://kita.balizero.com/hr/bonuses">Approve in HR Dashboard</a></p>'
+            ),
+            from_name="Zantara",
+            from_email="zantara@balizero.com",
+        )
+        logger.info(f"HR bonus notification sent to asya@balizero.com for practice {practice_id}")
+    except Exception as e:
+        logger.warning(f"HR bonus email notification failed: {e}")
 
 
 DEFAULT_LIMIT = 50
