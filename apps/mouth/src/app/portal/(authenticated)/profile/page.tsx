@@ -17,6 +17,7 @@ import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
+import { Button } from '@/components/ui/button';
 import type { PortalProfile } from '@/lib/api/portal/portal.types';
 
 // ============================================================================
@@ -94,6 +95,9 @@ export default function ProfilePage() {
   const { error } = useToast();
   const [profile, setProfile] = useState<PortalProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editData, setEditData] = useState({ phone: '', whatsapp: '', address: '' });
 
   useEffect(() => {
     loadProfile();
@@ -109,6 +113,34 @@ export default function ProfilePage() {
       logger.error('Failed to load portal profile', {}, err as Error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleEdit = () => {
+    if (!profile) return;
+    setEditData({
+      phone: profile.phone || '',
+      whatsapp: profile.whatsapp || '',
+      address: profile.address || '',
+    });
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      const updated = await api.portal.updateProfile({
+        phone: editData.phone || undefined,
+        whatsapp: editData.whatsapp || undefined,
+        address: editData.address || undefined,
+      });
+      setProfile(updated);
+      setIsEditing(false);
+    } catch (err) {
+      error('Failed to update profile', 'Please try again');
+      logger.error('Failed to update portal profile', {}, err as Error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -440,19 +472,36 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {/* Info Notice */}
-      <section
-        className="rounded-lg border p-4"
-        style={{
-          borderColor: 'rgba(201,169,110,0.3)',
-          background: 'rgba(201,169,110,0.06)',
-        }}
-      >
-        <p className="text-sm" style={{ color: 'var(--bz-accent-warm)' }}>
-          To update your profile information, please contact your account manager or send us a
-          message through the Chat.
-        </p>
-      </section>
+      {!isEditing ? (
+        <section className="flex justify-end">
+          <Button variant="outline" onClick={handleEdit}>Edit Profile</Button>
+        </section>
+      ) : (
+        <section className="space-y-4 rounded-xl border p-6" style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(24px)' }}>
+          <h2 className="text-lg font-semibold">Edit Profile</h2>
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="edit-phone" className="text-xs mb-1 block" style={{ color: 'var(--bz-text-2)' }}>Phone</label>
+              <input id="edit-phone" type="tel" value={editData.phone} onChange={(e) => setEditData(prev => ({ ...prev, phone: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border text-sm" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.05)', color: 'var(--bz-text-1)' }} />
+            </div>
+            <div>
+              <label htmlFor="edit-whatsapp" className="text-xs mb-1 block" style={{ color: 'var(--bz-text-2)' }}>WhatsApp</label>
+              <input id="edit-whatsapp" type="tel" value={editData.whatsapp} onChange={(e) => setEditData(prev => ({ ...prev, whatsapp: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border text-sm" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.05)', color: 'var(--bz-text-1)' }} />
+            </div>
+            <div>
+              <label htmlFor="edit-address" className="text-xs mb-1 block" style={{ color: 'var(--bz-text-2)' }}>Address</label>
+              <textarea id="edit-address" value={editData.address} onChange={(e) => setEditData(prev => ({ ...prev, address: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border text-sm min-h-[80px]" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.05)', color: 'var(--bz-text-1)' }} />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Changes'}</Button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
