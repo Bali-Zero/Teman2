@@ -36,6 +36,7 @@ import { ClientKanban } from '@/components/crm/ClientKanban';
 import { ClientCard } from '@/components/crm/ClientCard';
 import { CRMErrorBoundary, CRMSkeleton } from '@/components/crm';
 import { useCrmClients, useCrmStats } from '@/hooks';
+import { useTeamMemberOptions } from '@/hooks/useTeamMembers';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/lib/hooks/optimized/useDebounce';
 import { logger } from '@/lib/logger';
@@ -314,6 +315,9 @@ function ClientsListContent() {
     queryFn: () => api.crm.getClientAssignees(),
     staleTime: 5 * 60 * 1000,
   });
+
+  // Team member names for display (email → full name lookup)
+  const { options: teamMemberOptions } = useTeamMemberOptions();
 
   // Infinite scroll — check if near bottom on scroll + interval fallback
   const hasMoreRef = useRef(hasMore);
@@ -893,14 +897,20 @@ function ClientsListContent() {
                 >
                   <option value="">All team members</option>
                   {currentUserEmail && !uniqueAssignees.includes(currentUserEmail) && (
-                    <option value={currentUserEmail}>{currentUserEmail.split('@')[0]} (me)</option>
-                  )}
-                  {uniqueAssignees.map((assignee) => (
-                    <option key={assignee} value={assignee}>
-                      {assignee?.split('@')[0]}
-                      {assignee === currentUserEmail ? ' (me)' : ''}
+                    <option value={currentUserEmail}>
+                      {teamMemberOptions.find((m) => m.value === currentUserEmail)?.label || currentUserEmail.split('@')[0]} (me)
                     </option>
-                  ))}
+                  )}
+                  {uniqueAssignees.map((assignee) => {
+                    const member = teamMemberOptions.find((m) => m.value === assignee);
+                    const displayName = member?.label || assignee?.split('@')[0];
+                    return (
+                      <option key={assignee} value={assignee}>
+                        {displayName}
+                        {assignee === currentUserEmail ? ' (me)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div>
@@ -1118,7 +1128,9 @@ function ClientsListContent() {
                             className="truncate block"
                             title={client.assigned_to ?? 'Unassigned'}
                           >
-                            {client.assigned_to ? client.assigned_to.split('@')[0] : '—'}
+                            {client.assigned_to
+                              ? (teamMemberOptions.find((m) => m.value === client.assigned_to)?.label || client.assigned_to.split('@')[0])
+                              : '—'}
                           </span>
                         </td>
                         <td className="px-3 py-2 text-xs">
