@@ -11,14 +11,22 @@ Runs daily as a scheduled task.
 import asyncio
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
+import httpx
 
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 
 logger = logging.getLogger(__name__)
+
+# Internal email API — uses Brevo, from=zantara@balizero.com
+_EMAIL_API_URL = os.getenv(
+    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+)
+_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
 
 # System user ID for sending emails via Zoho
 # Using zero@balizero.com UUID (same as invoice service)
@@ -303,16 +311,36 @@ class BirthdayNotifierService:
             language = self.get_language_for_nationality(client.get("nationality"))
             subject, html_content = self.build_email_content(client, language)
 
-            # Send via Zoho Email
-            await self.email_service.send_email(
-                user_id=SYSTEM_SENDER_USER_ID,
-                to=[client["email"]],
-                subject=subject,
-                content=html_content,
-                is_html=True,
-            )
+            # Primary: Brevo
+            sent_via_brevo = False
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as http_client:
+                    response = await http_client.post(
+                        _EMAIL_API_URL,
+                        headers={"X-API-Key": _EMAIL_API_KEY},
+                        json={
+                            "to": client["email"],
+                            "subject": subject,
+                            "body": html_content,
+                        },
+                    )
+                    response.raise_for_status()
+                sent_via_brevo = True
+                logger.info(f"Birthday email sent to {client['email']} via Brevo ({language})")
+            except Exception as brevo_err:
+                logger.warning(f"Brevo failed for birthday {client['email']}, trying Zoho: {brevo_err}")
 
-            logger.info(f"Birthday email sent to {client['email']} ({language})")
+            # Fallback: Zoho
+            if not sent_via_brevo:
+                await self.email_service.send_email(
+                    user_id=SYSTEM_SENDER_USER_ID,
+                    to=[client["email"]],
+                    subject=subject,
+                    content=html_content,
+                    is_html=True,
+                )
+                logger.info(f"Birthday email sent to {client['email']} via Zoho ({language})")
+
             return True
 
         except Exception as e:

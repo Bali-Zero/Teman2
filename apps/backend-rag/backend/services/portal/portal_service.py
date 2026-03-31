@@ -2019,22 +2019,47 @@ Dettagli:
 • Cliente: {client["full_name"]}
 {extra_info}
 Accedi al workspace per visualizzare e verificare il documento:
-https://zantara-crm.vercel.app/clients/{client_id}
+https://kita.balizero.com/clients/{client_id}
 
 ---
 Questa è una notifica automatica da Bali Zero CRM.
 """
 
-                await zoho_service.send_email(
-                    to_email=lead_email,
-                    subject=subject,
-                    body=body,
-                )
+                # Primary: Brevo
+                sent = False
+                try:
+                    import os
 
-                logger.info(
-                    f"📧 Document upload notification sent to {lead_email} "
-                    f"for client {client['full_name']}",
-                )
+                    import httpx
+
+                    _api_url = os.getenv(
+                        "INTERNAL_EMAIL_API_URL",
+                        "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+                    )
+                    _api_key = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
+                    html_body = body.replace("\n", "<br>")
+                    async with httpx.AsyncClient(timeout=30.0) as http_client:
+                        resp = await http_client.post(
+                            _api_url,
+                            headers={"X-API-Key": _api_key},
+                            json={"to": lead_email, "subject": subject, "body": html_body},
+                        )
+                        resp.raise_for_status()
+                    sent = True
+                    logger.info(f"📧 Document upload notification sent to {lead_email} via Brevo")
+                except Exception as brevo_err:
+                    logger.warning(f"Brevo failed for doc notification, trying Zoho: {brevo_err}")
+
+                # Fallback: Zoho
+                if not sent:
+                    await zoho_service.send_email(
+                        to_email=lead_email,
+                        subject=subject,
+                        body=body,
+                    )
+                    logger.info(
+                        f"📧 Document upload notification sent to {lead_email} via Zoho",
+                    )
 
         except Exception as e:
             # Don't fail upload if notification fails
