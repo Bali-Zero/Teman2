@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "notebook_id": "f0307c2c-9220-4160-93c8-f4a6ef4a3b65",
+  "notebook_name": "NB-10: Team Guides",
+  "current_state": "COMPLETE",
+  "degradation_level": "NOMINAL",
+  "last_updated": "2026-03-30T23:48:26.175973+00:00",
+  "budget": {
+    "daily_queries": 2,
+    "weekly_calls": 2,
+    "week_start": "2026-W13"
+  },
+  "circuit_breakers": {
+    "CB_NLM": {
+      "state": "CLOSED",
+      "failure_count": 0,
+      "last_failure": null,
+      "opened_at": null,
+      "auto_close_after_hours": 4
+    },
+    "CB_SOURCE": {
+      "state": "CLOSED",
+      "failure_count": 0,
+      "last_failure": null,
+      "opened_at": null,
+      "manual_close_only": true
+    },
+    "CB_INTEGRATION": {
+      "state": "CLOSED",
+      "failure_count": 0,
+      "last_failure": null,
+      "opened_at": null,
+      "auto_close_after_hours": 12
+    }
+  },
+  "last_run": null,
+  "cluster_history": [
+    {
+      "date": "2026-03-31",
+      "cluster": "B",
+      "run_id": "124326db-1e59-4fd7-abdc-97fc10266af5"
+    }
+  ]
+}
