@@ -170,26 +170,34 @@ class IntelPipeline:
             exa_stats = {}
             if os.environ.get('EXA_API_KEY'):
                 try:
-                    import concurrent.futures
                     from exa_scraper import ExaScraper
                     # Note: ExaScraper categories (immigration, business, tax, emerging_trends,
                     # lifestyle, business_regulations) differ from pipeline categories.
                     # Pass None to run all Exa queries — filtering happens at validation.
                     exa = ExaScraper()
-                    # Wrap in thread with 10min timeout to prevent hanging on slow/stuck Exa API.
-                    # IMPORTANT: do NOT use `with executor:` — its __exit__ calls shutdown(wait=True)
-                    # which blocks until the thread finishes even after TimeoutError, since
-                    # exa_py uses requests.post() with no timeout and can hang indefinitely.
-                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                    future = executor.submit(exa.search_all)
-                    try:
-                        exa_articles = future.result(timeout=600)  # 10min max
-                    except concurrent.futures.TimeoutError:
+                    # Wrap in daemon thread with 10min timeout to prevent hanging on slow/stuck Exa API.
+                    # FIX (2026-03-31): use daemon=True so the thread does NOT block Python exit
+                    # when the process finishes — avoids the hang-on-exit that killed the 2026-03-30 run.
+                    import threading
+                    _exa_result: list = []
+                    _exa_done = threading.Event()
+
+                    def _exa_worker():
+                        try:
+                            _exa_result.extend(exa.search_all())
+                        except Exception as _ex:
+                            self.log(f'Exa worker error: {_ex}', 'WARN')
+                        finally:
+                            _exa_done.set()
+
+                    _exa_thread = threading.Thread(target=_exa_worker, daemon=True, name='exa-search')
+                    _exa_thread.start()
+                    if _exa_done.wait(timeout=600):  # 10min max
+                        exa_articles = list(_exa_result)
+                    else:
                         self.log('Exa augmentation timed out after 10min — skipping', 'WARN')
                         exa_articles = []
-                        future.cancel()
-                    finally:
-                        executor.shutdown(wait=False, cancel_futures=True)  # non-blocking
+                        # Thread is daemon=True so it will NOT block process exit
                     existing_urls = {a.get('url', '') for a in articles}
                     new_exa = [a for a in exa_articles if a['url'] not in existing_urls]
                     articles.extend(new_exa)

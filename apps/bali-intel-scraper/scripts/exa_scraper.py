@@ -135,8 +135,9 @@ class ExaScraper:
                     "highlights": highlights_params,
                 }
 
-                # exclude_domains not supported on specialized indices (tweet, research paper, personal site)
-                specialized_categories = {"tweet", "research paper", "personal site", "people", "company"}
+                # exclude_domains not supported on specialized indices (research paper, personal site)
+                # NOTE: "tweet" category was deprecated by Exa in 2026-03 — do NOT use it
+                specialized_categories = {"research paper", "personal site", "people", "company"}
                 if exclude_domains and exa_category not in specialized_categories:
                     search_kwargs["exclude_domains"] = exclude_domains
                 if user_location:

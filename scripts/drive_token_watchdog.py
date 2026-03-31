@@ -27,7 +27,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 BACKEND_ENV = PROJECT_ROOT / "apps" / "backend-rag" / ".env"
 
 # Telegram — stessa config di expiry_alerter.py
-TELEGRAM_OWNER_CHAT_ID = "413539912"
+TELEGRAM_OWNER_CHAT_ID = "1125336968"  # Zero (archangelsamyaza) — corretto 2026-03-31
 
 # Soglie di alert
 WARN_DAYS = 7    # ⚠️ alert se scade entro 7 giorni
