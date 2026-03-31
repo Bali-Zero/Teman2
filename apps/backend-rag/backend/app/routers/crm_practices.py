@@ -159,25 +159,39 @@ async def _notify_hr_bonus_pending(
 ) -> None:
     """Send email to HR admin (Asya) when a bonus needs approval."""
     try:
-        from backend.app.modules.notifications.service import SendGridProvider
+        import os
 
-        provider = SendGridProvider()
+        import httpx
+
         amount_fmt = f"Rp {amount_idr:,}".replace(",", ".")
         practice_label = practice_type.replace("_", " ").title()
 
-        await provider.send_email(
-            to_email="asya@balizero.com",
-            subject=f"HR Bonus Pending: {practice_label} — {amount_fmt}",
-            html_body=(
-                f"<p>A new bonus entry needs your approval.</p>"
-                f"<p><strong>Employee:</strong> {employee_email}<br>"
-                f"<strong>Practice:</strong> {practice_label} (#{practice_id})<br>"
-                f"<strong>Amount:</strong> {amount_fmt}</p>"
-                f'<p><a href="https://kita.balizero.com/hr/bonuses">Approve in HR Dashboard</a></p>'
-            ),
-            from_name="Zantara",
-            from_email="zantara@balizero.com",
+        api_url = os.getenv(
+            "INTERNAL_EMAIL_API_URL",
+            "https://nuzantara-rag.fly.dev/api/notifications/send-email",
         )
+        api_key = os.getenv("NUZANTARA_API_KEY", "REDACTED-ROTATED-KEY")
+
+        html_body = (
+            f"<p>A new bonus entry needs your approval.</p>"
+            f"<p><strong>Employee:</strong> {employee_email}<br>"
+            f"<strong>Practice:</strong> {practice_label} (#{practice_id})<br>"
+            f"<strong>Amount:</strong> {amount_fmt}</p>"
+            f'<p><a href="https://kita.balizero.com/hr/bonuses">Approve in HR Dashboard</a></p>'
+        )
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                api_url,
+                headers={"X-API-Key": api_key},
+                json={
+                    "to": "asya@balizero.com",
+                    "subject": f"HR Bonus Pending: {practice_label} — {amount_fmt}",
+                    "body": html_body,
+                },
+            )
+            response.raise_for_status()
+
         logger.info(f"HR bonus notification sent to asya@balizero.com for practice {practice_id}")
     except Exception as e:
         logger.warning(f"HR bonus email notification failed: {e}")
