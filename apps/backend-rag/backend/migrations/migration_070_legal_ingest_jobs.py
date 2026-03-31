@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS legal_ingest_jobs (
     drive_file_id   TEXT,
     drive_url       TEXT,
     nlm_source_id   TEXT,
-    sheets_row      INTEGER,
+    sheets_row      TEXT,
     error           TEXT,
     visibility_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
