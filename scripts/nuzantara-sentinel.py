@@ -695,6 +695,20 @@ def run_sentinel() -> None:
     registry = load_registry()
     states = collect_state_files(registry)
     check_dead_man_switch()
+
+    # Purge circuit_breakers.json entries for jobs not in registry (prevents phantom CBs)
+    try:
+        from sentinel_lib.circuit_breaker import _load as _cb_load, _atomic_save as _cb_save
+        cb_data = _cb_load()
+        phantoms = [k for k in list(cb_data.keys()) if k not in registry]
+        if phantoms:
+            for k in phantoms:
+                del cb_data[k]
+            _cb_save(cb_data)
+            logger.info(f"Purged {len(phantoms)} phantom CB entries: {phantoms}")
+    except Exception as _e:
+        logger.warning(f"CB purge failed: {_e}")
+
     _force_halfopen_stale_circuits()  # Unblock circuits stuck OPEN > 2h
 
     # Tier 0: verify OpenClaw gateway health before processing jobs

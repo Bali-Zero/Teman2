@@ -176,14 +176,20 @@ class IntelPipeline:
                     # lifestyle, business_regulations) differ from pipeline categories.
                     # Pass None to run all Exa queries — filtering happens at validation.
                     exa = ExaScraper()
-                    # Wrap in thread with 10min timeout to prevent hanging on slow/stuck Exa API
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                        future = executor.submit(exa.search_all)
-                        try:
-                            exa_articles = future.result(timeout=600)  # 10min max
-                        except concurrent.futures.TimeoutError:
-                            self.log('Exa augmentation timed out after 10min — skipping', 'WARN')
-                            exa_articles = []
+                    # Wrap in thread with 10min timeout to prevent hanging on slow/stuck Exa API.
+                    # IMPORTANT: do NOT use `with executor:` — its __exit__ calls shutdown(wait=True)
+                    # which blocks until the thread finishes even after TimeoutError, since
+                    # exa_py uses requests.post() with no timeout and can hang indefinitely.
+                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                    future = executor.submit(exa.search_all)
+                    try:
+                        exa_articles = future.result(timeout=600)  # 10min max
+                    except concurrent.futures.TimeoutError:
+                        self.log('Exa augmentation timed out after 10min — skipping', 'WARN')
+                        exa_articles = []
+                        future.cancel()
+                    finally:
+                        executor.shutdown(wait=False, cancel_futures=True)  # non-blocking
                     existing_urls = {a.get('url', '') for a in articles}
                     new_exa = [a for a in exa_articles if a['url'] not in existing_urls]
                     articles.extend(new_exa)
