@@ -34,13 +34,18 @@ trap "rm -f '$LOCK_FILE'" EXIT
 
 cd "$PROJECT_ROOT"
 
-# Load env vars from backend .env (needed for OPENAI_API_KEY, ANTHROPIC_API_KEY etc.)
+# Ensure ~/.local/bin is in PATH (nlm CLI lives there)
+export PATH="$HOME/.local/bin:$PATH"
+
+# Load env vars — safe grep-based extraction (avoids sourcing multi-line values like GOOGLE_CREDENTIALS_JSON)
 ENV_FILE="$PROJECT_ROOT/apps/backend-rag/.env"
 if [ -f "$ENV_FILE" ]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "$ENV_FILE"
-    set +a
+    while IFS='=' read -r key value; do
+        [[ "$key" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "$key" ]] && continue
+        [[ "$key" =~ [^A-Za-z0-9_] ]] && continue
+        export "$key=$value"
+    done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=.+$' "$ENV_FILE" | grep -v '^GOOGLE_CREDENTIALS_JSON=')
 fi
 
 echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [START] T4 monitor (PID $$)" >> "$LOG_FILE"
