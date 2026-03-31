@@ -231,50 +231,91 @@ NLM_NOTEBOOK_IDS = {
 }
 
 
-def nlm_fact_check(topic: str, slides_data: dict, timeout: int = 90) -> dict:
-    """Fact-check NLM non bloccante. Routing per dominio. Restituisce slides_data arricchito."""
-    import os
-    import urllib.request
-    import urllib.parse
+def nlm_fact_check(topic: str, slides_data: dict, timeout: int = 120) -> dict:
+    """
+    Fact-check via NLM CLI direttamente (nlm query notebook).
+    Estrae max 5 claim verificabili dalle slide → query concisa → risposta veloce.
+    Non usa Gemini come proxy (timeoutava sempre).
+    """
+    NLM_CLI = "nlm"
+
+    # Verifica che nlm sia disponibile
+    try:
+        r = subprocess.run([NLM_CLI, "--version"], capture_output=True, timeout=10)
+        if r.returncode != 0:
+            raise FileNotFoundError
+    except Exception:
+        print("   ⚠️  nlm CLI non disponibile — fact-check saltato", file=sys.stderr)
+        slides_data["nlm_validation"] = {"skipped": True, "reason": "nlm_unavailable"}
+        return slides_data
 
     domain = detect_domain(topic)
     notebook_id = NLM_NOTEBOOK_IDS.get(domain, NLM_NOTEBOOK_IDS["cross_domain"])
     print(f"   🔍 NLM domain: {domain} → notebook {notebook_id[:8]}...", file=sys.stderr)
 
-    # NLM non ha un'API diretta — usiamo gemini CLI come proxy con contesto dominio
-    slides_text = json.dumps(slides_data.get("slides", []), ensure_ascii=False)[:3000]
-    nlm_prompt = (
-        f"You are a fact-checker for Bali Zero, an Indonesian business services firm.\n"
-        f"Domain: {domain} (NLM notebook: {notebook_id})\n"
-        f"Topic: {topic}\n\n"
-        f"Review these slides for factual accuracy regarding Indonesian law and regulations.\n"
-        f"Flag any claims that may be outdated, inaccurate, or unverifiable.\n"
-        f"Return JSON: {{\"validated\": true/false, \"flags\": [{{\"slide\": N, \"claim\": \"...\", \"issue\": \"...\"}}], \"overall\": \"PASS|WARN|FAIL\"}}\n\n"
-        f"SLIDES:\n{slides_text}"
+    # Estrai max 5 claim dalle slide (headline + subhead), prompt corto
+    claims = []
+    for s in slides_data.get("slides", [])[:8]:
+        headline = s.get("headline", "")
+        subhead = s.get("subhead", "")
+        body = s.get("body", "") or ""
+        # Prendi il primo bullet del body se presente
+        first_bullet = next((l.strip("•- ") for l in body.splitlines() if l.strip()), "")
+        claim = f"Slide {s.get('slide_number', '?')}: {headline}"
+        if subhead:
+            claim += f" — {subhead}"
+        if first_bullet:
+            claim += f" ({first_bullet[:80]})"
+        claims.append(claim)
+        if len(claims) >= 5:
+            break
+
+    claims_text = "\n".join(claims)
+    query = (
+        f"Fact-check these claims about '{topic}' for factual accuracy under Indonesian law. "
+        f"For each claim, state: VERIFIED, UNVERIFIABLE, or FLAG (with brief reason). "
+        f"Be concise.\n\n{claims_text}"
     )
 
     try:
-        result = subprocess.run(
-            ["gemini", "-p", nlm_prompt],
-            capture_output=True, text=True, timeout=timeout
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            raw = result.stdout.strip()
-            if "{" in raw:
-                start = raw.find("{"); end = raw.rfind("}") + 1
-                nlm_result = json.loads(raw[start:end])
-            else:
-                nlm_result = {"validated": True, "flags": [], "overall": "PASS"}
-            slides_data["nlm_validation"] = {
-                "domain": domain,
-                "notebook_id": notebook_id,
-                "result": nlm_result,
-            }
-            overall = nlm_result.get("overall", "PASS")
-            flags = nlm_result.get("flags", [])
-            print(f"   ✅ NLM: {overall} ({len(flags)} flags)", file=sys.stderr)
-        else:
-            raise RuntimeError(result.stderr[:200])
+        cmd = [NLM_CLI, "query", "notebook", notebook_id, query, "--timeout", "90"]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.strip() or f"exit {result.returncode}")
+
+        output = result.stdout.strip()
+        if not output:
+            raise RuntimeError("empty response")
+
+        # NLM restituisce JSON con "answer"
+        try:
+            data = json.loads(output)
+            if "value" in data and isinstance(data["value"], dict):
+                data = data["value"]
+            answer = data.get("answer", output)
+        except json.JSONDecodeError:
+            answer = output
+
+        # Parse flags dal testo libero
+        flags = []
+        for line in answer.splitlines():
+            if "FLAG" in line.upper():
+                flags.append(line.strip())
+
+        overall = "WARN" if flags else "PASS"
+        slides_data["nlm_validation"] = {
+            "domain": domain,
+            "notebook_id": notebook_id,
+            "result": {
+                "validated": len(flags) == 0,
+                "flags": flags,
+                "overall": overall,
+                "answer": answer[:500],
+            },
+        }
+        print(f"   ✅ NLM fact-check: {overall} ({len(flags)} flags)", file=sys.stderr)
+
     except Exception as e:
         print(f"   ⚠️  NLM fact-check failed: {e} — skipping", file=sys.stderr)
         slides_data["nlm_validation"] = {"domain": domain, "skipped": True, "error": str(e)}
