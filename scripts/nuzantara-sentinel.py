@@ -22,7 +22,7 @@ from typing import Optional
 # Add sentinel_lib to path
 sys.path.insert(0, str(Path(__file__).parent))
 from sentinel_lib.classifier import classify, classify_with_llm
-from sentinel_lib.circuit_breaker import get_state, record_success, record_failure
+from sentinel_lib.circuit_breaker import get_state, record_success, record_failure, set_phase
 from sentinel_lib.alerter import send_alert, send_daily_report, check_escalation_cooldown, mark_escalation_sent
 from sentinel_lib.repairer import (
     retry_job, dispatch_aider_fix, verify_fix, add_to_dlq, clear_dlq_entry,
@@ -347,6 +347,11 @@ def _process_openclaw_job(
     fix_pattern = classification.get("fix_pattern")
 
     if failure_type == "TRANSIENT" and retry_attempt < MAX_RETRIES:
+        # D4.1: advance phase to T1 on first tier dispatch
+        try:
+            set_phase(job_id, "T1")
+        except ValueError as e:
+            logger.warning(f"{job_id}: phase advance to T1 rejected: {e}")
         backoff = exponential_backoff(retry_attempt)
         logger.info(f"{job_id}: Tier 1 openclaw retry (attempt {retry_attempt+1}), backoff {backoff:.0f}s")
         time.sleep(backoff)
@@ -369,7 +374,11 @@ def _process_openclaw_job(
         return {"action": "retry_failed", "tier": 1, "success": False}
 
     if failure_type == "DETERMINISTIC" and fix_pattern and fix_pattern.get("confidence", 0) >= 0.85:
-        # Tier 2: Aider fix
+        # Tier 2: Aider fix — advance phase to T2
+        try:
+            set_phase(job_id, "T2")
+        except ValueError as e:
+            logger.warning(f"{job_id}: phase advance to T2 rejected: {e}")
         files_implicated = _infer_files(job_id, last_error)
         test_cmd = reg.get("test_cmd")
         logger.info(f"{job_id}: Tier 2 aider-fix (confidence {fix_pattern['confidence']})")
@@ -388,7 +397,11 @@ def _process_openclaw_job(
                 send_alert(f"✅ Auto-fixed `{job_id}`: {fix_pattern['fix_instruction'][:80]}", level="INFO")
                 return {"action": "aider_fixed", "tier": 2, "success": True}
 
-        # Aider failed — escalate to Tier 3
+        # Aider failed — escalate to Tier 3, advance phase
+        try:
+            set_phase(job_id, "T3")
+        except ValueError as e:
+            logger.warning(f"{job_id}: phase advance to T3 rejected: {e}")
         add_to_dlq(job_id, last_error[:500], classification, last_error,
                    files_implicated, aider_attempts=1, aider_failure_reason=aider_out[:200])
         send_alert(
@@ -399,6 +412,11 @@ def _process_openclaw_job(
         return {"action": "escalated_tier3", "tier": 3, "success": False}
 
     # Tier 3/4: Unknown or low-confidence fix
+    new_phase = "T4" if failure_type == "UNKNOWN" else "T3"
+    try:
+        set_phase(job_id, new_phase)
+    except ValueError as e:
+        logger.warning(f"{job_id}: phase advance to {new_phase} rejected: {e}")
     files_implicated = _infer_files(job_id, last_error)
     add_to_dlq(job_id, last_error[:500], classification, last_error, files_implicated)
     level = "CRITICAL" if failure_type == "DETERMINISTIC" else "WARNING"
@@ -500,7 +518,11 @@ def process_job(job_id: str, state: dict, registry: dict,
     host = reg.get("host", "Nuzantara")
 
     if failure_type == "TRANSIENT" and retry_attempt < MAX_RETRIES:
-        # Tier 1: retry with backoff
+        # Tier 1: retry with backoff — phase advances to T1
+        try:
+            set_phase(job_id, "T1")
+        except ValueError as e:
+            logger.warning(f"{job_id}: phase advance to T1 rejected: {e}")
         backoff = exponential_backoff(retry_attempt)
         logger.info(f"{job_id}: Tier 1 retry (attempt {retry_attempt+1}), backoff {backoff:.0f}s")
         time.sleep(backoff)
@@ -522,7 +544,11 @@ def process_job(job_id: str, state: dict, registry: dict,
     elif (failure_type == "DETERMINISTIC"
           and fix_pattern and fix_pattern.get("confidence", 0) >= 0.85
           and not is_critical):
-        # Tier 2: Aider auto-fix — only for non-critical jobs
+        # Tier 2: Aider auto-fix — only for non-critical jobs, phase advances to T2
+        try:
+            set_phase(job_id, "T2")
+        except ValueError as e:
+            logger.warning(f"{job_id}: phase advance to T2 rejected: {e}")
         logger.info(f"{job_id}: Tier 2 aider-fix (confidence {fix_pattern['confidence']})")
         success, output = dispatch_aider_fix(
             job=job_id,
@@ -538,7 +564,11 @@ def process_job(job_id: str, state: dict, registry: dict,
                 clear_dlq_entry(job_id)
                 send_alert(f"Auto-fixed {job_id}: {fix_pattern['fix_instruction'][:80]}", level="INFO")
                 return {"action": "aider_fixed", "tier": 2, "success": True}
-        # Aider failed → Tier 3
+        # Aider failed → Tier 3, advance phase
+        try:
+            set_phase(job_id, "T3")
+        except ValueError as e:
+            logger.warning(f"{job_id}: phase advance to T3 rejected: {e}")
         add_to_dlq(job_id, last_error[:500], classification, last_error,
                    files_implicated, aider_attempts=1, aider_failure_reason=output[:200])
         send_alert(
@@ -550,6 +580,10 @@ def process_job(job_id: str, state: dict, registry: dict,
 
     elif is_critical and not is_idempotent:
         # Tier 3: critical + non-idempotent → never auto-retry, alert immediately
+        try:
+            set_phase(job_id, "T3")
+        except ValueError as e:
+            logger.warning(f"{job_id}: phase advance to T3 rejected: {e}")
         add_to_dlq(job_id, last_error[:500], classification, last_error, files_implicated)
         if not check_escalation_cooldown(job_id):
             send_alert(
@@ -563,6 +597,10 @@ def process_job(job_id: str, state: dict, registry: dict,
 
     elif is_critical and is_idempotent and fail_count >= 3:
         # Tier 1 with escalation: retry + warning (idempotent, safe to retry)
+        try:
+            set_phase(job_id, "T1")
+        except ValueError as e:
+            logger.warning(f"{job_id}: phase advance to T1 rejected: {e}")
         if restart_cmd:
             success, _ = retry_job(restart_cmd, host)
             if success:
@@ -579,6 +617,11 @@ def process_job(job_id: str, state: dict, registry: dict,
 
     else:
         # Tier 3/4: low-confidence or unknown — add to DLQ
+        new_phase = "T4" if failure_type == "UNKNOWN" else "T3"
+        try:
+            set_phase(job_id, new_phase)
+        except ValueError as e:
+            logger.warning(f"{job_id}: phase advance to {new_phase} rejected: {e}")
         add_to_dlq(job_id, last_error[:500], classification, last_error, files_implicated)
         level = "CRITICAL" if failure_type == "DETERMINISTIC" else "WARNING"
         if not check_escalation_cooldown(job_id):
@@ -710,6 +753,27 @@ def run_sentinel() -> None:
     except Exception:
         pass
 
+    # D4.3: DLQ phase distribution — count entries per phase for observability
+    dlq_phase_distribution: dict[str, int] = {
+        "T0": 0, "T1": 0, "T2": 0, "T3": 0, "T4": 0, "TERMINAL": 0, "abandoned_legacy": 0
+    }
+    try:
+        raw_dlq = dlq_data if isinstance(dlq_data, dict) else {}
+        dlq_list = raw_dlq.get("queue", dlq_data if isinstance(dlq_data, list) else [])
+        from sentinel_lib.circuit_breaker import VALID_PHASES as _VALID_PHASES
+        for e in dlq_list:
+            if not isinstance(e, dict):
+                continue
+            job_phase = circuit_states.get(e.get("job", ""), {}).get("phase", "T0")
+            if e.get("status") == "TERMINAL":
+                dlq_phase_distribution["TERMINAL"] += 1
+            elif job_phase in _VALID_PHASES:
+                dlq_phase_distribution[job_phase] = dlq_phase_distribution.get(job_phase, 0) + 1
+            else:
+                dlq_phase_distribution["abandoned_legacy"] += 1
+    except Exception:
+        pass
+
     status_obj = {
         "ts": time.time(),
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -722,6 +786,7 @@ def run_sentinel() -> None:
         "jobs_suppressed": log_entry["suppressed"],
         "dlq_entries": dlq_entries,
         "dlq_terminal": dlq_terminal,
+        "dlq_phase_distribution": dlq_phase_distribution,  # D4.3
         "healing_actions_24h": log_entry["retried"],  # current cycle; full 24h requires log scan
         "openclaw_gateway": "down" if openclaw_is_down else "healthy",
         "last_sentinel_duration_s": round(duration, 2),

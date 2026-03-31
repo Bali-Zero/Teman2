@@ -12,6 +12,16 @@ LOCK_FILE = os.path.expanduser("~/.agent/decisions/circuit_breakers.lock")
 OPEN_TIMEOUT_S = 1800  # 30 min before HALF_OPEN test
 CircuitState = Literal["CLOSED", "OPEN", "HALF_OPEN"]
 
+# D4.1: Phase transition matrix — forward-only except T0 (success reset)
+_PHASE_FORWARD: dict[str, str] = {
+    "T0": "T1",
+    "T1": "T2",
+    "T2": "T3",
+    "T3": "T4",
+    "T4": "TERMINAL",
+}
+VALID_PHASES = frozenset(_PHASE_FORWARD) | {"TERMINAL"}
+
 
 @contextlib.contextmanager
 def _locked():
@@ -76,7 +86,7 @@ def get_state(job: str) -> CircuitState:
 
 
 def record_success(job: str) -> None:
-    """Call after a successful run — resets to CLOSED. NP-3: phase reset to T0."""
+    """Call after a successful run — resets to CLOSED. D4.1/NP-3: explicit phase reset to T0."""
     with _locked():
         data = _load()
         # Preserve _failure_timestamps (pruned) for audit; reset operational fields
@@ -87,7 +97,8 @@ def record_success(job: str) -> None:
             "state": "CLOSED",
             "failures": 0,
             "opened_at": 0,
-            "phase": "T0",  # NP-3: always reset phase on success
+            "phase": "T0",  # D4.1: only authorized path to set T0 via set_phase()
+            "phase_updated_at": time.time(),
             "_failure_timestamps": timestamps,
             "_writer": "circuit_breaker",
         }
@@ -122,5 +133,39 @@ def _set_state(job: str, state: CircuitState) -> None:
         job_data["state"] = state
         if state == "HALF_OPEN":
             job_data["opened_at"] = time.time()
+        data[job] = job_data
+        _atomic_save(data)
+
+
+def set_phase(job: str, new_phase: str) -> None:
+    """D4.1: Enforce phase transition matrix. Must hold _locked() context externally.
+
+    Valid forward path: T0 → T1 → T2 → T3 → T4 → TERMINAL
+    Authorized retrograde: ANY → T0 (called only from record_success())
+    Calling from outside record_success() to set T0 is allowed (e.g., manual reset),
+    but any skip forward (T0→T2) or backward (T3→T1) is rejected with ValueError.
+
+    Raises ValueError for invalid transitions so callers see a hard error (not silent skip).
+    """
+    if new_phase not in VALID_PHASES:
+        raise ValueError(f"Unknown phase '{new_phase}'. Valid: {sorted(VALID_PHASES)}")
+
+    with _locked():
+        data = _load()
+        current = data.get(job, {}).get("phase", "T0")
+
+        # T0 is the success-reset target — always allowed (no backward constraint)
+        if new_phase == "T0":
+            pass
+        # Forward must be exactly one step
+        elif _PHASE_FORWARD.get(current) != new_phase:
+            raise ValueError(
+                f"Invalid phase transition for '{job}': {current} → {new_phase}. "
+                f"Expected next: {_PHASE_FORWARD.get(current, 'N/A (TERMINAL is final)')}"
+            )
+
+        job_data = data.get(job, {})
+        job_data["phase"] = new_phase
+        job_data["phase_updated_at"] = time.time()
         data[job] = job_data
         _atomic_save(data)
