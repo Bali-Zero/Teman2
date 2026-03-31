@@ -65,8 +65,8 @@ WHERE practice_type_code = 'kitap application';
 UPDATE hr_bonus_rates SET is_active = FALSE, notes = 'Duplicate of kitas, deactivated by migration 069', updated_at = NOW()
 WHERE practice_type_code = 'kitas application';
 
--- 'visa' (VOA extension Rp 10.000) → remap to ext_c1_tourism
-UPDATE hr_bonus_rates SET practice_type_code = 'ext_c1_tourism', notes = 'VOA (Visa on Arrival) extension', updated_at = NOW()
+-- 'visa' (VOA extension Rp 10.000) → remap to voa_extension (NOT ext_c1_tourism — different product)
+UPDATE hr_bonus_rates SET practice_type_code = 'voa_extension', notes = 'VOA (Visa on Arrival) extension', updated_at = NOW()
 WHERE practice_type_code = 'visa' AND amount_idr = 10000;
 
 -- 2. Add missing single entry C visa rates (all Rp 100.000)
@@ -107,7 +107,7 @@ UPDATE hr_bonus_ledger SET practice_type_code = 'kitap_application' WHERE practi
 UPDATE hr_bonus_ledger SET practice_type_code = 'kitas_dependent_1yr_extend' WHERE practice_type_code = 'kitas dependent 1yr extend';
 UPDATE hr_bonus_ledger SET practice_type_code = 'kitas_dependent_1yr_offshore' WHERE practice_type_code = 'kitas dependent 1yr offshore';
 UPDATE hr_bonus_ledger SET practice_type_code = 'kitas_dependent_1yr_onshore' WHERE practice_type_code = 'kitas dependent 1yr onshore';
-UPDATE hr_bonus_ledger SET practice_type_code = 'ext_c1_tourism' WHERE practice_type_code = 'visa';
+UPDATE hr_bonus_ledger SET practice_type_code = 'voa_extension' WHERE practice_type_code = 'visa';
 """
 
 
