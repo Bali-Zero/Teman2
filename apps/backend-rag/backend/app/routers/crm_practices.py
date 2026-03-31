@@ -45,6 +45,19 @@ router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
 # Constants
 MAX_LIMIT = 200
 
+# Module-level persistent httpx client (Golden Rule 10)
+_module_http_client: "httpx.AsyncClient | None" = None
+
+
+def _get_http_client() -> "httpx.AsyncClient":
+    """Return a persistent module-level httpx.AsyncClient, creating it lazily."""
+    import httpx as _httpx
+
+    global _module_http_client
+    if _module_http_client is None:
+        _module_http_client = _httpx.AsyncClient(timeout=30.0)
+    return _module_http_client
+
 
 async def _create_hr_bonus_on_completed(
     db_pool: asyncpg.Pool,
@@ -161,8 +174,6 @@ async def _notify_hr_bonus_pending(
     try:
         import os
 
-        import httpx
-
         amount_fmt = f"Rp {amount_idr:,}".replace(",", ".")
         practice_label = practice_type.replace("_", " ").title()
 
@@ -180,17 +191,17 @@ async def _notify_hr_bonus_pending(
             f'<p><a href="https://kita.balizero.com/hr/bonuses">Approve in HR Dashboard</a></p>'
         )
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                api_url,
-                headers={"X-API-Key": api_key},
-                json={
-                    "to": "asya@balizero.com",
-                    "subject": f"HR Bonus Pending: {practice_label} — {amount_fmt}",
-                    "body": html_body,
-                },
-            )
-            response.raise_for_status()
+        client = _get_http_client()
+        response = await client.post(
+            api_url,
+            headers={"X-API-Key": api_key},
+            json={
+                "to": "asya@balizero.com",
+                "subject": f"HR Bonus Pending: {practice_label} — {amount_fmt}",
+                "body": html_body,
+            },
+        )
+        response.raise_for_status()
 
         logger.info(f"HR bonus notification sent to asya@balizero.com for practice {practice_id}")
     except Exception as e:
@@ -214,6 +225,7 @@ STATUS_VALUES = {
     "sending_invoice",
     "on_process",
     "completed",
+    "cancelled",
 }
 
 # ================================================
@@ -228,6 +240,7 @@ class PracticeCreate(BaseModel):
     priority: str = "normal"  # 'low', 'normal', 'high', 'urgent'
     quoted_price: Decimal | None = None
     assigned_to: str | None = None  # team member email
+    start_date: datetime | None = None
     notes: str | None = None
     internal_notes: str | None = None
 
@@ -366,18 +379,13 @@ async def create_practice(
             # Use base_price if no quoted price provided
             quoted_price = practice.quoted_price or practice_type_row["base_price"]
 
-            # Insert practice
-            practice_row = await conn.fetchrow(
-                """
-                INSERT INTO practices (
-                    client_id, practice_type_id, status, priority,
-                    quoted_price, assigned_to, notes, internal_notes,
-                    inquiry_date, created_by
-                ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-                )
-                RETURNING *
-                """,
+            # Insert practice — conditionally include start_date
+            insert_columns = [
+                "client_id", "practice_type_id", "status", "priority",
+                "quoted_price", "assigned_to", "notes", "internal_notes",
+                "inquiry_date", "created_by",
+            ]
+            insert_values: list[Any] = [
                 practice.client_id,
                 practice_type_row["id"],
                 practice.status,
@@ -388,6 +396,21 @@ async def create_practice(
                 practice.internal_notes,
                 datetime.now(tz=timezone.utc),
                 created_by,
+            ]
+            if practice.start_date is not None:
+                insert_columns.append("start_date")
+                insert_values.append(practice.start_date)
+
+            placeholders = ", ".join(f"${i}" for i in range(1, len(insert_values) + 1))
+            columns_str = ", ".join(insert_columns)
+
+            practice_row = await conn.fetchrow(
+                f"""
+                INSERT INTO practices ({columns_str})
+                VALUES ({placeholders})
+                RETURNING *
+                """,
+                *insert_values,
             )
 
             if not practice_row:
@@ -841,29 +864,60 @@ async def get_practice(
     """
     Get practice details by ID with full client and type info.
 
-    All authenticated users can view any practice.
+    Access Control:
+    - Admin users: Can view any practice
+    - Team members: Can only view practices where they are assigned_to or created_by
     """
     try:
         async with db_pool.acquire() as conn:
-            row = await conn.fetchrow(
-                """
-                SELECT
-                    p.*,
-                    c.full_name as client_name,
-                    c.email as client_email,
-                    c.phone as client_phone,
-                    c.assigned_to as client_lead,
-                    pt.name as practice_type_name,
-                    pt.code as practice_type_code,
-                    pt.category as practice_category,
-                    pt.required_documents as required_documents
-                FROM practices p
-                JOIN clients c ON p.client_id = c.id
-                JOIN practice_types pt ON p.practice_type_id = pt.id
-                WHERE p.id = $1
-                """,
-                practice_id,
-            )
+            # RBAC: non-admin users only see practices they own
+            if can_view_all_practices(current_user):
+                row = await conn.fetchrow(
+                    """
+                    SELECT
+                        p.*,
+                        c.full_name as client_name,
+                        c.email as client_email,
+                        c.phone as client_phone,
+                        c.assigned_to as client_lead,
+                        pt.name as practice_type_name,
+                        pt.code as practice_type_code,
+                        pt.category as practice_category,
+                        pt.required_documents as required_documents
+                    FROM practices p
+                    JOIN clients c ON p.client_id = c.id
+                    JOIN practice_types pt ON p.practice_type_id = pt.id
+                    WHERE p.id = $1
+                    """,
+                    practice_id,
+                )
+            else:
+                user_email = current_user.get("email", "").lower()
+                row = await conn.fetchrow(
+                    """
+                    SELECT
+                        p.*,
+                        c.full_name as client_name,
+                        c.email as client_email,
+                        c.phone as client_phone,
+                        c.assigned_to as client_lead,
+                        pt.name as practice_type_name,
+                        pt.code as practice_type_code,
+                        pt.category as practice_category,
+                        pt.required_documents as required_documents
+                    FROM practices p
+                    JOIN clients c ON p.client_id = c.id
+                    JOIN practice_types pt ON p.practice_type_id = pt.id
+                    WHERE p.id = $1
+                      AND (c.assigned_to = $2 OR p.created_by = $2)
+                    """,
+                    practice_id,
+                    user_email,
+                )
+                if not row:
+                    logger.info(
+                        f"RBAC: Practice {practice_id} not visible to {user_email}"
+                    )
 
             if not row:
                 raise HTTPException(status_code=404, detail="Practice not found")

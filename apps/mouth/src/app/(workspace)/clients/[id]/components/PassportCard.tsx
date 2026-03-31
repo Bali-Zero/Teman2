@@ -34,6 +34,17 @@ export function PassportCard({
   const [ocrPolling, setOcrPolling] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const ocrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ocrAbortedRef = useRef(false);
+
+  // Cleanup OCR polling timers when component unmounts
+  useEffect(() => {
+    ocrAbortedRef.current = false;
+    return () => {
+      ocrAbortedRef.current = true;
+      if (ocrTimerRef.current) clearTimeout(ocrTimerRef.current);
+    };
+  }, []);
 
   // Poll OCR status after upload/extract
   const pollOcrStatus = useCallback(async () => {
@@ -41,23 +52,28 @@ export function PassportCard({
     let attempts = 0;
     const maxAttempts = 10; // 3s * 10 = 30s max
     const poll = async () => {
+      if (ocrAbortedRef.current) return;
       try {
         const status = (await api.request(`/api/crm/clients/${clientId}/ocr-status`)) as {
           pending_ocr: number;
         };
         if (status.pending_ocr === 0 || attempts >= maxAttempts) {
-          setOcrPolling(false);
-          await onRefresh();
+          if (!ocrAbortedRef.current) {
+            setOcrPolling(false);
+            await onRefresh();
+          }
           return;
         }
         attempts++;
-        setTimeout(poll, 3000);
+        ocrTimerRef.current = setTimeout(poll, 3000);
       } catch {
-        setOcrPolling(false);
-        await onRefresh();
+        if (!ocrAbortedRef.current) {
+          setOcrPolling(false);
+          await onRefresh();
+        }
       }
     };
-    setTimeout(poll, 2000); // Initial delay for OCR to start
+    ocrTimerRef.current = setTimeout(poll, 2000); // Initial delay for OCR to start
   }, [clientId, onRefresh]);
 
   // Find passport document from documents — only the client's own passport (no family members)
@@ -103,16 +119,18 @@ export function PassportCard({
 
   // Auto-trigger OCR when passport image exists but no extracted data
   const hasTriggeredOcr = useRef(false);
+  const isExtractingRef = useRef(false);
 
   // Enhanced OCR extraction with Gemini Vision
   const handleExtractData = useCallback(async () => {
-    if (!passportImageUrl || isExtracting) return;
+    if (!passportImageUrl || isExtractingRef.current) return;
     const fileId = extractDriveFileId(passportImageUrl);
     if (!fileId) {
       toast.error('Invalid document URL');
       return;
     }
     setIsExtracting(true);
+    isExtractingRef.current = true;
     setOcrError(null);
     try {
       const response = (await api.post('/api/crm/clients/extract-passport-enhanced', {
@@ -155,15 +173,16 @@ export function PassportCard({
       toast.error('Extraction failed', { description: (err as Error).message });
     } finally {
       setIsExtracting(false);
+      isExtractingRef.current = false;
     }
-  }, [passportImageUrl, isExtracting, client.id, onRefresh]);
+  }, [passportImageUrl, client.id, onRefresh]);
 
   useEffect(() => {
-    if (passportImageUrl && !client.passport_number && !isExtracting && !hasTriggeredOcr.current) {
+    if (passportImageUrl && !client.passport_number && !isExtractingRef.current && !hasTriggeredOcr.current) {
       hasTriggeredOcr.current = true;
       handleExtractData();
     }
-  }, [passportImageUrl, client.passport_number, isExtracting, handleExtractData]);
+  }, [passportImageUrl, client.passport_number, handleExtractData]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

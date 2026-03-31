@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Users, Plus, X, Shield, ShieldAlert, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import * as hrApi from "@/lib/api/hr/hr";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import type { HREmployee, EmployeeCreatePayload, PTKPStatus } from "@/types/hr";
 
 const PTKP_OPTIONS: PTKPStatus[] = [
@@ -55,6 +56,7 @@ export default function EmployeesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState<EmployeeCreatePayload>({ ...INITIAL_FORM });
+  const { data: teamMembers = [], isLoading: loadingTeam } = useTeamMembers();
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -181,18 +183,32 @@ export default function EmployeesPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs text-zinc-400 mb-1">
-                Team Member ID *
+                Team Member *
               </label>
-              <input
-                type="text"
-                value={form.team_member_id}
-                onChange={(e) =>
-                  handleFieldChange("team_member_id", e.target.value)
-                }
-                placeholder="e.g. damar@balizero.com"
-                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-[var(--bz-accent)]/50"
-                required
-              />
+              <div className="relative">
+                <select
+                  value={form.team_member_id}
+                  onChange={(e) =>
+                    handleFieldChange("team_member_id", e.target.value)
+                  }
+                  disabled={loadingTeam}
+                  className="w-full appearance-none bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-[var(--bz-accent)]/50"
+                  required
+                >
+                  <option value="">
+                    {loadingTeam ? "Loading..." : "Select team member"}
+                  </option>
+                  {teamMembers.map((m) => (
+                    <option key={m.id ?? m.email} value={m.id ?? ""}>
+                      {m.full_name ?? m.email} ({m.role ?? "member"})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-xs text-zinc-400 mb-1">

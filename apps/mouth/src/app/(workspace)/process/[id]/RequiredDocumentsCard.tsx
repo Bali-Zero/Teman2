@@ -293,6 +293,8 @@ export function RequiredDocumentsCard({ practiceId }: RequiredDocumentsCardProps
           setProcessingId(docId);
           try {
             await deleteDocument(docId);
+          } catch {
+            toast.error('Failed to delete document');
           } finally {
             setProcessingId(null);
           }

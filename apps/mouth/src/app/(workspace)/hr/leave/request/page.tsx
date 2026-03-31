@@ -1,9 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, Send } from "lucide-react";
 import * as hrApi from "@/lib/api/hr/hr";
+
+interface LeaveTypeOption {
+  id: number;
+  name: string;
+  max_days_per_year: number;
+}
 
 export default function LeaveRequestPage() {
   const router = useRouter();
@@ -16,6 +22,16 @@ export default function LeaveRequestPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState(true);
+
+  useEffect(() => {
+    hrApi
+      .getLeaveTypes()
+      .then((res) => setLeaveTypes(res.leave_types ?? []))
+      .catch(() => setLeaveTypes([]))
+      .finally(() => setLoadingTypes(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,15 +79,20 @@ export default function LeaveRequestPage() {
                 leave_type_id: Number(e.target.value),
               }))
             }
+            disabled={loadingTypes}
             className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-200"
           >
-            <option value={1}>Annual Leave</option>
-            <option value={2}>Sick Leave</option>
-            <option value={3}>Maternity Leave</option>
-            <option value={4}>Paternity Leave</option>
-            <option value={5}>Marriage Leave</option>
-            <option value={6}>Bereavement</option>
-            <option value={7}>Unpaid Leave</option>
+            {loadingTypes ? (
+              <option>Loading...</option>
+            ) : leaveTypes.length === 0 ? (
+              <option>No leave types available</option>
+            ) : (
+              leaveTypes.map((lt) => (
+                <option key={lt.id} value={lt.id}>
+                  {lt.name} ({lt.max_days_per_year}d/yr)
+                </option>
+              ))
+            )}
           </select>
         </div>
 

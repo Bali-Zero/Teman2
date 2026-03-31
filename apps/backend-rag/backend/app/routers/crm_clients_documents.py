@@ -407,6 +407,7 @@ Use null for unclear fields. Return ONLY JSON."""
 
         # Verify name match
         name_match = None
+        ratio = None
         extracted_name = extracted.get("full_name")
         if extracted_name and existing_name:
             # Fuzzy match with 80% threshold
@@ -902,14 +903,8 @@ async def get_client_required_documents(
     """Get all required documents for a client across all their practices (for Portal)."""
     try:
         async with db_pool.acquire() as conn:
-            # Verify client is viewing their own data
-            client = await conn.fetchrow(
-                "SELECT id FROM clients WHERE email = $1", current_user["email"],
-            )
-
-            if not client or client["id"] != client_id:
-                if not await is_crm_admin(current_user["email"], conn):
-                    raise HTTPException(status_code=403, detail="Not authorized")
+            # RBAC: verify user has access to this specific client
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
             rows = await conn.fetch(
                 """
