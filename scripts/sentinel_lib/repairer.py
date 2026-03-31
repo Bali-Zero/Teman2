@@ -1,14 +1,12 @@
 """Tier dispatch: retry (T1), aider-fix (T2), Claude Code alert (T3), Zero alert (T4)."""
 import json
 import os
+import stat
 import subprocess
 import time
 from typing import Optional
 
 # D1.4: idempotency token uses run-slot granularity (not date.today())
-# Token = f"{job_id}:{int(time.time() // interval_s)}"
-# For jobs running every 6h, this gives a unique slot per 6h window.
-# Falls back to daily (86400s) if interval_s is not set.
 DEFAULT_INTERVAL_S = 86400
 
 
@@ -22,8 +20,89 @@ def make_idempotency_token(job_id: str, interval_s: Optional[int] = None) -> str
     slot = int(time.time() // effective_interval)
     return f"{job_id}:{slot}"
 
+
 DLQ_FILE = os.path.expanduser("~/.agent/decisions/dlq.json")
-NUZANTARA_ROOT = os.path.expanduser("~/Desktop/nuzantara")
+NUZANTARA_ROOT = os.path.realpath(os.path.expanduser("~/Desktop/nuzantara"))
+ALLOWED_CMDS_FILE = os.path.expanduser("~/.agent/decisions/allowed_cmds.txt")
+
+# D2.1: Shell metacharacter blocklist — includes null byte, newline, CR (Codex PARTIAL C5)
+_SHELL_METACHAR_BLOCKLIST = (
+    "&&", "||", ";", "|", "$(", "`", ">", "<", ">>",
+    "\x00", "\n", "\r",
+)
+
+# D2.1: Allowed command root directories
+_ALLOWED_ROOTS = (
+    NUZANTARA_ROOT,
+    "/usr/bin",
+    "/opt/homebrew/bin",
+    "/opt/homebrew/lib/node_modules",  # Node.js-based CLIs (openclaw)
+    "/opt/homebrew/Cellar",            # Homebrew-managed binaries (fly/flyctl, etc.)
+    os.path.expanduser("~/.local/bin"),
+    "/usr/local/bin",
+)
+
+
+def _load_allowlist() -> set:
+    """Load allowed_cmds.txt and harden its permissions to 0o444 (read-only).
+
+    Returns set of allowed command prefixes. An empty set means no allowlist
+    is configured — validation falls back to root-pinning only.
+    """
+    if not os.path.exists(ALLOWED_CMDS_FILE):
+        return set()
+    try:
+        # Harden: set read-only so AI agents cannot modify during a session
+        current_mode = os.stat(ALLOWED_CMDS_FILE).st_mode
+        if current_mode & 0o222:  # writable bits set
+            os.chmod(ALLOWED_CMDS_FILE, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+        with open(ALLOWED_CMDS_FILE) as f:
+            lines = [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
+        return set(lines)
+    except OSError:
+        return set()
+
+
+def validate_restart_cmd(cmd: str) -> tuple[bool, str]:
+    """D2.1 + D2.2: Validate restart_cmd before execution.
+
+    Checks (in order):
+    1. Null / empty
+    2. Shell metacharacter injection (includes \\x00, \\n, \\r)
+    3. Path traversal: realpath of first token must be under an allowed root
+    4. Allowlist: if allowed_cmds.txt exists, first token must match a prefix
+
+    Returns (ok: bool, reason: str).
+    """
+    if not cmd or not cmd.strip():
+        return False, "empty command"
+
+    # Check metacharacters
+    for meta in _SHELL_METACHAR_BLOCKLIST:
+        if meta in cmd:
+            return False, f"blocked metacharacter in command: {meta!r}"
+
+    # Extract the executable (first token)
+    first_token = cmd.split()[0]
+    # Resolve symlinks and normalise (collapses ../../ traversals)
+    try:
+        resolved = os.path.realpath(os.path.expanduser(first_token))
+    except Exception as exc:
+        return False, f"path resolution error: {exc}"
+
+    # Root-pinning: executable must live under an allowed root
+    allowed_by_root = any(resolved.startswith(root) for root in _ALLOWED_ROOTS)
+    if not allowed_by_root:
+        return False, f"command root not allowed: {resolved}"
+
+    # Allowlist check (optional — only applied if file exists)
+    allowlist = _load_allowlist()
+    if allowlist:
+        allowed_by_list = any(cmd.startswith(prefix) for prefix in allowlist)
+        if not allowed_by_list:
+            return False, f"command not in allowed_cmds.txt: {cmd[:80]}"
+
+    return True, "ok"
 
 
 def _load_dlq() -> dict:
@@ -69,8 +148,15 @@ def clear_dlq_entry(job: str) -> None:
 def retry_job(restart_cmd: str, host: str = "Nuzantara") -> tuple:
     """
     Execute restart_cmd (locally or via SSH if host != current hostname).
+    D2.2: Performs its own allowlist + realpath validation before execution —
+    defense-in-depth against callers that skip validate_restart_cmd().
     Returns (success, output).
     """
+    # D2.2: defense-in-depth — validate even if caller already validated
+    valid, reason = validate_restart_cmd(restart_cmd)
+    if not valid:
+        return False, f"command rejected by retry_job allowlist: {reason}"
+
     import socket
     current_host = socket.gethostname()
 
