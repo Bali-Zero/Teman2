@@ -43,7 +43,7 @@ NUZANTARA_ROOT = HOME / "Desktop" / "nuzantara"
 
 # ── Tuning constants ───────────────────────────────────────────────────────────
 LOCK_STALE_AGE_S = 1500          # 25min — if lock older than this, treat as stale
-MAX_ATTEMPTS = 3                  # per DLQ entry
+MAX_ATTEMPTS = 10                 # per DLQ entry (default; per-job override via registry max_attempts)
 DLQ_TTL_S = 172800                # 48h — abandon entries older than this with empty error
 MIN_ERROR_LEN = 20                # skip reasoning if error_summary shorter than this
 CONFIDENCE_RETRY = 0.95           # no-code-change retry threshold
@@ -359,7 +359,7 @@ def escalate_to_claude_code(
 def process_entry(entry: dict, registry: dict) -> str:
     """
     Process one DLQ entry. Returns action taken:
-    'skipped_preflight', 'retried_ok', 'aider_fixed', 'escalated', 'abandoned', 'archived'
+    'skipped_terminal', 'skipped_preflight', 'retried_ok', 'aider_fixed', 'escalated', 'terminal', 'archived'
     """
     job = entry["job"]
     error = entry.get("error_summary", "")
@@ -369,13 +369,30 @@ def process_entry(entry: dict, registry: dict) -> str:
     files = entry.get("files_implicated", [])
     reg = registry.get(job, {})
 
+    # ── D0.1: TERMINAL state guard — MUST be first check ──────────────────────
+    # Jobs with status=TERMINAL are dead-ends. Skip entirely — do NOT increment
+    # attempts, do NOT re-escalate, do NOT send alerts. Operator must run:
+    #   python3 scripts/dlq_autopilot.py clear <job_id>
+    # to remove from DLQ after manual resolution.
+    if entry.get("status") == "TERMINAL":
+        logger.info(f"{job}: status=TERMINAL — skipping (use 'dlq clear {job}' to remove)")
+        return "skipped_terminal"
+
     # ── Pre-flight checks ──────────────────────────────────────────────────────
 
-    # 1. Max attempts exceeded
-    if attempts >= MAX_ATTEMPTS:
-        logger.info(f"{job}: max attempts ({MAX_ATTEMPTS}) reached → abandoning")
+    # 1. Max attempts exceeded → TERMINAL (not "abandoned" — abandoned re-enters loop)
+    max_attempts = reg.get("max_attempts", MAX_ATTEMPTS)
+    if attempts >= max_attempts:
+        logger.warning(f"{job}: max attempts ({max_attempts}) reached → TERMINAL")
+        entry["status"] = "TERMINAL"
+        entry["first_abandoned_at"] = entry.get("first_abandoned_at") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         escalate_to_claude_code(entry, None)
-        return "abandoned"
+        send_telegram(
+            f"🛑 TERMINAL: `{job}` reached {max_attempts} autopilot attempts with no fix.\n"
+            f"Error: {error[:80]}\n"
+            f"Manual intervention required. Run: `dlq clear {job}` after resolving."
+        )
+        return "terminal"
 
     # 2. Entry too old with empty error — misdiagnosed artifact, safe to archive
     added_ts = entry.get("added_ts", 0)
@@ -495,9 +512,11 @@ def run_autopilot() -> None:
 
             if action in ("retried_ok", "aider_fixed", "archived"):
                 pass  # Remove from DLQ
-            elif action == "abandoned":
-                entry["status"] = "abandoned"
-                entry["autopilot_attempts"] = entry.get("autopilot_attempts", 0) + 1
+            elif action == "skipped_terminal":
+                # TERMINAL entries stay in DLQ for audit — DO NOT increment attempts
+                updated_queue.append(entry)
+            elif action == "terminal":
+                # Just transitioned to TERMINAL — keep for audit, no increment
                 updated_queue.append(entry)
             else:
                 # escalated / skipped_preflight — keep in DLQ, increment attempts
@@ -534,4 +553,18 @@ def run_autopilot() -> None:
 
 
 if __name__ == "__main__":
-    run_autopilot()
+    import sys
+    if len(sys.argv) >= 3 and sys.argv[1] == "clear":
+        job_id = sys.argv[2]
+        queue = load_dlq()
+        before = len(queue)
+        queue = [e for e in queue if not (e["job"] == job_id and e.get("status") == "TERMINAL")]
+        after = len(queue)
+        if before == after:
+            print(f"No TERMINAL entry found for '{job_id}' in DLQ")
+        else:
+            save_dlq(queue)
+            print(f"Cleared TERMINAL entry for '{job_id}' from DLQ ({before - after} removed)")
+            logger.info(f"dlq_clear_manual: {job_id} removed from DLQ by operator")
+    else:
+        run_autopilot()
