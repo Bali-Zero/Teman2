@@ -710,3 +710,31 @@ async def get_profile(
             status_code=500,
             detail="Failed to load profile",
         ) from e
+
+
+class UpdateProfileRequest(BaseModel):
+    """Request to update client profile (only whitelisted fields)."""
+
+    phone: str | None = None
+    whatsapp: str | None = None
+    address: str | None = None
+    language: str | None = None
+
+
+@router.patch("/profile")
+async def update_profile(
+    request: UpdateProfileRequest,
+    client: dict = Depends(get_current_client),
+    portal_service: PortalService = Depends(get_portal_service),
+) -> dict[str, Any]:
+    """Update client profile. Only phone, whatsapp, address, and language can be changed."""
+    try:
+        fields = {k: v for k, v in request.model_dump().items() if v is not None}
+        result = await portal_service.update_profile(client["client_id"], fields)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Failed to update profile for client {client['client_id']}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update profile",
+        ) from e

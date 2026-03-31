@@ -2807,3 +2807,86 @@ Questa è una notifica automatica da Bali Zero CRM.
             "download_url": row["drive_web_link"],
             "drive_file_id": row["drive_file_id"],
         }
+
+    # ================================================
+    # PROFILE UPDATE
+    # ================================================
+
+    PROFILE_EDITABLE_FIELDS = {"phone", "whatsapp", "address", "language"}
+
+    async def update_profile(
+        self,
+        client_id: int,
+        fields: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Update client profile with whitelisted fields only.
+
+        Sensitive fields (full_name, email, passport_number, nationality, etc.)
+        are silently ignored — they require team intervention.
+
+        Returns the updated profile.
+        """
+        safe_fields = {
+            k: v for k, v in fields.items()
+            if k in self.PROFILE_EDITABLE_FIELDS and v is not None
+        }
+
+        async with self.pool.acquire() as conn:
+            if safe_fields:
+                set_parts = []
+                params: list[Any] = []
+                for i, (key, value) in enumerate(safe_fields.items(), start=1):
+                    set_parts.append(f"{key} = ${i}")
+                    params.append(value)
+
+                params.append(client_id)
+                set_clause = ", ".join(set_parts)
+
+                await conn.execute(
+                    f"UPDATE clients SET {set_clause}, updated_at = NOW() WHERE id = ${len(params)} AND deleted_at IS NULL",
+                    *params,
+                )
+
+                logger.info(f"Portal profile updated for client {client_id}: {list(safe_fields.keys())}")
+
+            return await self._get_profile_data(conn, client_id)
+
+    async def _get_profile_data(self, conn: Any, client_id: int) -> dict[str, Any]:
+        """Fetch profile data from DB (shared between get_profile and update_profile)."""
+        row = await conn.fetchrow(
+            """
+            SELECT c.id, c.full_name, c.email, c.phone, c.whatsapp,
+                   c.nationality, c.passport_number, c.passport_expiry,
+                   c.date_of_birth, c.gender, c.address, c.created_at as member_since,
+                   tm.email as assigned_to_email, tm.full_name as assigned_to_name,
+                   tm.avatar_url as assigned_to_avatar
+            FROM clients c
+            LEFT JOIN team_members tm ON tm.email = c.assigned_to AND tm.active = true
+            WHERE c.id = $1 AND c.deleted_at IS NULL
+            """,
+            client_id,
+        )
+
+        if not row:
+            return {}
+
+        return {
+            "id": row["id"],
+            "full_name": row["full_name"],
+            "email": row["email"],
+            "phone": row["phone"],
+            "whatsapp": row["whatsapp"],
+            "nationality": row["nationality"],
+            "passport_number": row["passport_number"],
+            "passport_expiry": str(row["passport_expiry"]) if row["passport_expiry"] else None,
+            "date_of_birth": str(row["date_of_birth"]) if row["date_of_birth"] else None,
+            "gender": row["gender"],
+            "address": row["address"],
+            "member_since": str(row["member_since"]) if row["member_since"] else None,
+            "assigned_to": {
+                "email": row["assigned_to_email"],
+                "name": row["assigned_to_name"],
+                "avatar_url": row["assigned_to_avatar"],
+            } if row["assigned_to_email"] else None,
+        }
