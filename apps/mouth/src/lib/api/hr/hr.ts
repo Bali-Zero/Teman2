@@ -97,6 +97,12 @@ export const markPayrollPaid = (periodId: number) =>
     {},
   );
 
+// Leave Types
+export const getLeaveTypes = () =>
+  api.get<{
+    leave_types: { id: number; name: string; max_days_per_year: number }[];
+  }>(`${BASE}/leave/types`);
+
 // Leave
 export const requestLeave = (data: LeaveRequestPayload) =>
   api.post<{ success: boolean; request: LeaveRequest }>(
