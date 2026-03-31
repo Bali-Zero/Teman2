@@ -11,7 +11,7 @@ import json
 import logging
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +27,7 @@ from backend.core.legal_config import (
 logger = logging.getLogger(__name__)
 
 WORKER_INTERVAL = 10  # seconds between queue polls
-VISIBILITY_TIMEOUT = "10 minutes"
+VISIBILITY_TIMEOUT = timedelta(minutes=10)
 NLM_BRIDGE_URL = os.getenv("NLM_BRIDGE_URL", "")
 NLM_BRIDGE_KEY = os.getenv("NLM_BRIDGE_KEY", "")
 
