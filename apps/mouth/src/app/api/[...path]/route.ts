@@ -48,27 +48,33 @@ async function proxy(req: NextRequest): Promise<Response> {
   headers.delete("connection");
   headers.delete("content-length");
 
-  // CRITICAL: Explicitly forward authentication cookies
-  // In server-side Next.js, credentials: 'include' doesn't automatically forward cookies
-  // We must extract cookies from the request and add them to headers
+  // Authentication: prefer Authorization header over cookie to prevent stale session leak.
+  // When frontend sends Authorization: Bearer, skip cookie forwarding — the header
+  // represents the active session. Cookie may be stale from a previous user.
+  const hasAuthHeader = headers.has("authorization");
   const cookies = req.cookies;
-  const authCookie = cookies.get("nz_access_token");
   const csrfCookie = cookies.get("nz_csrf_token");
 
-  if (authCookie || csrfCookie) {
-    const cookieParts: string[] = [];
+  if (!hasAuthHeader) {
+    // No Authorization header: forward cookie for SSO/portal clients
+    const authCookie = cookies.get("nz_access_token");
     if (authCookie) {
-      cookieParts.push(`nz_access_token=${authCookie.value}`);
+      const existingCookie = headers.get("cookie") || "";
+      const cookieValue = `nz_access_token=${authCookie.value}`;
+      headers.set(
+        "cookie",
+        existingCookie ? `${existingCookie}; ${cookieValue}` : cookieValue,
+      );
     }
-    if (csrfCookie) {
-      cookieParts.push(`nz_csrf_token=${csrfCookie.value}`);
-    }
+  }
 
+  // Always forward CSRF token
+  if (csrfCookie) {
     const existingCookie = headers.get("cookie") || "";
-    const newCookieValue = cookieParts.join("; ");
+    const csrfValue = `nz_csrf_token=${csrfCookie.value}`;
     headers.set(
       "cookie",
-      existingCookie ? `${existingCookie}; ${newCookieValue}` : newCookieValue,
+      existingCookie ? `${existingCookie}; ${csrfValue}` : csrfValue,
     );
   }
 
@@ -204,14 +210,9 @@ async function proxy(req: NextRequest): Promise<Response> {
             action: "error",
             metadata: {
               cookies: {
-                authCookie: !!authCookie,
+                authCookie: !!cookies.get("nz_access_token"),
                 csrfCookie: !!csrfCookie,
-                authCookieValue: authCookie
-                  ? `${authCookie.value.substring(0, 20)}...`
-                  : "missing",
-                csrfCookieValue: csrfCookie
-                  ? `${csrfCookie.value.substring(0, 20)}...`
-                  : "missing",
+                hasAuthHeader: hasAuthHeader,
               },
               targetUrl,
               correlationId,
