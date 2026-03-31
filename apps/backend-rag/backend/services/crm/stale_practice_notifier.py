@@ -33,7 +33,7 @@ STALE_DAYS = 7
 ACTIVE_STATUSES = ("inquiry", "waiting_documents", "sending_invoice", "on_process")
 
 # CRM base URL for individual practice links
-CRM_PRACTICE_URL = "https://zantara-crm.vercel.app/process/{id}"
+CRM_PRACTICE_URL = "https://kita.balizero.com/process/{id}"
 
 
 class StalePracticeNotifier:
@@ -234,7 +234,7 @@ class StalePracticeNotifier:
             </table>
             <p style="margin-top:24px;font-size:13px;color:#64748b;">
               Inviato automaticamente da Zantara CRM &mdash;
-              <a href="https://zantara-crm.vercel.app" style="color:#60a5fa;">
+              <a href="https://kita.balizero.com" style="color:#60a5fa;">
                 Apri CRM
               </a>
             </p>

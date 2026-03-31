@@ -167,6 +167,11 @@ def include_routers(api: FastAPI) -> None:
 
     api.include_router(notifications_router)
 
+    # Cron notifiers (visa expiry, unpaid invoices, stale practices)
+    from backend.app.routers.cron_notifiers import router as cron_notifiers_router
+
+    api.include_router(cron_notifiers_router)
+
     # Portal routers (Client-facing)
     api.include_router(portal.router)
     api.include_router(portal_billing.router)
