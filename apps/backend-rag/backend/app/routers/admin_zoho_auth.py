@@ -105,6 +105,100 @@ async def admin_zoho_callback(
             await pool.close()
 
 
+@router.get("/api/integrations/zoho/callback")
+async def zoho_oauth_callback_redirect(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    location: str | None = None,
+    **kwargs: Any,
+) -> Any:
+    """
+    Registered OAuth redirect URI. Exchanges code for tokens automatically.
+    """
+    import asyncpg
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if error:
+        return {"error": error, "message": "Zoho OAuth failed"}
+
+    if not code:
+        return {"error": "no_code", "message": "No authorization code received"}
+
+    # Auto-exchange the code for tokens
+    try:
+        import json
+        import urllib.request
+        import urllib.parse
+
+        client_id = settings.zoho_client_id
+        client_secret = os.environ.get("ZOHO_CLIENT_SECRET", "")
+        redirect_uri = settings.zoho_redirect_uri
+
+        data = urllib.parse.urlencode({
+            "code": code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        }).encode()
+
+        req = urllib.request.Request(
+            "https://accounts.zoho.com/oauth/v2/token",
+            data=data,
+            method="POST",
+        )
+        resp = urllib.request.urlopen(req)
+        result = json.loads(resp.read())
+
+        access_token = result.get("access_token", "")
+        refresh_token = result.get("refresh_token", "")
+
+        if not access_token:
+            return {"error": "no_token", "zoho_response": result}
+
+        # Save tokens to DB
+        db_url = os.environ.get("DATABASE_URL")
+        pool = await asyncpg.create_pool(db_url, min_size=1, max_size=2)
+        try:
+            async with pool.acquire() as conn:
+                # Update zero@balizero.com token
+                user_id = state or "7dfe56b2-ff63-4d40-b78b-90c018127a02"
+                if refresh_token:
+                    await conn.execute(
+                        "UPDATE zoho_email_tokens SET access_token = $1, refresh_token = $2, "
+                        "token_expires_at = NOW() + INTERVAL '1 hour', updated_at = NOW() "
+                        "WHERE email_address = 'zero@balizero.com'",
+                        access_token, refresh_token,
+                    )
+                else:
+                    await conn.execute(
+                        "UPDATE zoho_email_tokens SET access_token = $1, "
+                        "token_expires_at = NOW() + INTERVAL '1 hour', updated_at = NOW() "
+                        "WHERE email_address = 'zero@balizero.com'",
+                        access_token,
+                    )
+        finally:
+            await pool.close()
+
+        logger.info(f"Zoho OAuth tokens refreshed for zero@balizero.com (has_refresh={bool(refresh_token)})")
+
+        from fastapi.responses import HTMLResponse
+        return HTMLResponse(content=f"""
+        <html><body style="font-family:Arial;max-width:600px;margin:50px auto;text-align:center;">
+        <h1 style="color:green;">Zoho Reconnected!</h1>
+        <p>Access token saved. Refresh token: {'YES' if refresh_token else 'NO (reusing existing)'}.</p>
+        <p>Email sending via Zoho is now active.</p>
+        </body></html>
+        """)
+
+    except Exception as e:
+        logger.error(f"Zoho OAuth callback failed: {e}", exc_info=True)
+        return {"error": str(e)}
+
+
 @router.get("/admin/zoho/debug-callback")
 async def admin_zoho_debug_callback(
     code: str | None = None,
