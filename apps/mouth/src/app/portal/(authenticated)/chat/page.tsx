@@ -26,6 +26,7 @@ export default function ChatPage() {
   const [offset, setOffset] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const [newMessage, setNewMessage] = useState("");
+  const [activeThread, setActiveThread] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -147,6 +148,7 @@ export default function ChatPage() {
       setIsSending(true);
       const sentMessage = await api.portal.sendMessage({
         content: trimmedMessage,
+        practiceId: activeThread ?? undefined,
       });
       setMessages((prev) => [...prev, sentMessage]);
       setNewMessage("");
@@ -195,8 +197,34 @@ export default function ChatPage() {
     }
   };
 
+  // Compute unique threads from messages
+  const threads = React.useMemo(() => {
+    const threadMap = new Map<number | null, { id: number | null; name: string; unread: number }>();
+    threadMap.set(null, { id: null, name: 'All', unread: 0 });
+
+    for (const msg of messages) {
+      const pid = msg.practiceId ?? null;
+      if (pid !== null && !threadMap.has(pid)) {
+        threadMap.set(pid, { id: pid, name: msg.practiceName || `Practice #${pid}`, unread: 0 });
+      }
+      if (msg.direction === 'team_to_client' && !msg.readAt) {
+        const t = threadMap.get(pid);
+        if (t) t.unread++;
+        const allT = threadMap.get(null);
+        if (allT) allT.unread++;
+      }
+    }
+    return Array.from(threadMap.values());
+  }, [messages]);
+
+  // Filter messages by active thread
+  const filteredMessages = React.useMemo(() => {
+    if (activeThread === null) return messages;
+    return messages.filter(m => (m.practiceId ?? null) === activeThread);
+  }, [messages, activeThread]);
+
   // Group messages by date
-  const groupedMessages = messages.reduce(
+  const groupedMessages = filteredMessages.reduce(
     (groups, message) => {
       const date = new Date(message.createdAt).toDateString();
       if (!groups[date]) {
@@ -299,12 +327,38 @@ export default function ChatPage() {
         )}
       </section>
 
+        {/* Thread Tabs */}
+        {threads.length > 1 && (
+          <div className="flex-shrink-0 flex gap-1 py-2 overflow-x-auto scrollbar-hide border-b" style={{ borderColor: 'var(--bz-border)' }}>
+            {threads.map((thread) => (
+              <button
+                key={thread.id ?? 'all'}
+                onClick={() => setActiveThread(thread.id)}
+                className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5"
+                style={activeThread === thread.id ? {
+                  background: 'rgba(201,169,110,0.15)',
+                  color: 'var(--bz-accent-warm)',
+                } : {
+                  color: 'var(--bz-text-2)',
+                }}
+              >
+                {thread.name}
+                {thread.unread > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{ background: 'rgba(201,169,110,0.2)', color: 'var(--bz-accent-warm)' }}>
+                    {thread.unread}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
       {/* Messages Container */}
       <div
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto py-4 space-y-4 scrollbar-thin scrollbar-thumb-neutral-600"
       >
-        {messages.length === 0 ? (
+        {filteredMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <MessageCircle
               className="w-16 h-16 mb-4"

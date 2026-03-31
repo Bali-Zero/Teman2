@@ -172,6 +172,7 @@ export interface PortalMessage {
   sentBy: string;
   subject?: string;
   practiceId?: number;
+  practiceName?: string;
   createdAt: string;
   readAt?: string;
 }
@@ -431,4 +432,34 @@ export interface BillingSummary {
 export interface BillingResponse {
   invoices: PortalInvoice[];
   summary: BillingSummary;
+}
+
+// ============================================================================
+// Profile Update Types
+// ============================================================================
+
+export interface UpdateProfileRequest {
+  phone?: string;
+  whatsapp?: string;
+  address?: string;
+  language?: string;
+}
+
+// ============================================================================
+// Notification Types
+// ============================================================================
+
+export interface PortalNotification {
+  id: number;
+  type: string;
+  title: string;
+  body: string | null;
+  data: string | null;
+  read: boolean;
+  created_at: string | null;
+}
+
+export interface NotificationsResponse {
+  notifications: PortalNotification[];
+  unread_count: number;
 }
