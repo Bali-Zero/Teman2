@@ -49,13 +49,27 @@ async function proxy(req: NextRequest): Promise<Response> {
   headers.delete("content-length");
 
   // Authentication: prefer Authorization header over cookie to prevent stale session leak.
-  // When frontend sends Authorization: Bearer, skip cookie forwarding — the header
-  // represents the active session. Cookie may be stale from a previous user.
+  // When frontend sends Authorization: Bearer, STRIP nz_access_token from cookies
+  // so the backend uses only the header token (which is the current user's session).
   const hasAuthHeader = headers.has("authorization");
   const cookies = req.cookies;
   const csrfCookie = cookies.get("nz_csrf_token");
 
-  if (!hasAuthHeader) {
+  if (hasAuthHeader) {
+    // Strip nz_access_token from cookie header — Authorization takes precedence.
+    // The browser auto-includes httpOnly cookies, so we must actively remove it.
+    const existingCookie = headers.get("cookie") || "";
+    const cleaned = existingCookie
+      .split(";")
+      .map((c) => c.trim())
+      .filter((c) => !c.startsWith("nz_access_token="))
+      .join("; ");
+    if (cleaned) {
+      headers.set("cookie", cleaned);
+    } else {
+      headers.delete("cookie");
+    }
+  } else {
     // No Authorization header: forward cookie for SSO/portal clients
     const authCookie = cookies.get("nz_access_token");
     if (authCookie) {
