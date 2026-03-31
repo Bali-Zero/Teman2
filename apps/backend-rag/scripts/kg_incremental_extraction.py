@@ -62,6 +62,7 @@ import asyncpg  # noqa: E402
 import httpx  # noqa: E402
 
 from backend.llm.genai_client import get_genai_client  # noqa: E402
+from backend.llm.ollama_client import ollama_chat_kg  # noqa: E402
 
 try:
     from openai import AsyncOpenAI
@@ -542,37 +543,70 @@ class KGIncrementalExtractor:
             return {"entities": [], "relationships": []}
 
     async def extract_with_openai(self, text: str) -> dict:
-        """Extract entities using OpenAI gpt-4o-mini."""
+        """Extract entities using OpenAI gpt-4o-mini or local Ollama (qwen3.5:27b via 2-step fix)."""
         if not self.openai:
             return {"entities": [], "relationships": []}
 
         prompt = EXTRACTION_PROMPT.format(text=text[:8000])
 
+        # Local Ollama path: use ollama_chat_kg() with 2-step think fix
+        # (extra_body: {"think": False} does NOT work via OpenAI-compat API — vLLM issue #37414)
+        if os.environ.get("OPENAI_BASE_URL", "").startswith("http://localhost"):
+            _kg_schema = {
+                "type": "object",
+                "properties": {
+                    "entities": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string"},
+                                "type": {"type": "string"},
+                                "name": {"type": "string"},
+                                "description": {"type": "string"},
+                            },
+                            "required": ["id", "type", "name"],
+                        },
+                    },
+                    "relationships": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "source": {"type": "string"},
+                                "target": {"type": "string"},
+                                "type": {"type": "string"},
+                            },
+                            "required": ["source", "target", "type"],
+                        },
+                    },
+                },
+                "required": ["entities", "relationships"],
+            }
+            model_name = os.environ.get("OPENAI_MODEL", "qwen3.5:27b")
+            try:
+                raw = await ollama_chat_kg(prompt, _kg_schema, model=model_name, timeout=60.0)
+                if not raw:
+                    return {"entities": [], "relationships": []}
+                return json.loads(raw)
+            except Exception as e:
+                logger.warning(f"Ollama KG extraction failed: {e}")
+                return {"entities": [], "relationships": []}
+
+        # Cloud OpenAI path
         try:
-            model_name = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-            extra = {}
-            if os.environ.get("OPENAI_BASE_URL", "").startswith("http://localhost"):
-                # Ollama: no response_format json_object (not supported by all models)
-                # Use think:false for qwen3.5 to disable chain-of-thought
-                extra = {"extra_body": {"think": False}}
-            else:
-                extra = {"response_format": {"type": "json_object"}}
             response = await self.openai.chat.completions.create(
-                model=model_name,
+                model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
-                **extra,
+                response_format={"type": "json_object"},
             )
             response_text = response.choices[0].message.content.strip()
-
-            # Clean JSON from markdown (shouldn't happen with json_object mode, but safety)
             if "```json" in response_text:
                 response_text = response_text.split("```json")[1].split("```")[0]
             elif "```" in response_text:
                 response_text = response_text.split("```")[1].split("```")[0]
-
-            result = json.loads(response_text)
-            return result
+            return json.loads(response_text)
         except Exception as e:
             logger.warning(f"OpenAI extraction failed: {e}")
             return {"entities": [], "relationships": []}
