@@ -161,12 +161,11 @@ export function useCreatePractice() {
   const mutation = useMutation({
     mutationFn: async ({
       data,
-      createdBy,
     }: {
       data: CreatePracticeParams;
-      createdBy: string;
+      createdBy?: string;
     }) => {
-      return api.crm.createPractice(data, createdBy);
+      return api.crm.createPractice(data);
     },
     onSuccess: (newPractice, variables) => {
       // Invalidate practices list
@@ -200,12 +199,11 @@ export function useUpdatePractice(practiceId: number) {
   const mutation = useMutation({
     mutationFn: async ({
       updates,
-      updatedBy,
     }: {
       updates: Parameters<typeof api.crm.updatePractice>[1];
-      updatedBy: string;
+      updatedBy?: string;
     }) => {
-      return api.crm.updatePractice(practiceId, updates, updatedBy);
+      return api.crm.updatePractice(practiceId, updates);
     },
     onSuccess: (updatedPractice) => {
       // Update cache
@@ -232,14 +230,8 @@ export function useUpdatePracticeStatus(practiceId: number) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async ({
-      status,
-      updatedBy,
-    }: {
-      status: string;
-      updatedBy: string;
-    }) => {
-      return api.crm.updatePractice(practiceId, { status }, updatedBy);
+    mutationFn: async ({ status }: { status: string; updatedBy?: string }) => {
+      return api.crm.updatePractice(practiceId, { status });
     },
     onSuccess: (updatedPractice) => {
       // Update cache

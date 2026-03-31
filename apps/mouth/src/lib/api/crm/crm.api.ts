@@ -319,16 +319,10 @@ export class CrmApi {
   /**
    * Create a new practice/case
    */
-  async createPractice(
-    data: CreatePracticeParams,
-    createdBy: string,
-  ): Promise<Practice> {
-    const queryParams = new URLSearchParams();
-    queryParams.append("created_by", createdBy);
-
+  async createPractice(data: CreatePracticeParams): Promise<Practice> {
     // Note: trailing slash required to avoid 307 redirect which converts POST to GET
     return this.client.request<Practice>(
-      `/api/crm/practices/?${queryParams.toString()}`,
+      `/api/crm/practices/`,
       {
         method: "POST",
         body: JSON.stringify(data),
@@ -352,14 +346,10 @@ export class CrmApi {
       notes: string;
       start_date: string;
     }>,
-    updatedBy: string,
   ): Promise<Practice> {
-    const queryParams = new URLSearchParams();
-    queryParams.append("updated_by", updatedBy);
-
     // Note: trailing slash required to avoid 307 redirect which converts PATCH to GET
     return this.client.request<Practice>(
-      `/api/crm/practices/${practiceId}/?${queryParams.toString()}`,
+      `/api/crm/practices/${practiceId}/`,
       {
         method: "PATCH",
         body: JSON.stringify(updates),
