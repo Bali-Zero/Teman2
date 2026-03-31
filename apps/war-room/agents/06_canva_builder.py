@@ -53,9 +53,9 @@ TEMPLATE_SLOTS = [
     (6,  "PBgr2GbZD3DJkPP0-LB0cZMDY3BRdprNk",  "PBgr2GbZD3DJkPP0-LB1kPFcPYqsqQYfQ"),   # slide 6
     (7,  "PBk1XphW0PnpKMh2-LBbh37qB3S4DrdrD",  "PBk1XphW0PnpKMh2-LB2XL6f0tjmwhgk8"),   # slide 7
     (8,  "PBNffcgkNpZKTtmM-LBqZPxQl4n18fr93",  "PBNffcgkNpZKTtmM-LBY2F75l9NJp4bpf"),   # slide 8 — heading ID fixed 2026-03-28
-    (9,  "PBqdbS4QcwHgGN0F-LBxNXD1BhmjjkJfc",  None),                                    # slide 9 (heading only) — ID fixed 2026-03-28
+    (9,  "PBqdbS4QcwHgGN0F-LBxNXD1BhmjjkJfc",  None),                                    # slide 9 — image+headline only (no body slot in template, confirmed 2026-03-31)
     (10, "PBz4hjP71RbnjKhb-LBbCpkK9wH5C1KQX",  "PBz4hjP71RbnjKhb-LBTVJsF8WVLZBx8L"),   # slide 10
-    (11, "PBxns7m6jJJm3BKT-LBtXZ6mvNj5TH3n0",  None),                                    # slide 11 (heading only)
+    (11, "PBxns7m6jJJm3BKT-LBtXZ6mvNj5TH3n0",  None),                                    # slide 11 — CTA logo+tagline (no body slot in template, confirmed 2026-03-31)
 ]
 
 MIN_SLIDES = 6
@@ -149,16 +149,10 @@ def slides_to_operations(slides: list, page: int = 1) -> list:
                     "page_index": page_index,
                 })
             else:
-                # ID non ancora mappato → includi con element_id=null
-                # Claude nell'app trova l'ID via start-editing-transaction (step 2 remap)
-                ops.append({
-                    "type": "replace_text",
-                    "element_id": None,
-                    "text": body_text,
-                    "page_index": page_index,
-                    "_needs_remap": True,
-                    "_note": f"body element_id unknown for page {page_index} — retrieve from start-editing-transaction",
-                })
+                # body_id=None → layout heading-only (confermato da revisione template 2026-03-31)
+                # Slides 9 e 11 non hanno slot body nel template — body text ignorato
+                print(f"  ℹ️  Slide {i+1} (page {page_index}): heading-only layout — body text skipped",
+                      file=sys.stderr)
 
         # BUG5 FIX: se la slide ha generated_image_path (iniettato da FASE 3),
         # aggiunge operazione pending_image per applicazione manuale/futura.
