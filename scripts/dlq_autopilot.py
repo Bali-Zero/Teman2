@@ -41,6 +41,15 @@ LOCK_FILE = LOCKS_DIR / "dlq_autopilot.lock"
 CLAUDE_TASKS_DIR = AGENT_DIR / "claude_tasks"
 NUZANTARA_ROOT = HOME / "Desktop" / "nuzantara"
 
+# D2.3: Per-machine escalation JSONL — import lazily to avoid circular issues
+import sys as _sys
+_sys.path.insert(0, str(NUZANTARA_ROOT / "scripts"))
+try:
+    from sentinel_lib.escalations import write_escalation as _write_escalation
+except ImportError:
+    def _write_escalation(entry: dict) -> None:  # type: ignore[misc]
+        pass  # graceful degradation if sentinel_lib not importable
+
 # ── Tuning constants ───────────────────────────────────────────────────────────
 LOCK_STALE_AGE_S = 1500          # 25min — if lock older than this, treat as stale
 MAX_ATTEMPTS = 10                 # per DLQ entry (default; per-job override via registry max_attempts)
@@ -346,6 +355,15 @@ def escalate_to_claude_code(
 
     task_file.write_text(json.dumps(payload, indent=2))
     logger.info(f"{job}: escalated to Claude Code → {task_file}")
+
+    # D2.3: Also write to per-machine escalation JSONL (federation bus)
+    _write_escalation({
+        "job": job,
+        "type": "dlq_autopilot_escalation",
+        "error_summary": entry.get("error_summary", "")[:200],
+        "priority": payload["priority"],
+        "task_file": str(task_file.name),
+    })
 
     send_telegram(
         f"🔴 Escalated to Claude Code: `{job}`\n"

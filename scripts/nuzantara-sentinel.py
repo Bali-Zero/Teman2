@@ -27,6 +27,7 @@ from sentinel_lib.alerter import send_alert, send_daily_report, check_escalation
 from sentinel_lib.repairer import (
     retry_job, dispatch_aider_fix, verify_fix, add_to_dlq, clear_dlq_entry,
     trigger_openclaw_job, is_openclaw_running, restart_openclaw,
+    validate_restart_cmd,
 )
 
 logging.basicConfig(
@@ -504,6 +505,14 @@ def process_job(job_id: str, state: dict, registry: dict,
         logger.info(f"{job_id}: Tier 1 retry (attempt {retry_attempt+1}), backoff {backoff:.0f}s")
         time.sleep(backoff)
         if restart_cmd:
+            # D2.1: validate before execution (retry_job also validates — belt-and-suspenders)
+            cmd_ok, cmd_reason = validate_restart_cmd(restart_cmd)
+            if not cmd_ok:
+                logger.error(f"{job_id}: restart_cmd rejected — {cmd_reason}")
+                add_to_dlq(job_id, f"invalid restart_cmd: {cmd_reason}", classification,
+                           last_error, files_implicated)
+                send_alert(f"Config error — {job_id}: invalid restart_cmd\n{cmd_reason}", level="CRITICAL")
+                return {"action": "config_error_cmd", "tier": 0, "success": False}
             success, _ = retry_job(restart_cmd, host)
             if success:
                 record_success(job_id)
