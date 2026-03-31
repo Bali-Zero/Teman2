@@ -154,7 +154,7 @@ class StalePracticeNotifier:
                     SELECT 1
                     FROM activity_log al
                     WHERE al.entity_type = 'practice'
-                      AND al.entity_id   = p.id::text
+                      AND al.entity_id   = p.id
                       AND al.created_at  > NOW() - INTERVAL '7 days'
                 )
             ORDER BY p.updated_at ASC
