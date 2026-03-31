@@ -333,26 +333,30 @@ async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:  # no
                 )
             drive_file_id = row["drive_file_id"]
 
-            nb_id = resolve_nb_notebook_id(nb_target)
-            if not nb_id:
-                raise ValueError(f"Unknown nb_target: {nb_target}")
+            nb_id = resolve_nb_notebook_id(nb_target) if nb_target else None
 
             nlm_source_id = "skipped"
-            if NLM_BRIDGE_URL and drive_file_id and drive_file_id != "skipped":
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    resp = await client.post(
-                        f"{NLM_BRIDGE_URL}/nlm/source-add",
-                        headers={"X-Bridge-Key": NLM_BRIDGE_KEY},
-                        json={
-                            "notebook_id": nb_id,
-                            "source_type": "drive",
-                            "document_id": drive_file_id,
-                        },
-                    )
-                    resp.raise_for_status()
-                    nlm_data = resp.json()
-                    nlm_source_id = nlm_data.get("source_id", "")
-                    logger.info(f"✅ Step 3 done: NLM source_id={nlm_source_id}")
+            if NLM_BRIDGE_URL and nb_id and drive_file_id and drive_file_id != "skipped":
+                try:
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        resp = await client.post(
+                            f"{NLM_BRIDGE_URL}/nlm/source-add",
+                            headers={"X-Bridge-Key": NLM_BRIDGE_KEY},
+                            json={
+                                "notebook_id": nb_id,
+                                "source_type": "drive",
+                                "document_id": drive_file_id,
+                            },
+                        )
+                        resp.raise_for_status()
+                        nlm_data = resp.json()
+                        nlm_source_id = nlm_data.get("source_id", "")
+                        logger.info(f"✅ Step 3 done: NLM source_id={nlm_source_id}")
+                except (httpx.ConnectTimeout, httpx.ConnectError, httpx.TimeoutException) as e:
+                    logger.warning(f"⚠️  NLM bridge unreachable — skipping: {e}")
+                    nlm_source_id = "unreachable"
+            elif not nb_id:
+                logger.warning(f"⚠️  No notebook ID for nb_target={nb_target!r} — skipping NLM step")
             else:
                 logger.warning("⚠️  NLM_BRIDGE_URL not set or Drive skipped — skipping NLM step")
 
