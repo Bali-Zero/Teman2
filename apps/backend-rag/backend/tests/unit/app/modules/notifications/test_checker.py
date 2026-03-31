@@ -84,7 +84,10 @@ class TestPassportAlerts:
         target_month = today.month + 9
         target_year = today.year + (target_month - 1) // 12
         target_month = (target_month - 1) % 12 + 1
-        client.passport_expiry = today.replace(year=target_year, month=target_month)
+        import calendar
+        last_day = calendar.monthrange(target_year, target_month)[1]
+        target_day = min(today.day, last_day)
+        client.passport_expiry = today.replace(year=target_year, month=target_month, day=target_day)
 
         alert = checker._check_passport(client)
 
@@ -100,7 +103,10 @@ class TestPassportAlerts:
         target_month = today.month + 13
         target_year = today.year + (target_month - 1) // 12
         target_month = (target_month - 1) % 12 + 1
-        client.passport_expiry = today.replace(year=target_year, month=target_month)
+        import calendar
+        last_day = calendar.monthrange(target_year, target_month)[1]
+        target_day = min(today.day, last_day)
+        client.passport_expiry = today.replace(year=target_year, month=target_month, day=target_day)
 
         alert = checker._check_passport(client)
 
@@ -238,7 +244,11 @@ class TestBirthdayAlerts:
         """No alert when today is not client's birthday."""
         client = base_client.model_copy()
         today = datetime.now(tz=timezone.utc)
-        client.date_of_birth = today.replace(year=today.year - 30, month=today.month % 12 + 1)
+        next_month = today.month % 12 + 1
+        import calendar
+        last_day = calendar.monthrange(today.year - 30, next_month)[1]
+        next_day = min(today.day, last_day)
+        client.date_of_birth = today.replace(year=today.year - 30, month=next_month, day=next_day)
 
         alert = checker._check_birthday(client)
 
