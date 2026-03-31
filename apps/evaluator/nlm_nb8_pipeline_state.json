@@ -4,10 +4,10 @@
   "notebook_name": "NB-8: Expat Life Bali",
   "current_state": "COMPLETE",
   "degradation_level": "NOMINAL",
-  "last_updated": "2026-03-30T23:48:26.078744+00:00",
+  "last_updated": "2026-03-31T00:10:22.636043+00:00",
   "budget": {
     "daily_queries": 2,
-    "weekly_calls": 2,
+    "weekly_calls": 4,
     "week_start": "2026-W13"
   },
   "circuit_breakers": {
@@ -39,6 +39,11 @@
       "date": "2026-03-31",
       "cluster": "B",
       "run_id": "0305b57a-f029-4705-a060-a0ace318cbf4"
+    },
+    {
+      "date": "2026-03-31",
+      "cluster": "B",
+      "run_id": "c4a87d4d-9b95-4321-a792-cc9ce7ff5d05"
     }
   ]
 }

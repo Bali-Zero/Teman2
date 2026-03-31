@@ -10,17 +10,17 @@
 
 ## Brand Specs for Infographics
 
-| Element | Value |
-|---------|-------|
-| Background | `#0c0c0e` or `#111114` (dark variants) |
-| Accent | `#d4845a` (copper) |
-| Text Primary | `#FFFFFF` |
-| Text Secondary | `#A0A0A0` |
-| Positive/Open | `#4ADE80` (green) |
-| Warning/Restricted | `#FBBF24` (amber) |
-| Negative/Closed | `#F87171` (red) |
-| Font | Montserrat (headings), Inter (body) |
-| Logo | Bottom-right corner, 40% opacity, small |
+| Element            | Value                                   |
+| ------------------ | --------------------------------------- |
+| Background         | `#0c0c0e` or `#111114` (dark variants)  |
+| Accent             | `#d4845a` (copper)                      |
+| Text Primary       | `#FFFFFF`                               |
+| Text Secondary     | `#A0A0A0`                               |
+| Positive/Open      | `#4ADE80` (green)                       |
+| Warning/Restricted | `#FBBF24` (amber)                       |
+| Negative/Closed    | `#F87171` (red)                         |
+| Font               | Montserrat (headings), Inter (body)     |
+| Logo               | Bottom-right corner, 40% opacity, small |
 
 ---
 

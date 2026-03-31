@@ -9,7 +9,7 @@
 **Published:** 2026-03-31
 **Last verified:** 2026-03-29 against BPS Regulation 7/2025 + PP 28/2024
 
-*Decoding Indonesia's business classification system, one code at a time.*
+_Decoding Indonesia's business classification system, one code at a time._
 
 ---
 
@@ -61,19 +61,20 @@ The distinction is structural: if the building is permanent and the primary acti
 
 ## Foreign Ownership: 100% Open
 
-| Attribute | Value |
-|-----------|-------|
-| **PMA Status** | TERBUKA (Open) |
-| **Maximum Foreign Ownership** | 100% |
-| **Conditions** | None |
-| **Priority Sector** | No |
-| **Source Regulation** | Perpres 10/2021, amended by Perpres 49/2021 and Perpres 14/2024 |
+| Attribute                     | Value                                                           |
+| ----------------------------- | --------------------------------------------------------------- |
+| **PMA Status**                | TERBUKA (Open)                                                  |
+| **Maximum Foreign Ownership** | 100%                                                            |
+| **Conditions**                | None                                                            |
+| **Priority Sector**           | No                                                              |
+| **Source Regulation**         | Perpres 10/2021, amended by Perpres 49/2021 and Perpres 14/2024 |
 
 This is the good news: KBLI 56101 is fully open to foreign investment. There is no maximum foreign ownership cap, no local partner requirement, and no special conditions. A foreigner can own 100% of a PT PMA operating a restaurant in Indonesia.
 
 This has been the case since the 2021 Positive Investment List (Perpres 10/2021) replaced the old Negative Investment List (DNI). Before 2021, restaurants had various ownership restrictions depending on scale and type. Those restrictions are gone.
 
 **However, "open" does not mean "easy."** You still need:
+
 - A PT PMA with minimum IDR 10 billion total investment commitment (per PP 5/2021)
 - Paid-up capital of at least IDR 2.5 billion per shareholder
 - Proper licensing through OSS-RBA
@@ -89,14 +90,15 @@ KBLI 56101 has different risk classifications depending on your business scale. 
 
 ### Micro Scale
 
-| Attribute | Value |
-|-----------|-------|
-| **Risk Classification** | Menengah Rendah (Medium-Low) |
-| **Required Permits** | NIB + Sertifikat Standar |
-| **Issuance Timeline** | Automatic |
-| **Authority** | Bupati/Walikota (Regent/Mayor) |
+| Attribute               | Value                          |
+| ----------------------- | ------------------------------ |
+| **Risk Classification** | Menengah Rendah (Medium-Low)   |
+| **Required Permits**    | NIB + Sertifikat Standar       |
+| **Issuance Timeline**   | Automatic                      |
+| **Authority**           | Bupati/Walikota (Regent/Mayor) |
 
 **Obligations:**
+
 - Hygiene Sanitation Label (HSP)
 - Periodic activity reports
 - Standard implementation documentation
@@ -105,14 +107,15 @@ Micro-scale operations get the lightest treatment. Your NIB and Standard Certifi
 
 ### Small, Medium, and Large Scale
 
-| Attribute | Value |
-|-----------|-------|
+| Attribute               | Value                         |
+| ----------------------- | ----------------------------- |
 | **Risk Classification** | Menengah Tinggi (Medium-High) |
-| **Required Permits** | NIB + Sertifikat Standar |
-| **Issuance Timeline** | 14 working days |
-| **Authority** | Gubernur (Governor) |
+| **Required Permits**    | NIB + Sertifikat Standar      |
+| **Issuance Timeline**   | 14 working days               |
+| **Authority**           | Gubernur (Governor)           |
 
 **Obligations:**
+
 - Self-Assessment of Standard Readiness (Penilaian Mandiri Kesiapan Penerapan Standar)
 - Certified standard from an accredited certification body (LSPr)
 - Hygiene Sanitation Feasibility Certificate (SLHS) from the local health department
@@ -128,7 +131,7 @@ This is where it gets real. The SLHS alone requires an on-site inspection by Din
 
 ### The Fiktif Positif Rule
 
-Both tiers benefit from *fiktif positif*: if the government fails to respond within the stated timeline, your application is automatically approved. This is a feature of the OSS-RBA system designed to prevent bureaucratic bottlenecks. In practice, it works -- but keep documentation of your submission dates.
+Both tiers benefit from _fiktif positif_: if the government fails to respond within the stated timeline, your application is automatically approved. This is a feature of the OSS-RBA system designed to prevent bureaucratic bottlenecks. In practice, it works -- but keep documentation of your submission dates.
 
 ---
 
@@ -138,12 +141,12 @@ The 2025 reclassification brought the most significant change to restaurant code
 
 **Four codes merged into one.** Under KBLI 2020, restaurant-type businesses were split across:
 
-| Old Code (KBLI 2020) | Old Name | Status in 2025 |
-|---|---|---|
-| 56101 | Restoran | Absorbed into new 56101 |
-| 56103 | Warung tenda / food stalls | **Merged into 56101** |
-| 56104 | Self-service restaurants | **Merged into 56101** |
-| 56109 | Other fixed-building food service | **Merged into 56101** |
+| Old Code (KBLI 2020) | Old Name                          | Status in 2025          |
+| -------------------- | --------------------------------- | ----------------------- |
+| 56101                | Restoran                          | Absorbed into new 56101 |
+| 56103                | Warung tenda / food stalls        | **Merged into 56101**   |
+| 56104                | Self-service restaurants          | **Merged into 56101**   |
+| 56109                | Other fixed-building food service | **Merged into 56101**   |
 
 The new 56101 is an aggregation of all four. If your company was registered under 56103, 56104, or 56109 before, your code no longer exists as a standalone category. You need to update to 56101 before the **June 18, 2026** migration deadline.
 
@@ -170,14 +173,14 @@ KBLI 56101 is the single most common business code for foreigners in Bali. Our C
 
 **Practical timeline for opening a restaurant in Bali with a PT PMA:**
 
-| Step | Duration |
-|------|----------|
-| PT PMA registration + NIB | 2--4 weeks |
-| Location lease signing | 1--2 weeks |
-| SLHS inspection and certificate | 2--4 weeks |
-| Interior build-out and kitchen fit | 4--12 weeks |
-| Alcohol license (SKPL) if applicable | 2--6 weeks |
-| **Total** | **3--6 months** |
+| Step                                 | Duration        |
+| ------------------------------------ | --------------- |
+| PT PMA registration + NIB            | 2--4 weeks      |
+| Location lease signing               | 1--2 weeks      |
+| SLHS inspection and certificate      | 2--4 weeks      |
+| Interior build-out and kitchen fit   | 4--12 weeks     |
+| Alcohol license (SKPL) if applicable | 2--6 weeks      |
+| **Total**                            | **3--6 months** |
 
 The biggest variable is the SLHS inspection. Dinas Kesehatan in Badung (covering Canggu, Seminyak, Kuta) processes more applications than other regencies and can have backlogs.
 
@@ -209,15 +212,15 @@ If you prepare food for events, offices, or delivery-only operations without a d
 
 Under Kepmen 228/2019, KBLI 56101 falls in Category 8 (Accommodation & Food/Beverage). There are 12 TKA-eligible positions in this category, of which 7 are directly relevant to restaurant operations:
 
-| Position (EN) | Position (ID) | ISCO Code |
-|---|---|---|
-| Operations Manager | Manajer Operasional | 1439 |
-| Marketing Manager | Manajer Pemasaran | 1221 |
-| Finance Manager | Manajer Keuangan | 1211 |
-| Technical Manager | Manajer Teknik | 1439 |
-| Guest Relation Manager | Manajer Hubungan Tamu | 1439 |
-| Hotel Manager | Manajer Hotel | 1411 |
-| Country Club Manager | Manajer Country Club | 1439 |
+| Position (EN)          | Position (ID)         | ISCO Code |
+| ---------------------- | --------------------- | --------- |
+| Operations Manager     | Manajer Operasional   | 1439      |
+| Marketing Manager      | Manajer Pemasaran     | 1221      |
+| Finance Manager        | Manajer Keuangan      | 1211      |
+| Technical Manager      | Manajer Teknik        | 1439      |
+| Guest Relation Manager | Manajer Hubungan Tamu | 1439      |
+| Hotel Manager          | Manajer Hotel         | 1411      |
+| Country Club Manager   | Manajer Country Club  | 1439      |
 
 **Important:** If your restaurant is Small, Medium, or Large scale and employs foreign workers, you must obtain an approved RPTKA (Rencana Penggunaan Tenaga Kerja Asing) before hiring.
 
@@ -259,10 +262,10 @@ The code that every digital nomad in Bali uses when they set up their PT PMA. Is
 
 ---
 
-*Explore the full KBLI 2025 database: [balizero.com/kbli](https://balizero.com/kbli)*
-*Detailed page for this code: [balizero.com/kbli/56101](https://balizero.com/kbli/56101)*
+_Explore the full KBLI 2025 database: [balizero.com/kbli](https://balizero.com/kbli)_
+_Detailed page for this code: [balizero.com/kbli/56101](https://balizero.com/kbli/56101)_
 
-*Bali Zero -- Indonesia's AI-native business intelligence firm. 5,000+ clients since 2020.*
+_Bali Zero -- Indonesia's AI-native business intelligence firm. 5,000+ clients since 2020._
 
 ---
 
@@ -302,6 +305,7 @@ Foreign ownership: 100%. No cap, no conditions, no local partner required.
 But "open" does not mean "easy."
 
 You still need:
+
 - PT PMA (IDR 10B minimum investment)
 - NIB through OSS-RBA
 - SLHS health certificate (2-4 week inspection)

@@ -1,4 +1,5 @@
 # Rapporto di Conformità Strategica e Architetturale
+
 ## Legge sulla Protezione dei Dati Personali (UU PDP) dell'Indonesia e Sicurezza nei Sistemi RAG
 
 > Documento di riferimento legale-architetturale per Nuzantara / Bali Zero
@@ -30,11 +31,11 @@ L'applicazione della legge è demandata alle autorità di regolamentazione indon
 
 L'**Articolo 4** della UU PDP stabilisce una dicotomia fondamentale:
 
-| Tipologia di Documento | Classificazione UU PDP | Implicazioni Architetturali |
-|------------------------|----------------------|---------------------------|
+| Tipologia di Documento        | Classificazione UU PDP                            | Implicazioni Architetturali                                                                                                                                                                                          |
+| ----------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Passaporto Internazionale** | Dato Generale (con elementi Specifici potenziali) | Se la fotografia viene elaborata tramite sistemi automatizzati di riconoscimento facciale o verifica biometrica (es. OCR), i dati estratti transitano nella categoria dei **Dati Personali Specifici (Biometrici)**. |
-| **KTP e NIK** | Dato Generale | Il NIK (16 cifre) è l'identificatore primario univoco per ogni interazione civile, finanziaria, governativa e sanitaria in Indonesia. La sua esfiltrazione consente profilazioni estese. |
-| **NPWP** | Dato Generale (Finanziario/Fiscale) | L'associazione con il NIK e con dati transazionali lo rende un elemento sensibile. |
+| **KTP e NIK**                 | Dato Generale                                     | Il NIK (16 cifre) è l'identificatore primario univoco per ogni interazione civile, finanziaria, governativa e sanitaria in Indonesia. La sua esfiltrazione consente profilazioni estese.                             |
+| **NPWP**                      | Dato Generale (Finanziario/Fiscale)               | L'associazione con il NIK e con dati transazionali lo rende un elemento sensibile.                                                                                                                                   |
 
 ### 2.2 L'Evoluzione del Formato NPWP — Implicazioni per i Sistemi IT
 
@@ -56,18 +57,19 @@ La UU PDP **rigetta esplicitamente**: opt-out, consenso presunto, pre-spuntatura
 
 Requisiti del Consent Banner (Art. 21):
 
-| Requisito | Implementazione |
-|-----------|----------------|
-| Legalità e Scopo | Dichiarazione chiara del perché passport/KTP/NPWP vengono raccolti |
-| Tipologia Dati | Elenco specifico: "Numero di Passaporto, NIK, NPWP a 16 cifre" |
-| Periodo di Conservazione | Indicazione precisa del ciclo di vita |
-| Diritti dell'Interessato | Accesso, rettifica, cancellazione, ritiro consenso |
+| Requisito                | Implementazione                                                    |
+| ------------------------ | ------------------------------------------------------------------ |
+| Legalità e Scopo         | Dichiarazione chiara del perché passport/KTP/NPWP vengono raccolti |
+| Tipologia Dati           | Elenco specifico: "Numero di Passaporto, NIK, NPWP a 16 cifre"     |
+| Periodo di Conservazione | Indicazione precisa del ciclo di vita                              |
+| Diritti dell'Interessato | Accesso, rettifica, cancellazione, ritiro consenso                 |
 
 ### 3.2 Il Limite delle 72 Ore per Ritiro Consenso
 
 **Articoli 9, 40, 43**: una volta ritirato il consenso, il Titolare deve **cancellare tutti i dati entro 72 ore**. Questo è un SLA normativo la cui violazione espone a sanzioni immediate.
 
 L'audit log del consenso deve contenere:
+
 - ID utente o identificatore sessione crittografato
 - Timestamp esatto dell'opt-in
 - Versione esatta della Privacy Policy presentata
@@ -80,6 +82,7 @@ L'audit log del consenso deve contenere:
 ### 4.1 DPIA Obbligatoria (Articolo 34)
 
 Deve essere condotta **prima** di iniziare il processing per:
+
 - Nuove tecnologie (AI generativa sui dati clienti)
 - Elaborazione su larga scala di dati specifici
 - Decisioni automatizzate con conseguenze legali
@@ -90,6 +93,7 @@ Deve essere condotta **prima** di iniziare il processing per:
 **FONDAMENTALE**: La Corte Costituzionale (30 luglio 2025) ha dichiarato incostituzionale la congiunzione "e" nell'Articolo 53(1), sostituendola con **"e/o"**.
 
 Conseguenza: la nomina del DPO è obbligatoria se si soddisfa **almeno UNA** (non tutte) delle condizioni:
+
 1. Elaborazione per servizi di interesse pubblico
 2. **Monitoraggio regolare e sistematico su larga scala** ← NOI
 3. Elaborazione su larga scala di Dati Specifici ← NOI (biometria passport)
@@ -103,17 +107,18 @@ Conseguenza: la nomina del DPO è obbligatoria se si soddisfa **almeno UNA** (no
 ### 5.1 CIRT Organizzativo (BSSN Reg. 1/2024)
 
 Obbligatorio istituire un Cyber Incident Response Team:
+
 - Registrato presso il National CIRT della BSSN
 - Gestione end-to-end: preparazione → identificazione → contenimento → eradicazione → ripristino → post-incident
 - **Condivisione obbligatoria IoC** con le autorità (Art. 8 Reg. 1/2024)
 
 ### 5.2 Piano di Contingenza (BSSN Reg. 2/2024)
 
-| Fase | Azioni |
-|------|--------|
-| **Pre-Crisi** | Early Warning dal National CIRT, contromisure immediate |
-| **Durante Crisi** | Mitigazione, comunicazione, fondi emergenza, reportistica continua |
-| **Post-Crisi** | Valutazione forense, stima costi, audit retrospettivi, lezioni apprese |
+| Fase              | Azioni                                                                 |
+| ----------------- | ---------------------------------------------------------------------- |
+| **Pre-Crisi**     | Early Warning dal National CIRT, contromisure immediate                |
+| **Durante Crisi** | Mitigazione, comunicazione, fondi emergenza, reportistica continua     |
+| **Post-Crisi**    | Valutazione forense, stima costi, audit retrospettivi, lezioni apprese |
 
 **Simulazioni obbligatorie**: almeno ogni 2 anni. Piani valutati annualmente dalla BSSN.
 
@@ -127,13 +132,13 @@ Qualsiasi fallimento che comporti accesso non autorizzato, alterazione, distruzi
 
 ### 6.2 Cronoprogramma Operativo
 
-| Orizzonte | Fase | Dettaglio |
-|-----------|------|-----------|
-| 0-6h | Scoperta + Attivazione CIRT | Rilevamento anomalia, mobilitazione team |
-| 2-24h | Contenimento + Triage | Isolamento server, revoca token, analisi forense |
-| 12-48h | Identificazione dati compromessi | Analisi log, volume e tipologia dati esfiltrati |
-| 40-72h | Stesura rapporto legale | DPO + legali redigono notifica Art. 46 |
-| 60-72h | **Notifica** | Invio a MOCD (pengendalianaptika@kominfo.go.id) + BSSN (aid70@bssn.go.id) + soggetti interessati |
+| Orizzonte | Fase                             | Dettaglio                                                                                        |
+| --------- | -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 0-6h      | Scoperta + Attivazione CIRT      | Rilevamento anomalia, mobilitazione team                                                         |
+| 2-24h     | Contenimento + Triage            | Isolamento server, revoca token, analisi forense                                                 |
+| 12-48h    | Identificazione dati compromessi | Analisi log, volume e tipologia dati esfiltrati                                                  |
+| 40-72h    | Stesura rapporto legale          | DPO + legali redigono notifica Art. 46                                                           |
+| 60-72h    | **Notifica**                     | Invio a MOCD (pengendalianaptika@kominfo.go.id) + BSSN (aid70@bssn.go.id) + soggetti interessati |
 
 ### 6.3 Contenuto Notifica (Art. 46)
 
@@ -155,15 +160,16 @@ Qualsiasi fallimento che comporti accesso non autorizzato, alterazione, distruzi
 
 ### 7.2 Sanzioni Penali (Artt. 65, 67, 68)
 
-| Reato | Pena detentiva | Multa |
-|-------|---------------|-------|
-| Divulgazione/uso illecito | 4-5 anni | IDR 4-5 miliardi |
-| Falsificazione dati | **6 anni** | **IDR 6 miliardi** |
-| Acquisto/vendita database | — | Fino a **IDR 60 miliardi** (~$3.8M) |
+| Reato                     | Pena detentiva | Multa                               |
+| ------------------------- | -------------- | ----------------------------------- |
+| Divulgazione/uso illecito | 4-5 anni       | IDR 4-5 miliardi                    |
+| Falsificazione dati       | **6 anni**     | **IDR 6 miliardi**                  |
+| Acquisto/vendita database | —              | Fino a **IDR 60 miliardi** (~$3.8M) |
 
 ### 7.3 Responsabilità Corporativa (Art. 69)
 
 Per le aziende condannate:
+
 - Confisca profitti/beni
 - Congelamento attività
 - Revoca permanente licenze
@@ -176,6 +182,7 @@ Per le aziende condannate:
 ### 8.1 Vulnerabilità "Contextual Leakage"
 
 Il sistema RAG estrae documenti sensibili dal database vettoriale e li inietta nel contesto dell'LLM. Una volta nel contesto:
+
 - Prompt injection può estrarre PII
 - L'LLM può includere PII nelle risposte
 - Il controllo deterministico viene meno
@@ -184,30 +191,33 @@ Violazione diretta di Artt. 35, 36, 38 UU PDP.
 
 ### 8.2 Pipeline di Sicurezza PII per RAG
 
-| Fase RAG | Strategia di Sicurezza |
-|----------|----------------------|
-| **1. Data Ingestion** | Mascheramento pre-vettorizzazione con Presidio (NLP) |
-| **2. Regex Custom** | Riconoscitori per NIK 16 cifre, NPWP 16 cifre (con "0" iniziale stranieri) |
-| **3. Embedding** | Sostituzione PII con token neutri (`<PASSPORT_REDACTED>`) prima del Vector DB |
-| **4. Retrieval** | RBAC basato su metadati per chunk — filtro per autorizzazioni utente |
-| **5. Egress** | Firewall istruzionali + Egress Scanner sulle risposte LLM |
+| Fase RAG              | Strategia di Sicurezza                                                        |
+| --------------------- | ----------------------------------------------------------------------------- |
+| **1. Data Ingestion** | Mascheramento pre-vettorizzazione con Presidio (NLP)                          |
+| **2. Regex Custom**   | Riconoscitori per NIK 16 cifre, NPWP 16 cifre (con "0" iniziale stranieri)    |
+| **3. Embedding**      | Sostituzione PII con token neutri (`<PASSPORT_REDACTED>`) prima del Vector DB |
+| **4. Retrieval**      | RBAC basato su metadati per chunk — filtro per autorizzazioni utente          |
+| **5. Egress**         | Firewall istruzionali + Egress Scanner sulle risposte LLM                     |
 
 ---
 
 ## 9. Direttrici di Implementazione
 
 ### Immediato:
+
 1. **Consent Banner** crittografico immutabile con audit log
 2. **Regex NPWP 16 cifre** aggiornate per stranieri (prefisso "0")
 3. **Nomina DPO** (obbligatoria post-Sentenza 151/2024)
 4. **DPIA** su tutti i sistemi RAG/LLM
 
 ### Organizzativo:
+
 5. Istituzione **CIRT organizzativo** registrato presso BSSN
 6. **Simulazioni** crisi biennali
 7. Piano contingenza BSSN Reg. 2/2024 completo
 
 ### Architetturale:
+
 8. **Presidio** con regex indonesiani su tutta la pipeline RAG
 9. **RBAC** sui chunk vettoriali
 10. **Egress scanner** sulle risposte LLM
@@ -215,6 +225,6 @@ Violazione diretta di Artt. 35, 36, 38 UU PDP.
 
 ---
 
-*Documento di riferimento legale-architetturale*
-*Basato su: UU PDP No. 27/2022, CC Sentenza 151/2024, BSSN Reg. 1-2/2024*
-*Per: Nuzantara / Bali Zero — conformità sistemi RAG e processing PII*
+_Documento di riferimento legale-architetturale_
+_Basato su: UU PDP No. 27/2022, CC Sentenza 151/2024, BSSN Reg. 1-2/2024_
+_Per: Nuzantara / Bali Zero — conformità sistemi RAG e processing PII_

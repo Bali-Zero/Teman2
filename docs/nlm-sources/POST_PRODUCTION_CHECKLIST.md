@@ -6,15 +6,15 @@
 
 ## Brand Reference
 
-| Element | Value |
-|---------|-------|
-| Background / Shadows | `#0c0c0e` (near-black) |
-| Accent / Warm Copper | `#d4845a` (Bali Zero signature copper) |
-| Secondary Accent | `#e09870` (lighter copper for hover/highlights) |
-| Text Primary | `#FFFFFF` (pure white) |
-| Text Secondary | `#A0A0A0` (muted gray) |
-| Logo | Circular black Bali Zero logo (`balizero-logo-clean.png`) |
-| Font | Montserrat (headings), Inter or system sans-serif (body) |
+| Element              | Value                                                     |
+| -------------------- | --------------------------------------------------------- |
+| Background / Shadows | `#0c0c0e` (near-black)                                    |
+| Accent / Warm Copper | `#d4845a` (Bali Zero signature copper)                    |
+| Secondary Accent     | `#e09870` (lighter copper for hover/highlights)           |
+| Text Primary         | `#FFFFFF` (pure white)                                    |
+| Text Secondary       | `#A0A0A0` (muted gray)                                    |
+| Logo                 | Circular black Bali Zero logo (`balizero-logo-clean.png`) |
+| Font                 | Montserrat (headings), Inter or system sans-serif (body)  |
 
 ---
 
@@ -51,11 +51,11 @@
 
 ### 2a. Lift / Gamma / Gain (Primary Wheels)
 
-| Control | Action | Purpose |
-|---------|--------|---------|
-| **Lift** (shadows) | Pull toward `#0c0c0e`. Reduce R/G/B equally, target Luminance ~3-5%. | Deep, cinematic black shadows matching BZ brand. |
-| **Gamma** (midtones) | Slight warm push. Add +0.02 to Red channel, +0.01 to Green. | Subtle warmth without orange-casting faces. |
-| **Gain** (highlights) | Leave mostly neutral. Minor warm push if NLM video is too cool. | Clean highlights, not blown out. |
+| Control               | Action                                                               | Purpose                                          |
+| --------------------- | -------------------------------------------------------------------- | ------------------------------------------------ |
+| **Lift** (shadows)    | Pull toward `#0c0c0e`. Reduce R/G/B equally, target Luminance ~3-5%. | Deep, cinematic black shadows matching BZ brand. |
+| **Gamma** (midtones)  | Slight warm push. Add +0.02 to Red channel, +0.01 to Green.          | Subtle warmth without orange-casting faces.      |
+| **Gain** (highlights) | Leave mostly neutral. Minor warm push if NLM video is too cool.      | Clean highlights, not blown out.                 |
 
 ### 2b. Curves
 
@@ -66,6 +66,7 @@
 ### 2c. Color Space (if needed)
 
 If the NLM video looks flat:
+
 1. Add a **Serial Node** (Alt+S).
 2. Apply a slight S-curve on Luma (darken shadows, brighten highlights) for contrast.
 3. Do NOT over-contrast — the BZ brand aesthetic is "warm depth," not high-contrast.
@@ -107,12 +108,12 @@ If the NLM video looks flat:
 1. Drag `balizero-logo-clean.png` to **Video Track 2** (V2), stretching it across the entire NLM video duration (not the intro/outro).
 2. Open the **Inspector** panel for the logo clip:
 
-| Setting | Value |
-|---------|-------|
-| Position X | 0.88 (bottom-right area) |
-| Position Y | 0.12 (near bottom) |
-| Zoom | 0.06 (small — approximately 60px on a 1080p frame) |
-| Opacity | 40% (visible but not distracting) |
+| Setting    | Value                                              |
+| ---------- | -------------------------------------------------- |
+| Position X | 0.88 (bottom-right area)                           |
+| Position Y | 0.12 (near bottom)                                 |
+| Zoom       | 0.06 (small — approximately 60px on a 1080p frame) |
+| Opacity    | 40% (visible but not distracting)                  |
 
 3. The logo should be present throughout but subtle. If it obscures important content at any point, keyframe the opacity down to 20% for that section.
 
@@ -219,35 +220,36 @@ Use this for any on-screen identification (e.g., if you add a face-cam segment l
 1. Switch to the **Deliver** page.
 2. Settings:
 
-| Setting | Value |
-|---------|-------|
-| Format | MP4 |
-| Codec | H.264 |
-| Resolution | 1920x1080 |
-| Frame Rate | 30 fps |
-| Bitrate | 20,000 kbps (high quality) |
-| Audio | AAC, 320 kbps, 48 kHz |
-| Filename | `KBLI_2025_BaliZero_FULL_v1.mp4` |
+| Setting    | Value                            |
+| ---------- | -------------------------------- |
+| Format     | MP4                              |
+| Codec      | H.264                            |
+| Resolution | 1920x1080                        |
+| Frame Rate | 30 fps                           |
+| Bitrate    | 20,000 kbps (high quality)       |
+| Audio      | AAC, 320 kbps, 48 kHz            |
+| Filename   | `KBLI_2025_BaliZero_FULL_v1.mp4` |
 
 3. Click **Add to Render Queue** > **Start Render**.
 
 ### 8b: X/Twitter Optimized
 
-| Setting | Value |
-|---------|-------|
-| Format | MP4 |
-| Codec | H.264 |
-| Resolution | 1920x1080 |
-| Frame Rate | 30 fps |
-| Bitrate | 8,000 kbps (X compresses further; diminishing returns above this) |
-| Max file size | 512 MB (X limit for video) |
-| Max duration | 2 min 20 sec (X limit for optimal engagement) |
-| Audio | AAC, 256 kbps, 48 kHz |
-| Filename | `KBLI_2025_BaliZero_X_v1.mp4` |
+| Setting       | Value                                                             |
+| ------------- | ----------------------------------------------------------------- |
+| Format        | MP4                                                               |
+| Codec         | H.264                                                             |
+| Resolution    | 1920x1080                                                         |
+| Frame Rate    | 30 fps                                                            |
+| Bitrate       | 8,000 kbps (X compresses further; diminishing returns above this) |
+| Max file size | 512 MB (X limit for video)                                        |
+| Max duration  | 2 min 20 sec (X limit for optimal engagement)                     |
+| Audio         | AAC, 256 kbps, 48 kHz                                             |
+| Filename      | `KBLI_2025_BaliZero_X_v1.mp4`                                     |
 
 ### 8c: Instagram Reels / Stories (9:16)
 
 If repurposing for vertical:
+
 1. Change timeline resolution to **1080x1920** (9:16).
 2. The NLM video (16:9) will need to be scaled and repositioned — either crop to center or add `#0c0c0e` bars top/bottom with text overlays.
 3. Export at 8,000 kbps, max 90 seconds.

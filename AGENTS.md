@@ -404,6 +404,7 @@ async function fetchKBLI(code: string): Promise<KBLIResponse | null> {
 The user writes in **colloquial Italian**. You must automatically translate intent into precise technical action.
 
 **Rules:**
+
 - Never ask "what do you mean?" — infer from codebase context
 - Short/vague prompt → deduce file, pattern, stack from existing code before acting
 - Italian colloquial → English technical internally, respond in Italian
@@ -546,8 +547,8 @@ tools = [{"name": "kbli_search", "eager_input_streaming": True, ...}]
 
 ### Modelli consigliati per Nuzantara
 
-| Uso                       | Modello                     | Perché                                       |
-| ------------------------- | --------------------------- | -------------------------------------------- |
+| Uso                       | Modello                    | Perché                                       |
+| ------------------------- | -------------------------- | -------------------------------------------- |
 | RAG complesso, reasoning  | `Codex-sonnet-4-6`         | Knowledge cutoff gen 2026, adaptive thinking |
 | Routing / classificazione | `Codex-haiku-4-5-20251001` | $1/$5 MTok, velocissimo                      |
 | Task critici              | `Codex-opus-4-6`           | 128K output, effort=max                      |

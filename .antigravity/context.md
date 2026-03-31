@@ -10,13 +10,13 @@ Il tuo capo è **Zero** (parla italiano). Quando ti dà un task, eseguilo. Se qu
 
 ## Il Team
 
-| Chi | Dove | Cosa fa |
-|-----|------|---------|
-| **Zero** | Questo schermo | Il boss. Decide cosa si fa. Parla italiano. |
-| **Tu (Antigravity)** | Qui | Sviluppatore full-stack. 1M context. Legge PDF nativamente. Deploy autonomo. |
-| **Claude Code (Opus)** | Terminale Claude | Architetto senior. Orchestra. Scrive i piani. |
-| **Codex** | `codex` CLI | Sandbox. Test, migration in isolamento. |
-| **DeepSeek R1** | `deepseek` CLI | Ragionamento profondo. Problemi complessi. |
+| Chi                    | Dove             | Cosa fa                                                                      |
+| ---------------------- | ---------------- | ---------------------------------------------------------------------------- |
+| **Zero**               | Questo schermo   | Il boss. Decide cosa si fa. Parla italiano.                                  |
+| **Tu (Antigravity)**   | Qui              | Sviluppatore full-stack. 1M context. Legge PDF nativamente. Deploy autonomo. |
+| **Claude Code (Opus)** | Terminale Claude | Architetto senior. Orchestra. Scrive i piani.                                |
+| **Codex**              | `codex` CLI      | Sandbox. Test, migration in isolamento.                                      |
+| **DeepSeek R1**        | `deepseek` CLI   | Ragionamento profondo. Problemi complessi.                                   |
 
 Non sei subordinato a Claude Code. Sei un peer. Se Claude Code ti lascia un task in `.gemini/tmp/`, eseguilo. Se Zero ti chiede qualcosa direttamente, fallo.
 
@@ -67,14 +67,14 @@ nuzantara/
 
 ### Stack
 
-| Layer | Tech |
-|-------|------|
-| Backend | Python 3.11, FastAPI, asyncpg |
-| Frontend | Next.js 16, TypeScript, Tailwind |
-| DB | PostgreSQL (Fly.io), Qdrant (Fly.io), Redis |
-| Infra | Fly.io (backend), Vercel (frontend) |
-| Design | kbli-theme.css — palette antracite navy `#1d273b` |
-| Venv | `apps/backend-rag/.venv` — **sempre** attivare prima di Python |
+| Layer    | Tech                                                           |
+| -------- | -------------------------------------------------------------- |
+| Backend  | Python 3.11, FastAPI, asyncpg                                  |
+| Frontend | Next.js 16, TypeScript, Tailwind                               |
+| DB       | PostgreSQL (Fly.io), Qdrant (Fly.io), Redis                    |
+| Infra    | Fly.io (backend), Vercel (frontend)                            |
+| Design   | kbli-theme.css — palette antracite navy `#1d273b`              |
+| Venv     | `apps/backend-rag/.venv` — **sempre** attivare prima di Python |
 
 ## Accesso Database
 
@@ -99,17 +99,20 @@ service = build('drive', 'v3', credentials=creds)
 ## Git & Deploy
 
 **Puoi fare autonomamente:**
+
 - `git add` + `git commit -m "type(scope): description"` — commit atomici
 - `git push origin main` — push diretto
 - Frontend: il push triggera Vercel automaticamente
 - Backend: `cd apps/backend-rag && fly deploy --strategy rolling`
 
 **Footer commit:**
+
 ```
 Co-Authored-By: Gemini <noreply@google.com>
 ```
 
 **Pre-deploy backend — OBBLIGATORIO:**
+
 ```bash
 cd apps/backend-rag && source .venv/bin/activate
 python -c "from backend.app.dependencies import get_current_user; print('OK')"
@@ -118,12 +121,15 @@ python -c "from backend.app.dependencies import get_current_user; print('OK')"
 ## Come Lavori
 
 ### Task da Zero (diretto)
+
 Zero ti dice cosa fare → fallo. Rispondi in italiano. Mostra il progresso.
 
 ### Task da Claude Code (file)
+
 Claude lascia istruzioni in `.gemini/tmp/` → leggile, eseguile, salva risultati nello stesso posto.
 
 ### Batch operations
+
 1. Leggi il file con la lista degli item
 2. Processa uno alla volta con error handling
 3. Log: `✓ Nome — risultato` oppure `✗ Nome — motivo`
@@ -131,6 +137,7 @@ Claude lascia istruzioni in `.gemini/tmp/` → leggile, eseguile, salva risultat
 5. Se scrivi nel DB: verifica con SELECT count
 
 ### Codice
+
 - Python: absolute imports (`from backend.core import config`), async/await, type hints, `logger` non `print`
 - TypeScript: App Router patterns, server components default, `'use client'` solo quando serve
 - CSS: usa `--kbli-*` tokens (antracite), non `--bz-*` (vecchio tema nero, rimosso)

@@ -10,43 +10,43 @@
 
 ### 1. bge-reranker-v2-m3 su 2GB Fly.io
 
-| Reviewer | Verdetto | Motivazione |
-|----------|----------|-------------|
-| **Gemini** | **REJECT** | Pesa ~2.2GB float16 → OOM kill immediato su 2GB |
-| **DeepSeek** | **DEFER** | Testare prima con query indonesiane. Deploy su worker separato. |
-| **Azione** | **DEFER + INVESTIGATE** | Verificare dimensione reale. Alternativa: `bge-micro-v2` o reranking via API remota |
+| Reviewer     | Verdetto                | Motivazione                                                                         |
+| ------------ | ----------------------- | ----------------------------------------------------------------------------------- |
+| **Gemini**   | **REJECT**              | Pesa ~2.2GB float16 → OOM kill immediato su 2GB                                     |
+| **DeepSeek** | **DEFER**               | Testare prima con query indonesiane. Deploy su worker separato.                     |
+| **Azione**   | **DEFER + INVESTIGATE** | Verificare dimensione reale. Alternativa: `bge-micro-v2` o reranking via API remota |
 
 ### 2. Rate limiter fail-closed vs fail-open
 
-| Reviewer | Verdetto | Motivazione |
-|----------|----------|-------------|
-| **Gemini** | **REJECT fail-closed** | Fail-closed = DoS autoinflitto se Redis down |
-| **DeepSeek** | **APPROVE fail-closed** | Fix prioritario per sicurezza |
-| **Azione** | **COMPROMISE**: fail-open con fallback in-memory token-bucket a limiti più severi |
+| Reviewer     | Verdetto                                                                          | Motivazione                                  |
+| ------------ | --------------------------------------------------------------------------------- | -------------------------------------------- |
+| **Gemini**   | **REJECT fail-closed**                                                            | Fail-closed = DoS autoinflitto se Redis down |
+| **DeepSeek** | **APPROVE fail-closed**                                                           | Fix prioritario per sicurezza                |
+| **Azione**   | **COMPROMISE**: fail-open con fallback in-memory token-bucket a limiti più severi |
 
 ### 3. BERT indonesiano 522M su 2GB
 
-| Reviewer | Verdetto | Motivazione |
-|----------|----------|-------------|
-| **Gemini** | **REJECT** | ~1GB+ RAM, crasherà su 2GB |
-| **DeepSeek** | **DEFER** | Deploy come servizio separato (FastAPI + ONNX, 300MB) |
-| **Azione** | **DEFER** — post-compliance, servizio ONNX separato |
+| Reviewer     | Verdetto                                            | Motivazione                                           |
+| ------------ | --------------------------------------------------- | ----------------------------------------------------- |
+| **Gemini**   | **REJECT**                                          | ~1GB+ RAM, crasherà su 2GB                            |
+| **DeepSeek** | **DEFER**                                           | Deploy come servizio separato (FastAPI + ONNX, 300MB) |
+| **Azione**   | **DEFER** — post-compliance, servizio ONNX separato |
 
 ### 4. GraphRAG su PostgreSQL (era SCARTATO)
 
-| Reviewer | Verdetto | Motivazione |
-|----------|----------|-------------|
-| **Gemini** | **REJECT LO SCARTO** | PostgreSQL Recursive CTE + pgvector funziona senza Neo4j |
-| **DeepSeek** | **RECONSIDER** | PostgreSQL 14+ WITH RECURSIVE + ltree, usa 161K archi esistenti |
-| **Azione** | **REINTRODURRE** come enhancement V15: GraphRAG nativo PostgreSQL |
+| Reviewer     | Verdetto                                                          | Motivazione                                                     |
+| ------------ | ----------------------------------------------------------------- | --------------------------------------------------------------- |
+| **Gemini**   | **REJECT LO SCARTO**                                              | PostgreSQL Recursive CTE + pgvector funziona senza Neo4j        |
+| **DeepSeek** | **RECONSIDER**                                                    | PostgreSQL 14+ WITH RECURSIVE + ltree, usa 161K archi esistenti |
+| **Azione**   | **REINTRODURRE** come enhancement V15: GraphRAG nativo PostgreSQL |
 
 ### 5. Dual pool asyncpg + psycopg3
 
-| Reviewer | Verdetto | Motivazione |
-|----------|----------|-------------|
-| **Gemini** | **PROBLEMATICO** | Rischio connection starvation. Serve PgBouncer. |
-| **DeepSeek** | **ACCETTABILE** con cautela | LangGraph richiede psycopg3. Override possibile ma instabile. |
-| **Azione** | **MANTENERE dual pool + PgBouncer** per multiplexare connessioni |
+| Reviewer     | Verdetto                                                         | Motivazione                                                   |
+| ------------ | ---------------------------------------------------------------- | ------------------------------------------------------------- |
+| **Gemini**   | **PROBLEMATICO**                                                 | Rischio connection starvation. Serve PgBouncer.               |
+| **DeepSeek** | **ACCETTABILE** con cautela                                      | LangGraph richiede psycopg3. Override possibile ma instabile. |
+| **Azione**   | **MANTENERE dual pool + PgBouncer** per multiplexare connessioni |
 
 ---
 
@@ -59,28 +59,32 @@
 
 ### Ordine Quick Wins corretto (settimana 1):
 
-| # | Azione | Gemini | DeepSeek |
-|---|--------|--------|----------|
-| 1 | PII Scanner Presidio + regex | APPROVE | Week 1 |
-| 2 | Rate limiter fix (fail-open + in-memory fallback) | FIX APPROACH | Week 1 |
-| 3 | PSE Registration | APPROVE | Week 1 (stop everything) |
-| 4 | DPO Appointment | APPROVE | Week 1 (CTO interim) |
-| 5 | PII Encryption pgcrypto | APPROVE | Week 1-2 |
-| 6 | Qdrant scalar quantization | APPROVE | Week 2 |
-| 7 | CI coverage fix | APPROVE | Week 2 |
-| 8 | KG pruning + GIN index | APPROVE | Week 3-4 |
+| #   | Azione                                            | Gemini       | DeepSeek                 |
+| --- | ------------------------------------------------- | ------------ | ------------------------ |
+| 1   | PII Scanner Presidio + regex                      | APPROVE      | Week 1                   |
+| 2   | Rate limiter fix (fail-open + in-memory fallback) | FIX APPROACH | Week 1                   |
+| 3   | PSE Registration                                  | APPROVE      | Week 1 (stop everything) |
+| 4   | DPO Appointment                                   | APPROVE      | Week 1 (CTO interim)     |
+| 5   | PII Encryption pgcrypto                           | APPROVE      | Week 1-2                 |
+| 6   | Qdrant scalar quantization                        | APPROVE      | Week 2                   |
+| 7   | CI coverage fix                                   | APPROVE      | Week 2                   |
+| 8   | KG pruning + GIN index                            | APPROVE      | Week 3-4                 |
 
 ### Facade Pattern: UNANIME APPROVE
+
 "Ottima scelta. Microservizi su codebase accoppiato = suicidio tattico."
 
 ### Self-RAG Reflection: APPROVE con cautela
+
 - Gemini: "Aumenta latenza ma garantisce qualità legale"
 - DeepSeek: "Solo per CONFIDENCE < 0.30, non su tutte le query"
 
 ### BM42: UNANIME APPROVE
+
 "Cross-lingua nativo, RAM bassissima, perfetto per 2GB"
 
 ### Unified Conversation History: UNANIME APPROVE
+
 "Schema ChannelMessage già esiste, serve solo persistence layer"
 
 ---
@@ -88,6 +92,7 @@
 ## SCOPERTA GEMINI: CRYPTO-SHREDDING per Audit Log WORM
 
 Invece di scrivere PII in chiaro nel log immutabile:
+
 1. Cifra PII con chiave unica per utente
 2. Salva PII cifrata nel WORM log
 3. Quando utente chiede cancellazione → elimina solo la chiave
@@ -102,6 +107,7 @@ Invece di scrivere PII in chiaro nel log immutabile:
 "Manca un piano di scaling verticale (RAM) o spostamento workload ML su worker separati."
 
 Modelli proposti incompatibili con 2GB:
+
 - bge-reranker-v2-m3 (~2.2GB)
 - cahya/bert-base-indonesian-522M (~1GB+)
 - Stanza indonesiano (~200MB, questo CI STA)
@@ -131,6 +137,7 @@ Risk: 3 nuovi AI immigration platform lanciati Q4 2024
 ## PIANO AGGIORNATO POST-REVIEW
 
 ### Settimana 1-2: SURVIVAL (compliance)
+
 1. PSE Registration (legal)
 2. DPO appointment (CTO interim)
 3. PII scanner Presidio + regex custom indonesiani
@@ -140,6 +147,7 @@ Risk: 3 nuovi AI immigration platform lanciati Q4 2024
 7. Fix Gemini OCR consent flow
 
 ### Settimana 3-4: STABILITY (tech debt)
+
 1. Qdrant scalar quantization
 2. CI coverage fix
 3. KG pruning + GIN index
@@ -148,6 +156,7 @@ Risk: 3 nuovi AI immigration platform lanciati Q4 2024
 6. Semantic cache Redis
 
 ### Mese 2-3: SCALABILITY (architecture)
+
 1. RAG Facade Pattern
 2. BM42 sparse vectors
 3. Self-RAG reflection (solo CONFIDENCE < 0.30)
@@ -156,6 +165,7 @@ Risk: 3 nuovi AI immigration platform lanciati Q4 2024
 6. GraphRAG nativo PostgreSQL (WITH RECURSIVE + ltree)
 
 ### Deferred (Q3-Q4):
+
 - bge-reranker (dopo verifica dimensione o servizio separato)
 - BERT indonesiano (ONNX su servizio dedicato)
 - KG confidence calibration
@@ -163,6 +173,6 @@ Risk: 3 nuovi AI immigration platform lanciati Q4 2024
 
 ---
 
-*Federation Review Verdicts v1.0 — 29 marzo 2026*
-*Reviewers: Gemini 3.1 Pro (adversarial, 61s), DeepSeek R1 671b (reasoning, $0.013)*
-*Codex: da rilanciare (CLI error)*
+_Federation Review Verdicts v1.0 — 29 marzo 2026_
+_Reviewers: Gemini 3.1 Pro (adversarial, 61s), DeepSeek R1 671b (reasoning, $0.013)_
+_Codex: da rilanciare (CLI error)_
