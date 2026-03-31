@@ -25,6 +25,7 @@ import type {
   ProcessTimeline,
   DriveFilesResponse,
   BillingResponse,
+  NotificationsResponse,
 } from "./portal.types";
 import type { TimelineResponse } from "../types/timeline.types";
 
@@ -398,5 +399,31 @@ export class PortalApi {
       { method: "GET" },
     );
     return response.data!;
+  }
+
+  // ============================================================================
+  // Notifications
+  // ============================================================================
+
+  async getNotifications(limit = 50): Promise<NotificationsResponse> {
+    const response = await this.client.request<PortalApiResponse<NotificationsResponse>>(
+      `/api/portal/notifications?limit=${limit}`,
+      { method: "GET" },
+    );
+    return response.data!;
+  }
+
+  async markNotificationRead(notificationId: number): Promise<void> {
+    await this.client.request<PortalApiResponse<void>>(
+      `/api/portal/notifications/${notificationId}/read`,
+      { method: "POST" },
+    );
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    await this.client.request<PortalApiResponse<void>>(
+      "/api/portal/notifications/read-all",
+      { method: "POST" },
+    );
   }
 }
