@@ -4,8 +4,8 @@ Combines API Key, Cookie JWT, and Header JWT authentication for flexible access 
 
 Authentication Priority:
 1. API Key (X-API-Key header) - for service-to-service communication
-2. Cookie JWT (nz_access_token) - for browser clients with httpOnly cookies
-3. Header JWT (Authorization: Bearer) - backward compatibility
+2. Header JWT (Authorization: Bearer) - frontend active session (takes precedence over cookie)
+3. Cookie JWT (nz_access_token) - fallback for SSO/portal without Authorization header
 
 SECURITY POLICY: Fail-Closed - any authentication system error denies access
 """
@@ -509,8 +509,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
         Authentication Priority:
         1. API Key (X-API-Key header) - for service-to-service communication
-        2. Cookie JWT (nz_access_token) - for browser clients with httpOnly cookies
-        3. Header JWT (Authorization: Bearer) - backward compatibility
+        2. Header JWT (Authorization: Bearer) - frontend active session (takes precedence)
+        3. Cookie JWT (nz_access_token) - fallback for SSO/portal without Authorization header
 
         Returns user context if authenticated, None if authentication fails
         SECURITY: None result = access denied (handled by dispatch)
@@ -539,7 +539,30 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 logger.warning(f"Invalid API Key attempt from {client_host}")
                 return None
 
-        # Priority 2: Cookie JWT Authentication (browser clients with httpOnly cookies)
+        # Priority 2: Header JWT Authentication (takes precedence over cookie when present)
+        # When the frontend sends Authorization header, it represents the CURRENT session.
+        # The cookie may be stale from a previous user's session (SSO on .balizero.com).
+        auth_header = request.headers.get("Authorization")
+
+        if auth_header and auth_header.startswith("Bearer "):
+            if not self.api_auth_bypass_db:
+                logger.debug(f"Header JWT authentication attempt from {client_host}")
+                jwt_user = await self.authenticate_jwt(request)
+                if jwt_user:
+                    jwt_user["auth_method"] = "jwt_header"
+                    logger.info(
+                        f"Header JWT authenticated: {jwt_user.get('email', 'unknown')} from {client_host}",
+                    )
+                    return jwt_user
+                else:
+                    # JWT provided but invalid = immediate failure
+                    logger.debug(f"Invalid Header JWT from {client_host}")
+                    return None
+            else:
+                logger.warning("JWT authentication bypassed by configuration")
+                return None
+
+        # Priority 3: Cookie JWT Authentication (fallback for browser clients without Authorization header)
         cookie_token = get_jwt_from_cookie(request)
         if cookie_token:
             logger.debug(f"Cookie JWT authentication attempt from {client_host}")
@@ -561,27 +584,6 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             else:
                 # Cookie JWT provided but invalid = immediate failure
                 logger.warning(f"Invalid Cookie JWT from {client_host}")
-                return None
-
-        # Priority 3: Header JWT Authentication (backward compatibility)
-        auth_header = request.headers.get("Authorization")
-
-        if auth_header and auth_header.startswith("Bearer "):
-            if not self.api_auth_bypass_db:
-                logger.debug(f"Header JWT authentication attempt from {client_host}")
-                jwt_user = await self.authenticate_jwt(request)
-                if jwt_user:
-                    jwt_user["auth_method"] = "jwt_header"
-                    logger.info(
-                        f"Header JWT authenticated: {jwt_user.get('email', 'unknown')} from {client_host}",
-                    )
-                    return jwt_user
-                else:
-                    # JWT provided but invalid = immediate failure
-                    logger.debug(f"Invalid Header JWT from {client_host}")
-                    return None
-            else:
-                logger.warning("JWT authentication bypassed by configuration")
                 return None
 
         # No authentication provided = failure for non-public endpoints
