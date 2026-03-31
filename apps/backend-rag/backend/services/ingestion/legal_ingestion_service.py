@@ -62,7 +62,7 @@ class LegalIngestionService:
 
         # Initialize KG Extractor (lazy init per evitare costi se non usato)
         self.kg_extractor = None
-        self.kg_enabled = True  # Always enabled per documenti legali
+        self.kg_enabled = False  # TEMP DISABLED: KG extraction causes OOM on 2GB Fly machine
 
         logger.info(
             "LegalIngestionService initialized (collection: %s -> %s)",
