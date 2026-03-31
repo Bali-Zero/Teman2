@@ -46,6 +46,95 @@ router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
 MAX_LIMIT = 200
 
 
+async def _create_hr_bonus_on_completed(
+    db_pool: asyncpg.Pool,
+    practice_id: int,
+    practice_data: dict[str, Any],
+) -> None:
+    """Auto-create HR bonus ledger entry when a practice is completed via UI.
+
+    Non-blocking: logs warning on failure, never crashes the status update.
+    Guards: table existence, active rate, employee record, duplicate check.
+    """
+    try:
+        assigned_to = practice_data.get("assigned_to")
+        if not assigned_to:
+            return
+
+        async with db_pool.acquire() as conn:
+            table_exists = await conn.fetchval(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                "WHERE table_name = 'hr_bonus_rates')"
+            )
+            if not table_exists:
+                return
+
+            pt = await conn.fetchrow(
+                """
+                SELECT pt.code FROM practice_types pt
+                JOIN practices p ON p.practice_type_id = pt.id
+                WHERE p.id = $1
+                """,
+                practice_id,
+            )
+            if not pt:
+                return
+
+            practice_type_code = pt["code"]
+
+            rate = await conn.fetchrow(
+                """
+                SELECT id, amount_idr FROM hr_bonus_rates
+                WHERE practice_type_code = $1
+                  AND is_active = TRUE
+                  AND effective_from <= CURRENT_DATE
+                  AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)
+                """,
+                practice_type_code,
+            )
+            if not rate:
+                return
+
+            emp = await conn.fetchrow(
+                """
+                SELECT e.id FROM hr_employees e
+                JOIN team_members tm ON tm.id = e.team_member_id
+                WHERE tm.email = $1 AND e.is_active = TRUE
+                """,
+                assigned_to,
+            )
+            if not emp:
+                return
+
+            existing = await conn.fetchval(
+                "SELECT id FROM hr_bonus_ledger WHERE practice_id = $1 AND employee_id = $2",
+                practice_id,
+                emp["id"],
+            )
+            if existing:
+                return
+
+            await conn.execute(
+                """
+                INSERT INTO hr_bonus_ledger (
+                    practice_id, employee_id, bonus_rate_id,
+                    practice_type_code, amount_idr, status
+                ) VALUES ($1, $2, $3, $4, $5, 'pending')
+                """,
+                practice_id,
+                emp["id"],
+                rate["id"],
+                practice_type_code,
+                rate["amount_idr"],
+            )
+            logger.info(
+                f"HR bonus created: practice={practice_id}, "
+                f"employee={assigned_to}, amount={rate['amount_idr']} IDR"
+            )
+    except Exception as e:
+        logger.warning(f"HR bonus hook failed for practice {practice_id}: {e}")
+
+
 DEFAULT_LIMIT = 50
 
 
@@ -1007,6 +1096,11 @@ async def update_practice(
                 )
                 logger.info(
                     f"🚀 Process completion automation triggered for practice {practice_id}",
+                )
+
+                # 🎯 HR Bonus Auto-Creation: create bonus ledger entry for assigned team member
+                asyncio.create_task(
+                    _create_hr_bonus_on_completed(db_pool, practice_id, updated_practice),
                 )
 
             log_success(

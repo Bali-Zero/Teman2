@@ -8,6 +8,7 @@
 ## 0. REGOLE DI SICUREZZA (ENFORCE SEMPRE — PRIMA DI TUTTO)
 
 ### Non allucinare. Verifica.
+
 - **MAI inventare** nomi di file, funzioni, endpoint, o dati che non hai letto
 - **MAI presumere** che una struttura dati, API, o config sia come "ricordi" — leggi il file REALE
 - **Prima di modificare**: leggi il file corrente. Ogni volta. Nessuna eccezione
@@ -16,17 +17,20 @@
 - Se non sei sicuro al 100%, **chiedi** piuttosto che inventare
 
 ### Regola del dry-run
+
 - Per qualsiasi operazione distruttiva (delete, drop, reset, force-push): **chiedi conferma**
 - Per qualsiasi batch operation (indexing, migration, bulk update): **dry-run prima**
 - Se un'azione non è reversibile, **fermati e chiedi**
 
 ### Commit atomici
+
 - Un commit = un cambiamento logico. Mai commit giganti multi-feature
 - Messaggio in inglese, formato: `type(scope): description`
 - `git push --force` su main: **PROIBITO ASSOLUTO**
 - `--no-verify`: solo se il hook è rotto, mai per bypassare test che falliscono
 
 ### Cosa NON fare MAI
+
 - Rimuovere import `Any` da `typing` senza verificare ogni singolo uso nel file
 - Usare `requests` invece di `httpx`
 - Creare payload Qdrant nested (devono essere FLAT)
@@ -43,6 +47,7 @@
 L'utente scrive in **italiano colloquiale**. Traduci automaticamente in azione tecnica precisa.
 
 **Regole:**
+
 - Mai chiedere "cosa intendi?" su task dev standard — deduci dal codebase
 - Prompt breve → individua file, pattern, stack dal codice esistente
 - **MA**: se devi scegliere tra approcci architetturali diversi, chiedi
@@ -61,25 +66,25 @@ L'utente scrive in **italiano colloquiale**. Traduci automaticamente in azione t
 
 ## 3. Stack Reale (aggiornato 2026-03-14)
 
-| Layer | Tecnologia | Scala |
-|-------|-----------|-------|
-| Backend | **Python 3.11+, FastAPI** | 88 router, 244 service |
-| Frontend | **Next.js** (App Router), TypeScript, Tailwind | `apps/mouth/` |
-| Vector DB | **Qdrant** | 9 collezioni live, 66.595 vettori |
-| Relational DB | **PostgreSQL 17** | Fly.io `nuzantara-postgres` (2GB) |
-| Cache | **Redis** | Local su Pro |
-| Embedding | **`text-embedding-3-small` (1536 dims) — FROZEN, MAI CAMBIARE** |
-| KG | LangGraph | 56.113 nodi, 161.173 archi |
-| Deploy | Fly.io backend + Vercel frontend |
-| MCP Server | `apps/nuzantara-mcp/` | **109 tools, 10 prompts, 5 resources, 8 chains** |
+| Layer         | Tecnologia                                                      | Scala                                            |
+| ------------- | --------------------------------------------------------------- | ------------------------------------------------ |
+| Backend       | **Python 3.11+, FastAPI**                                       | 88 router, 244 service                           |
+| Frontend      | **Next.js** (App Router), TypeScript, Tailwind                  | `apps/mouth/`                                    |
+| Vector DB     | **Qdrant**                                                      | 9 collezioni live, 66.595 vettori                |
+| Relational DB | **PostgreSQL 17**                                               | Fly.io `nuzantara-postgres` (2GB)                |
+| Cache         | **Redis**                                                       | Local su Pro                                     |
+| Embedding     | **`text-embedding-3-small` (1536 dims) — FROZEN, MAI CAMBIARE** |
+| KG            | LangGraph                                                       | 56.113 nodi, 161.173 archi                       |
+| Deploy        | Fly.io backend + Vercel frontend                                |
+| MCP Server    | `apps/nuzantara-mcp/`                                           | **109 tools, 10 prompts, 5 resources, 8 chains** |
 
 ### Fly.io — SOLO 3 APP
 
-| App | RAM | Note |
-|-----|-----|------|
-| `nuzantara-rag` | 2GB | auto_stop=true, min=0, cold start ~35s |
-| `nuzantara-postgres` | 2GB | v0.1.0 |
-| `nuzantara-qdrant` | 2GB | v1.12.1 |
+| App                  | RAM | Note                                   |
+| -------------------- | --- | -------------------------------------- |
+| `nuzantara-rag`      | 2GB | auto_stop=true, min=0, cold start ~35s |
+| `nuzantara-postgres` | 2GB | v0.1.0                                 |
+| `nuzantara-qdrant`   | 2GB | v1.12.1                                |
 
 **bali-intel-scraper NON è su Fly** — gira SOLO locale su Pro.
 
@@ -172,11 +177,11 @@ Riferimento: `PRICING_REFERENCE.md`, `VISA_TYPES_REFERENCE.md`.
 
 ## 9. Evidence Scoring
 
-| Score | Comportamento |
-|-------|--------------|
-| < 0.15 | **ABSTAIN** — rifiuta di rispondere |
+| Score     | Comportamento                          |
+| --------- | -------------------------------------- |
+| < 0.15    | **ABSTAIN** — rifiuta di rispondere    |
 | 0.15–0.60 | **CAUTIOUS** — risposta con disclaimer |
-| > 0.60 | **NORMAL** — risposta confidenta |
+| > 0.60    | **NORMAL** — risposta confidenta       |
 
 ---
 
@@ -190,6 +195,7 @@ Non rimuovere import "inutilizzati", non rinominare funzioni senza verificare OG
 ## 11. Agenti Autonomi (attivo dal 2026-03-14)
 
 Il sistema ha un agent framework autonomo in `apps/evaluator/`:
+
 - `seo_guardian_core.py` — OBSERVE (GSC + GA4 + indexing data)
 - `seo_guardian_agent.py` — DECIDE + ACT (risk-based, kill switch)
 - `seo_guardian_measure.py` — MEASURE (impact dopo 48h)

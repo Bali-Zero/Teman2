@@ -10,7 +10,7 @@ Indonesia's entire business classification system is being rewritten. Every comp
 
 ## What KBLI 2025 Actually Changes
 
-The *Klasifikasi Baku Lapangan Usaha Indonesia* (KBLI) is Indonesia's standard industrial classification. Issued by BPS (Badan Pusat Statistik), it determines what your company is legally permitted to do. Your NIB (Nomor Induk Berusaha), your business licenses, your tax classification (KLU), and your investment approval from BKPM all trace back to the KBLI codes listed in your company deed.
+The _Klasifikasi Baku Lapangan Usaha Indonesia_ (KBLI) is Indonesia's standard industrial classification. Issued by BPS (Badan Pusat Statistik), it determines what your company is legally permitted to do. Your NIB (Nomor Induk Berusaha), your business licenses, your tax classification (KLU), and your investment approval from BKPM all trace back to the KBLI codes listed in your company deed.
 
 **Peraturan BPS Nomor 7 Tahun 2025** replaced the previous KBLI 2020 framework entirely. The regulation was signed into effect with a transition window closing on June 18, 2026. After that date, only KBLI 2025 codes are recognized by OSS-RBA, the national Online Single Submission system for business licensing.
 
@@ -25,30 +25,35 @@ This is not a cosmetic renumbering. KBLI 2025 introduces entirely new activity c
 Understanding the scale of this reclassification requires looking at the data. The following figures are drawn directly from the official KBLI 2025 dataset (BPS 7/2025 + PP 28/2024):
 
 **Classification Scale:**
+
 - **1,563** total business activity codes (up from approximately 1,790 in KBLI 2020, which included sub-categories now consolidated)
 - **87** economic sectors at the two-digit level
 - **4** business scales recognized: Mikro, Kecil (Small), Menengah (Medium), Besar (Large)
 - **1,552** codes with complete licensing metadata from both BPS and PP 28/2024
 
 **Risk Distribution (across all scale-code combinations):**
+
 - **Rendah (Low):** 736 license-scale pairs --- NIB only, automatic approval
 - **Menengah Rendah (Medium-Low):** 783 pairs --- NIB + Standard Certificate, mostly automatic
 - **Menengah Tinggi (Medium-High):** 905 pairs --- NIB + Standard Certificate, 7-day review
 - **Tinggi (High):** 449 pairs --- NIB + specific permits (Izin), 15+ day review
 
 **Processing Times:**
+
 - **Automatic (Otomatis):** 1,501 license-scale pairs --- instant NIB issuance
 - **7 days:** 737 pairs --- standard certification review
 - **15 days:** 175 pairs --- higher-risk activities
 - **30+ days:** Reserved for extractive industries, financial services, and regulated sectors
 
 **Licensing Authority:**
+
 - **Bupati/Walikota (Regency/City):** 1,239 pairs --- the majority of business activities
 - **Menteri/Kepala Badan (Minister/Agency Head):** 589 pairs --- national-level sectors
 - **Gubernur (Governor):** 508 pairs --- provincial jurisdiction
 
 **Automatic Approval Rate:**
-- **2,831** of 2,873 license-scale pairs carry *fiktif positif* status --- meaning if the government does not respond within the stated timeline, the license is **automatically granted**. That is a **98.5%** automatic approval rate.
+
+- **2,831** of 2,873 license-scale pairs carry _fiktif positif_ status --- meaning if the government does not respond within the stated timeline, the license is **automatically granted**. That is a **98.5%** automatic approval rate.
 
 ---
 
@@ -73,18 +78,18 @@ Under KBLI 2020, platform businesses had to shoehorn themselves into general IT 
 
 For the first time, Indonesia's classification system explicitly recognizes AI development and cybersecurity as distinct economic activities:
 
-- **62194** --- AI Component Development (*Pengembangan Komponen Dasar Kecerdasan Buatan*) --- Medium-Low risk, automatic processing
-- **62201** --- Cybersecurity Consulting and Management (*Konsultansi dan Manajemen Keamanan Siber*) --- Medium-High risk, 7-day processing
-- **62202** --- Digital Identity Management (*Penyediaan dan Pengelolaan Identitas Digital*) --- Medium-High risk, 7-day processing
-- **62203** --- Electronic Certificate and Trust Services (*Penyediaan Sertifikat Elektronik*) --- Medium-High risk, 7-day processing
-- **62204** --- IoT Consulting and Design (*Konsultansi dan Perancangan Internet of Things*) --- Medium-High risk, 7-day processing
+- **62194** --- AI Component Development (_Pengembangan Komponen Dasar Kecerdasan Buatan_) --- Medium-Low risk, automatic processing
+- **62201** --- Cybersecurity Consulting and Management (_Konsultansi dan Manajemen Keamanan Siber_) --- Medium-High risk, 7-day processing
+- **62202** --- Digital Identity Management (_Penyediaan dan Pengelolaan Identitas Digital_) --- Medium-High risk, 7-day processing
+- **62203** --- Electronic Certificate and Trust Services (_Penyediaan Sertifikat Elektronik_) --- Medium-High risk, 7-day processing
+- **62204** --- IoT Consulting and Design (_Konsultansi dan Perancangan Internet of Things_) --- Medium-High risk, 7-day processing
 
 The regulatory signal is unmistakable. Indonesia wants AI and cybersecurity businesses to establish formally. A foreign-owned PT PMA building machine learning models can now register under 62194 with Medium-Low risk classification, meaning automatic NIB issuance plus a Standard Certificate --- no human review of the application required.
 
 ### Digital Financial Assets
 
-- **66113** --- Digital Financial Asset Exchange (*Penyelenggaraan Bursa Aset Keuangan Digital*)
-- **66123** --- Digital Financial Asset Brokerage (*Kepialangan Aset Keuangan Digital*)
+- **66113** --- Digital Financial Asset Exchange (_Penyelenggaraan Bursa Aset Keuangan Digital_)
+- **66123** --- Digital Financial Asset Brokerage (_Kepialangan Aset Keuangan Digital_)
 
 These codes formalize crypto and digital asset trading within the KBLI framework, previously a regulatory gray zone that forced exchanges into generic financial services categories.
 
@@ -99,22 +104,22 @@ The media sector's digital transition now has its own classification, separating
 
 ## Foreign Ownership: What Is Open and What Is Not
 
-The question every PT PMA founder asks: *Can I own 100% of a company doing this activity?*
+The question every PT PMA founder asks: _Can I own 100% of a company doing this activity?_
 
 The answer depends on the specific KBLI code and Indonesia's investment restrictions under **PP 5/2021** (the implementing regulation of UU Cipta Kerja for investment policy) and the **DNI (Daftar Negatif Investasi)** framework now administered through OSS-RBA.
 
 **Codes with 100% Foreign Ownership (TERBUKA):**
 
-| Code | Activity | Risk Level |
-|------|----------|-----------|
-| 70209 | Management & Business Consulting | Medium-High |
-| 62199 | Computer Programming (Other) | Medium-Low |
-| 62194 | AI Component Development | Medium-Low |
-| 63102 | Cloud Infrastructure & Hosting | Medium-Low |
-| 63900 | Web Portal & Information Services | Medium-Low |
-| 47911 | Retail via Internet | Medium-High |
-| 68201+ | Real Estate Services (14 codes) | Varies |
-| 62201 | Cybersecurity Consulting | Medium-High |
+| Code   | Activity                          | Risk Level  |
+| ------ | --------------------------------- | ----------- |
+| 70209  | Management & Business Consulting  | Medium-High |
+| 62199  | Computer Programming (Other)      | Medium-Low  |
+| 62194  | AI Component Development          | Medium-Low  |
+| 63102  | Cloud Infrastructure & Hosting    | Medium-Low  |
+| 63900  | Web Portal & Information Services | Medium-Low  |
+| 47911  | Retail via Internet               | Medium-High |
+| 68201+ | Real Estate Services (14 codes)   | Varies      |
+| 62201  | Cybersecurity Consulting          | Medium-High |
 
 These are the codes most commonly selected by foreign entrepreneurs in Bali building tech companies, consulting firms, and digital businesses. The minimum investment for a PT PMA remains **IDR 10 billion** (~USD 625,000) per PP 5/2021, with paid-up capital of **IDR 2.5 billion** per shareholder. However, the actual cash injection timeline is structured over the company's lifetime, not demanded upfront in a single deposit.
 
@@ -135,11 +140,13 @@ Here is the operational reality that catches businesses off guard: as of March 2
 The OSS (Online Single Submission - Risk Based Approach) is the mandatory portal for all business licensing in Indonesia, managed by BKPM (Badan Koordinasi Penanaman Modal) / now DPMPTSP at regional levels. When you register a PT PMA or update your NIB, you do it through OSS-RBA.
 
 The timeline creates a structural paradox:
+
 1. BPS issued KBLI 2025 with a June 18, 2026 compliance deadline
 2. OSS-RBA must map all 1,563 codes into its licensing workflow
 3. That mapping is still in progress
 
 What this means practically:
+
 - **New company registrations** using KBLI 2025 codes may require manual processing at DPMPTSP offices until OSS catches up
 - **Existing companies** should prepare their migration documentation now, but the actual system update in OSS may lag
 - **Notarial deeds** (akta perusahaan) should already reference KBLI 2025 codes for new incorporations
@@ -156,11 +163,11 @@ Every KBLI code maps to a risk-based licensing tier under PP 5/2021. The tier de
 ### Tier 1: Low Risk (Rendah) --- 736 Pairs
 
 **What you need:** NIB only
-**Processing:** Automatic (*Otomatis*)
+**Processing:** Automatic (_Otomatis_)
 **Authority:** Bupati/Walikota
 **Examples:** Small-scale agriculture (01111), micro retail, household food production
 
-The NIB is issued automatically through OSS-RBA upon submission of complete data. No human review. No waiting period. The *fiktif positif* principle applies: if the system does not reject within the stated period, you are approved.
+The NIB is issued automatically through OSS-RBA upon submission of complete data. No human review. No waiting period. The _fiktif positif_ principle applies: if the system does not reject within the stated period, you are approved.
 
 ### Tier 2: Medium-Low Risk (Menengah Rendah) --- 783 Pairs
 
@@ -178,7 +185,7 @@ The Standard Certificate is a self-declaration that your business meets the oper
 **Authority:** Varies (Bupati/Walikota, Gubernur, or Minister depending on scope)
 **Examples:** Management consulting (70209), cybersecurity (62201), large-scale construction, hotel operations
 
-This is the largest single tier. The 7-day processing window involves a verification step where the licensing authority reviews your documentation. The *fiktif positif* rule still applies: if no decision is issued within 7 days, approval is automatic.
+This is the largest single tier. The 7-day processing window involves a verification step where the licensing authority reviews your documentation. The _fiktif positif_ rule still applies: if no decision is issued within 7 days, approval is automatic.
 
 ### Tier 4: High Risk (Tinggi) --- 449 Pairs
 
@@ -196,18 +203,21 @@ High-risk activities require sector-specific permits beyond the standard NIB + c
 The June 18, 2026 deadline is not advisory. Consequences of non-compliance include:
 
 **Immediate:**
+
 - **NIB Validity Risk:** Your NIB references KBLI 2020 codes. Once OSS-RBA completes the transition, KBLI 2020 codes become unrecognized. License renewals, modifications, and extensions will fail.
 - **Banking Complications:** Indonesian banks increasingly cross-reference NIB data when processing corporate accounts. A mismatch between your stated activities and recognized KBLI codes triggers compliance flags.
 
 **Operational:**
+
 - **OSS-RBA Lockout:** You cannot add new business activities, apply for sector-specific permits, or modify your company structure through OSS if your base KBLI codes are outdated.
 - **Tax Classification Misalignment:** KBLI codes feed into the KLU (Klasifikasi Lapangan Usaha) system used by DJP (Direktorat Jenderal Pajak). Outdated KBLI codes may cause KLU mismatches, triggering tax audit flags under the Coretax system.
 
 **Administrative Sanctions (per PP 5/2021):**
-- Written warning (*peringatan tertulis*)
-- Administrative fines (*denda administratif*)
-- Temporary suspension of business activities (*penghentian sementara kegiatan usaha*)
-- Revocation of business licenses (*pencabutan perizinan berusaha*)
+
+- Written warning (_peringatan tertulis_)
+- Administrative fines (_denda administratif_)
+- Temporary suspension of business activities (_penghentian sementara kegiatan usaha_)
+- Revocation of business licenses (_pencabutan perizinan berusaha_)
 
 The enforcement mechanism is structural, not punitive. When the system no longer recognizes your codes, your ability to operate legally degrades automatically. You do not get fined by a human inspector; the digital infrastructure simply stops processing your requests.
 
@@ -222,6 +232,7 @@ For companies that need to migrate, the process involves five steps:
 Pull your company's akta pendirian (deed of establishment) and the latest akta perubahan (amendment deed). List every KBLI code currently registered. Cross-reference each code against the KBLI 2025 mapping table.
 
 **Common findings:**
+
 - Codes that map 1:1 to a 2025 equivalent (most common)
 - Codes that have been split into multiple new codes (requires choosing the correct sub-activity)
 - Codes that have been merged or consolidated
@@ -230,6 +241,7 @@ Pull your company's akta pendirian (deed of establishment) and the latest akta p
 ### Step 2: Map to KBLI 2025 Equivalents
 
 For each existing code, identify the 2025 replacement. BPS has published mapping tables, but the mapping is not always straightforward. A restaurant previously coded under a general food service category may now need to choose between:
+
 - **56101** --- Fixed-location food service
 - **56102** --- Non-fixed-location food service (food trucks, stalls)
 - **56303** --- Coffee shop / cafe operations
@@ -241,6 +253,7 @@ If you are a PT PMA, verify that the new KBLI 2025 codes still permit your owner
 ### Step 4: Prepare the Notarial Deed Amendment
 
 The KBLI codes in your akta must be updated. This requires:
+
 - Notarial deed amendment (akta perubahan)
 - Approval from AHU (Administrasi Hukum Umum) at the Ministry of Law
 - Updated NIB through OSS-RBA
@@ -258,6 +271,7 @@ Once the akta is updated, the NIB must be amended through OSS-RBA. All downstrea
 With 285 individual codes, the trade sector (KBLI section 4) represents the largest single block in KBLI 2025 --- **18.2%** of all business activity codes. This reflects Indonesia's retail-heavy economy but also the granularity KBLI 2025 brings to distinguishing between types of trade.
 
 Key distinctions now formalized:
+
 - **Wholesale** vs. **retail** have clearly separated code families
 - **Online retail** (47911) has its own code, distinct from physical retail
 - **Platform intermediation** for retail (47901) is separated from direct e-commerce
@@ -272,6 +286,7 @@ For a PT PMA operating an e-commerce business in Bali, the correct code selectio
 The technology sector spans 20 codes across sections 62 (IT) and 63 (information services), plus management consulting under section 70. These are the most commonly selected codes for foreign entrepreneurs establishing PT PMAs.
 
 **Software Development Family:**
+
 - **62110** --- Video game development
 - **62191** --- E-commerce application development
 - **62192** --- Content production application development
@@ -282,6 +297,7 @@ The technology sector spans 20 codes across sections 62 (IT) and 63 (information
 All carry Medium-Low risk and automatic processing. The distinction matters for tax purposes: 62194 (AI) may qualify for different R&D incentives than 62199 (general programming) under Indonesia's evolving digital economy tax framework.
 
 **IT Consulting Family:**
+
 - **62201** --- Cybersecurity consulting
 - **62202** --- Digital identity management
 - **62203** --- Electronic certificate services
@@ -297,6 +313,7 @@ These carry Medium-High risk with 7-day processing. The higher risk classificati
 Bali's largest foreign investment sector --- hospitality --- gets 15 dedicated codes in KBLI 2025, from five-star hotels (55101) down to camping grounds (55300). The new **55400** (Accommodation Intermediation) code is particularly significant for villa management companies that list properties on Airbnb and Booking.com without owning them.
 
 **The compliance chain for a villa operation in Bali:**
+
 1. KBLI code 55203 (Vila) in the company akta
 2. NIB + Sertifikat Standar through OSS-RBA
 3. SLHS (Sertifikat Laik Higiene Sanitasi) from the local health office
@@ -313,7 +330,7 @@ Step back from the technical details and the regulatory architecture reveals Ind
 
 **1. Digital economy formalization.** The introduction of platform intermediation codes, AI classification, cybersecurity activities, and digital financial assets is a deliberate effort to bring the digital economy into the formal regulatory framework. Indonesia had approximately 21.4 million SMEs using digital platforms in 2025 (per the Ministry of Cooperatives and SMEs). KBLI 2025 creates the classification structure to license them.
 
-**2. Risk-based efficiency.** The 98.5% *fiktif positif* rate means Indonesia is betting on post-approval auditing rather than pre-approval gatekeeping for the vast majority of business activities. File correctly, get approved automatically, face consequences later if you misrepresented your activities.
+**2. Risk-based efficiency.** The 98.5% _fiktif positif_ rate means Indonesia is betting on post-approval auditing rather than pre-approval gatekeeping for the vast majority of business activities. File correctly, get approved automatically, face consequences later if you misrepresented your activities.
 
 **3. Granularity as control.** By splitting broad categories into specific codes (restaurants vs. cafes vs. food trucks vs. catering), the government gains finer control over sector-specific regulations. A food truck (56102) and a nightclub (56302) have very different compliance requirements, and KBLI 2025 makes that distinction enforceable.
 
@@ -326,16 +343,19 @@ Step back from the technical details and the regulatory architecture reveals Ind
 As of March 29, 2026, there are approximately **82 days** until the June 18, 2026 deadline.
 
 **What should already be done:**
+
 - KBLI code audit completed
 - Mapping to 2025 equivalents finalized
 - Foreign ownership implications reviewed
 
 **What should be in progress:**
+
 - Notarial deed amendment preparation
 - Coordination with OSS-RBA for NIB update timeline
 - Downstream license migration planning
 
 **What cannot wait past April:**
+
 - Notarial deed submission (2-4 week processing)
 - AHU approval (1-2 weeks)
 - NIB amendment through OSS-RBA (timeline varies; manual processing may be required)
@@ -376,8 +396,8 @@ As of March 2026, OSS-RBA is still in the process of integrating KBLI 2025 codes
 
 ### What is fiktif positif and how does it affect my application?
 
-*Fiktif positif* is a legal principle under Indonesian administrative law (enshrined in UU Cipta Kerja) that states: if the government does not respond to a business license application within the stated processing timeline, the application is **automatically approved**. In KBLI 2025, 98.5% of all license-scale combinations (2,831 out of 2,873) carry fiktif positif status. This means that for the vast majority of business activities, if you submit a complete and correct application through OSS-RBA, you will receive your license automatically --- even if the reviewing authority does not complete their assessment within the 7, 15, or 30-day window.
+_Fiktif positif_ is a legal principle under Indonesian administrative law (enshrined in UU Cipta Kerja) that states: if the government does not respond to a business license application within the stated processing timeline, the application is **automatically approved**. In KBLI 2025, 98.5% of all license-scale combinations (2,831 out of 2,873) carry fiktif positif status. This means that for the vast majority of business activities, if you submit a complete and correct application through OSS-RBA, you will receive your license automatically --- even if the reviewing authority does not complete their assessment within the 7, 15, or 30-day window.
 
 ---
 
-*Sources: Peraturan BPS Nomor 7 Tahun 2025, PP 5/2021, PP 28/2024, UU 6/2023 (Cipta Kerja), OSS-RBA (oss.go.id), BKPM investment guidelines. Data extracted from the official KBLI 2025 dataset v8.0 (1,563 codes, BPS + PP 28/2024 licensing metadata).*
+_Sources: Peraturan BPS Nomor 7 Tahun 2025, PP 5/2021, PP 28/2024, UU 6/2023 (Cipta Kerja), OSS-RBA (oss.go.id), BKPM investment guidelines. Data extracted from the official KBLI 2025 dataset v8.0 (1,563 codes, BPS + PP 28/2024 licensing metadata)._

@@ -27,14 +27,14 @@ In practical terms, KBLI codes are not an administrative formality. They are the
 
 ## 2. KBLI 2025 by the Numbers
 
-| Metric | KBLI 2020 | KBLI 2025 | Change |
-|--------|-----------|-----------|--------|
-| Total classification codes | ~1,790 | 1,563 | Net reduction of ~227 codes |
-| New codes introduced | — | 234 | Covering digital economy, green economy, creative industry |
-| Codes merged or consolidated | — | 194 | Multi-code aggregations into single activities |
-| Codes renumbered | — | 266 | Same activity, new code assignment |
-| Direct 1:1 match | — | 928 | Code and scope unchanged |
-| Sections covered | 21 | 21 | No structural change at section level |
+| Metric                       | KBLI 2020 | KBLI 2025 | Change                                                     |
+| ---------------------------- | --------- | --------- | ---------------------------------------------------------- |
+| Total classification codes   | ~1,790    | 1,563     | Net reduction of ~227 codes                                |
+| New codes introduced         | —         | 234       | Covering digital economy, green economy, creative industry |
+| Codes merged or consolidated | —         | 194       | Multi-code aggregations into single activities             |
+| Codes renumbered             | —         | 266       | Same activity, new code assignment                         |
+| Direct 1:1 match             | —         | 928       | Code and scope unchanged                                   |
+| Sections covered             | 21        | 21        | No structural change at section level                      |
 
 **Source:** BPS Peraturan No. 7/2025; cross-referenced with PP 28/2024 licensing metadata.
 
@@ -199,12 +199,12 @@ Once the OSS system supports KBLI 2025 codes:
 
 KBLI 2025 operates within the Job Creation Law (Undang-Undang Cipta Kerja) framework, which fundamentally restructured Indonesia's licensing regime in 2020. The risk-based approach (risiko rendah, menengah rendah, menengah tinggi, tinggi) determines the licensing pathway:
 
-| Risk Level | License Required | Processing |
-|------------|-----------------|------------|
-| Rendah (Low) | NIB only | Automatic |
-| Menengah Rendah (Medium-Low) | NIB + Sertifikat Standar | Automatic (self-declaration) |
-| Menengah Tinggi (Medium-High) | NIB + Sertifikat Standar | Verified (7-day review) |
-| Tinggi (High) | NIB + Izin Usaha + Technical Permits | Full review + AMDAL |
+| Risk Level                    | License Required                     | Processing                   |
+| ----------------------------- | ------------------------------------ | ---------------------------- |
+| Rendah (Low)                  | NIB only                             | Automatic                    |
+| Menengah Rendah (Medium-Low)  | NIB + Sertifikat Standar             | Automatic (self-declaration) |
+| Menengah Tinggi (Medium-High) | NIB + Sertifikat Standar             | Verified (7-day review)      |
+| Tinggi (High)                 | NIB + Izin Usaha + Technical Permits | Full review + AMDAL          |
 
 KBLI 2025 reassigns risk levels for some activities, which means the licensing pathway may change even when the underlying business activity is identical.
 
@@ -229,43 +229,47 @@ KBLI migration is not a tax filing exercise. It requires cross-functional coordi
 ## 9. Sector Spotlight: High-Impact Changes
 
 ### Technology Sector
+
 The IT and digital economy sector benefits most from KBLI 2025. Previously ambiguous classifications now have dedicated codes with confirmed 100% foreign ownership. Companies operating SaaS platforms, AI services, or digital marketplaces should proactively adopt the new codes — they provide clearer regulatory standing than the legacy classifications.
 
 ### Food and Beverage
+
 The consolidation of F&B codes simplifies compliance for multi-format operators (e.g., a company running both a restaurant and a catering service). However, the Menengah Rendah risk classification for restaurant operations (56101) means Sertifikat Standar compliance must be maintained — a self-declaration of adherence to food safety standards.
 
 ### Retail and E-Commerce
+
 Online retail (47911 — retail via internet) is now explicitly classified with 100% foreign ownership permitted. Brick-and-mortar retailers registered under codes that have been consolidated need to verify their updated classification.
 
 ### Real Estate
+
 Real estate agencies (68201) and property management retain 100% foreign ownership status. However, the perennial restriction on land ownership by foreigners remains unchanged — PT PMA structures provide access to HGB (Hak Guna Bangunan, building rights) but not Hak Milik (freehold).
 
 ---
 
 ## 10. Timeline and Recommended Actions
 
-| When | Action |
-|------|--------|
-| **Now (March 2026)** | Commission a KBLI code audit. Map all current codes to KBLI 2025 equivalents. |
-| **April 2026** | Complete impact assessment. Identify any codes where risk classification or ownership status has changed. |
-| **May 2026** | Prepare OSS update documentation. Coordinate with notary if akta amendment is required. |
-| **June 1-17, 2026** | Execute OSS migration. File updated codes. Confirm NIB reflects KBLI 2025. |
-| **June 18, 2026** | **Deadline.** KBLI 2020 codes no longer recognized. |
+| When                 | Action                                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Now (March 2026)** | Commission a KBLI code audit. Map all current codes to KBLI 2025 equivalents.                             |
+| **April 2026**       | Complete impact assessment. Identify any codes where risk classification or ownership status has changed. |
+| **May 2026**         | Prepare OSS update documentation. Coordinate with notary if akta amendment is required.                   |
+| **June 1-17, 2026**  | Execute OSS migration. File updated codes. Confirm NIB reflects KBLI 2025.                                |
+| **June 18, 2026**    | **Deadline.** KBLI 2020 codes no longer recognized.                                                       |
 
 ---
 
 ## Appendix: Key Codes Referenced
 
-| Code | Description | PMA Status | Risk | License |
-|------|-------------|------------|------|---------|
-| 56101 | Restaurant / Food Service (Permanent Building) | TERBUKA (100%) | Menengah Rendah | NIB + Sertifikat Standar |
-| 62019 | Software Development | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
-| 63122 | Web Portals / Digital Platforms | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
-| 70209 | Management Consulting | TERBUKA (100%) | Rendah | NIB |
-| 47192 | General Retail (Non-Food) | TERBUKA (100%) | Rendah | NIB |
-| 47911 | Retail via Internet (E-Commerce) | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
-| 68201 | Real Estate Agency | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
+| Code  | Description                                    | PMA Status     | Risk            | License                        |
+| ----- | ---------------------------------------------- | -------------- | --------------- | ------------------------------ |
+| 56101 | Restaurant / Food Service (Permanent Building) | TERBUKA (100%) | Menengah Rendah | NIB + Sertifikat Standar       |
+| 62019 | Software Development                           | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
+| 63122 | Web Portals / Digital Platforms                | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
+| 70209 | Management Consulting                          | TERBUKA (100%) | Rendah          | NIB                            |
+| 47192 | General Retail (Non-Food)                      | TERBUKA (100%) | Rendah          | NIB                            |
+| 47911 | Retail via Internet (E-Commerce)               | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
+| 68201 | Real Estate Agency                             | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
 
 ---
 
-*Document prepared March 2026. Based on Peraturan BPS No. 7/2025, PP 5/2021, PP 28/2024, and current OSS operational status. This document is for informational purposes and does not constitute legal advice. Companies should engage qualified legal counsel for their specific compliance needs.*
+_Document prepared March 2026. Based on Peraturan BPS No. 7/2025, PP 5/2021, PP 28/2024, and current OSS operational status. This document is for informational purposes and does not constitute legal advice. Companies should engage qualified legal counsel for their specific compliance needs._

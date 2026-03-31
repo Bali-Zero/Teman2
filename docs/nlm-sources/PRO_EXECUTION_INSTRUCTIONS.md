@@ -56,14 +56,14 @@ In practical terms, KBLI codes are not an administrative formality. They are the
 
 ## 2. KBLI 2025 by the Numbers
 
-| Metric | KBLI 2020 | KBLI 2025 | Change |
-|--------|-----------|-----------|--------|
-| Total classification codes | ~1,790 | 1,563 | Net reduction of ~227 codes |
-| New codes introduced | — | 234 | Covering digital economy, green economy, creative industry |
-| Codes merged or consolidated | — | 194 | Multi-code aggregations into single activities |
-| Codes renumbered | — | 266 | Same activity, new code assignment |
-| Direct 1:1 match | — | 928 | Code and scope unchanged |
-| Sections covered | 21 | 21 | No structural change at section level |
+| Metric                       | KBLI 2020 | KBLI 2025 | Change                                                     |
+| ---------------------------- | --------- | --------- | ---------------------------------------------------------- |
+| Total classification codes   | ~1,790    | 1,563     | Net reduction of ~227 codes                                |
+| New codes introduced         | —         | 234       | Covering digital economy, green economy, creative industry |
+| Codes merged or consolidated | —         | 194       | Multi-code aggregations into single activities             |
+| Codes renumbered             | —         | 266       | Same activity, new code assignment                         |
+| Direct 1:1 match             | —         | 928       | Code and scope unchanged                                   |
+| Sections covered             | 21        | 21        | No structural change at section level                      |
 
 **Source:** BPS Peraturan No. 7/2025; cross-referenced with PP 28/2024 licensing metadata.
 
@@ -228,12 +228,12 @@ Once the OSS system supports KBLI 2025 codes:
 
 KBLI 2025 operates within the Job Creation Law (Undang-Undang Cipta Kerja) framework, which fundamentally restructured Indonesia's licensing regime in 2020. The risk-based approach (risiko rendah, menengah rendah, menengah tinggi, tinggi) determines the licensing pathway:
 
-| Risk Level | License Required | Processing |
-|------------|-----------------|------------|
-| Rendah (Low) | NIB only | Automatic |
-| Menengah Rendah (Medium-Low) | NIB + Sertifikat Standar | Automatic (self-declaration) |
-| Menengah Tinggi (Medium-High) | NIB + Sertifikat Standar | Verified (7-day review) |
-| Tinggi (High) | NIB + Izin Usaha + Technical Permits | Full review + AMDAL |
+| Risk Level                    | License Required                     | Processing                   |
+| ----------------------------- | ------------------------------------ | ---------------------------- |
+| Rendah (Low)                  | NIB only                             | Automatic                    |
+| Menengah Rendah (Medium-Low)  | NIB + Sertifikat Standar             | Automatic (self-declaration) |
+| Menengah Tinggi (Medium-High) | NIB + Sertifikat Standar             | Verified (7-day review)      |
+| Tinggi (High)                 | NIB + Izin Usaha + Technical Permits | Full review + AMDAL          |
 
 KBLI 2025 reassigns risk levels for some activities, which means the licensing pathway may change even when the underlying business activity is identical.
 
@@ -258,46 +258,50 @@ KBLI migration is not a tax filing exercise. It requires cross-functional coordi
 ## 9. Sector Spotlight: High-Impact Changes
 
 ### Technology Sector
+
 The IT and digital economy sector benefits most from KBLI 2025. Previously ambiguous classifications now have dedicated codes with confirmed 100% foreign ownership. Companies operating SaaS platforms, AI services, or digital marketplaces should proactively adopt the new codes — they provide clearer regulatory standing than the legacy classifications.
 
 ### Food and Beverage
+
 The consolidation of F&B codes simplifies compliance for multi-format operators (e.g., a company running both a restaurant and a catering service). However, the Menengah Rendah risk classification for restaurant operations (56101) means Sertifikat Standar compliance must be maintained — a self-declaration of adherence to food safety standards.
 
 ### Retail and E-Commerce
+
 Online retail (47911 — retail via internet) is now explicitly classified with 100% foreign ownership permitted. Brick-and-mortar retailers registered under codes that have been consolidated need to verify their updated classification.
 
 ### Real Estate
+
 Real estate agencies (68201) and property management retain 100% foreign ownership status. However, the perennial restriction on land ownership by foreigners remains unchanged — PT PMA structures provide access to HGB (Hak Guna Bangunan, building rights) but not Hak Milik (freehold).
 
 ---
 
 ## 10. Timeline and Recommended Actions
 
-| When | Action |
-|------|--------|
-| **Now (March 2026)** | Commission a KBLI code audit. Map all current codes to KBLI 2025 equivalents. |
-| **April 2026** | Complete impact assessment. Identify any codes where risk classification or ownership status has changed. |
-| **May 2026** | Prepare OSS update documentation. Coordinate with notary if akta amendment is required. |
-| **June 1-17, 2026** | Execute OSS migration. File updated codes. Confirm NIB reflects KBLI 2025. |
-| **June 18, 2026** | **Deadline.** KBLI 2020 codes no longer recognized. |
+| When                 | Action                                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Now (March 2026)** | Commission a KBLI code audit. Map all current codes to KBLI 2025 equivalents.                             |
+| **April 2026**       | Complete impact assessment. Identify any codes where risk classification or ownership status has changed. |
+| **May 2026**         | Prepare OSS update documentation. Coordinate with notary if akta amendment is required.                   |
+| **June 1-17, 2026**  | Execute OSS migration. File updated codes. Confirm NIB reflects KBLI 2025.                                |
+| **June 18, 2026**    | **Deadline.** KBLI 2020 codes no longer recognized.                                                       |
 
 ---
 
 ## Appendix: Key Codes Referenced
 
-| Code | Description | PMA Status | Risk | License |
-|------|-------------|------------|------|---------|
-| 56101 | Restaurant / Food Service (Permanent Building) | TERBUKA (100%) | Menengah Rendah | NIB + Sertifikat Standar |
-| 62019 | Software Development | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
-| 63122 | Web Portals / Digital Platforms | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
-| 70209 | Management Consulting | TERBUKA (100%) | Rendah | NIB |
-| 47192 | General Retail (Non-Food) | TERBUKA (100%) | Rendah | NIB |
-| 47911 | Retail via Internet (E-Commerce) | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
-| 68201 | Real Estate Agency | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
+| Code  | Description                                    | PMA Status     | Risk            | License                        |
+| ----- | ---------------------------------------------- | -------------- | --------------- | ------------------------------ |
+| 56101 | Restaurant / Food Service (Permanent Building) | TERBUKA (100%) | Menengah Rendah | NIB + Sertifikat Standar       |
+| 62019 | Software Development                           | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
+| 63122 | Web Portals / Digital Platforms                | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
+| 70209 | Management Consulting                          | TERBUKA (100%) | Rendah          | NIB                            |
+| 47192 | General Retail (Non-Food)                      | TERBUKA (100%) | Rendah          | NIB                            |
+| 47911 | Retail via Internet (E-Commerce)               | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
+| 68201 | Real Estate Agency                             | TERBUKA (100%) | Varies by scale | NIB / NIB + Sertifikat Standar |
 
 ---
 
-*Document prepared March 2026. Based on Peraturan BPS No. 7/2025, PP 5/2021, PP 28/2024, and current OSS operational status. This document is for informational purposes and does not constitute legal advice. Companies should engage qualified legal counsel for their specific compliance needs.*
+_Document prepared March 2026. Based on Peraturan BPS No. 7/2025, PP 5/2021, PP 28/2024, and current OSS operational status. This document is for informational purposes and does not constitute legal advice. Companies should engage qualified legal counsel for their specific compliance needs._
 
 ```
 --- SOURCE END ---
@@ -379,15 +383,15 @@ Create a clear 4-minute educational overview of Indonesia's business classificat
 
 ### Brand Reference (use throughout)
 
-| Element | Value |
-|---------|-------|
-| Background / Shadows | `#0c0c0e` (near-black) |
-| Accent / Warm Copper | `#d4845a` (Bali Zero signature copper) |
-| Secondary Accent | `#e09870` (lighter copper for hover/highlights) |
-| Text Primary | `#FFFFFF` (pure white) |
-| Text Secondary | `#A0A0A0` (muted gray) |
-| Font Headings | Montserrat |
-| Font Body | Inter or system sans-serif |
+| Element              | Value                                           |
+| -------------------- | ----------------------------------------------- |
+| Background / Shadows | `#0c0c0e` (near-black)                          |
+| Accent / Warm Copper | `#d4845a` (Bali Zero signature copper)          |
+| Secondary Accent     | `#e09870` (lighter copper for hover/highlights) |
+| Text Primary         | `#FFFFFF` (pure white)                          |
+| Text Secondary       | `#A0A0A0` (muted gray)                          |
+| Font Headings        | Montserrat                                      |
+| Font Body            | Inter or system sans-serif                      |
 
 ### Phase 2C: Import and Place NLM Video
 
@@ -405,11 +409,11 @@ Create a clear 4-minute educational overview of Indonesia's business classificat
 
 **Primary Wheels (Lift / Gamma / Gain):**
 
-| Control | Action | Purpose |
-|---------|--------|---------|
-| **Lift** (shadows) | Pull toward `#0c0c0e`. Reduce R/G/B equally, target Luminance ~3-5%. | Deep, cinematic black shadows matching BZ brand. |
-| **Gamma** (midtones) | Slight warm push. Add +0.02 to Red channel, +0.01 to Green. | Subtle warmth without orange-casting faces. |
-| **Gain** (highlights) | Leave mostly neutral. Minor warm push if NLM video is too cool. | Clean highlights, not blown out. |
+| Control               | Action                                                               | Purpose                                          |
+| --------------------- | -------------------------------------------------------------------- | ------------------------------------------------ |
+| **Lift** (shadows)    | Pull toward `#0c0c0e`. Reduce R/G/B equally, target Luminance ~3-5%. | Deep, cinematic black shadows matching BZ brand. |
+| **Gamma** (midtones)  | Slight warm push. Add +0.02 to Red channel, +0.01 to Green.          | Subtle warmth without orange-casting faces.      |
+| **Gain** (highlights) | Leave mostly neutral. Minor warm push if NLM video is too cool.      | Clean highlights, not blown out.                 |
 
 **Curves:**
 
@@ -420,6 +424,7 @@ Create a clear 4-minute educational overview of Indonesia's business classificat
 **Color Space (if needed):**
 
 If the NLM video looks flat:
+
 1. Add a **Serial Node** (Alt+S).
 2. Apply a slight S-curve on Luma (darken shadows, brighten highlights) for contrast.
 3. Do NOT over-contrast — the BZ brand aesthetic is "warm depth," not high-contrast.
@@ -452,12 +457,12 @@ Timeline: `00:00:00 — 00:00:04`
 1. Drag `balizero-logo-clean.png` to **Video Track 2** (V2), stretching it across the entire NLM video duration (not the intro/outro).
 2. Open the **Inspector** panel for the logo clip:
 
-| Setting | Value |
-|---------|-------|
-| Position X | 0.88 (bottom-right area) |
-| Position Y | 0.12 (near bottom) |
-| Zoom | 0.06 (small — approximately 60px on a 1080p frame) |
-| Opacity | 40% (visible but not distracting) |
+| Setting    | Value                                              |
+| ---------- | -------------------------------------------------- |
+| Position X | 0.88 (bottom-right area)                           |
+| Position Y | 0.12 (near bottom)                                 |
+| Zoom       | 0.06 (small — approximately 60px on a 1080p frame) |
+| Opacity    | 40% (visible but not distracting)                  |
 
 3. If the logo obscures important content at any point, keyframe the opacity down to 20% for that section.
 
@@ -530,27 +535,29 @@ Timeline: `00:00:00 — 00:00:04`
 7. Verify timing — no subtitle under 1 second or over 5 seconds.
 
 Also export SRT:
+
 - Right-click subtitle track > **Export Subtitles** > `.srt` format.
 - Save alongside the video for YouTube/LinkedIn upload.
 
 ### Phase 2J: Export — Three Cuts
 
 **Before exporting, create the output directory:**
+
 ```bash
 mkdir -p ~/Desktop/nlm-output/final
 ```
 
 **Cut 1: Full Version (YouTube, LinkedIn, Website)**
 
-| Setting | Value |
-|---------|-------|
-| Format | MP4 |
-| Codec | H.264 |
-| Resolution | 1920x1080 |
-| Frame Rate | 30 fps |
-| Bitrate | 20,000 kbps |
-| Audio | AAC, 320 kbps, 48 kHz |
-| Filename | `KBLI_2025_BaliZero_FULL_v1.mp4` |
+| Setting    | Value                            |
+| ---------- | -------------------------------- |
+| Format     | MP4                              |
+| Codec      | H.264                            |
+| Resolution | 1920x1080                        |
+| Frame Rate | 30 fps                           |
+| Bitrate    | 20,000 kbps                      |
+| Audio      | AAC, 320 kbps, 48 kHz            |
+| Filename   | `KBLI_2025_BaliZero_FULL_v1.mp4` |
 
 **Cut 2: 60-Second Hook (X main post, LinkedIn feed, paid promotion)**
 
@@ -563,15 +570,15 @@ mkdir -p ~/Desktop/nlm-output/final
 4. Structure: `[4s intro] [51s content] [5s outro]`
 5. Export settings:
 
-| Setting | Value |
-|---------|-------|
-| Format | MP4 |
-| Codec | H.264 |
-| Resolution | 1920x1080 |
-| Frame Rate | 30 fps |
-| Bitrate | 8,000 kbps |
-| Audio | AAC, 256 kbps, 48 kHz |
-| Filename | `KBLI_2025_BaliZero_HOOK_60s_v1.mp4` |
+| Setting    | Value                                |
+| ---------- | ------------------------------------ |
+| Format     | MP4                                  |
+| Codec      | H.264                                |
+| Resolution | 1920x1080                            |
+| Frame Rate | 30 fps                               |
+| Bitrate    | 8,000 kbps                           |
+| Audio      | AAC, 256 kbps, 48 kHz                |
+| Filename   | `KBLI_2025_BaliZero_HOOK_60s_v1.mp4` |
 
 **Cut 3: 15-Second Teaser (X preview, Instagram story, ad creative)**
 
@@ -594,17 +601,17 @@ Generate 5 infographics using the prompts below. Each can be generated in the ap
 
 ### Brand Specs for All Infographics
 
-| Element | Value |
-|---------|-------|
-| Background | `#0c0c0e` or `#111114` (dark variants) |
-| Accent | `#d4845a` (copper) |
-| Text Primary | `#FFFFFF` |
-| Text Secondary | `#A0A0A0` |
-| Positive/Open | `#4ADE80` (green) |
-| Warning/Restricted | `#FBBF24` (amber) |
-| Negative/Closed | `#F87171` (red) |
-| Font | Montserrat (headings), Inter (body) |
-| Logo | Bottom-right corner, 40% opacity, small |
+| Element            | Value                                   |
+| ------------------ | --------------------------------------- |
+| Background         | `#0c0c0e` or `#111114` (dark variants)  |
+| Accent             | `#d4845a` (copper)                      |
+| Text Primary       | `#FFFFFF`                               |
+| Text Secondary     | `#A0A0A0`                               |
+| Positive/Open      | `#4ADE80` (green)                       |
+| Warning/Restricted | `#FBBF24` (amber)                       |
+| Negative/Closed    | `#F87171` (red)                         |
+| Font               | Montserrat (headings), Inter (body)     |
+| Logo               | Bottom-right corner, 40% opacity, small |
 
 ### Infographic 1: KBLI 2025 vs KBLI 2020 — Key Changes
 
@@ -890,4 +897,4 @@ Total deliverables: **3 raw videos + 3 final video cuts + 1 SRT + 5 infographics
 
 ---
 
-*Generated 2026-03-29 by Air for Pro execution. All content self-contained.*
+_Generated 2026-03-29 by Air for Pro execution. All content self-contained._
