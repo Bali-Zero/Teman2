@@ -114,18 +114,29 @@ async def _create_hr_bonus_on_completed(
             if existing:
                 return
 
+            # Cutoff rule: completed after 28th → bonus counts for next month
+            today = date.today()
+            if today.day > 28:
+                if today.month == 12:
+                    awarded_date = datetime(today.year + 1, 1, 1, tzinfo=timezone.utc)
+                else:
+                    awarded_date = datetime(today.year, today.month + 1, 1, tzinfo=timezone.utc)
+            else:
+                awarded_date = datetime.now(tz=timezone.utc)
+
             await conn.execute(
                 """
                 INSERT INTO hr_bonus_ledger (
                     practice_id, employee_id, bonus_rate_id,
-                    practice_type_code, amount_idr, status
-                ) VALUES ($1, $2, $3, $4, $5, 'pending')
+                    practice_type_code, amount_idr, status, awarded_at
+                ) VALUES ($1, $2, $3, $4, $5, 'pending', $6)
                 """,
                 practice_id,
                 emp["id"],
                 rate["id"],
                 practice_type_code,
                 rate["amount_idr"],
+                awarded_date,
             )
             logger.info(
                 f"HR bonus created: practice={practice_id}, "
@@ -975,8 +986,18 @@ async def update_practice(
             if not update_fields:
                 raise HTTPException(status_code=400, detail="No fields to update")
 
-            # Add updated_at
-            update_fields.append("updated_at = NOW()")
+            # Cutoff rule: completed after 28th → practice shows as next month
+            today = date.today()
+            if updates.status == "completed" and today.day > 28:
+                if today.month == 12:
+                    next_month_1st = datetime(today.year + 1, 1, 1, tzinfo=timezone.utc)
+                else:
+                    next_month_1st = datetime(today.year, today.month + 1, 1, tzinfo=timezone.utc)
+                update_fields.append(f"updated_at = ${param_index}")
+                params.append(next_month_1st)
+                param_index += 1
+            else:
+                update_fields.append("updated_at = NOW()")
             update_fields_str = ", ".join(update_fields)
 
             # Column names are from a whitelist (field_mapping), values are parameterized
