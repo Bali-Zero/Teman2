@@ -75,12 +75,60 @@ def _force_halfopen_stale_circuits() -> None:
         logger.info(f"Forced HALF_OPEN on {len(forced)} stale circuits: {forced}")
 
 
+REGISTRY_HALT_FILE = os.path.expanduser("~/.agent/decisions/REGISTRY_HALT")
+REGISTRY_OVERRIDE_FILE = os.path.expanduser("~/.agent/decisions/REGISTRY_OVERRIDE")
+HEALING_DISABLED_FILE = os.path.expanduser("~/.agent/decisions/HEALING_DISABLED")
+
+
+def _registry_checksum(data: dict) -> str:
+    import hashlib
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
 def load_registry() -> dict:
+    # D0.4: HALT gate — if REGISTRY_HALT exists (and no REGISTRY_OVERRIDE), abort run
+    if os.path.exists(REGISTRY_HALT_FILE) and not os.path.exists(REGISTRY_OVERRIDE_FILE):
+        msg = open(REGISTRY_HALT_FILE).read().strip()
+        logger.error(f"REGISTRY_HALT active — aborting sentinel: {msg}")
+        send_alert(f"🚨 Sentinel HALTED: registry checksum mismatch.\n{msg}\nResolve and touch REGISTRY_OVERRIDE to resume.")
+        sys.exit(1)
+
     try:
-        return json.loads(open(REGISTRY_FILE).read()).get("jobs", {})
-    except (FileNotFoundError, json.JSONDecodeError):
-        logger.warning("Registry not found or invalid")
+        raw = open(REGISTRY_FILE).read()
+        data = json.loads(raw)
+    except FileNotFoundError:
+        logger.warning("Registry not found")
         return {}
+    except json.JSONDecodeError as exc:
+        # Corrupt registry — write HALT file and abort
+        halt_msg = f"JSON decode error in {REGISTRY_FILE}: {exc}"
+        open(REGISTRY_HALT_FILE, "w").write(halt_msg)
+        logger.error(f"Registry corrupt → HALT: {halt_msg}")
+        send_alert(f"🚨 Sentinel HALTED: corrupt registry.\n{halt_msg}")
+        sys.exit(1)
+
+    jobs = data.get("jobs", {})
+
+    # Verify checksum if present
+    stored_checksum = data.get("checksum")
+    if stored_checksum:
+        actual = _registry_checksum(jobs)
+        if actual != stored_checksum:
+            halt_msg = f"Checksum mismatch: stored={stored_checksum[:16]}… actual={actual[:16]}…"
+            open(REGISTRY_HALT_FILE, "w").write(halt_msg)
+            logger.error(f"Registry checksum mismatch → HALT: {halt_msg}")
+            send_alert(f"🚨 Sentinel HALTED: {halt_msg}\nTouch REGISTRY_OVERRIDE to resume.")
+            sys.exit(1)
+
+    # Clear stale HALT + OVERRIDE if we got here cleanly
+    for f in (REGISTRY_HALT_FILE, REGISTRY_OVERRIDE_FILE):
+        try:
+            os.remove(f)
+        except FileNotFoundError:
+            pass
+
+    return jobs
 
 
 def _collect_openclaw_states(registry: dict) -> dict:
@@ -542,6 +590,12 @@ def _infer_files(job_id: str, error_text: str) -> list:
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def run_sentinel() -> None:
+    # D0.6: HEALING_DISABLED file flag — safer than env var (works in LaunchAgent)
+    if os.path.exists(HEALING_DISABLED_FILE):
+        reason = open(HEALING_DISABLED_FILE).read().strip()
+        logger.warning(f"HEALING_DISABLED active — skipping sentinel run: {reason}")
+        return
+
     logger.info("=== Sentinel run start ===")
     start = time.time()
     registry = load_registry()
@@ -583,4 +637,17 @@ def run_sentinel() -> None:
 
 
 if __name__ == "__main__":
-    run_sentinel()
+    # D0.2: PID lock — prevent overlapping runs (LaunchAgent may fire before previous finishes)
+    import fcntl
+    lock_path = "/tmp/nuzantara_sentinel.lock"
+    try:
+        lock_fd = open(lock_path, "w")
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        logger.warning("Another sentinel instance is running — exiting")
+        sys.exit(0)
+    try:
+        run_sentinel()
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        lock_fd.close()
