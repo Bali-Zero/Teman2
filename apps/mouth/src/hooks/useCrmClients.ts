@@ -143,7 +143,13 @@ export function useCrmClients(options: UseCrmClientsOptions = {}) {
     setOffset(0);
     setAllClients([]);
     setHasMore(true);
-    void refetch();
+    refetch().catch((err) => {
+      logger.error(
+        "[CRM] Failed to refetch clients",
+        {},
+        err instanceof Error ? err : new Error(String(err)),
+      );
+    });
   }, [refetch]);
 
   return {
