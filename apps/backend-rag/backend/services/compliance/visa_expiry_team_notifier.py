@@ -320,9 +320,7 @@ Ogni team leader ha già ricevuto la propria notifica individuale.</p>
         payload: dict[str, Any] = {
             "to": to,
             "subject": subject,
-            "html": html_body,
-            "from_email": SENDER_EMAIL,
-            "from_name": SENDER_NAME,
+            "body": html_body,
         }
 
         response = await self._client.post(
