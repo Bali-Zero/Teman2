@@ -1079,10 +1079,10 @@ IMPORTANT:
 
         self.log(f'Generating images for {len(published)} T1/featured articles (of {len(all_enriched)} enriched)')
 
-        # Prefer ComfyUI/Flux (local, no browser, always works)
-        script = self.script_dir / 'comfyui_image_generator.py'
+        # Fireworks.ai Flux.1 Dev (primary) → Pollinations.ai (fallback)
+        script = self.script_dir / 'fireworks_image_generator.py'
         if not script.exists():
-            self.log('comfyui_image_generator.py not found — skipping images', 'WARN')
+            self.log('fireworks_image_generator.py not found — skipping images', 'WARN')
             self.update_step_status('8_images', 'skipped', {'reason': 'script_missing'})
             return True
 

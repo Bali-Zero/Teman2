@@ -242,7 +242,7 @@ def run_image(slug: str, category: str) -> bool:
     Genera copertina e committa su GitHub.
     1. Legge title dall'MDX via GitHub API
     2. Costruisce prompt con bz_image_style
-    3. Genera con Fireworks.ai Flux → ComfyUI → Pollinations → Picsum → Unsplash
+    3. Genera con Fireworks.ai Flux → Pollinations → Picsum → Unsplash
     4. Committa il JPG su GitHub in public/static/news/
     """
     import base64
@@ -254,8 +254,6 @@ def run_image(slug: str, category: str) -> bool:
     GITHUB_REPO = "Teman2"
     ARTICLES_PATH = "apps/mouth/src/content/articles"
     IMAGE_GH_PATH = f"apps/mouth/public/static/news/{slug}.jpg"
-    COMFYUI_URL = "http://127.0.0.1:8188"
-
     log(f"▶ immagine per {category}/{slug}")
 
     # Leggi title dall'MDX
@@ -336,24 +334,7 @@ def run_image(slug: str, category: str) -> bool:
         else:
             log("  FIREWORKS_API_KEY non impostata — skip Fireworks")
 
-        # --- 2. ComfyUI (locale, qualità massima) ---
-        if not generated:
-            try:
-                resp = urllib.request.urlopen(f"{COMFYUI_URL}/system_stats", timeout=5)
-                if resp.status == 200:
-                    log("  Fireworks non disponibile — uso ComfyUI locale")
-                    state = {"articles": [{"_published_item_id": slug, "enrichment": {"headline": title}, "category": category, "image_path": str(img_path)}]}
-                    state_file = Path(tmpdir) / "state.json"
-                    state_file.write_text(json.dumps(state))
-                    r = subprocess.run(
-                        [str(VENV_PYTHON), str(SCRIPT_DIR / "comfyui_image_generator.py"), str(state_file)],
-                        capture_output=True, text=True, timeout=10 * 60
-                    )
-                    generated = r.returncode == 0 and img_path.exists() and img_path.stat().st_size > 5000
-            except Exception:
-                pass
-
-        # --- 3. Pollinations.ai fallback ---
+        # --- 2. Pollinations.ai fallback ---
         if not generated:
             log("  Provo Pollinations.ai")
             encoded_prompt = urllib.parse.quote(prompt)

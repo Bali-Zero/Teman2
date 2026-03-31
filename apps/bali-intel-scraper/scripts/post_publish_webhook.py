@@ -3,7 +3,7 @@
 Post-publish webhook server — ascolta su :7788
 Quando riceve POST /trigger?slug=XXX&category=YYY, lancia:
   1. translate_articles.py (traduzioni)
-  2. comfyui_image_generator.py per lo slug specifico (se ComfyUI è attivo)
+  2. fireworks_image_generator.py per lo slug specifico (via Fireworks.ai Flux)
 
 Girato da: launchd com.balizero.post-publish-webhook (sempre attivo)
 Chiamato da: backend Fly.io dopo ogni publish dalla news-room
@@ -49,21 +49,12 @@ def run_translate():
 
 
 def run_image(slug: str, category: str):
-    """Run ComfyUI image generator for a specific slug."""
-    # Check if ComfyUI is running on standard port 8188
-    check = subprocess.run(
-        ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "http://127.0.0.1:8188/system_stats"],
-        capture_output=True, text=True, timeout=5
-    )
-    if check.stdout.strip() not in ("200", "401"):
-        log(f"⚠ ComfyUI non attivo (HTTP {check.stdout.strip()}) — skip immagine per {slug}")
-        return
-
+    """Run Fireworks image generator for a specific slug."""
     log(f"▶ Avvio immagine per {category}/{slug}")
-    # Pass slug/category via env vars (comfyui_image_generator.py reads TARGET_SLUG / TARGET_CATEGORY)
+    # Pass slug/category via env vars
     env = {**os.environ, "TARGET_SLUG": slug, "TARGET_CATEGORY": category}
     result = subprocess.run(
-        [str(VENV_PYTHON), str(SCRIPT_DIR / "comfyui_image_generator.py")],
+        [str(VENV_PYTHON), str(SCRIPT_DIR / "fireworks_image_generator.py")],
         capture_output=True, text=True, timeout=10 * 60, env=env
     )
     log(f"{'✅' if result.returncode == 0 else '❌'} immagine {slug} exit={result.returncode}")
