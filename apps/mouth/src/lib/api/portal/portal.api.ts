@@ -15,6 +15,7 @@ import type {
   SendMessageRequest,
   PortalPreferences,
   PortalProfile,
+  UpdateProfileRequest,
   InviteValidationResponse,
   CompleteRegistrationRequest,
   RegistrationResponse,
@@ -80,6 +81,37 @@ export class PortalApi {
             avatarUrl: data.assigned_to.avatar_url,
           }
         : undefined,
+    };
+  }
+
+  // ============================================================================
+  // Profile Update
+  // ============================================================================
+
+  async updateProfile(data: UpdateProfileRequest): Promise<PortalProfile> {
+    const response = await this.client.request<PortalApiResponse<any>>(
+      "/api/portal/profile",
+      { method: "PATCH", body: JSON.stringify(data) },
+    );
+    const d = response.data!;
+    return {
+      id: d.id,
+      fullName: d.full_name,
+      email: d.email,
+      phone: d.phone,
+      whatsapp: d.whatsapp,
+      nationality: d.nationality,
+      passportNumber: d.passport_number,
+      passportExpiry: d.passport_expiry,
+      dateOfBirth: d.date_of_birth,
+      gender: d.gender,
+      address: d.address,
+      memberSince: d.member_since,
+      assignedTo: d.assigned_to ? {
+        email: d.assigned_to.email,
+        name: d.assigned_to.name,
+        avatarUrl: d.assigned_to.avatar_url,
+      } : undefined,
     };
   }
 
