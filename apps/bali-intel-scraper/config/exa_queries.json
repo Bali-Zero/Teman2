@@ -1,5 +1,5 @@
 {
-  "version": "4.0.0",
+  "version": "4.1.0",
   "max_age_hours": 72,
   "default_num_results": 10,
   "search_type": "auto",
@@ -123,40 +123,42 @@
       "tier": "T3"
     },
 
-    { "_comment": "=== TWEETS / X (5 queries × 5 results) ===" },
+    {
+      "_comment": "=== X/SOCIAL PERSPECTIVES — converted from 'tweet' (deprecated 2026-03) to 'news' ==="
+    },
 
     {
       "name": "tweet_immigration_lawyers",
-      "query": "Indonesian immigration lawyer sharing visa regulation updates for foreigners",
-      "highlights_query": "visa regulation update Indonesia",
-      "exa_category": "tweet",
+      "query": "Indonesia immigration lawyer or consultant blog post about visa regulation updates, new permit requirements, or foreigner compliance tips for 2025-2026",
+      "highlights_query": "visa regulation update Indonesia foreigner",
+      "exa_category": "news",
       "category": "immigration",
       "tier": "T3",
       "num_results": 5
     },
     {
       "name": "tweet_bali_expat_voices",
-      "query": "Expat in Bali sharing experience about living costs, visa problems, or business setup",
+      "query": "Personal experience article or blog post about expat life in Bali, living costs, visa challenges, or starting a business as a foreigner in Indonesia",
       "highlights_query": "Bali expat visa cost experience",
-      "exa_category": "tweet",
+      "exa_category": "news",
       "category": "lifestyle",
       "tier": "T3",
       "num_results": 5
     },
     {
       "name": "tweet_indonesia_tax_experts",
-      "query": "Indonesia tax consultant or accountant sharing updates about tax regulations for foreign companies",
-      "highlights_query": "tax regulation update foreign company",
-      "exa_category": "tweet",
+      "query": "Indonesia tax specialist or accounting firm article about tax compliance updates, foreign company obligations, or VAT and PPh changes affecting expat businesses",
+      "highlights_query": "tax regulation update foreign company Indonesia",
+      "exa_category": "news",
       "category": "tax",
       "tier": "T3",
       "num_results": 5
     },
     {
       "name": "tweet_indonesia_startup_ai",
-      "query": "Indonesia tech startup founder or investor discussing AI, funding, or digital economy",
-      "highlights_query": "AI startup funding Indonesia tech",
-      "exa_category": "tweet",
+      "query": "Indonesia tech startup news, AI investment announcement, digital economy growth story, or fintech innovation coverage from Southeast Asia",
+      "highlights_query": "AI startup funding Indonesia tech digital",
+      "exa_category": "news",
       "category": "emerging_trends",
       "tier": "T3",
       "num_results": 5
