@@ -280,7 +280,7 @@ class EmbeddingsGenerator:
             except Exception as e:
                 logger.error(f"Error generating embeddings: {e}")
                 set_span_status("error", str(e))
-                raise
+                return []
 
     def get_cache_stats(self) -> dict:
         """Get embedding cache statistics."""

@@ -516,7 +516,7 @@ class KGIncrementalExtractor:
         try:
             if hasattr(self.gemini, "generate_content"):
                 response = await self.gemini.generate_content(
-                    model="gemini-2.0-flash-001",
+                    model="gemini-2.0-flash-lite",
                     contents=prompt,
                     temperature=0.1,
                 )
@@ -524,7 +524,7 @@ class KGIncrementalExtractor:
             else:
                 response = await asyncio.to_thread(
                     self.gemini.models.generate_content,
-                    model="gemini-2.0-flash",
+                    model="gemini-2.0-flash-lite",
                     contents=prompt,
                 )
                 response_text = response.text.strip()

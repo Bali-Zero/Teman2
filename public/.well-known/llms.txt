@@ -1,0 +1,52 @@
+# Robots.txt for Large Language Models (AI crawlers)
+
+# Applies to all LLM crawlers
+User-agent: *
+Disallow:
+
+# Google Extended (GoogleBot-Extended, for Gemini & other Google AI)
+User-agent: GoogleBot-Extended
+Allow: /
+
+# OpenAI (ChatGPT, GPT-4, etc.)
+User-agent: OpenAI-User
+Allow: /
+
+# Anthropic Claude
+User-agent: Claude-Web
+Allow: /
+
+# Perplexity.ai
+User-agent: PerplexityBot
+Allow: /
+
+# Meta AI
+User-agent: CCBot
+Allow: /
+
+# Common LLM crawlers
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+# Default: allow all crawlers
+Disallow:
+
+# Sitemap location
+Sitemap: https://balizero.com/sitemap.xml
+
+# Additional metadata
+Allow-LLMs: true
+Crawl-delay: 1
+Request-rate: 1/1s

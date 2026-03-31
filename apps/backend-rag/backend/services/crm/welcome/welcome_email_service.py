@@ -187,7 +187,7 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
     advisor_first = assigned_to.split("@")[0].capitalize() if assigned_to else ""
 
     # Build HTML email
-    subject = WELCOME_EMAIL_SUBJECT[lang]
+    subject = "[CLIENT] " + WELCOME_EMAIL_SUBJECT[lang]
     html_body = _build_html(lang, first_name, advisor_first, assigned_to)
 
     # Build payload with CC (team leader) and BCC (zero@)
@@ -316,9 +316,8 @@ def _build_html(lang: str, first_name: str, advisor_first: str, advisor_email: s
 <div style="max-width:600px;margin:0 auto;padding:20px 0;">
 
   <!-- HEADER -->
-  <div style="background:#0c0c0e;border-bottom:2px solid #d4845a;padding:32px 32px 24px;">
-    <div style="font-size:22px;font-weight:700;color:#edeae4;letter-spacing:1px;">BALI ZERO</div>
-    <div style="font-size:12px;color:#c9a96e;margin-top:4px;font-style:italic;">Guided by humans. Powered by AI.</div>
+  <div style="background:#0c0c0e;border-bottom:2px solid #d4845a;padding:24px 32px;">
+    <img src="https://kita.balizero.com/static/balizero-logo-clean.png" alt="Bali Zero" width="72" height="72" style="display:block;border-radius:50%;border:0;" />
   </div>
 
   <!-- BLOCK 1: Emotional opening -->

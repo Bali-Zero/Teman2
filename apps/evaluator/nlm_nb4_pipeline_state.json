@@ -4,10 +4,10 @@
   "notebook_name": "NB-4: Tax & Fiscal Indonesia",
   "current_state": "COMPLETE",
   "degradation_level": "NOMINAL",
-  "last_updated": "2026-03-31T12:48:28.826899+00:00",
+  "last_updated": "2026-03-31T18:22:59.695274+00:00",
   "budget": {
     "daily_queries": 2,
-    "weekly_calls": 8,
+    "weekly_calls": 10,
     "week_start": "2026-W13"
   },
   "circuit_breakers": {
@@ -54,6 +54,11 @@
       "date": "2026-03-31",
       "cluster": "B",
       "run_id": "392264e6-1ac2-4eff-b882-d719ff4363c3"
+    },
+    {
+      "date": "2026-04-01",
+      "cluster": "F",
+      "run_id": "ebbac646-19f2-43ff-b336-af04306e9a8c"
     }
   ]
 }

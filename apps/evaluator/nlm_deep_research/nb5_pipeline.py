@@ -312,6 +312,28 @@ class NB5Pipeline:
             consolidation = self._consolidate(all_claims, cluster_key, cluster_name, summary)
             summary["phases"]["consolidation"] = consolidation
 
+            # Rolling synthesis: generate daily synthetic source (+ weekly/monthly roll-up if due)
+            try:
+                from .synthesis_roller import run_daily_synthesis  # noqa: PLC0415
+
+                synthesis_summary = run_daily_synthesis(
+                    nb_id=NB5_NOTEBOOK_ID,
+                    nb_name="NB-5: Property & Real Estate Indonesia",
+                    claims=all_claims,
+                    dry_run=self.dry_run,
+                )
+                summary["phases"]["synthesis"] = synthesis_summary
+                logger.info(
+                    "NB-5 synthesis: daily=%s weekly=%s monthly=%s total_synth=%d",
+                    synthesis_summary.get("daily", {}).get("status", "?"),
+                    synthesis_summary.get("weekly", {}).get("status", "skipped") if synthesis_summary.get("weekly") else "skipped",
+                    synthesis_summary.get("monthly", {}).get("status", "skipped") if synthesis_summary.get("monthly") else "skipped",
+                    synthesis_summary.get("total_synthetic", 0),
+                )
+            except Exception as se:
+                logger.warning("Synthesis roller failed (non-blocking): %s", se)
+                summary["phases"]["synthesis"] = {"status": "error", "error": str(se)}
+
             self._phase = PipelinePhase.COMPLETE
             if l1_result.get("success"):
                 self.circuit_breakers.nlm.record_success()

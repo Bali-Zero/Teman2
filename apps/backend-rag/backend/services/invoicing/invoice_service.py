@@ -206,7 +206,7 @@ class InvoiceAutomationService:
         amount: float,
     ) -> bool:
         """Send invoice email to client with PDF attachment via Zoho or SMTP fallback."""
-        subject = f"Invoice {invoice_number} from Zantara Indonesia"
+        subject = f"[CLIENT] Invoice {invoice_number} from Zantara Indonesia"
 
         body_text = f"""Dear {client_name},
 
@@ -294,7 +294,7 @@ For support: support@balizero.com | WhatsApp: +62 859 0436 9574
         filename: str,
     ) -> bool:
         """Send notification email to accounting (Asya) via Zoho or SMTP fallback."""
-        subject = f"🎉 New Invoice {invoice_number} - {client_data['full_name']}"
+        subject = f"[TEAM] 🎉 New Invoice {invoice_number} - {client_data['full_name']}"
 
         body_text = f"""Hi Asya!
 
