@@ -283,29 +283,85 @@ async def send_direct_email(
     _auth: dict = Depends(verify_internal_api_key),
 ) -> SendEmailResponse:
     """
-    Send a direct email via Brevo HTTP API (zantara@balizero.com).
+    Send email via best available channel.
 
-    Auth: X-API-Key header (valid key from API_KEYS env var).
-    Used by MCP tools to send team notifications, CRM reports, etc.
+    Routing:
+    - @balizero.com recipients → Zoho SMTP (avoids intra-domain spoofing rejection)
+    - External recipients → Brevo HTTP API (better deliverability + tracking)
+
+    Auth: X-API-Key header.
     Sender is always zantara@balizero.com (alias of damar@balizero.com).
     """
+    import os
+
+    cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
+
+    # Route: intra-domain (@balizero.com) → Zoho SMTP, external → Brevo
+    if request.to.endswith("@balizero.com"):
+        result = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list)
+    else:
+        result = await _send_via_brevo(request.to, request.subject, request.body, cc_list)
+
+    if result:
+        logger.info(f"Direct email sent to {request.to} — {request.subject!r}")
+        return SendEmailResponse(success=True, message=f"Email sent to {request.to}")
+
+    # Fallback: if primary fails, try the other channel
+    logger.warning(f"Primary channel failed for {request.to}, trying fallback")
+    if request.to.endswith("@balizero.com"):
+        fallback = await _send_via_brevo(request.to, request.subject, request.body, cc_list)
+    else:
+        fallback = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list)
+
+    if fallback:
+        logger.info(f"Email sent to {request.to} via fallback — {request.subject!r}")
+        return SendEmailResponse(success=True, message=f"Email sent to {request.to} (fallback)")
+
+    return SendEmailResponse(success=False, message="Both Zoho SMTP and Brevo failed")
+
+
+async def _send_via_zoho_smtp(
+    to_email: str, subject: str, body: str, cc_list: list[str] | None,
+) -> bool:
+    """Send via Zoho SMTP (for intra-domain @balizero.com delivery)."""
+    try:
+        from backend.app.modules.notifications.service import SMTPProvider
+
+        provider = SMTPProvider()
+        return await provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_body=body,
+            from_email="zantara@balizero.com",
+            from_name="Zantara",
+            bcc=cc_list,
+        )
+    except Exception as e:
+        logger.error(f"Zoho SMTP failed for {to_email}: {e}")
+        return False
+
+
+async def _send_via_brevo(
+    to_email: str, subject: str, body: str, cc_list: list[str] | None,
+) -> bool:
+    """Send via Brevo HTTP API (for external delivery)."""
     import os
 
     import httpx
 
     api_key = os.getenv("SENDGRID_API_KEY", "")
-    cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
+    if not api_key:
+        return False
 
     payload: dict = {
         "sender": {"email": "zantara@balizero.com", "name": "Zantara"},
-        "to": [{"email": request.to}],
-        "subject": request.subject,
-        "htmlContent": request.body,
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": body,
     }
     if cc_list:
         payload["cc"] = [{"email": e} for e in cc_list]
 
-    # Brevo HTTP API (key starts with xkeysib-) or SendGrid API
     is_brevo = api_key.startswith("xkeysib-")
     url = "https://api.brevo.com/v3/smtp/email" if is_brevo else "https://api.sendgrid.com/v3/mail/send"
     headers = (
@@ -315,12 +371,11 @@ async def send_direct_email(
     )
 
     if not is_brevo:
-        # SendGrid format
         payload = {
-            "personalizations": [{"to": [{"email": request.to}]}],
+            "personalizations": [{"to": [{"email": to_email}]}],
             "from": {"email": "zantara@balizero.com", "name": "Zantara"},
-            "subject": request.subject,
-            "content": [{"type": "text/html", "value": request.body}],
+            "subject": subject,
+            "content": [{"type": "text/html", "value": body}],
         }
         if cc_list:
             payload["personalizations"][0]["cc"] = [{"email": e} for e in cc_list]
@@ -328,17 +383,13 @@ async def send_direct_email(
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(url, json=payload, headers=headers)
-
         if resp.status_code in (200, 201, 202):
-            logger.info(f"Direct email sent to {request.to} — {request.subject!r}")
-            return SendEmailResponse(success=True, message=f"Email sent to {request.to}")
-
-        logger.error(f"Email API error {resp.status_code}: {resp.text[:300]}")
-        return SendEmailResponse(success=False, message=f"API error {resp.status_code}: {resp.text[:200]}")
-
+            return True
+        logger.error(f"Brevo API error {resp.status_code}: {resp.text[:300]}")
+        return False
     except Exception as e:
-        logger.error(f"Failed to send direct email to {request.to}: {e}")
-        return SendEmailResponse(success=False, message=str(e))
+        logger.error(f"Brevo failed for {to_email}: {e}")
+        return False
 
 
 # Include test endpoints only in non-production environments
