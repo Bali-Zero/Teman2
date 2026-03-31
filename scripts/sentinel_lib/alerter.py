@@ -8,6 +8,8 @@ import urllib.request
 
 DEDUP_FILE = os.path.expanduser("~/.agent/decisions/alert_dedup.json")
 DEDUP_WINDOW_S = 3600  # 1 hour
+ESCALATION_COOLDOWN_S = 14400  # D1.2: 4h per-job cooldown to prevent alert storms
+_ESCALATION_STATE_FILE = os.path.expanduser("~/.agent/decisions/escalation_cooldown.json")
 
 
 def _load_dedup() -> dict:
@@ -36,6 +38,35 @@ def _mark_sent(key: str) -> None:
     # Prune old entries
     data = {k: v for k, v in data.items() if (time.time() - v["ts"]) < DEDUP_WINDOW_S * 24}
     _save_dedup(data)
+
+
+def _load_escalation_state() -> dict:
+    try:
+        return json.loads(open(_ESCALATION_STATE_FILE).read())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _save_escalation_state(data: dict) -> None:
+    with open(_ESCALATION_STATE_FILE, "w") as f:
+        json.dump(data, f)
+
+
+def check_escalation_cooldown(job_id: str) -> bool:
+    """D1.2: Returns True if alert for this job is on cooldown (should NOT send)."""
+    data = _load_escalation_state()
+    sent_at = data.get(job_id, {}).get("escalation_sent_at", 0)
+    return (time.time() - sent_at) < ESCALATION_COOLDOWN_S
+
+
+def mark_escalation_sent(job_id: str) -> None:
+    """D1.2: Record that an escalation alert was just sent for this job."""
+    data = _load_escalation_state()
+    # Prune entries older than 7 days
+    cutoff = time.time() - 7 * 86400
+    data = {k: v for k, v in data.items() if v.get("escalation_sent_at", 0) > cutoff}
+    data[job_id] = {"escalation_sent_at": time.time(), "_writer": "alerter"}
+    _save_escalation_state(data)
 
 
 def send_alert(message: str, level: str = "INFO") -> bool:

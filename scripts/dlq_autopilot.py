@@ -546,6 +546,7 @@ def run_autopilot() -> None:
             "status": "ok",
             "detail": f"processed={len(queue)} fixed={fixed} escalated={escalated}",
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "_writer": "dlq_autopilot",  # D1.5: audit trail
         }))
 
     finally:

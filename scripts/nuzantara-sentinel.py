@@ -23,7 +23,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent))
 from sentinel_lib.classifier import classify, classify_with_llm
 from sentinel_lib.circuit_breaker import get_state, record_success, record_failure
-from sentinel_lib.alerter import send_alert, send_daily_report
+from sentinel_lib.alerter import send_alert, send_daily_report, check_escalation_cooldown, mark_escalation_sent
 from sentinel_lib.repairer import (
     retry_job, dispatch_aider_fix, verify_fix, add_to_dlq, clear_dlq_entry,
     trigger_openclaw_job, is_openclaw_running, restart_openclaw,
@@ -488,28 +488,32 @@ def process_job(job_id: str, state: dict, registry: dict,
             job_id, openclaw_id, state, reg, classification, last_error, retry_attempt
         )
 
-    # ── Shell / LaunchAgent / Cron path ──────────────────────────────────────
+    # ── Shell / LaunchAgent / Cron path — D1.1: mutually exclusive elif chain ──
+
+    is_critical = reg.get("critical", False)
+    is_idempotent = reg.get("is_idempotent", True)
+    fail_count = state.get("fail_count", 1)
+    files_implicated = _infer_files(job_id, last_error)
+    restart_cmd = reg.get("restart_cmd")
+    test_cmd = reg.get("test_cmd")
+    host = reg.get("host", "Nuzantara")
 
     if failure_type == "TRANSIENT" and retry_attempt < MAX_RETRIES:
-        # Tier 1: retry
+        # Tier 1: retry with backoff
         backoff = exponential_backoff(retry_attempt)
-        logger.info(f"{job_id}: Tier 1 retry (attempt {retry_attempt+1}), backoff {backoff:.0f}s, type={job_type}")
+        logger.info(f"{job_id}: Tier 1 retry (attempt {retry_attempt+1}), backoff {backoff:.0f}s")
         time.sleep(backoff)
-
-        restart_cmd = reg.get("restart_cmd")
         if restart_cmd:
-            host = reg.get("host", "Nuzantara")
-            success, output = retry_job(restart_cmd, host)
+            success, _ = retry_job(restart_cmd, host)
             if success:
                 record_success(job_id)
                 return {"action": "retried_ok", "tier": 1, "success": True}
-
         return {"action": "retry_failed", "tier": 1, "success": False}
 
-    if failure_type == "DETERMINISTIC" and fix_pattern and fix_pattern.get("confidence", 0) >= 0.85:
-        # Tier 2: Aider fix
-        files_implicated = _infer_files(job_id, last_error)
-        test_cmd = reg.get("test_cmd")
+    elif (failure_type == "DETERMINISTIC"
+          and fix_pattern and fix_pattern.get("confidence", 0) >= 0.85
+          and not is_critical):
+        # Tier 2: Aider auto-fix — only for non-critical jobs
         logger.info(f"{job_id}: Tier 2 aider-fix (confidence {fix_pattern['confidence']})")
         success, output = dispatch_aider_fix(
             job=job_id,
@@ -519,33 +523,64 @@ def process_job(job_id: str, state: dict, registry: dict,
             test_cmd=test_cmd,
         )
         if success and test_cmd:
-            verified, _ = verify_fix(test_cmd, reg.get("host", "Nuzantara"))
+            verified, _ = verify_fix(test_cmd, host)
             if verified:
                 record_success(job_id)
                 clear_dlq_entry(job_id)
-                send_alert(f"✅ Auto-fixed `{job_id}`: {fix_pattern['fix_instruction'][:80]}", level="INFO")
+                send_alert(f"Auto-fixed {job_id}: {fix_pattern['fix_instruction'][:80]}", level="INFO")
                 return {"action": "aider_fixed", "tier": 2, "success": True}
-
-        # Aider failed — escalate to Tier 3
+        # Aider failed → Tier 3
         add_to_dlq(job_id, last_error[:500], classification, last_error,
                    files_implicated, aider_attempts=1, aider_failure_reason=output[:200])
         send_alert(
-            f"Tier 3 needed — `{job_id}`\nError: {last_error[:100]}\nAider failed: {output[:80]}\n\nCheck DLQ: `~/.agent/decisions/dlq.json`",
+            f"Tier 3 needed — {job_id}\nError: {last_error[:100]}\n"
+            f"Aider failed: {output[:80]}\nCheck DLQ: ~/.agent/decisions/dlq.json",
             level="CRITICAL"
         )
         return {"action": "escalated_tier3", "tier": 3, "success": False}
 
-    # Tier 3/4: Unknown or low confidence — add to DLQ
-    add_to_dlq(job_id, last_error[:500], classification, last_error,
-               _infer_files(job_id, last_error))
-    level = "CRITICAL" if failure_type == "DETERMINISTIC" else "WARNING"
-    send_alert(
-        f"{'Tier 3' if failure_type != 'UNKNOWN' else 'Tier 4'} needed — `{job_id}`\n"
-        f"Type: {failure_type} / {classification.get('subtype')}\n"
-        f"Error: {last_error[:120]}",
-        level=level
-    )
-    return {"action": "escalated", "tier": 3, "success": False}
+    elif is_critical and not is_idempotent:
+        # Tier 3: critical + non-idempotent → never auto-retry, alert immediately
+        add_to_dlq(job_id, last_error[:500], classification, last_error, files_implicated)
+        if not check_escalation_cooldown(job_id):
+            send_alert(
+                f"CRITICAL non-idempotent failure — {job_id}\n"
+                f"Type: {failure_type}\nError: {last_error[:120]}\n"
+                f"Manual intervention required (non-idempotent — auto-retry UNSAFE)",
+                level="CRITICAL"
+            )
+            mark_escalation_sent(job_id)
+        return {"action": "escalated_critical_non_idempotent", "tier": 3, "success": False}
+
+    elif is_critical and is_idempotent and fail_count >= 3:
+        # Tier 1 with escalation: retry + warning (idempotent, safe to retry)
+        if restart_cmd:
+            success, _ = retry_job(restart_cmd, host)
+            if success:
+                record_success(job_id)
+                return {"action": "retried_ok", "tier": 1, "success": True}
+        if not check_escalation_cooldown(job_id):
+            send_alert(
+                f"Critical job repeated failure — {job_id}\n"
+                f"fail_count={fail_count}\nError: {last_error[:120]}",
+                level="WARNING"
+            )
+            mark_escalation_sent(job_id)
+        return {"action": "retried_with_alert", "tier": 1, "success": False}
+
+    else:
+        # Tier 3/4: low-confidence or unknown — add to DLQ
+        add_to_dlq(job_id, last_error[:500], classification, last_error, files_implicated)
+        level = "CRITICAL" if failure_type == "DETERMINISTIC" else "WARNING"
+        if not check_escalation_cooldown(job_id):
+            send_alert(
+                f"{'Tier 3' if failure_type != 'UNKNOWN' else 'Tier 4'} needed — {job_id}\n"
+                f"Type: {failure_type} / {classification.get('subtype')}\n"
+                f"Error: {last_error[:120]}",
+                level=level
+            )
+            mark_escalation_sent(job_id)
+        return {"action": "escalated", "tier": 3, "success": False}
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -589,6 +624,10 @@ def _infer_files(job_id: str, error_text: str) -> list:
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
+SENTINEL_STATUS_FILE = os.path.expanduser("~/.agent/decisions/sentinel_status.json")
+MAX_RUN_DURATION_S = 240  # D1.7: abort if single run exceeds 4 minutes
+
+
 def run_sentinel() -> None:
     # D0.6: HEALING_DISABLED file flag — safer than env var (works in LaunchAgent)
     if os.path.exists(HEALING_DISABLED_FILE):
@@ -597,7 +636,10 @@ def run_sentinel() -> None:
         return
 
     logger.info("=== Sentinel run start ===")
-    start = time.time()
+    start_wall = time.time()
+    start_mono = time.monotonic()  # D1.7: monotonic clock for deadline
+    deadline_mono = start_mono + MAX_RUN_DURATION_S
+
     registry = load_registry()
     states = collect_state_files(registry)
     check_dead_man_switch()
@@ -609,27 +651,77 @@ def run_sentinel() -> None:
         logger.warning("OpenClaw gateway down — openclaw jobs will be suppressed this cycle")
 
     results = {}
+    timed_out = False
     for job_id, state in states.items():
+        # D1.7: monotonic deadline — abort iteration if run is taking too long
+        if time.monotonic() >= deadline_mono:
+            logger.warning(f"Sentinel deadline reached ({MAX_RUN_DURATION_S}s) — skipping remaining jobs")
+            timed_out = True
+            break
         try:
             results[job_id] = process_job(job_id, state, registry, openclaw_is_down=openclaw_is_down)
         except Exception as e:
             logger.error(f"Error processing {job_id}: {e}", exc_info=True)
 
-    # Self-log
-    duration = time.time() - start
+    # Self-log (JSONL)
+    duration = time.time() - start_wall
+    dlq_path = os.path.expanduser("~/.agent/decisions/dlq.json")
+    try:
+        dlq_data = json.loads(open(dlq_path).read())
+        dlq_entries = len(dlq_data.get("queue", dlq_data if isinstance(dlq_data, list) else []))
+        dlq_terminal = sum(
+            1 for e in (dlq_data.get("queue", dlq_data) if isinstance(dlq_data, (dict, list)) else [])
+            if isinstance(e, dict) and e.get("status") == "TERMINAL"
+        )
+    except Exception:
+        dlq_entries = -1
+        dlq_terminal = -1
+
     log_entry = {
         "ts": time.time(),
         "duration_s": round(duration, 2),
-        "jobs_checked": len(states),
+        "jobs_checked": len(results),
         "healthy": sum(1 for r in results.values() if r.get("action") == "healthy"),
         "retried": sum(1 for r in results.values() if "retried" in r.get("action", "")),
         "escalated": sum(1 for r in results.values() if "escalated" in r.get("action", "")),
         "suppressed": sum(1 for r in results.values() if r.get("action") == "suppressed_gateway_down"),
         "openclaw_down": openclaw_is_down,
+        "timed_out": timed_out,
+        "_writer": "sentinel",
     }
     os.makedirs(os.path.dirname(SENTINEL_LOG), exist_ok=True)
     with open(SENTINEL_LOG, "a") as f:
         f.write(json.dumps(log_entry) + "\n")
+
+    # D1.3: sentinel_status.json — single observable for dashboards and MCP tools
+    circuit_states: dict = {}
+    try:
+        from sentinel_lib.circuit_breaker import _load as _cb_load
+        circuit_states = _cb_load()
+    except Exception:
+        pass
+
+    status_obj = {
+        "ts": time.time(),
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "jobs_total": len(states),
+        "jobs_checked": len(results),
+        "jobs_healthy": log_entry["healthy"],
+        "jobs_circuit_open": sum(1 for v in circuit_states.values() if v.get("state") == "OPEN"),
+        "jobs_circuit_terminal": dlq_terminal,
+        "jobs_healing": log_entry["retried"],
+        "jobs_suppressed": log_entry["suppressed"],
+        "dlq_entries": dlq_entries,
+        "dlq_terminal": dlq_terminal,
+        "healing_actions_24h": log_entry["retried"],  # current cycle; full 24h requires log scan
+        "openclaw_gateway": "down" if openclaw_is_down else "healthy",
+        "last_sentinel_duration_s": round(duration, 2),
+        "timed_out": timed_out,
+        "_writer": "sentinel",
+    }
+    os.makedirs(os.path.dirname(SENTINEL_STATUS_FILE), exist_ok=True)
+    with open(SENTINEL_STATUS_FILE, "w") as f:
+        json.dump(status_obj, f, indent=2)
 
     logger.info(f"=== Sentinel done: {log_entry['jobs_checked']} checked, "
                 f"{log_entry['healthy']} healthy, {log_entry['escalated']} escalated, "
