@@ -57,7 +57,7 @@ class SlowReasoner:
     def __init__(
         self,
         ollama_url: str = "http://localhost:11434",
-        ollama_model: str = "qwen3.5:27b",
+        ollama_model: str = "deepseek-r1:32b",
         gemini_api_key: str = "",
         gemini_model: str = "gemini-2.5-flash",
     ) -> None:
@@ -156,8 +156,8 @@ What action should I take?"""
             )
 
     async def _call_qwen(self, system: str, user: str) -> tuple[str, float]:
-        """Tier 0: Qwen 3.5 local via Ollama. Free."""
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        """Tier 0: DeepSeek-R1:32b local via Ollama. Free. (~32s for 256 tokens)"""
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 f"{self._ollama_url}/api/chat",
                 json={
@@ -168,7 +168,6 @@ What action should I take?"""
                     ],
                     "stream": False,
                     "options": {"temperature": 0.3, "num_predict": 256},
-                    "think": False,  # CRITICAL: Qwen 3.5 needs this
                 },
             )
             response.raise_for_status()
