@@ -24,8 +24,8 @@
   "circuit_breakers": {
     "CB_NLM": {
       "state": "CLOSED",
-      "failure_count": 0,
-      "last_failure": null,
+      "failure_count": 2,
+      "last_failure": "2026-03-31T12:47:23.614169+00:00",
       "opened_at": null,
       "auto_close_after_hours": 4
     },
@@ -142,11 +142,11 @@
     "handoff_directory_created": true
   },
   "budget": {
-    "daily_queries": 2,
-    "weekly_calls": 2,
+    "daily_queries": 4,
+    "weekly_calls": 4,
     "last_reset_date": "2026-03-31",
     "week_start": "2026-03-30"
   },
   "current_state": "COMPLETE",
-  "last_updated": "2026-03-30T23:31:16.038358+00:00"
+  "last_updated": "2026-03-31T12:48:12.280922+00:00"
 }

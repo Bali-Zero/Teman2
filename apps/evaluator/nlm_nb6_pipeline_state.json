@@ -4,10 +4,10 @@
   "notebook_name": "NB-6: Operations & Compliance Indonesia",
   "current_state": "COMPLETE",
   "degradation_level": "NOMINAL",
-  "last_updated": "2026-03-31T00:10:12.722320+00:00",
+  "last_updated": "2026-03-31T12:48:45.582602+00:00",
   "budget": {
     "daily_queries": 2,
-    "weekly_calls": 4,
+    "weekly_calls": 8,
     "week_start": "2026-W13"
   },
   "circuit_breakers": {
@@ -44,6 +44,16 @@
       "date": "2026-03-31",
       "cluster": "B",
       "run_id": "4f1a836b-bb96-4f71-8b14-2b10e637c8be"
+    },
+    {
+      "date": "2026-03-31",
+      "cluster": "B",
+      "run_id": "16d40046-0efd-4ec2-ab6e-727945ba771f"
+    },
+    {
+      "date": "2026-03-31",
+      "cluster": "B",
+      "run_id": "2a930108-d896-42e2-8917-5de525e4d794"
     }
   ]
 }

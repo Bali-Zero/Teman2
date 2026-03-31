@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "notebook_id": "NB-2",
-  "last_updated": "2026-03-30T23:31:16.038918+00:00",
+  "last_updated": "2026-03-31T12:48:12.281177+00:00",
   "summary": {
     "total_tracked": 44,
     "active": 44,
@@ -45,7 +45,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.69,
+        "svs_total": 0.689,
         "svs_classification": "VALUABLE",
         "times_cited": 2,
         "svs_breakdown": {
@@ -62,7 +62,10 @@
           "t_effective": 1
         }
       },
-      "claims": ["NB2-P2-002", "NB2-P2-003"],
+      "claims": [
+        "NB2-P2-002",
+        "NB2-P2-003"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "alih status offshore autogate guida 2025",
@@ -137,7 +140,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.409,
+        "svs_total": 0.408,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -294,7 +297,9 @@
       "dedup": {
         "url_hash": null,
         "title_normalized": "uu no 6 tahun 2011 keimigrasian",
-        "known_duplicates": ["7625b0cd-37ab-40d2-a560-6adc6303327d"]
+        "known_duplicates": [
+          "7625b0cd-37ab-40d2-a560-6adc6303327d"
+        ]
       },
       "flags": {
         "pinned": true,
@@ -480,7 +485,11 @@
           "t_effective": 1
         }
       },
-      "claims": ["NB2-P1-003", "NB2-P1-005", "NB2-P2-004"],
+      "claims": [
+        "NB2-P1-003",
+        "NB2-P1-005",
+        "NB2-P2-004"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "jabatan tka kepmen228 settori ammessi 2025",
@@ -509,7 +518,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.715,
+        "svs_total": 0.714,
         "svs_classification": "ESSENTIAL",
         "times_cited": 2,
         "svs_breakdown": {
@@ -526,7 +535,10 @@
           "t_effective": 1
         }
       },
-      "claims": ["NB2-P1-004", "NB2-P2-004"],
+      "claims": [
+        "NB2-P1-004",
+        "NB2-P2-004"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "jabatan tka vietate kepmen349 2025",
@@ -618,7 +630,12 @@
           "t_effective": 1
         }
       },
-      "claims": ["NB2-P1-006", "NB2-P1-009", "NB2-P4-003", "NB2-P4-004"],
+      "claims": [
+        "NB2-P1-006",
+        "NB2-P1-009",
+        "NB2-P4-003",
+        "NB2-P4-004"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "kitas e23 tka guida 2025",
@@ -923,7 +940,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.69,
+        "svs_total": 0.689,
         "svs_classification": "VALUABLE",
         "times_cited": 2,
         "svs_breakdown": {
@@ -940,7 +957,10 @@
           "t_effective": 1
         }
       },
-      "claims": ["NB2-P1-007", "NB2-P2-001"],
+      "claims": [
+        "NB2-P1-007",
+        "NB2-P2-001"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "merp rientro guida 2025",
@@ -969,7 +989,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.409,
+        "svs_total": 0.408,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1061,7 +1081,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.715,
+        "svs_total": 0.714,
         "svs_classification": "ESSENTIAL",
         "times_cited": 2,
         "svs_breakdown": {
@@ -1078,7 +1098,10 @@
           "t_effective": 1
         }
       },
-      "claims": ["NB2-P1-002", "NB2-P4-002"],
+      "claims": [
+        "NB2-P1-002",
+        "NB2-P4-002"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "nb2 immigration circulars",
@@ -1107,7 +1130,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.409,
+        "svs_total": 0.408,
         "svs_classification": "MARGINAL",
         "times_cited": 0,
         "svs_breakdown": {
@@ -1153,7 +1176,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.715,
+        "svs_total": 0.714,
         "svs_classification": "ESSENTIAL",
         "times_cited": 2,
         "svs_breakdown": {
@@ -1170,7 +1193,10 @@
           "t_effective": 1
         }
       },
-      "claims": ["NB2-P1-001", "NB2-P1-010"],
+      "claims": [
+        "NB2-P1-001",
+        "NB2-P1-010"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "nb2 tka rptka guide",
@@ -1429,7 +1455,7 @@
         "last_confirmed_valid": "2026-03-28T00:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.618,
+        "svs_total": 0.617,
         "svs_classification": "VALUABLE",
         "times_cited": 1,
         "svs_breakdown": {
@@ -1446,7 +1472,9 @@
           "t_effective": 1
         }
       },
-      "claims": ["NB2-P1-008"],
+      "claims": [
+        "NB2-P1-008"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "rptka dkp tka guida 2025",
@@ -1845,7 +1873,7 @@
         "last_confirmed_valid": "2026-03-28T17:00:00+08:00"
       },
       "scores": {
-        "svs_total": 0.619,
+        "svs_total": 0.618,
         "svs_classification": "VALUABLE",
         "times_cited": 1,
         "svs_breakdown": {
@@ -1862,7 +1890,9 @@
           "t_effective": 0
         }
       },
-      "claims": ["NB2-P2-004"],
+      "claims": [
+        "NB2-P2-004"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "nb2 md operations status",
@@ -1986,7 +2016,7 @@
         "last_confirmed_valid": "2026-03-28T18:15:00+08:00"
       },
       "scores": {
-        "svs_total": 0.841,
+        "svs_total": 0.84,
         "svs_classification": "ESSENTIAL",
         "times_cited": 2,
         "svs_breakdown": {
@@ -2003,11 +2033,16 @@
           "t_effective": 0
         }
       },
-      "claims": ["NB2-P2-001", "NB2-P4-005"],
+      "claims": [
+        "NB2-P2-001",
+        "NB2-P4-005"
+      ],
       "dedup": {
         "url_hash": null,
         "title_normalized": "uu no 63 tahun 2024 perubahan atas uu keimigrasian",
-        "known_duplicates": ["4061643c-5660-4f8c-83b4-c507565f47d0"]
+        "known_duplicates": [
+          "4061643c-5660-4f8c-83b4-c507565f47d0"
+        ]
       },
       "flags": {
         "pinned": true,
@@ -2054,7 +2089,9 @@
       "dedup": {
         "url_hash": "bpk_273550_uu_63_2024",
         "title_normalized": "uu no 63 tahun 2024",
-        "known_duplicates": ["adc39025-f3ec-4a51-adc0-57f7c0c212ce"]
+        "known_duplicates": [
+          "adc39025-f3ec-4a51-adc0-57f7c0c212ce"
+        ]
       },
       "flags": {
         "pinned": true,
