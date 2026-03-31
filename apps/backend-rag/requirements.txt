@@ -30,6 +30,7 @@ anthropic>=0.75.0  # Upgraded for httpx 0.28+ compatibility
 # PyTorch 2.2.0+ required for transformers compatibility (register_pytree_node)
 torch>=2.6.0  # Security: RCE via torch.load fixed in 2.6.0 (CVE-2025-32434)
 sentence-transformers>=5.3.0  # Updated 2026-03-14: tested compatible, CrossEncoder API stable, sparse embeddings support
+huggingface-hub>=0.34.0,<1.0  # Required by sentence-transformers CrossEncoder model loading
 tiktoken>=0.5.0  # For accurate token estimation (optional, has fallback)
 
 # PII Detection (UU PDP compliance)

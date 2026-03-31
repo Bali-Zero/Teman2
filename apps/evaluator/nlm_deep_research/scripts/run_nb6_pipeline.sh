@@ -40,7 +40,7 @@ cd "$PROJECT_ROOT"
 echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [START] NB-6 Operations pipeline (PID $$)" >> "$LOG_FILE"
 
 # Run pipeline
-PYTHONPATH=. "$PYTHON" -m apps.evaluator.nlm_deep_research.nb6_pipeline \
+PYTHONPATH=. "$PYTHON" -m apps.evaluator.nlm_deep_research.nb6_pipeline "$@" \
     2>&1 | tee -a "$LOG_FILE"
 
 EXIT_CODE=${PIPESTATUS[0]}

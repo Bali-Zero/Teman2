@@ -355,7 +355,7 @@ class NB5Pipeline:
         )
         if past_deadline and not self.dry_run:
             logger.warning("Past NB-5 deadline (03:00 WITA)")
-        checks.append(("deadline", not past_deadline or self.dry_run))
+        checks.append(("deadline", not past_deadline or self.dry_run or self.force))
 
         checks.append(("cb_nlm", not self.circuit_breakers.nlm.is_open))
 

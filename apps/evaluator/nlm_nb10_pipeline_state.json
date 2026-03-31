@@ -4,10 +4,10 @@
   "notebook_name": "NB-10: Team Guides",
   "current_state": "COMPLETE",
   "degradation_level": "NOMINAL",
-  "last_updated": "2026-03-31T00:10:22.739837+00:00",
+  "last_updated": "2026-03-31T12:48:19.515903+00:00",
   "budget": {
     "daily_queries": 2,
-    "weekly_calls": 4,
+    "weekly_calls": 8,
     "week_start": "2026-W13"
   },
   "circuit_breakers": {
@@ -44,6 +44,16 @@
       "date": "2026-03-31",
       "cluster": "B",
       "run_id": "305522a0-edb9-4de2-bb27-f4098be8ad35"
+    },
+    {
+      "date": "2026-03-31",
+      "cluster": "B",
+      "run_id": "c49e6234-3c0d-4858-a623-2abcb2c2d0da"
+    },
+    {
+      "date": "2026-03-31",
+      "cluster": "B",
+      "run_id": "bab4675b-65cf-420f-8f12-da6222375edb"
     }
   ]
 }

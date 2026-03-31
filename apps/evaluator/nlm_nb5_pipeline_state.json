@@ -4,10 +4,10 @@
   "notebook_name": "NB-5: Property & Real Estate Indonesia",
   "current_state": "COMPLETE",
   "degradation_level": "NOMINAL",
-  "last_updated": "2026-03-31T01:31:01.747652+00:00",
+  "last_updated": "2026-03-31T12:48:13.037168+00:00",
   "budget": {
     "daily_queries": 2,
-    "weekly_calls": 2,
+    "weekly_calls": 6,
     "week_start": "2026-W13"
   },
   "circuit_breakers": {
@@ -39,6 +39,16 @@
       "date": "2026-03-31",
       "cluster": "B",
       "run_id": "354ea9c0-91fc-4a40-9e02-1481e3ac2f9c"
+    },
+    {
+      "date": "2026-03-31",
+      "cluster": "B",
+      "run_id": "e09a2cbb-8385-4ca2-b8b8-748602b288bc"
+    },
+    {
+      "date": "2026-03-31",
+      "cluster": "B",
+      "run_id": "509d47b3-875e-4ec1-bebc-d57d8f60357e"
     }
   ]
 }
