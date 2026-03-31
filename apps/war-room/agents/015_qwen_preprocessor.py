@@ -2,8 +2,8 @@
 """
 FASE 1.5 — Smart Preprocessor
 Deterministic preprocessing: dedup by hash + recency scoring + source trust weighting.
-Falls back to Ollama Qwen3.5 ONLY if running inside the Ollama cron window (01:00-06:05 WITA)
-and Ollama is actually up (TCP probe, 1s).
+Falls back to Ollama DeepSeek-R1:32b ONLY if running inside the Ollama cron window (01:00-06:05 WITA)
+and Ollama is actually up (TCP probe, 1s). Fallback: qwen3.5:9b.
 Zero cost, H24 available.
 """
 import json
@@ -44,8 +44,8 @@ def in_ollama_window() -> bool:
 
 
 def run_qwen_api(prompt: str) -> Optional[str]:
-    """Chiama Qwen3.5 via Ollama REST API — solo se Ollama è up."""
-    for model, timeout in [("qwen3.5:27b", 90), ("qwen3.5:9b", 60)]:
+    """Chiama DeepSeek-R1:32b (o fallback qwen3.5:9b) via Ollama REST API — solo se Ollama è up."""
+    for model, timeout in [("deepseek-r1:32b", 120), ("qwen3.5:9b", 60)]:
         try:
             print(f"  Trying {model} via REST API (timeout={timeout}s)...", file=sys.stderr)
             payload = json.dumps({

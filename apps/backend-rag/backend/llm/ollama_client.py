@@ -1,11 +1,12 @@
 """
 Ollama Local LLM Client
 
-Async client for local Ollama models (qwen3.5:9b, qwen3.5:27b, gemma3:12b).
-Used for cost-free, low-latency tasks: title generation, classification,
-document categorization, KG extraction.
+Async client for local Ollama models.
+  - MODEL_FAST  = qwen3.5:9b      (<0.5s, classification/titles)
+  - MODEL_HEAVY = deepseek-r1:32b (~12-15s, complex reasoning/KG extraction)
+  - MODEL_JSON  = gemma3:12b      (reliable JSON output)
 
-Graceful fallback: if Ollama is unavailable, caller handles API fallback.
+Used for cost-free tasks. Graceful fallback: if Ollama is unavailable, caller handles API fallback.
 """
 
 import logging
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Default models by task complexity
 MODEL_FAST = "qwen3.5:9b"  # <0.5s, classification/titles/short tasks
-MODEL_HEAVY = "qwen3.5:27b"  # ~3-5s, reasoning/preprocessing/KG extraction
+MODEL_HEAVY = "deepseek-r1:32b"  # ~12-15s, complex reasoning/KG extraction (replaces qwen3.5:27b)
 MODEL_JSON = "gemma3:12b"  # Reliable JSON output, scoring
 
 OLLAMA_BASE_URL = settings.ollama_url  # default: http://localhost:11434

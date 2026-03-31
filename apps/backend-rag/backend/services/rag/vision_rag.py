@@ -18,7 +18,7 @@ from PIL import Image
 
 from backend.app.core.config import settings
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
-from backend.llm.ollama_client import MODEL_HEAVY, is_ollama_available
+from backend.llm.ollama_client import is_ollama_available
 
 logger = logging.getLogger(__name__)
 
@@ -199,16 +199,18 @@ Output JSON:
             return None
 
     async def _vision_via_ollama(self, prompt: str, image_base64: str) -> str | None:
-        """Analyze image using local Ollama qwen3.5:27b vision."""
+        """Analyze image using local Ollama vision model (qwen2.5vl:7b)."""
+        # NOTE: MODEL_HEAVY (qwen3.5:27b Q4_K_M) strips vision weights — cannot do vision.
+        # qwen2.5vl:7b is the ONLY Ollama model with working vision support.
+        vision_model = "qwen2.5vl:7b"
         try:
-            if not await is_ollama_available(MODEL_HEAVY):
+            if not await is_ollama_available(vision_model):
                 return None
 
             payload = {
-                "model": MODEL_HEAVY,
+                "model": vision_model,
                 "messages": [{"role": "user", "content": prompt, "images": [image_base64]}],
                 "stream": False,
-                "think": False,
                 "options": {"temperature": 0.1, "num_predict": 8192},
             }
 
@@ -220,7 +222,7 @@ Output JSON:
             response.raise_for_status()
             content = response.json().get("message", {}).get("content", "").strip()
             if content:
-                logger.info(f"👁️ VisionRAG: Ollama ({MODEL_HEAVY}) responded")
+                logger.info(f"👁️ VisionRAG: Ollama ({vision_model}) responded")
                 return content
             return None
         except Exception as e:
