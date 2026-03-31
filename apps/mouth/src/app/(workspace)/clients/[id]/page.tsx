@@ -908,6 +908,7 @@ export default function ClientDetailPage() {
           formatDate={formatDate}
           client={profile?.client ?? null}
           companyLinks={company_links}
+          onRefresh={invalidateClient}
         />
       )}
 

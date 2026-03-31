@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/team", tags=["team"])
 class TeamMember(BaseModel):
     """Team member model"""
 
+    id: str | None = None
     email: str
     name: str
     full_name: str | None = None
@@ -63,7 +64,7 @@ async def get_team_members(
             visible_emails = [rule["visible_member_email"] for rule in visibility_rules]
 
             members = await conn.fetch(
-                """SELECT email, name, full_name, role, department, active, avatar
+                """SELECT id, email, name, full_name, role, department, active, avatar
                    FROM team_members
                    WHERE email = ANY($1::text[]) AND active = TRUE
                    ORDER BY name""",
@@ -72,7 +73,7 @@ async def get_team_members(
         elif user_dept in ["board", "founders"]:
             # Board and founders see everyone
             members = await conn.fetch(
-                """SELECT email, name, full_name, role, department, active, avatar
+                """SELECT id, email, name, full_name, role, department, active, avatar
                    FROM team_members
                    WHERE active = TRUE
                    ORDER BY name""",
@@ -80,7 +81,7 @@ async def get_team_members(
         else:
             # Default: see only members of same department
             members = await conn.fetch(
-                """SELECT email, name, full_name, role, department, active, avatar
+                """SELECT id, email, name, full_name, role, department, active, avatar
                    FROM team_members
                    WHERE department = $1 AND active = TRUE
                    ORDER BY name""",
@@ -89,6 +90,7 @@ async def get_team_members(
 
         return [
             TeamMember(
+                id=m["id"],
                 email=m["email"],
                 name=m["name"],
                 full_name=m["full_name"],

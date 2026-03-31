@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Building2, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import type {
   ClientProfile,
   ClientDocument,
@@ -182,7 +183,8 @@ export function CompanyTab({
                 }
                 if (full.documents?.length) setCompanyDocs(full.documents);
               })
-              .catch(() => {
+              .catch((err) => {
+                logger.error('[CompanyTab] Failed to load company details', {}, err instanceof Error ? err : new Error(String(err)));
                 setAssociates([
                   {
                     client_name: client.full_name,
@@ -286,7 +288,7 @@ export function CompanyTab({
             api.crm
               .getCompanyDocuments(found.id)
               .then((docs) => !cancelled && setCompanyDocs(docs))
-              .catch(() => {});
+              .catch((err) => { logger.error('[CompanyTab] Failed to load company documents', {}, err instanceof Error ? err : new Error(String(err))); });
             return;
           }
         }

@@ -592,6 +592,121 @@ def _watchdog_core() -> None:
     except Exception as _e:
         logger.debug(f"Cache audit skip: {_e}")
 
+    # 8. Empty catch audit (regex — tutti i file TS/JS/Python)
+    try:
+        from apps.evaluator.core_guardian.checks.empty_catch_audit import (
+            run_audit as _catch_audit,
+        )
+        _catch_result = _catch_audit(PROJECT_ROOT)
+        _catch_count = _catch_result.total
+        _baseline_catch = baseline.get("empty_catch_count", None)
+        logger.info(f"Empty catch audit: {_catch_count} findings in {_catch_result.files_scanned} files")
+        if _baseline_catch is None:
+            baseline["empty_catch_count"] = _catch_count
+            baseline["updated_at"] = now
+            atomic_write_json(BASELINE_FILE, baseline)
+        elif _catch_count > _baseline_catch + 3:
+            delta_catch = _catch_count - _baseline_catch
+            send_telegram_alert(
+                f"🔕 Empty Catch Blocks Increased\n"
+                f"Silent catches: {_catch_count} (was {_baseline_catch}, +{delta_catch})\n"
+                f"New code swallowing errors silently."
+            )
+        elif _catch_count < _baseline_catch:
+            baseline["empty_catch_count"] = _catch_count
+            baseline["updated_at"] = now
+            atomic_write_json(BASELINE_FILE, baseline)
+            logger.info(f"Empty catch improved: {_catch_count} (was {_baseline_catch})")
+    except Exception as _e:
+        logger.debug(f"Empty catch audit skip: {_e}")
+
+    # 9. RBAC audit (regex — tutti i router FastAPI)
+    try:
+        from apps.evaluator.core_guardian.checks.rbac_audit import (
+            run_audit as _rbac_audit,
+        )
+        _rbac_result = _rbac_audit(PROJECT_ROOT)
+        _rbac_errors = len([f for f in _rbac_result.findings if f.severity == "error"])
+        _baseline_rbac = baseline.get("rbac_error_count", None)
+        logger.info(f"RBAC audit: {_rbac_errors} errors, {_rbac_result.total - _rbac_errors} warnings across {_rbac_result.endpoints_scanned} endpoints")
+        if _baseline_rbac is None:
+            baseline["rbac_error_count"] = _rbac_errors
+            baseline["updated_at"] = now
+            atomic_write_json(BASELINE_FILE, baseline)
+        elif _rbac_errors > _baseline_rbac:
+            delta_rbac = _rbac_errors - _baseline_rbac
+            send_telegram_alert(
+                f"🔓 RBAC Violations Increased\n"
+                f"Unprotected mutation endpoints: {_rbac_errors} (was {_baseline_rbac}, +{delta_rbac})\n"
+                f"New endpoint without Depends(get_current_user)."
+            )
+        elif _rbac_errors < _baseline_rbac:
+            baseline["rbac_error_count"] = _rbac_errors
+            baseline["updated_at"] = now
+            atomic_write_json(BASELINE_FILE, baseline)
+            logger.info(f"RBAC improved: {_rbac_errors} errors (was {_baseline_rbac})")
+    except Exception as _e:
+        logger.debug(f"RBAC audit skip: {_e}")
+
+    # 10. Dead code / hardcoded values audit
+    try:
+        from apps.evaluator.core_guardian.checks.dead_code_audit import (
+            run_audit as _dead_audit,
+        )
+        _dead_result = _dead_audit(PROJECT_ROOT)
+        _dead_count = _dead_result.total
+        _baseline_dead = baseline.get("dead_code_count", None)
+        logger.info(f"Dead code audit: {_dead_count} findings in {_dead_result.files_scanned} files")
+        if _baseline_dead is None:
+            baseline["dead_code_count"] = _dead_count
+            baseline["updated_at"] = now
+            atomic_write_json(BASELINE_FILE, baseline)
+        elif _dead_count > _baseline_dead + 3:
+            delta_dead = _dead_count - _baseline_dead
+            send_telegram_alert(
+                f"💀 Dead Code / Hardcoded Values Increased\n"
+                f"Findings: {_dead_count} (was {_baseline_dead}, +{delta_dead})\n"
+                f"New hardcoded lists, as any casts, or dead params."
+            )
+        elif _dead_count < _baseline_dead:
+            baseline["dead_code_count"] = _dead_count
+            baseline["updated_at"] = now
+            atomic_write_json(BASELINE_FILE, baseline)
+            logger.info(f"Dead code improved: {_dead_count} (was {_baseline_dead})")
+    except Exception as _e:
+        logger.debug(f"Dead code audit skip: {_e}")
+
+    # 11. API contract audit (frontend↔backend mismatch)
+    try:
+        from apps.evaluator.core_guardian.checks.api_contract_audit import (
+            run_audit as _contract_audit,
+        )
+        _contract_result = _contract_audit(PROJECT_ROOT)
+        _ghost_count = _contract_result.total
+        _baseline_ghost = baseline.get("ghost_endpoint_count", None)
+        logger.info(
+            f"API contract audit: {_ghost_count} ghost endpoints "
+            f"(frontend: {len(_contract_result.frontend_endpoints)}, backend: {len(_contract_result.backend_endpoints)})"
+        )
+        if _baseline_ghost is None:
+            baseline["ghost_endpoint_count"] = _ghost_count
+            baseline["updated_at"] = now
+            atomic_write_json(BASELINE_FILE, baseline)
+        elif _ghost_count > _baseline_ghost + 3:
+            delta_ghost = _ghost_count - _baseline_ghost
+            send_telegram_alert(
+                f"👻 Ghost API Endpoints Increased\n"
+                f"Frontend calls without backend route: {_ghost_count} (was {_baseline_ghost}, +{delta_ghost})\n"
+                f"New frontend code calling non-existent backend API."
+            )
+        elif _ghost_count < _baseline_ghost:
+            baseline["ghost_endpoint_count"] = _ghost_count
+            baseline["updated_at"] = now
+            atomic_write_json(BASELINE_FILE, baseline)
+            logger.info(f"Ghost endpoints improved: {_ghost_count} (was {_baseline_ghost})")
+    except Exception as _e:
+        logger.debug(f"API contract audit skip: {_e}")
+
 
 def _log_circuit_breaker_event(event_type: str, data: dict) -> None:
     """Appende un evento al circuit breaker log."""

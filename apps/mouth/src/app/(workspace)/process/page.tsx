@@ -197,7 +197,9 @@ export default function PratichePage() {
       .then((profile) => {
         if (profile?.email) setCurrentUserEmail(profile.email);
       })
-      .catch(() => {});
+      .catch((err: unknown) => {
+        logger.error('[Process] Failed to load user profile', {}, err instanceof Error ? err : new Error(String(err)));
+      });
   }, []);
 
   useEffect(() => {
@@ -319,7 +321,7 @@ export default function PratichePage() {
       const practice = practices.find((p) => p.id === practiceId);
       const oldStatus = practice?.status || 'unknown';
 
-      await api.crm.updatePractice(practiceId, { status: newStatus }, user.email);
+      await api.crm.updatePractice(practiceId, { status: newStatus });
 
       // Update local state immediately for responsiveness
       setPractices((prev) =>
@@ -366,7 +368,7 @@ export default function PratichePage() {
     setUpdatingId(practiceId);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(practiceId, { priority: newPriority }, user.email);
+      await api.crm.updatePractice(practiceId, { priority: newPriority });
       setPractices((prev) =>
         prev.map((p) => (p.id === practiceId ? { ...p, priority: newPriority } : p))
       );
@@ -390,7 +392,7 @@ export default function PratichePage() {
     setUpdatingId(practiceId);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(practiceId, { payment_status: newPaymentStatus }, user.email);
+      await api.crm.updatePractice(practiceId, { payment_status: newPaymentStatus });
       setPractices((prev) =>
         prev.map((p) => (p.id === practiceId ? { ...p, payment_status: newPaymentStatus } : p))
       );

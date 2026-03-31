@@ -237,7 +237,7 @@ export default function CaseDetailPage() {
     setIsSavingNotes(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { notes: notesValue }, user.email);
+      await api.crm.updatePractice(caseId, { notes: notesValue });
       setPractice((prev) => (prev ? { ...prev, notes: notesValue } : prev));
       toast.success('Notes saved');
       setIsEditingNotes(false);
@@ -257,7 +257,7 @@ export default function CaseDetailPage() {
     setIsUpdatingPayment(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { payment_status: nextStatus }, user.email);
+      await api.crm.updatePractice(caseId, { payment_status: nextStatus });
       setPractice((prev) => (prev ? { ...prev, payment_status: nextStatus } : prev));
       toast.success('Payment status updated', `→ ${nextStatus}`);
     } catch (err) {
@@ -276,7 +276,7 @@ export default function CaseDetailPage() {
     setIsUpdatingPriority(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { priority: nextPriority }, user.email);
+      await api.crm.updatePractice(caseId, { priority: nextPriority });
       setPractice((prev) => (prev ? { ...prev, priority: nextPriority } : prev));
       toast.success('Priority updated', `→ ${nextPriority}`);
     } catch (err) {
@@ -296,7 +296,7 @@ export default function CaseDetailPage() {
     setIsSavingPrice(true);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { [field]: num }, user.email);
+      await api.crm.updatePractice(caseId, { [field]: num });
       setPractice((prev) => (prev ? { ...prev, [field]: num } : prev));
       toast.success('Price updated');
     } catch (err) {
@@ -314,7 +314,7 @@ export default function CaseDetailPage() {
     setIsJumpingStatus(newStatus);
     try {
       const user = await api.getProfile();
-      await api.crm.updatePractice(caseId, { status: newStatus }, user.email);
+      await api.crm.updatePractice(caseId, { status: newStatus });
       setPractice((prev) => (prev ? { ...prev, status: newStatus } : prev));
       toast.success('Status updated', `→ ${newStatus.replace(/_/g, ' ')}`);
     } catch (err) {
@@ -410,7 +410,7 @@ export default function CaseDetailPage() {
         user: user.email,
       });
 
-      await api.crm.updatePractice(caseId, updates, user.email);
+      await api.crm.updatePractice(caseId, updates);
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
         '/api/crm/practices/update',
@@ -780,19 +780,26 @@ export default function CaseDetailPage() {
                   <div className="my-1 border-t border-[var(--bz-border)]" />
                   <button
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                    onClick={() => {
+                    onClick={async () => {
                       setShowMoreMenu(false);
-                      sonnerToast('Delete this process? This cannot be undone.', {
-                        action: {
-                          label: 'Delete',
-                          onClick: () =>
-                            toast.warning(
-                              'Not yet available',
-                              'Process deletion will be enabled in a future update.'
-                            ),
-                        },
-                        cancel: { label: 'Cancel', onClick: () => sonnerToast.dismiss() },
-                      });
+                      if (!caseId) return;
+                      const confirmed = window.confirm(
+                        'Delete this process? This action will cancel the process and cannot be undone.'
+                      );
+                      if (!confirmed) return;
+                      try {
+                        const user = await api.getProfile();
+                        await api.crm.deletePractice(caseId, user.email);
+                        sonnerToast.success('Process deleted');
+                        router.push('/process');
+                      } catch (err) {
+                        logger.error(
+                          'Failed to delete process',
+                          { component: 'CaseDetail', action: 'deleteProcess' },
+                          toError(err)
+                        );
+                        sonnerToast.error('Failed to delete process');
+                      }
                     }}
                   >
                     <Trash2 className="w-3.5 h-3.5" />

@@ -49,12 +49,14 @@ NB-2 was built through a rigorous 7-step pipeline. Each step was designed by con
 
 ### Current State
 
-NB-4 "Tax & Fiscal Indonesia" has **9 seed sources** (all internal Bali Zero guides):
+NB-4 "Tax & Fiscal Indonesia" has **12 sources** (9 internal Bali Zero guides + 3 regulations ingested 2026-04-01):
 
-| #   | Source                                     | Type  |
-| --- | ------------------------------------------ | ----- |
-| 1   | _(to be listed after notebook inspection)_ | Guide |
-| ... | ...                                        | ...   |
+| #   | Source                        | Type       |
+| --- | ----------------------------- | ---------- |
+| 1-9 | _(internal Bali Zero guides)_ | Guide      |
+| 10  | PMK 131/2024                  | T0 Reg PDF |
+| 11  | PMK 81/2024                   | T0 Reg PDF |
+| 12  | PMK 28/2025                   | T0 Reg PDF |
 
 ### Adjacent Notebooks (borders)
 

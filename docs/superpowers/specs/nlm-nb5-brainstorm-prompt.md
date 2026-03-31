@@ -51,11 +51,12 @@ NB-2 was built through a rigorous 7-step pipeline. Each step was designed by con
 
 ### Current State
 
-NB-5 "Property & Real Estate Indonesia 2025" has **6 seed sources** (all internal Bali Zero guides):
+NB-5 "Property & Real Estate Indonesia 2025" has **7 sources** (6 internal Bali Zero guides + 1 regulation ingested 2026-04-01):
 
-| #   | Source                                                               | Type  |
-| --- | -------------------------------------------------------------------- | ----- |
-| 1-6 | _(6 internal Bali Zero guides — inspect NB-5 notebook to enumerate)_ | Guide |
+| #   | Source                                                               | Type       |
+| --- | -------------------------------------------------------------------- | ---------- |
+| 1-6 | _(6 internal Bali Zero guides — inspect NB-5 notebook to enumerate)_ | Guide      |
+| 7   | PP 18/2021 (Hak Pengelolaan, Hak Atas Tanah)                         | T0 Reg PDF |
 
 > **NOTE to brainstormer:** Query NB-5 to list actual seed sources before designing clusters. Do not assume content.
 
@@ -184,18 +185,18 @@ Government fees (BPHTB rates, BPN registration fees, notary tariffs) belong in N
 
 ## REFERENCE: THE 10 NOTEBOOKS
 
-| NB       | Title                                     | Sources | Status                                   |
-| -------- | ----------------------------------------- | ------- | ---------------------------------------- |
-| NB-1     | Nuzantara Codebase & Architecture         | 85      | COMPLETE (oracle)                        |
-| NB-2     | Immigration & Visa — Indonesia 2025       | 53      | COMPLETE (pipeline live, T4 monitor)     |
-| NB-3     | Company Setup — Indonesia 2025            | 10      | BRAINSTORM COMPLETE (population pending) |
-| **NB-4** | **Tax & Fiscal Indonesia**                | **9**   | **BRAINSTORM PROMPT READY**              |
-| **NB-5** | **Property & Real Estate Indonesia 2025** | **6**   | **← BRAINSTORM TARGET (this prompt)**    |
-| NB-6     | Operations & Compliance Indonesia 2025    | 6       | SEED                                     |
-| NB-7     | Editorial & Content Strategy 2025         | 6       | SEED                                     |
-| NB-8     | Expat Life Bali 2025                      | 7       | SEED                                     |
-| NB-9     | Research Lab                              | 582     | ACTIVE (lab, not production)             |
-| NB-10    | Team Guides                               | 6       | SEED                                     |
+| NB       | Title                                     | Sources | Status                                        |
+| -------- | ----------------------------------------- | ------- | --------------------------------------------- |
+| NB-1     | Nuzantara Codebase & Architecture         | 85      | COMPLETE (oracle)                             |
+| NB-2     | Immigration & Visa — Indonesia 2025       | 53      | COMPLETE (pipeline live, T4 monitor)          |
+| NB-3     | Company Setup — Indonesia 2025            | 10      | BRAINSTORM COMPLETE (population pending)      |
+| **NB-4** | **Tax & Fiscal Indonesia**                | **12**  | **BRAINSTORM PROMPT READY (3 T0 regs added)** |
+| **NB-5** | **Property & Real Estate Indonesia 2025** | **7**   | **BRAINSTORM TARGET — PP 18/2021 added**      |
+| NB-6     | Operations & Compliance Indonesia 2025    | 6       | SEED                                          |
+| NB-7     | Editorial & Content Strategy 2025         | 6       | SEED                                          |
+| NB-8     | Expat Life Bali 2025                      | 7       | SEED                                          |
+| NB-9     | Research Lab                              | 582     | ACTIVE (lab, not production)                  |
+| NB-10    | Team Guides                               | 6       | SEED                                          |
 
 ## REFERENCE FILES
 
