@@ -18,22 +18,22 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 
 ## Numbers
 
-| Metrica | Valore |
-|---------|--------|
-| Clienti | 5,000+ |
-| App nel monorepo | 20 |
-| Backend routers | 90+ |
-| Backend services | 257 files across 34 service directories |
-| Communication channels | 7 (WhatsApp, Telegram, Instagram, Web, X, GChat, Slack) |
-| MCP tools | 131 (118 Nuzantara + 13 Advanced) |
-| MCP workflow chains | 8 deterministic automation chains |
-| Qdrant vector documents | 93,283 across 10 live collections |
-| Knowledge Graph nodes | 56,113 |
-| Knowledge Graph edges | 161,173 |
-| Frontend pages | 84+ (SSG + dynamic) |
-| KBLI SSG pages | 1,563 |
-| Test files | 419 |
-| Embedding model | text-embedding-3-small (1536 dims) — FROZEN, non cambiabile |
+| Metrica                 | Valore                                                                                       |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
+| Clienti                 | 5,000+                                                                                       |
+| App nel monorepo        | 20                                                                                           |
+| Backend routers         | 90+                                                                                          |
+| Backend services        | 257 files across 34 service directories                                                      |
+| Communication channels  | 7 (WhatsApp, Telegram, Instagram, Web, X, GChat, Slack)                                      |
+| MCP tools               | 131 (118 Nuzantara + 13 Advanced)                                                            |
+| MCP workflow chains     | 8 deterministic automation chains                                                            |
+| Qdrant vector documents | 93,283 across 10 live collections                                                            |
+| Knowledge Graph nodes   | 56,113                                                                                       |
+| Knowledge Graph edges   | 161,173                                                                                      |
+| Frontend pages          | 84+ (SSG + dynamic)                                                                          |
+| KBLI SSG pages          | 1,563                                                                                        |
+| Test files              | 419                                                                                          |
+| Embedding model         | text-embedding-3-small (1536 dims) — FROZEN, non cambiabile                                  |
 | Backend LOC (key files) | orchestrator_core 1,124 + search_service 1,382 + reasoning 1,828 + service_initializer 1,195 |
 
 ---
@@ -43,6 +43,7 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Cosa fa**: Riceve domande utente → classifica intent → cerca documenti → ragiona → genera risposta con citazioni.
 
 **File chiave**:
+
 - `services/rag/agentic/orchestrator_core.py` (1,124 righe) — orchestratore principale
 - `services/rag/agentic/reasoning.py` (1,828 righe) — ragionamento + confidence enforcement
 - `services/rag/confidence.py` (323 righe) — 6-factor evidence scoring
@@ -55,11 +56,13 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Confidence thresholds**: <0.15 ABSTAIN, 0.15-0.60 CAUTIOUS, >0.60 NORMAL
 
 **Limitazioni note**:
+
 - Gemini a volte risponde direttamente senza usare tools → confidence score = 0 → ABSTAIN anche su query valide (fixato con tools-available bypass)
 - Scoring system progettato per tool-calling pipeline, non per LLM che rispondono diretto
 - Orchestrator è monolitico (1,124 righe)
 
 ### Micro aree:
+
 1. **Intent Classification** — keyword + regex, non ML. Funziona ma grezzo.
 2. **Evidence Scoring** — 6 fattori (source count, tool usage, citation density, recency, agreement, specificity). Hardcoded thresholds.
 3. **LLM Gateway** — multi-provider (Gemini, Ollama, OpenRouter). Pattern: Ollama locale → fallback Gemini API.
@@ -73,6 +76,7 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Cosa fa**: Grafo di entità e relazioni estratte da documenti legali/regolamentari indonesiani. Usato per query strutturali (chi richiede cosa, cosa dipende da cosa).
 
 **File chiave**:
+
 - `services/knowledge_graph/` — extraction + query
 - `services/rag/kg_subgraph_visa.py` — subgraph visa (KITAS, KITAP, VITAS)
 - `services/rag/kg_subgraph_company.py` — subgraph company (PT PMA)
@@ -82,12 +86,14 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Numeri**: 56,113 nodi, 161,173 edges. Top entity types: kbli (6,932), biaya (6,060), pasal (3,954), dokumen (3,674)
 
 **Limitazioni note**:
+
 - Confidence hardcoded a 0.9 su tutti i nodi (non riflette vera qualità)
 - ~5,000 nodi orfani (14.5%) senza relazioni
 - Estrazione batch (Gemini) disabilitata — troppo costosa (€230 per 37M chiamate)
 - Subgraph property e tax non verificati
 
 ### Micro aree:
+
 1. **KG Extraction** — batch via Gemini (disabilitato), incremental pipeline
 2. **KG Query** — asyncpg su PostgreSQL, 4 subgraphs (visa, company, property, tax)
 3. **KG-RAG Integration** — KG tool disponibile nell'orchestrator come tool #4
@@ -99,19 +105,23 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Cosa fa**: Ricerca ibrida su 93K documenti vettoriali. BM25 (keyword) + Dense (semantic) + RRF (fusion) + CrossEncoder reranking.
 
 **File chiave**:
+
 - `services/search/search_service.py` (1,382 righe)
 
 **Stack**: Qdrant (vettori, Fly.io), text-embedding-3-small (1536 dims), CrossEncoder reranking (abilitato 2026-03-24)
 
 **Collections** (10 live su Fly.io):
+
 - legal_unified_hybrid, visa_oracle, tax_genius_hybrid, kbli_atlas, training_conversations, property_intel, intel_articles, e altre
 
 **Limitazioni note**:
+
 - Embedding model FROZEN (text-embedding-3-small) — cambiarlo invalida 93K vettori
 - Named vectors vs single vector: inconsistenza tra collection vecchie e nuove
 - No late chunking o contextual retrieval — chunking standard
 
 ### Micro aree:
+
 1. **Embedding** — OpenAI text-embedding-3-small, 1536 dims, $0.02/M tokens
 2. **Hybrid Search** — BM25 sparse + dense vectors + Reciprocal Rank Fusion
 3. **Reranking** — CrossEncoder (ms-marco-MiniLM-L6-v2), abilitato recentemente
@@ -126,10 +136,12 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Stack**: LangGraph (StateGraph), 9 tools, Gemini 2.5 Flash / Ollama qwen3.5
 
 **File chiave**:
+
 - `app/agents/graph.py` — workflow LangGraph (retrieve → grade → generate)
 - `services/rag/agentic/` — orchestrator, reasoning, llm_gateway
 
 **Limitazioni note**:
+
 - Single-agent (no multi-agent collaboration)
 - No planning step (l'agente non pianifica prima di agire)
 - No reflection/self-correction loop
@@ -141,19 +153,20 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 
 **Cosa fa**: 7 canali di comunicazione, ciascuno con adapter + formatter + webhook.
 
-| Canale | Status | Provider |
-|--------|--------|----------|
-| WhatsApp | LIVE | Meta Cloud API |
-| Telegram | LIVE | Bot API (@Balizerobot) |
-| Instagram | LIVE | Meta webhook |
-| Web Chat | LIVE | SSE custom |
-| X/Twitter | BROKEN | CRC auth failure |
-| Google Chat | Scaffold | — |
-| Slack | Scaffold | — |
+| Canale      | Status   | Provider               |
+| ----------- | -------- | ---------------------- |
+| WhatsApp    | LIVE     | Meta Cloud API         |
+| Telegram    | LIVE     | Bot API (@Balizerobot) |
+| Instagram   | LIVE     | Meta webhook           |
+| Web Chat    | LIVE     | SSE custom             |
+| X/Twitter   | BROKEN   | CRC auth failure       |
+| Google Chat | Scaffold | —                      |
+| Slack       | Scaffold | —                      |
 
 **Stack**: FastAPI webhooks, adapter pattern, channel_router.py
 
 **Limitazioni note**:
+
 - X/Twitter broken (CRC)
 - Telegram: Pro polls, Air/Fly send only
 - No unified conversation history across canali
@@ -166,6 +179,7 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Cosa fa**: Gestione clienti, practices (casi attivi), compliance, document management, automation engine.
 
 **File chiave**:
+
 - `app/routers/crm_enhanced.py` (2,028 righe) — CRUD clienti
 - `app/routers/crm_clients.py` (1,928 righe) — client management
 - `services/crm/` — 6 service files
@@ -176,6 +190,7 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Numeri**: 5,000+ clienti, 2,070 companies, 1,803 company_docs
 
 **Limitazioni note**:
+
 - Router god files (2,028 righe crm_enhanced.py) — necessitano split
 - Automation engine è script standalone, non integrato nel backend lifecycle
 - No real-time notifications per cambiamenti CRM
@@ -187,6 +202,7 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Cosa fa**: Scraping regolamentare → classificazione → editorial → pubblicazione → social monitoring.
 
 **Componenti**:
+
 - `apps/bali-intel-scraper/` — scraper (corre su Pro via OpenClaw, 03:00 WITA)
 - `apps/war-room/` — pipeline giornalismo multi-stage (Grok→Qwen→Gemini→Claude→Canva)
 - `services/social/x_monitor_service.py` — social listening X
@@ -195,6 +211,7 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Stack**: OpenClaw cron, Exa API, xAI x_search (appena integrato), Gemini for SEO optimization
 
 **Limitazioni note**:
+
 - War Room pipeline complesso (8 stage, 10 minuti) — fragile
 - Social monitor X mai attivato in produzione
 - No real-time regulatory alert (solo batch notturno)
@@ -205,17 +222,18 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 
 **Cosa fa**: Deploy, database, caching, monitoring.
 
-| Componente | Dove | Specs |
-|-----------|------|-------|
+| Componente  | Dove               | Specs                             |
+| ----------- | ------------------ | --------------------------------- |
 | Backend API | Fly.io (Singapore) | shared-cpu-2x, 2GB RAM, auto_stop |
-| PostgreSQL | Fly.io | 2GB RAM |
-| Qdrant | Fly.io | 2GB RAM, v1.17.0 |
-| Redis | Upstash/Fly | Cache |
-| Frontend | Vercel | CDN + Edge |
-| Ollama | Pro locale | qwen3.5:27b, gemma3:12b |
-| OpenClaw | Pro/Air | Agent runtime |
+| PostgreSQL  | Fly.io             | 2GB RAM                           |
+| Qdrant      | Fly.io             | 2GB RAM, v1.17.0                  |
+| Redis       | Upstash/Fly        | Cache                             |
+| Frontend    | Vercel             | CDN + Edge                        |
+| Ollama      | Pro locale         | qwen3.5:27b, gemma3:12b           |
+| OpenClaw    | Pro/Air            | Agent runtime                     |
 
 **Limitazioni note**:
+
 - 2GB RAM su backend (cold start ~35s con auto_stop)
 - PostgreSQL 2GB (era OOM, upgradato da 1GB)
 - No Kubernetes, no horizontal scaling
@@ -240,6 +258,7 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 **Stack**: Next.js, 14 pagine authenticated, SSO cross-domain via httpOnly cookie
 
 **Limitazioni note**:
+
 - Cross-domain auth necessita fallback cookie (localStorage non funziona cross-subdomain)
 - No real-time updates (polling manuale)
 

@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",
-  "notebook_name": "NB-6: Operations & Compliance Indonesia",
+  "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
+  "notebook_name": "NB-5: Property & Real Estate Indonesia",
   "current_state": "COMPLETE",
   "degradation_level": "NOMINAL",
-  "last_updated": "2026-03-31T00:10:12.722320+00:00",
+  "last_updated": "2026-03-31T01:31:01.747652+00:00",
   "budget": {
     "daily_queries": 2,
-    "weekly_calls": 4,
+    "weekly_calls": 2,
     "week_start": "2026-W13"
   },
   "circuit_breakers": {
@@ -38,12 +38,7 @@
     {
       "date": "2026-03-31",
       "cluster": "B",
-      "run_id": "4b1f37a5-7fd3-435d-9552-5309116e0b81"
-    },
-    {
-      "date": "2026-03-31",
-      "cluster": "B",
-      "run_id": "4f1a836b-bb96-4f71-8b14-2b10e637c8be"
+      "run_id": "354ea9c0-91fc-4a40-9e02-1481e3ac2f9c"
     }
   ]
 }

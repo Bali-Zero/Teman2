@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",
-  "notebook_name": "NB-6: Operations & Compliance Indonesia",
+  "notebook_id": "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8",
+  "notebook_name": "NB-7: Editorial & Content Strategy",
   "current_state": "COMPLETE",
   "degradation_level": "NOMINAL",
-  "last_updated": "2026-03-31T00:10:12.722320+00:00",
+  "last_updated": "2026-03-31T01:31:06.022612+00:00",
   "budget": {
     "daily_queries": 2,
-    "weekly_calls": 4,
+    "weekly_calls": 2,
     "week_start": "2026-W13"
   },
   "circuit_breakers": {
@@ -38,12 +38,7 @@
     {
       "date": "2026-03-31",
       "cluster": "B",
-      "run_id": "4b1f37a5-7fd3-435d-9552-5309116e0b81"
-    },
-    {
-      "date": "2026-03-31",
-      "cluster": "B",
-      "run_id": "4f1a836b-bb96-4f71-8b14-2b10e637c8be"
+      "run_id": "afc7ae57-fd5c-45f7-a07b-33760806b827"
     }
   ]
 }

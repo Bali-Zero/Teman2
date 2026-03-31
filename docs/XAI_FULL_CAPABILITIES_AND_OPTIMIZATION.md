@@ -7,23 +7,25 @@
 
 ## 1. MODELLI DISPONIBILI
 
-| Modello | Contesto | Input $/M | Output $/M | Cache $/M | Specialty |
-|---------|----------|-----------|------------|-----------|-----------|
-| **grok-4.20-reasoning** | 2M | $2.00 | $6.00 | $0.20 | Top tier, reasoning chain |
-| **grok-4.20-non-reasoning** | 2M | $2.00 | $6.00 | $0.20 | Top tier, diretto |
-| **grok-4.20-multi-agent** | 2M | $2.00 | $6.00 | $0.20 | Orchestrazione multi-agente |
-| **grok-4-1-fast-reasoning** | 2M | **$0.20** | **$0.50** | $0.05 | **NOSTRO PICK** — 10x piu' economico |
-| **grok-4-1-fast-non-reasoning** | 2M | $0.20 | $0.50 | $0.05 | Fast senza reasoning |
-| **grok-imagine-image** | — | **$0.02/img** | — | — | Immagini standard |
-| **grok-imagine-image-pro** | — | **$0.07/img** | — | — | Immagini premium |
-| **grok-imagine-video** | — | **$0.05/sec** | — | — | Video 1-15 sec |
+| Modello                         | Contesto | Input $/M     | Output $/M | Cache $/M | Specialty                            |
+| ------------------------------- | -------- | ------------- | ---------- | --------- | ------------------------------------ |
+| **grok-4.20-reasoning**         | 2M       | $2.00         | $6.00      | $0.20     | Top tier, reasoning chain            |
+| **grok-4.20-non-reasoning**     | 2M       | $2.00         | $6.00      | $0.20     | Top tier, diretto                    |
+| **grok-4.20-multi-agent**       | 2M       | $2.00         | $6.00      | $0.20     | Orchestrazione multi-agente          |
+| **grok-4-1-fast-reasoning**     | 2M       | **$0.20**     | **$0.50**  | $0.05     | **NOSTRO PICK** — 10x piu' economico |
+| **grok-4-1-fast-non-reasoning** | 2M       | $0.20         | $0.50      | $0.05     | Fast senza reasoning                 |
+| **grok-imagine-image**          | —        | **$0.02/img** | —          | —         | Immagini standard                    |
+| **grok-imagine-image-pro**      | —        | **$0.07/img** | —          | —         | Immagini premium                     |
+| **grok-imagine-video**          | —        | **$0.05/sec** | —          | —         | Video 1-15 sec                       |
 
 ### Scelta per noi:
+
 - **Research/search**: `grok-4-1-fast-reasoning` ($0.20/$0.50) — 10x cheaper del top, stesse tools
 - **Image generation**: `grok-imagine-image` ($0.02/img) — 50 immagini = $1
 - **Video clips**: `grok-imagine-video` ($0.05/sec) — 10 sec clip = $0.50
 
 ### Tutti i modelli supportano:
+
 - x_search (ricerca X/Twitter)
 - web_search (ricerca web)
 - Code execution (Python sandbox)
@@ -109,6 +111,7 @@ result = client.video.sample(
 ### 2.5 Code Execution (Python Sandbox)
 
 Grok puo' eseguire codice Python server-side. Utile per:
+
 - Generare grafici/chart con matplotlib
 - Processare dati
 - Calcoli complessi
@@ -123,6 +126,7 @@ Supporta parallel tool calls (multipli in una response).
 ## 3. BATCH API — 50% SCONTO
 
 Per operazioni bulk (non real-time):
+
 - **50% sconto** su tutti i token
 - **Non conta verso rate limit**
 - Workflow: submit → poll → retrieve results
@@ -302,19 +306,19 @@ Ampiamente entro i $150 free credits. Avanziamo ~$142/mese per altri usi.
 
 ## 6. CONFRONTO CON ALTERNATIVE
 
-| Feature | xAI x_search | X API search/recent | Exa | Brave |
-|---------|-------------|--------------------|----|-------|
-| Costo | $5/1K calls + data sharing free | $200/mo Basic | $5/1K calls | Free (2K/mo) |
-| Ricerca X | Nativa, deep | Nativa, basic | Solo URL x.com | No |
-| Date filter | Si | Si | Si | Si |
-| Handle filter | Si (10) | No | No | No |
-| Image understanding | Si | No | No | No |
-| Video understanding | Si | No | No | No |
-| Web search | Si (5 domini) | No | Si (deep) | Si |
-| Semantic search | Si | No | Si (forte) | No |
-| Batch 50% off | Si | No | No | No |
-| Image gen | Si ($0.02) | No | No | No |
-| Video gen | Si ($0.05/s) | No | No | No |
+| Feature             | xAI x_search                    | X API search/recent | Exa            | Brave        |
+| ------------------- | ------------------------------- | ------------------- | -------------- | ------------ |
+| Costo               | $5/1K calls + data sharing free | $200/mo Basic       | $5/1K calls    | Free (2K/mo) |
+| Ricerca X           | Nativa, deep                    | Nativa, basic       | Solo URL x.com | No           |
+| Date filter         | Si                              | Si                  | Si             | Si           |
+| Handle filter       | Si (10)                         | No                  | No             | No           |
+| Image understanding | Si                              | No                  | No             | No           |
+| Video understanding | Si                              | No                  | No             | No           |
+| Web search          | Si (5 domini)                   | No                  | Si (deep)      | Si           |
+| Semantic search     | Si                              | No                  | Si (forte)     | No           |
+| Batch 50% off       | Si                              | No                  | No             | No           |
+| Image gen           | Si ($0.02)                      | No                  | No             | No           |
+| Video gen           | Si ($0.05/s)                    | No                  | No             | No           |
 
 **xAI vince su tutto tranne Reddit** (dove Exa resta necessario).
 
@@ -342,6 +346,7 @@ Ampiamente entro i $150 free credits. Avanziamo ~$142/mese per altri usi.
 **Il programma data sharing da $150/mese e' stato DISCONTINUATO.**
 
 Questo significa:
+
 - I $25 free alla registrazione restano validi (30 giorni)
 - Ma i $150/mese ricorrenti NON sono piu' disponibili per nuovi iscritti
 - Il nostro costo reale sara' ~$8/mese dopo i $25 free
@@ -354,7 +359,9 @@ al ritmo attuale. Dopo, $8/mese e' accettabile.
 ## 9. SCOPERTE AGGIUNTIVE (dall'agente deep research)
 
 ### Multi-Agent Research (grok-4.20-multi-agent)
+
 Una singola API call orchestra **4 o 16 agenti AI specializzati** in parallelo:
+
 - 4 agenti (reasoning low/medium): ricerca rapida
 - 16 agenti (reasoning high/xhigh): deep research multi-source
 - Agenti specializzati in: search, data analysis, code/math, synthesis
@@ -365,6 +372,7 @@ Una singola API call orchestra **4 o 16 agenti AI specializzati** in parallelo:
 **Per noi**: ideale per deep competitive intel e regulatory research mensili.
 
 ### Collections Search (RAG gestito da xAI)
+
 - Upload PDF, Excel, CSV, codice → xAI li indicizza
 - Semantic + keyword + hybrid search
 - OCR e layout-aware parsing
@@ -372,25 +380,30 @@ Una singola API call orchestra **4 o 16 agenti AI specializzati** in parallelo:
 - Potremmo offloadare il KBLI/legal RAG qui come test
 
 ### Text-to-Speech ($4.20/M caratteri)
+
 - 5 voci, 20+ lingue, speech tags (pause, risate, sussurri)
 - REST + WebSocket streaming
 - Potremmo generare audio version degli Articles
 
 ### Voice Agent ($0.05/min = $3/ora)
+
 - WebSocket real-time, <1s latenza
 - Supporta function calling, web_search, x_search durante la conversazione
 - 100+ lingue
 - Potenziale: customer service voice bot per Bali Zero
 
 ### Remote MCP Tools
+
 - Connetti qualsiasi MCP server a Grok via API
 - Potremmo collegare il nostro nuzantara-mcp → Grok analizza con i nostri 131 tools
 
 ### Prompt Caching
+
 - Input cachato: $0.05/M (vs $0.20 normal) = **75% risparmio**
 - Per query ripetitive con contesto fisso (es. system prompt KBLI)
 
 ### Cose che x_search NON puo' fare:
+
 - No filtro engagement (min_likes, min_retweets)
 - No filtro media type (solo immagini, solo video)
 - No filtro lingua
@@ -402,19 +415,19 @@ Una singola API call orchestra **4 o 16 agenti AI specializzati** in parallelo:
 
 ## 10. MATRICE COMPLETA: COSA USARE E QUANDO
 
-| Bisogno | Tool xAI | Costo | Alternativa |
-|---------|----------|-------|-------------|
-| Cercare tweet su topic | x_search | $0.005/query | X API $200/mo |
-| Cercare news regulatory | web_search + allowed_domains | $0.005/query | Exa $0.01 |
-| Generare header image | grok-imagine-image | $0.02/img | Fireworks $0.0003 |
-| Generare video clip | grok-imagine-video | $0.50/10sec | NLM Cinematic (Ultra) |
-| Deep research multi-source | multi-agent (16 agenti) | ~$0.50/query | Gemini explore |
-| Analisi dati/chart | code_execution (matplotlib) | $0.005/call | Locale Python |
-| RAG su documenti | collections_search | $0.0025/query | Nostro Qdrant |
-| Audio di Articles | TTS | $0.004/1K chars | NLM audio overview |
-| Bulk processing | Batch API (50% off) | meta' prezzo | — |
-| Lead detection | x_search + date filter | $0.005/query | Manuale X Pro |
+| Bisogno                    | Tool xAI                     | Costo           | Alternativa           |
+| -------------------------- | ---------------------------- | --------------- | --------------------- |
+| Cercare tweet su topic     | x_search                     | $0.005/query    | X API $200/mo         |
+| Cercare news regulatory    | web_search + allowed_domains | $0.005/query    | Exa $0.01             |
+| Generare header image      | grok-imagine-image           | $0.02/img       | Fireworks $0.0003     |
+| Generare video clip        | grok-imagine-video           | $0.50/10sec     | NLM Cinematic (Ultra) |
+| Deep research multi-source | multi-agent (16 agenti)      | ~$0.50/query    | Gemini explore        |
+| Analisi dati/chart         | code_execution (matplotlib)  | $0.005/call     | Locale Python         |
+| RAG su documenti           | collections_search           | $0.0025/query   | Nostro Qdrant         |
+| Audio di Articles          | TTS                          | $0.004/1K chars | NLM audio overview    |
+| Bulk processing            | Batch API (50% off)          | meta' prezzo    | —                     |
+| Lead detection             | x_search + date filter       | $0.005/query    | Manuale X Pro         |
 
-*xAI API Optimization Guide v1.1 — 29 marzo 2026*
-*Per: Nuzantara X Premium+ Blitz*
-*Costo stimato: ~$8/mese ($25 free credits coprono primi ~3 mesi)*
+_xAI API Optimization Guide v1.1 — 29 marzo 2026_
+_Per: Nuzantara X Premium+ Blitz_
+_Costo stimato: ~$8/mese ($25 free credits coprono primi ~3 mesi)_

@@ -1,7 +1,8 @@
 ---
 name: google-workspace
 description: Gmail, Calendar, Drive, Docs, Sheets — NO Google Cloud Console required. Just OAuth sign-in. Zero setup complexity vs traditional Google API integrations.
-metadata: { 'clawdbot': { 'emoji': '📬', 'requires': { 'bins': ['mcporter'] } } }
+metadata:
+  { "clawdbot": { "emoji": "📬", "requires": { "bins": ["mcporter"] } } }
 ---
 
 # Google Workspace Access (No Cloud Console!)

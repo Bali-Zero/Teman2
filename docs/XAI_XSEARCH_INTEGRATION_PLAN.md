@@ -23,11 +23,13 @@
 ### 1.2 Activate Data Sharing Program ($150/month free credits)
 
 **Requirements:**
+
 - Team must have already spent a minimum of **$5** on the API before opting in
 - Team must not be based in excluded regions (list not publicly documented)
 - Only team admins can enable data sharing
 
 **Steps:**
+
 1. Spend at least $5 on the API (use the $25 signup credits — run a few test queries)
 2. Go to **console.x.ai** → **Settings** → **Billing** → **Credits Section**
 3. Enable **"Share API Inputs for Model Training"**
@@ -41,22 +43,22 @@ Once opted in, the team **cannot opt out**. xAI uses API interactions (prompts +
 
 ### 1.3 Monthly Credit Budget
 
-| Source | Amount | Frequency |
-|--------|--------|-----------|
-| Signup credits | $25 | One-time (30-day expiry) |
-| Data sharing | $150 | Monthly (recurring) |
-| **Total (first month)** | **$175** | |
-| **Total (subsequent)** | **$150/month** | |
+| Source                  | Amount         | Frequency                |
+| ----------------------- | -------------- | ------------------------ |
+| Signup credits          | $25            | One-time (30-day expiry) |
+| Data sharing            | $150           | Monthly (recurring)      |
+| **Total (first month)** | **$175**       |                          |
+| **Total (subsequent)**  | **$150/month** |                          |
 
 ### 1.4 Our Estimated Monthly Usage
 
-| Tool | Estimated calls/month | Cost per 1K calls | Monthly cost |
-|------|----------------------|-------------------|-------------|
-| x_search | ~300 (10 queries/day) | $5.00 | $1.50 |
-| web_search | ~150 (5 queries/day) | $5.00 | $0.75 |
-| Input tokens (grok-4-1-fast) | ~5M | $0.20/M | $1.00 |
-| Output tokens (grok-4-1-fast) | ~2M | $0.50/M | $1.00 |
-| **Total estimated** | | | **~$4.25/month** |
+| Tool                          | Estimated calls/month | Cost per 1K calls | Monthly cost     |
+| ----------------------------- | --------------------- | ----------------- | ---------------- |
+| x_search                      | ~300 (10 queries/day) | $5.00             | $1.50            |
+| web_search                    | ~150 (5 queries/day)  | $5.00             | $0.75            |
+| Input tokens (grok-4-1-fast)  | ~5M                   | $0.20/M           | $1.00            |
+| Output tokens (grok-4-1-fast) | ~2M                   | $0.50/M           | $1.00            |
+| **Total estimated**           |                       |                   | **~$4.25/month** |
 
 With $150/month in free credits, this is effectively **$0/month** for our war-room use case.
 The remaining ~$145 can be used for other xAI integrations (web_search for intel scraper, etc.).
@@ -77,32 +79,32 @@ POST https://api.x.ai/v1/responses
 
 ### 2.2 x_search Tool Parameters
 
-| Parameter | Type | Description | Limits |
-|-----------|------|-------------|--------|
-| `type` | string | Always `"x_search"` | Required |
-| `allowed_x_handles` | string[] | Only search posts from these handles | Max 10, mutually exclusive with excluded |
-| `excluded_x_handles` | string[] | Exclude posts from these handles | Max 10, mutually exclusive with allowed |
-| `from_date` | string | Start date (ISO8601: `YYYY-MM-DD`) | Optional |
-| `to_date` | string | End date (ISO8601: `YYYY-MM-DD`) | Optional |
-| `enable_image_understanding` | bool | Analyze images in posts | Increases token usage |
-| `enable_video_understanding` | bool | Analyze videos in posts | Increases token usage |
+| Parameter                    | Type     | Description                          | Limits                                   |
+| ---------------------------- | -------- | ------------------------------------ | ---------------------------------------- |
+| `type`                       | string   | Always `"x_search"`                  | Required                                 |
+| `allowed_x_handles`          | string[] | Only search posts from these handles | Max 10, mutually exclusive with excluded |
+| `excluded_x_handles`         | string[] | Exclude posts from these handles     | Max 10, mutually exclusive with allowed  |
+| `from_date`                  | string   | Start date (ISO8601: `YYYY-MM-DD`)   | Optional                                 |
+| `to_date`                    | string   | End date (ISO8601: `YYYY-MM-DD`)     | Optional                                 |
+| `enable_image_understanding` | bool     | Analyze images in posts              | Increases token usage                    |
+| `enable_video_understanding` | bool     | Analyze videos in posts              | Increases token usage                    |
 
 ### 2.3 web_search Tool Parameters
 
-| Parameter | Type | Description | Limits |
-|-----------|------|-------------|--------|
-| `type` | string | Always `"web_search"` | Required |
-| `allowed_domains` | string[] | Only search these domains | Max 5, mutually exclusive with excluded |
-| `excluded_domains` | string[] | Exclude these domains | Max 5, mutually exclusive with allowed |
-| `enable_image_understanding` | bool | Analyze images on pages | Increases token usage |
+| Parameter                    | Type     | Description               | Limits                                  |
+| ---------------------------- | -------- | ------------------------- | --------------------------------------- |
+| `type`                       | string   | Always `"web_search"`     | Required                                |
+| `allowed_domains`            | string[] | Only search these domains | Max 5, mutually exclusive with excluded |
+| `excluded_domains`           | string[] | Exclude these domains     | Max 5, mutually exclusive with allowed  |
+| `enable_image_understanding` | bool     | Analyze images on pages   | Increases token usage                   |
 
 ### 2.4 Model Compatibility
 
-| Model | Input $/M | Output $/M | Cached $/M | Notes |
-|-------|-----------|------------|------------|-------|
-| `grok-4.20-reasoning` | $2.00 | $6.00 | $0.20 | Flagship, 2M context |
-| `grok-4-1-fast-reasoning` | $0.20 | $0.50 | $0.05 | **Recommended for war-room** |
-| `grok-4-1-fast-non-reasoning` | $0.20 | $0.50 | $0.05 | Cheaper, no reasoning |
+| Model                         | Input $/M | Output $/M | Cached $/M | Notes                        |
+| ----------------------------- | --------- | ---------- | ---------- | ---------------------------- |
+| `grok-4.20-reasoning`         | $2.00     | $6.00      | $0.20      | Flagship, 2M context         |
+| `grok-4-1-fast-reasoning`     | $0.20     | $0.50      | $0.05      | **Recommended for war-room** |
+| `grok-4-1-fast-non-reasoning` | $0.20     | $0.50      | $0.05      | Cheaper, no reasoning        |
 
 All models: **2M context window**, 4M TPM, 600 RPM rate limit.
 
@@ -159,6 +161,7 @@ All models: **2M context window**, 4M TPM, 600 RPM rate limit.
 ### 2.6 Curl Examples
 
 **x_search — Basic:**
+
 ```bash
 curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
@@ -182,6 +185,7 @@ curl https://api.x.ai/v1/responses \
 ```
 
 **x_search — Filtered by handles:**
+
 ```bash
 curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
@@ -205,6 +209,7 @@ curl https://api.x.ai/v1/responses \
 ```
 
 **Dual tools (x_search + web_search) — the model decides which to use:**
+
 ```bash
 curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
@@ -226,13 +231,13 @@ curl https://api.x.ai/v1/responses \
 
 ### 2.7 Rate Limits
 
-| Limit | Value |
-|-------|-------|
-| Tokens per minute (TPM) | 4,000,000 |
-| Requests per minute (RPM) | 600 |
-| Tools per request | 128 (max) |
-| x_search handles per request | 10 (max) |
-| web_search domains per request | 5 (max) |
+| Limit                          | Value     |
+| ------------------------------ | --------- |
+| Tokens per minute (TPM)        | 4,000,000 |
+| Requests per minute (RPM)      | 600       |
+| Tools per request              | 128 (max) |
+| x_search handles per request   | 10 (max)  |
+| web_search domains per request | 5 (max)   |
 
 ---
 
@@ -591,16 +596,16 @@ EXA_API_KEY=...  # already set
 
 ## 4. Architecture Decision: Why xAI x_search Beats Exa for X/Twitter
 
-| Dimension | xAI x_search | Exa tweet category |
-|-----------|-------------|-------------------|
-| X/Twitter coverage | **Native** (real-time firehose) | Crawled index (lag) |
-| Date filtering | Native `from_date`/`to_date` | `start_published_date` only |
-| Handle filtering | `allowed_x_handles` / `excluded_x_handles` | None |
-| Image/video understanding | Yes (built-in) | No |
-| Sentiment analysis | Model-integrated | Post-processing needed |
-| Cost per query | $0.005 (tool) + ~$0.0003 (tokens) | ~$0.005 (search) |
-| Reddit coverage | **None** (X only) | **Good** (domain filter) |
-| News coverage | Via `web_search` (max 5 domains) | Via `category="news"` (unlimited) |
+| Dimension                 | xAI x_search                               | Exa tweet category                |
+| ------------------------- | ------------------------------------------ | --------------------------------- |
+| X/Twitter coverage        | **Native** (real-time firehose)            | Crawled index (lag)               |
+| Date filtering            | Native `from_date`/`to_date`               | `start_published_date` only       |
+| Handle filtering          | `allowed_x_handles` / `excluded_x_handles` | None                              |
+| Image/video understanding | Yes (built-in)                             | No                                |
+| Sentiment analysis        | Model-integrated                           | Post-processing needed            |
+| Cost per query            | $0.005 (tool) + ~$0.0003 (tokens)          | ~$0.005 (search)                  |
+| Reddit coverage           | **None** (X only)                          | **Good** (domain filter)          |
+| News coverage             | Via `web_search` (max 5 domains)           | Via `category="news"` (unlimited) |
 
 **Decision:** Use xAI x_search as primary for X/Twitter sentiment, keep Exa for Reddit (xAI has no Reddit access) and as fallback. Use xAI web_search for Indonesian news domains (limited to 5 per request, batch as needed).
 
@@ -680,15 +685,15 @@ def check_xai_credits_available(api_key: str) -> bool:
 
 ## 7. Risk Assessment
 
-| Risk | Impact | Mitigation |
-|------|--------|-----------|
-| Data sharing is irreversible | Medium | Use dedicated team, keep sensitive queries on separate team |
-| Rate limiting (600 RPM) | Low | War-room runs max ~20 calls/session |
-| x_search doesn't cover Reddit | Medium | Keep Exa for Reddit (already working) |
-| web_search max 5 domains | Low | Batch into 2 requests (8 Indonesian domains) |
-| API key exposure | High | Environment variable only, never in code |
-| Credit depletion mid-month | Low | $150 >> $4.25 estimated usage |
-| xAI deprecates Responses API | Low | OpenAI-compatible SDK, easy migration |
+| Risk                          | Impact | Mitigation                                                  |
+| ----------------------------- | ------ | ----------------------------------------------------------- |
+| Data sharing is irreversible  | Medium | Use dedicated team, keep sensitive queries on separate team |
+| Rate limiting (600 RPM)       | Low    | War-room runs max ~20 calls/session                         |
+| x_search doesn't cover Reddit | Medium | Keep Exa for Reddit (already working)                       |
+| web_search max 5 domains      | Low    | Batch into 2 requests (8 Indonesian domains)                |
+| API key exposure              | High   | Environment variable only, never in code                    |
+| Credit depletion mid-month    | Low    | $150 >> $4.25 estimated usage                               |
+| xAI deprecates Responses API  | Low    | OpenAI-compatible SDK, easy migration                       |
 
 ---
 

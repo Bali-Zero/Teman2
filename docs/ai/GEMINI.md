@@ -16,20 +16,21 @@
 
 ## 2. Stack Reale (non Node/Express — aggiornato)
 
-| Layer | Tecnologia |
-|-------|-----------|
-| Backend | **Python 3.11+, FastAPI** — 88 router, 244 service, 46 agenti autonomi |
-| Frontend | **Next.js** (App Router), TypeScript, Tailwind CSS |
-| Vector DB | **Qdrant** — 7 collezioni, 58.880 vettori |
-| Relational DB | **PostgreSQL 17** |
-| Cache | **Redis** |
-| Embedding | **`text-embedding-3-small` (1536 dims) — MAI CAMBIARE** |
-| Deploy | Fly.io (backend `nuzantara-rag`) + Vercel (frontend) |
-| KG | LangGraph — 56.113 nodi, 161.173 archi |
+| Layer         | Tecnologia                                                             |
+| ------------- | ---------------------------------------------------------------------- |
+| Backend       | **Python 3.11+, FastAPI** — 88 router, 244 service, 46 agenti autonomi |
+| Frontend      | **Next.js** (App Router), TypeScript, Tailwind CSS                     |
+| Vector DB     | **Qdrant** — 7 collezioni, 58.880 vettori                              |
+| Relational DB | **PostgreSQL 17**                                                      |
+| Cache         | **Redis**                                                              |
+| Embedding     | **`text-embedding-3-small` (1536 dims) — MAI CAMBIARE**                |
+| Deploy        | Fly.io (backend `nuzantara-rag`) + Vercel (frontend)                   |
+| KG            | LangGraph — 56.113 nodi, 161.173 archi                                 |
 
 ### Git Sync Architecture (updated 2026-03-28)
 
 Entrambe le macchine (Pro e Air) lavorano su `main`. Sync automatico via husky post-commit:
+
 - **Pro commit** → Air riceve pull automatico
 - **Air commit** → Air fa push a Pro
 - **GitHub** aggiornato solo da Pro. MAI fare push da Air su `origin`.
@@ -81,11 +82,11 @@ apps/nuzantara-mcp-advanced/  # MCP server operativo (deploy, test, lint)
 
 ## 6. Evidence Scoring
 
-| Score | Comportamento |
-|-------|--------------|
-| < 0.15 | **ABSTAIN** — rifiuta di rispondere |
+| Score     | Comportamento                          |
+| --------- | -------------------------------------- |
+| < 0.15    | **ABSTAIN** — rifiuta di rispondere    |
 | 0.15–0.60 | **CAUTIOUS** — risposta con disclaimer |
-| > 0.60 | **NORMAL** — risposta confidenta |
+| > 0.60    | **NORMAL** — risposta confidenta       |
 
 ---
 
@@ -132,6 +133,7 @@ Riferimento: `PRICING_REFERENCE.md`, `VISA_TYPES_REFERENCE.md`.
 ## 10. Rogue AI — Attenzione
 
 Altri AI (Gemini precedente, Gemini, Cursor, Windsurf) hanno rotto la produzione:
+
 - Rimuovendo import "inutilizzati" (es. `Any` da `typing`)
 - Rinominando/cancellando funzioni
 - ~448 test failure pre-esistenti in `tests/unit/` — NON sono tuoi

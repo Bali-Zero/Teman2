@@ -30,6 +30,7 @@ The voice on X is **Bali Zero the practitioner** — the person who has processe
 Think of it as the **collective institutional brain** of Bali Zero — if the entire team's hard-won knowledge could speak in one voice, casually, to a smart audience.
 
 The speaker is:
+
 - Not trying to sell you anything in this tweet
 - Already your authority before you clicked Follow
 - Slightly amused by how badly the internet understands Indonesia
@@ -43,15 +44,15 @@ The speaker is:
 
 ### 1. Grounded
 
-Not "authoritative" — that sounds like McKinsey trying to impress. *Grounded* means: we have done this thousands of times. We cite the pasal number. We know the gap between what the regulation says and what actually happens at the kantor. We do not speculate.
+Not "authoritative" — that sounds like McKinsey trying to impress. _Grounded_ means: we have done this thousands of times. We cite the pasal number. We know the gap between what the regulation says and what actually happens at the kantor. We do not speculate.
 
 ### 2. Sharp
 
-Not "contrarian" for the sake of it — that is internet posturing. *Sharp* means: we cut through noise with one sentence. If something is wrong, we say it plainly. If a popular belief about Indonesia business law is false, we correct it without being preachy. Short sentences. No qualifiers when we are certain.
+Not "contrarian" for the sake of it — that is internet posturing. _Sharp_ means: we cut through noise with one sentence. If something is wrong, we say it plainly. If a popular belief about Indonesia business law is false, we correct it without being preachy. Short sentences. No qualifiers when we are certain.
 
 ### 3. Warm-blooded
 
-Not "professional" — that word kills every brand account it touches. *Warm-blooded* means: there is a human behind this who lives here, eats nasi campur for lunch, sits in Bali traffic, and genuinely wants you to not get screwed by a bad lease agreement. Occasional humor. Never sarcastic at a client's expense.
+Not "professional" — that word kills every brand account it touches. _Warm-blooded_ means: there is a human behind this who lives here, eats nasi campur for lunch, sits in Bali traffic, and genuinely wants you to not get screwed by a bad lease agreement. Occasional humor. Never sarcastic at a client's expense.
 
 ---
 
@@ -90,6 +91,7 @@ Why it fails: This is a tweet, not a contract. If we hedge everything, we are sa
 ## Part 5: Vocabulary Rules
 
 ### Words We Use
+
 - **Regulation names by number:** "PP 5/2021," "Permenkumham 49/2025," "Perda 4/2026" — always cite the specific regulation
 - **Indonesian terms naturally:** kantor imigrasi, akta pendirian, notaris, NIB, OSS — with context, never with scare quotes
 - **Plain numbers:** "IDR 10 billion," "14 days," "5,000+ clients" — concrete, never vague
@@ -97,6 +99,7 @@ Why it fails: This is a tweet, not a contract. If we hedge everything, we are sa
 - **Short active verbs:** cut, file, register, process, build, run, check
 
 ### Words We Avoid
+
 - "Solutions" (means nothing)
 - "Comprehensive" (filler)
 - "Leverage" (consultantspeak)
@@ -109,6 +112,7 @@ Why it fails: This is a tweet, not a contract. If we hedge everything, we are sa
 - "Game-changer" (banned permanently)
 
 ### Tone Modifiers
+
 - Use "we" when sharing Bali Zero experience. Use "you" when giving actionable info.
 - Numbers beat adjectives. "5,000+ cases processed" beats "extensive experience."
 - One idea per tweet. If you need more, make it a thread.
@@ -140,6 +144,7 @@ Not the pitch deck. Not the brochure. Not the lawyer letter. The bar conversatio
 ## Part 8: Thread Style
 
 ### The Opener
+
 - One strong claim or counter-intuitive fact. No "Thread:" label.
 - Must be self-contained — if someone only reads this tweet, they still get value.
 - End with an implicit promise of depth, not a "Here's what nobody tells you" cliche.
@@ -149,11 +154,13 @@ Not the pitch deck. Not the brochure. Not the lawyer letter. The bar conversatio
 **Bad opener:** "THREAD: Everything you need to know about KBLI codes in Indonesia! Let me break it down for you."
 
 ### The Middle
+
 - Each tweet stands alone. Numbered lightly (2/, 3/) or not at all.
 - Alternate between fact and implication. Fact: "The minimum investment for PT PMA is IDR 10 billion." Implication: "This sounds like $625,000 but most of it can be declared as future investment. The actual cash needed at formation is much lower."
 - Include one real scenario or case study (anonymized).
 
 ### The Close
+
 - End with one actionable takeaway. Not a CTA to "contact us."
 - If relevant, link to a Bali Zero resource (KBLI Navigator, pricing page, blog post) — but only if it genuinely helps. Never forced.
 - The final tweet should feel like a mic drop, not a sales pitch.
@@ -166,15 +173,15 @@ Not the pitch deck. Not the brochure. Not the lawyer letter. The bar conversatio
 
 ## Part 9: Content Pillars
 
-| Pillar | Frequency | Purpose |
-|--------|-----------|---------|
-| Regulatory Intel | 3x/week | Break news, explain changes, cite sources |
-| Myth Busting | 2x/week | Correct widespread misconceptions |
-| KBLI Decoded | 1x/week | Deep dive on one classification code or sector |
-| Case Studies | 1x/week | Anonymized real scenarios (what went right, what went wrong) |
-| Data Insights | 1x/week | Aggregate patterns from 5,000+ client base |
-| Behind the Scenes | 1x/week | Team, process, Bali life, building in public |
-| Hot Takes | As warranted | Contrarian but defensible positions on regulation/market |
+| Pillar            | Frequency    | Purpose                                                      |
+| ----------------- | ------------ | ------------------------------------------------------------ |
+| Regulatory Intel  | 3x/week      | Break news, explain changes, cite sources                    |
+| Myth Busting      | 2x/week      | Correct widespread misconceptions                            |
+| KBLI Decoded      | 1x/week      | Deep dive on one classification code or sector               |
+| Case Studies      | 1x/week      | Anonymized real scenarios (what went right, what went wrong) |
+| Data Insights     | 1x/week      | Aggregate patterns from 5,000+ client base                   |
+| Behind the Scenes | 1x/week      | Team, process, Bali life, building in public                 |
+| Hot Takes         | As warranted | Contrarian but defensible positions on regulation/market     |
 
 ---
 
@@ -244,14 +251,14 @@ Our AI assistant Zantara handled 340 conversations last week across WhatsApp, Te
 
 Before posting, run the tweet through these five filters:
 
-| Filter | Question | If No... |
-|--------|----------|----------|
-| **Expertise** | Does this contain information only someone with deep Indonesia experience would know? | Rewrite or kill it. Generic advice is noise. |
-| **Specificity** | Is there at least one concrete number, regulation name, or real example? | Add one. Vague tweets die on X. |
-| **Bar Test** | Would you say this exact sentence to a smart person at a bar? | Rewrite until you would. |
-| **Brand Lock** | Could this tweet have come from any consulting firm in any country? | If yes, it is not Bali Zero enough. Add Indonesia specificity. |
-| **Scroll Stop** | Does the first line make you want to read the second? | Rewrite the opener. You have 0.3 seconds. |
+| Filter          | Question                                                                              | If No...                                                       |
+| --------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Expertise**   | Does this contain information only someone with deep Indonesia experience would know? | Rewrite or kill it. Generic advice is noise.                   |
+| **Specificity** | Is there at least one concrete number, regulation name, or real example?              | Add one. Vague tweets die on X.                                |
+| **Bar Test**    | Would you say this exact sentence to a smart person at a bar?                         | Rewrite until you would.                                       |
+| **Brand Lock**  | Could this tweet have come from any consulting firm in any country?                   | If yes, it is not Bali Zero enough. Add Indonesia specificity. |
+| **Scroll Stop** | Does the first line make you want to read the second?                                 | Rewrite the opener. You have 0.3 seconds.                      |
 
 ---
 
-*This document is the canonical reference for Bali Zero's X/Twitter voice. All scheduled posts, replies, and threads must align with the principles above. When in doubt, return to the bar test.*
+_This document is the canonical reference for Bali Zero's X/Twitter voice. All scheduled posts, replies, and threads must align with the principles above. When in doubt, return to the bar test._

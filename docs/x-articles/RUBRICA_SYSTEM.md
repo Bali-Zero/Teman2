@@ -9,20 +9,20 @@
 
 ## Brand Visual Identity (from bz-tokens.css)
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--bz-base` | `#0c0c0e` | Background / dark canvas |
-| `--bz-elevated` | `#131315` | Card backgrounds |
-| `--bz-surface` | `#1a1a1e` | Secondary surfaces |
-| `--bz-accent` | `#d4845a` | Primary accent (terracotta) |
-| `--bz-accent-warm` | `#c9a96e` | Gold / secondary accent |
+| Token              | Value     | Usage                       |
+| ------------------ | --------- | --------------------------- |
+| `--bz-base`        | `#0c0c0e` | Background / dark canvas    |
+| `--bz-elevated`    | `#131315` | Card backgrounds            |
+| `--bz-surface`     | `#1a1a1e` | Secondary surfaces          |
+| `--bz-accent`      | `#d4845a` | Primary accent (terracotta) |
+| `--bz-accent-warm` | `#c9a96e` | Gold / secondary accent     |
 | `--bz-accent-cool` | `#5e7fb5` | Data / informational accent |
-| `--bz-text-1` | `#edeae4` | Primary text (warm white) |
-| `--bz-text-2` | `#8c8884` | Secondary text |
-| `--bz-text-3` | `#575350` | Tertiary / muted text |
-| `--bz-green` | `#4db87a` | Positive / allowed |
-| `--bz-red` | `#d95f5a` | Negative / restricted |
-| `--bz-amber` | `#d4923a` | Warning / caution |
+| `--bz-text-1`      | `#edeae4` | Primary text (warm white)   |
+| `--bz-text-2`      | `#8c8884` | Secondary text              |
+| `--bz-text-3`      | `#575350` | Tertiary / muted text       |
+| `--bz-green`       | `#4db87a` | Positive / allowed          |
+| `--bz-red`         | `#d95f5a` | Negative / restricted       |
+| `--bz-amber`       | `#d4923a` | Warning / caution           |
 
 **Typography:** Clean sans-serif (Geist). Headings in warm white, body in secondary. Accent for highlights and CTAs.
 
@@ -39,7 +39,7 @@
 
 ### Tagline
 
-> *Decoding Indonesia's business classification system, one code at a time.*
+> _Decoding Indonesia's business classification system, one code at a time._
 
 ### Structure Template
 
@@ -117,6 +117,7 @@ The ground truth. Saturation data. Area recommendations. Practical timeline.
 Link to the full article. Mention the KBLI Navigator. Soft CTA to Bali Zero.
 
 **Formatting rules:**
+
 - No hashtag spam. Maximum 2 hashtags on the last tweet only: `#KBLI2025` and `#BaliBusiness`
 - Use line breaks for readability
 - Numbers and data points in bold where X allows
@@ -133,7 +134,7 @@ Link to the full article. Mention the KBLI Navigator. Soft CTA to Bali Zero.
 
 ### Tagline
 
-> *The numbers behind doing business in Indonesia -- stripped of spin.*
+> _The numbers behind doing business in Indonesia -- stripped of spin._
 
 ### Structure Template
 
@@ -191,6 +192,7 @@ What to do about it. Concrete steps. Timeline. Cost estimate if available.
 Link to full brief. Mention the KBLI Navigator for self-audit. Soft CTA.
 
 **Formatting rules:**
+
 - Lead with the number, always
 - Use the em dash for impact: "1,200 companies -- 47% wrong"
 - Maximum 2 hashtags on last tweet: `#IndonesiaBusiness` and `#BaliData`
@@ -206,7 +208,7 @@ Link to full brief. Mention the KBLI Navigator for self-audit. Soft CTA.
 
 ### Tagline
 
-> *Monthly strategic intelligence on Indonesia's business landscape -- for people who make decisions.*
+> _Monthly strategic intelligence on Indonesia's business landscape -- for people who make decisions._
 
 ### Structure Template
 
@@ -284,6 +286,7 @@ Key regulation numbers and official links for the skeptics.
 Full report link. Subscribe to newsletter. Soft CTA to Bali Zero consultation.
 
 **Formatting rules:**
+
 - This is the prestige series. Every word earns its place.
 - No emoji in the first 3 tweets. Authority first.
 - Maximum 3 hashtags on the last tweet: `#IndonesiaBusiness` `#KBLI2025` `#BaliInvestment`
@@ -293,14 +296,15 @@ Full report link. Subscribe to newsletter. Soft CTA to Bali Zero consultation.
 
 ## Content Calendar Template
 
-| Week | Monday | Wednesday | Thursday |
-|------|--------|-----------|----------|
-| W1 | KBLI Decoded #N | -- | Indonesia Business Intelligence (monthly) |
-| W2 | KBLI Decoded #N+1 | Bali Zero Data Brief #M | -- |
-| W3 | KBLI Decoded #N+2 | -- | -- |
-| W4 | KBLI Decoded #N+3 | Bali Zero Data Brief #M+1 | -- |
+| Week | Monday            | Wednesday                 | Thursday                                  |
+| ---- | ----------------- | ------------------------- | ----------------------------------------- |
+| W1   | KBLI Decoded #N   | --                        | Indonesia Business Intelligence (monthly) |
+| W2   | KBLI Decoded #N+1 | Bali Zero Data Brief #M   | --                                        |
+| W3   | KBLI Decoded #N+2 | --                        | --                                        |
+| W4   | KBLI Decoded #N+3 | Bali Zero Data Brief #M+1 | --                                        |
 
 **Publishing pipeline:**
+
 1. Draft article (Claude Code + domain data from KBLI JSON + Qdrant + KG)
 2. Generate header image (Fireworks MCP / Grok Imagine)
 3. Publish to balizero.com via `compose_article` + `publish_article` MCP tools
@@ -311,26 +315,27 @@ Full report link. Subscribe to newsletter. Soft CTA to Bali Zero consultation.
 
 ## KBLI Decoded Backlog (First 12 Episodes)
 
-| Ep | Code | Title | Hook Angle |
-|----|------|-------|------------|
-| 001 | 56101 | Restaurant | The most misunderstood food code |
-| 002 | 70209 | Management Consulting | The digital nomad's favorite loophole |
-| 003 | 55111 | Villa/Holiday Accommodation | Perda 4/2026 just made this dangerous |
-| 004 | 62019 | Software Development | Why tech founders pick the wrong code |
-| 005 | 63122 | Web Portals/Digital Platforms | SaaS, marketplaces, and the grey zone |
-| 006 | 68201 | Real Estate Agency | You can sell, but you can't own |
-| 007 | 47911 | Retail via Internet | E-commerce in Indonesia: the fine print |
-| 008 | 56301 | Bar | The alcohol license nobody reads |
-| 009 | 46100 | Wholesale Trade Agent | Import/export: the hidden requirements |
-| 010 | 73201 | Market Research | When "consulting" isn't 70209 |
-| 011 | 85499 | Education Services | Teaching in Bali: legal or not? |
-| 012 | 93291 | Yoga/Wellness Activities | The wellness industry's KBLI problem |
+| Ep  | Code  | Title                         | Hook Angle                              |
+| --- | ----- | ----------------------------- | --------------------------------------- |
+| 001 | 56101 | Restaurant                    | The most misunderstood food code        |
+| 002 | 70209 | Management Consulting         | The digital nomad's favorite loophole   |
+| 003 | 55111 | Villa/Holiday Accommodation   | Perda 4/2026 just made this dangerous   |
+| 004 | 62019 | Software Development          | Why tech founders pick the wrong code   |
+| 005 | 63122 | Web Portals/Digital Platforms | SaaS, marketplaces, and the grey zone   |
+| 006 | 68201 | Real Estate Agency            | You can sell, but you can't own         |
+| 007 | 47911 | Retail via Internet           | E-commerce in Indonesia: the fine print |
+| 008 | 56301 | Bar                           | The alcohol license nobody reads        |
+| 009 | 46100 | Wholesale Trade Agent         | Import/export: the hidden requirements  |
+| 010 | 73201 | Market Research               | When "consulting" isn't 70209           |
+| 011 | 85499 | Education Services            | Teaching in Bali: legal or not?         |
+| 012 | 93291 | Yoga/Wellness Activities      | The wellness industry's KBLI problem    |
 
 ---
 
 ## Quality Standards
 
 **Every article must:**
+
 - Cite at least one official regulation by number (Perpres, PP, Perda, Kepmen, or BPS number)
 - Include at least one data point from our own systems (KBLI Navigator, CRM, KG)
 - Be factually verifiable against source_documents/KBLI_2025_FINAL_CLEAN.json
@@ -339,6 +344,7 @@ Full report link. Subscribe to newsletter. Soft CTA to Bali Zero consultation.
 - Link to the relevant KBLI Navigator page: balizero.com/kbli/[code]
 
 **Every thread must:**
+
 - Be written in English (primary X audience is English-speaking expats and investors)
 - Not exceed 280 characters per tweet
 - Include the article link in the final tweet

@@ -1,0 +1,375 @@
+{
+  "schema_version": 1,
+  "notebook_id": "NB-3",
+  "last_updated": "2026-03-30T00:00:00Z",
+  "summary": {
+    "total_tracked": 51,
+    "active": 51,
+    "quarantine": 0,
+    "archived": 0
+  },
+  "domain_denylist": ["balizero.com", "kita.balizero.com", "my.balizero.com"],
+  "master_documents": {
+    "MD-1": {
+      "nlm_source_id": "46b40709-7270-4676-b41e-c5bf3cbb8b7b",
+      "title": "Regulatory Change Log"
+    },
+    "MD-2": {
+      "nlm_source_id": "0965021c-1354-4673-8487-c4e791a906de",
+      "title": "Operations Status"
+    },
+    "MD-3": {
+      "nlm_source_id": "a1860bb4-b945-4e2e-8d1f-f8fbf9c41e06",
+      "title": "Cross-Domain Impact Matrix"
+    },
+    "MD-4": {
+      "nlm_source_id": "db7a2788-bb88-4b6f-8bb9-1734867be307",
+      "title": "Open Questions Tracker"
+    }
+  },
+  "sources": {
+    "ebec5d8e": {
+      "title": "UU 40/2007 Perseroan Terbatas",
+      "tier": 0,
+      "category": "canonical",
+      "cluster": "A,B",
+      "stage": "ACTIVE"
+    },
+    "8b0daa2a": {
+      "title": "UU 25/2007 Penanaman Modal",
+      "tier": 0,
+      "category": "canonical",
+      "cluster": "A",
+      "stage": "ACTIVE"
+    },
+    "7cbd6d5f": {
+      "title": "UU 6/2023 Cipta Kerja",
+      "tier": 0,
+      "category": "canonical",
+      "cluster": "A,B,C",
+      "stage": "ACTIVE"
+    },
+    "55a3e0c6": {
+      "title": "UU 18/2025 Kepariwisataan",
+      "tier": 0,
+      "category": "canonical",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "ebdd09a6": {
+      "title": "PP 28/2025 Perizinan Berusaha (full text)",
+      "tier": 0,
+      "category": "canonical",
+      "cluster": "C",
+      "stage": "ACTIVE"
+    },
+    "4f7bfcb6": {
+      "title": "Lampiran I.J-I.P Pariwisata-Kesehatan",
+      "tier": 0,
+      "category": "canonical",
+      "cluster": "C,F",
+      "stage": "ACTIVE"
+    },
+    "15d630ae": {
+      "title": "Lampiran I.G Perdagangan",
+      "tier": 0,
+      "category": "canonical",
+      "cluster": "C,F",
+      "stage": "ACTIVE"
+    },
+    "bf358682": {
+      "title": "PP 8/2021 Modal Dasar",
+      "tier": 0,
+      "category": "canonical",
+      "cluster": "A,B",
+      "stage": "ACTIVE"
+    },
+    "1eb38ddf": {
+      "title": "Perpres 10/2021 Bidang Usaha",
+      "tier": 0,
+      "category": "canonical",
+      "cluster": "C",
+      "stage": "ACTIVE"
+    },
+    "d3f24af4": {
+      "title": "Perpres 49/2021 Capital PMA",
+      "tier": 0,
+      "category": "canonical",
+      "cluster": "A",
+      "stage": "ACTIVE"
+    },
+    "bbf21201": {
+      "title": "BKPM Reg 5/2025 Guide",
+      "tier": 2,
+      "category": "working",
+      "cluster": "A,C",
+      "stage": "ACTIVE"
+    },
+    "b19f868b": {
+      "title": "GR 28/2025 AGI Legal Analysis",
+      "tier": 3,
+      "category": "working",
+      "cluster": "C",
+      "stage": "ACTIVE"
+    },
+    "71381bae": {
+      "title": "LexRegis Cipta Kerja UU PT",
+      "tier": 3,
+      "category": "working",
+      "cluster": "A",
+      "stage": "ACTIVE"
+    },
+    "edc23866": {
+      "title": "UU 18/2025 Tourism Law BPR Analysis",
+      "tier": 3,
+      "category": "working",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "800c2918": {
+      "title": "PP 28/2025 Bali Real Estate Licensing",
+      "tier": 3,
+      "category": "working",
+      "cluster": "C,F",
+      "stage": "ACTIVE"
+    },
+    "f8ce54bf": {
+      "title": "AMDAL Guide (CRPG)",
+      "tier": 3,
+      "category": "working",
+      "cluster": "C",
+      "stage": "ACTIVE"
+    },
+    "61a0fbe4": {
+      "title": "UKL-UPL Guide (CRPG)",
+      "tier": 3,
+      "category": "working",
+      "cluster": "C",
+      "stage": "ACTIVE"
+    },
+    "18cc8159": {
+      "title": "PT PMA Restaurant Requirements (xpnd)",
+      "tier": 5,
+      "category": "working",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "66c8aad5": {
+      "title": "Alcohol License Bali SIUP-MB",
+      "tier": 5,
+      "category": "working",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "e4784641": {
+      "title": "Halal Certification F&B",
+      "tier": 5,
+      "category": "working",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "c8910de3": {
+      "title": "PSE Registration Foreign Firms",
+      "tier": 5,
+      "category": "working",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "e8d0099c": {
+      "title": "Digital Economy Indonesia 2026",
+      "tier": 5,
+      "category": "working",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "c2db4707": {
+      "title": "PSE Kominfo SmartLegal",
+      "tier": 5,
+      "category": "working",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "8407f9ab": {
+      "title": "Bali Villa Licensing 2026 BPR",
+      "tier": 5,
+      "category": "working",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "3b0fe894": {
+      "title": "Villa Licensing Checklist Zenith",
+      "tier": 5,
+      "category": "working",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "18d4574b": {
+      "title": "Restaurant Bali Foreigner Guide",
+      "tier": 5,
+      "category": "working",
+      "cluster": "F",
+      "stage": "ACTIVE"
+    },
+    "8bae100c": {
+      "title": "Tourism License Bali Procedure",
+      "tier": 5,
+      "category": "working",
+      "cluster": "C,F",
+      "stage": "ACTIVE"
+    },
+    "84aa7738": {
+      "title": "PT PMA 2026 Costs ILA Global",
+      "tier": 5,
+      "category": "working",
+      "cluster": "A",
+      "stage": "ACTIVE"
+    },
+    "09a57cfa": {
+      "title": "PT PMA 2026 Esinbiz Guide",
+      "tier": 5,
+      "category": "working",
+      "cluster": "A",
+      "stage": "ACTIVE"
+    },
+    "74d23b90": {
+      "title": "Business Structures Acclime",
+      "tier": 5,
+      "category": "working",
+      "cluster": "A,B",
+      "stage": "ACTIVE"
+    },
+    "e5865739": {
+      "title": "Dissolution Tax Aspects MUC",
+      "tier": 5,
+      "category": "working",
+      "cluster": "G",
+      "stage": "ACTIVE"
+    },
+    "cfa516e3": {
+      "title": "Closing PT PMA Guide",
+      "tier": 5,
+      "category": "working",
+      "cluster": "G",
+      "stage": "ACTIVE"
+    },
+    "e104baec": {
+      "title": "OSS RBA Master Guide",
+      "tier": 5,
+      "category": "working",
+      "cluster": "C",
+      "stage": "ACTIVE"
+    },
+    "82799599": {
+      "title": "PP 28/2025 Webinar (YT Mudjisantosa)",
+      "tier": 4,
+      "category": "working",
+      "cluster": "C",
+      "stage": "ACTIVE",
+      "platform": "youtube"
+    },
+    "6c7a04e3": {
+      "title": "AMDALNET OSS Tutorial (YT enviplan)",
+      "tier": 4,
+      "category": "working",
+      "cluster": "C",
+      "stage": "ACTIVE",
+      "platform": "youtube"
+    },
+    "f11a9fb7": {
+      "title": "PT PMA Explained (YT Bizindo)",
+      "tier": 3,
+      "category": "working",
+      "cluster": "A",
+      "stage": "ACTIVE",
+      "platform": "youtube"
+    },
+    "73a3b95b": {
+      "title": "Perubahan Data OSS (YT DPMPTSP)",
+      "tier": 0,
+      "category": "working",
+      "cluster": "D",
+      "stage": "ACTIVE",
+      "platform": "youtube"
+    },
+    "8c5676cb": {
+      "title": "Skala Usaha OSS RBA (YT)",
+      "tier": 4,
+      "category": "working",
+      "cluster": "C",
+      "stage": "ACTIVE",
+      "platform": "youtube"
+    },
+    "9ab4ea80": {
+      "title": "PT PMA Procedura Completa (BZ)",
+      "tier": 5,
+      "category": "working",
+      "cluster": "A",
+      "stage": "ACTIVE",
+      "flags": { "pinned": true }
+    },
+    "a06855fb": {
+      "title": "Capital Requirements (BZ)",
+      "tier": 5,
+      "category": "working",
+      "cluster": "A",
+      "stage": "ACTIVE",
+      "flags": { "pinned": true }
+    },
+    "7e7cbe03": {
+      "title": "Akta Perubahan (BZ)",
+      "tier": 5,
+      "category": "working",
+      "cluster": "D",
+      "stage": "ACTIVE",
+      "flags": { "pinned": true }
+    },
+    "0d22657c": {
+      "title": "KBLI 2025 Catalogo (BZ)",
+      "tier": 5,
+      "category": "reference",
+      "cluster": "C",
+      "stage": "ACTIVE",
+      "flags": { "pinned": true }
+    },
+    "4539bbfb": {
+      "title": "KBLI Foreign Ownership Matrix (BZ)",
+      "tier": 5,
+      "category": "reference",
+      "cluster": "C",
+      "stage": "ACTIVE",
+      "flags": { "pinned": true }
+    },
+    "bbcc93d9": {
+      "title": "LKPM Reporting (BZ)",
+      "tier": 5,
+      "category": "working",
+      "cluster": "E",
+      "stage": "ACTIVE",
+      "flags": { "pinned": true }
+    },
+    "4d3fd534": {
+      "title": "OSS NIB Licenze (BZ)",
+      "tier": 5,
+      "category": "working",
+      "cluster": "C",
+      "stage": "ACTIVE",
+      "flags": { "pinned": true }
+    },
+    "db910963": {
+      "title": "PT Lokal CV Procedura (BZ)",
+      "tier": 5,
+      "category": "working",
+      "cluster": "B",
+      "stage": "ACTIVE",
+      "flags": { "pinned": true }
+    },
+    "73c09293": {
+      "title": "PT PMA FAQ (BZ)",
+      "tier": 5,
+      "category": "working",
+      "cluster": "A",
+      "stage": "ACTIVE",
+      "flags": { "pinned": true }
+    }
+  }
+}
