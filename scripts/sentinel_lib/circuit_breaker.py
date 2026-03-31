@@ -76,10 +76,21 @@ def get_state(job: str) -> CircuitState:
 
 
 def record_success(job: str) -> None:
-    """Call after a successful run — resets to CLOSED."""
+    """Call after a successful run — resets to CLOSED. NP-3: phase reset to T0."""
     with _locked():
         data = _load()
-        data[job] = {"state": "CLOSED", "failures": 0, "opened_at": 0}
+        # Preserve _failure_timestamps (pruned) for audit; reset operational fields
+        existing = data.get(job, {})
+        timestamps = [t for t in existing.get("_failure_timestamps", [])
+                      if time.time() - t <= 14 * 86400]
+        data[job] = {
+            "state": "CLOSED",
+            "failures": 0,
+            "opened_at": 0,
+            "phase": "T0",  # NP-3: always reset phase on success
+            "_failure_timestamps": timestamps,
+            "_writer": "circuit_breaker",
+        }
         _atomic_save(data)
 
 
@@ -90,9 +101,15 @@ def record_failure(job: str) -> CircuitState:
         job_data = data.get(job, {"state": "CLOSED", "failures": 0, "opened_at": 0})
         job_data["failures"] = job_data.get("failures", 0) + 1
 
+        # D1.6: Inline _failure_timestamps pruning — keep only last 14 days
+        now = time.time()
+        timestamps = job_data.get("_failure_timestamps", [])
+        timestamps.append(now)
+        job_data["_failure_timestamps"] = [t for t in timestamps if now - t <= 14 * 86400]
+
         if job_data["failures"] >= 3 or job_data.get("state") == "HALF_OPEN":
             job_data["state"] = "OPEN"
-            job_data["opened_at"] = time.time()
+            job_data["opened_at"] = now
         data[job] = job_data
         _atomic_save(data)
         return job_data["state"]
