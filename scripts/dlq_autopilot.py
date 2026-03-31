@@ -223,6 +223,8 @@ Rules:
             logger.warning(f"{job}: claude output missing required keys")
             return None
         data["confidence"] = float(data["confidence"])
+        # D4.2: LLM output is advisory only — mark so caller never acts on it directly
+        data["llm_suggested_only"] = True
         return data
 
     except subprocess.TimeoutExpired:
@@ -434,6 +436,17 @@ def process_entry(entry: dict, registry: dict) -> str:
     reasoning = claude_reason(entry)
     if reasoning is None:
         logger.warning(f"{job}: reasoning failed → escalating")
+        escalate_to_claude_code(entry, None)
+        return "escalated"
+
+    # D4.2: LLM output is advisory-only — must be validated before dispatch.
+    # claude_reason() always sets llm_suggested_only=True. If this flag is ever
+    # absent (e.g., a future code path returns raw output), reject it outright.
+    if not reasoning.get("llm_suggested_only"):
+        logger.error(
+            f"{job}: reasoning missing llm_suggested_only flag — rejecting to prevent "
+            f"unvalidated LLM action dispatch. Escalating."
+        )
         escalate_to_claude_code(entry, None)
         return "escalated"
 
