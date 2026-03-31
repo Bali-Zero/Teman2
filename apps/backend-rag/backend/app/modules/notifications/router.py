@@ -57,7 +57,8 @@ class SendEmailRequest(BaseModel):
     to: str
     subject: str
     body: str
-    cc: str | None = None
+    cc: str | None = None   # comma-separated CC addresses
+    bcc: str | None = None  # comma-separated BCC addresses
 
 
 class SendEmailResponse(BaseModel):
@@ -292,15 +293,14 @@ async def send_direct_email(
     Auth: X-API-Key header.
     Sender is always zantara@balizero.com (alias of damar@balizero.com).
     """
-    import os
-
     cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
+    bcc_list = [b.strip() for b in request.bcc.split(",")] if request.bcc else None
 
     # Route: intra-domain (@balizero.com) → Zoho SMTP, external → Brevo
     if request.to.endswith("@balizero.com"):
-        result = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list)
+        result = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list, bcc_list)
     else:
-        result = await _send_via_brevo(request.to, request.subject, request.body, cc_list)
+        result = await _send_via_brevo(request.to, request.subject, request.body, cc_list, bcc_list)
 
     if result:
         logger.info(f"Direct email sent to {request.to} — {request.subject!r}")
@@ -309,9 +309,9 @@ async def send_direct_email(
     # Fallback: if primary fails, try the other channel
     logger.warning(f"Primary channel failed for {request.to}, trying fallback")
     if request.to.endswith("@balizero.com"):
-        fallback = await _send_via_brevo(request.to, request.subject, request.body, cc_list)
+        fallback = await _send_via_brevo(request.to, request.subject, request.body, cc_list, bcc_list)
     else:
-        fallback = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list)
+        fallback = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list, bcc_list)
 
     if fallback:
         logger.info(f"Email sent to {request.to} via fallback — {request.subject!r}")
@@ -321,7 +321,11 @@ async def send_direct_email(
 
 
 async def _send_via_zoho_smtp(
-    to_email: str, subject: str, body: str, cc_list: list[str] | None,
+    to_email: str,
+    subject: str,
+    body: str,
+    cc_list: list[str] | None,
+    bcc_list: list[str] | None = None,
 ) -> bool:
     """Send via Zoho SMTP (for intra-domain @balizero.com delivery)."""
     try:
@@ -335,7 +339,8 @@ async def _send_via_zoho_smtp(
             html_body=body,
             from_email="zantara@balizero.com",
             from_name="Zantara",
-            bcc=cc_list,
+            cc=cc_list,
+            bcc=bcc_list,
         )
     except Exception as e:
         logger.error(f"Zoho SMTP failed for {to_email}: {e}")
@@ -343,7 +348,11 @@ async def _send_via_zoho_smtp(
 
 
 async def _send_via_brevo(
-    to_email: str, subject: str, body: str, cc_list: list[str] | None,
+    to_email: str,
+    subject: str,
+    body: str,
+    cc_list: list[str] | None,
+    bcc_list: list[str] | None = None,
 ) -> bool:
     """Send via Brevo HTTP API (for external delivery)."""
     import os
@@ -362,6 +371,8 @@ async def _send_via_brevo(
     }
     if cc_list:
         payload["cc"] = [{"email": e} for e in cc_list]
+    if bcc_list:
+        payload["bcc"] = [{"email": e} for e in bcc_list]
 
     is_brevo = api_key.startswith("xkeysib-")
     url = "https://api.brevo.com/v3/smtp/email" if is_brevo else "https://api.sendgrid.com/v3/mail/send"
@@ -380,6 +391,8 @@ async def _send_via_brevo(
         }
         if cc_list:
             payload["personalizations"][0]["cc"] = [{"email": e} for e in cc_list]
+        if bcc_list:
+            payload["personalizations"][0]["bcc"] = [{"email": e} for e in bcc_list]
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:

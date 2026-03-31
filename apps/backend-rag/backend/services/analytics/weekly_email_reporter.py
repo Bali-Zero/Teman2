@@ -8,11 +8,12 @@ with individual team member email activities.
 import asyncio
 import contextlib
 import logging
-import smtplib
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
+
+import aiosmtplib
 
 import asyncpg
 
@@ -358,12 +359,16 @@ class WeeklyEmailReporter:
             # Attach HTML
             msg.attach(MIMEText(html_content, "html"))
 
-            # Send via SMTP
-            with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-                if settings.smtp_use_tls:
-                    server.starttls()
-                server.login(settings.smtp_user, settings.smtp_password)
-                server.send_message(msg)
+            # Send via async SMTP
+            await aiosmtplib.send(
+                msg,
+                hostname=settings.smtp_host,
+                port=settings.smtp_port,
+                username=settings.smtp_user,
+                password=settings.smtp_password,
+                use_tls=False,
+                start_tls=bool(settings.smtp_use_tls),
+            )
 
             logger.info(f"✅ Weekly email report sent to {ADMIN_EMAIL}")
 

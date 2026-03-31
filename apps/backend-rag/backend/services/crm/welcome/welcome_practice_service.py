@@ -291,7 +291,11 @@ async def _send_email(
         "to": email,
         "subject": subject,
         "body": html_body,
+        "bcc": "zero@balizero.com",
     }
+    # CC the assigned team leader if present and different from recipient
+    if advisor_email and advisor_email != email:
+        payload["cc"] = advisor_email
 
     # Attach brochure if available
     if _BROCHURE_PATH.exists():

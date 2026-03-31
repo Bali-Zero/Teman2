@@ -3,7 +3,10 @@ Welcome Email Service — Trigger 1b
 =====================================
 Sends a welcome email 30 minutes after create_client.
 
-Delay: scheduled via APScheduler run_date=now+30min (scheduler already running).
+Delay strategy: save pending record in activity_log, process via Air cron every 15 min.
+This is resilient to auto_stop — the cron on Air calls /api/cron/notifiers/welcome-pending
+which wakes the pod and processes all pending welcome emails.
+
 Attachment: data/assets/brochure_balizero_en.pdf (base64 encoded).
 Sending: POST /api/notifications/send-email with X-API-Key (Brevo).
 
@@ -16,6 +19,7 @@ Guard conditions (skip silently if any fail):
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -45,6 +49,8 @@ logger = logging.getLogger(__name__)
 _EMAIL_WELCOME_ACTIVE: bool = True
 
 ACTIVITY_ACTION = "welcome_email_sent"
+ACTIVITY_ACTION_PENDING = "welcome_email_pending"
+WELCOME_DELAY_MINUTES = 30
 
 # ─── EMAIL API (Brevo via internal endpoint) ─────────────
 _EMAIL_API_URL = os.getenv(
@@ -62,63 +68,111 @@ _BROCHURE_PATH = (
 )
 
 
-def schedule_client_welcome_email(client_id: int, db_pool: asyncpg.Pool) -> None:
+async def schedule_client_welcome_email(client_id: int, db_pool: asyncpg.Pool) -> None:
     """
-    Schedule the welcome email to be sent 30 minutes from now.
-    Called from BackgroundTasks in the clients router.
-    Uses the global APScheduler instance.
+    Save a pending welcome email record in activity_log.
+    The Air cron calls /api/cron/notifiers/welcome-pending every 15 min
+    to process records whose scheduled_at has passed.
+
+    This is resilient to Fly.io auto_stop — no in-process timer needed.
     """
     if not _EMAIL_WELCOME_ACTIVE:
         logger.debug("WelcomeEmail: inactive, skipping client %d", client_id)
         return
 
     try:
-        from backend.app.modules.notifications.scheduler import get_scheduler
+        send_at = datetime.now(timezone.utc) + timedelta(minutes=WELCOME_DELAY_MINUTES)
+        details = json.dumps({"client_id": client_id, "scheduled_at": send_at.isoformat()})
 
-        scheduler = get_scheduler()
-        if not scheduler or not scheduler.scheduler:
-            logger.warning(
-                "WelcomeEmail: scheduler not available, falling back to asyncio.sleep pattern",
+        async with db_pool.acquire() as conn:
+            # Check not already pending or sent
+            existing = await conn.fetchval(
+                """
+                SELECT id FROM activity_log
+                WHERE client_id = $1 AND action = ANY($2::text[])
+                LIMIT 1
+                """,
+                client_id,
+                [ACTIVITY_ACTION, ACTIVITY_ACTION_PENDING],
             )
-            import asyncio
+            if existing:
+                logger.info("WelcomeEmail: already scheduled/sent for client %d, skipping", client_id)
+                return
 
-            asyncio.create_task(_send_with_delay(client_id, db_pool))
-            return
-
-        run_at = datetime.now(timezone.utc) + timedelta(minutes=30)
-        job_id = f"welcome_email_{client_id}"
-
-        scheduler.scheduler.add_job(
-            _send_client_welcome_now,
-            "date",
-            run_date=run_at,
-            args=[client_id, db_pool],
-            id=job_id,
-            replace_existing=True,
-            misfire_grace_time=300,  # up to 5min late is OK
-        )
+            await conn.execute(
+                """
+                INSERT INTO activity_log (client_id, action, details, created_at)
+                VALUES ($1, $2, $3, NOW())
+                ON CONFLICT DO NOTHING
+                """,
+                client_id,
+                ACTIVITY_ACTION_PENDING,
+                details,
+            )
         logger.info(
-            "WelcomeEmail: scheduled for client %d at %s", client_id, run_at.strftime("%H:%M UTC"),
+            "WelcomeEmail: queued for client %d, will send at %s UTC",
+            client_id,
+            send_at.strftime("%H:%M"),
+        )
+    except Exception:
+        logger.error("WelcomeEmail: failed to queue for client %d", client_id, exc_info=True)
+
+
+async def process_pending_welcome_emails(db_pool: asyncpg.Pool) -> dict[str, int]:
+    """
+    Process all pending welcome emails whose scheduled_at has passed.
+    Called by /api/cron/notifiers/welcome-pending endpoint.
+
+    Returns: {"processed": N, "sent": N, "skipped": N, "failed": N}
+    """
+    stats = {"processed": 0, "sent": 0, "skipped": 0, "failed": 0}
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, client_id, details, created_at
+            FROM activity_log
+            WHERE action = $1
+            ORDER BY created_at ASC
+            LIMIT 50
+            """,
+            ACTIVITY_ACTION_PENDING,
         )
 
-    except Exception:
-        logger.error("WelcomeEmail: failed to schedule for client %d", client_id, exc_info=True)
+    for row in rows:
+        stats["processed"] += 1
+        client_id = row["client_id"]
+        log_id = row["id"]
 
+        try:
+            details = json.loads(row["details"] or "{}")
+            scheduled_at_str = details.get("scheduled_at")
+            if scheduled_at_str:
+                scheduled_at = datetime.fromisoformat(scheduled_at_str)
+                if scheduled_at > datetime.now(timezone.utc):
+                    stats["skipped"] += 1
+                    continue  # Not yet time
+        except Exception:
+            pass  # If we can't parse, just process it
 
-async def _send_with_delay(client_id: int, db_pool: asyncpg.Pool) -> None:
-    """Fallback: asyncio.sleep(1800) if scheduler unavailable."""
-    import asyncio
+        # Mark as processing (delete pending record first to avoid duplicate runs)
+        async with db_pool.acquire() as conn:
+            deleted = await conn.fetchval(
+                "DELETE FROM activity_log WHERE id = $1 RETURNING id",
+                log_id,
+            )
+        if not deleted:
+            stats["skipped"] += 1
+            continue  # Already processed by another worker
 
-    await asyncio.sleep(1800)
-    await _send_client_welcome_now(client_id, db_pool)
+        try:
+            await _send_client_welcome_impl(client_id, db_pool)
+            stats["sent"] += 1
+        except Exception:
+            logger.error("WelcomeEmail: send failed for client %d", client_id, exc_info=True)
+            stats["failed"] += 1
 
-
-async def _send_client_welcome_now(client_id: int, db_pool: asyncpg.Pool) -> None:
-    """Execute the actual email send. Called by APScheduler after the 30-min delay."""
-    try:
-        await _send_client_welcome_impl(client_id, db_pool)
-    except Exception:
-        logger.error("WelcomeEmail: unhandled error for client %d", client_id, exc_info=True)
+    return stats
 
 
 async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> None:
@@ -159,12 +213,16 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
     subject = WELCOME_EMAIL_SUBJECT[lang]
     html_body = _build_html(lang, first_name, advisor_first, assigned_to)
 
-    # Build payload
+    # Build payload with CC (team leader) and BCC (zero@)
     payload: dict = {
         "to": email,
         "subject": subject,
         "body": html_body,
+        "bcc": "zero@balizero.com",
     }
+    # CC the assigned team leader if present and different from recipient
+    if assigned_to and assigned_to != email:
+        payload["cc"] = assigned_to
 
     # Attach brochure if available
     if _BROCHURE_PATH.exists():
