@@ -149,7 +149,7 @@ class UnpaidInvoiceNotifier:
         """
         n = len(invoices)
         today_str = datetime.now(tz=timezone.utc).date().strftime("%d %B %Y")
-        subject = f"\U0001f4b0 {n} fatture in attesa di pagamento \u2014 {today_str}"
+        subject = f"[RITARDI] \U0001f4b0 {n} fatture in attesa di pagamento \u2014 {today_str}"
 
         # Build HTML table rows
         table_rows: list[str] = []

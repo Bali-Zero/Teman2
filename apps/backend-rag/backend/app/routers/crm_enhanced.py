@@ -1030,7 +1030,7 @@ async def get_client_companies(
         return [dict(r) for r in rows]
 
 
-@router.get("/companies/{company_id}/documents")
+@router.get("/companies/{company_id}/documents", operation_id="get_crm_company_documents")
 async def get_company_documents(
     company_id: int,
     doc_type: str | None = Query(None),

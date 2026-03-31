@@ -177,7 +177,7 @@ class VisaExpiryTeamNotifier:
         Subject: "⚠️ Documenti in scadenza — {n} clienti da contattare"
         """
         n = len(clients)
-        subject = f"⚠️ Documenti in scadenza — {n} client{'i' if n != 1 else 'e'} da contattare"
+        subject = f"[SCADENZE] ⚠️ Documenti in scadenza — {n} client{'i' if n != 1 else 'e'} da contattare"
 
         rows_html = "\n".join(_build_client_row(c) for c in clients)
 
@@ -242,7 +242,7 @@ Ti preghiamo di contattarli al più presto per avviare il processo di rinnovo co
         Subject: "⚠️ {n} documenti in scadenza — riepilogo team"
         """
         n = len(all_clients)
-        subject = f"⚠️ {n} document{'i' if n != 1 else 'o'} in scadenza — riepilogo team"
+        subject = f"[SCADENZE] ⚠️ {n} document{'i' if n != 1 else 'o'} in scadenza — riepilogo team"
 
         # Group by leader for the summary table
         by_leader: dict[str, list[dict[str, Any]]] = defaultdict(list)

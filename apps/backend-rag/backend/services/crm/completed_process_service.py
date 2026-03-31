@@ -180,7 +180,7 @@ class CompletedProcessService:
             for doc in documents:
                 docs_section += f"   • {doc['filename']}: {doc['file_url']}\n"
 
-        subject = f"🎉 Congratulations {client_name}! Your {practice_type} is Complete"
+        subject = f"[CLIENT] 🎉 Congratulations {client_name}! Your {practice_type} is Complete"
 
         body = f"""Dear {client_name},
 
@@ -235,7 +235,7 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
         """Send notification to team leader about completion."""
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
 
-        subject = f"✅ Process Completed - {client_name} ({practice_type})"
+        subject = f"[TEAM] ✅ Process Completed - {client_name} ({practice_type})"
 
         body = f"""Hi Team Leader,
 
