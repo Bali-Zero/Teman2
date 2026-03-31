@@ -19,7 +19,6 @@ Guard conditions (skip silently if any fail):
 from __future__ import annotations
 
 import base64
-import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -70,7 +69,7 @@ _BROCHURE_PATH = (
 
 async def schedule_client_welcome_email(client_id: int, db_pool: asyncpg.Pool) -> None:
     """
-    Save a pending welcome email record in activity_log.
+    Save a pending welcome email record in welcome_email_queue.
     The Air cron calls /api/cron/notifiers/welcome-pending every 15 min
     to process records whose scheduled_at has passed.
 
@@ -82,32 +81,16 @@ async def schedule_client_welcome_email(client_id: int, db_pool: asyncpg.Pool) -
 
     try:
         send_at = datetime.now(timezone.utc) + timedelta(minutes=WELCOME_DELAY_MINUTES)
-        details = json.dumps({"client_id": client_id, "scheduled_at": send_at.isoformat()})
 
         async with db_pool.acquire() as conn:
-            # Check not already pending or sent
-            existing = await conn.fetchval(
-                """
-                SELECT id FROM activity_log
-                WHERE client_id = $1 AND action = ANY($2::text[])
-                LIMIT 1
-                """,
-                client_id,
-                [ACTIVITY_ACTION, ACTIVITY_ACTION_PENDING],
-            )
-            if existing:
-                logger.info("WelcomeEmail: already scheduled/sent for client %d, skipping", client_id)
-                return
-
             await conn.execute(
                 """
-                INSERT INTO activity_log (client_id, action, details, created_at)
-                VALUES ($1, $2, $3, NOW())
-                ON CONFLICT DO NOTHING
+                INSERT INTO welcome_email_queue (client_id, scheduled_at, created_at)
+                VALUES ($1, $2, NOW())
+                ON CONFLICT (client_id) DO NOTHING
                 """,
                 client_id,
-                ACTIVITY_ACTION_PENDING,
-                details,
+                send_at,
             )
         logger.info(
             "WelcomeEmail: queued for client %d, will send at %s UTC",
@@ -121,45 +104,35 @@ async def schedule_client_welcome_email(client_id: int, db_pool: asyncpg.Pool) -
 async def process_pending_welcome_emails(db_pool: asyncpg.Pool) -> dict[str, int]:
     """
     Process all pending welcome emails whose scheduled_at has passed.
-    Called by /api/cron/notifiers/welcome-pending endpoint.
+    Called by /api/cron/notifiers/welcome-pending endpoint every 15 min from Air.
 
     Returns: {"processed": N, "sent": N, "skipped": N, "failed": N}
     """
     stats = {"processed": 0, "sent": 0, "skipped": 0, "failed": 0}
+    now = datetime.now(timezone.utc)
 
     async with db_pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT id, client_id, details, created_at
-            FROM activity_log
-            WHERE action = $1
-            ORDER BY created_at ASC
+            SELECT id, client_id, scheduled_at
+            FROM welcome_email_queue
+            WHERE scheduled_at <= $1
+            ORDER BY scheduled_at ASC
             LIMIT 50
             """,
-            ACTIVITY_ACTION_PENDING,
+            now,
         )
 
     for row in rows:
         stats["processed"] += 1
         client_id = row["client_id"]
-        log_id = row["id"]
+        row_id = row["id"]
 
-        try:
-            details = json.loads(row["details"] or "{}")
-            scheduled_at_str = details.get("scheduled_at")
-            if scheduled_at_str:
-                scheduled_at = datetime.fromisoformat(scheduled_at_str)
-                if scheduled_at > datetime.now(timezone.utc):
-                    stats["skipped"] += 1
-                    continue  # Not yet time
-        except Exception:
-            pass  # If we can't parse, just process it
-
-        # Mark as processing (delete pending record first to avoid duplicate runs)
+        # Atomic claim: delete the row to prevent duplicate processing
         async with db_pool.acquire() as conn:
             deleted = await conn.fetchval(
-                "DELETE FROM activity_log WHERE id = $1 RETURNING id",
-                log_id,
+                "DELETE FROM welcome_email_queue WHERE id = $1 RETURNING id",
+                row_id,
             )
         if not deleted:
             stats["skipped"] += 1
@@ -190,9 +163,13 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
             logger.info("WelcomeEmail: client %d has no email, skipping", client_id)
             return
 
-        # Idempotency check
+        # Idempotency check: verify not already in sent log
         already_sent = await conn.fetchval(
-            "SELECT id FROM activity_log WHERE client_id = $1 AND action = $2 LIMIT 1",
+            """
+            SELECT 1 FROM notification_alerts
+            WHERE client_id = $1 AND alert_type = $2
+            LIMIT 1
+            """,
             client_id,
             ACTIVITY_ACTION,
         )
@@ -255,9 +232,9 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
         async with db_pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO activity_log (client_id, action, details, created_at)
-                VALUES ($1, $2, $3, NOW())
-                ON CONFLICT DO NOTHING
+                INSERT INTO notification_alerts (client_id, alert_type, status, message, sent_at)
+                VALUES ($1, $2, 'sent', $3, NOW())
+                ON CONFLICT (client_id, alert_type, created_date) DO NOTHING
                 """,
                 client_id,
                 ACTIVITY_ACTION,
