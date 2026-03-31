@@ -88,6 +88,7 @@ def include_routers(api: FastAPI) -> None:
         portal_billing,
         portal_drive,
         portal_invite,
+        portal_notifications,
         portal_process_timeline,
         portal_taxes,
         portal_visa,
@@ -171,6 +172,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(portal_billing.router)
     api.include_router(portal_drive.router)
     api.include_router(portal_invite.router)
+    api.include_router(portal_notifications.router)
     api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
     api.include_router(portal_visa.router)
