@@ -297,7 +297,7 @@ async def send_direct_email(
     cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
 
     payload: dict = {
-        "sender": {"email": "zero@balizero.com", "name": "Zantara · Bali Zero"},
+        "sender": {"email": "zantara@balizero.com", "name": "Zantara"},
         "to": [{"email": request.to}],
         "subject": request.subject,
         "htmlContent": request.body,
@@ -318,7 +318,7 @@ async def send_direct_email(
         # SendGrid format
         payload = {
             "personalizations": [{"to": [{"email": request.to}]}],
-            "from": {"email": "zero@balizero.com", "name": "Zantara · Bali Zero"},
+            "from": {"email": "zantara@balizero.com", "name": "Zantara"},
             "subject": request.subject,
             "content": [{"type": "text/html", "value": request.body}],
         }
