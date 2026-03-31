@@ -77,6 +77,7 @@ class SMTPProvider(EmailProvider):
         subject: str,
         html_body: str,
         text_body: str | None = None,
+        cc: list[str] | None = None,
         bcc: list[str] | None = None,
         from_email: str = None,
         from_name: str = "Bali Zero Team",
@@ -94,7 +95,9 @@ class SMTPProvider(EmailProvider):
             msg["From"] = f"{from_name} <{from_email or self.from_email}>"
             msg["To"] = to_email
 
-            # Add BCC if provided
+            # Add CC/BCC if provided
+            if cc:
+                msg["Cc"] = ", ".join(cc)
             if bcc:
                 msg["Bcc"] = ", ".join(bcc)
 
@@ -111,6 +114,8 @@ class SMTPProvider(EmailProvider):
                 mixed_msg["Subject"] = msg["Subject"]
                 mixed_msg["From"] = msg["From"]
                 mixed_msg["To"] = msg["To"]
+                if cc:
+                    mixed_msg["Cc"] = msg["Cc"]
                 if bcc:
                     mixed_msg["Bcc"] = msg["Bcc"]
 

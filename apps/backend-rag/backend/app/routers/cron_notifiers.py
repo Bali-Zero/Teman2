@@ -85,6 +85,32 @@ async def run_stale_practice_notifier(request: Request) -> dict[str, Any]:
     return {"service": "stale_practices", **result}
 
 
+@router.post("/welcome-pending")
+async def run_welcome_pending(request: Request) -> dict[str, Any]:
+    """Process pending welcome emails whose 30-min delay has elapsed. Called every 15 min from Air cron."""
+    _verify_api_key(request)
+    db_pool = _get_db_pool(request)
+
+    from backend.services.crm.welcome.welcome_email_service import process_pending_welcome_emails
+
+    result = await process_pending_welcome_emails(db_pool)
+    logger.info(f"Welcome pending processor: {result}")
+    return {"service": "welcome_pending", **result}
+
+
+@router.post("/birthday")
+async def run_birthday_notifier(request: Request) -> dict[str, Any]:
+    """Send birthday emails to clients with today's birthday. Called daily from Air cron."""
+    _verify_api_key(request)
+    db_pool = _get_db_pool(request)
+
+    from backend.services.crm.birthday_notifier_service import run_birthday_notifier_task
+
+    result = await run_birthday_notifier_task(db_pool)
+    logger.info(f"Birthday notifier: {result}")
+    return {"service": "birthday", **result}
+
+
 @router.post("/all")
 async def run_all_notifiers(request: Request) -> dict[str, Any]:
     """Run all three notifiers in sequence. Single cron endpoint."""

@@ -340,7 +340,7 @@ async def create_client(
             from backend.services.crm.welcome.welcome_whatsapp_service import send_client_welcome
 
             background_tasks.add_task(send_client_welcome, new_client["id"], db_pool)
-            schedule_client_welcome_email(new_client["id"], db_pool)
+            background_tasks.add_task(schedule_client_welcome_email, new_client["id"], db_pool)
         except Exception as e:
             logger.error(f"Welcome communication setup failed: {e}")
 
