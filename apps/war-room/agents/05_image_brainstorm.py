@@ -257,7 +257,7 @@ Return ONLY the final prompt. No explanation, no preamble.
         return variants[0][1] if variants else raw_prompt
 
 
-def generate_image(prompt: str, api_key: str, output_path: Path, width: int = 1024, height: int = 1280):
+def generate_image(prompt: str, api_key: str, output_path: Path, width: int = 1440, height: int = 1800):
     """Generate image via Fireworks Flux.1 Dev. Returns True on success."""
     payload = json.dumps({
         "prompt": prompt,
@@ -319,9 +319,35 @@ def main():
         print("❌ FIREWORKS_API_KEY not found — skipping image generation", file=sys.stderr)
         sys.exit(1)
 
-    # Filter slides with image_prompt
-    image_slides = [s for s in slides if s.get("image_prompt")]
-    print(f"🎨 Image brainstorm — {len(image_slides)} slides con image_prompt", file=sys.stderr)
+    # Target: 1 cover + 5 slide images = 6 total
+    TARGET_IMAGES = 6
+    cover_slides = [s for s in slides if s.get("is_cover") or s.get("slide_number") == 1]
+    body_with_prompt = [s for s in slides if not (s.get("is_cover") or s.get("slide_number") == 1) and s.get("image_prompt")]
+    body_without_prompt = [s for s in slides if not (s.get("is_cover") or s.get("slide_number") == 1) and not s.get("image_prompt")]
+
+    # Ensure cover has an image_prompt
+    for s in cover_slides:
+        if not s.get("image_prompt"):
+            s["image_prompt"] = (
+                f"Ultra-cinematic aerial cover image for: {s.get('headline', topic)}. "
+                "Bali, Indonesia. Maximum visual impact, golden hour, editorial photography."
+            )
+            print(f"   🔧 Auto-generated cover image_prompt", file=sys.stderr)
+
+    # Auto-generate image_prompt for body slides until we reach TARGET_IMAGES
+    needed = TARGET_IMAGES - len(cover_slides) - len(body_with_prompt)
+    for s in body_without_prompt[:max(0, needed)]:
+        headline = s.get("headline", "")
+        subhead = s.get("subhead", "") or ""
+        s["image_prompt"] = (
+            f"Editorial photograph for slide: {headline}. {subhead[:80]}. "
+            "Bali Indonesia context, cinematic teal and amber color grading."
+        )
+        body_with_prompt.append(s)
+        print(f"   🔧 Auto-generated image_prompt for slide {s.get('slide_number')}: {headline[:50]}", file=sys.stderr)
+
+    image_slides = cover_slides + body_with_prompt[:TARGET_IMAGES - len(cover_slides)]
+    print(f"🎨 Image brainstorm — {len(image_slides)} immagini (1 cover + {len(image_slides)-len(cover_slides)} slide, target {TARGET_IMAGES})", file=sys.stderr)
 
     manifest = []
 
