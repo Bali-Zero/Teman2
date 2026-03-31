@@ -291,6 +291,11 @@ async def create_client(
         # Estrae i dati validati da FastAPI/Pydantic
         client_data = client.model_dump(exclude_unset=True)
 
+        # Popola created_by con l'utente autenticato
+        creator_email = current_user.get("email", "").lower() if current_user else None
+        if creator_email:
+            client_data["created_by"] = creator_email
+
         # Costruisce i dati opzionali per l'azienda se presenti nel payload
         company_data = None
         if client.company_name:
@@ -306,7 +311,6 @@ async def create_client(
         )
 
         new_client = dict(created_record)
-        current_user.get("email", "").lower()
 
         # Logica accessoria: Google Drive
         try:
