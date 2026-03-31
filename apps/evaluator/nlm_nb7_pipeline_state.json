@@ -4,10 +4,10 @@
   "notebook_name": "NB-7: Editorial & Content Strategy",
   "current_state": "COMPLETE",
   "degradation_level": "NOMINAL",
-  "last_updated": "2026-03-31T12:48:38.059601+00:00",
+  "last_updated": "2026-03-31T18:42:20.614991+00:00",
   "budget": {
     "daily_queries": 2,
-    "weekly_calls": 6,
+    "weekly_calls": 8,
     "week_start": "2026-W13"
   },
   "circuit_breakers": {
@@ -49,6 +49,11 @@
       "date": "2026-03-31",
       "cluster": "B",
       "run_id": "68ee38ff-934d-4413-a22e-66dbe1298a75"
+    },
+    {
+      "date": "2026-04-01",
+      "cluster": "C",
+      "run_id": "555d0f5a-ea0b-4713-ae2f-5fdbb5521346"
     }
   ]
 }

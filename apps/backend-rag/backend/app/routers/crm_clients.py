@@ -1010,7 +1010,7 @@ async def get_client_audit_trail(
         raise handle_database_error(e) from e
 
 
-@router.get("/metrics/summary")
+@router.get("/metrics/summary", operation_id="get_crm_client_metrics_summary")
 async def get_crm_metrics_summary(
     current_user: dict = Depends(get_current_user),
     _db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -1031,7 +1031,7 @@ async def get_crm_metrics_summary(
         raise handle_database_error(e) from e
 
 
-@router.post("/metrics/refresh")
+@router.post("/metrics/refresh", operation_id="refresh_crm_client_metrics")
 async def refresh_crm_metrics(
     current_user: dict = Depends(get_current_user),
     _db_pool: asyncpg.Pool = Depends(get_database_pool),

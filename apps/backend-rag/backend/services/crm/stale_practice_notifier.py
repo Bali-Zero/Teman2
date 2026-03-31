@@ -175,7 +175,7 @@ class StalePracticeNotifier:
         import httpx
 
         today: str = datetime.now(tz=timezone.utc).date().isoformat()
-        subject = f"\u23f0 {len(stale)} pratiche ferme da {STALE_DAYS}+ giorni \u2014 {today}"
+        subject = f"[RITARDI] ⏰ {len(stale)} pratiche ferme da {STALE_DAYS}+ giorni — {today}"
 
         # Group by leader for the table
         by_leader: dict[str, list[dict[str, Any]]] = {}
@@ -267,7 +267,7 @@ class StalePracticeNotifier:
         """
         import httpx
 
-        subject = "\u23f0 Pratiche in attesa \u2014 aggiornamento richiesto"
+        subject = "[TEAM] ⏰ Pratiche in attesa — aggiornamento richiesto"
 
         rows_html = ""
         for p in practices:

@@ -276,7 +276,7 @@ async def _send_email(
         return
 
     subject_tmpl = PRACTICE_EMAIL_SUBJECT[lang]
-    subject = subject_tmpl.format(service_name=service_name)
+    subject = "[CLIENT] " + subject_tmpl.format(service_name=service_name)
     html_body = _build_html(
         lang=lang,
         first_name=first_name,

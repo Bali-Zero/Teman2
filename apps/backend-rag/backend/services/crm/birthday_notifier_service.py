@@ -271,7 +271,7 @@ class BirthdayNotifierService:
         if not personalized:
             personalized = "We value you as a client and appreciate your trust in us."
 
-        subject = template["subject"]
+        subject = "[CLIENT] " + template["subject"]
         greeting = template["greeting"].format(name=first_name)
         message = template["message"].format(
             name=first_name,

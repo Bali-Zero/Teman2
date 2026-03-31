@@ -259,7 +259,7 @@ class DailyCheckinNotifier:
 
             # Build email
             now = datetime.now(BALI_TZ)
-            subject = f"📊 Team Check-in Report - {now.strftime('%d/%m/%Y')}"
+            subject = f"[REPORT] 📊 Team Check-in Report - {now.strftime('%d/%m/%Y')}"
             html_content = self._build_html_email(checkins, online_status)
 
             # Create message

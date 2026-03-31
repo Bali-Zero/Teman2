@@ -1,14 +1,18 @@
 {
   "schema_version": 1,
   "notebook_id": "NB-3",
-  "last_updated": "2026-03-31T12:48:28.603573+00:00",
+  "last_updated": "2026-03-31T18:54:11.229336+00:00",
   "summary": {
     "total_tracked": 47,
     "active": 47,
     "quarantine": 0,
     "archived": 0
   },
-  "domain_denylist": ["balizero.com", "kita.balizero.com", "my.balizero.com"],
+  "domain_denylist": [
+    "balizero.com",
+    "kita.balizero.com",
+    "my.balizero.com"
+  ],
   "master_documents": {
     "MD-1": {
       "nlm_source_id": "46b40709-7270-4676-b41e-c5bf3cbb8b7b",

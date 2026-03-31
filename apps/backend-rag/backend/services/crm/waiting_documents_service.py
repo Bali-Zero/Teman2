@@ -125,7 +125,7 @@ class WaitingDocumentsService:
         """Notify team leader that documents need to be collected from the client."""
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
 
-        subject = f"📋 Documents Needed — {client_name} ({practice_type})"
+        subject = f"[TEAM] 📋 Documents Needed — {client_name} ({practice_type})"
 
         body = f"""Hi there!
 
@@ -163,7 +163,7 @@ Zantara CRM 🤖
         """Send warm document request email to client."""
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
 
-        subject = f"📋 Documents Needed for Your {practice_type}"
+        subject = f"[CLIENT] 📋 Documents Needed for Your {practice_type}"
 
         body = f"""Dear {client_name},
 

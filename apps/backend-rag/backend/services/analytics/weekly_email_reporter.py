@@ -347,7 +347,7 @@ class WeeklyEmailReporter:
 
             # Build email
             now = datetime.now(BALI_TZ)
-            subject = f"📊 Weekly Email Report - {now.strftime('%d/%m/%Y')}"
+            subject = f"[REPORT] 📊 Weekly Email Report - {now.strftime('%d/%m/%Y')}"
             html_content = self._build_html_email(team_activities, summary, now)
 
             # Create message

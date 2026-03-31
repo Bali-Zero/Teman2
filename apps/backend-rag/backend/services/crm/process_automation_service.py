@@ -138,7 +138,7 @@ class ProcessAutomationService:
         """Send warm, human email to client confirming payment and process start."""
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
 
-        subject = f"🎉 Great News {client_name}! We're Starting Your {practice_type}"
+        subject = f"[CLIENT] 🎉 Great News {client_name}! We're Starting Your {practice_type}"
 
         body = f"""Hi {client_name},
 
@@ -192,7 +192,7 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
         """Send friendly, motivating notification to team leader."""
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
 
-        subject = f"🚀 Let's Go! Payment Confirmed - {client_name}"
+        subject = f"[TEAM] 🚀 Let's Go! Payment Confirmed - {client_name}"
 
         body = f"""Hey there!
 
