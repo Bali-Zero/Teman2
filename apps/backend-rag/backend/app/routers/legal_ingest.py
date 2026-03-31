@@ -4,18 +4,22 @@ API endpoints for Indonesian legal document ingestion pipeline
 """
 
 import asyncio
+import hashlib
 import logging
 import os
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
+import asyncpg
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 from backend.app.dependencies import get_current_user
 from backend.app.models import TierLevel
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.json_utils import to_jsonb
+from backend.core.legal_config import resolve_nb_target
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 logger = logging.getLogger(__name__)
@@ -488,4 +492,175 @@ async def get_bab_full_text(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to query BAB text: {str(e)}",
+        ) from e
+
+
+# =============================================================================
+# Legal Ingest Full — async job queue endpoints
+# =============================================================================
+
+
+class LegalDocType(str, Enum):
+    PP = "PP"
+    Perpres = "Perpres"
+    PMK = "PMK"
+    Permen = "Permen"
+    SE = "SE"
+    SKB = "SKB"
+
+
+class LegalIngestFullRequest(BaseModel):
+    url: HttpUrl
+    tipo: LegalDocType
+    nomor: str
+    anno: str
+    nb_target: str | None = None
+    titolo: str | None = None
+
+
+class LegalIngestJobResponse(BaseModel):
+    job_id: str
+    status: str
+    tipo: str | None = None
+    nomor: str | None = None
+    anno: str | None = None
+    titolo: str | None = None
+    qdrant_chunks: int | None = None
+    drive_file_id: str | None = None
+    drive_url: str | None = None
+    nlm_source_id: str | None = None
+    sheets_row: str | None = None
+    error: str | None = None
+    created_at: str | None = None
+    message: str | None = None
+
+
+def _idempotency_key(tipo: str, nomor: str, anno: str) -> str:
+    return hashlib.sha256(f"{tipo}:{nomor}:{anno}".encode()).hexdigest()
+
+
+@router.post(
+    "/ingest-full",
+    response_model=LegalIngestJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def ingest_legal_full(
+    request: LegalIngestFullRequest,
+    api_key_verified: Any = Depends(verify_internal_api_key),
+) -> LegalIngestJobResponse:
+    """
+    Ingest a legal document into all systems: Qdrant+KG, Drive, NLM, Sheets.
+    Returns HTTP 202 immediately with job_id.
+    Poll GET /api/legal/ingest-full/{job_id} for status.
+    """
+    from backend.app.core.config import settings
+
+    nb_target = resolve_nb_target(request.tipo.value, request.nb_target)
+    idempotency_key = _idempotency_key(request.tipo.value, request.nomor, request.anno)
+
+    try:
+        conn = await asyncpg.connect(settings.database_url, timeout=10)
+
+        existing = await conn.fetchrow(
+            "SELECT id, status FROM legal_ingest_jobs WHERE idempotency_key = $1",
+            idempotency_key,
+        )
+        if existing and existing["status"] == "complete":
+            await conn.close()
+            return LegalIngestJobResponse(
+                job_id=str(existing["id"]),
+                status="already_exists",
+                message="Legge gia ingestita. Usa job_id per i dettagli.",
+            )
+
+        if existing:
+            await conn.close()
+            return LegalIngestJobResponse(
+                job_id=str(existing["id"]),
+                status=existing["status"],
+                message="Job gia in corso.",
+            )
+
+        row = await conn.fetchrow(
+            """
+            INSERT INTO legal_ingest_jobs
+                (idempotency_key, tipo, nomor, anno, titolo, source_url, nb_target)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id, status
+            """,
+            idempotency_key,
+            request.tipo.value,
+            request.nomor,
+            request.anno,
+            request.titolo,
+            str(request.url),
+            nb_target,
+        )
+        await conn.close()
+
+        logger.info(
+            f"▶️  Legal ingest job created: {row['id']} "
+            f"({request.tipo} {request.nomor}/{request.anno})"
+        )
+        return LegalIngestJobResponse(
+            job_id=str(row["id"]),
+            status="pending",
+            message="Ingestion avviata. Usa GET /api/legal/ingest-full/{job_id} per monitorare.",
+        )
+
+    except Exception as e:
+        logger.error(f"Error creating legal ingest job: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create ingest job: {str(e)}",
+        ) from e
+
+
+@router.get("/ingest-full/{job_id}", response_model=LegalIngestJobResponse)
+async def get_legal_ingest_job(job_id: str) -> LegalIngestJobResponse:
+    """Get status and results of a legal ingestion job. No auth required (job_id is a secret)."""
+    from backend.app.core.config import settings
+
+    try:
+        conn = await asyncpg.connect(settings.database_url, timeout=10)
+        row = await conn.fetchrow(
+            """
+            SELECT id, status, tipo, nomor, anno, titolo,
+                   qdrant_chunks, drive_file_id, drive_url,
+                   nlm_source_id, sheets_row, error, created_at
+            FROM legal_ingest_jobs WHERE id = $1
+            """,
+            job_id,
+        )
+        await conn.close()
+
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Job not found: {job_id}",
+            )
+
+        return LegalIngestJobResponse(
+            job_id=str(row["id"]),
+            status=row["status"],
+            tipo=row["tipo"],
+            nomor=row["nomor"],
+            anno=row["anno"],
+            titolo=row["titolo"],
+            qdrant_chunks=row["qdrant_chunks"],
+            drive_file_id=row["drive_file_id"],
+            drive_url=row["drive_url"],
+            nlm_source_id=row["nlm_source_id"],
+            sheets_row=str(row["sheets_row"]) if row["sheets_row"] else None,
+            error=row["error"],
+            created_at=str(row["created_at"]),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching legal ingest job: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch job: {str(e)}",
         ) from e
