@@ -74,7 +74,9 @@ if [[ -f "$WAR_ROOM/.env" ]]; then
 fi
 
 # ── Validate required env vars ───────────────────────────────
-[[ -z "${OPENAI_API_KEY:-}" ]] && log "⚠️  OPENAI_API_KEY not set — FASE 1 may fail"
+[[ -z "${EXA_API_KEY:-}" ]] && log "⚠️  EXA_API_KEY not set — FASE 1 Exa researcher disabled"
+[[ -z "${GROK_API_KEY:-}" ]] && log "⚠️  GROK_API_KEY not set — FASE 1 xAI researcher disabled"
+[[ -z "${DEEPSEEK_API_KEY:-}" ]] && log "⚠️  DEEPSEEK_API_KEY not set — FASE 0 DeepSeek synthesis disabled"
 [[ -z "${TELEGRAM_BOT_TOKEN:-}" ]] && log "⚠️  TELEGRAM_BOT_TOKEN not set — FASE 5 notifications disabled"
 
 log "🚨 BALI ZERO WAR ROOM AVVIATA"
@@ -119,10 +121,10 @@ print(json.dumps(intel, ensure_ascii=False, indent=2))
     INTEL_COUNT=$(python3 -c "import json; d=json.load(open('$INTEL_LATEST')); print(len([a for a in d.get('articles',[]) if a.get('enrichment')]))" 2>/dev/null || echo "?")
     log "   📂 Intel pre-seed → $INTEL_COUNT enriched articles"
 
-    # ── FASE 0: Topic Selector (Gemini + Google Trends) ──────
+    # ── FASE 0: Topic Selector (Exa + NLM + xAI + DeepSeek) ─
     if [[ -z "$TOPIC" ]]; then
       log ""
-      log "━━━ FASE 0: TOPIC SELECTOR (Gemini + Google Trends) ━━━"
+      log "━━━ FASE 0: TOPIC SELECTOR (Exa + NLM + xAI + DeepSeek) ━━━"
       SELECTED_TOPIC_FILE="$OUTPUT/strategy/selected_topic.json"
       mkdir -p "$OUTPUT/strategy"
 
@@ -267,7 +269,7 @@ log "   ✅ Merged → $MERGED_COUNT facts totali"
 
 # ── FASE 1.5: Qwen3.5 Pre-processor ─────────────────────────
 log ""
-log "━━━ FASE 1.5: QWEN3.5 PRE-PROCESSOR (locale) ━━━"
+log "━━━ FASE 1.5: DEEPSEEK R1 PRE-PROCESSOR (locale) ━━━"
 if ! $DRY_RUN; then
   [[ ! -f "$OUTPUT/raw/social_dump.json" ]] && echo '{"data":[]}' > "$OUTPUT/raw/social_dump.json"
   run_phase "qwen_preprocessor" 300 \
