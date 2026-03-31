@@ -10,10 +10,12 @@ Orchestrates the complete invoice workflow:
 """
 
 import json
+import os
 from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
+import httpx
 
 from backend.app.modules.notifications.service import SMTPProvider
 from backend.app.utils.logging_utils import get_logger
@@ -272,7 +274,15 @@ For support: support@balizero.com | WhatsApp: +62 859 0436 9574
                     return True
                 raise Exception("SMTP send failed")
             except Exception as smtp_error:
-                logger.error(f"Both Zoho and SMTP failed: {smtp_error}")
+                logger.warning(f"SMTP also failed, trying Brevo (no attachment): {smtp_error}")
+
+            # Last resort: Brevo (text-only, no PDF attachment)
+            try:
+                await self._send_via_brevo(client_email, subject, body_text)
+                logger.info(f"Invoice notification sent to {client_email} via Brevo (no PDF)")
+                return True
+            except Exception as brevo_error:
+                logger.error(f"All email providers failed for invoice to {client_email}: {brevo_error}")
                 raise
 
     async def _send_accounting_notification(
@@ -363,8 +373,32 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
                     return True
                 raise Exception("SMTP send failed")
             except Exception as smtp_error:
-                logger.error(f"Both Zoho and SMTP failed: {smtp_error}")
+                logger.warning(f"SMTP also failed for accounting, trying Brevo: {smtp_error}")
+
+            # Last resort: Brevo (text-only, no PDF attachment)
+            try:
+                await self._send_via_brevo(ACCOUNTING_EMAIL, subject, body_text)
+                logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} via Brevo (no PDF)")
+                return True
+            except Exception as brevo_error:
+                logger.error(f"All providers failed for accounting notification: {brevo_error}")
                 raise
+
+    async def _send_via_brevo(self, to_email: str, subject: str, body: str) -> None:
+        """Send text-only email via Brevo internal API (no attachments)."""
+        api_url = os.getenv(
+            "INTERNAL_EMAIL_API_URL",
+            "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+        )
+        api_key = os.getenv("NUZANTARA_API_KEY", "REDACTED-ROTATED-KEY")
+        html_body = body.replace("\n", "<br>")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                api_url,
+                headers={"X-API-Key": api_key},
+                json={"to": to_email, "subject": subject, "body": html_body},
+            )
+            response.raise_for_status()
 
     async def _fetch_practice_data(self, practice_id: int) -> dict | None:
         """Fetch practice data from database."""
