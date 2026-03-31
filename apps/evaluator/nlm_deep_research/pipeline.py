@@ -292,7 +292,7 @@ class NLMPipeline:
         )
         if past_deadline and not self.dry_run:
             logger.warning("Past deadline (02:30 WITA)")
-        checks.append(("deadline", not past_deadline or self.dry_run))
+        checks.append(("deadline", not past_deadline or self.dry_run or self.force))
 
         # 3. Circuit breakers
         nlm_ok = not self.circuit_breakers.nlm.is_open
