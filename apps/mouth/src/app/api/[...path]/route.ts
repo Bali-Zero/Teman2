@@ -246,8 +246,8 @@ async function proxy(req: NextRequest): Promise<Response> {
     respHeaders.delete("transfer-encoding");
     respHeaders.delete("content-encoding");
 
-    // CRITICAL: Prevent Fly.io edge from re-compressing our response
-    respHeaders.set("Cache-Control", "no-transform");
+    // CRITICAL: Prevent caching of authenticated API responses + Fly.io re-compression
+    respHeaders.set("Cache-Control", "no-store, no-transform");
 
     // For SSE (streaming) endpoints, pass through the body stream as-is
     // SSE endpoints are typically not compressed and need to stay as streams
