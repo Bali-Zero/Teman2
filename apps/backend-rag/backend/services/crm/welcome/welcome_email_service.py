@@ -331,10 +331,12 @@ def _build_html(
 
   <div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#0c0d0f;">We handle the bureaucracy. You focus on Bali.</div>
 
-  <!-- Outer wrapper: full-page dark bg -->
-  <table cellspacing="0" cellpadding="0" border="0" width="100%" bgcolor="#0c0d0f" style="background-color:#0c0d0f;min-width:100%;">
+  <!-- Outer wrapper: dark bg forced via div (survives Zoho/Gmail CSS reset) -->
+  <div style="background-color:#0c0d0f;width:100%;margin:0;padding:0;">
+  <table cellspacing="0" cellpadding="0" border="0" width="100%" bgcolor="#0c0d0f" style="background-color:#0c0d0f;">
     <tr>
       <td align="center" bgcolor="#0c0d0f" style="padding:32px 16px 48px;background-color:#0c0d0f;">
+        <div style="background-color:#0c0d0f;max-width:580px;margin:0 auto;">
         <table cellspacing="0" cellpadding="0" border="0" width="580" class="wrap" style="max-width:580px;background-color:#0c0d0f;" bgcolor="#0c0d0f">
 
           <!-- ══ HERO ══ -->
@@ -551,9 +553,11 @@ def _build_html(
           </tr>
 
         </table>
+        </div><!-- /inner div -->
       </td>
     </tr>
   </table>
+  </div><!-- /outer div -->
 
 </body>
 </html>"""
