@@ -102,7 +102,7 @@ export function KeyNumbersColumn({
     items.push({
       label: "Registered Address",
       value: city || addressStr || "",
-      sub: fullAddress && fullAddress !== city ? fullAddress : undefined,
+      sub: fullAddress && fullAddress !== (city || addressStr) ? fullAddress : undefined,
       valueStyle: "text-[15px] tracking-normal",
     });
   }

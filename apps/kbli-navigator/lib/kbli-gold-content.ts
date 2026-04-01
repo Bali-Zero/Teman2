@@ -24,7 +24,7 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
     whatChanged:
       "Big change in 2025. The old 56101 (restaurants) got merged with three other codes: 56103 (food stalls/tents), 56104 (self-service restaurants), and 56109 (other fixed-building food). So if you had a cafeteria-style or self-service setup under a separate code before, it's all 56101 now. One code to rule them all for fixed-building food service.",
     baliContext:
-      "This is the single most common business code for foreigners in Bali. Seminyak, Canggu, and Ubud are saturated — the competition is fierce and landlords know it. Sanur and Uluwatu still have room. Keep in mind: Bali's health department (Dinas Kesehatan) does actual inspections for your SLHS, and they check kitchen hygiene, water quality, and food storage. Budget 2-4 weeks for the inspection alone. Also, most Bali restaurants need a separate liquor license if they serve alcohol — 56101 alone doesn't cover that.",
+      "This is the single most common business code for foreigners in Bali. Seminyak, Canggu, and Ubud are saturated — the competition is fierce and landlords know it. Sanur and Uluwatu still have room. Keep in mind: Bali's health department (Dinas Kesehatan) does actual inspections for your SLHS, and they check kitchen hygiene, water quality, and food storage. Budget 2-4 weeks for the inspection alone. Also, most Bali restaurants need a separate liquor license if they serve alcohol — 56101 alone doesn't cover that.\n\n**2026 Compliance Alert:** Halal certification is now mandatory for ALL F&B businesses. For PT PMA (Large Scale), compliance was expected by 2024 — the Oct 17, 2026 deadline covers imported food items and small-scale suppliers. The 'Restaurant Tax' is now officially PBJT (10%), and Badung/Denpasar monitor POS data in real-time. Discrepancies between POS data and SPT trigger automated audits. Ensure your POS system is integrated with the regional tax authority (Bapenda).",
     youllAlsoNeed:
       "- 56301 — If you serve alcohol (bar license, required for cocktails and spirits)\n- 56303 — If you also operate as a café/coffee shop\n- 47221 — If you sell retail beverages (bottled drinks to go)\n- 68112 — If you're leasing the building yourself",
     zantaraOpener:
@@ -219,7 +219,7 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
   "56301": {
     whatItMeans:
       "Bars — places where the main business is serving drinks, both alcoholic (spirits, beer, wine, whisky) and non-alcoholic. This includes beach clubs where drinks are the primary offering, bars on trains or boats, and any establishment where beverages are the star and food is secondary.",
-    whatYouNeed: `**Medium + Large scale only** (no Micro/Small entries): Medium-High risk. NIB + Standard Certificate within **14 working days**. You need a Self-Assessment of Standard Readiness document, LSPr-certified standard, and a Health Feasibility Certificate (Sertifikat Laik Sehat).\n\n**PMA:** Fully open — 100% foreign ownership.\n\nNote: There's no Micro/Small scale licensing path in the data. Bars are regulated at Medium scale and above.`,
+    whatYouNeed: `**Medium + Large scale only** (no Micro/Small entries): Medium-High risk. NIB + Standard Certificate within **14 working days**. You need a Self-Assessment of Standard Readiness document, LSPr-certified standard, and a Health Feasibility Certificate (Sertifikat Laik Sehat).\n\n**PMA:** Fully open — 100% foreign ownership.\n\nNote: There's no Micro/Small scale licensing path in the data. Bars are regulated at Medium scale and above.\n\n**Mandatory Sub-Permits (2026 Enforcement):**\n- **SKPL License:** Mandatory for Golongan A, B, and C alcohol (on-premise consumption)\n- **SLHS:** Sertifikat Laik Higiene Sanitasi required\n- **Excise Tax (Cukai):** Must be verified through distributor invoices\n- **BPJS Compliance:** Mandatory social security (BPJS Kesehatan + Ketenagakerjaan) proof for ALL staff to maintain license`,
     whatChanged:
       "Unchanged from KBLI 2020 — direct match (MATCH_LANGSUNG). Bar is still bar.",
     baliContext:
@@ -395,7 +395,7 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
 
   "56304": {
     whatItMeans:
-      "Karaoke establishments — venues providing private or public karaoke rooms with audio/video equipment for singing entertainment. Includes beverage service and light snacks as part of the karaoke experience. Popular for group entertainment and social gatherings.",
+      "Kedai Minuman — small beverage stalls and shops serving non-alcoholic drinks and light snacks. This covers coffee shops, juice bars, boba tea shops, smoothie bars, and similar beverage-focused businesses operating from a fixed or semi-permanent location. The defining characteristic: the primary business is serving drinks, not food. If food is secondary to beverages, this is your code. Critical distinction from 56301 (Bar): 56304 strictly prohibits serving alcoholic beverages for on-premise consumption.",
     whatYouNeed: `**Micro, Small**: Medium-Low risk (Menengah Rendah). NIB and Standard Certificate (Sertifikat Standar) are issued **automatically** (Otomatis).
 
 **Post-issuance obligations:**
@@ -403,19 +403,23 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
 - Submit periodic activity reports (Laporan kegiatan secara berkala)
 - Submit standards compliance documentation (Menyampaikan dokumen penerapan standar)
 
+**Zoning:** Permitted in Red (Commercial) and Orange (Mixed-use) zones — more flexible than tourism accommodation codes.
+
 **Authority:** Regent/Mayor (Bupati/Walikota).
 
 **PMA Status:** Fully open (Terbuka) — 100% foreign ownership.
 
+**IMPORTANT:** This code CANNOT be used for establishments serving alcohol. For bars and beach clubs, use KBLI 56301 instead.
+
 **Source Regulation:** PP 28/2025, Perpres 10/2021, 49/2021, 14/2024.`,
     whatChanged:
-      "MATCH_LANGSUNG. Direct match from KBLI 2020 with no changes to the fundamental business definition.",
+      "In 2025, 56304 specifically covers non-alcoholic beverage stalls (Kedai Minuman). The distinction between café (56303), kedai minuman (56304), and bar (56301) is now clearly delineated. 56304 is the simplest F&B code for beverage-focused businesses — lower compliance burden than full restaurants (56101) or bars (56301).",
     baliContext:
-      "Karaoke venues in Bali range from high-end KTV clubs in Kuta and Denpasar to smaller family-style establishments in tourist areas. The business model combines entertainment (karaoke systems, private rooms) with beverage service. Audio equipment quality is critical — guests expect professional sound systems and extensive song libraries. The barrier to entry is relatively low for small venues, but larger karaoke establishments require significant audio/video infrastructure investment. Securing the Food Hygiene and Sanitation Label (HSP) from the local health department is essential. Ensure proper soundproofing to avoid noise complaints from neighboring properties.",
+      "The coffee shop and juice bar scene in Bali is massive — Canggu alone has 200+ specialty coffee shops. 56304 is the correct code for most of these operations. The low-risk classification makes it one of the fastest F&B codes to activate. However, be aware: if you want to serve cocktails, wine, or beer alongside your coffee menu (as many Canggu cafes do in the evening), you need KBLI 56301 (Bar) as an additional code on your NIB, plus an SKPL alcohol license. Operating under 56304 alone while serving alcohol is a compliance violation that local authorities are increasingly enforcing in tourist areas.",
     youllAlsoNeed:
-      "- 56102 — Food Stalls/Warung (if you serve light prepared meals alongside your drinks)\n- 47222 — Retail of Non-Alcoholic Beverages (if you sell packaged beverages to customers)\n- 56301 — If you operate a bar area alongside karaoke rooms",
+      "- 56303 — Rumah Minum/Kafe (if your concept is a full café with broader food menu)\n- 56301 — Bar (if you serve ANY alcoholic beverages — mandatory additional code)\n- 56101 — Restaurant (if food becomes a primary offering, not just light snacks)\n- 10761 — Coffee Processing (if you also roast and package coffee for retail)",
     zantaraOpener:
-      "Opening a karaoke venue in Bali? 56304 covers karaoke establishments — here's what you need to know about licensing and audio system requirements.",
+      "Opening a coffee shop, juice bar, or beverage stall in Bali? 56304 is your fast-track code — low risk, automatic licensing. But remember: NO alcohol under this code. Let me explain the options.",
     tkaInfo: {
       categoryId: 8,
       categoryName: "Akomodasi & Makan/Minum",
@@ -725,11 +729,11 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
   "55203": {
     whatItMeans:
       "Villas — private houses exclusively rented out to tourists, with facilities, managed by the owner. Unlike a homestay (55201), the owner does not live on the same property. These are dedicated short-stay rental properties: the classic Bali villa experience with a private pool, tropical garden, and often resident staff. One villa or an entire compound — this is the code.",
-    whatYouNeed: `**Micro + Small + Medium**: Medium-Low risk (Menengah Rendah). NIB + Sertifikat Standar issued **automatically** via OSS (Otomatis).\n\n**Scale note:** PP28/2025 lists no Skala Besar (Large-scale) entry for 55203. This does not restrict PMA — it simply means large-scale villa operations aren't separately categorised. A PT PMA with IDR 10B+ investment operates under the Medium scale licensing regime regardless of physical size. Perpres 10/2021 keeps the sector fully open to 100% foreign ownership at all operational sizes.\n\n**Step-by-step to operate legally:**\n1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks, IDR 8–15M notary fees)\n2. **NIB via OSS** — register on oss.go.id, select 55203, auto-issued (1–3 days)\n3. **Sertifikat Standar** — auto-issued with NIB for Menengah Rendah\n4. **KKPR** (Kesesuaian Kegiatan Pemanfaatan Ruang) — spatial conformity, from ATR/BPN (2–6 weeks, if land zoning requires it)\n5. **PBG** (Persetujuan Bangunan Gedung) — building permit, replaces IMB since 2022 (4–12 weeks)\n6. **Sertifikat Laik Sehat** — health feasibility certificate from Dinas Kesehatan (2–4 weeks)\n7. **Tanda Daftar Usaha Pariwisata (TDUP)** — tourism business registration from Dinas Pariwisata Kabupaten\n\n**Typical total timeline:** 3–5 months from PT PMA to fully operational.\n**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).\n\n**Authority:** Bupati/Walikota (district/city level).\n**PMA:** Fully open — 100% foreign ownership. No local partner required.`,
+    whatYouNeed: `**Micro + Small + Medium**: Medium-Low risk (Menengah Rendah). NIB + Sertifikat Standar issued **automatically** via OSS (Otomatis).\n\n**Scale note:** PP28/2025 lists no Skala Besar (Large-scale) entry for 55203. This does not restrict PMA — it simply means large-scale villa operations aren't separately categorised. A PT PMA with IDR 10B+ investment operates under the Medium scale licensing regime regardless of physical size. Perpres 10/2021 keeps the sector fully open to 100% foreign ownership at all operational sizes.\n\n**Step-by-step to operate legally:**\n1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks, IDR 8–15M notary fees)\n2. **NIB via OSS** — register on oss.go.id, select 55203, auto-issued (1–3 days)\n3. **Sertifikat Standar** — auto-issued with NIB for Menengah Rendah\n4. **KKPR** (Kesesuaian Kegiatan Pemanfaatan Ruang) — spatial conformity, from ATR/BPN (2–6 weeks, if land zoning requires it)\n5. **PBG** (Persetujuan Bangunan Gedung) — building permit, replaces IMB since 2022 (4–12 weeks)\n6. **Sertifikat Laik Sehat** — health feasibility certificate from Dinas Kesehatan (2–4 weeks)\n7. **Tanda Daftar Usaha Pariwisata (TDUP)** — tourism business registration from Dinas Pariwisata Kabupaten\n\n**Typical total timeline:** 3–5 months from PT PMA to fully operational.\n**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).\n\n**PT PMA Capital Requirements (2025):**\n- **Paid-up Capital (Modal Disetor):** Minimum IDR 2.5 Billion\n- **Total Investment Value:** Must exceed IDR 10 Billion (excluding land/buildings)\n- **Investor KITAS:** Individual shareholding of IDR 10B required for residency permit eligibility\n- **Zoning:** Strictly PINK zone (Zona Pariwisata) — villas outside designated tourism zones face enforcement risk\n\n**Authority:** Bupati/Walikota (district/city level).\n**PMA:** Fully open — 100% foreign ownership. No local partner required.`,
     whatChanged:
-      "Renumbered from 55193 in KBLI 2020 to 55203 in 2025 (CODICE_RINUMERATO). PP28 licensing data maps from old code 55193 with a 100% match — same risk level, same permits, same obligations. No substantive change for operators: if you are running under 55193, the transition to 55203 is administrative only.",
+      "Renumbered from 55193 in KBLI 2020 to 55203 in 2025 (CODICE_RINUMERATO). PP28 licensing data maps from old code 55193 with a 100% match — same risk level, same permits, same obligations. No substantive change for operators: if you are running under 55193, the transition to 55203 is administrative only.\n\n**Perda No. 4/2026 WARNING:** Nominee structures (using an Indonesian name to hold land or shares on behalf of a foreigner) are now a criminal offense under Bali provincial regulation. Penalties: up to 5 years imprisonment and IDR 1 Billion fine. This is actively enforced — BPN cross-references beneficial ownership data with PPATK. If your villa structure uses a nominee arrangement, seek immediate legal restructuring.",
     baliContext:
-      "**🏝 The Bali Villa Market (Reality Check)**\n- Villas ARE Bali's tourism identity: Seminyak, Canggu, Ubud, Uluwatu, Sanur — every area has its scene\n- Most popular accommodation KBLI for foreign investors by volume\n- Typical structure: PT PMA leases land (Hak Sewa, 25–30 years), builds villa, rents on Airbnb/Booking.com\n- **Oversupply warning:** Canggu and Seminyak have thousands of villas competing for the same guests; occupancy rates have dropped significantly since 2022\n- **Better ROI areas (2025):** Tabanan, Sidemen (Karangasem), Amed, north coast — lower land prices, growing demand\n\n---\n\n**⚠ Common Mistakes That Kill the Business**\n- **Operating without TDUP** — Dinas Pariwisata enforcement intensified in 2023–2024; fines and closure orders have been executed in Canggu, Pererenan, and Seminyak\n- **Building before PBG** — IMB/PBG crackdowns since 2024 have resulted in actual demolition orders in Bali\n- **Skipping Sertifikat Laik Sehat** — required for legal operation; without it your NIB is valid but your villa is not\n- **Ignoring the banjar** — local village council approval is not a government permit but is socially and operationally essential; no banjar consent = neighbor problems, access issues, staff walkouts\n- **Nominee land ownership** — still common, still illegal; BPN and PPATK have increased scrutiny on nominee arrangements since 2023",
+      "**🏝 The Bali Villa Market (Reality Check)**\n- Villas ARE Bali's tourism identity: Seminyak, Canggu, Ubud, Uluwatu, Sanur — every area has its scene\n- Most popular accommodation KBLI for foreign investors by volume\n- Typical structure: PT PMA leases land (Hak Sewa, 25–30 years), builds villa, rents on Airbnb/Booking.com\n- **Oversupply warning:** Canggu and Seminyak have thousands of villas competing for the same guests; occupancy rates have dropped significantly since 2022\n- **Better ROI areas (2025):** Tabanan, Sidemen (Karangasem), Amed, north coast — lower land prices, growing demand\n\n---\n\n**⚠ Common Mistakes That Kill the Business**\n- **Operating without TDUP** — Dinas Pariwisata enforcement intensified in 2023–2024; fines and closure orders have been executed in Canggu, Pererenan, and Seminyak\n- **Building before PBG** — IMB/PBG crackdowns since 2024 have resulted in actual demolition orders in Bali\n- **Skipping Sertifikat Laik Sehat** — required for legal operation; without it your NIB is valid but your villa is not\n- **Ignoring the banjar** — local village council approval is not a government permit but is socially and operationally essential; no banjar consent = neighbor problems, access issues, staff walkouts\n- **Nominee land ownership** — still common, still illegal; BPN and PPATK have increased scrutiny on nominee arrangements since 2023\n\n**⚠ OTA Blackout — March 31, 2026:** All villas listed on Airbnb, Booking.com, and other OTAs must have a Verified NIB. Most PT PMA villas currently have unverified NIBs due to missing SLF (Sertifikat Laik Fungsi) or LSPr certification. Unverified listings are being delisted. If your villa revenue depends on OTA channels, prioritize SLF and LSPr completion immediately.",
     youllAlsoNeed:
       "- **56101** — If you provide food service (in-villa chef, breakfast, restaurant)\n- **68112** — For the property lease/rental structure (if your PT PMA also holds the lease)\n- **96230** — If you offer spa or massage services at the villa\n- **79110** — If you arrange tours, activities, or transfers for guests\n- **77311** — If you rent out motorbikes, scooters, or vehicles to guests\n- **41012** — If your PT PMA also builds/constructs the villa itself",
     zantaraOpener:
@@ -1085,6 +1089,29 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
     },
   },
 
+  "64210": {
+    whatItMeans:
+      "Holding company activities — a legal entity whose primary purpose is owning shares in subsidiary companies. Does NOT conduct direct commercial operations. Used for asset protection, multi-business control, and corporate structuring.",
+    whatYouNeed: `**Risk Level:** LOW (Rendah). NIB issued AUTOMATICALLY — one of the fastest codes to activate.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**IMPORTANT Limitations:**
+- PROHIBITED from direct commercial operations (cannot invoice for services or sell products)
+- Must operate STRICTLY through subsidiaries for all operational activities
+- Ideal for investors controlling multiple PT PMAs in different sectors
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. Holding company classification remains stable and straightforward.",
+    baliContext:
+      "A popular structuring tool for foreign investors in Bali who own multiple businesses — e.g., a villa company (55203), a restaurant (56101), and a management consultancy (70209) all under one holding entity (64210). The LOW risk classification means fast-track activation. Strategic for asset protection and multi-business control. Highlight as 'Fast-track' for asset holding purposes.",
+    youllAlsoNeed:
+      "- Any operational KBLI code for subsidiaries (55203, 56101, 62199, etc.)\n- 70209 — Management consultancy (if the holding also provides management services to subsidiaries — requires separate code)\n- 66301 — Investment management (if actively managing investment portfolios)",
+    zantaraOpener:
+      "Setting up a holding company in Indonesia? 64210 is LOW risk with automatic NIB — but remember, it CANNOT conduct direct commercial operations. Here's how to structure it.",
+  },
+
   "64992": {
     whatItMeans:
       "Perusahaan Pembiayaan (multifinance company) — a non-bank financial institution that provides financing for: vehicle purchases (motor credit, car leasing), consumer goods, working capital for SMEs, property down payments, and factoring/receivables purchasing. Unlike a bank, a multifinance company cannot accept public deposits — it funds its portfolio from equity capital and bond issuance. Unlike P2P lending, it uses its own capital to extend credit (not matching borrowers with lenders). **Maximum foreign ownership: 85%** under OJK regulation (15% must be Indonesian). OJK governs under POJK 35/2018 (Penyelenggaraan Usaha Perusahaan Pembiayaan).",
@@ -1140,6 +1167,26 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
     },
   },
 
+  "64995": {
+    whatItMeans:
+      "Trading carbon units on own behalf — buying and selling carbon credits, carbon offsets, and ESG-related financial instruments. Part of Indonesia's emerging carbon market ecosystem.",
+    whatYouNeed: `**Risk Level:** Medium-Low. NIB + Self-declared Standard Certificate.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**Post-Incorporation:** Apply for IDX Carbon Participant Status to trade on Indonesia's carbon exchange.
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Confirmed in the 2025 Catalog as 100% open to foreign investment. This code positions Indonesia in the global carbon trading market.",
+    baliContext:
+      "Bali's massive tourism carbon footprint creates natural demand for carbon offset products. Map to 'ESG & Sustainability Projects' for client positioning. Pair with 39001/39002 (Carbon Capture/Storage) for a vertically integrated carbon economy play.",
+    youllAlsoNeed:
+      "- 39001 — Carbon Capture\n- 39002 — Carbon Storage\n- 66301 — Investment Management (if managing carbon credit portfolios for clients)\n- 38211 — Waste Processing (if generating credits from waste-to-energy)",
+    zantaraOpener:
+      "Carbon credit trading in Indonesia? 64995 covers own-account trading — and Bali's tourism footprint creates natural demand. Here's the setup.",
+  },
+
   // ===========================================================================
   // Real Estate (68xxx)
   // ===========================================================================
@@ -1167,7 +1214,7 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
 
 **Source Regulation:** PP 28/2025, Perpres 10/2021.`,
     whatChanged:
-      "Unchanged from KBLI 2020 — direct match (MATCH_LANGSUNG). Residential real estate development stays the same.",
+      "Unchanged from KBLI 2020 — direct match (MATCH_LANGSUNG). Residential real estate development stays the same. In 2025, the management split is now enforced: 68111 covers ONLY development, buying, selling, and long-term leasing (>5 years). If you manage villas you do not own or lease, you MUST use 68292 instead. 68111 is PROHIBITED for short-term tourism rentals. Migration deadline: May 31, 2026.",
     baliContext: `**The Governor's numbers (Surat Gubernur, Jan 2026):**
 - **19,262** PMA businesses registered in Bali (2021–2025) — that's 40% of all PMA nationally
 - **55,458** projects across those PMA companies
@@ -1446,7 +1493,7 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
   "68210": {
     whatItMeans:
       "Real estate agents and brokers — intermediating the buying, selling, and renting of property. You connect buyers with sellers or tenants with landlords, earning a fee or commission. This can be done on digital platforms or the traditional way. You don't own the property; you facilitate the deal.",
-    whatYouNeed: `**All scales (Micro through Large)**: Medium-High risk. NIB + Standard Certificate within **3 working days**. Strict requirements:\n- Must be a legal entity (badan hukum) registered in Indonesia\n- All brokers must be certified property professionals\n- Broker supervisors and back-office staff must be certified\n- Written agreements with every client\n\n**PMA:** Fully open — 100% foreign ownership.`,
+    whatYouNeed: `**All scales (Micro through Large)**: Medium-High risk. NIB + Standard Certificate within **3 working days**. Strict requirements:\n- Must be a legal entity (badan hukum) registered in Indonesia\n- All brokers must be certified property professionals\n- Broker supervisors and back-office staff must be certified\n- Written agreements with every client\n\n**PMA:** Fully open — 100% foreign ownership.\n\n**P4 Legal Structure:** Must operate as a P4 (Perusahaan Perantara Perdagangan Properti). At least one employee or director must hold a valid Broker Competence Certificate. PROHIBITED from operating short-term rentals (Airbnb) unless KBLI 55193/55203 is also added to the NIB.`,
     whatChanged:
       "Direct match from KBLI 2020 (MATCH_LANGSUNG), but the PP28 source code is 68200 — the old general real estate services code. The licensing requirements are substantial for this intermediation role.",
     baliContext:
@@ -1499,11 +1546,11 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
   "62199": {
     whatItMeans:
       "General software development and programming — designing, writing, modifying, testing, and supporting computer code for software systems and applications. This is the catch-all code for IT companies that build custom software, web apps, mobile apps, SaaS products, and enterprise systems. If you write code for a living and it doesn't fit into gaming (62110), e-commerce apps (62191), or AI (62194), this is your code.",
-    whatYouNeed: `**Small + Medium**: Two licensing paths:\n- **Medium-Low risk**: NIB + Standard Certificate **automatically**. Must submit industry data reports every 6 months, have data security SOPs.\n- **Medium-High risk**: 7-day processing. Needs org chart with qualified staff, employment contracts for skilled workers, business process documentation, equipment list with photos.\n\n**Large**: Medium-High risk, 7-day processing, same requirements as above.\n\n**PMA:** Fully open — 100% foreign ownership. This is one of the easiest codes for foreign tech companies.`,
+    whatYouNeed: `**Small + Medium**: Two licensing paths:\n- **Medium-Low risk**: NIB + Standard Certificate **automatically**. Must submit industry data reports every 6 months, have data security SOPs.\n- **Medium-High risk**: 7-day processing. Needs org chart with qualified staff, employment contracts for skilled workers, business process documentation, equipment list with photos.\n\n**Large**: Medium-High risk, 7-day processing, same requirements as above.\n\n**PT PMA Capital (2025 Reform — BKPM Reg No. 5/2025):**\n- **Paid-up Capital (Modal Disetor):** Minimum IDR 2.5 Billion (not 10B — common misconception)\n- **Total Investment Value:** Must exceed IDR 10 Billion (excluding land/buildings), realized over time\n- **Capital Locking (Art. 27):** The IDR 2.5B paid-up capital CANNOT be withdrawn for 12 months from deposit. Only legitimate operational costs (salaries, rent, assets) are exempted. This is a primary DJP audit trigger in 2026.\n- **Investor KITAS:** Individual shareholding of IDR 10B required for residency permit eligibility\n\n**PMA:** Fully open — 100% foreign ownership. This is one of the easiest codes for foreign tech companies.`,
     whatChanged:
       "The 2025 code aggregated from the old 62029 (other computer consulting activities) via MATCH_CON_AGGREGAZIONE. The 2020 landscape had fewer, broader IT codes. Now there's more granularity — gaming, e-commerce, AI, and IoT all got their own codes, leaving 62199 as the general programming catchall.",
     baliContext:
-      "Bali's tech scene is real and growing. Canggu is the unofficial digital nomad capital of Southeast Asia, and many of those nomads have formed companies here. Running a software company from Bali as a PT PMA is straightforward — 100% foreign ownership, automatic licensing at smaller scales. The talent pool is a mix of Indonesian developers (Denpasar has several good universities) and international remote workers. Co-working spaces like Dojo Bali and Outpost cater specifically to tech companies. Pro tip: if your PT PMA builds software, you can employ up to 10 foreign workers on KITAS without the stringent 1:1 local hiring ratios that other industries face.",
+      "Bali's tech scene is real and growing. Canggu is the unofficial digital nomad capital of Southeast Asia, and many of those nomads have formed companies here. Running a software company from Bali as a PT PMA is straightforward — 100% foreign ownership, automatic licensing at smaller scales. The talent pool is a mix of Indonesian developers (Denpasar has several good universities) and international remote workers. Co-working spaces like Dojo Bali and Outpost cater specifically to tech companies. Pro tip: if your PT PMA builds software, you can employ up to 10 foreign workers on KITAS without the stringent 1:1 local hiring ratios that other industries face. The 4-year Territorial Tax Exemption (PMK 18/2021) makes 62199 particularly powerful — it maps perfectly to 'Digital Economy' expertise, making RPTKA approval for Software Architects or AI Specialists highly robust. Position this code not just as a business classification, but as a tax optimization tool.",
     youllAlsoNeed:
       "- 62209 — If you also do IT consulting/managed services\n- 63900 — If you operate a web portal or digital marketplace\n- 62191 — If you specifically build e-commerce applications\n- 62194 — If you work with AI/machine learning",
     zantaraOpener:
@@ -1837,7 +1884,7 @@ export const KBLI_GOLD_CONTENT: Record<string, KBLIGoldContent> = {
     whatChanged:
       "Direct match from KBLI 2020 (MATCH_LANGSUNG). Unchanged. Note that some activities that were previously under the old 70204 (other management consulting) were absorbed into 70201 during the 2025 revision. What remains in 70209 is the true 'everything else' category.",
     baliContext:
-      "This code is the Swiss Army knife for niche consultants in Bali. Environmental consultants advising on sustainable tourism? 70209. Security consultants working with villa complexes? 70209. Agricultural advisors helping with coffee or cacao operations in the highlands? 70209. It has the same favorable profile as 70203 (Low risk, automatic, 100% PMA) but with the added flexibility of covering areas that don't fit the general business consulting label. In practice, many Bali-based consultants choose between 70203 and 70209 — the difference is semantic rather than regulatory. Use 70209 if your specialty is genuinely niche and you want the code description to match what you actually do.",
+      'This code is the Swiss Army knife for niche consultants in Bali. Environmental consultants advising on sustainable tourism? 70209. Security consultants working with villa complexes? 70209. Agricultural advisors helping with coffee or cacao operations in the highlands? 70209. It has the same favorable profile as 70203 (Low risk, automatic, 100% PMA) but with the added flexibility of covering areas that don\'t fit the general business consulting label. In practice, many Bali-based consultants choose between 70203 and 70209 — the difference is semantic rather than regulatory. Use 70209 if your specialty is genuinely niche and you want the code description to match what you actually do.\n\n**Tax Strategy (2026):** Ideal code for mapping high-level remote workers to the 4-year Territorial Tax Exemption (PMK 18/2021). Requires physical office address (Virtual Office permitted in most Bali districts) and the standard 12-month capital lock on IDR 2.5B paid-up capital. Position as the "entry-level" PT PMA code for Digital Nomads transitioning to formal business structures.',
     youllAlsoNeed:
       "- 70203 — General Management Consulting (the main alternative if your work is more broadly business-focused)\n- 70201 — Tourism Consulting (if your niche overlaps with hospitality and tourism)\n- 71102 — Technical Engineering Consulting (if your specialty involves engineering assessments)\n- 74909 — Other Professional Activities (another catch-all for professional services not elsewhere classified)",
     zantaraOpener:
@@ -2119,7 +2166,7 @@ If your spa concept evolves to include IV vitamin therapy, NAD+ infusions, ozone
   "96230": {
     whatItMeans:
       "Day spas, saunas, and steam baths — wellness facilities that provide holistic body care combining traditional and modern methods. Water-based treatments, massage with herbal preparations, aromatherapy, physical exercises, color therapy, music therapy, and physical fitness activities. This is the Bali spa experience in a code.",
-    whatYouNeed: `**Brand new code (BPS_ONLY)** — no PP28/2025 licensing data published yet. Risk category and specific requirements are pending. NIB required at minimum.\n\n**PMA:** Fully open — 100% foreign ownership.`,
+    whatYouNeed: `**Brand new code (BPS_ONLY)** — no PP28/2025 licensing data published yet. Risk category and specific requirements are pending. NIB required at minimum.\n\n**PMA:** Fully open — 100% foreign ownership.\n\n**WARNING — The 96122 Trap:** KBLI 96122 is restricted to UMKM/Local scale only. PT PMA applications under 96122 will be REJECTED. Use 96230 (Sante Par Aqua) as the only 100% open path for foreign-owned spas. Requires Sertifikat Standar Usaha Pariwisata from LSPr.`,
     whatChanged:
       "Brand new in KBLI 2025 (BPS_ONLY). In KBLI 2020, spa activities were covered under broader wellness/personal care codes. The 2025 classification recognizes spa specifically. Given Indonesia's (and especially Bali's) spa industry prominence, this dedicated code was overdue.",
     baliContext:
@@ -2353,6 +2400,30 @@ If your spa concept evolves to include IV vitamin therapy, NAD+ infusions, ozone
       keduaNote:
         "Directors and Commissioners who do NOT manage personalia can work without being listed in the jabatan.",
     },
+  },
+
+  "85330": {
+    whatItMeans:
+      "Post-secondary non-tertiary education — professional training and certification programs in beauty, hairdressing, and vocational skills. This is the code for beauty academies, training centers, and certification programs (NOT for providing beauty services directly).",
+    whatYouNeed: `**Risk Level:** Medium-High. Requires NIB + Verified Standard Certificate with mandatory site inspection.
+
+**Physical Audit:** Mandatory site inspection by local education authorities (Dinas Pendidikan Bali) to activate NIB.
+
+**Instructors:** Foreign teachers MUST hold a Working KITAS (E23). Investor KITAS holders are PROHIBITED from teaching or conducting classes.
+
+**Curriculum:** Must submit detailed curriculum and instructor certification documentation.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. The key distinction in 2025 is clearer separation between education/training (85330) and service provision (96112).",
+    baliContext:
+      "Bali's wellness and beauty tourism creates demand for professional training programs — both for Indonesian practitioners and international students. Ideal for sponsoring Student KITAS (E30A) for long-term academy programs. Differentiate clearly between 'Teaching' (85330) and 'Providing Services' (96112 — barber/beauty). The site inspection is thorough — ensure your training facility meets all Dinas Pendidikan requirements before applying.",
+    youllAlsoNeed:
+      "- 96112 — Beauty care services (if also providing services, not just training)\n- 96230 — Spa (if training includes spa/wellness techniques)\n- 85493 — Other professional training (for broader vocational programs)",
+    zantaraOpener:
+      "Opening a beauty academy or vocational training center in Bali? 85330 requires site inspection and certified instructors. Foreign teachers need Working KITAS — Investor KITAS won't work.",
   },
 
   "85574": {
@@ -3017,7 +3088,7 @@ If your spa concept evolves to include IV vitamin therapy, NAD+ infusions, ozone
     whatChanged:
       "Unchanged from KBLI 2020 — direct match (MATCH_LANGSUNG). Residential construction keeps the same code and same rigorous licensing.",
     baliContext:
-      "Construction in Bali is booming — villas, hotels, residential compounds, and renovations never stop. The SBU requirement is the key barrier: your company needs a Construction Business Entity Certificate from LPJK (construction services body) before you can legally build. For PMA companies, the requirements are steep — your foreign shareholder must be a licensed construction firm back home, and you need a Large-qualified Indonesian construction partner as co-shareholder. In practice, many foreign developers hire local construction firms under 41011 rather than getting their own construction KBLI. Labor is relatively affordable in Bali, but skilled foremen and engineers command premium wages. Building permits (IMB/PBG) are separate from the KBLI licensing — you need both.",
+      'Construction in Bali is booming — villas, hotels, residential compounds, and renovations never stop. The SBU requirement is the key barrier: your company needs a Construction Business Entity Certificate from LPJK (construction services body) before you can legally build. For PMA companies, the requirements are steep — your foreign shareholder must be a licensed construction firm back home, and you need a Large-qualified Indonesian construction partner as co-shareholder. In practice, many foreign developers hire local construction firms under 41011 rather than getting their own construction KBLI. Labor is relatively affordable in Bali, but skilled foremen and engineers command premium wages. Building permits (IMB/PBG) are separate from the KBLI licensing — you need both.\n\n**2026 Large Qualification Mandate for PT PMA:** Automatically classified as "Usaha Besar" (Large Scale). Mandatory Joint Operation (Kemitraan/KSO) with a local Indonesian construction firm. Physical office required (no Virtual Office). Significant past project experience and high net worth required for SBU verification. **Not suitable for small or medium boutique builders.**',
     youllAlsoNeed:
       "- 68111 — If you're also the property developer (not just builder)\n- 71101 — For architectural design services\n- 71102 — For engineering consultancy\n- 43211 — For electrical installation work\n- 43221 — For plumbing and HVAC installation",
     zantaraOpener:
@@ -3716,7 +3787,7 @@ If your spa concept evolves to include IV vitamin therapy, NAD+ infusions, ozone
   "74191": {
     whatItMeans:
       "Interior design — planning and designing the inside of buildings and rooms based on human activities, room function, and desired atmosphere. Considering aesthetics, materials, textures, lighting, color, and furniture to create functional and beautiful spaces. This covers residential interiors, commercial spaces, hospitality design, and everything in between.",
-    whatYouNeed: `**Brand new code (BPS_ONLY)** — no PP28/2025 licensing data published yet. The risk category and specific requirements are pending. NIB required at minimum.\n\n**PMA:** Fully open — 100% foreign ownership.`,
+    whatYouNeed: `**Brand new code (BPS_ONLY)** — no PP28/2025 licensing data published yet. The risk category and specific requirements are pending. NIB required at minimum.\n\n**PMA:** Fully open — 100% foreign ownership.\n\n**Investment Doubling Warning:** Each KBLI code under a PT PMA requires a separate IDR 10 Billion investment commitment. If you use both 74191 (Interior) and 74192 (Graphic Design) for a full-service creative agency, your total LKPM investment plan must show IDR 20 Billion.`,
     whatChanged:
       "Completely new code in KBLI 2025 (BPS_ONLY). In the 2020 classification, interior design was bundled into broader design categories. The 2025 overhaul created specific codes for each design discipline: industrial design (74111-74119), interior design (74191), graphic design (74192), film/video design (74193), game design (74194), and others. Interior design finally has its own dedicated code.",
     baliContext:
@@ -3932,6 +4003,32 @@ If your spa concept evolves to include IV vitamin therapy, NAD+ infusions, ozone
   },
 
   // ---------------------------------------------------------------------------
+  // Manufacturing - Furniture (31xxx)
+  // ---------------------------------------------------------------------------
+
+  "31011": {
+    whatItMeans:
+      "Wooden furniture manufacturing — producing tables, chairs, beds, cabinets, shelving, and other furniture primarily from wood. Includes custom and mass production. This is the primary code for Bali's iconic furniture export industry.",
+    whatYouNeed: `**Risk Level:** Medium-High for PT PMA. Requires NIB + Verified Standard Certificate.
+
+**Export Requirement:** SVLK (V-Legal) certification is MANDATORY for legal timber export to global markets. Without SVLK, your products cannot enter EU, US, or Australian markets.
+
+**Zoning:** Industrial or Mixed-use zones. Exemptions possible for low-pollution boutique workshops via OSS Art. 27.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Code updated from 31001 in KBLI 2020 to 31011 in 2025 (CODICE_RINUMERATO). All furniture businesses previously registered under 31001 must migrate to 31011 before the KBLI 2025 migration deadline.",
+    baliContext:
+      "Bali is Indonesia's premier furniture export hub — teak, mahogany, and reclaimed wood furniture from Jepara-trained artisans working in Bali's workshops. The Kerobokan and Suwung industrial areas host major workshops. For PT PMA, the SVLK certification is non-negotiable for export — budget 2-3 months for the certification process. Boutique workshops producing custom furniture for local hotels and villas can operate under Art. 27 exemptions in mixed-use zones.",
+    youllAlsoNeed:
+      "- 01299 — Bamboo/perennial crop cultivation (for raw material supply)\n- 16291 — Other wood product manufacturing\n- 46491 — Wholesale of furniture\n- 82300 — Showroom/exhibition services",
+    zantaraOpener:
+      "Starting a furniture business in Bali? 31011 replaces the old 31001 code — and SVLK certification is mandatory for export. Here's the complete picture.",
+  },
+
+  // ---------------------------------------------------------------------------
   // Manufacturing - Jewelry (32xxx) — Gemini 3 Deep Think
   // ---------------------------------------------------------------------------
 
@@ -3956,7 +4053,7 @@ If your spa concept evolves to include IV vitamin therapy, NAD+ infusions, ozone
     whatChanged:
       "MATCH_LANGSUNG. The definition is cleanly maintained and unchanged from KBLI 2020.",
     baliContext:
-      "Celuk village in Gianyar is world-renowned for its silver and goldsmithing. Many foreign designers set up PT PMAs under 32112 to manufacture high-end 925 silver or gold jewelry for global export. Creating a manufacturing PT PMA allows you to employ local artisans legally, control the quality of the alloy, and handle your own export licenses (your NIB serves as your API-P for import/export). The main pitfall is environmental safety: silversmithing utilizes toxic chemicals like cyanide for cleaning and plating. You must secure a Hazardous Materials Registration and have a bulletproof toxic waste disposal plan; dumping chemicals into village drains will result in severe legal penalties.",
+      "Celuk village in Gianyar is world-renowned for its silver and goldsmithing. Many foreign designers set up PT PMAs under 32112 to manufacture high-end 925 silver or gold jewelry for global export. Creating a manufacturing PT PMA allows you to employ local artisans legally, control the quality of the alloy, and handle your own export licenses (your NIB serves as your API-P for import/export). The main pitfall is environmental safety: silversmithing utilizes toxic chemicals like cyanide for cleaning and plating. You must secure a Hazardous Materials Registration and have a bulletproof toxic waste disposal plan; dumping chemicals into village drains will result in severe legal penalties. Use 32112 specifically for precious metal jewelry brands (Gold, Silver, Platinum) — faster licensing process compared to heavy manufacturing. Do not use the generic 32111 for precious metal work.",
     youllAlsoNeed:
       "- 46494 — Wholesale of Jewelry (for B2B export distribution)\n- 47735 — Retail of Jewelry (if you open a sleek jewelry boutique in Seminyak or Ubud)\n- 32114 — Imitation Jewelry (if your product line also incorporates non-precious metals or beads)",
     zantaraOpener:
@@ -4183,16 +4280,28 @@ The moratorium was the Governor's direct response to Alfamart/Indomaret saturati
 
   "47901": {
     whatItMeans:
-      "Digital marketplace platform for retail intermediation — operating an e-commerce platform, website, or mobile app that connects third-party buyers and sellers for retail transactions, earning a commission or fee from the transaction without ever taking ownership of the goods sold. This is the Tokopedia, Shopee, Bukalapak, or Airbnb model: the platform facilitates; the individual sellers own the inventory. If your platform lists products from multiple independent vendors and earns per transaction, this is the code. Contrast: if you sell your own goods online (D2C), that is 47909.",
-    whatYouNeed: `**All scales (Micro, Small, Medium, Large)**: Low risk (Rendah). NIB issued **automatically** (Otomatis). Authority: **OSS Pusat**.\n\nThe OSS licensing is genuinely minimal — NIB only. But operating a digital platform in Indonesia requires compliance with two additional regulatory frameworks outside the standard OSS licensing system:\n\n**Critical parallel obligation: PSE Registration at Kominfo**\n- **PP 71/2019** mandates that any **Penyelenggara Sistem Elektronik (PSE)** — including e-commerce marketplace platforms — must register with the Ministry of Communication and IT (Kominfo)\n- **Threshold:** Any platform processing personal data of Indonesian users must register. In practice: if you have Indonesian users and process any transaction or personal data, register\n- **Consequence of non-compliance:** Kominfo has demonstrated willingness to IP-block non-compliant platforms (PayPal, Steam, Epic Games blocked July 2022). A blocked platform is a non-operating business\n- PSE registration is done via pse.kominfo.go.id\n\n**Step-by-step for a PT PMA digital marketplace platform:**\n1. **PT PMA incorporation** — notary deed, AHU registration; tech/digital sector minimum capital IDR 10B stated (~3–5 weeks)\n2. **NIB via OSS** — register on oss.go.id, select 47901, Rendah path; auto-issued (1–3 days)\n3. **PSE registration at Kominfo** — submit via pse.kominfo.go.id; documents: company identity (NIB, akta), platform description, system architecture overview, data flow documentation. Timeline: 1–2 weeks for standard platforms\n4. **Data localization compliance** — under PP 71/2019 and UU PDP 2022: user personal data of Indonesian citizens must be stored on servers within Indonesian territory, or a copy maintained domestically\n5. **Data Protection Officer (DPO)** — UU PDP 2022 requires a designated DPO for platforms processing personal data at scale\n6. **PB UMKU per product category** (if applicable) — if your marketplace handles regulated goods (cosmetics, food, medicines), your platform-level governance over listed products may be scrutinized\n7. **Laporan kegiatan usaha** — periodic business activity reports to Kemendag\n8. **OJK compliance** (if fintech features) — if your platform includes buy-now-pay-later, escrow, or payment processing beyond a standard payment gateway, OJK licensing may apply separately\n\n**Typical total timeline:** 1–3 months from PT PMA to platform compliant.\n**Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).\n\n**Authority:** OSS Pusat.\n**PMA:** Fully open (Terbuka) — 100% foreign ownership.`,
+      "Digital intermediation platform for retail e-commerce — operating an online marketplace or platform that connects buyers and sellers. This is the 2025 code for e-commerce platform operators (the marketplace, not the individual sellers).",
+    whatYouNeed: `**Risk Level:** LOW (Rendah) for single-brand D2C retail. Higher compliance for multi-vendor marketplaces.
+
+**NIB:** Issued automatically.
+
+**Mandatory Post-Incorporation:**
+- **PSE Kominfo:** Mandatory registration for the website/domain BEFORE commercial operations begin. Without PSE, payment gateways will be blocked by local providers.
+- **SIUPMSE:** Generally required only for multi-vendor marketplace operators, NOT for direct-to-consumer (D2C) brands.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.
+
+**WARNING:** Check commodity-specific restrictions — alcohol, pharmacy, and certain other product categories require additional licensing.`,
     whatChanged:
-      "MATCH_CON_AGGREGAZIONE — consolidated from multiple KBLI 2020 codes covering digital commerce intermediation into a single modernized 47901 framework. The PP 71/2019 PSE obligation and UU PDP 2022 data protection requirements are the most significant developments since KBLI 2020.",
+      "Restructured in KBLI 2025 from the old 47911. The new 47901 specifically covers digital platform intermediation for retail. Individual sellers use different codes.",
     baliContext:
-      "**💻 Digital Marketplaces from Bali (The Niche Opportunity)**\n- The national horizontal marketplaces (Tokopedia, Shopee, Lazada, Bukalapak) are effectively unassailable at scale. The opportunity is **vertical and niche**:\n- **Artisan and craft marketplace:** Bali has Indonesia's highest density of artisan producers (silverwork, textiles, ceramics, woodwork). A curated, internationally-targeted platform connecting Bali artisans with global buyers is genuinely underserved\n- **Eco/organic/sustainable products:** Bali's expat community and eco-tourism sector create demand for sustainable, organic, and locally-sourced products that mainstream Indonesian marketplaces don't serve well\n- **Hospitality B2B marketplace:** Connecting Bali hotel and villa operators with verified F&B suppliers, laundry services, and amenity vendors\n- **Short-term rental intermediary:** Villa and accommodation booking platforms focused on Bali-specific inventory\n\n---\n\n**⚠ PSE Registration Is Not Optional**\n- The 2022 blocking of major international platforms by Kominfo was a genuine shock. The enforcement mechanism exists and has been used\n- Timeline: PSE registration is fast (1–2 weeks); do it the week you get your NIB\n- **UU PDP 2022 compliance:** Full enforcement began October 2024. If your platform collects any user data, you need a Privacy Policy aligned with UU PDP, a DPO, and a data retention/deletion procedure\n- **Cloud hosting:** AWS Jakarta (ap-southeast-3), Google Cloud Jakarta, Azure Indonesia are the primary compliant hosting options. Offshore-only hosting creates compliance risk",
+      "Bali's e-commerce scene is growing fast — Bali-made products (jewelry, fashion, wellness products, specialty food) sold through D2C platforms to global audiences. The PSE registration is non-negotiable: without it, Indonesian payment gateways (Midtrans, Xendit, DOKU) will refuse to process transactions. Budget 2-4 weeks for PSE approval.",
     youllAlsoNeed:
-      "- **47909** — If your operation also facilitates non-digital intermediary services (buying agent, concierge)\n- **62011 / 62019** — Software development — if your PT PMA builds the platform tech in-house\n- **63122** — Web portal operation — if your platform also functions as an informational portal\n- **56400** — Food delivery platform — if your marketplace includes F&B delivery as a core feature\n- **96400** — Other digital services — if your platform offers subscription or digital content alongside marketplace features",
+      "- 62191 — E-commerce application development (if building the platform technology)\n- 62199 — General software development\n- 52329 — Transport intermediation (if platform includes delivery logistics)",
     zantaraOpener:
-      "Building an e-commerce marketplace in Indonesia? 47901 is NIB-only, auto-issued — but PSE registration at Kominfo and UU PDP 2022 data compliance are non-negotiable. Miss either and your platform gets blocked. Let me walk you through both.",
+      "Building an e-commerce platform from Bali? 47901 is your code — LOW risk for D2C, but PSE registration is mandatory before you can accept payments. Let me explain.",
     tkaInfo: {
       categoryId: 16,
       categoryName: "Perdagangan Besar & Eceran",
@@ -4471,7 +4580,7 @@ The moratorium was the Governor's direct response to Alfamart/Indomaret saturati
     whatChanged:
       "MATCH_CON_AGGREGAZIONE. Expanded heavily in the 2025 update to explicitly include big data, remote sensing, and blockchain/DLT processing.",
     baliContext:
-      "Bali has become a global hub for Web3, crypto, and AI startups. Rather than dealing with complex financial licenses, many foreign tech founders set up 'Data Processing' PT PMAs. If you are training AI models, running blockchain validator nodes, or operating a back-office data analytics hub for your overseas parent company, 63101 is your golden ticket. The explicit inclusion of blockchain gives immense legal clarity to Web3 founders. It allows you to legally hire local developers and sponsor expat IT talent with Investor KITAS. Since it requires zero physical retail presence, you can legally domicile in a co-working space in Canggu or Sanur. Just ensure your data privacy SOPs strictly comply with Indonesia's Personal Data Protection (PDP) law.",
+      "Bali has become a global hub for Web3, crypto, and AI startups. Rather than dealing with complex financial licenses, many foreign tech founders set up 'Data Processing' PT PMAs. If you are training AI models, running blockchain validator nodes, or operating a back-office data analytics hub for your overseas parent company, 63101 is your golden ticket. The explicit inclusion of blockchain gives immense legal clarity to Web3 founders. It allows you to legally hire local developers and sponsor expat IT talent with Investor KITAS. Since it requires zero physical retail presence, you can legally domicile in a co-working space in Canggu or Sanur. Just ensure your data privacy SOPs strictly comply with Indonesia's Personal Data Protection (PDP) law.\n\n**UU PDP Compliance (2026):** Mandatory localized data security protocols. Explicit user consent management required for all data processing. Recommended to appoint a Data Protection Officer (DPO). High audit risk for cross-border data transfers — ensure Privacy Policy Audit is completed as a licensing prerequisite.",
     youllAlsoNeed:
       "- 63102 — Cloud/Hosting Infrastructure (if you also provide the servers for the data)\n- 62199 — Other Computer Programming (the standard code for software engineering)\n- 70209 — Management Consulting (if you advise other companies based on your data analytics)",
     zantaraOpener:
@@ -4688,7 +4797,9 @@ The moratorium was the Governor's direct response to Alfamart/Indomaret saturati
       "Graphic Design / Visual Communication — providing manual or digital design services for brand identity, logos, packaging, infographics, UI/UX visual elements, environmental graphics (signage/billboards), and typography. It explicitly involves visual asset creation and excludes computer-based animation.",
     whatYouNeed: `This code is marked **BPS_ONLY**. It is a new specialized classification in KBLI 2025 and currently has no PP28/2025 licensing data mapped in the OSS system. Specific risk levels and requirements will be published when OSS fully integrates KBLI 2025.
 
-**PMA Status:** Expected to be fully open (Terbuka) — 100% foreign ownership, as it separates pure design from restricted advertising activities.`,
+**PMA Status:** Expected to be fully open (Terbuka) — 100% foreign ownership, as it separates pure design from restricted advertising activities.
+
+**Investment Doubling Warning:** Each KBLI code under a PT PMA requires a separate IDR 10 Billion investment commitment. If you use both 74191 (Interior) and 74192 (Graphic Design) for a full-service creative agency, your total LKPM investment plan must show IDR 20 Billion.`,
     whatChanged:
       "BPS_ONLY. Newly separated for KBLI 2025. Previously lumped into broader specialized design codes, graphic and visual communication design now has its own dedicated classification.",
     baliContext:
@@ -4731,6 +4842,8 @@ The moratorium was the Governor's direct response to Alfamart/Indomaret saturati
 **PMA Status:** Fully open (Terbuka) — 100% foreign ownership.
 
 **⚠️ BALI GOVERNOR ALERT (Jan 2026):** 77100 is explicitly listed in the Governor of Bali's letter to BKPM (Surat B.27.000/642/PM/DPMPTSP, 28 January 2026) as one of the most abused PMA codes in Bali. The Governor requests BKPM to CLOSE OSS registration for PMA with Risiko Rendah in Bali — which directly includes 77100. If BKPM grants this request, new PMA companies will be UNABLE to register this code for Bali operations. The Governor also requests closure of PMA at virtual office addresses — many vehicle rental PMA use virtual offices. Monitor OSS for changes.
+
+**IMPORTANT — Self-Drive Only:** KBLI 77100 covers rental of motor vehicles WITHOUT a driver (Tanpa Sopir). Providing a driver under this code is strictly forbidden. For vehicle rental WITH driver, you need KBLI 49422. Ensure vehicle insurance covers commercial rental use.
 
 **Source Regulation:** PP 28/2025, Perpres 10/2021, 49/2021, 14/2024.`,
     whatChanged:
@@ -5664,6 +5777,28 @@ The moratorium was the Governor's direct response to Alfamart/Indomaret saturati
     },
   },
 
+  "93114": {
+    whatItMeans:
+      "Sports field facilities — operating and managing outdoor sports courts and fields, including padel courts, tennis courts, futsal fields, and multi-sport complexes. Covers both rental of facilities and organized sports programs.",
+    whatYouNeed: `**Risk Level:** HIGH (Tinggi) for Large-Scale. Medium-Low for smaller scales.
+
+**Health Certificate:** Mandatory Sertifikat Laik Sehat from Dinas Kesehatan.
+
+**Local Taxation (Bali):** Revenue from court rentals is subject to 10% PBJT (Pajak Barang dan Jasa Tertentu). Real-time POS integration with Bapenda Bali is increasingly requested.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. The padel boom in Bali has made this code increasingly relevant for foreign investors.",
+    baliContext:
+      "Padel is exploding in Bali — multiple new padel centers opened in 2024-2025 across Canggu, Seminyak, and Nusa Dua. Map to 'Padel Centers / Tennis Academies' for client positioning. The 10% PBJT on court rentals is significant — ensure your pricing model accounts for it. POS integration with regional tax authority (Bapenda) is becoming standard enforcement practice.",
+    youllAlsoNeed:
+      "- 93119 — Other sports facilities (for yoga studios, martial arts)\n- 85493 — Professional training (if offering coaching/academy programs)\n- 56101 — Restaurant (if including F&B at the sports facility)",
+    zantaraOpener:
+      "Opening a padel center or sports facility in Bali? 93114 is booming — but budget for the 10% PBJT on all court rental revenue. Here's the full setup.",
+  },
+
   "93210": {
     whatItMeans:
       "Theme Parks and Amusement Parks — operating permanent, location-based attractions such as mechanical rides, water parks, themed exhibitions, and picnic grounds where customers pay an entrance ticket. It explicitly excludes gambling and lottery operations.",
@@ -5956,7 +6091,7 @@ The moratorium was the Governor's direct response to Alfamart/Indomaret saturati
   "62193": {
     whatItMeans:
       "Development of blockchain-based applications — smart contracts, DApps, public and private blockchain infrastructure, distributed ledger technology. Explicitly excludes crypto trading or commodity futures (those fall under financial regulation).",
-    whatYouNeed: `**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate issued **automatically**. Same structure as other 621xx codes — data security SOP, competency certificates, org chart with technical SDM.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate verified within **7 working days**.\n\n**PMA:** Fully open — 100% foreign ownership allowed.`,
+    whatYouNeed: `**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate issued **automatically**. Same structure as other 621xx codes — data security SOP, competency certificates, org chart with technical SDM.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate verified within **7 working days**.\n\n**PMA:** Fully open — 100% foreign ownership allowed.\n\n**CRITICAL — PSE Kominfo Registration:** Mandatory registration as PSE Privat before commercial launch. Applies to BOTH B2C and B2B platforms. Failure to register results in NIB suspension and platform blocking by Indonesian ISPs.`,
     whatChanged:
       "CODICE_RINUMERATO from KBLI 2020 code 62014 (Teknologi Blockchain Development). Previously blockchain was lumped with general 'emerging technology' development. KBLI 2025 gives it a standalone code, validating blockchain as a distinct industrial activity separate from financial trading.",
     baliContext:
@@ -5993,7 +6128,7 @@ The moratorium was the Governor's direct response to Alfamart/Indomaret saturati
     whatChanged:
       "MATCH_CON_AGGREGAZIONE from KBLI 2020 code 62021. Previously cybersecurity was hidden within general IT consulting. KBLI 2025 extracts it as its own code, reflecting national cyber resilience priorities and BSSN (National Cyber Agency) mandates.",
     baliContext:
-      "Small but growing cybersecurity presence in Bali, mostly serving remote international clients. The Medium-High risk classification at ALL scales is notably stricter than other IT codes — reflecting national security concerns. For Bali-based cybersecurity consultancies, the main challenge is the staffing requirements: even a small firm needs formal employment contracts with technically certified staff. The good news is 100% PMA is allowed, making this one of the most accessible high-value IT niches for foreign experts.",
+      "Small but growing cybersecurity presence in Bali, mostly serving remote international clients. The Medium-High risk classification at ALL scales is notably stricter than other IT codes — reflecting national security concerns. For Bali-based cybersecurity consultancies, the main challenge is the staffing requirements: even a small firm needs formal employment contracts with technically certified staff. The good news is 100% PMA is allowed, making this one of the most accessible high-value IT niches for foreign experts.\n\n**UU PDP Compliance (2026):** Mandatory localized data security protocols. Explicit user consent management required for all data processing. Recommended to appoint a Data Protection Officer (DPO). High audit risk for cross-border data transfers — ensure Privacy Policy Audit is completed as a licensing prerequisite.",
     youllAlsoNeed:
       "- 62199 — Other Software Development (for security tool development)\n- 62202 — Digital Identity Services\n- 62203 — Electronic Certificate Services\n- 63101 — Data Processing (for SOC/monitoring infrastructure)",
     zantaraOpener:
@@ -9478,16 +9613,22 @@ The moratorium was the Governor's direct response to Alfamart/Indomaret saturati
 
   "55202": {
     whatItMeans:
-      "Short-term shared accommodation (sharing rooms) for tourism, recreation, education, or travel. Youth hostels and youth lodges. Shared dormitory-style rooms, sometimes private rooms. Distinguished from hotels by the communal/shared nature of the stay.",
-    whatYouNeed: `**Mikro/Kecil/Menengah.** Medium-Low, automatic. Needs Sertifikat Laik Sehat (health worthiness). Must submit periodic reports and standard compliance documents.\n\n**PMA:** Fully open — 100% foreign ownership allowed.`,
+      "Youth hostel (Hostel Remaja) — budget accommodation providing dormitory-style or shared-room lodging, primarily targeting backpackers and budget travelers. Includes common areas, shared kitchens, and social spaces.",
+    whatYouNeed: `**Risk Level:** Medium-Low (Menengah Rendah) for Mikro/Kecil/Menengah scale.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**CRITICAL WARNING — Perda No. 4/2026:** Bali's regional law now formally criminalizes nominee land ownership and business licensing. Penalties: up to 5 years imprisonment + IDR 1 Billion fine. Any foreign involvement through nominee structures is now a criminal matter. Use proper PT PMA structure ONLY.
+
+**PMA:** Fully open — 100% foreign ownership.`,
     whatChanged:
-      "CODICE_RINUMERATO from 55191. Renumbered but functionally identical.",
+      "The old 55130 (Pondok Wisata/Homestay) code no longer exists in KBLI 2025. Budget accommodation has been restructured. 55202 covers hostels; for villas, use 55203. For homestays, the legal pathway for foreigners is through PT PMA under appropriate accommodation codes — NOT through local pondok wisata licenses.",
     baliContext:
-      "The hostel market in Bali caters primarily to backpackers and digital nomads on a budget. Canggu and Kuta dominate. For PMA investors, the IDR 10B minimum for a hostel business is challenging — hostels are inherently low-margin, high-volume. Most foreign-owned hostels in Bali operate under local nominee structures (illegal) or scale up to boutique hotel classification (55103/55106). The 'Partnership' restrictions from the Positive Investment List may apply to small-scale hostels (under 10 rooms), effectively barring PMA entry at the micro level. Scaling to 20+ beds with professional management is the minimum viable PMA play.",
+      "Bali's hostel scene is concentrated in Kuta, Seminyak, and Canggu — targeting the massive backpacker market. However, foreigners operating 'homestays' under nominee arrangements face criminal prosecution under Perda 4/2026. The correct legal path for foreign hostel operators is PT PMA under 55202. Use this as a push toward legal compliance for clients currently in grey-zone arrangements.",
     youllAlsoNeed:
-      "- 55209 — Other Short-Stay (for bungalow/capsule additions)\n- 56101 — Restaurant (if serving meals)\n- 55400 — Booking Platform (if operating your own reservation system)",
+      "- 55203 — Villa (if upgrading to private villa accommodation)\n- 56101 — Restaurant (if including breakfast/food service)\n- 68292 — Property Management (if managing on behalf of property owners)",
     zantaraOpener:
-      "Running a hostel in Bali? 55202 covers youth hostels — but PMA investors need significant scale to meet the IDR 10B investment threshold.",
+      "Running a hostel in Bali? 55202 is the legal path for foreign operators. WARNING: nominee structures are now criminal under Perda 4/2026. Let me explain the compliant PT PMA approach.",
     tkaInfo: {
       categoryId: 8,
       categoryName: "Akomodasi & Makan/Minum",
@@ -19487,7 +19628,7 @@ Most PMA entrants take the **retail-from-PAK** path: source products from licens
     whatChanged:
       "Aggregated from KBLI 2020 codes (MATCH_CON_AGGREGAZIONE) — combines 93295 with PP28 code 93245.",
     baliContext:
-      "This is CRITICAL for beach clubs — and here's where it gets complicated. A 'beach club' in Bali typically needs MULTIPLE KBLI codes: 56101 (restaurant), 56301 (bar), 93295 (beach area), and potentially 90xxx codes for entertainment. You can't just pick one. The Sempadan Pantai (100-meter setback line from high tide) is strictly enforced, and Bali's coastal zoning regulations add another layer. Many beach clubs in Seminyak and Canggu have faced enforcement actions for building too close to the waterline. OSS auto-rejects if the location isn't zoned for beach exploitation — check your RDTR (spatial plan) first.",
+      "This is CRITICAL for beach clubs — and here's where it gets complicated. A 'beach club' in Bali typically needs MULTIPLE KBLI codes: 56101 (restaurant), 56301 (bar), 93295 (beach area), and potentially 90xxx codes for entertainment. You can't just pick one. The Sempadan Pantai (100-meter setback line from high tide) is strictly enforced, and Bali's coastal zoning regulations add another layer. Many beach clubs in Seminyak and Canggu have faced enforcement actions for building too close to the waterline. OSS auto-rejects if the location isn't zoned for beach exploitation — check your RDTR (spatial plan) first.\n\n**2026 Environmental Enforcement:** Any proximity to the Coastal Buffer Zone (Sempadan Pantai) mandates a full AMDAL report under PP 22/2021. The mandatory 100-meter setback from the high-water mark is now strictly enforced via satellite and drone audits. Check coastal setback compliance BEFORE architectural planning.",
     youllAlsoNeed:
       "- 56101 — If serving food (restaurant license)\n- 56301 — If serving alcohol (bar license)\n- 93297 — If offering water sports activities\n- 93191 — If operating a sports/recreation venue on the beach",
     zantaraOpener:
@@ -19797,7 +19938,7 @@ Most PMA entrants take the **retail-from-PAK** path: source products from licens
   "96400": {
     whatItMeans:
       "Personal services intermediary — a platform that connects clients with personal service providers. Spa/massage bookings, beauty service aggregators, personal service matching platforms. You're the matchmaker between the person who wants a service and the person who provides it.",
-    whatYouNeed: `**BPS_ONLY** — no PP28/2025 licensing data exists yet. This is a newer concept reflecting the platform economy.\n\n**PMA:** No specific Kepmen 228 category — KEDUA-only. Foreign owners can hold Director/Commissioner positions but no sector-specific TKA positions are listed.`,
+    whatYouNeed: `**BPS_ONLY** — no PP28/2025 licensing data exists yet. This is a newer concept reflecting the platform economy.\n\n**PMA:** No specific Kepmen 228 category — KEDUA-only. Foreign owners can hold Director/Commissioner positions but no sector-specific TKA positions are listed.\n\n**WARNING — The 96099 Trap:** KBLI 96099 is restricted to 49% foreign ownership. Do NOT use it for a fully foreign-owned concierge/lifestyle agency. 96400 is the mandatory alternative for 100% PT PMA ownership. Fast-track NIB issuance.`,
     whatChanged:
       "New in KBLI 2025 — refined intermediary definition for the personal services sector. The platform economy is finally getting its own classification rather than being shoehorned into generic IT or service codes.",
     baliContext:
@@ -19877,7 +20018,7 @@ Most PMA entrants take the **retail-from-PAK** path: source products from licens
   "77210": {
     whatItMeans:
       "Recreational and sports equipment rental — operational leasing (rental without option to buy) of surfboards, bicycles, kayaks, camping gear, fitness equipment, and other recreational gear. You rent it out, the customer uses it, they bring it back. No purchase option involved.",
-    whatYouNeed: `**Risk: Rendah (Low)** across all scales. Only NIB required, automatic issuance. Important distinction: this covers operational leasing only. Financial leasing (with purchase option) is regulated by OJK (Financial Services Authority) and requires a completely different licensing framework.\n\n**PMA:** Fully open (TERBUKA), 100% foreign ownership allowed.`,
+    whatYouNeed: `**Risk: Rendah (Low)** across all scales. Only NIB required, automatic issuance. Important distinction: this covers operational leasing only. Financial leasing (with purchase option) is regulated by OJK (Financial Services Authority) and requires a completely different licensing framework.\n\n**PMA:** Fully open (TERBUKA), 100% foreign ownership allowed.\n\n**Non-Motorized Equipment Only:** Covers surfboards, bicycles, canoes, sailboats, and non-motorized gym equipment. CANNOT be used for motorized vehicles (ATVs, jet-skis, scooters) — those require KBLI 77100 with higher compliance requirements.`,
     whatChanged:
       "Aggregated from KBLI 2020 codes (MATCH_CON_AGGREGAZIONE) — combines 77210 with PP28 code 77220.",
     baliContext:
@@ -21563,7 +21704,7 @@ Dinas Kesehatan inspectors in Bali conduct periodic sweeps of health stores. Sel
       "Private-sector film, video, and television production. This covers everything from indie short films to full-scale TV series — as long as it's produced by a private entity (not state-owned media). Scripting, shooting, directing, producing — the entire production pipeline lives here. If a government broadcaster or TVRI is producing, that falls under 59111 instead.",
     whatYouNeed: `**Micro scale**: Low risk (Rendah). NIB only — no Standard Certificate needed. A solo videographer or tiny production house can operate with minimal paperwork.\n\n**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate issued **automatically**. You'll need a TDUP (Tanda Daftar Usaha Perfilman) — the film business registration — plus periodic activity reports.\n\n**Large scale**: Medium-High risk. NIB + Standard Certificate within **14 working days**. Full compliance documentation, including TDUP, Self-Assessment of Standard Readiness, and LSPr-certified standard.\n\n**PMA:** Fully open — 100% foreign ownership allowed.`,
     whatChanged:
-      "Direct match from KBLI 2020 (MATCH_LANGSUNG). The code, scope, and requirements are unchanged. Private film production has been a stable classification through both revisions.",
+      "Direct match from KBLI 2020 (MATCH_LANGSUNG). The code, scope, and requirements are unchanged. Private film production has been a stable classification through both revisions. Note: 59112 is specifically for private-sector production. You must file a TPPF (Film Production Notification) for every project. Content intended for public display requires clearance from the Censorship Board (LSF).",
     baliContext:
       "Bali is a magnet for international productions — the landscapes, the light, the relatively low crew costs compared to Australia or Europe. Foreign productions shooting in Bali need a separate Shooting Permit (Izin Pengambilan Gambar) from the regional film board on top of this KBLI code. Ubud, Uluwatu cliffs, and rice terrace locations in Tegallalang are perennial favorites. Local crew talent is strong for camera and grip departments but thin for specialized VFX work. Budget 2-4 weeks for permit processing if you're planning a commercial shoot.",
     youllAlsoNeed:
@@ -25821,7 +25962,7 @@ Dinas Kesehatan inspectors in Bali conduct periodic sweeps of health stores. Sel
   "62194": {
     whatItMeans:
       "Development of foundational AI and machine learning components — building the models, training datasets, neural networks, and core algorithms that power artificial intelligence systems. This covers R&D into AI capabilities, not just using off-the-shelf AI tools. If you're training models, developing ML pipelines, or building AI infrastructure, this is your code.",
-    whatYouNeed: `**Risk varies by scale and activity type** — this is one of the more complex codes in the IT section because AI spans from simple tools to critical infrastructure:\n- **Small scale (simpler activities)**: Low risk (Rendah). Just a NIB, issued **automatically**.\n- **Small / Medium scale (standard AI dev)**: Medium-Low risk. NIB + Standard Certificate issued **automatically**.\n- **Large scale / sensitive AI**: Medium-High risk. NIB + Standard Certificate verified within **7 working days**. Full staffing documentation, data governance annual report, SKKNI AI competency certification.\n\n**PMA:** Fully open — 100% foreign ownership allowed.`,
+    whatYouNeed: `**Risk varies by scale and activity type** — this is one of the more complex codes in the IT section because AI spans from simple tools to critical infrastructure:\n- **Small scale (simpler activities)**: Low risk (Rendah). Just a NIB, issued **automatically**.\n- **Small / Medium scale (standard AI dev)**: Medium-Low risk. NIB + Standard Certificate issued **automatically**.\n- **Large scale / sensitive AI**: Medium-High risk. NIB + Standard Certificate verified within **7 working days**. Full staffing documentation, data governance annual report, SKKNI AI competency certification.\n\n**PMA:** Fully open — 100% foreign ownership allowed.\n\n**CRITICAL — PSE Kominfo Registration:** Mandatory registration as PSE Privat before commercial launch. Applies to BOTH B2C and B2B platforms. Failure to register results in NIB suspension and platform blocking by Indonesian ISPs.`,
     whatChanged:
       "This is an ENTIRELY NEW code in KBLI 2025 — no predecessor in KBLI 2020. Indonesia is proactively creating regulatory infrastructure for AI before the industry outgrows general software codes. The MATCH_CON_AGGREGAZIONE mapping means some activities previously scattered across general software codes have been pulled into this dedicated classification.",
     baliContext:
@@ -25994,7 +26135,7 @@ Dinas Kesehatan inspectors in Bali conduct periodic sweeps of health stores. Sel
     whatChanged:
       "Direct match from KBLI 2020 to 2025 — the code and scope remain the same. No structural changes, just the usual periodic review of risk classifications.",
     baliContext:
-      "Bali's building boom in hospitality and villa development means architecture firms stay busy, but local regulations are tightening around building heights, setbacks, and green zone compliance. You'll want staff who understand the Perda for each kabupaten, especially Badung and Gianyar where most development happens. Foreign architects often partner with locally-licensed firms to navigate the permit landscape faster.",
+      "Bali's building boom in hospitality and villa development means architecture firms stay busy, but local regulations are tightening around building heights, setbacks, and green zone compliance. You'll want staff who understand the Perda for each kabupaten, especially Badung and Gianyar where most development happens. Foreign architects often partner with locally-licensed firms to navigate the permit landscape faster. Strategic alternative: use 71101 for Design & Project Management, then sub-contract physical construction to local firms. This avoids the IDR 50B net worth requirement of KBLI 41011 (Construction), making it the low-barrier entry path for foreign architects and builders.",
     youllAlsoNeed:
       "- 71102 — Factory & Technical Engineering Design (if your projects include industrial facilities)\n- 71109 — Other Engineering & Technical Consulting (for specialized surveys)\n- 43301 — Building Completion (if offering design-build packages)\n- 41011 — Residential Building Construction (if expanding into build, not just design)",
     zantaraOpener:
@@ -26073,7 +26214,7 @@ Dinas Kesehatan inspectors in Bali conduct periodic sweeps of health stores. Sel
   "73201": {
     whatItMeans:
       "Market research — consumer behavior studies, market potential analysis, product acceptance testing, competitive landscape mapping. This is the analytical side of marketing: gathering data about what people want, how they buy, and what they'll pay. Distinct from opinion polling (73202), which focuses on public sentiment rather than commercial insight.",
-    whatYouNeed: `**All scales (Mikro through Besar): Low Risk (Rendah)**\n\nNIB only — no additional licenses, no Sertifikat Standar, no sector-specific permits. Register and operate.\n\n**PMA: 100% foreign ownership allowed.**`,
+    whatYouNeed: `**All scales (Mikro through Besar): Low Risk (Rendah)**\n\nNIB only — no additional licenses, no Sertifikat Standar, no sector-specific permits. Register and operate.\n\n**PMA: 100% foreign ownership allowed.**\n\n**Privacy Compliance (UU PDP):** Must follow Indonesia's Personal Data Protection Law (UU PDP) for any data collection activities in Indonesia. Ensure explicit consent mechanisms for survey participants and research subjects.`,
     whatChanged:
       "Direct match from KBLI 2020 to 2025. No changes in code, scope, or risk classification. Market research remains one of the cleanest, lowest-friction professional services codes available.",
     baliContext:
@@ -29096,6 +29237,28 @@ Dinas Kesehatan inspectors in Bali conduct periodic sweeps of health stores. Sel
       keduaNote:
         "Directors and Commissioners who do NOT manage personalia can work without being listed in the jabatan.",
     },
+  },
+
+  "43211": {
+    whatItMeans:
+      "Electrical network installation — wiring, panel installation, switchgear, lighting systems, and electrical infrastructure for buildings and industrial facilities. Includes solar panel installation.",
+    whatYouNeed: `**Risk Level:** HIGH (Tinggi) for Large-Scale PT PMA. Requires formal License (Izin).
+
+**Mandatory Staffing:** Must employ certified technical experts (Tenaga Ahli) with verified SKK (Competence Certificate) at Madya or Utama level.
+
+**SBU:** Technical verification by LPJK (Lembaga Pengembangan Jasa Konstruksi) is mandatory.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. Electrical installation requirements remain stringent with SKK certification as the key barrier.",
+    baliContext:
+      "Solar panel installation is the growth segment in Bali — hotels and villas increasingly investing in rooftop solar. For PT PMA, the SKK certification requirement means you MUST employ Indonesian certified electricians. Group under 'Supportive Construction Services' for positioning alongside 43221 (Plumbing/HVAC).",
+    youllAlsoNeed:
+      "- 43221 — Plumbing, HVAC, and water systems installation\n- 35111 — Power generation (if also operating solar/renewable systems)\n- 41011 — General construction (if offering full building services)",
+    zantaraOpener:
+      "Electrical installation or solar panel services in Bali? 43211 requires certified staff with SKK credentials — here's the licensing path.",
   },
 
   "43221": {
@@ -33693,7 +33856,7 @@ While technically 46314 covers coffee specifically, many operators combine coffe
   "10710": {
     whatItMeans:
       "Bakery products manufacturing — bread, cakes, pastries, croissants, and all baked goods produced at scale. This is the production code, covering everything from industrial bread factories to artisan bakery production kitchens. If you're baking and distributing (not just baking and selling over the counter in a café), this is it.",
-    whatYouNeed: `**Small / Medium scale**: Low risk. NIB issued automatically. Standard food safety requirements apply — Hygiene Sanitation Label (HSP) and BPOM registration for packaged products.\n\n**Large scale**: High risk. Full NIB + Standard Certificate with GMP compliance, BPOM registration, and periodic audits.\n\n**PMA:** Fully open — 100% foreign ownership allowed.`,
+    whatYouNeed: `**Small / Medium scale**: Low risk. NIB issued automatically. Standard food safety requirements apply — Hygiene Sanitation Label (HSP) and BPOM registration for packaged products.\n\n**Large scale**: High risk. Full NIB + Standard Certificate with GMP compliance, BPOM registration, and periodic audits.\n\n**PMA:** Fully open — 100% foreign ownership allowed.\n\n**Large-Scale PT PMA (2026 Update):**\n- **Risk Level:** HIGH (Tinggi) — requires NIB + Formal License (Izin), not just Standard Certificate\n- **Halal Certification:** Mandatory for all production since 2024\n- **Distribution License:** Requires Izin Edar Pangan Olahan (Processed Food Distribution License) for retail sale`,
     whatChanged:
       "Direct match from KBLI 2020 (MATCH_LANGSUNG). No changes — same code, same scope. Bakery manufacturing remains stable in the classification system.",
     baliContext:
@@ -33997,7 +34160,7 @@ While technically 46314 covers coffee specifically, many operators combine coffe
   "10750": {
     whatItMeans:
       "Prepared meals and processed food manufacturing — ready-to-eat meals, meal kits, frozen prepared foods, and packaged cooked meals. This covers cloud kitchens producing at scale, meal prep companies, and any operation that manufactures food that's already cooked or ready to heat and eat.",
-    whatYouNeed: `**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate issued automatically. Food safety compliance (HSP), BPOM registration for packaged products, and periodic reports required.\n\n**Large scale**: High risk. Full compliance suite — GMP, BPOM, SLHS, and environmental permits.\n\n**PMA:** Fully open — 100% foreign ownership allowed.`,
+    whatYouNeed: `**Small / Medium scale**: Medium-Low risk. NIB + Standard Certificate issued automatically. Food safety compliance (HSP), BPOM registration for packaged products, and periodic reports required.\n\n**Large scale**: High risk. Full compliance suite — GMP, BPOM, SLHS, and environmental permits.\n\n**PMA:** Fully open — 100% foreign ownership allowed.\n\n**Large-Scale PT PMA (2026 Update):**\n- **Risk Level:** HIGH (Tinggi) — requires NIB + Formal License (Izin)\n- **Mandatory:** Technical site inspection and BPOM facility approval required before operations`,
     whatChanged:
       "Direct match from KBLI 2020 (MATCH_LANGSUNG). No changes to scope or classification. Prepared meals manufacturing stays as-is.",
     baliContext:
@@ -34097,9 +34260,9 @@ While technically 46314 covers coffee specifically, many operators combine coffe
   "10761": {
     whatItMeans:
       "Coffee processing — roasting, grinding, blending, and packaging of coffee beans. This covers everything from small-batch specialty roasters to large-scale coffee processing plants. If you're turning green beans into roasted, ground, or packaged coffee, this is your code.",
-    whatYouNeed: `**Small / Medium scale**: Low risk. NIB issued automatically. Standard food safety requirements — HSP and BPOM registration for packaged products.\n\n**PMA:** Fully open — 100% foreign ownership allowed.`,
+    whatYouNeed: `**Small / Medium scale**: Low risk. NIB issued automatically. Standard food safety requirements — HSP and BPOM registration for packaged products.\n\n**Mandatory Certifications (2026):**\n- **Halal Certification:** Strictly mandatory for Large-Scale PT PMA since 2024\n- **BPOM MD:** Mandatory Processed Food Distribution License (Izin Edar Pangan Olahan) for domestic retail sale\n\n**PMA:** Fully open — 100% foreign ownership allowed.`,
     whatChanged:
-      "Direct match from KBLI 2020 (MATCH_LANGSUNG). No changes. Coffee processing remains a stable, straightforward classification.",
+      "Important code refinement for 2025: KBLI 10761 is now the specific code for coffee processing (Pengolahan Kopi). The old KBLI 2020 code 10792, which many coffee businesses used, now specifically covers 'Wet Pastries/Cakes' — NOT coffee. All coffee roastery and processing businesses must migrate to 10761. Halal certification is strictly mandatory for Large-Scale PT PMA since 2024. BPOM MD (Processed Food Distribution License) is mandatory for domestic retail.",
     baliContext:
       "Kintamani Arabica is Bali's flagship coffee — it has a Geographical Indication (GI) designation. Several foreign-owned specialty roasters operate in Bali, sourcing beans from Kintamani, Pupuan, and increasingly from other Indonesian origins (Flores, Toraja, Gayo). The specialty coffee scene in Canggu and Ubud is mature, which means both strong demand and serious competition. Many roasters combine processing (10761) with a café (56303) for direct-to-consumer sales. Export is a major revenue stream — Balinese specialty coffee sells well in Australia, Japan, and Europe.",
     youllAlsoNeed:
@@ -35463,6 +35626,93 @@ While technically 46314 covers coffee specifically, many operators combine coffe
   },
 
   // ===========================================================================
+  // Utilities, Energy & Environment (35xxx, 38xxx, 39xxx)
+  // ===========================================================================
+
+  "35111": {
+    whatItMeans:
+      "Power generation from renewable energy sources — solar, wind, hydro, geothermal, and biomass electricity generation. HIGH risk classification requiring formal licensing from the Ministry of Energy.",
+    whatYouNeed: `**Risk Level:** HIGH (Tinggi) for ALL business scales. This is one of the most heavily regulated codes.
+
+**Licensing:** NIB + Formal License (Izin) from the Ministry of Energy (ESDM). NOT automatic.
+
+**Mandatory Requirements:**
+- Grid Interconnection Study with PLN (State Electricity Company)
+- Environmental Impact Assessment (AMDAL or UKL-UPL depending on capacity)
+- Ministry of Energy technical approval
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. Power generation remains a high-barrier sector with formal Ministry approval required.",
+    baliContext:
+      "Solar energy is the most viable renewable play in Bali — consistent sunlight year-round. Rooftop solar for hotels and villas is a growing market. PLN's power purchase agreements (PPA) for renewable IPPs are available but negotiation-heavy. The AMDAL requirement adds 6-12 months to project timelines. Geothermal potential exists in the Kintamani/Batur volcanic area but is politically sensitive.",
+    youllAlsoNeed:
+      "- 43211 — Electrical installation (for solar panel installation services)\n- 71101 — Architectural/engineering services (for system design)\n- 70209 — Management consultancy (for energy consulting)",
+    zantaraOpener:
+      "Building a solar or renewable energy project in Bali? 35111 is HIGH risk — Ministry approval, PLN interconnection study, and AMDAL are all required. Let me walk through the process.",
+  },
+
+  "38211": {
+    whatItMeans:
+      "Non-hazardous waste processing — sorting, treating, and converting non-hazardous solid waste into reusable materials or energy. Covers waste-to-energy plants, recycling facilities, and composting operations at commercial scale.",
+    whatYouNeed: `**Risk Level:** Medium-High (Menengah Tinggi). Requires NIB + Verified Standard Certificate.
+
+**Environmental Compliance:** Mandatory Environmental Permit (AMDAL) for all waste processing facilities.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. Waste processing requirements remain consistent with increased emphasis on environmental compliance.",
+    baliContext:
+      "Bali's waste crisis is real and visible — the island generates 4,000+ tons of waste daily with limited processing capacity. This creates genuine opportunity for waste-to-energy and recycling PT PMAs. Several international waste management companies are already operating. Government support is strong for this sector. Map to 'Green Energy Projects' for investment positioning.",
+    youllAlsoNeed:
+      "- 39001 — Carbon Capture (if generating carbon credits from waste processing)\n- 35111 — Power Generation (if producing electricity from waste)\n- 38219 — Hazardous waste processing (if scope expands)",
+    zantaraOpener:
+      "Waste-to-energy or recycling in Bali? 38211 covers non-hazardous waste processing — and Bali desperately needs it. Here's the regulatory framework.",
+  },
+
+  "39001": {
+    whatItMeans:
+      "Carbon capture activities — technologies and operations for capturing CO2 from industrial sources or directly from the atmosphere. Part of Indonesia's growing carbon economy framework.",
+    whatYouNeed: `**Risk Level:** HIGH (Tinggi). Formal Izin Operasi Penyimpanan Karbon required.
+
+**Capital:** High investment realization required for technology infrastructure.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Relatively new classification reflecting Indonesia's commitment to carbon reduction. The regulatory framework is still evolving with new Ministry of Energy guidelines expected.",
+    baliContext:
+      "Carbon capture in Bali is nascent but strategically positioned. The island's tourism-driven carbon footprint creates demand for offset solutions. Pair with 64995 (Carbon Unit Trading) for a full carbon economy play. High capital requirements but strong ESG positioning.",
+    youllAlsoNeed:
+      "- 39002 — Carbon Storage (for geological storage operations)\n- 64995 — Carbon Unit Trading (for trading carbon credits)\n- 38211 — Waste Processing (for waste-to-carbon projects)",
+    zantaraOpener:
+      "Carbon capture technology in Indonesia? 39001 is HIGH risk with formal Ministry licensing — but the carbon economy opportunity is real. Let me explain the framework.",
+  },
+
+  "39002": {
+    whatItMeans:
+      "Carbon storage activities — geological storage and long-term sequestration of captured CO2. The downstream complement to carbon capture (39001).",
+    whatYouNeed: `**Risk Level:** HIGH (Tinggi). Formal Izin Operasi Penyimpanan Karbon required from Ministry of Energy.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "New classification in the 2025 framework. Separated from capture activities for clearer regulatory oversight.",
+    baliContext:
+      "Limited direct application in Bali due to geological constraints, but relevant for companies headquartered in Bali managing storage operations elsewhere in Indonesia. The regulatory framework requires formal Ministry approval and ongoing monitoring compliance.",
+    youllAlsoNeed:
+      "- 39001 — Carbon Capture\n- 64995 — Carbon Unit Trading\n- 71101 — Engineering/architectural services (for site assessment)",
+    zantaraOpener:
+      "Carbon storage operations in Indonesia? 39002 requires formal Ministry of Energy licensing. Here's what's involved.",
+  },
+
+  // ===========================================================================
   // Design & Professional Services (74xxx)
   // ===========================================================================
 
@@ -35909,16 +36159,27 @@ While technically 46314 covers coffee specifically, many operators combine coffe
 
   "93119": {
     whatItMeans:
-      "Other sports facilities — providing specialized sports infrastructure not covered by other specific codes. Padel courts, climbing walls, indoor skate parks, trampoline parks, archery ranges, and similar niche sports venues.",
-    whatYouNeed: `**Mikro / Kecil scale**: Low risk (Rendah). NIB only, **automatic** issuance.\n\n**PMA:** Fully open (TERBUKA) — 100% foreign ownership allowed.`,
+      "Management of other sports facilities not elsewhere classified — yoga studios, martial arts dojos, CrossFit boxes, climbing gyms, dance studios, and other specialized fitness/wellness spaces.",
+    whatYouNeed: `**Risk Level:** LOW (Rendah) for Mikro/Kecil scale. Higher for larger operations.
+
+**Visa Restrictions (CRITICAL):**
+- **Investor KITAS:** PROHIBITED from teaching or performing any active labor
+- **Working KITAS (E23):** Mandatory for instructors and active operating directors
+- **Zoning:** STRICTLY PINK (Tourism) Zone. Rejection in Yellow (Residential) zones is automated in 2026
+
+**Health Certificate:** SLHS (Sertifikat Laik Higiene Sanitasi) mandatory.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
     whatChanged:
-      "Direct match from KBLI 2020 (MATCH_LANGSUNG). Same code, same scope.",
+      "Restructured from old 93139 in KBLI 2020. Now under 93119 as a catch-all for non-standard sports facility management.",
     baliContext:
-      "Padel courts are the hottest trend — Canggu and Pererenan have seen a rush of padel court construction. Indoor climbing is growing with Bali's adventure tourism crowd. Trampoline parks target families. The low risk classification at micro/small scale makes this attractive for smaller investments. Land cost is the biggest variable — finding suitable plots in south Bali with enough space for courts is increasingly difficult and expensive.",
+      "Ubud and Canggu are global yoga capitals — hundreds of studios operate across Bali. The CRITICAL issue for foreign owners: if you teach classes, you need a Working KITAS (E23), NOT an Investor KITAS. Immigration enforcement on this is increasing in 2026. Zoning in Pink Zone only — many Ubud studios in residential (Yellow) zones face automated rejection in the new OSS system.",
     youllAlsoNeed:
-      "- 93111 — Stadium Facilities (if building a large multi-sport complex)\n- 93116 — Fitness Center (if adding a gym component)\n- 56101 — Restaurant (if serving food on-site)\n- 56304 — Beverage Shop (for a juice/smoothie bar)",
+      "- 85493 — Professional training (if offering teacher training/certification programs)\n- 96230 — Spa/Wellness (if including spa services alongside yoga)\n- 93114 — Sports facilities (for court/field-based activities)",
     zantaraOpener:
-      "Building padel courts or a climbing wall in Bali? 93119 covers niche sports facilities — low risk at small scale.",
+      "Opening a yoga studio or fitness space in Bali? 93119 has strict visa rules — Investor KITAS holders CANNOT teach. And zoning must be Pink Zone. Let me walk through the compliance.",
     tkaInfo: {
       categoryId: 7,
       categoryName: "Kesenian, Hiburan & Rekreasi",
@@ -41339,7 +41600,7 @@ UU Kesehatan 2023 establishes corporate liability for hospitals — the RS (not 
       "Private clinics — smaller medical facilities that provide outpatient care, consultations, and basic medical procedures. Unlike hospitals (86103), clinics typically don't offer inpatient stays or full surgical suites. This covers general practice clinics, specialty clinics, and polyclinics operated by private entities.",
     whatYouNeed: `**All scales: Medium-High risk (Menengah Tinggi)**\nNIB + Sertifikat Standar within **14 working days**. You need SIP (Surat Izin Praktik) for the clinic and STR (Surat Tanda Registrasi) for all practicing medical staff. Compliance with Ministry of Health facility standards is mandatory.\n\n**PMA:** Fully open — 100% foreign ownership.`,
     whatChanged:
-      "Direct match from KBLI 2020 (MATCH_LANGSUNG). Private clinics have maintained the same classification. The licensing requirements remain stable.",
+      "Direct match from KBLI 2020 (MATCH_LANGSUNG). Private clinics have maintained the same classification. The licensing requirements remain stable. Important clarification: use 86105 for ALL private clinics (dental, aesthetic, general). Do NOT use 86103, which is reserved for Private Hospitals with 50-200 beds. Mandatory local medical staff and professional liability insurance for the facility.",
     baliContext:
       "Bali's medical tourism market is driving demand for private clinics — especially in aesthetic medicine, dermatology, dental care, and wellness. Clinics in Seminyak, Kuta, and Sanur cater to tourists and expats. The growth area is integrative medicine: combining Western medical practice with wellness services (IV drip clinics, hormone optimization, longevity medicine). These hybrid clinics attract the health-conscious digital nomad demographic. Licensing is significantly lighter than hospitals — no KARS accreditation needed, just MOH facility standards and local health department approval.",
     youllAlsoNeed:
@@ -41556,16 +41817,22 @@ BPJS partnership (faskes tingkat pertama) is not mandatory for PMA clinics but c
 
   "86991": {
     whatItMeans:
-      "Paramedical services — healthcare services provided by non-physician medical professionals. This covers physiotherapy, nursing services, midwifery, chiropractic care, occupational therapy, speech therapy, and other allied health services. The practitioners are trained and licensed but are not doctors.",
-    whatYouNeed: `**All scales: Medium-High risk (Menengah Tinggi)**\nNIB + Sertifikat Standar within **14 working days**. Paramedical practitioners need their own professional licenses (STR for nurses, physiotherapists, etc.) and practice permits.\n\n**PMA:** Fully open — 100% foreign ownership.`,
+      "Health services provided by non-doctor health workers — paramedical services, nursing clinics, IV drip clinics, and wellness recovery centers. The primary code for 'Griya Sehat' (health houses) operated by certified paramedics and nurses.",
+    whatYouNeed: `**Risk Level:** Medium-High (Menengah Tinggi). Requires NIB + Verified Standard Certificate.
+
+**Mandatory Staffing:** Must employ certified nurses/paramedics with active STR (Surat Tanda Registrasi) and SIP (Surat Izin Praktik). Indonesian medical registrations ONLY — foreign medical qualifications must be validated through Indonesian authorities.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
     whatChanged:
-      "Direct match from KBLI 2020 (MATCH_LANGSUNG). Paramedical services classification unchanged.",
+      "Renumbered from old 86901 to 86991 in KBLI 2025. The scope remains focused on non-doctor health services — the key distinction from 86105 (Private Clinic) which requires a licensed physician.",
     baliContext:
-      "Physiotherapy is the standout paramedical service in Bali — driven by the surf, yoga, and fitness community. Sports injuries, rehabilitation, and mobility work are in constant demand from both tourists and the active expat population. Canggu and Uluwatu have seen a surge in physio clinics targeting surfers. Nursing services (home care for elderly expats) is a growing niche in Sanur and Ubud where retiree communities are established. Chiropractic and osteopathic practices also operate under this code. Foreign physiotherapists and nurses must validate their credentials through the relevant Indonesian professional bodies.",
+      "IV drip clinics and wellness recovery centers are booming in Bali's tourist areas — hangover drips, vitamin infusions, and recovery treatments. Map to 'Wellness & Recovery Services' for positioning. The staffing requirement is the key barrier: all medical staff must hold valid Indonesian STR/SIP registrations. Foreign-qualified nurses need to validate their credentials through Indonesian medical boards before practicing.",
     youllAlsoNeed:
-      "- 86105 — If your paramedical practice is part of a larger clinic\n- 86201 — If you also have a GP on staff\n- 86992 — If you integrate traditional healing alongside paramedical care\n- 96230 — If you combine with spa/wellness services",
+      "- 86105 — Private Clinic (if expanding to doctor-led services)\n- 96230 — Spa/Wellness (if combining paramedical with spa services)\n- 47244 — Pharmacy retail (if selling health supplements alongside treatments)",
     zantaraOpener:
-      "Starting a physiotherapy practice or nursing service in Bali? 86991 covers paramedical services — Medium-High risk, growing demand from the surf and expat community.",
+      "Opening an IV drip clinic or wellness recovery center in Bali? 86991 covers paramedical services — but all staff need valid Indonesian medical registrations. Here's the path.",
     tkaInfo: {
       categoryId: 12,
       categoryName: "Konstruksi",
@@ -42102,7 +42369,7 @@ All three under one property, licensed separately, with distinct service menus t
     whatChanged:
       "Consolidated in KBLI 2025 (MATCH_CON_AGGREGAZIONE). Previous sub-categories of photography were merged into this single catch-all code alongside 74201 (aerial). The consolidation simplifies licensing — one code covers all non-aerial photography instead of multiple specialized codes.",
     baliContext:
-      "Wedding photography is Bali's biggest photography market by revenue. Destination weddings at cliffside venues (Uluwatu), jungle settings (Ubud), and beachfront locations (Nusa Dua) drive demand for premium photographers charging USD 2,000-10,000+ per event. Beyond weddings: food/restaurant photography for the exploding F&B scene, product photography for Bali-based e-commerce brands (particularly fashion and wellness), and real estate photography for villa rental platforms. Many foreign photographers operate in Bali — competition is fierce but the volume of work is enormous. Studio rentals in Denpasar start around IDR 500K/hour; outdoor shoots need location permits from local villages (banjar) if on public/temple land.",
+      "Wedding photography is Bali's biggest photography market by revenue. Destination weddings at cliffside venues (Uluwatu), jungle settings (Ubud), and beachfront locations (Nusa Dua) drive demand for premium photographers charging USD 2,000-10,000+ per event. Beyond weddings: food/restaurant photography for the exploding F&B scene, product photography for Bali-based e-commerce brands (particularly fashion and wellness), and real estate photography for villa rental platforms. Many foreign photographers operate in Bali — competition is fierce but the volume of work is enormous. Studio rentals in Denpasar start around IDR 500K/hour; outdoor shoots need location permits from local villages (banjar) if on public/temple land.\n\n**CRITICAL Ownership Note:** Always use 74209 (Other Photography) for 100% foreign-owned PT PMA. The generic code 74200 is restricted to 49% foreign ownership — using it will cap your PMA share.",
     youllAlsoNeed:
       "- 74201 — If you also do aerial/drone photography\n- 59111 — If you produce video alongside photography\n- 73110 — If you bundle photography with advertising campaigns\n- 82300 — If you offer photography as part of event organizing packages",
     zantaraOpener:
@@ -42874,6 +43141,69 @@ Search the KBLI Navigator for sector-specific pairings.`,
     zantaraOpener: `Planning a green bean farm in Bali? Let me walk you through licensing, land title requirements, and how to structure this as a PMA operation.`,
   },
 
+  "01131": {
+    whatItMeans:
+      "Leaf vegetable farming — growing lettuce, spinach, kangkung, bayam, and other leafy greens. Includes greenhouse and hydroponic operations. This is the code for high-tech farming operations producing fresh leafy vegetables at scale.",
+    whatYouNeed: `**All scales**: Medium-High risk (Menengah Tinggi) for Large-Scale PT PMA. NIB + Verified Standard Certificate required.
+
+**Zoning (CRITICAL):** Strictly restricted to GREEN (Agricultural) Zone. Greenhouses are permitted as agricultural support buildings only.
+
+**Foreign Ownership:** 100% Open (TERBUKA). PT PMA must operate as a Large-Scale enterprise — high-tech or export-oriented farming.
+
+**Mandatory Certifications:**
+- Sertifikat Prima (fresh food safety certification)
+- Environmental document (SPPL/UKL-UPL) required based on land size
+- Zoning Verification (Green Zone) is a mandatory first step
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. The 2025 classification maintains the same scope for leaf vegetable farming. The key development is increased enforcement of zoning compliance — greenhouses and hydroponic facilities MUST be in designated agricultural zones.",
+    baliContext:
+      "Hydroponics is gaining traction in Bali as a sustainable food production method. The island's limited agricultural land and growing tourism demand for fresh produce create a real market. Locations like Bedugul and Kintamani highlands have suitable climate. For PT PMA, the play is high-tech hydroponics (NFT, DWC systems) targeting hotels and restaurants — Bali imports significant volumes of premium greens from Java. Ensure Green Zone compliance before any land acquisition.",
+    youllAlsoNeed:
+      "- 01133 — Fruit vegetable farming (tomatoes, peppers, cucumbers — different code)\n- 46311 — Wholesale of vegetables (if distributing to hotels/restaurants)\n- 10610 — Grain mill products (if processing dried herbs)",
+    zantaraOpener:
+      "Starting a hydroponics or vegetable farm in Bali? 01131 covers leaf vegetables — but zoning is everything. Let me explain the Green Zone requirement.",
+  },
+
+  "01133": {
+    whatItMeans:
+      "Fruit vegetable farming — growing tomatoes, peppers, cucumbers, eggplants, chili peppers, and other fruit-bearing vegetable crops. Includes greenhouse cultivation. Covers both open-field and controlled-environment agriculture.",
+    whatYouNeed: `**All scales**: Medium-High risk (Menengah Tinggi) for Large-Scale PT PMA. Same requirements as 01131.
+
+**Zoning:** Strictly GREEN (Agricultural) Zone only.
+**Foreign Ownership:** 100% Open (TERBUKA) for high-tech/export-oriented PT PMA.
+**Certifications:** Sertifikat Prima, Environmental documents (SPPL/UKL-UPL).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. No changes to scope or classification.",
+    baliContext:
+      "Chili peppers (cabai) and tomatoes are staples of Balinese cuisine and consistently in high demand. The Kintamani highlands produce excellent quality. For PT PMA, the vertical integration play is strong: grow produce under 01133, process under food manufacturing codes, and supply directly to your restaurant (56101) or hotel partners.",
+    youllAlsoNeed:
+      "- 01131 — Leaf vegetable farming\n- 46311 — Wholesale distribution of vegetables\n- 10750 — Processed food manufacturing (if value-adding your produce)",
+    zantaraOpener:
+      "Growing tomatoes, peppers, or chili in Bali? 01133 is the code for fruit vegetables — same zoning rules as 01131. Here's the setup.",
+  },
+
+  "01299": {
+    whatItMeans:
+      "Cultivation of other perennial crops not elsewhere classified — including bamboo, rattan, and specialty perennial plants. Strategic for sustainable building materials and eco-construction supply chains.",
+    whatYouNeed: `**Risk Level:** Medium-High for Large-Scale PT PMA. Verified Standard Certificate required.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. Bamboo and rattan cultivation remains under this catch-all perennial crops code.",
+    baliContext:
+      "Bamboo is having a renaissance in Bali's construction scene — firms like IBUKU and Bamboo U have put Bali on the global map for bamboo architecture. For PT PMA, 01299 enables vertical integration: grow bamboo under this code, process it, and supply to architectural firms (71101) or furniture manufacturers (31011). Bali's climate is ideal for rapid bamboo growth. Map this code to 'Sustainable Building Materials' for your business positioning.",
+    youllAlsoNeed:
+      "- 71101 — Architectural Services (for bamboo design-build models)\n- 31011 — Wooden Furniture Industry (bamboo furniture manufacturing)\n- 16291 — Wood product manufacturing",
+    zantaraOpener:
+      "Growing bamboo for construction or crafts? 01299 is your base code for the raw material — and it pairs perfectly with architecture and furniture codes for vertical integration.",
+  },
+
   "75009": {
     whatItMeans:
       "Other veterinary services not elsewhere classified — providing specialized veterinary services beyond standard clinical care, including veterinary diagnostics (laboratory testing, imaging, pathology), animal rehabilitation and physical therapy, veterinary consulting, animal nutrition consulting, veterinary telemedicine, mobile veterinary units, and other specialized veterinary services. This is the catch-all code for veterinary services that don't fit into pet veterinary clinics (75001) or livestock veterinary services (75002).",
@@ -42990,7 +43320,9 @@ Every practicing veterinarian in Indonesia must hold an **STR Veteriner** issued
 **Minimum PT PMA capital:** IDR 10 billion stated capital (Rp 2.5B paid-up).
 
 **Authority:** Bupati/Walikota (Micro/Small/Medium) · Gubernur (Large).
-**PMA:** Fully open (Terbuka) — 100% foreign ownership.`,
+**PMA:** Fully open (Terbuka) — 100% foreign ownership.
+
+**Risk Note for PT PMA:** At Medium-High risk, the Standard Certificate requires official verification — it is NOT automatic. Plan for the verification timeline in your launch schedule.`,
     whatChanged:
       "Translation services existed in KBLI 2020 under a similar code. KBLI 2025 maintains the classification with clearer distinction between general translation (74300) and the separate professional credential of Penerjemah Tersumpah (sworn translator), which is not a KBLI code but a professional designation.",
     baliContext:
@@ -43520,6 +43852,48 @@ Social science research involving human subjects (surveys, interviews, ethnograp
     },
   },
 
+  "49296": {
+    whatItMeans:
+      "Motorcycle transport services (ojek/ojol) — providing passenger transport on motorcycles. Covers both app-based ride-hailing motorcycle services and traditional ojek operations at commercial scale.",
+    whatYouNeed: `**Risk Level:** HIGH (Tinggi). Requires full License (Izin) from Ministry of Transport — NOT just NIB.
+
+**Foreign Ownership:** 100% Open (TERBUKA) — surprisingly for such a local-centric sector.
+
+**Licensing:** Formal permit from Ministry of Transport required before operations can begin. Regulatory audit is a mandatory step.
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. Despite being open to foreign investment, the HIGH risk classification and Ministry of Transport licensing create significant barriers.",
+    baliContext:
+      "Bali-specific requirements are strict: drivers must hold local Bali domicile (KTP Bali), and the vehicle fleet MUST use DK plates (Bali registration). Using non-DK plated vehicles will cause localized conflict and regulatory suspension. The ojol market in Bali is dominated by Grab and Gojek — a PT PMA play here is more realistic as a fleet operator or last-mile logistics provider than as a competitor to established platforms.",
+    youllAlsoNeed:
+      "- 52329 — Transport intermediation (if building the app/platform layer)\n- 49422 — Vehicle rental with driver\n- 64210 — Holding company (for fleet asset management)",
+    zantaraOpener:
+      "Motorcycle transport business in Bali? 49296 is surprisingly open to PMA but HIGH risk. Drivers must have Bali domicile and vehicles need DK plates. Let me explain.",
+  },
+
+  "52291": {
+    whatItMeans:
+      "Multimodal logistics — coordinating and managing freight transport across multiple modes (sea, air, road, rail) as an integrated service. The logistics orchestration layer above individual transport modes.",
+    whatYouNeed: `**Risk Level:** Medium-High (Menengah Tinggi). Requires NIB + Verified Standard Certificate.
+
+**Staffing:** Certified technical logistics manager required (verify with Ministry of Transport).
+**Physical Office:** Highly recommended — virtual office carries risk depending on operational assets.
+**Recurring Obligation:** Logistics Operational Report must be submitted periodically.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "In 2025, 52291 is now specifically for multimodal logistics. General freight forwarding has been redirected to the new code 52311 (JPT). If your business is freight forwarding, use 52311 instead.",
+    baliContext:
+      "Bali's logistics are constrained by geography — one island with limited port and airport capacity. Multimodal logistics here primarily means coordinating sea freight from Java (Gilimanuk ferry terminal) with road distribution across Bali. For e-commerce logistics, the Ngurah Rai cargo terminal is the key hub.",
+    youllAlsoNeed:
+      "- 52311 — Freight Forwarding/JPT (the primary code for general freight forwarding)\n- 52329 — Transport intermediation (for app-based logistics platforms)\n- 49213 — Road freight transport",
+    zantaraOpener:
+      "Multimodal logistics in Bali? 52291 covers the orchestration layer — but if you're doing freight forwarding specifically, check 52311 instead.",
+  },
+
   "52292": {
     whatItMeans:
       "Non-refrigerated warehousing and storage — operating dry goods warehouses for third-party clients, providing storage space, inventory management, and logistics handling for general merchandise that does not require controlled temperature. This covers: third-party logistics (3PL) warehousing, general merchandise storage, bonded warehouses (Gudang Berikat — under Bea Cukai supervision for imported goods), and supply chain storage for hotels, resorts, and retail. The defining feature: the goods don't need refrigeration. Contrast with 52291 (cold storage / refrigerated warehousing).",
@@ -43582,6 +43956,52 @@ Social science research involving human subjects (surveys, interviews, ethnograp
       keduaNote:
         "Directors and Commissioners who do NOT manage personalia can work without being listed in the jabatan.",
     },
+  },
+
+  "52311": {
+    whatItMeans:
+      "Freight forwarding services (Jasa Pengurusan Transportasi / JPT) — managing the logistics of shipping goods on behalf of clients. Includes customs brokerage, documentation, cargo consolidation, and coordinating with carriers. This is the NEW primary code for general freight forwarding in 2025.",
+    whatYouNeed: `**Risk Level:** Medium-High. Requires NIB + Verified Standard Certificate.
+
+**Professional Certification:** Logistics certification highly recommended for verification success.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**IMPORTANT:** This replaces the old 52291 code for general freight forwarding. 52291 is now specifically for multimodal logistics.
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "NEW primary code for freight forwarding in KBLI 2025. Previously, freight forwarding was under 52291 (now redirected to Multimodal Logistics). All freight forwarding businesses must migrate to 52311.",
+    baliContext:
+      "Freight forwarding from Bali serves the island's export industries — furniture, handicrafts, textiles, and increasingly specialty food products (coffee, chocolate). The main logistics corridors are Bali-Java (road/sea via Gilimanuk) and international air cargo via Ngurah Rai. Professional logistics certification strengthens your verification application significantly.",
+    youllAlsoNeed:
+      "- 52291 — Multimodal logistics (if offering integrated multi-mode services)\n- 52329 — Transport intermediation (if building a digital logistics platform)\n- 52101 — Warehousing (if also operating storage facilities)",
+    zantaraOpener:
+      "Freight forwarding in Indonesia? 52311 is the NEW primary code replacing 52291. Here's the migration path and licensing requirements.",
+  },
+
+  "52329": {
+    whatItMeans:
+      "Transport intermediation for passengers — digital platforms and apps that connect passengers with transport providers WITHOUT owning vehicles. The 'Uber/Grab model' code for ride-hailing and shuttle booking platforms.",
+    whatYouNeed: `**Risk Level:** Medium-High (Menengah Tinggi) for Large-Scale PT PMA.
+
+**Advantage:** Low asset requirement — ideal for tech founders who want to build transport platforms without owning vehicles.
+
+**Constraint:** Operation of motorcycles (ojek) requires separate HIGH-Risk KBLI 49296. This code covers intermediation ONLY.
+
+**Mandatory:** PSE Registration required for the platform.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. The intermediation model is increasingly recognized as distinct from actual transport operations.",
+    baliContext:
+      "The ride-hailing market in Bali is dominated by Grab and Gojek, but niche shuttle and transfer apps have space — airport transfers, inter-hotel shuttles, and tourist circuit shuttles. For PT PMA tech founders, 52329 is the asset-light entry into Bali's transport sector. Target 'Ride-hailing / Shuttle App' founders specifically.",
+    youllAlsoNeed:
+      "- 49296 — Motorcycle transport (if also operating ojek fleet)\n- 62199 — Software development (if building the app in-house)\n- 47911 — E-commerce (if the platform includes retail elements)",
+    zantaraOpener:
+      "Building a ride-hailing or shuttle app in Bali? 52329 covers the platform layer — no vehicles needed. But operating motorcycles requires separate licensing under 49296.",
   },
 
   // ===========================================================================
@@ -43809,6 +44229,26 @@ Investment advisory falls under **OJK** (Otoritas Jasa Keuangan) jurisdiction. T
       "- **66111** — Asset management (Manajer Investasi) — if you want to manage client funds directly (discretionary management)\n- **64991** — Venture capital — if you also make direct investments alongside advisory services (family office model)\n- **74100** — Business consulting — if you provide business advisory alongside investment advice\n- **66221** — Insurance agent — if you also sell insurance products as part of financial planning (but disclose commissions)",
     zantaraOpener:
       "Investment advisory in Bali? 66151 is the code. OJK regulated, Izin Penasihat Investasi required. IDR 200M capital (much lower than asset management's IDR 25B). Bali's expat wealth management market is underserved — opportunity for fiduciary advisory firm. Let me explain the licensing path and WPI requirements.",
+  },
+
+  "66159": {
+    whatItMeans:
+      "Financial market advisory services — providing expert advice on investments, financial planning, wealth management, and capital market strategies. Covers independent financial advisors, wealth managers, and crypto advisory services.",
+    whatYouNeed: `**Risk Level:** Medium-Low. Requires NIB + Sertifikat Standar.
+
+**OJK Note:** While classified as Medium-Low in OSS, direct public fund management requires specific OJK (Financial Services Authority) technical approval. Verify OJK requirements if handling client funds directly.
+
+**Foreign Ownership:** 100% Open (TERBUKA).
+
+**PMA:** Fully open — 100% foreign ownership.`,
+    whatChanged:
+      "Direct match from KBLI 2020. The distinction between advisory (66159) and fund management (66301) is important — advisory is lighter regulation.",
+    baliContext:
+      "Growing demand from Bali's expat community for wealth management and crypto advisory services. Target 'Wealth Managers & Crypto Advisors' specifically. The Medium-Low risk makes this more accessible than fund management (66301) which requires full OJK licensing.",
+    youllAlsoNeed:
+      "- 66301 — Investment Management (if managing funds, not just advising)\n- 70209 — Management Consultancy (if offering broader business advisory)\n- 64210 — Holding Company (if structuring client investments)",
+    zantaraOpener:
+      "Financial advisory in Bali? 66159 is lighter than fund management — but verify OJK requirements if you're touching client funds directly.",
   },
 
   // ---------------------------------------------------------------------------
