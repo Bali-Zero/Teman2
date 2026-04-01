@@ -486,293 +486,323 @@ export default function NewsRoomPage() {
           </button>
         </div>
       ) : (
-        /* Article card grid — liquid glassmorphism */
+        /* Article card grid — vivid liquid glassmorphism */
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {filteredAndSortedItems.map((item, idx) => (
-            <div
-              key={item.id}
-              className="group relative rounded-[20px] overflow-hidden transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_60px_-15px_rgba(212,132,90,0.2)]"
-              style={{
-                background:
-                  "linear-gradient(165deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 40%, rgba(212,132,90,0.03) 100%)",
-                backdropFilter: "blur(24px) saturate(1.4)",
-                WebkitBackdropFilter: "blur(24px) saturate(1.4)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px -4px rgba(0,0,0,0.3)",
-                animationDelay: `${idx * 40}ms`,
-              }}
-            >
-              {/* Animated gradient border glow on hover */}
+          {filteredAndSortedItems.map((item, idx) => {
+            const PALETTES = [
+              {
+                bg: "rgba(212,132,90,0.12)",
+                border: "rgba(212,132,90,0.25)",
+                glow: "rgba(212,132,90,0.15)",
+                accent: "#d4845a",
+                gradient:
+                  "linear-gradient(145deg, rgba(212,132,90,0.18) 0%, rgba(180,100,60,0.06) 100%)",
+              },
+              {
+                bg: "rgba(99,102,241,0.12)",
+                border: "rgba(99,102,241,0.25)",
+                glow: "rgba(99,102,241,0.15)",
+                accent: "#818cf8",
+                gradient:
+                  "linear-gradient(145deg, rgba(99,102,241,0.18) 0%, rgba(67,56,202,0.06) 100%)",
+              },
+              {
+                bg: "rgba(16,185,129,0.12)",
+                border: "rgba(16,185,129,0.25)",
+                glow: "rgba(16,185,129,0.15)",
+                accent: "#34d399",
+                gradient:
+                  "linear-gradient(145deg, rgba(16,185,129,0.18) 0%, rgba(5,150,105,0.06) 100%)",
+              },
+              {
+                bg: "rgba(244,63,94,0.12)",
+                border: "rgba(244,63,94,0.25)",
+                glow: "rgba(244,63,94,0.15)",
+                accent: "#fb7185",
+                gradient:
+                  "linear-gradient(145deg, rgba(244,63,94,0.18) 0%, rgba(190,18,60,0.06) 100%)",
+              },
+              {
+                bg: "rgba(245,158,11,0.12)",
+                border: "rgba(245,158,11,0.25)",
+                glow: "rgba(245,158,11,0.15)",
+                accent: "#fbbf24",
+                gradient:
+                  "linear-gradient(145deg, rgba(245,158,11,0.18) 0%, rgba(180,83,9,0.06) 100%)",
+              },
+              {
+                bg: "rgba(14,165,233,0.12)",
+                border: "rgba(14,165,233,0.25)",
+                glow: "rgba(14,165,233,0.15)",
+                accent: "#38bdf8",
+                gradient:
+                  "linear-gradient(145deg, rgba(14,165,233,0.18) 0%, rgba(2,132,199,0.06) 100%)",
+              },
+              {
+                bg: "rgba(168,85,247,0.12)",
+                border: "rgba(168,85,247,0.25)",
+                glow: "rgba(168,85,247,0.15)",
+                accent: "#c084fc",
+                gradient:
+                  "linear-gradient(145deg, rgba(168,85,247,0.18) 0%, rgba(126,34,206,0.06) 100%)",
+              },
+              {
+                bg: "rgba(236,72,153,0.12)",
+                border: "rgba(236,72,153,0.25)",
+                glow: "rgba(236,72,153,0.15)",
+                accent: "#f472b6",
+                gradient:
+                  "linear-gradient(145deg, rgba(236,72,153,0.18) 0%, rgba(190,24,93,0.06) 100%)",
+              },
+            ];
+            const pal = PALETTES[idx % PALETTES.length];
+
+            return (
               <div
-                className="absolute inset-0 rounded-[20px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -z-[1]"
+                key={item.id}
+                className="group relative rounded-[18px] overflow-hidden transition-all duration-500 hover:-translate-y-1.5 flex flex-col"
                 style={{
-                  background:
-                    "linear-gradient(135deg, rgba(212,132,90,0.15), rgba(139,92,246,0.1), rgba(59,130,246,0.1))",
-                  filter: "blur(1px)",
-                  margin: "-1px",
+                  background: pal.gradient,
+                  backdropFilter: "blur(24px) saturate(1.5)",
+                  WebkitBackdropFilter: "blur(24px) saturate(1.5)",
+                  border: `1px solid ${pal.border}`,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 24px -4px rgba(0,0,0,0.25), 0 0 0 0 ${pal.glow}`,
                 }}
-              />
-
-              {/* Light refraction line */}
-              <div
-                className="absolute top-0 left-0 right-0 h-px opacity-40 group-hover:opacity-70 transition-opacity duration-500 pointer-events-none"
-                style={{
-                  background:
-                    "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.1) 70%, transparent 100%)",
-                }}
-              />
-
-              {/* Critical ribbon */}
-              {item.is_critical && (
-                <div className="absolute top-0 right-0 z-10">
-                  <div
-                    className="flex items-center gap-1 px-2 py-1 text-[8px] font-bold tracking-wider rounded-bl-xl"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(239,68,68,0.9), rgba(220,38,38,0.95))",
-                      color: "#fff",
-                      backdropFilter: "blur(8px)",
-                      boxShadow: "0 2px 12px rgba(239,68,68,0.3)",
-                    }}
-                  >
-                    <Flame className="w-2.5 h-2.5" /> CRITICAL
-                  </div>
-                </div>
-              )}
-
-              {/* Checkbox — frosted glass */}
-              <div className="absolute top-2 left-2 z-10">
-                <button
-                  onClick={() => toggleSelectItem(item.id)}
-                  className="w-5 h-5 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
-                  style={{
-                    background: selectedItems.has(item.id)
-                      ? "rgba(212,132,90,0.3)"
-                      : "rgba(0,0,0,0.35)",
-                    backdropFilter: "blur(12px)",
-                    border: selectedItems.has(item.id)
-                      ? "1px solid rgba(212,132,90,0.5)"
-                      : "1px solid rgba(255,255,255,0.1)",
-                    boxShadow: selectedItems.has(item.id)
-                      ? "0 0 12px rgba(212,132,90,0.2)"
-                      : "none",
-                  }}
-                  aria-label={`Select ${item.title}`}
-                >
-                  {selectedItems.has(item.id) ? (
-                    <Check className="w-3 h-3" style={{ color: "#fff" }} />
-                  ) : (
-                    <Square
-                      className="w-3 h-3 opacity-50"
-                      style={{ color: "#fff" }}
-                    />
-                  )}
-                </button>
-              </div>
-
-              {/* Cover image — with glass overlay */}
-              <div className="relative h-28 overflow-hidden">
-                {item.cover_image ? (
-                  <img
-                    src={item.cover_image}
-                    alt={item.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="w-full h-full flex items-center justify-center"
-                    style={{
-                      background:
-                        "linear-gradient(145deg, rgba(212,132,90,0.06) 0%, rgba(99,102,241,0.06) 50%, rgba(16,185,129,0.04) 100%)",
-                    }}
-                  >
-                    <ImageIcon
-                      className="w-6 h-6 opacity-20"
-                      style={{ color: "var(--bz-text-3)" }}
-                    />
-                  </div>
-                )}
-                {/* Bottom gradient fade into card body */}
+              >
+                {/* Hover glow */}
                 <div
-                  className="absolute bottom-0 left-0 right-0 h-8 pointer-events-none"
+                  className="absolute inset-0 rounded-[18px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                   style={{
-                    background:
-                      "linear-gradient(to top, rgba(12,12,14,0.8) 0%, transparent 100%)",
+                    boxShadow: `0 8px 40px -8px ${pal.glow}, inset 0 0 30px -15px ${pal.glow}`,
                   }}
                 />
-                {/* Hover actions — frosted glass pills */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 hidden sm:flex items-center justify-center gap-1.5">
+
+                {/* Top accent bar */}
+                <div
+                  className="h-1 w-full"
+                  style={{
+                    background: `linear-gradient(90deg, ${pal.accent}, transparent)`,
+                  }}
+                />
+
+                {/* Light refraction */}
+                <div
+                  className="absolute top-1 left-0 right-0 h-px opacity-30 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none"
+                  style={{
+                    background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 20%, rgba(255,255,255,0.1) 60%, transparent 100%)`,
+                  }}
+                />
+
+                {/* Critical ribbon */}
+                {item.is_critical && (
+                  <div className="absolute top-1 right-0 z-10">
+                    <div
+                      className="flex items-center gap-1 px-2 py-0.5 text-[7px] font-bold tracking-wider rounded-bl-xl rounded-tr-[18px]"
+                      style={{
+                        background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                        color: "#fff",
+                        boxShadow: "0 2px 12px rgba(239,68,68,0.4)",
+                      }}
+                    >
+                      <Flame className="w-2 h-2" /> CRITICAL
+                    </div>
+                  </div>
+                )}
+
+                {/* Checkbox */}
+                <div className="absolute top-2.5 left-2.5 z-10">
+                  <button
+                    onClick={() => toggleSelectItem(item.id)}
+                    className="w-5 h-5 rounded-md flex items-center justify-center transition-all duration-200 hover:scale-110"
+                    style={{
+                      background: selectedItems.has(item.id)
+                        ? pal.bg
+                        : "rgba(0,0,0,0.3)",
+                      backdropFilter: "blur(12px)",
+                      border: selectedItems.has(item.id)
+                        ? `1.5px solid ${pal.accent}`
+                        : "1px solid rgba(255,255,255,0.12)",
+                      boxShadow: selectedItems.has(item.id)
+                        ? `0 0 10px ${pal.glow}`
+                        : "none",
+                    }}
+                    aria-label={`Select ${item.title}`}
+                  >
+                    {selectedItems.has(item.id) ? (
+                      <Check
+                        className="w-3 h-3"
+                        style={{ color: pal.accent }}
+                      />
+                    ) : (
+                      <Square
+                        className="w-3 h-3 opacity-40"
+                        style={{ color: "#fff" }}
+                      />
+                    )}
+                  </button>
+                </div>
+
+                {/* Card body — no image, just content */}
+                <div className="px-3 pt-7 pb-1 flex-1 flex flex-col gap-2">
+                  {/* Source + date */}
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="text-[8px] font-bold uppercase tracking-widest px-1.5 py-[2px] rounded-md"
+                      style={{
+                        background: pal.bg,
+                        color: pal.accent,
+                        border: `1px solid ${pal.border}`,
+                      }}
+                    >
+                      {item.source && item.source.startsWith("http")
+                        ? (() => {
+                            try {
+                              return new URL(item.source).hostname.replace(
+                                "www.",
+                                "",
+                              );
+                            } catch {
+                              return item.source;
+                            }
+                          })()
+                        : item.source || "intel"}
+                    </span>
+                    <span
+                      className="text-[9px] flex items-center gap-0.5"
+                      style={{ color: "var(--bz-text-3)" }}
+                    >
+                      <Calendar className="w-2.5 h-2.5" />
+                      {new Date(item.detected_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </div>
+
+                  {/* Title — big and visible */}
+                  <h3
+                    className="text-[13px] font-bold leading-snug line-clamp-3"
+                    style={{ color: "#fff" }}
+                  >
+                    {item.title}
+                  </h3>
+
+                  {/* Type badge */}
+                  <div className="flex items-center gap-1 mt-auto">
+                    <span
+                      className="text-[7px] font-bold uppercase tracking-widest px-1 py-[1px] rounded"
+                      style={{
+                        background: "rgba(255,255,255,0.06)",
+                        color: "var(--bz-text-3)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      {item.type}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Hover action row */}
+                <div className="px-3 py-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <button
                     onClick={() => handlePreview(item)}
-                    className="p-1.5 rounded-xl transition-all duration-200 hover:scale-110"
+                    className="p-1.5 rounded-lg transition-all hover:scale-110"
                     style={{
-                      background: "rgba(255,255,255,0.12)",
-                      backdropFilter: "blur(16px)",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                      background: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.1)",
                     }}
                   >
-                    <Eye className="w-3.5 h-3.5 text-white" />
+                    <Eye className="w-3 h-3 text-white/70" />
                   </button>
                   <button
                     onClick={() => setEditingItem(item)}
-                    className="p-1.5 rounded-xl transition-all duration-200 hover:scale-110"
+                    className="p-1.5 rounded-lg transition-all hover:scale-110"
                     style={{
-                      background: "rgba(255,255,255,0.12)",
-                      backdropFilter: "blur(16px)",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                      background: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.1)",
                     }}
                   >
-                    <Edit className="w-3.5 h-3.5 text-white" />
+                    <Edit className="w-3 h-3 text-white/70" />
                   </button>
                   <button
                     onClick={() => setCoverUploadItem(item)}
-                    className="p-1.5 rounded-xl transition-all duration-200 hover:scale-110"
+                    className="p-1.5 rounded-lg transition-all hover:scale-110"
                     style={{
-                      background: "rgba(255,255,255,0.12)",
-                      backdropFilter: "blur(16px)",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                      background: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.1)",
                     }}
                   >
-                    <ImageIcon className="w-3.5 h-3.5 text-white" />
+                    <ImageIcon className="w-3 h-3 text-white/70" />
                   </button>
                 </div>
-                {/* Mobile touch buttons */}
-                <div className="absolute bottom-1 right-1 flex gap-0.5 sm:hidden">
-                  <button
-                    onClick={() => setEditingItem(item)}
-                    className="p-1 rounded-lg"
-                    style={{
-                      background: "rgba(0,0,0,0.6)",
-                      backdropFilter: "blur(8px)",
-                    }}
-                  >
-                    <Edit className="w-2.5 h-2.5 text-white" />
-                  </button>
-                  <button
-                    onClick={() => setCoverUploadItem(item)}
-                    className="p-1 rounded-lg"
-                    style={{
-                      background: "rgba(0,0,0,0.6)",
-                      backdropFilter: "blur(8px)",
-                    }}
-                  >
-                    <ImageIcon className="w-2.5 h-2.5 text-white" />
-                  </button>
-                </div>
-              </div>
 
-              {/* Card body — glass text area */}
-              <div className="px-3 pt-2 pb-1.5 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span
-                    className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-md"
+                {/* Footer — position select + publish */}
+                <div className="px-3 pb-3 space-y-1.5">
+                  <Select
+                    value={getPosition(item.id)}
+                    onValueChange={(v) =>
+                      setPublishPosition((prev) => ({ ...prev, [item.id]: v }))
+                    }
+                  >
+                    <SelectTrigger
+                      className="h-7 text-[10px] rounded-lg font-medium"
+                      style={{
+                        background: "rgba(20,20,24,0.9)",
+                        borderColor: "rgba(255,255,255,0.1)",
+                        color: "var(--bz-text-1)",
+                      }}
+                    >
+                      <MapPin
+                        className="w-3 h-3 mr-1"
+                        style={{ color: pal.accent }}
+                      />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent
+                      className="rounded-xl"
+                      style={{
+                        background: "rgba(20,20,24,0.98)",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        backdropFilter: "blur(20px)",
+                      }}
+                    >
+                      <SelectItem value="latest">Latest</SelectItem>
+                      <SelectItem value="hero_main">Hero Main</SelectItem>
+                      <SelectItem value="hero_2">Hero 2</SelectItem>
+                      <SelectItem value="hero_3">Hero 3</SelectItem>
+                      <SelectItem value="hero_4">Hero 4</SelectItem>
+                      <SelectItem value="hero_5">Hero 5</SelectItem>
+                      <SelectItem value="insight_1">Insight 1</SelectItem>
+                      <SelectItem value="insight_2">Insight 2</SelectItem>
+                      <SelectItem value="insight_3">Insight 3</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <button
+                    onClick={() => handlePublish(item)}
+                    disabled={publishingIds.has(item.id)}
+                    className="w-full flex items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 disabled:opacity-50"
                     style={{
-                      background:
-                        "linear-gradient(135deg, rgba(212,132,90,0.12), rgba(212,132,90,0.06))",
-                      color: "var(--bz-accent)",
-                      border: "1px solid rgba(212,132,90,0.12)",
+                      background: `linear-gradient(135deg, ${pal.accent}30, ${pal.accent}15)`,
+                      color: pal.accent,
+                      border: `1px solid ${pal.border}`,
+                      boxShadow: `0 2px 12px -2px ${pal.glow}`,
                     }}
                   >
-                    {item.source && item.source.startsWith("http")
-                      ? (() => {
-                          try {
-                            return new URL(item.source).hostname.replace(
-                              "www.",
-                              "",
-                            );
-                          } catch {
-                            return item.source;
-                          }
-                        })()
-                      : item.source || "intel"}
-                  </span>
-                  <span
-                    className="text-[9px] flex items-center gap-0.5"
-                    style={{ color: "var(--bz-text-3)" }}
-                  >
-                    <Calendar className="w-2.5 h-2.5" />
-                    {new Date(item.detected_at).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </span>
+                    {publishingIds.has(item.id) ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />{" "}
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3 h-3" /> Publish
+                      </>
+                    )}
+                  </button>
                 </div>
-                <h3
-                  className="text-[11px] font-semibold leading-tight line-clamp-2"
-                  style={{ color: "var(--bz-text-1)" }}
-                >
-                  {item.title}
-                </h3>
               </div>
-
-              {/* Card footer — glass actions */}
-              <div className="px-3 pb-2.5 pt-0.5 space-y-1.5">
-                {/* Position select — minimal */}
-                <Select
-                  value={getPosition(item.id)}
-                  onValueChange={(v) =>
-                    setPublishPosition((prev) => ({ ...prev, [item.id]: v }))
-                  }
-                >
-                  <SelectTrigger
-                    className="h-6 text-[9px] rounded-lg"
-                    style={{
-                      background: "rgba(255,255,255,0.03)",
-                      borderColor: "rgba(255,255,255,0.06)",
-                      color: "var(--bz-text-3)",
-                    }}
-                  >
-                    <MapPin
-                      className="w-2.5 h-2.5 mr-0.5"
-                      style={{ color: "var(--bz-text-3)" }}
-                    />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="latest">Latest</SelectItem>
-                    <SelectItem value="hero_main">Hero Main</SelectItem>
-                    <SelectItem value="hero_2">Hero 2</SelectItem>
-                    <SelectItem value="hero_3">Hero 3</SelectItem>
-                    <SelectItem value="hero_4">Hero 4</SelectItem>
-                    <SelectItem value="hero_5">Hero 5</SelectItem>
-                    <SelectItem value="insight_1">Insight 1</SelectItem>
-                    <SelectItem value="insight_2">Insight 2</SelectItem>
-                    <SelectItem value="insight_3">Insight 3</SelectItem>
-                  </SelectContent>
-                </Select>
-                {/* Publish button — liquid glass */}
-                <button
-                  onClick={() => handlePublish(item)}
-                  disabled={publishingIds.has(item.id)}
-                  className="w-full flex items-center justify-center gap-1 py-1.5 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 hover:shadow-[0_4px_20px_-4px_rgba(212,132,90,0.3)] disabled:opacity-50"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, rgba(212,132,90,0.15) 0%, rgba(212,132,90,0.08) 100%)",
-                    color: "var(--bz-accent)",
-                    border: "1px solid rgba(212,132,90,0.18)",
-                    backdropFilter: "blur(8px)",
-                  }}
-                >
-                  {publishingIds.has(item.id) ? (
-                    <>
-                      <Loader2 className="w-3 h-3 animate-spin" /> Publishing...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3 h-3" /> Publish
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
