@@ -629,6 +629,126 @@ async def _auto_ocr_npwp(db_pool: Any, client_id: int, file_id: str, doc_id: int
         return {"success": False, "error": str(e)}
 
 
+async def _auto_ocr_company_profile(db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+    """
+    OCR on Profil Perseroan / Company Profile document.
+    Extracts: shareholders, capital, akta, SK, notaris, address, KBLI.
+    Saves to companies.custom_fields via client → company link.
+    """
+    try:
+        image_data, mime_type = await _download_drive_file(file_id)
+
+        ocr_prompt = (
+            "Extract from this Indonesian company profile (Profil Perseroan) document. "
+            "Return JSON with these fields: "
+            "company_name, authorized_capital (number in IDR), paid_up_capital (number in IDR), "
+            "shareholders (array of objects with: name, passport, nationality, role, shares, value), "
+            "akta_no (string), akta_date (YYYY-MM-DD), "
+            "sk_no (string, AHU number), sk_date (YYYY-MM-DD), "
+            "notaris (string, full name with title), notaris_kedudukan (string, city), "
+            "registered_address (string, full address), "
+            "company_status (TERTUTUP/TERBUKA), jangka_waktu (string), "
+            "kbli_codes (array of strings if present), risk_status (string if present), "
+            "share_price (number per share), total_shares (number), "
+            "confidence (0-1)."
+        )
+
+        response_text = await _gemini_ocr(image_data, mime_type, ocr_prompt)
+        logger.info(f"Auto OCR company profile for client {client_id}: {response_text[:200]}...")
+
+        extracted = extract_json_from_llm_response(response_text)
+        if not extracted:
+            logger.error(f"Auto OCR company profile JSON parsing failed for client {client_id}")
+            return {"success": False, "error": "Could not parse OCR response"}
+
+        # Build custom_fields update
+        custom_fields: dict[str, str] = {}
+        for key in [
+            "authorized_capital", "paid_up_capital", "shareholders",
+            "akta_no", "akta_date", "sk_no", "sk_date",
+            "notaris", "notaris_kedudukan", "company_status",
+            "jangka_waktu", "kbli_codes", "risk_status",
+            "share_price", "total_shares",
+        ]:
+            val = extracted.get(key)
+            if val is not None:
+                if isinstance(val, (list, dict)):
+                    import json as json_module
+                    custom_fields[key] = json_module.dumps(val)
+                else:
+                    custom_fields[key] = str(val)
+
+        async with db_pool.acquire() as conn:
+            # Update document OCR status
+            if doc_id:
+                ocr_data = {
+                    "extracted_at": datetime.now(timezone.utc).isoformat(),
+                    "auto_triggered": True,
+                    "raw_response": extracted,
+                    "file_id": file_id,
+                    "document_type": "company_profile",
+                }
+                await conn.execute(
+                    """UPDATE documents SET ocr_status = 'completed', ocr_completed_at = NOW(),
+                       ocr_extracted_data = $1, updated_at = NOW() WHERE id = $2""",
+                    to_jsonb(ocr_data),
+                    doc_id,
+                )
+
+            # Find company linked to this client
+            company_id = await conn.fetchval(
+                """SELECT c.id FROM companies c
+                   JOIN client_company_links ccl ON ccl.company_id = c.id
+                   WHERE ccl.client_id = $1 LIMIT 1""",
+                client_id,
+            )
+
+            if company_id and custom_fields:
+                import json as json_module
+                # Merge custom_fields (preserve existing, add new)
+                existing_cf = await conn.fetchval(
+                    "SELECT custom_fields FROM companies WHERE id = $1", company_id,
+                )
+                merged = json_module.loads(existing_cf) if existing_cf and existing_cf != '{}' else {}
+                merged.update(custom_fields)
+
+                # Also update dedicated columns
+                update_parts = ["custom_fields = $1", "updated_at = NOW()"]
+                params: list[Any] = [json_module.dumps(merged)]
+                idx = 2
+
+                addr = extracted.get("registered_address")
+                if addr:
+                    update_parts.append(f"registered_address = ${idx}")
+                    params.append(str(addr)[:500])
+                    idx += 1
+
+                akta = extracted.get("akta_no")
+                if akta:
+                    update_parts.append(f"akta_pendirian_no = ${idx}")
+                    params.append(str(akta)[:100])
+                    idx += 1
+
+                sk = extracted.get("sk_no")
+                if sk:
+                    update_parts.append(f"sk_menhumkam_no = ${idx}")
+                    params.append(str(sk)[:100])
+                    idx += 1
+
+                params.append(company_id)
+                await conn.execute(
+                    f"UPDATE companies SET {', '.join(update_parts)} WHERE id = ${idx}",
+                    *params,
+                )
+                logger.info(f"Auto OCR company profile: updated company {company_id} with {len(custom_fields)} fields")
+
+        return {"success": True, "extracted": extracted}
+
+    except Exception as e:
+        logger.error(f"Auto OCR company profile failed for client {client_id}: {e}")
+        return {"success": False, "error": str(e)}
+
+
 async def _dispatch_ocr_by_folder(
     db_pool: Any,
     client_id: int,
@@ -700,6 +820,12 @@ async def _dispatch_ocr_by_folder(
             "handler": "npwp",
             "result": await _auto_ocr_npwp(db_pool, client_id, file_id, doc_id),
         }
+
+    # Company Profile / Profil Perseroan
+    profile_keywords = ["company profile", "profil perseroan", "profil pt", "profil perusahaan", "profile perseroan"]
+    if any(kw in fn_lower for kw in profile_keywords):
+        logger.info(f"OCR dispatch: company_profile for client {client_id}")
+        return await _auto_ocr_company_profile(db_pool, client_id, file_id, doc_id)
 
     logger.debug(f"OCR dispatch: no handler matched for file {filename} in {folder_name}")
     return {"dispatched": False}
