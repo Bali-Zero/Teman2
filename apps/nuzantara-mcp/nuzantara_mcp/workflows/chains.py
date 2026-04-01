@@ -550,9 +550,25 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                     except Exception:
                         pass
 
-            # Rule 3: Submitted > 14 days — escalate
+            # Rule 3: Submitted > 14 days — escalate via email to team lead
             elif status == "submitted" and days_in_status > 14:
                 stats["escalations"] += 1
+                team_lead = p.get("assigned_to")
+                if team_lead:
+                    try:
+                        await _call_safe("/api/zoho/emails", method="POST", json={
+                            "to": team_lead,
+                            "subject": f"[ESCALATION] Practice #{p_id} submitted {days_in_status} days ago — no update",
+                            "body": (
+                                f"Practice <strong>#{p_id}</strong> ({p_type}) has been in "
+                                f"<em>submitted</em> status for <strong>{days_in_status} days</strong> "
+                                f"with no status change.<br><br>"
+                                f"Please check with the relevant authority and update the CRM:<br>"
+                                f"<a href=\"https://kita.balizero.com/process/{p_id}\">Open practice #{p_id}</a>"
+                            ),
+                        })
+                    except Exception:
+                        pass
 
         # Check completion rates
         try:

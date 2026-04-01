@@ -35,6 +35,7 @@ class ExpiryChecker:
     PASSPORT_CRITICAL_MONTHS = 9
     VISA_WARNING_DAYS = 120  # ~4 months
     VISA_CRITICAL_DAYS = 60  # ~2 months
+    VISA_EMERGENCY_DAYS = 7  # last-chance multi-channel alert
 
     def __init__(self) -> None:
         self.today = (
@@ -117,6 +118,8 @@ class ExpiryChecker:
 
         if expiry < self.today:
             alert_type = AlertType.VISA_EXPIRED
+        elif days_until <= self.VISA_EMERGENCY_DAYS:
+            alert_type = AlertType.VISA_EMERGENCY
         elif days_until <= self.VISA_CRITICAL_DAYS:
             alert_type = AlertType.VISA_CRITICAL
         elif days_until <= self.VISA_WARNING_DAYS:
