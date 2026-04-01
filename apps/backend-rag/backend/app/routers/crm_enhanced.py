@@ -418,6 +418,45 @@ async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int
                     *params,
                 )
 
+            # Sync visa data to clients table for notifications and CRM display
+            visa_type = extracted.get("visa_type")
+            sponsor = extracted.get("sponsor")
+            expiry_date_parsed = None
+            if extracted.get("expiry_date"):
+                try:
+                    expiry_date_parsed = datetime.strptime(extracted["expiry_date"], "%Y-%m-%d").date()
+                except ValueError:
+                    pass
+
+            sync_parts: list[str] = []
+            sync_params: list[Any] = []
+            sync_idx = 1
+
+            if expiry_date_parsed:
+                sync_parts.append(f"visa_expiry_date = ${sync_idx}")
+                sync_params.append(expiry_date_parsed)
+                sync_idx += 1
+
+            if visa_type:
+                sync_parts.append(f"current_visa_type = ${sync_idx}")
+                sync_params.append(visa_type[:50])
+                sync_idx += 1
+
+            if sponsor:
+                sync_parts.append(f"current_visa_sponsor = ${sync_idx}")
+                sync_params.append(sponsor[:255])
+                sync_idx += 1
+
+            if sync_parts:
+                sync_params.append(client_id)
+                await conn.execute(
+                    f"UPDATE clients SET {', '.join(sync_parts)}, updated_at = NOW() WHERE id = ${sync_idx}",
+                    *sync_params,
+                )
+                logger.info(
+                    f"Synced visa OCR to client {client_id}: type={visa_type}, expiry={expiry_date_parsed}, sponsor={sponsor}"
+                )
+
         logger.info(
             f"Auto OCR visa completed for client {client_id}: {extracted.get('visa_type', 'N/A')}",
         )
