@@ -49,6 +49,15 @@ async def run_visa_expiry_notifier(request: Request) -> dict[str, Any]:
     _verify_api_key(request)
     db_pool = _get_db_pool(request)
 
+    # Kill switch: check system_settings for approval flag
+    async with db_pool.acquire() as conn:
+        approved = await conn.fetchval(
+            "SELECT value FROM system_settings WHERE key = 'visa_expiry_notifier_enabled'"
+        )
+    if approved != "true":
+        logger.warning("Visa expiry notifier BLOCKED — awaiting owner approval (set visa_expiry_notifier_enabled=true)")
+        return {"service": "visa_expiry", "status": "blocked", "reason": "awaiting_owner_approval"}
+
     from backend.services.compliance.visa_expiry_team_notifier import VisaExpiryTeamNotifier
 
     notifier = VisaExpiryTeamNotifier(db_pool)
@@ -119,12 +128,20 @@ async def run_all_notifiers(request: Request) -> dict[str, Any]:
 
     results: dict[str, Any] = {}
 
-    # 1. Visa expiry
+    # 1. Visa expiry (with kill switch)
     try:
-        from backend.services.compliance.visa_expiry_team_notifier import VisaExpiryTeamNotifier
+        async with db_pool.acquire() as conn:
+            approved = await conn.fetchval(
+                "SELECT value FROM system_settings WHERE key = 'visa_expiry_notifier_enabled'"
+            )
+        if approved != "true":
+            logger.warning("Visa expiry notifier BLOCKED in /all — awaiting owner approval")
+            results["visa_expiry"] = {"status": "blocked", "reason": "awaiting_owner_approval"}
+        else:
+            from backend.services.compliance.visa_expiry_team_notifier import VisaExpiryTeamNotifier
 
-        notifier = VisaExpiryTeamNotifier(db_pool)
-        results["visa_expiry"] = await notifier.check_and_notify()
+            notifier = VisaExpiryTeamNotifier(db_pool)
+            results["visa_expiry"] = await notifier.check_and_notify()
     except Exception as e:
         logger.error(f"Visa expiry notifier failed: {e}", exc_info=True)
         results["visa_expiry"] = {"error": str(e)}
