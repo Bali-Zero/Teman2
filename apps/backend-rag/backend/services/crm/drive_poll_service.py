@@ -301,18 +301,44 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
             # Create document record with auto-categorization
             cat_result = auto_categorize_document(file_name)
             doc_category = cat_result["document_category"]
+
+            # Detect if file is in Actual Visa / Previous Visa subfolder
+            subfolder_value = None
+            parent_name_lower = folder_name.lower() if isinstance(folder_name, str) else ""
+            if parent_name_lower in ("actual visa", "previous visa"):
+                subfolder_value = "Actual Visa" if "actual" in parent_name_lower else "Previous Visa"
+                doc_category = "immigration"
+
+                # Visa rotation: if new file in Actual Visa, archive the old one
+                if subfolder_value == "Actual Visa":
+                    async with db_pool.acquire() as conn:
+                        old_actual = await conn.fetchrow(
+                            """SELECT id FROM documents
+                               WHERE client_id = $1 AND subfolder = 'Actual Visa'
+                                 AND (is_archived IS NOT TRUE)
+                               ORDER BY created_at DESC LIMIT 1""",
+                            client_id,
+                        )
+                        if old_actual:
+                            await conn.execute(
+                                "UPDATE documents SET subfolder = 'Previous Visa', updated_at = NOW() WHERE id = $1",
+                                old_actual["id"],
+                            )
+                            logger.info(f"Drive poll: rotated doc {old_actual['id']} to Previous Visa")
+
             async with db_pool.acquire() as conn:
                 doc_id = await conn.fetchval(
                     """INSERT INTO documents (
                         client_id, document_type, document_category, file_name, file_id,
-                        status, storage_type, ocr_status
-                    ) VALUES ($1, $2, $3, $4, $5, 'active', 'google_drive', 'pending')
+                        status, storage_type, ocr_status, subfolder
+                    ) VALUES ($1, $2, $3, $4, $5, 'active', 'google_drive', 'pending', $6)
                     RETURNING id""",
                     client_id,
                     _infer_document_type(file_name, folder_name),
                     doc_category,
                     file_name,
                     file_id,
+                    subfolder_value,
                 )
 
             # Touch client updated_at so CRM reflects new document
