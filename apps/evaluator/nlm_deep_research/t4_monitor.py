@@ -299,6 +299,11 @@ class T4RelevanceFilter:
         try:
             return float(raw)
         except ValueError:
+            # Haiku sometimes returns "0.85\n\nExplanation..." — extract first token
+            import re as _re
+            m = _re.search(r"^\d+(?:\.\d+)?", raw)
+            if m:
+                return float(m.group())
             logger.warning("Haiku returned non-float: %r — defaulting to 0.0", raw)
             return 0.0
 
