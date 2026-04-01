@@ -28,14 +28,7 @@ from typing import TYPE_CHECKING
 import httpx
 
 from backend.services.crm.birthday_notifier_service import NATIONALITY_LANGUAGE_MAP
-from backend.services.crm.welcome.welcome_templates import (
-    WELCOME_EMAIL_CTA,
-    WELCOME_EMAIL_OPENING,
-    WELCOME_EMAIL_SUBJECT,
-    WELCOME_EMAIL_TEAM_ASSIGNED,
-    WELCOME_EMAIL_TEAM_UNASSIGNED,
-    WELCOME_EMAIL_WHO_WE_ARE,
-)
+from backend.services.crm.welcome.welcome_templates import WELCOME_EMAIL_SUBJECT
 
 if TYPE_CHECKING:
     import asyncpg
@@ -186,9 +179,18 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
     assigned_to = client["assigned_to"] or ""
     advisor_first = assigned_to.split("@")[0].capitalize() if assigned_to else ""
 
+    # Resolve advisor WhatsApp from team_members table
+    advisor_wa: str | None = None
+    if assigned_to:
+        async with db_pool.acquire() as conn:
+            advisor_wa = await conn.fetchval(
+                "SELECT whatsapp FROM team_members WHERE email = $1",
+                assigned_to,
+            )
+
     # Build HTML email
     subject = "[CLIENT] " + WELCOME_EMAIL_SUBJECT[lang]
-    html_body = _build_html(lang, first_name, advisor_first, assigned_to)
+    html_body = _build_html(lang, first_name, advisor_first, assigned_to, advisor_wa)
 
     # Build payload with CC (team leader) and BCC (zero@)
     payload: dict = {
@@ -255,127 +257,278 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
 # ─────────────────────────────────────────────────────────
 
 
-def _build_html(lang: str, first_name: str, advisor_first: str, advisor_email: str) -> str:
-    """Assemble the 7-block welcome HTML email."""
+# SVG icons (base64) for service cards — from reference design
+_SVG_IMMIGRATION = "PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMkw0IDV2Ni4wOWMwIDUuMDUgMy40MSA5Ljc2IDggMTAuOTEgNC41OS0xLjE1IDgtNS44NiA4LTEwLjkxVjVsLTgtM3oiIHN0cm9rZT0iI2Y5Y2E1NSIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik05IDEybDIgMiA0LTQiIHN0cm9rZT0iI2Y5Y2E1NSIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg=="
+_SVG_BUSINESS = "PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSIzIiB5PSIzIiB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHJ4PSIyIiBzdHJva2U9IiNmOWNhNTUiIHN0cm9rZS13aWR0aD0iMS41Ii8+PHBhdGggZD0iTTMgOWgxOE03IDN2MTgiIHN0cm9rZT0iI2Y5Y2E1NSIgc3Ryb2tlLXdpZHRoPSIxLjUiLz48L3N2Zz4="
+_SVG_TAX = "PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMnYyME0xNyA1SDkuNWExLjUgMS41IDAgMDAwIDNIMTVhMS41IDEuNSAwIDAxMCAzSDciIHN0cm9rZT0iI2Y5Y2E1NSIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg=="
+_SVG_PROPERTY = "PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMyAyMWgxOE05IDIxVjNINXYxOE0xNSAyMVY4aDR2MTMiIHN0cm9rZT0iI2Y5Y2E1NSIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik03IDdoLjAxTTcgMTFoLjAxTTcgMTVoLjAxTTE3IDEyaC4wMU0xNyAxNmguMDEiIHN0cm9rZT0iI2Y5Y2E1NSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4="
 
-    # Block 1 — Emotional opening
-    opening = WELCOME_EMAIL_OPENING[lang].format(first_name=first_name)
+# Default WhatsApp for Bali Zero (used when no per-advisor number available)
+_BZ_WHATSAPP = "6281338051876"
 
-    # Block 2 — Who we are
-    who_we_are = WELCOME_EMAIL_WHO_WE_ARE[lang]
 
-    # Block 5 — Your team
-    if advisor_email:
-        team_line = WELCOME_EMAIL_TEAM_ASSIGNED[lang].format(advisor_name=advisor_first)
-    else:
-        team_line = WELCOME_EMAIL_TEAM_UNASSIGNED[lang]
+def _build_html(
+    _lang: str,
+    first_name: str,
+    advisor_first: str,
+    _advisor_email: str,
+    advisor_wa: str | None = None,
+) -> str:
+    """Assemble the welcome HTML email — light premium cream/gold design."""
+    advisor_name = advisor_first if advisor_first else "our team"
+    # Use advisor's personal WA if available, fallback to Bali Zero main line
+    wa_num = (advisor_wa or _BZ_WHATSAPP).lstrip("+")
+    cta_label = f"Chat with {advisor_name} on WhatsApp"
 
-    # Block 6 — CTA
-    cta = WELCOME_EMAIL_CTA[lang]
-
-    # Deterministic system table rows (same in all languages for readability)
-    table_rows = [
-        ("Prices from a verified database", "Strategy and judgment"),
-        ("Deadlines from a legal calendar", "Client relationships"),
-        ("Documents from official registries", "Complex negotiations"),
-        ("Status tracking and alerts", "Problem solving"),
-    ]
-    table_html = "\n".join(
-        f"""
-        <tr>
-            <td style="padding:10px 16px;border-bottom:1px solid #2a2a30;font-size:13px;color:#edeae4;">{a}</td>
-            <td style="padding:10px 16px;border-bottom:1px solid #2a2a30;font-size:13px;color:#edeae4;">{b}</td>
-        </tr>"""
-        for a, b in table_rows
+    divider = (
+        '<tr><td bgcolor="#0c0d0f" style="padding:0 40px;">'
+        '<table cellspacing="0" cellpadding="0" border="0" width="100%"><tr>'
+        '<td style="height:1px;background-color:#2a2520;font-size:1px;line-height:1px;">&nbsp;</td>'
+        '</tr></table></td></tr>'
     )
 
-    # Service cards (same 4 in all languages)
-    services = [
-        ("Immigration", "Visas, KITAS, KITAP, retirement visa"),
-        ("Business Setup", "PT PMA, virtual office, NIB, OSS"),
-        ("Tax &amp; Compliance", "NPWP, SPT, LKPM, withholding"),
-        ("Property", "Land structure, Hak Pakai, leasehold"),
-    ]
-    cards_html = ""
-    for svc_title, svc_desc in services:
-        cards_html += f"""
-        <td style="width:25%;padding:0 6px;">
-            <div style="background:#1c1c22;border-radius:6px;padding:14px 12px;text-align:center;">
-                <div style="font-size:12px;font-weight:700;color:#d4845a;margin-bottom:6px;">{svc_title}</div>
-                <div style="font-size:11px;color:#9e9b95;line-height:1.4;">{svc_desc}</div>
-            </div>
-        </td>"""
-
     return f"""<!DOCTYPE html>
-<html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Welcome to Bali Zero</title>
+  <style>
+    body,table,td,a{{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}}
+    table,td{{mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;}}
+    img{{border:0;height:auto;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}}
+    a[x-apple-data-detectors]{{color:inherit!important;text-decoration:none!important;}}
+    @media only screen and (max-width:600px){{
+      .wrap{{width:100%!important;}}
+      .pad{{padding-left:24px!important;padding-right:24px!important;}}
+      .hh{{font-size:34px!important;line-height:40px!important;}}
+      .card{{display:block!important;width:100%!important;padding-right:0!important;padding-left:0!important;padding-bottom:10px!important;}}
+    }}
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#0c0c0e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:600px;margin:0 auto;padding:20px 0;">
+<body bgcolor="#0c0d0f" style="margin:0;padding:0;background-color:#0c0d0f;">
 
-  <!-- HEADER -->
-  <div style="background:#0c0c0e;border-bottom:2px solid #d4845a;padding:24px 32px;">
-    <img src="https://kita.balizero.com/static/balizero-logo-clean.png" alt="Bali Zero" width="72" height="72" style="display:block;border-radius:50%;border:0;" />
-  </div>
+  <div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#0c0d0f;">We handle the bureaucracy. You focus on Bali.</div>
 
-  <!-- BLOCK 1: Emotional opening -->
-  <div style="background:#111115;padding:28px 32px;">
-    <div style="font-size:15px;line-height:1.7;color:#edeae4;">{opening}</div>
-  </div>
+  <table cellspacing="0" cellpadding="0" border="0" width="100%" bgcolor="#0c0d0f">
+    <tr>
+      <td align="center" style="padding:32px 16px 48px;">
+        <table cellspacing="0" cellpadding="0" border="0" width="580" class="wrap" style="max-width:580px;">
 
-  <!-- BLOCK 2: Who we are -->
-  <div style="background:#0c0c0e;padding:28px 32px;">
-    <div style="font-size:11px;font-weight:700;color:#d4845a;letter-spacing:2px;margin-bottom:12px;">WHO WE ARE</div>
-    <div style="width:40px;height:2px;background:#d4845a;margin-bottom:16px;"></div>
-    <div style="font-size:13.5px;line-height:1.75;color:#edeae4;">{who_we_are}</div>
-  </div>
+          <!-- ══ HERO ══ -->
+          <tr>
+            <td bgcolor="#0c0d0f" style="padding:44px 40px 40px;border-radius:14px 14px 0 0;border:1px solid #1e1c18;border-bottom:none;" class="pad">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td align="left" style="padding-bottom:36px;">
+                    <img src="https://kita.balizero.com/static/balizero-logo-clean.png" width="112" height="112" alt="Bali Zero" style="display:block;border-radius:50%;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td class="hh" style="font-family:Arial,Helvetica,sans-serif;font-size:42px;line-height:48px;font-weight:900;color:#ffffff;letter-spacing:-1.5px;text-transform:uppercase;">
+                    Welcome,<br><span style="color:#f9ca55;">{first_name}.</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px 0 0;">
+                    <table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#f9ca55" width="48" height="2" style="font-size:1px;line-height:1px;">&nbsp;</td></tr></table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:27px;color:#6b6456;font-weight:400;">
+                    You just made the smartest move for your life in Indonesia.<br>
+                    <span style="color:#f9ca55;font-weight:700;">We&#39;ll take it from here.</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-  <!-- BLOCK 3: How it works — 2-column table -->
-  <div style="background:#111115;padding:28px 32px;">
-    <div style="font-size:11px;font-weight:700;color:#d4845a;letter-spacing:2px;margin-bottom:16px;">HOW IT WORKS</div>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #2a2a30;border-radius:6px;overflow:hidden;">
-      <tr style="background:#1c1c22;">
-        <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#c9a96e;text-transform:uppercase;letter-spacing:1px;">Deterministic System</th>
-        <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#c9a96e;text-transform:uppercase;letter-spacing:1px;">Human Intelligence</th>
-      </tr>
-      {table_html}
-    </table>
-  </div>
+          <!-- ══ WHAT HAPPENS NEXT ══ -->
+          <tr>
+            <td bgcolor="#101215" style="padding:36px 40px 32px;border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:#f9ca55;text-transform:uppercase;letter-spacing:4px;padding-bottom:28px;">What happens next</td></tr>
+              </table>
+              <!-- step 1 -->
+              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td width="52" valign="top" style="padding-right:16px;padding-bottom:20px;">
+                    <table cellspacing="0" cellpadding="0" border="0"><tr>
+                      <td bgcolor="#1a1914" width="44" height="44" align="center" valign="middle" style="border-radius:10px;border:1px solid #2e2b22;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;color:#f9ca55;text-align:center;vertical-align:middle;">01</td>
+                    </tr></table>
+                  </td>
+                  <td valign="middle" style="padding-bottom:20px;">
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;line-height:20px;">{advisor_name} will reach out</div>
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b6456;line-height:19px;padding-top:3px;">Quick intro call to understand your situation</div>
+                  </td>
+                </tr>
+                <tr><td colspan="2" style="padding:0 0 20px 20px;"><table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#2a2520" width="1" height="20" style="font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td></tr>
+              </table>
+              <!-- step 2 -->
+              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td width="52" valign="top" style="padding-right:16px;padding-bottom:20px;">
+                    <table cellspacing="0" cellpadding="0" border="0"><tr>
+                      <td bgcolor="#1a1914" width="44" height="44" align="center" valign="middle" style="border-radius:10px;border:1px solid #2e2b22;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;color:#c8a040;text-align:center;vertical-align:middle;">02</td>
+                    </tr></table>
+                  </td>
+                  <td valign="middle" style="padding-bottom:20px;">
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;line-height:20px;">We build your roadmap</div>
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b6456;line-height:19px;padding-top:3px;">Clear timeline, pricing, documents needed</div>
+                  </td>
+                </tr>
+                <tr><td colspan="2" style="padding:0 0 20px 20px;"><table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#2a2520" width="1" height="20" style="font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td></tr>
+              </table>
+              <!-- step 3 -->
+              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td width="52" valign="top" style="padding-right:16px;">
+                    <table cellspacing="0" cellpadding="0" border="0"><tr>
+                      <td bgcolor="#1a1914" width="44" height="44" align="center" valign="middle" style="border-radius:10px;border:1px solid #2e2b22;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;color:#9a7828;text-align:center;vertical-align:middle;">03</td>
+                    </tr></table>
+                  </td>
+                  <td valign="middle">
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;line-height:20px;">We handle everything</div>
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b6456;line-height:19px;padding-top:3px;">You focus on Bali. We handle the bureaucracy.</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-  <!-- BLOCK 4: Our services — 4 cards -->
-  <div style="background:#0c0c0e;padding:28px 32px;">
-    <div style="font-size:11px;font-weight:700;color:#d4845a;letter-spacing:2px;margin-bottom:16px;">OUR SERVICES</div>
-    <table style="width:100%;border-collapse:collapse;">
-      <tr>{cards_html}</tr>
-    </table>
-  </div>
+          {divider}
 
-  <!-- BLOCK 5: Your team -->
-  <div style="background:#111115;padding:28px 32px;">
-    <div style="font-size:11px;font-weight:700;color:#d4845a;letter-spacing:2px;margin-bottom:12px;">YOUR TEAM</div>
-    <div style="font-size:13.5px;line-height:1.7;color:#edeae4;">{team_line}</div>
-  </div>
+          <!-- ══ SERVICES ══ -->
+          <tr>
+            <td bgcolor="#101215" style="padding:36px 40px 28px;border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:#f9ca55;text-transform:uppercase;letter-spacing:4px;padding-bottom:20px;">How we help</td></tr>
+              </table>
+              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td class="card" width="50%" valign="top" style="padding:0 5px 10px 0;">
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr><td bgcolor="#161a1e" style="padding:20px 16px;border-radius:10px;border:1px solid #252320;">
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:26px;margin-bottom:10px;">&#127250;</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;">Immigration</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b6456;padding-top:5px;line-height:17px;">KITAS &middot; KITAP &middot; D12 &middot; E33G<br>Retirement &middot; Second Home</div>
+                      </td></tr>
+                    </table>
+                  </td>
+                  <td class="card" width="50%" valign="top" style="padding:0 0 10px 5px;">
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr><td bgcolor="#161a1e" style="padding:20px 16px;border-radius:10px;border:1px solid #252320;">
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:26px;margin-bottom:10px;">&#127970;</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;">Business</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b6456;padding-top:5px;line-height:17px;">PT PMA &middot; OSS &middot; NIB<br>Virtual Office &middot; Licenses</div>
+                      </td></tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="card" width="50%" valign="top" style="padding:0 5px 10px 0;">
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr><td bgcolor="#161a1e" style="padding:20px 16px;border-radius:10px;border:1px solid #252320;">
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:26px;margin-bottom:10px;">&#128203;</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;">Tax &amp; Compliance</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b6456;padding-top:5px;line-height:17px;">NPWP &middot; SPT &middot; LKPM<br>Withholding &middot; Reporting</div>
+                      </td></tr>
+                    </table>
+                  </td>
+                  <td class="card" width="50%" valign="top" style="padding:0 0 10px 5px;">
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr><td bgcolor="#161a1e" style="padding:20px 16px;border-radius:10px;border:1px solid #252320;">
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:26px;margin-bottom:10px;">&#127968;</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;">Property</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b6456;padding-top:5px;line-height:17px;">Hak Pakai &middot; Leasehold<br>Due Diligence &middot; Structure</div>
+                      </td></tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-  <!-- BLOCK 6: CTA -->
-  <div style="background:#d4845a;padding:24px 32px;text-align:center;">
-    <div style="font-size:15px;font-weight:700;color:#0c0c0e;">{cta}</div>
-  </div>
+          <!-- ══ SOCIAL PROOF ══ -->
+          <tr>
+            <td bgcolor="#0c0d0f" style="padding:36px 40px;border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad" align="center">
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:54px;font-weight:900;color:#f9ca55;letter-spacing:-2px;line-height:54px;">10,800<span style="font-size:26px;vertical-align:super;color:#5a4a18;">+</span></div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:#3a3428;text-transform:uppercase;letter-spacing:4px;padding-top:10px;">Expats served since 2019</div>
+            </td>
+          </tr>
 
-  <!-- BLOCK 7: Footer -->
-  <div style="background:#0c0c0e;padding:20px 32px;border-top:1px solid #2a2a30;">
-    <div style="font-size:11px;color:#9e9b95;text-align:center;line-height:1.8;">
-      zantara@balizero.com &nbsp;·&nbsp;
-      wa.me/6281338051876 &nbsp;·&nbsp;
-      <a href="https://www.balizero.com" style="color:#c9a96e;text-decoration:none;">www.balizero.com</a>
-      &nbsp;·&nbsp; Canggu, Bali
-    </div>
-    <div style="font-size:10px;color:#3a3a40;text-align:center;margin-top:8px;">
-      You received this email because you recently became a client of Bali Zero.
-    </div>
-  </div>
+          {divider}
 
-</div>
+          <!-- ══ WHY US ══ -->
+          <tr>
+            <td bgcolor="#101215" style="padding:36px 40px 32px;border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:#f9ca55;text-transform:uppercase;letter-spacing:4px;padding-bottom:22px;">Why Bali Zero</td></tr>
+                <tr>
+                  <td style="padding-bottom:16px;">
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
+                      <td width="14" valign="top" style="padding-right:12px;padding-top:6px;"><table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#f9ca55" width="6" height="6" style="border-radius:3px;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
+                      <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#6b6456;"><strong style="color:#ffffff;font-weight:700;">AI-powered tracking.</strong> Every deadline, document, and regulation change monitored &mdash; nothing falls through the cracks.</td>
+                    </tr></table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom:16px;">
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
+                      <td width="14" valign="top" style="padding-right:12px;padding-top:6px;"><table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#f9ca55" width="6" height="6" style="border-radius:3px;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
+                      <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#6b6456;"><strong style="color:#ffffff;font-weight:700;">Based in Kerobokan.</strong> Real office, real team. We meet you in person and handle government offices directly.</td>
+                    </tr></table>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
+                      <td width="14" valign="top" style="padding-right:12px;padding-top:6px;"><table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#f9ca55" width="6" height="6" style="border-radius:3px;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
+                      <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#6b6456;"><strong style="color:#ffffff;font-weight:700;">One team, everything.</strong> Immigration, company, tax, property &mdash; all under one roof.</td>
+                    </tr></table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ══ CTA ══ -->
+          <tr>
+            <td bgcolor="#0c0d0f" style="padding:36px 40px 44px;border-radius:0 0 14px 14px;border:1px solid #1e1c18;border-top:none;" class="pad" align="center">
+              <table cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td bgcolor="#f9ca55" style="border-radius:10px;">
+                    <a href="https://wa.me/{wa_num}?text=Hi%20Bali%20Zero%2C%20I%20just%20signed%20up" target="_blank" style="display:inline-block;padding:16px 44px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:900;color:#0c0d0f;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;">{cta_label}</a>
+                  </td>
+                </tr>
+              </table>
+              <div style="padding-top:14px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#3a3428;">or reply directly to this email</div>
+            </td>
+          </tr>
+
+          <!-- ══ FOOTER ══ -->
+          <tr>
+            <td align="center" style="padding:28px 40px 0;" class="pad">
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#3a3428;line-height:20px;">
+                <strong style="color:#5a4a18;">Bali Zero</strong> &middot; Kerobokan, Bali, Indonesia<br>
+                <a href="https://www.balizero.com" style="color:#c8a040;text-decoration:none;">balizero.com</a>
+                &nbsp;&middot;&nbsp;
+                <a href="https://www.instagram.com/balizero" style="color:#c8a040;text-decoration:none;">Instagram</a>
+                &nbsp;&middot;&nbsp;
+                <a href="https://wa.me/{wa_num}" style="color:#c8a040;text-decoration:none;">WhatsApp</a>
+              </div>
+              <div style="padding-top:12px;font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#2a2520;letter-spacing:2px;text-transform:uppercase;">
+                Powered by humans, fueled by a thinking engine.
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
 </body>
 </html>"""
