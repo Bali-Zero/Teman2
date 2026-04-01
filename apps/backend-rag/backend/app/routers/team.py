@@ -46,10 +46,12 @@ async def get_team_members(
         raise HTTPException(status_code=401, detail="User email not found")
 
     async with pool.acquire() as conn:
-        # Get current user's department
-        user_dept = await conn.fetchval(
-            "SELECT department FROM team_members WHERE email = $1", user_email,
+        # Get current user's department and role
+        user_row = await conn.fetchrow(
+            "SELECT department, role FROM team_members WHERE email = $1", user_email,
         )
+        user_dept = user_row["department"] if user_row else None
+        user_role = (user_row["role"] or "").lower() if user_row else ""
 
         # Check if user has specific visibility rules
         visibility_rules = await conn.fetch(
@@ -70,8 +72,11 @@ async def get_team_members(
                    ORDER BY name""",
                 visible_emails,
             )
-        elif user_dept in ["board", "founders", "management"]:
-            # Board and founders see everyone
+        elif (
+            user_dept in ["board", "founders", "management"]
+            or user_role in ("founder", "ceo", "board member", "admin")
+        ):
+            # Board, founders, management, and leadership roles see everyone
             members = await conn.fetch(
                 """SELECT id, email, name, full_name, role, department, active, avatar
                    FROM team_members
