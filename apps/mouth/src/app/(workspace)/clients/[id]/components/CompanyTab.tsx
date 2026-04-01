@@ -63,6 +63,7 @@ export function CompanyTab({
     share_nominal_value?: number;
     setup_progress?: number;
     company_id?: number;
+    custom_fields?: Record<string, unknown>;
   } | null>(null);
 
   const [associates, setAssociates] = useState<
@@ -110,6 +111,7 @@ export function CompanyTab({
             share_nominal_value: co.share_nominal_value,
             setup_progress: co.setup_progress,
             company_id: co.company_id,
+            custom_fields: co.custom_fields,
           });
 
           if (co.company_id) {
@@ -230,6 +232,7 @@ export function CompanyTab({
               province: found.province,
               company_status: found.status,
               company_id: found.id,
+              custom_fields: found.custom_fields,
             });
             if (found.associates?.length) {
               const grouped2 = new Map<
@@ -399,7 +402,19 @@ export function CompanyTab({
         province={co?.province}
         addressStr={addressStr}
         capital={capital}
-        shareholderCount={associates.length}
+        shareholderCount={(() => {
+          try {
+            const cf = typeof co?.custom_fields === 'string'
+              ? JSON.parse(co.custom_fields as string)
+              : co?.custom_fields;
+            const sh = cf?.shareholders;
+            if (sh) {
+              const parsed = typeof sh === 'string' ? JSON.parse(sh) : sh;
+              if (Array.isArray(parsed) && parsed.length > 0) return parsed.length;
+            }
+          } catch { /* ignore */ }
+          return associates.length;
+        })()}
         foundingYear={foundingYear}
         companyId={co?.company_id}
         onEdit={() => setIsEditingCompany(true)}
@@ -438,6 +453,7 @@ export function CompanyTab({
               city={co?.city}
               fullAddress={co?.registered_address || co?.office_address}
               formatDate={formatDate}
+              customFields={co?.custom_fields}
             />
             <PeopleColumn
               associates={associates}
@@ -485,31 +501,38 @@ export function CompanyTab({
           <DividerLabel text="Document Vault" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
-              {
-                docType: "akta_pendirian",
-                label: "Akta Pendirian",
-                hint: "PDF/JPG",
-              },
-              {
-                docType: "sk_decree",
-                label: "SK Kemenkumham",
-                hint: "PDF/JPG",
-              },
-              {
-                docType: "npwp",
-                label: "NPWP Perusahaan",
-                hint: "PDF/JPG",
-              },
+              { docType: "akta_pendirian", label: "Akta Pendirian", hint: "PDF/JPG" },
+              { docType: "sk_decree", label: "SK Kemenkumham", hint: "PDF/JPG" },
+              { docType: "npwp", label: "NPWP Perusahaan", hint: "PDF/JPG" },
               { docType: "nib", label: "NIB", hint: "PDF/JPG" },
-              {
-                docType: "company_profile",
-                label: "Company Profile",
-                hint: "PDF",
-              },
+              { docType: "company_profile", label: "Company Profile", hint: "PDF" },
+              { docType: "wlkp", label: "WLKP", hint: "PDF" },
+              { docType: "bpjs", label: "BPJS Ketenagakerjaan", hint: "PDF" },
+              { docType: "organogram", label: "Bagan Organisasi", hint: "PDF/JPG" },
+              { docType: "rekening_koran", label: "Rekening Koran", hint: "PDF" },
             ].map((item) => {
-              const existing =
-                companyDocs.find((d) => d.document_type === item.docType) ||
-                null;
+              // Search company docs first, then client docs with pma category
+              const typeNorm = item.docType.toLowerCase().replace(/_/g, '');
+              const matchType = (dt: string) => {
+                const norm = (dt || '').toLowerCase().replace(/_/g, '');
+                return norm === typeNorm || dt === item.docType;
+              };
+              const fromCompany = companyDocs.find((d) => matchType(d.document_type));
+              const fromClient = !fromCompany
+                ? (documents || []).filter(d => d.document_category === 'pma').find((d) => matchType(d.document_type))
+                : null;
+              // Map ClientDocument to CompanyDocument-compatible shape for the vault slot
+              const existing: CompanyDocument | null = fromCompany ?? (fromClient ? {
+                id: fromClient.id,
+                uuid: '',
+                document_type: fromClient.document_type,
+                status: (fromClient.status as CompanyDocument['status']) ?? 'active',
+                google_drive_file_id: fromClient.file_id,
+                google_drive_file_url: fromClient.google_drive_file_url ?? fromClient.file_url,
+                file_name: fromClient.file_name,
+                is_verified: fromClient.status === 'verified',
+                created_at: fromClient.created_at ?? '',
+              } : null);
               return (
                 <CompanyDocUpload
                   key={item.docType}

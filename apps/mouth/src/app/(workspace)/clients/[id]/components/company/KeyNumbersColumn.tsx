@@ -14,6 +14,7 @@ interface KeyNumbersProps {
   city?: string;
   fullAddress?: string;
   formatDate: (d: string) => string;
+  customFields?: Record<string, unknown> | string;
 }
 
 export function KeyNumbersColumn({
@@ -28,6 +29,7 @@ export function KeyNumbersColumn({
   city,
   fullAddress,
   formatDate,
+  customFields,
 }: KeyNumbersProps) {
   const items: Array<{
     label: string;
@@ -40,10 +42,22 @@ export function KeyNumbersColumn({
 
   // Authorized Capital
   const fullCapital = formatCapitalFull(sharesCount, shareNominalValue);
-  if (fullCapital) {
+  // Fallback: read from custom_fields.authorized_capital if computed capital is null
+  const capitalDisplay = fullCapital || (() => {
+    try {
+      const cf = typeof customFields === 'string' ? JSON.parse(customFields) : customFields;
+      const authCap = cf?.authorized_capital;
+      if (authCap) {
+        const num = Number(authCap);
+        if (!isNaN(num) && num > 0) return `Rp ${num.toLocaleString('id-ID')}`;
+      }
+    } catch { /* ignore parse errors */ }
+    return null;
+  })();
+  if (capitalDisplay) {
     items.push({
       label: "Authorized Capital",
-      value: fullCapital,
+      value: capitalDisplay,
       sub: "IDR",
       tag: aktaPerubahanNo
         ? `Increased via Akta #${aktaPerubahanNo}${aktaPerubahanDate ? ` \u00B7 ${new Date(aktaPerubahanDate).getFullYear()}` : ""}`
