@@ -7,7 +7,7 @@ document upload (Base64 + Google Drive), document soft-delete.
 """
 
 import base64
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
@@ -26,6 +26,17 @@ from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_c
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
 logger = get_logger(__name__)
+
+
+def _parse_date_or_none(date_str: str | None) -> date | None:
+    """Parse YYYY-MM-DD date string or return None."""
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
 
 router = APIRouter(prefix="/api/crm", tags=["crm-enhanced-documents"])
 
@@ -491,6 +502,10 @@ class DocumentUploadBase64(BaseModel):
     document_type: str
     mime_type: str | None = None
     notes: str | None = None
+    subfolder_hint: str | None = None
+    document_category: str | None = None
+    expiry_date: str | None = None
+    family_member_id: int | None = None
 
 
 @router.post("/clients/{client_id}/documents/upload")
@@ -512,9 +527,12 @@ async def upload_document_base64(
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid base64 file content")
 
-        # Determine category and folder name using filename-based categorization
-        cat_result = auto_categorize_document(data.file_name)
-        category = cat_result["document_category"]
+        # Determine category — use explicit override or auto-categorize from filename
+        if data.document_category:
+            category = data.document_category
+        else:
+            cat_result = auto_categorize_document(data.file_name)
+            category = cat_result["document_category"]
         folder_name = CATEGORY_TO_FOLDER.get(category, "99_Misc")
 
         async with pool.acquire() as conn:
@@ -590,10 +608,79 @@ async def upload_document_base64(
             else:
                 subfolder_id = subfolder["id"]
 
+            # Handle subfolder_hint for nested subfolders (e.g. "Actual Visa" inside 01_Immigration)
+            target_subfolder_id = subfolder_id
+            subfolder_value = None  # for documents.subfolder column
+
+            if data.subfolder_hint and data.subfolder_hint in ("Actual Visa", "Previous Visa"):
+                subfolder_value = data.subfolder_hint
+                # Find or create the nested subfolder inside the category folder
+                try:
+                    nested_structure = await drive_service.get_folder_structure(
+                        root_folder_id=subfolder_id,
+                    )
+                    nested_folder = next(
+                        (f for f in nested_structure["folders"] if f["name"] == data.subfolder_hint),
+                        None,
+                    )
+                    if not nested_folder:
+                        nested_data = await drive_service.create_folder(
+                            name=data.subfolder_hint,
+                            parent_id=subfolder_id,
+                        )
+                        target_subfolder_id = nested_data["id"]
+                    else:
+                        target_subfolder_id = nested_folder["id"]
+                except Exception as e:
+                    logger.warning(f"Could not resolve subfolder_hint '{data.subfolder_hint}': {e}")
+
+                # Visa rotation: if uploading to "Actual Visa", move existing actual to "Previous Visa"
+                if data.subfolder_hint == "Actual Visa":
+                    existing_actual = await conn.fetchrow(
+                        """SELECT d.id, d.file_id FROM documents d
+                           WHERE d.client_id = $1 AND d.subfolder = 'Actual Visa'
+                             AND (d.is_archived IS NOT TRUE)
+                           ORDER BY d.created_at DESC LIMIT 1""",
+                        client_id,
+                    )
+                    if existing_actual and existing_actual["file_id"]:
+                        # Find or create "Previous Visa" folder
+                        prev_folder = next(
+                            (f for f in nested_structure["folders"] if f["name"] == "Previous Visa"),
+                            None,
+                        ) if nested_structure else None
+                        if not prev_folder:
+                            try:
+                                prev_data = await drive_service.create_folder(
+                                    name="Previous Visa",
+                                    parent_id=subfolder_id,
+                                )
+                                prev_folder_id = prev_data["id"]
+                            except Exception as e:
+                                logger.error(f"Failed to create Previous Visa folder: {e}")
+                                prev_folder_id = None
+                        else:
+                            prev_folder_id = prev_folder["id"]
+
+                        if prev_folder_id:
+                            try:
+                                await drive_service.move_file(
+                                    file_id=existing_actual["file_id"],
+                                    from_parent_id=target_subfolder_id,
+                                    to_parent_id=prev_folder_id,
+                                )
+                                await conn.execute(
+                                    "UPDATE documents SET subfolder = 'Previous Visa', updated_at = NOW() WHERE id = $1",
+                                    existing_actual["id"],
+                                )
+                                logger.info(f"Rotated visa doc {existing_actual['id']} to Previous Visa")
+                            except Exception as e:
+                                logger.error(f"Visa rotation failed: {e}")
+
             # Upload File
             try:
                 upload_result = await drive_service.upload_file_to_folder(
-                    folder_id=subfolder_id,
+                    folder_id=target_subfolder_id,
                     file_content=file_content,
                     file_name=data.file_name,
                     mime_type=data.mime_type,
@@ -607,8 +694,8 @@ async def upload_document_base64(
                 INSERT INTO documents (
                     client_id, document_type, document_category,
                     file_name, file_id, file_url, google_drive_file_url,
-                    status, storage_type, notes
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8)
+                    status, storage_type, notes, subfolder, expiry_date
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10)
                 RETURNING id
                 """,
                 client_id,
@@ -616,9 +703,11 @@ async def upload_document_base64(
                 category,
                 data.file_name,
                 upload_result["id"],
-                upload_result.get("webViewLink"),  # Use webViewLink as file_url
+                upload_result.get("webViewLink"),
                 upload_result.get("webViewLink"),
                 data.notes,
+                subfolder_value,
+                _parse_date_or_none(data.expiry_date),
             )
 
             # Trigger OCR via dispatcher
