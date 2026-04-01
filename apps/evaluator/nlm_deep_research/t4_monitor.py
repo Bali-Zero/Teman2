@@ -312,20 +312,14 @@ class T4RelevanceFilter:
         *,
         ref_embedding: Optional[list[float]] = None,
     ) -> FilterResult:
-        """Run full 3-layer pipeline. Returns ADMIT or REJECT."""
+        """Run filter pipeline. L2 embedding skipped (OpenAI quota exhausted).
+        L1 keyword gate → L3 Haiku classify."""
         if not self.layer1_keywords(text):
             return FilterResult.REJECT
 
-        similarity = await self.layer2_embedding(text, cached_ref=ref_embedding)
-
-        if similarity >= EMBEDDING_SIMILARITY_THRESHOLD:
-            return FilterResult.ADMIT
-
-        if EMBEDDING_BORDERLINE_LOW <= similarity < EMBEDDING_BORDERLINE_HIGH:
-            score = await self.layer3_haiku(text)
-            return FilterResult.ADMIT if score >= 0.5 else FilterResult.REJECT
-
-        return FilterResult.REJECT
+        # L2 DISABLED: OpenAI quota exhausted — go straight to L3
+        score = await self.layer3_haiku(text)
+        return FilterResult.ADMIT if score >= 0.5 else FilterResult.REJECT
 
 
 # ---------------------------------------------------------------------------
