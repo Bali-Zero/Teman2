@@ -644,10 +644,10 @@ async def list_practices(
             # When current_user is None (direct call), use assigned_to param for filtering
             if current_user and not can_view_all_practices(current_user):
                 user_email = current_user.get("email", "").lower()
-                query_parts.append(f" AND c.assigned_to = ${param_index}")
+                query_parts.append(f" AND p.assigned_to = ${param_index}")
                 params.append(user_email)
                 param_index += 1
-                logger.info(f"RBAC: Filtering practices for {user_email} (assigned_to only)")
+                logger.info(f"RBAC: Filtering practices for {user_email} (p.assigned_to)")
 
             # Month filter
             month_range = _parse_month_param(month)
