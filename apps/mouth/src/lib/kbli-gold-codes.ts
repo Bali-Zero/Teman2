@@ -15,7 +15,7 @@ function loadGoldCodes(): Set<string> {
   try {
     const jsonPath = path.join(process.cwd(), "data", "kbli-gold-all.json");
     const raw = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
-    _goldCodes = new Set(Object.keys(raw.data));
+    _goldCodes = new Set(Object.keys(raw.data ?? raw));
     return _goldCodes;
   } catch {
     _goldCodes = new Set();

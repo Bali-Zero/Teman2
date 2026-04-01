@@ -527,7 +527,6 @@ apps/evaluator/nlm_nb2_*.jsonl
 apps/mouth/scripts/kbli_data_backup.json
 apps/mouth/scripts/kbli_english_keywords.json
 scripts/.rag_canary/
-apps/mouth/data/kbli-gold-all.json
 
 # Agent/tool runtime state (local only)
 .agent/
