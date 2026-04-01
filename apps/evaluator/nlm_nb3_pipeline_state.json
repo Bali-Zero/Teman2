@@ -3,7 +3,7 @@
   "notebook_id": "933509f9-1561-403d-bd44-4a7a67a36df2",
   "notebook_name": "NB-3: Company Setup — Indonesia 2025",
   "created_at": "2026-03-30T00:00:00Z",
-  "last_updated": "2026-03-31T18:54:11.228082+00:00",
+  "last_updated": "2026-04-01T06:31:50.943304+00:00",
   "pipeline_status": "TESTING",
   "degradation_level": "NOMINAL",
   "schedule": {
@@ -145,7 +145,7 @@
     "go_no_go": "PENDING"
   },
   "budget": {
-    "weekly_calls": 8,
+    "weekly_calls": 10,
     "week_start": "2026-W13",
     "daily_queries": 2
   },
@@ -169,6 +169,11 @@
       "date": "2026-04-01",
       "cluster": "C",
       "run_id": "836f4a4d-5780-463f-a431-40a8e63abb74"
+    },
+    {
+      "date": "2026-04-01",
+      "cluster": "C",
+      "run_id": "573b11fa-23b9-468d-b3e4-d4d203d4b477"
     }
   ],
   "current_state": "COMPLETE"

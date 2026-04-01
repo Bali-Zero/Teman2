@@ -1,4 +1,5 @@
 # War Room — Carousel Apply Prompt (v3 — daily neutral)
+
 > Questo prompt è neutro e riutilizzabile ogni giorno. Legge sempre i dati freschi dal file di output del giorno.
 
 ---
@@ -48,8 +49,7 @@ Se element_id è valorizzato → cercalo nella lista richtexts della transaction
 Se esiste → usa direttamente
 Se NON esiste → cerca nella stessa pagina un elemento con ruolo analogo (prima occorrenza = headline, seconda = body) e usa quell'ID. Logga: 🔄 Remap slide N: [vecchio_id] → [nuovo_id]
 
-
-ℹ️ A partire da 2026-03-31 il builder NON emette più operazioni con _needs_remap: true. Le slide con layout heading-only (slide 9, 11) non hanno slot body nel template — il builder le salta direttamente. Se vedi element_id: null è solo per le immagini (step 4).
+ℹ️ A partire da 2026-03-31 il builder NON emette più operazioni con \_needs_remap: true. Le slide con layout heading-only (slide 9, 11) non hanno slot body nel template — il builder le salta direttamente. Se vedi element_id: null è solo per le immagini (step 4).
 
 Per ogni operazione upload-asset-from-url:
 
@@ -100,7 +100,6 @@ Acronimi legali ID: KITAS, KITAP, E33G, NPWP, PT PMA, IMTA, BPN, PPAT, BPHTB, PP
 Concetti chiave: center of vital interests, Hak Pakai, tie-breaker, fiscal domicile, nominee agreement, Hak Milik, leasehold
 Numeri shock: percentuali (35%, 43%), cifre IDR/USD, anni (30 years, 80 years)
 
-
 STEP 4 — Inserisci le immagini
 Per ogni operazione upload-asset-from-url:
 
@@ -133,25 +132,24 @@ Usa Move Item To Folder con:
 item_id: il new_design_id dello step 5
 folder_id: il folder_id dal JSON
 
-
 STEP 7 — Verifica visiva
 Usa Get Design Thumbnail per le pagine 1, centrale e ultima del new_design_id.
 Checklist:
 
- Cover (pagina 1): immagine posizionata, headline leggibile
- Slide centrale: testo non troncato, body visibile, bold sui termini chiave
- Ultima slide (CTA): headline + subhead presenti, logo Bali Zero visibile
- Nessuna pagina vuota o con testo placeholder del template
+Cover (pagina 1): immagine posizionata, headline leggibile
+Slide centrale: testo non troncato, body visibile, bold sui termini chiave
+Ultima slide (CTA): headline + subhead presenti, logo Bali Zero visibile
+Nessuna pagina vuota o con testo placeholder del template
 
 Se trovi problemi (testo mancante, immagine non posizionata), rientra in editing sul new_design_id e correggi. Se tutto OK, procedi.
 
 STEP 8 — Aggiorna il file e riporta
 Aggiorna canva_pending.json aggiungendo/sovrascrivendo:
 json{
-  "design_id": "<new_design_id>",
-  "design_url": "https://www.canva.com/design/<new_design_id>/edit",
-  "status": "applied",
-  "applied_at": "<ISO timestamp>"
+"design_id": "<new_design_id>",
+"design_url": "https://www.canva.com/design/<new_design_id>/edit",
+"status": "applied",
+"applied_at": "<ISO timestamp>"
 }
 Output finale da mostrare:
 ✅ Carousel applicato
@@ -162,7 +160,6 @@ Testi applicati: X / Y
 Immagini inserite: X / Y
 Remap effettuati: X
 ⚠️ Warning: <lista o "nessuno">
-
 
 Note tecniche ricorrenti (da non dimenticare ogni sessione):
 
