@@ -594,13 +594,9 @@ async def _auto_ocr_npwp(db_pool: Any, client_id: int, file_id: str, doc_id: int
                     client_id,
                 )
                 if company:
-                    update_parts = ["npwp = $1"]
+                    update_parts = ["npwp_company = $1"]
                     params: list[Any] = [extracted["npwp_number"]]
                     param_idx = 2
-                    if extracted.get("kpp_name"):
-                        update_parts.append(f"kpp = ${param_idx}")
-                        params.append(extracted["kpp_name"])
-                        param_idx += 1
                     params.append(company["id"])
                     await conn.execute(
                         f"UPDATE companies SET {', '.join(update_parts)}, updated_at = NOW() WHERE id = ${param_idx}",

@@ -104,6 +104,8 @@ export interface Client {
   last_sentiment?: string;
   last_interaction_summary?: string;
   tags?: string[];
+  lead_source?: string;
+  service_interest?: string | string[];
   active_practices?: number;
   tax_id?: string;
   npwp?: string;
