@@ -2,10 +2,14 @@
   "schema_version": 1,
   "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
   "notebook_name": "NB-5: Property & Real Estate Indonesia",
-  "last_updated": "2026-03-31T18:38:53.125163+00:00",
-  "daily_sources": {},
+  "last_updated": "2026-04-01T06:30:56.409917+00:00",
+  "daily_sources": {
+    "2026-04-01": "ok"
+  },
   "weekly_sources": {},
   "monthly_sources": {},
-  "daily_texts": {},
+  "daily_texts": {
+    "2026-04-01": "Dal 2025 al 2026, la normativa fiscale per gli affari immobiliari a Bali, con particolare riferimento alle aree di Badung e Denpasar, introduce una chiara distinzione degli oneri tra acquirenti e venditori. Il punto focale riguarda il BPHTB (Bea Perolehan Hak Atas Tanah dan Bangunan), imposta sulla acquisizione del diritto su suolo e fabbricati che grava esclusivamente sul compratore. La legge stabilisce un tariffario fisso al 5%, inappellabile dalle autorità regionali, garantendo così prevedibilità e uniformità nazionale. Per calcolare il debito, si applica la percentuale sulla differenza tra il valore più alto scelto – sia quello transattivo reale sia la valutazione governativa (NJOP) – e il minimo impositivo esente da tasse per unità abitativa (NPOPTKP). Questa struttura elimina ambiguità pregresse sulle responsabilità dei venditori, spostando l'intero peso del costo di acquisizione sugli acquirenti esteri o locali che sottoscrivono contratti a Bali.\n\nLe implicazioni pratiche sono rilevanti soprattutto per investitori stranieri che pianificano l'acquisto di ville o complessi residenziali in queste zone strategicamente vitali. I professionisti della due diligence devono ora assicurarsi di avere accesso al certificato aggiornato del NJOP, poiché la scelta di utilizzare un prezzo transattivo superiore rispetto alla valutazione governativa potrebbe significativamente incrementare il costo totale dell'operazione. È fondamentale che le parti contraenti includano esplicitamente nel contratto di vendita una clausola che riqualifichi eventuali oneri accessori a carico del venditore o ne stabilisca con precisione la natura, evitando contestazioni future davanti agli uffici fiscali locali. In sintesi, l'adozione di regole rigide e uniformi favorisce un ambiente più trasparente per gli investitori, riducendo i rischi di errori amministrativi che in passato hanno spesso bloccato transazioni complesse nel settore reale balinese."
+  },
   "weekly_texts": {}
 }
