@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Building2, Loader2, Upload } from "lucide-react";
+import { Building2, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
@@ -22,6 +22,7 @@ import { KBLIEditorial } from "./company/KBLIEditorial";
 import { LegalTimeline } from "./company/LegalTimeline";
 import { CompanyDocUpload } from "./company/CompanyDocUpload";
 import { EditCompanyModal } from "./company/EditCompanyModal";
+import { AddCompanyModal } from "./modals/AddCompanyModal";
 
 // ============================================
 // COMPANY TAB (main export)
@@ -78,6 +79,7 @@ export function CompanyTab({
   const [companyDocs, setCompanyDocs] = useState<CompanyDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditingCompany, setIsEditingCompany] = useState(false);
+  const [isAddingCompany, setIsAddingCompany] = useState(false);
   const [reloadTrigger, setReloadTrigger] = useState(0);
 
   useEffect(() => {
@@ -327,13 +329,37 @@ export function CompanyTab({
 
   if (!companyData && !hasCompanyName && !hasAnyDoc) {
     return (
-      <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center space-y-2">
-        <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-40" />
-        <p className="text-sm font-medium text-[var(--bz-text-1)]">No company linked</p>
-        <p className="text-xs text-[var(--bz-text-2)] max-w-xs mx-auto">
-          This client has no associated company. Upload a PMA document or link a company from the database to get started.
-        </p>
-      </div>
+      <>
+        <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center space-y-4">
+          <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-40" />
+          <p className="text-sm font-medium text-[var(--bz-text-1)]">No company linked</p>
+          <p className="text-xs text-[var(--bz-text-2)] max-w-xs mx-auto">
+            This client has no associated company. Create a new company or link an existing one.
+          </p>
+          <button
+            onClick={() => setIsAddingCompany(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              background: "var(--bz-accent)",
+              color: "#fff",
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            Add Company
+          </button>
+        </div>
+        {isAddingCompany && (
+          <AddCompanyModal
+            clientId={clientId}
+            onClose={() => setIsAddingCompany(false)}
+            onSuccess={() => {
+              setIsAddingCompany(false);
+              setReloadTrigger((t) => t + 1);
+              void onRefresh();
+            }}
+          />
+        )}
+      </>
     );
   }
 
@@ -391,6 +417,22 @@ export function CompanyTab({
   // ── RENDER ─────────────────────────────────────────────────────────────
   return (
     <div className="max-w-[960px] mx-auto">
+      {/* ── ADD COMPANY BUTTON ─────────────────────────────────────────── */}
+      <div className="flex justify-end mb-3">
+        <button
+          onClick={() => setIsAddingCompany(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid var(--bz-border)",
+            color: "var(--bz-text-2)",
+          }}
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add Company
+        </button>
+      </div>
+
       {/* ── EDITORIAL HERO ─────────────────────────────────────────────── */}
       <EditorialHero
         companyName={companyName}
@@ -565,6 +607,19 @@ export function CompanyTab({
           onSave={() => {
             setIsEditingCompany(false);
             setReloadTrigger((t) => t + 1);
+          }}
+        />
+      )}
+
+      {/* ── ADD COMPANY MODAL ──────────────────────────────────────────── */}
+      {isAddingCompany && (
+        <AddCompanyModal
+          clientId={clientId}
+          onClose={() => setIsAddingCompany(false)}
+          onSuccess={() => {
+            setIsAddingCompany(false);
+            setReloadTrigger((t) => t + 1);
+            void onRefresh();
           }}
         />
       )}
