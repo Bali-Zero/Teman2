@@ -779,15 +779,16 @@ async def sync_company_drive_folder(
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
 
-        sa_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") or \
-                  "/Users/nuzantara/Desktop/codexyz/nuzantara-google-drive-sa-key-20260312.json"
         sa_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+        sa_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
 
         if sa_json:
             import tempfile
             with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
                 f.write(sa_json)
                 sa_path = f.name
+        elif not sa_path:
+            raise HTTPException(status_code=503, detail="Drive credentials not configured (set GOOGLE_CREDENTIALS_JSON)")
 
         creds = service_account.Credentials.from_service_account_file(
             sa_path,
