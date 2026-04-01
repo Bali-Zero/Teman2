@@ -756,16 +756,18 @@ async def _dispatch_ocr_by_folder(
     folder_name: str,
     filename: str,
     doc_id: int | None = None,
+    document_type: str | None = None,
 ) -> dict:
     """
     Central OCR dispatcher. Routes to the correct OCR handler based on
-    subfolder name and filename keywords.
+    subfolder name, filename keywords, and document_type.
 
     Returns:
         {"dispatched": True, "handler": "passport"} or {"dispatched": False}
     """
     fn_lower = filename.lower()
     folder_lower = folder_name.lower() if folder_name else ""
+    dtype_lower = (document_type or "").lower().replace("_", " ")
 
     # Passport detection
     if "passport" in fn_lower or (folder_lower.startswith("00_") and "passport" in fn_lower):
@@ -823,7 +825,7 @@ async def _dispatch_ocr_by_folder(
 
     # Company Profile / Profil Perseroan
     profile_keywords = ["company profile", "profil perseroan", "profil pt", "profil perusahaan", "profile perseroan"]
-    if any(kw in fn_lower for kw in profile_keywords):
+    if any(kw in fn_lower for kw in profile_keywords) or dtype_lower in ("company profile", "profile perseroan", "company_profile"):
         logger.info(f"OCR dispatch: company_profile for client {client_id}")
         return await _auto_ocr_company_profile(db_pool, client_id, file_id, doc_id)
 
