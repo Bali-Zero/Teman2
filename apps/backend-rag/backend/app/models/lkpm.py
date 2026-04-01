@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, computed_field, field_validator
 
 
 class LKPMStatus(str, Enum):
@@ -52,6 +52,7 @@ class InvestmentRealization(BaseModel):
     working_capital: int = 0
     other: int = 0
 
+    @computed_field
     @property
     def total_domestic(self) -> int:
         return (
@@ -63,10 +64,12 @@ class InvestmentRealization(BaseModel):
             + self.other
         )
 
+    @computed_field
     @property
     def total_import(self) -> int:
         return self.equipment_import + self.building_import + self.vehicle_import
 
+    @computed_field
     @property
     def grand_total(self) -> int:
         return self.total_domestic + self.total_import
@@ -85,6 +88,7 @@ class EmploymentData(BaseModel):
     tki: int = 0  # Tenaga Kerja Indonesia (local workers)
     tka: int = 0  # Tenaga Kerja Asing (foreign workers)
 
+    @computed_field
     @property
     def total(self) -> int:
         return self.tki + self.tka
