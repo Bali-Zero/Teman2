@@ -128,11 +128,11 @@ def test_interpreter_none_always_approved():
 # --- Integration: Reasoner + Interpreter ---
 
 @pytest.mark.asyncio
-async def test_reasoner_qwen_success():
-    """Mock Qwen returning a valid action."""
+async def test_reasoner_qwen9b_success():
+    """Mock Qwen 9B returning a valid action."""
     reasoner = SlowReasoner()
-    with patch.object(reasoner, "_call_qwen", new_callable=AsyncMock) as mock_qwen:
-        mock_qwen.return_value = ('{"action": "alert_human", "reason": "Backend unreachable for 3 pulses", "confidence": 0.85}', 0.0)
+    with patch.object(reasoner, "_call_ollama", new_callable=AsyncMock) as mock_ollama:
+        mock_ollama.return_value = ('{"action": "alert_human", "reason": "Backend unreachable for 3 pulses", "confidence": 0.85}', 0.0)
         proposal = await reasoner.think(
             health_status="red",
             response_time_ms=0,
@@ -141,33 +141,47 @@ async def test_reasoner_qwen_success():
         assert proposal.action == "alert_human"
         assert proposal.tier_used == 0
         assert proposal.cost_usd == 0.0
+        # Should have called with the fast model
+        mock_ollama.assert_called_once()
+        assert mock_ollama.call_args[0][0] == "qwen3.5:9b"
 
 
 @pytest.mark.asyncio
 async def test_reasoner_escalates_low_confidence():
-    """Qwen low confidence → escalates to Gemini."""
-    reasoner = SlowReasoner(gemini_api_key="test")
-    with patch.object(reasoner, "_call_qwen", new_callable=AsyncMock) as mock_qwen, \
-         patch.object(reasoner, "_call_gemini", new_callable=AsyncMock) as mock_gemini:
-        mock_qwen.return_value = ('{"action": "restart_service", "reason": "maybe", "confidence": 0.3}', 0.0)
-        mock_gemini.return_value = ('{"action": "alert_human", "reason": "better to alert", "confidence": 0.9}', 0.00004)
+    """Qwen 9B low confidence → escalates to Qwen 27B."""
+    reasoner = SlowReasoner()
+    call_count = 0
+
+    async def mock_ollama(model: str, system: str, user: str, timeout: float = 30.0) -> tuple[str, float]:
+        nonlocal call_count
+        call_count += 1
+        if model == "qwen3.5:9b":
+            return '{"action": "restart_service", "reason": "maybe", "confidence": 0.3}', 0.0
+        else:
+            return '{"action": "alert_human", "reason": "better to alert", "confidence": 0.9}', 0.0
+
+    with patch.object(reasoner, "_call_ollama", side_effect=mock_ollama):
         proposal = await reasoner.think(
             health_status="red",
             response_time_ms=0,
             error_message="Connection refused",
         )
-        assert proposal.tier_used == 1  # Escalated to Gemini
+        assert proposal.tier_used == 1  # Escalated to 27B
         assert proposal.action == "alert_human"
+        assert call_count == 2
 
 
 @pytest.mark.asyncio
-async def test_reasoner_qwen_failure_escalates():
-    """Qwen fails → escalates to Gemini."""
-    reasoner = SlowReasoner(gemini_api_key="test")
-    with patch.object(reasoner, "_call_qwen", new_callable=AsyncMock) as mock_qwen, \
-         patch.object(reasoner, "_call_gemini", new_callable=AsyncMock) as mock_gemini:
-        mock_qwen.side_effect = Exception("Ollama not running")
-        mock_gemini.return_value = ('{"action": "alert_human", "reason": "qwen down", "confidence": 0.8}', 0.00004)
+async def test_reasoner_9b_failure_escalates_to_27b():
+    """Qwen 9B fails → escalates to Qwen 27B."""
+    reasoner = SlowReasoner()
+
+    async def mock_ollama(model: str, system: str, user: str, timeout: float = 30.0) -> tuple[str, float]:
+        if model == "qwen3.5:9b":
+            raise Exception("Ollama not running")
+        return '{"action": "alert_human", "reason": "9b down", "confidence": 0.8}', 0.0
+
+    with patch.object(reasoner, "_call_ollama", side_effect=mock_ollama):
         proposal = await reasoner.think(
             health_status="yellow",
             response_time_ms=8000,
