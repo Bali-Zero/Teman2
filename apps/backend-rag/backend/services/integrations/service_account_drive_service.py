@@ -219,6 +219,8 @@ class ServiceAccountDriveService:
         STANDARD_SUBFOLDERS = [
             "00_Profile",
             "01_Immigration",
+            "01_Immigration/Actual Visa",
+            "01_Immigration/Previous Visa",
             "02_Company",
             "02_Company/AKTA",
             "02_Company/NIB",
@@ -316,6 +318,27 @@ class ServiceAccountDriveService:
             "root_folder_url": root_folder.get("webViewLink", ""),
             "subfolders": subfolders,
         }
+
+    async def move_file(
+        self,
+        file_id: str,
+        from_parent_id: str,
+        to_parent_id: str,
+    ) -> dict[str, Any]:
+        """
+        Move a file from one Drive folder to another.
+        Uses files.update with addParents/removeParents.
+        """
+        request = self.service.files().update(
+            fileId=file_id,
+            addParents=to_parent_id,
+            removeParents=from_parent_id,
+            fields="id, name, parents",
+            supportsAllDrives=True,
+        )
+        result = await asyncio.to_thread(request.execute)
+        logger.info(f"Moved file {file_id} from {from_parent_id} to {to_parent_id}")
+        return result
 
     async def get_start_page_token(self) -> str:
         """Get the current start page token for changes tracking."""
