@@ -339,7 +339,11 @@ def _build_html(
               <table cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td align="left" style="padding-bottom:36px;">
-                    <img src="https://kita.balizero.com/static/balizero-logo-clean.png" width="112" height="112" alt="Bali Zero" style="display:block;border-radius:50%;" />
+                    <table cellspacing="0" cellpadding="0" border="0"><tr>
+                      <td bgcolor="#0c0d0f" width="112" height="112" style="border-radius:50%;background-color:#0c0d0f;">
+                        <img src="https://kita.balizero.com/static/balizero-logo-clean.png" width="112" height="112" alt="Bali Zero" style="display:block;border-radius:50%;background-color:#0c0d0f;" />
+                      </td>
+                    </tr></table>
                   </td>
                 </tr>
                 <tr>
