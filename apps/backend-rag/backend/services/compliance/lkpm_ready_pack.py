@@ -51,8 +51,8 @@ def generate_ready_pack_html(pack: LKPMReadyPack) -> str:
 
     # Validation status indicator
     validation_html = ""
-    if pack.validation:
-        for alert in pack.validation.alerts:
+    if pack.validation_summary:
+        for alert in pack.validation_summary.alerts:
             color = {
                 ValidationSeverity.GREEN: "#28a745",
                 ValidationSeverity.YELLOW: "#ffc107",

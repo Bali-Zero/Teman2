@@ -402,7 +402,7 @@ class LKPMService:
             annual_revenue=draft.annual_revenue,
             narrative_obstacles=draft.narrative_obstacles,
             narrative_plans=draft.narrative_plans,
-            validation=draft.validation,
+            validation_summary=draft.validation,
             generated_at=datetime.now(timezone.utc),
         )
 

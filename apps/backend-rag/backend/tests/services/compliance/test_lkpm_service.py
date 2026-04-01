@@ -420,7 +420,7 @@ class TestReadyPack:
             cumulative=InvestmentRealization(),
             plan=InvestmentRealization(),
             employment=EmploymentData(),
-            validation=LKPMValidationResult(
+            validation_summary=LKPMValidationResult(
                 is_valid=False,
                 alerts=[
                     ValidationAlert(

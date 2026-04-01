@@ -360,7 +360,7 @@ export default function LKPMReviewPage() {
 function StatusBadge({
   status,
 }: {
-  status: "draft" | "validated" | "approved" | "submitted";
+  status: string;
 }) {
   const config: Record<string, { label: string; style: React.CSSProperties }> =
     {
@@ -372,6 +372,10 @@ function StatusBadge({
         label: "Validated",
         style: { background: "rgba(59,130,246,0.12)", color: "#60a5fa" },
       },
+      client_review: {
+        label: "Client Review",
+        style: { background: "rgba(168,85,247,0.12)", color: "#a78bfa" },
+      },
       approved: {
         label: "Approved",
         style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
@@ -379,6 +383,10 @@ function StatusBadge({
       submitted: {
         label: "Submitted",
         style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+      },
+      archived: {
+        label: "Archived",
+        style: { background: "rgba(107,114,128,0.12)", color: "#9ca3af" },
       },
     };
 

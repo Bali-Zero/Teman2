@@ -285,7 +285,13 @@ export interface LKPMDraftSummary {
   id: number;
   quarter: string;
   year: number;
-  status: "draft" | "validated" | "approved" | "submitted";
+  status:
+    | "draft"
+    | "validated"
+    | "client_review"
+    | "approved"
+    | "submitted"
+    | "archived";
   realized_total: number;
   created_at: string;
   updated_at: string;
@@ -296,7 +302,13 @@ export interface LKPMDraft {
   client_id: number;
   quarter: string;
   year: number;
-  status: "draft" | "validated" | "approved" | "submitted";
+  status:
+    | "draft"
+    | "validated"
+    | "client_review"
+    | "approved"
+    | "submitted"
+    | "archived";
   realized: LKPMInvestmentRealization;
   cumulative: LKPMInvestmentRealization;
   employment: LKPMEmploymentData;
@@ -333,7 +345,13 @@ export interface LKPMBatchItem {
   company_name: string;
   quarter: string;
   year: number;
-  status: "draft" | "validated" | "approved" | "submitted";
+  status:
+    | "draft"
+    | "validated"
+    | "client_review"
+    | "approved"
+    | "submitted"
+    | "archived";
   realized_total: number;
   red_alerts: number;
   yellow_alerts: number;

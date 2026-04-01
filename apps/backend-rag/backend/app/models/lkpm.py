@@ -282,7 +282,7 @@ class LKPMReadyPack(BaseModel):
     narrative_plans: str | None = None
 
     # Validation summary
-    validation: LKPMValidationResult | None = None
+    validation_summary: LKPMValidationResult | None = None
 
     # Ready pack metadata
     generated_at: datetime | None = None
