@@ -486,63 +486,98 @@ export default function NewsRoomPage() {
           </button>
         </div>
       ) : (
-        /* Article card grid */
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {filteredAndSortedItems.map((item) => (
+        /* Article card grid — liquid glassmorphism */
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {filteredAndSortedItems.map((item, idx) => (
             <div
               key={item.id}
-              className="rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg group relative"
+              className="group relative rounded-[20px] overflow-hidden transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_60px_-15px_rgba(212,132,90,0.2)]"
               style={{
-                background: "rgba(255,255,255,0.03)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                borderColor: "rgba(255,255,255,0.07)",
+                background:
+                  "linear-gradient(165deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 40%, rgba(212,132,90,0.03) 100%)",
+                backdropFilter: "blur(24px) saturate(1.4)",
+                WebkitBackdropFilter: "blur(24px) saturate(1.4)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px -4px rgba(0,0,0,0.3)",
+                animationDelay: `${idx * 40}ms`,
               }}
             >
+              {/* Animated gradient border glow on hover */}
+              <div
+                className="absolute inset-0 rounded-[20px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -z-[1]"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(212,132,90,0.15), rgba(139,92,246,0.1), rgba(59,130,246,0.1))",
+                  filter: "blur(1px)",
+                  margin: "-1px",
+                }}
+              />
+
+              {/* Light refraction line */}
+              <div
+                className="absolute top-0 left-0 right-0 h-px opacity-40 group-hover:opacity-70 transition-opacity duration-500 pointer-events-none"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.1) 70%, transparent 100%)",
+                }}
+              />
+
               {/* Critical ribbon */}
               {item.is_critical && (
                 <div className="absolute top-0 right-0 z-10">
                   <div
-                    className="flex items-center gap-1 px-2 py-1 text-[9px] font-bold rounded-bl-lg"
-                    style={{ background: "rgba(239,68,68,0.9)", color: "#fff" }}
+                    className="flex items-center gap-1 px-2 py-1 text-[8px] font-bold tracking-wider rounded-bl-xl"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(239,68,68,0.9), rgba(220,38,38,0.95))",
+                      color: "#fff",
+                      backdropFilter: "blur(8px)",
+                      boxShadow: "0 2px 12px rgba(239,68,68,0.3)",
+                    }}
                   >
-                    <Flame className="w-3 h-3" /> CRITICAL
+                    <Flame className="w-2.5 h-2.5" /> CRITICAL
                   </div>
                 </div>
               )}
 
-              {/* Checkbox overlay (top-left) */}
+              {/* Checkbox — frosted glass */}
               <div className="absolute top-2 left-2 z-10">
                 <button
                   onClick={() => toggleSelectItem(item.id)}
-                  className="w-6 h-6 rounded-md flex items-center justify-center transition-all"
+                  className="w-5 h-5 rounded-lg flex items-center justify-center transition-all duration-300 hover:scale-110"
                   style={{
-                    background: "rgba(0,0,0,0.5)",
-                    backdropFilter: "blur(4px)",
+                    background: selectedItems.has(item.id)
+                      ? "rgba(212,132,90,0.3)"
+                      : "rgba(0,0,0,0.35)",
+                    backdropFilter: "blur(12px)",
+                    border: selectedItems.has(item.id)
+                      ? "1px solid rgba(212,132,90,0.5)"
+                      : "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: selectedItems.has(item.id)
+                      ? "0 0 12px rgba(212,132,90,0.2)"
+                      : "none",
                   }}
                   aria-label={`Select ${item.title}`}
                 >
                   {selectedItems.has(item.id) ? (
-                    <CheckSquare
-                      className="w-4 h-4"
-                      style={{ color: "var(--bz-accent)" }}
-                    />
+                    <Check className="w-3 h-3" style={{ color: "#fff" }} />
                   ) : (
                     <Square
-                      className="w-4 h-4 opacity-60"
+                      className="w-3 h-3 opacity-50"
                       style={{ color: "#fff" }}
                     />
                   )}
                 </button>
               </div>
 
-              {/* Cover image */}
-              <div className="relative h-32 overflow-hidden">
+              {/* Cover image — with glass overlay */}
+              <div className="relative h-28 overflow-hidden">
                 {item.cover_image ? (
                   <img
                     src={item.cover_image}
                     alt={item.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                     }}
@@ -552,79 +587,97 @@ export default function NewsRoomPage() {
                     className="w-full h-full flex items-center justify-center"
                     style={{
                       background:
-                        "linear-gradient(135deg, rgba(212,132,90,0.08) 0%, rgba(99,102,241,0.08) 100%)",
+                        "linear-gradient(145deg, rgba(212,132,90,0.06) 0%, rgba(99,102,241,0.06) 50%, rgba(16,185,129,0.04) 100%)",
                     }}
                   >
                     <ImageIcon
-                      className="w-8 h-8"
+                      className="w-6 h-6 opacity-20"
                       style={{ color: "var(--bz-text-3)" }}
                     />
                   </div>
                 )}
-                {/* Hover overlay — desktop */}
+                {/* Bottom gradient fade into card body */}
                 <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 hidden sm:flex items-center justify-center gap-2"
+                  className="absolute bottom-0 left-0 right-0 h-8 pointer-events-none"
                   style={{
-                    background: "rgba(0,0,0,0.6)",
-                    backdropFilter: "blur(4px)",
+                    background:
+                      "linear-gradient(to top, rgba(12,12,14,0.8) 0%, transparent 100%)",
                   }}
-                >
+                />
+                {/* Hover actions — frosted glass pills */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 hidden sm:flex items-center justify-center gap-1.5">
                   <button
                     onClick={() => handlePreview(item)}
-                    className="p-2 rounded-lg transition-all hover:bg-white/[0.1]"
-                    style={{ border: "1px solid rgba(255,255,255,0.15)" }}
+                    className="p-1.5 rounded-xl transition-all duration-200 hover:scale-110"
+                    style={{
+                      background: "rgba(255,255,255,0.12)",
+                      backdropFilter: "blur(16px)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                    }}
                   >
-                    <Eye className="w-4 h-4 text-white" />
+                    <Eye className="w-3.5 h-3.5 text-white" />
                   </button>
                   <button
                     onClick={() => setEditingItem(item)}
-                    className="p-2 rounded-lg transition-all hover:bg-white/[0.1]"
-                    style={{ border: "1px solid rgba(255,255,255,0.15)" }}
+                    className="p-1.5 rounded-xl transition-all duration-200 hover:scale-110"
+                    style={{
+                      background: "rgba(255,255,255,0.12)",
+                      backdropFilter: "blur(16px)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                    }}
                   >
-                    <Edit className="w-4 h-4 text-white" />
+                    <Edit className="w-3.5 h-3.5 text-white" />
                   </button>
                   <button
                     onClick={() => setCoverUploadItem(item)}
-                    className="p-2 rounded-lg transition-all hover:bg-white/[0.1]"
-                    style={{ border: "1px solid rgba(255,255,255,0.15)" }}
+                    className="p-1.5 rounded-xl transition-all duration-200 hover:scale-110"
+                    style={{
+                      background: "rgba(255,255,255,0.12)",
+                      backdropFilter: "blur(16px)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+                    }}
                   >
-                    <ImageIcon className="w-4 h-4 text-white" />
+                    <ImageIcon className="w-3.5 h-3.5 text-white" />
                   </button>
                 </div>
-                {/* Touch fallback — always visible on mobile */}
-                <div className="absolute bottom-2 right-2 flex gap-1 sm:hidden">
+                {/* Mobile touch buttons */}
+                <div className="absolute bottom-1 right-1 flex gap-0.5 sm:hidden">
                   <button
                     onClick={() => setEditingItem(item)}
-                    className="p-1.5 rounded-md"
+                    className="p-1 rounded-lg"
                     style={{
-                      background: "rgba(0,0,0,0.7)",
-                      border: "1px solid rgba(255,255,255,0.15)",
+                      background: "rgba(0,0,0,0.6)",
+                      backdropFilter: "blur(8px)",
                     }}
                   >
-                    <Edit className="w-3 h-3 text-white" />
+                    <Edit className="w-2.5 h-2.5 text-white" />
                   </button>
                   <button
                     onClick={() => setCoverUploadItem(item)}
-                    className="p-1.5 rounded-md"
+                    className="p-1 rounded-lg"
                     style={{
-                      background: "rgba(0,0,0,0.7)",
-                      border: "1px solid rgba(255,255,255,0.15)",
+                      background: "rgba(0,0,0,0.6)",
+                      backdropFilter: "blur(8px)",
                     }}
                   >
-                    <ImageIcon className="w-3 h-3 text-white" />
+                    <ImageIcon className="w-2.5 h-2.5 text-white" />
                   </button>
                 </div>
               </div>
 
-              {/* Card body */}
-              <div className="p-3 space-y-2">
+              {/* Card body — glass text area */}
+              <div className="px-3 pt-2 pb-1.5 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span
-                    className="text-[9.5px] font-semibold px-2 py-0.5 rounded-full"
+                    className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded-md"
                     style={{
-                      background: "rgba(212,132,90,0.1)",
+                      background:
+                        "linear-gradient(135deg, rgba(212,132,90,0.12), rgba(212,132,90,0.06))",
                       color: "var(--bz-accent)",
-                      border: "1px solid rgba(212,132,90,0.15)",
+                      border: "1px solid rgba(212,132,90,0.12)",
                     }}
                   >
                     {item.source && item.source.startsWith("http")
@@ -641,10 +694,10 @@ export default function NewsRoomPage() {
                       : item.source || "intel"}
                   </span>
                   <span
-                    className="text-[10px] flex items-center gap-1"
-                    style={{ color: "var(--bz-text-2)" }}
+                    className="text-[9px] flex items-center gap-0.5"
+                    style={{ color: "var(--bz-text-3)" }}
                   >
-                    <Calendar className="w-3 h-3" />
+                    <Calendar className="w-2.5 h-2.5" />
                     {new Date(item.detected_at).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
@@ -652,16 +705,16 @@ export default function NewsRoomPage() {
                   </span>
                 </div>
                 <h3
-                  className="text-[12.5px] font-semibold leading-snug line-clamp-2"
+                  className="text-[11px] font-semibold leading-tight line-clamp-2"
                   style={{ color: "var(--bz-text-1)" }}
                 >
                   {item.title}
                 </h3>
               </div>
 
-              {/* Card footer */}
-              <div className="px-3 pb-3 space-y-2">
-                {/* Position select */}
+              {/* Card footer — glass actions */}
+              <div className="px-3 pb-2.5 pt-0.5 space-y-1.5">
+                {/* Position select — minimal */}
                 <Select
                   value={getPosition(item.id)}
                   onValueChange={(v) =>
@@ -669,15 +722,15 @@ export default function NewsRoomPage() {
                   }
                 >
                   <SelectTrigger
-                    className="h-7 text-[10.5px] rounded-lg"
+                    className="h-6 text-[9px] rounded-lg"
                     style={{
-                      background: "rgba(255,255,255,0.04)",
-                      borderColor: "rgba(255,255,255,0.07)",
-                      color: "var(--bz-text-2)",
+                      background: "rgba(255,255,255,0.03)",
+                      borderColor: "rgba(255,255,255,0.06)",
+                      color: "var(--bz-text-3)",
                     }}
                   >
                     <MapPin
-                      className="w-3 h-3 mr-1"
+                      className="w-2.5 h-2.5 mr-0.5"
                       style={{ color: "var(--bz-text-3)" }}
                     />
                     <SelectValue />
@@ -694,25 +747,26 @@ export default function NewsRoomPage() {
                     <SelectItem value="insight_3">Insight 3</SelectItem>
                   </SelectContent>
                 </Select>
-                {/* Publish button */}
+                {/* Publish button — liquid glass */}
                 <button
                   onClick={() => handlePublish(item)}
                   disabled={publishingIds.has(item.id)}
-                  className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
+                  className="w-full flex items-center justify-center gap-1 py-1.5 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 hover:shadow-[0_4px_20px_-4px_rgba(212,132,90,0.3)] disabled:opacity-50"
                   style={{
-                    background: "rgba(212,132,90,0.12)",
+                    background:
+                      "linear-gradient(135deg, rgba(212,132,90,0.15) 0%, rgba(212,132,90,0.08) 100%)",
                     color: "var(--bz-accent)",
-                    border: "1px solid rgba(212,132,90,0.2)",
+                    border: "1px solid rgba(212,132,90,0.18)",
+                    backdropFilter: "blur(8px)",
                   }}
                 >
                   {publishingIds.has(item.id) ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
-                      Publishing...
+                      <Loader2 className="w-3 h-3 animate-spin" /> Publishing...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-3.5 h-3.5" /> Publish
+                      <Sparkles className="w-3 h-3" /> Publish
                     </>
                   )}
                 </button>
@@ -722,41 +776,50 @@ export default function NewsRoomPage() {
         </div>
       )}
 
-      {/* Bulk actions sticky bar */}
+      {/* Bulk actions — floating glass bar */}
       {selectedItems.size > 0 && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2.5 rounded-2xl shadow-2xl z-50"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-5 py-3 rounded-2xl z-50 animate-in slide-in-from-bottom-4 duration-300"
           style={{
-            background: "rgba(18,18,20,0.9)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
+            background:
+              "linear-gradient(135deg, rgba(18,18,22,0.85) 0%, rgba(30,30,36,0.8) 100%)",
+            backdropFilter: "blur(32px) saturate(1.5)",
+            WebkitBackdropFilter: "blur(32px) saturate(1.5)",
             border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow:
+              "0 20px 60px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)",
           }}
         >
           <span
-            className="text-[12px] font-semibold"
-            style={{ color: "var(--bz-text-1)" }}
+            className="text-[12px] font-bold tabular-nums"
+            style={{
+              background: "linear-gradient(135deg, #f0ede8 0%, #d4845a 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
           >
             {selectedItems.size} selected
           </span>
           <div
             className="w-px h-4"
-            style={{ background: "rgba(255,255,255,0.1)" }}
+            style={{ background: "rgba(255,255,255,0.08)" }}
           />
           <button
             onClick={handleBulkPublish}
-            className="text-[11px] font-medium px-3 py-1.5 rounded-lg transition-all"
+            className="text-[11px] font-bold px-4 py-1.5 rounded-xl transition-all duration-300 hover:shadow-[0_4px_20px_-4px_rgba(212,132,90,0.4)]"
             style={{
-              background: "rgba(212,132,90,0.12)",
+              background:
+                "linear-gradient(135deg, rgba(212,132,90,0.2) 0%, rgba(212,132,90,0.1) 100%)",
               color: "var(--bz-accent)",
-              border: "1px solid rgba(212,132,90,0.2)",
+              border: "1px solid rgba(212,132,90,0.25)",
             }}
           >
             Publish all
           </button>
           <button
             onClick={() => setSelectedItems(new Set())}
-            className="text-[11px] px-3 py-1.5 rounded-lg transition-all hover:bg-white/[0.04]"
+            className="text-[11px] px-3 py-1.5 rounded-xl transition-all hover:bg-white/[0.06]"
             style={{ color: "var(--bz-text-2)" }}
           >
             Deselect
