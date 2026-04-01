@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Building2, Loader2, Plus } from "lucide-react";
+import { Building2, Loader2, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
@@ -80,6 +80,7 @@ export function CompanyTab({
   const [isLoading, setIsLoading] = useState(true);
   const [isEditingCompany, setIsEditingCompany] = useState(false);
   const [isAddingCompany, setIsAddingCompany] = useState(false);
+  const [isSyncingDrive, setIsSyncingDrive] = useState(false);
   const [reloadTrigger, setReloadTrigger] = useState(0);
 
   useEffect(() => {
@@ -417,8 +418,45 @@ export function CompanyTab({
   // ── RENDER ─────────────────────────────────────────────────────────────
   return (
     <div className="max-w-[960px] mx-auto">
-      {/* ── ADD COMPANY BUTTON ─────────────────────────────────────────── */}
-      <div className="flex justify-end mb-3">
+      {/* ── TOOLBAR ────────────────────────────────────────────────────── */}
+      <div className="flex justify-end gap-2 mb-3">
+        {co?.company_id && (
+          <button
+            onClick={async () => {
+              setIsSyncingDrive(true);
+              try {
+                const res = await api.post(`/api/crm/companies/${co.company_id}/sync-drive`, {}) as {
+                  added: number; skipped: number; total_in_folder: number;
+                };
+                toast.success(`Drive sync: ${res.added} added, ${res.skipped} skipped`, {
+                  description: `${res.total_in_folder} files in folder`,
+                });
+                if (res.added > 0) {
+                  setReloadTrigger((t) => t + 1);
+                  void onRefresh();
+                }
+              } catch (err) {
+                toast.error("Drive sync failed", { description: (err as Error).message });
+              } finally {
+                setIsSyncingDrive(false);
+              }
+            }}
+            disabled={isSyncingDrive}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid var(--bz-border)",
+              color: "var(--bz-text-2)",
+            }}
+          >
+            {isSyncingDrive ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5" />
+            )}
+            Sync Drive
+          </button>
+        )}
         <button
           onClick={() => setIsAddingCompany(true)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border"
