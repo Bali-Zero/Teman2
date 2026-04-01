@@ -28,6 +28,7 @@ PRACTICES_FULL_VIEW_EMAILS: set[str] = {
     "zero@balizero.com",
     "antonellosiano@gmail.com",
     "asya@balizero.com",
+    "ruslana@balizero.com",
 }
 
 logger = logging.getLogger(__name__)
@@ -77,8 +78,8 @@ def can_view_all_practices(user: dict) -> bool:
     if email in PRACTICES_FULL_VIEW_EMAILS:
         return True
 
-    # Role-based: admin role always sees everything
-    if role == "admin":
+    # Role-based: admin and board/management roles see everything
+    if role in ("admin", "board member", "ceo", "founder"):
         return True
 
     return False
