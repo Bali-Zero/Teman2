@@ -219,6 +219,8 @@ class ClientResponse(BaseModel):
     passport_number: str | None = None
     passport_expiry: str | None = None
     date_of_birth: str | None = None
+    gender: str | None = None
+    birthplace: str | None = None
     status: str
     client_type: str
     assigned_to: str | None = None
@@ -439,7 +441,7 @@ async def list_clients(
                 SELECT
                     c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
                     c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
-                    c.passport_number, c.passport_expiry, c.date_of_birth, c.company_name,
+                    c.passport_number, c.passport_expiry, c.date_of_birth, c.gender, c.birthplace, c.company_name,
                     c.tags, c.created_at, c.updated_at,
                     i.sentiment as last_sentiment,
                     i.summary as last_interaction_summary
@@ -535,7 +537,7 @@ async def get_client(
                 """SELECT c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
                    c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
                    c.tags, c.custom_fields, c.address, c.notes, c.passport_number, c.passport_expiry,
-                   c.date_of_birth, c.lead_source, c.service_interest, c.tax_id,
+                   c.date_of_birth, c.gender, c.birthplace, c.lead_source, c.service_interest, c.tax_id,
                    c.npwp, c.nib,
                    c.created_at, c.updated_at, c.created_by,
                    i.sentiment as last_sentiment,
@@ -584,7 +586,7 @@ async def get_client_by_email(
                 """SELECT c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
                    c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
                    c.tags, c.custom_fields, c.address, c.notes, c.passport_number, c.passport_expiry,
-                   c.date_of_birth, c.lead_source, c.service_interest, c.tax_id,
+                   c.date_of_birth, c.gender, c.birthplace, c.lead_source, c.service_interest, c.tax_id,
                    c.npwp, c.nib,
                    c.created_at, c.updated_at, c.created_by,
                    i.sentiment as last_sentiment,
@@ -672,6 +674,8 @@ async def update_client(
                 "custom_fields": "custom_fields",
                 "lead_source": "lead_source",
                 "service_interest": "service_interest",
+                "gender": "gender",
+                "birthplace": "birthplace",
             }
 
             # Date fields that need empty string → None conversion
@@ -977,6 +981,19 @@ async def get_clients_stats(
                 """,
             )
 
+            # Passport health counts
+            passport_health_row = await conn.fetchrow(
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE passport_expiry < CURRENT_DATE) as expired,
+                    COUNT(*) FILTER (WHERE passport_expiry >= CURRENT_DATE AND passport_expiry <= CURRENT_DATE + INTERVAL '90 days') as expiring_soon,
+                    COUNT(*) FILTER (WHERE last_interaction_date < NOW() - INTERVAL '30 days' OR last_interaction_date IS NULL) as silent_30d
+                FROM clients
+                WHERE deleted_at IS NULL AND status != 'inactive'
+                    AND passport_expiry IS NOT NULL
+                """,
+            )
+
             by_status = {row["status"]: row["count"] for row in by_status_rows}
             by_team_member = [dict(row) for row in by_team_member_rows]
             new_last_30_days = new_last_30_days_row["count"] if new_last_30_days_row else 0
@@ -988,6 +1005,9 @@ async def get_clients_stats(
                 "by_team_member": by_team_member,
                 "new_last_30_days": new_last_30_days,
                 "by_practice_type": by_practice_type,
+                "passport_expired": passport_health_row["expired"] if passport_health_row else 0,
+                "passport_expiring_soon": passport_health_row["expiring_soon"] if passport_health_row else 0,
+                "silent_30d": passport_health_row["silent_30d"] if passport_health_row else 0,
             }
 
     except HTTPException:
