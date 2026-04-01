@@ -9,16 +9,47 @@ interface Associate {
   shares_count?: number;
 }
 
+interface OcrShareholder {
+  name: string;
+  passport?: string;
+  nationality?: string;
+  role: string;
+  shares?: number;
+  value?: number;
+}
+
 interface PeopleColumnProps {
   associates: Associate[];
   fallbackName?: string;
+  customFields?: Record<string, unknown> | string;
+  totalShares?: number;
 }
 
-export function PeopleColumn({ associates, fallbackName }: PeopleColumnProps) {
-  if (associates.length === 0) return null;
+export function PeopleColumn({ associates, fallbackName, customFields, totalShares }: PeopleColumnProps) {
+  // If associates from client_company_links are incomplete, use OCR-extracted shareholders
+  const ocrShareholders: Associate[] = (() => {
+    try {
+      const cf = typeof customFields === 'string' ? JSON.parse(customFields) : customFields;
+      const sh = cf?.shareholders;
+      if (!sh) return [];
+      const parsed: OcrShareholder[] = typeof sh === 'string' ? JSON.parse(sh) : sh;
+      if (!Array.isArray(parsed) || parsed.length === 0) return [];
+      const total = totalShares || parsed.reduce((sum, s) => sum + (s.shares || 0), 0);
+      return parsed.map((s) => ({
+        client_name: s.name,
+        role: s.role?.toLowerCase() || 'shareholder',
+        shares_count: s.shares,
+        ownership_percentage: total > 0 && s.shares ? Math.round((s.shares / total) * 100 * 10) / 10 : undefined,
+      }));
+    } catch { return []; }
+  })();
+
+  // Use OCR shareholders if they have more detail than client_company_links
+  const people = ocrShareholders.length > associates.length ? ocrShareholders : associates;
+  if (people.length === 0) return null;
 
   // Build equity bar segments
-  const equitySegments = associates
+  const equitySegments = people
     .filter((a) => a.ownership_percentage && a.ownership_percentage > 0)
     .map((a) => {
       const colors = getRoleColor(a.role);
@@ -40,7 +71,7 @@ export function PeopleColumn({ associates, fallbackName }: PeopleColumnProps) {
       </div>
 
       {/* Person cards */}
-      {associates.map((a, i) => {
+      {people.map((a, i) => {
         const name = a.client_name || fallbackName || "?";
         const initials = getInitials(name);
         const colors = getRoleColor(a.role);
