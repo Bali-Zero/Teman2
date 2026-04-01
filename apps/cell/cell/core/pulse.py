@@ -38,9 +38,17 @@ class PulseEngine:
         alerter: Any = None,
         fly_effector: Any = None,
         logs_effector: Any = None,
+        local_effector: Any = None,
         db_sensor: Any = None,
         qdrant_sensor: Any = None,
         error_rate_sensor: Any = None,
+        ollama_sensor: Any = None,
+        backup_sensor: Any = None,
+        cron_sensor: Any = None,
+        vercel_sensor: Any = None,
+        stm: Any = None,
+        ltm: Any = None,
+        trend_detector: Any = None,
     ) -> None:
         self._dna = dna_loader
         self._safety = safety_gate
@@ -52,10 +60,20 @@ class PulseEngine:
         self._alerter = alerter
         self._fly = fly_effector
         self._logs = logs_effector
+        self._local = local_effector
         self._db_sensor = db_sensor
         self._qdrant_sensor = qdrant_sensor
         self._error_rate_sensor = error_rate_sensor
+        self._ollama_sensor = ollama_sensor
+        self._backup_sensor = backup_sensor
+        self._cron_sensor = cron_sensor
+        self._vercel_sensor = vercel_sensor
+        self._stm = stm
+        self._ltm = ltm
+        self._trend = trend_detector
         self._recent_pulses: list[dict] = []
+        self._ltm_cache: str = ""
+        self._ltm_cache_pulse: int = -999  # refresh every 60 pulses (~1h)
 
     async def single_pulse(self, pulse_number: int = 0) -> PulseResult:
         now = datetime.now(timezone.utc)
@@ -111,6 +129,31 @@ class PulseEngine:
             sensor_metadata["error_rate"] = error_reading.metadata
             error_rate_norm = error_reading.error_rate_norm
 
+        # New sensors — local visibility
+        ollama_status = "green"
+        if self._ollama_sensor is not None:
+            ollama_reading = await self._ollama_sensor.read()
+            sensor_metadata["ollama"] = ollama_reading.metadata
+            ollama_status = ollama_reading.status
+
+        backup_status = "green"
+        if self._backup_sensor is not None:
+            backup_reading = self._backup_sensor.read()
+            sensor_metadata["backup"] = backup_reading.metadata
+            backup_status = backup_reading.status
+
+        cron_status = "green"
+        if self._cron_sensor is not None:
+            cron_reading = self._cron_sensor.read()
+            sensor_metadata["cron"] = cron_reading.metadata
+            cron_status = cron_reading.status
+
+        vercel_status = "green"
+        if self._vercel_sensor is not None:
+            vercel_reading = await self._vercel_sensor.read()
+            sensor_metadata["vercel"] = vercel_reading.metadata
+            vercel_status = vercel_reading.status
+
         # Aggregate: final status is the worst across all sensors
         sensor_statuses = [http_status.value]
         if self._db_sensor is not None:
@@ -119,6 +162,7 @@ class PulseEngine:
             sensor_statuses.append(qdrant_reading.status)  # type: ignore[possibly-undefined]
         if self._error_rate_sensor is not None:
             sensor_statuses.append(error_reading.status)  # type: ignore[possibly-undefined]
+        sensor_statuses.extend([ollama_status, backup_status, cron_status, vercel_status])
 
         _severity = {"green": 0, "yellow": 1, "red": 2}
         worst = max(sensor_statuses, key=lambda s: _severity.get(s, 0))
@@ -146,6 +190,71 @@ class PulseEngine:
         action_reason = None
         thought_tier = None
 
+        # STM write — every pulse regardless of status
+        if self._stm is not None:
+            from cell.memory.short_term import Observation
+            try:
+                await self._stm.store(Observation(
+                    event_type="pulse",
+                    data={
+                        "pulse_number": pulse_number,
+                        "health_status": status.value,
+                        "response_time_ms": response_ms,
+                        "ollama": ollama_status,
+                        "backup": backup_status,
+                        "vercel": vercel_status,
+                    },
+                ))
+            except Exception as e:
+                logger.debug(f"STM write failed: {e}")
+
+        # Trend detection (FAST layer, <5ms)
+        trend_context = ""
+        if self._trend is not None:
+            trend = self._trend.detect(self._recent_pulses)
+            parts = []
+            if trend.monotonic_drift:
+                parts.append("⚠ MONOTONIC DRIFT: response time rising every pulse")
+            if trend.flapping:
+                parts.append("⚠ FLAPPING: health status alternating rapidly")
+            if trend.sustained_degraded:
+                parts.append("⚠ SUSTAINED DEGRADED: multiple consecutive non-green pulses")
+            trend_context = "\n".join(parts)
+            if trend_context:
+                logger.info(f"TrendDetector: {trend_context}")
+
+        # LTM context — refresh every 60 pulses (~1h)
+        ltm_context = self._ltm_cache
+        if self._ltm is not None and (pulse_number - self._ltm_cache_pulse) >= 60:
+            try:
+                rules = await self._ltm.load_rules()
+                if rules:
+                    ltm_context = self._ltm.format_for_prompt(rules)
+                    self._ltm_cache = ltm_context
+                    self._ltm_cache_pulse = pulse_number
+            except Exception as e:
+                logger.debug(f"LTM load failed: {e}")
+
+        # STM context for reasoner — last 5 observations
+        stm_context = ""
+        if self._stm is not None:
+            try:
+                recent_obs = await self._stm.recent(event_type="pulse", limit=5)
+                if recent_obs:
+                    lines = []
+                    for obs in recent_obs:
+                        d = obs.get("data", {})
+                        lines.append(
+                            f"  {obs.get('timestamp', '?')[:19]}: "
+                            f"health={d.get('health_status', '?')} "
+                            f"rt={d.get('response_time_ms', 0)}ms "
+                            f"ollama={d.get('ollama', '?')} "
+                            f"backup={d.get('backup', '?')}"
+                        )
+                    stm_context = "\n".join(lines)
+            except Exception as e:
+                logger.debug(f"STM read failed: {e}")
+
         if status != HealthStatus.GREEN and self._reasoner and self._interpreter:
             try:
                 proposal = await self._reasoner.think(
@@ -158,6 +267,9 @@ class PulseEngine:
                     db_ok=db_ok,
                     qdrant_ok=qdrant_ok,
                     error_rate_norm=error_rate_norm,
+                    stm_context=stm_context,
+                    trend_context=trend_context,
+                    ltm_context=ltm_context,
                 )
 
                 thought_tier = proposal.tier_used
@@ -219,6 +331,22 @@ class PulseEngine:
                                 health_status=status.value,
                                 pulse_number=pulse_number,
                             )
+                        # Execute local actions (ollama_restart, run_backup)
+                        elif proposal.action in {"ollama_restart", "run_backup"} and self._local:
+                            local_result = await self._local.execute(proposal.action)
+                            if local_result.success:
+                                logger.info(f"LocalEffector {proposal.action} OK: {local_result.detail[:80]}")
+                                action_reason = f"{proposal.reason} | executed: {local_result.detail}"
+                            else:
+                                logger.error(f"LocalEffector {proposal.action} FAILED: {local_result.detail[:80]}")
+                                action_reason = f"{proposal.reason} | FAILED: {local_result.detail}"
+                            if self._alerter:
+                                emoji = "✅" if local_result.success else "❌"
+                                await self._alerter.send(
+                                    f"{emoji} *{proposal.action.upper()}*\n"
+                                    f"{local_result.detail[:200]}\n"
+                                    f"Health: {status.value.upper()} | Confidence: {proposal.confidence:.0%}"
+                                )
                         # Execute alert_silent — write to cell_alerts (no Telegram)
                         elif proposal.action == "alert_silent":
                             await cell_db.log_alert(

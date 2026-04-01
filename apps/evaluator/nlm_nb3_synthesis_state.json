@@ -2,10 +2,14 @@
   "schema_version": 1,
   "notebook_id": "933509f9-1561-403d-bd44-4a7a67a36df2",
   "notebook_name": "NB-3: Company Setup Indonesia",
-  "last_updated": "2026-03-31T18:54:11.222045+00:00",
-  "daily_sources": {},
+  "last_updated": "2026-04-01T06:31:50.941391+00:00",
+  "daily_sources": {
+    "2026-04-01": "ok"
+  },
   "weekly_sources": {},
   "monthly_sources": {},
-  "daily_texts": {},
+  "daily_texts": {
+    "2026-04-01": "Il panorama normativo per gli investitori esteri a Bali sta subendo una trasformazione strutturale definitiva con l'entrata in vigore delle nuove disposizioni del 2025. Il passaggio dall'inventario KBLI 2020 alla versione aggiornata, regolamentato dal Decreto BKPM n. 5 del 2025, introduce classifiche di rischio molto più dettagliate che ridefiniscono le possibilità operative. Parallelamente, il quadro generale rimane ancorato al principio del \"lista positiva\", dove quasi tutti i settori operano come **TERBUKA**, consentendo la piena proprietà estera (100%), salvo rarissime eccezioni esplicitamente chiuse o soggette a quote massimali (**TERTUTUP**). Questa distinzione è cruciale per le startup e i nomadi digitali che intendono consolidare la loro presenza sull'isola: sebbene l'accesso ai settori chiave come il turismo e la tecnologia rimanga largamente aperto, la nuova tassonomia richiede una selezione accurata del codice KBLI per evitare automatismi burocratici. La vera novità risiede nella chiarezza introdotta sui settori ad alto rischio, che impone una due diligence più rigorosa prima della registrazione del PMA (Permintaan Managemen Asing). Per le aziende già operative, ciò significa un immediato riesame della propria classificazione industriale per garantire la compliance con i nuovi parametri di sicurezza economica. L'implicazione pratica è sostanziale: investire a Bali non è più solo una questione di opportunità di mercato, ma richiede un attento posizionamento in base alla nuova mappa del rischio nazionale. Gli operatori che ignorano questa evoluzione normativa rischiano vedere le proprie attività bloccate o costrette a ristrutturare i capitoli societari, rendendo essenziale integrare il legale esperto nel processo strategico di espansione dell'anno corrente."
+  },
   "weekly_texts": {}
 }
