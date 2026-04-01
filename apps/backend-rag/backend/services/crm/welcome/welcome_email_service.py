@@ -291,34 +291,38 @@ def _build_html(
     _advisor_email: str,
     advisor_wa: str | None = None,
 ) -> str:
-    """Assemble the welcome HTML email — light premium cream/gold design."""
+    """Assemble the welcome HTML email — dark premium design."""
     advisor_name = advisor_first if advisor_first else "our team"
-    # Use advisor's personal WA if available, fallback to Bali Zero main line
     wa_num = (advisor_wa or _BZ_WHATSAPP).lstrip("+")
     cta_label = f"Chat with {advisor_name} on WhatsApp"
 
+    # BG constants — all inline style, no separate bgcolor attr (Zoho strips bgcolor)
+    BG = "background-color:#0c0d0f;"
+    BG2 = "background-color:#101215;"
+    BG3 = "background-color:#161a1e;"
+    BG4 = "background-color:#1a1914;"
+    BGDIV = "background-color:#2a2520;"
+    BGGOLD = "background-color:#f9ca55;"
+
     divider = (
-        '<tr><td bgcolor="#0c0d0f" style="padding:0 40px;">'
+        f'<tr><td style="padding:0 40px;{BG}">'
         '<table cellspacing="0" cellpadding="0" border="0" width="100%"><tr>'
         '<td style="height:1px;background-color:#2a2520;font-size:1px;line-height:1px;">&nbsp;</td>'
         '</tr></table></td></tr>'
     )
 
     return f"""<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" style="background-color:#0c0d0f;">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>Welcome to Bali Zero</title>
   <style>
-    html,body{{margin:0;padding:0;background-color:#0c0d0f !important;}}
     body,table,td,a{{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}}
     table,td{{mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;}}
     img{{border:0;height:auto;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}}
     a[x-apple-data-detectors]{{color:inherit!important;text-decoration:none!important;}}
-    /* Force dark background on Zoho and other webmail clients */
-    div[style*="margin: 0px auto"]{{background-color:#0c0d0f !important;}}
     @media only screen and (max-width:600px){{
       .wrap{{width:100%!important;}}
       .pad{{padding-left:24px!important;padding-right:24px!important;}}
@@ -327,27 +331,24 @@ def _build_html(
     }}
   </style>
 </head>
-<body bgcolor="#0c0d0f" style="margin:0;padding:0;background-color:#0c0d0f;">
+<body style="margin:0;padding:0;{BG}">
 
   <div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#0c0d0f;">We handle the bureaucracy. You focus on Bali.</div>
 
-  <!-- Outer wrapper: dark bg forced via div (survives Zoho/Gmail CSS reset) -->
-  <div style="background-color:#0c0d0f;width:100%;margin:0;padding:0;">
-  <table cellspacing="0" cellpadding="0" border="0" width="100%" bgcolor="#0c0d0f" style="background-color:#0c0d0f;">
+  <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;{BG}">
     <tr>
-      <td align="center" bgcolor="#0c0d0f" style="padding:32px 16px 48px;background-color:#0c0d0f;">
-        <div style="background-color:#0c0d0f;max-width:580px;margin:0 auto;">
-        <table cellspacing="0" cellpadding="0" border="0" width="580" class="wrap" style="max-width:580px;background-color:#0c0d0f;" bgcolor="#0c0d0f">
+      <td align="center" style="padding:32px 16px 48px;{BG}">
+        <table cellspacing="0" cellpadding="0" border="0" width="580" class="wrap" style="max-width:580px;border-collapse:collapse;">
 
           <!-- ══ HERO ══ -->
           <tr>
-            <td bgcolor="#0c0d0f" style="padding:44px 40px 40px;border-radius:14px 14px 0 0;border:1px solid #1e1c18;border-bottom:none;" class="pad">
-              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+            <td style="padding:44px 40px 40px;{BG}border-radius:14px 14px 0 0;border:1px solid #1e1c18;border-bottom:none;" class="pad">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
                 <tr>
                   <td align="left" style="padding-bottom:36px;">
-                    <table cellspacing="0" cellpadding="0" border="0"><tr>
-                      <td bgcolor="#0c0d0f" width="112" height="112" style="border-radius:50%;background-color:#0c0d0f;">
-                        <img src="https://kita.balizero.com/static/balizero-logo-clean.png" width="112" height="112" alt="Bali Zero" style="display:block;border-radius:50%;background-color:#0c0d0f;" />
+                    <table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;"><tr>
+                      <td width="112" height="112" style="border-radius:50%;{BG}">
+                        <img src="https://kita.balizero.com/static/balizero-logo-clean.png" width="112" height="112" alt="Bali Zero" style="display:block;border-radius:50%;{BG}" />
                       </td>
                     </tr></table>
                   </td>
@@ -359,11 +360,11 @@ def _build_html(
                 </tr>
                 <tr>
                   <td style="padding:20px 0 0;">
-                    <table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#f9ca55" width="48" height="2" style="font-size:1px;line-height:1px;">&nbsp;</td></tr></table>
+                    <table cellspacing="0" cellpadding="0" border="0"><tr><td width="48" height="2" style="{BGGOLD}font-size:1px;line-height:1px;">&nbsp;</td></tr></table>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:27px;color:#6b6456;font-weight:400;">
+                  <td style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:27px;color:#8a7a6a;font-weight:400;">
                     You just made the smartest move for your life in Indonesia.<br>
                     <span style="color:#f9ca55;font-weight:700;">We&#39;ll take it from here.</span>
                   </td>
@@ -374,51 +375,51 @@ def _build_html(
 
           <!-- ══ WHAT HAPPENS NEXT ══ -->
           <tr>
-            <td bgcolor="#101215" style="padding:36px 40px 32px;border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad">
-              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+            <td style="padding:36px 40px 32px;{BG2}border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
                 <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:#f9ca55;text-transform:uppercase;letter-spacing:4px;padding-bottom:28px;">What happens next</td></tr>
               </table>
               <!-- step 1 -->
-              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
                 <tr>
                   <td width="52" valign="top" style="padding-right:16px;padding-bottom:20px;">
-                    <table cellspacing="0" cellpadding="0" border="0"><tr>
-                      <td bgcolor="#1a1914" width="44" height="44" align="center" valign="middle" style="border-radius:10px;border:1px solid #2e2b22;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;color:#f9ca55;text-align:center;vertical-align:middle;">01</td>
+                    <table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;"><tr>
+                      <td width="44" height="44" align="center" valign="middle" style="{BG4}border-radius:10px;border:1px solid #2e2b22;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;color:#f9ca55;text-align:center;vertical-align:middle;">01</td>
                     </tr></table>
                   </td>
                   <td valign="middle" style="padding-bottom:20px;">
                     <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;line-height:20px;">{advisor_name} will reach out</div>
-                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b6456;line-height:19px;padding-top:3px;">Quick intro call to understand your situation</div>
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8a7a6a;line-height:19px;padding-top:3px;">Quick intro call to understand your situation</div>
                   </td>
                 </tr>
-                <tr><td colspan="2" style="padding:0 0 20px 20px;"><table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#2a2520" width="1" height="20" style="font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td></tr>
+                <tr><td colspan="2" style="padding:0 0 20px 20px;"><table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;"><tr><td width="1" height="20" style="{BGDIV}font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td></tr>
               </table>
               <!-- step 2 -->
-              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
                 <tr>
                   <td width="52" valign="top" style="padding-right:16px;padding-bottom:20px;">
-                    <table cellspacing="0" cellpadding="0" border="0"><tr>
-                      <td bgcolor="#1a1914" width="44" height="44" align="center" valign="middle" style="border-radius:10px;border:1px solid #2e2b22;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;color:#c8a040;text-align:center;vertical-align:middle;">02</td>
+                    <table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;"><tr>
+                      <td width="44" height="44" align="center" valign="middle" style="{BG4}border-radius:10px;border:1px solid #2e2b22;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;color:#c8a040;text-align:center;vertical-align:middle;">02</td>
                     </tr></table>
                   </td>
                   <td valign="middle" style="padding-bottom:20px;">
                     <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;line-height:20px;">We build your roadmap</div>
-                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b6456;line-height:19px;padding-top:3px;">Clear timeline, pricing, documents needed</div>
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8a7a6a;line-height:19px;padding-top:3px;">Clear timeline, pricing, documents needed</div>
                   </td>
                 </tr>
-                <tr><td colspan="2" style="padding:0 0 20px 20px;"><table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#2a2520" width="1" height="20" style="font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td></tr>
+                <tr><td colspan="2" style="padding:0 0 20px 20px;"><table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;"><tr><td width="1" height="20" style="{BGDIV}font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td></tr>
               </table>
               <!-- step 3 -->
-              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
                 <tr>
                   <td width="52" valign="top" style="padding-right:16px;">
-                    <table cellspacing="0" cellpadding="0" border="0"><tr>
-                      <td bgcolor="#1a1914" width="44" height="44" align="center" valign="middle" style="border-radius:10px;border:1px solid #2e2b22;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;color:#9a7828;text-align:center;vertical-align:middle;">03</td>
+                    <table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;"><tr>
+                      <td width="44" height="44" align="center" valign="middle" style="{BG4}border-radius:10px;border:1px solid #2e2b22;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;color:#9a7828;text-align:center;vertical-align:middle;">03</td>
                     </tr></table>
                   </td>
                   <td valign="middle">
                     <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;line-height:20px;">We handle everything</div>
-                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b6456;line-height:19px;padding-top:3px;">You focus on Bali. We handle the bureaucracy.</div>
+                    <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8a7a6a;line-height:19px;padding-top:3px;">You focus on Bali. We handle the bureaucracy.</div>
                   </td>
                 </tr>
               </table>
@@ -429,47 +430,47 @@ def _build_html(
 
           <!-- ══ SERVICES ══ -->
           <tr>
-            <td bgcolor="#101215" style="padding:36px 40px 28px;border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad">
-              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+            <td style="padding:36px 40px 28px;{BG2}border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
                 <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:#f9ca55;text-transform:uppercase;letter-spacing:4px;padding-bottom:20px;">How we help</td></tr>
               </table>
-              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
                 <tr>
                   <td class="card" width="50%" valign="top" style="padding:0 5px 10px 0;">
-                    <table cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr><td bgcolor="#161a1e" style="padding:20px 16px;border-radius:10px;border:1px solid #252320;">
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
+                      <tr><td style="padding:20px 16px;{BG3}border-radius:10px;border:1px solid #252320;">
                         <div style="font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:26px;margin-bottom:10px;">&#127250;</div>
                         <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;">Immigration</div>
-                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b6456;padding-top:5px;line-height:17px;">KITAS &middot; KITAP &middot; D12 &middot; E33G<br>Retirement &middot; Second Home</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#8a7a6a;padding-top:5px;line-height:17px;">KITAS &middot; KITAP &middot; D12 &middot; E33G<br>Retirement &middot; Second Home</div>
                       </td></tr>
                     </table>
                   </td>
                   <td class="card" width="50%" valign="top" style="padding:0 0 10px 5px;">
-                    <table cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr><td bgcolor="#161a1e" style="padding:20px 16px;border-radius:10px;border:1px solid #252320;">
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
+                      <tr><td style="padding:20px 16px;{BG3}border-radius:10px;border:1px solid #252320;">
                         <div style="font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:26px;margin-bottom:10px;">&#127970;</div>
                         <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;">Business</div>
-                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b6456;padding-top:5px;line-height:17px;">PT PMA &middot; OSS &middot; NIB<br>Virtual Office &middot; Licenses</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#8a7a6a;padding-top:5px;line-height:17px;">PT PMA &middot; OSS &middot; NIB<br>Virtual Office &middot; Licenses</div>
                       </td></tr>
                     </table>
                   </td>
                 </tr>
                 <tr>
                   <td class="card" width="50%" valign="top" style="padding:0 5px 10px 0;">
-                    <table cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr><td bgcolor="#161a1e" style="padding:20px 16px;border-radius:10px;border:1px solid #252320;">
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
+                      <tr><td style="padding:20px 16px;{BG3}border-radius:10px;border:1px solid #252320;">
                         <div style="font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:26px;margin-bottom:10px;">&#128203;</div>
                         <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;">Tax &amp; Compliance</div>
-                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b6456;padding-top:5px;line-height:17px;">NPWP &middot; SPT &middot; LKPM<br>Withholding &middot; Reporting</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#8a7a6a;padding-top:5px;line-height:17px;">NPWP &middot; SPT &middot; LKPM<br>Withholding &middot; Reporting</div>
                       </td></tr>
                     </table>
                   </td>
                   <td class="card" width="50%" valign="top" style="padding:0 0 10px 5px;">
-                    <table cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr><td bgcolor="#161a1e" style="padding:20px 16px;border-radius:10px;border:1px solid #252320;">
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
+                      <tr><td style="padding:20px 16px;{BG3}border-radius:10px;border:1px solid #252320;">
                         <div style="font-family:Arial,Helvetica,sans-serif;font-size:22px;line-height:26px;margin-bottom:10px;">&#127968;</div>
                         <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;">Property</div>
-                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#6b6456;padding-top:5px;line-height:17px;">Hak Pakai &middot; Leasehold<br>Due Diligence &middot; Structure</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#8a7a6a;padding-top:5px;line-height:17px;">Hak Pakai &middot; Leasehold<br>Due Diligence &middot; Structure</div>
                       </td></tr>
                     </table>
                   </td>
@@ -480,9 +481,9 @@ def _build_html(
 
           <!-- ══ SOCIAL PROOF ══ -->
           <tr>
-            <td bgcolor="#0c0d0f" style="padding:36px 40px;border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad" align="center">
+            <td style="padding:36px 40px;{BG}border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad" align="center">
               <div style="font-family:Arial,Helvetica,sans-serif;font-size:54px;font-weight:900;color:#f9ca55;letter-spacing:-2px;line-height:54px;">10,800<span style="font-size:26px;vertical-align:super;color:#5a4a18;">+</span></div>
-              <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:#3a3428;text-transform:uppercase;letter-spacing:4px;padding-top:10px;">Expats served since 2019</div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:#4a3a28;text-transform:uppercase;letter-spacing:4px;padding-top:10px;">Expats served since 2019</div>
             </td>
           </tr>
 
@@ -490,30 +491,30 @@ def _build_html(
 
           <!-- ══ WHY US ══ -->
           <tr>
-            <td bgcolor="#101215" style="padding:36px 40px 32px;border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad">
-              <table cellspacing="0" cellpadding="0" border="0" width="100%">
+            <td style="padding:36px 40px 32px;{BG2}border-left:1px solid #1e1c18;border-right:1px solid #1e1c18;" class="pad">
+              <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
                 <tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:700;color:#f9ca55;text-transform:uppercase;letter-spacing:4px;padding-bottom:22px;">Why Bali Zero</td></tr>
                 <tr>
                   <td style="padding-bottom:16px;">
-                    <table cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
-                      <td width="14" valign="top" style="padding-right:12px;padding-top:6px;"><table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#f9ca55" width="6" height="6" style="border-radius:3px;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
-                      <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#6b6456;"><strong style="color:#ffffff;font-weight:700;">AI-powered tracking.</strong> Every deadline, document, and regulation change monitored &mdash; nothing falls through the cracks.</td>
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;"><tr>
+                      <td width="14" valign="top" style="padding-right:12px;padding-top:6px;"><table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;"><tr><td width="6" height="6" style="{BGGOLD}border-radius:3px;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
+                      <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#8a7a6a;"><strong style="color:#ffffff;font-weight:700;">AI-powered tracking.</strong> Every deadline, document, and regulation change monitored &mdash; nothing falls through the cracks.</td>
                     </tr></table>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding-bottom:16px;">
-                    <table cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
-                      <td width="14" valign="top" style="padding-right:12px;padding-top:6px;"><table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#f9ca55" width="6" height="6" style="border-radius:3px;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
-                      <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#6b6456;"><strong style="color:#ffffff;font-weight:700;">Based in Kerobokan.</strong> Real office, real team. We meet you in person and handle government offices directly.</td>
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;"><tr>
+                      <td width="14" valign="top" style="padding-right:12px;padding-top:6px;"><table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;"><tr><td width="6" height="6" style="{BGGOLD}border-radius:3px;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
+                      <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#8a7a6a;"><strong style="color:#ffffff;font-weight:700;">Based in Kerobokan.</strong> Real office, real team. We meet you in person and handle government offices directly.</td>
                     </tr></table>
                   </td>
                 </tr>
                 <tr>
                   <td>
-                    <table cellspacing="0" cellpadding="0" border="0" width="100%"><tr>
-                      <td width="14" valign="top" style="padding-right:12px;padding-top:6px;"><table cellspacing="0" cellpadding="0" border="0"><tr><td bgcolor="#f9ca55" width="6" height="6" style="border-radius:3px;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
-                      <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#6b6456;"><strong style="color:#ffffff;font-weight:700;">One team, everything.</strong> Immigration, company, tax, property &mdash; all under one roof.</td>
+                    <table cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;"><tr>
+                      <td width="14" valign="top" style="padding-right:12px;padding-top:6px;"><table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;"><tr><td width="6" height="6" style="{BGGOLD}border-radius:3px;font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td>
+                      <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:22px;color:#8a7a6a;"><strong style="color:#ffffff;font-weight:700;">One team, everything.</strong> Immigration, company, tax, property &mdash; all under one roof.</td>
                     </tr></table>
                   </td>
                 </tr>
@@ -523,22 +524,22 @@ def _build_html(
 
           <!-- ══ CTA ══ -->
           <tr>
-            <td bgcolor="#0c0d0f" style="padding:36px 40px 44px;border-radius:0 0 14px 14px;border:1px solid #1e1c18;border-top:none;" class="pad" align="center">
-              <table cellspacing="0" cellpadding="0" border="0">
+            <td style="padding:36px 40px 44px;{BG}border-radius:0 0 14px 14px;border:1px solid #1e1c18;border-top:none;" class="pad" align="center">
+              <table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
                 <tr>
-                  <td bgcolor="#f9ca55" style="border-radius:10px;">
+                  <td style="{BGGOLD}border-radius:10px;">
                     <a href="https://wa.me/{wa_num}?text=Hi%20Bali%20Zero%2C%20I%20just%20signed%20up" target="_blank" style="display:inline-block;padding:16px 44px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:900;color:#0c0d0f;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;">{cta_label}</a>
                   </td>
                 </tr>
               </table>
-              <div style="padding-top:14px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#3a3428;">or reply directly to this email</div>
+              <div style="padding-top:14px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#4a3a28;">or reply directly to this email</div>
             </td>
           </tr>
 
           <!-- ══ FOOTER ══ -->
           <tr>
-            <td align="center" bgcolor="#0c0d0f" style="padding:28px 40px 0;background-color:#0c0d0f;" class="pad">
-              <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#3a3428;line-height:20px;">
+            <td align="center" style="padding:28px 40px 0;{BG}" class="pad">
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#4a3a28;line-height:20px;">
                 <strong style="color:#5a4a18;">Bali Zero</strong> &middot; Kerobokan, Bali, Indonesia<br>
                 <a href="https://www.balizero.com" style="color:#c8a040;text-decoration:none;">balizero.com</a>
                 &nbsp;&middot;&nbsp;
@@ -553,11 +554,9 @@ def _build_html(
           </tr>
 
         </table>
-        </div><!-- /inner div -->
       </td>
     </tr>
   </table>
-  </div><!-- /outer div -->
 
 </body>
 </html>"""
