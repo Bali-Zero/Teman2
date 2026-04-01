@@ -414,30 +414,67 @@ def _nlm_source_add(
     notebook_id: str,
     title: str,
     content: str,
-    timeout: int = 60,
+    timeout: int = 90,
 ) -> Optional[str]:
-    """Add a text source to NLM notebook. Returns source_id or None."""
+    """Add a text source to NLM notebook. Returns source_id or None.
+
+    Uses stdin piping to avoid shell argument size limits.
+    Parses both JSON and plain-text output formats from nlm CLI.
+    """
     cmd = [
         NLM_CLI, "source", "add",
         notebook_id,
         "--title", title,
-        "--text", content,
+        "--source-type", "text",
+        "--wait",  # Wait for NLM to index before returning
     ]
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout,
+            cmd,
+            input=content,  # Pass content via stdin (avoids ARG_MAX limits)
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
         if result.returncode != 0:
             logger.error("nlm source add failed: %s", result.stderr.strip())
             return None
-        # nlm CLI outputs plain text: "Source ID: <uuid>"
+
         output = result.stdout.strip()
-        for line in output.splitlines():
-            if line.startswith("Source ID:"):
-                source_id = line.split(":", 1)[1].strip()
-                logger.info("Source added: %s → %s", title, source_id)
+        if not output:
+            logger.warning("nlm source add: empty output for '%s'", title)
+            return None
+
+        # Strategy 1: Try JSON parsing (nlm CLI v0.5.x format)
+        try:
+            data = json.loads(output)
+            if "value" in data and isinstance(data["value"], dict):
+                data = data["value"]
+            source_id = (
+                data.get("source_id")
+                or data.get("id")
+                or data.get("sourceId")
+            )
+            if source_id:
+                logger.info("Source added (JSON): %s → %s", title, source_id)
                 return source_id
-        logger.warning("nlm source add: could not parse source_id from: %s", output[:200])
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        # Strategy 2: Plain text "Source ID: <uuid>" format
+        for line in output.splitlines():
+            if "source" in line.lower() and "id" in line.lower() and ":" in line:
+                source_id = line.split(":", 1)[1].strip()
+                if len(source_id) >= 8:  # Sanity: at least looks like an ID
+                    logger.info("Source added (text): %s → %s", title, source_id)
+                    return source_id
+
+        logger.warning(
+            "nlm source add: could not parse source_id from: %s", output[:200],
+        )
+        return None
+    except subprocess.TimeoutExpired:
+        logger.error("nlm source add timed out for '%s' (%ds)", title, timeout)
         return None
     except Exception:
         logger.exception("nlm source add error for '%s'", title)
@@ -662,18 +699,18 @@ async def run_sync(
             results["sources_skipped"] += 1
             continue
 
-        # Delete old source if exists
+        # Add new source FIRST, then delete old (add-then-delete = no data loss window)
         old_hash = state.source_hashes.get(source_name)
-        if old_hash and old_hash.nlm_source_id:
-            _nlm_source_delete(notebook_id, old_hash.nlm_source_id)
-
-        # Upload new source
         source_id = _nlm_source_add(notebook_id, title, content)
         if source_id:
+            # New source is live — safe to delete old one
+            if old_hash and old_hash.nlm_source_id:
+                _nlm_source_delete(notebook_id, old_hash.nlm_source_id)
             state.record_upload(source_name, content, source_id)
             results["sources_uploaded"] += 1
             logger.info("Uploaded %s → %s (source_id=%s)", source_name, nb_key, source_id)
         else:
+            # Add failed — old source stays intact, no data loss
             state.record_nlm_failure()
             results["sources_failed"] += 1
             results["errors"].append(f"Failed to upload {source_name}")
@@ -691,11 +728,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--db-url",
-        default=os.environ.get(
-            "DATABASE_URL",
-            "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
-        ),
-        help="PostgreSQL connection URL",
+        default=os.environ.get("DATABASE_URL", ""),
+        help="PostgreSQL connection URL (or set DATABASE_URL env var)",
     )
     parser.add_argument("--nb-ops-id", default=os.environ.get("NB_OPS_ID", ""))
     parser.add_argument("--nb-intel-id", default=os.environ.get("NB_INTEL_ID", ""))
@@ -726,6 +760,10 @@ def main() -> None:
             "No notebook IDs configured. Pass --nb-ops-id, --nb-intel-id, "
             "--nb-telemetry-id or set NB_OPS_ID, NB_INTEL_ID, NB_TELEMETRY_ID env vars."
         )
+        sys.exit(1)
+
+    if not args.db_url:
+        logger.error("No DATABASE_URL configured. Pass --db-url or set DATABASE_URL env var.")
         sys.exit(1)
 
     # PID lock
