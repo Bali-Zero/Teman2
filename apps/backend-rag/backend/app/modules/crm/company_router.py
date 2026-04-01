@@ -3,12 +3,16 @@ Company Router - API endpoints for Company-Centric CRM
 Uses asyncpg like other CRM routers
 """
 
+import logging
+import os
 from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.app.dependencies import get_current_user, get_database_pool
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/crm/companies", tags=["CRM Companies"])
 
@@ -716,3 +720,198 @@ async def get_company_tax_record(
 
 # ========== CLIENT-SPECIFIC COMPANY ENDPOINTS ==========
 # NOTE: by-name and by-client routes are defined BEFORE /{company_id} above to avoid routing conflicts
+
+
+# ========== DRIVE SYNC ENDPOINT ==========
+
+# Map filename keywords → document_type
+_DRIVE_FILENAME_TO_DOCTYPE: list[tuple[list[str], str]] = [
+    (["akta pendirian", "akta_pendirian", "deed of establishment"], "akta_pendirian"),
+    (["akta perubahan", "akta_perubahan", "amendment"], "akta_perubahan"),
+    (["sk kemenkumham", "sk pendirian", "sk_pendirian", "sk_decree", "sk kemenkum", "sk menkumham"], "sk_decree"),
+    (["npwp"], "npwp"),
+    (["nib", "nomor induk berusaha"], "nib"),
+    (["company profile", "profil perseroan", "profil pt", "profile perseroan"], "company_profile"),
+    (["wlkp"], "wlkp"),
+    (["bpjs ketenagakerjaan", "bpjs"], "bpjs"),
+    (["organogram", "bagan organisasi"], "organogram"),
+    (["rekening koran"], "rekening_koran"),
+    (["izin usaha", "siup"], "siup"),
+    (["tdp"], "tdp"),
+    (["domisili"], "domisili"),
+    (["imta", "rptka"], "imta"),
+]
+
+
+def _infer_doc_type(filename: str) -> str:
+    """Infer document_type from filename keywords."""
+    fn = filename.lower()
+    for keywords, doc_type in _DRIVE_FILENAME_TO_DOCTYPE:
+        if any(kw in fn for kw in keywords):
+            return doc_type
+    return "other"
+
+
+@router.post("/{company_id}/sync-drive", response_model=dict[str, Any])
+async def sync_company_drive_folder(
+    company_id: int,
+    db: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Scan the company's Google Drive folder and upsert files into company_documents.
+    Files already tracked (by google_drive_file_id) are skipped.
+    Returns a summary: {added, skipped, total, docs}.
+    """
+    async with db.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT id, company_name, google_drive_folder_id FROM companies WHERE id = $1",
+            company_id,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Company not found")
+        folder_id: str | None = row["google_drive_folder_id"]
+        if not folder_id:
+            raise HTTPException(status_code=400, detail="Company has no Google Drive folder linked")
+
+    # Build Drive service using SA credentials
+    try:
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+
+        sa_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+        sa_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+
+        if sa_json:
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+                f.write(sa_json)
+                sa_path = f.name
+        elif not sa_path:
+            raise HTTPException(status_code=503, detail="Drive credentials not configured (set GOOGLE_CREDENTIALS_JSON)")
+
+        creds = service_account.Credentials.from_service_account_file(
+            sa_path,
+            scopes=["https://www.googleapis.com/auth/drive.readonly"],
+        )
+        service = build("drive", "v3", credentials=creds)
+    except Exception as e:
+        logger.error(f"[sync-drive] Failed to build Drive service: {e}")
+        raise HTTPException(status_code=503, detail=f"Drive auth error: {e}")
+
+    def _list_files_recursive(fid: str, depth: int = 0) -> list[dict]:
+        """Recursively list all non-folder files under a Drive folder (max depth 4)."""
+        if depth > 4:
+            return []
+        all_files: list[dict] = []
+        page_token = None
+        while True:
+            kwargs: dict = dict(
+                q=f"'{fid}' in parents and trashed=false",
+                fields="nextPageToken, files(id, name, mimeType, webViewLink)",
+                pageSize=100,
+            )
+            if page_token:
+                kwargs["pageToken"] = page_token
+            resp = service.files().list(**kwargs).execute()
+            for item in resp.get("files", []):
+                if item.get("mimeType") == "application/vnd.google-apps.folder":
+                    all_files.extend(_list_files_recursive(item["id"], depth + 1))
+                else:
+                    all_files.append(item)
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+        return all_files
+
+    # Collect all files recursively
+    try:
+        files = _list_files_recursive(folder_id)
+    except Exception as e:
+        logger.error(f"[sync-drive] Drive list error for folder {folder_id}: {e}")
+        raise HTTPException(status_code=503, detail=f"Drive list error: {e}")
+
+    added: list[dict] = []
+    skipped: list[str] = []
+    ocr_tasks: list[tuple[str, str, str, int]] = []  # (file_id, filename, doc_type, doc_id)
+
+    async with db.acquire() as conn:
+        # Find primary client_id for OCR dispatcher (needs client context)
+        primary_client_id: int | None = await conn.fetchval(
+            "SELECT client_id FROM client_company_links WHERE company_id = $1 AND is_primary = true LIMIT 1",
+            company_id,
+        ) or await conn.fetchval(
+            "SELECT client_id FROM client_company_links WHERE company_id = $1 LIMIT 1",
+            company_id,
+        )
+
+        for f in files:
+            file_id = f["id"]
+            filename = f["name"]
+            web_url = f.get("webViewLink") or f"https://drive.google.com/file/d/{file_id}/view"
+
+            # Check if already tracked
+            existing = await conn.fetchval(
+                "SELECT id FROM company_documents WHERE company_id = $1 AND google_drive_file_id = $2",
+                company_id, file_id,
+            )
+            if existing:
+                skipped.append(filename)
+                continue
+
+            doc_type = _infer_doc_type(filename)
+
+            doc_id = await conn.fetchval(
+                """
+                INSERT INTO company_documents
+                  (company_id, document_type, file_name, google_drive_file_id, google_drive_file_url, status, is_verified)
+                VALUES ($1, $2, $3, $4, $5, 'active', false)
+                RETURNING id
+                """,
+                company_id, doc_type, filename, file_id, web_url,
+            )
+            added.append({"id": doc_id, "file_name": filename, "document_type": doc_type})
+            logger.info(f"[sync-drive] Added doc {filename} ({doc_type}) → company {company_id}")
+
+            # Queue for OCR if applicable
+            if doc_type in ("npwp", "nib", "company_profile") and primary_client_id:
+                ocr_tasks.append((file_id, filename, doc_type, doc_id))
+
+    # Trigger OCR in background for newly added docs
+    if ocr_tasks and primary_client_id:
+        import asyncio
+
+        async def _run_ocr_tasks() -> None:
+            try:
+                from backend.app.routers.crm_enhanced import _dispatch_ocr_by_folder
+                from backend.app.dependencies import get_app_database_pool
+                ocr_pool = get_app_database_pool()
+                for fid, fname, dtype, did in ocr_tasks:
+                    try:
+                        await _dispatch_ocr_by_folder(
+                            db_pool=ocr_pool,
+                            client_id=primary_client_id,
+                            file_id=fid,
+                            folder_name="02_Company",
+                            filename=fname,
+                            doc_id=None,  # company_documents id, not documents id
+                            document_type=dtype,
+                        )
+                        logger.info(f"[sync-drive] OCR dispatched for {fname} ({dtype})")
+                    except Exception as e:
+                        logger.warning(f"[sync-drive] OCR failed for {fname}: {e}")
+            except Exception as e:
+                logger.error(f"[sync-drive] OCR background task error: {e}")
+
+        asyncio.create_task(_run_ocr_tasks())
+        logger.info(f"[sync-drive] Queued {len(ocr_tasks)} OCR tasks in background")
+
+    return {
+        "company_id": company_id,
+        "folder_id": folder_id,
+        "added": len(added),
+        "skipped": len(skipped),
+        "total_in_folder": len(files),
+        "docs": added,
+        "ocr_queued": len(ocr_tasks),
+    }

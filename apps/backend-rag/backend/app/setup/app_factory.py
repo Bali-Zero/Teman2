@@ -144,6 +144,24 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"⚠️ Failed to initialize Legal Ingestion Worker: {e}")
 
+        # Initialize Practice Status Listener (M4 + M5)
+        # Listens on pg_notify 'practice_changed' channel for real-time email dispatch:
+        # - M4: payment_status → 'paid' → payment confirmation to client + team member
+        # - M5: status milestone (on_process / submitted / approved / completed) → client email
+        try:
+            from backend.services.crm.practice_status_listener import PracticeStatusListener
+
+            db_dsn = settings.database_url
+            practice_listener = PracticeStatusListener(
+                db_dsn=db_dsn,
+                db_pool=app.state.db_pool,
+            )
+            await practice_listener.start()
+            app.state.practice_status_listener = practice_listener
+            logger.info("✅ Practice Status Listener started (M4 + M5 notifications)")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to initialize Practice Status Listener: {e}")
+
     # Schedule background initialization
     init_task = asyncio.create_task(_background_init())
     app.state._init_task = init_task
@@ -256,6 +274,12 @@ async def lifespan(app: FastAPI):
     if ts_service:
         await ts_service.stop_auto_logout_monitor()
         logger.info("✅ Team Timesheet Service stopped")
+
+    # Shutdown Practice Status Listener (M4 + M5)
+    practice_listener = getattr(app.state, "practice_status_listener", None)
+    if practice_listener:
+        await practice_listener.stop()
+        logger.info("✅ Practice Status Listener stopped")
 
     # Shutdown X Monitor
     x_monitor = getattr(app.state, "x_monitor_service", None)
