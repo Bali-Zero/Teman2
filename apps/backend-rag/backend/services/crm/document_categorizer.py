@@ -129,15 +129,22 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
             "tax id company",
         ],
         "profile_perseroan": [
+            "profil perseroan",
             "profile perseroan",
             "company profile",
             "profil perusahaan",
+            "profile perusahaan",
             "company presentation",
             "profil pt",
+            "profil perseroan baru",
         ],
         "siup": ["siup", "tdp", "izin usaha", "business license"],
         "domicile": ["surat domisili", "domicile letter", "keterangan domisili"],
         "legalisation": ["legalisation", "legalisasi", "apostille", "notarised"],
+        "wlkp": ["wlkp", "wajib lapor", "lapor ketenagakerjaan"],
+        "bpjs": ["bpjs", "bpjs ketenagakerjaan", "bpjs kesehatan"],
+        "organogram": ["bagan organisasi", "organogram", "organization chart", "org chart", "struktur organisasi"],
+        "rekening_koran": ["rekening koran perusahaan", "bank statement company", "rekening koran pt"],
     },
     # ── 03_Tax: tax documents ────────────────────────────────────────────────
     "tax": {
