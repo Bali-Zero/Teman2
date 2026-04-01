@@ -18,6 +18,7 @@ class AlertType(str, Enum):
     PASSPORT_EXPIRED = "passport_expired"
     VISA_WARNING = "visa_warning"  # 4 months
     VISA_CRITICAL = "visa_critical"  # 2 months
+    VISA_EMERGENCY = "visa_emergency"  # 7 days — multi-channel blast
     VISA_EXPIRED = "visa_expired"
     BIRTHDAY = "birthday"
 
