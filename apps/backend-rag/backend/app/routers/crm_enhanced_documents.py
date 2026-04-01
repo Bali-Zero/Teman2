@@ -724,6 +724,7 @@ async def upload_document_base64(
                 folder_name,
                 data.file_name,
                 doc_id,
+                data.document_type,
             )
             await conn.execute(
                 "UPDATE documents SET ocr_status = 'pending' WHERE id = $1",

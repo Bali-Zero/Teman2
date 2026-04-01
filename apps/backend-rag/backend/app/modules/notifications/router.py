@@ -51,14 +51,23 @@ class StatusResponse(BaseModel):
     email_provider: str
 
 
+class EmailAttachment(BaseModel):
+    """Email attachment (base64-encoded)."""
+
+    name: str
+    content: str                        # base64-encoded
+    contentType: str = "application/pdf"
+
+
 class SendEmailRequest(BaseModel):
     """Request body for sending a direct email."""
 
     to: str
     subject: str
     body: str
-    cc: str | None = None   # comma-separated CC addresses
-    bcc: str | None = None  # comma-separated BCC addresses
+    cc: str | None = None               # comma-separated CC addresses
+    bcc: str | None = None              # comma-separated BCC addresses
+    attachments: list[EmailAttachment] | None = None
 
 
 class SendEmailResponse(BaseModel):
@@ -295,12 +304,13 @@ async def send_direct_email(
     """
     cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
     bcc_list = [b.strip() for b in request.bcc.split(",")] if request.bcc else None
+    attachments = [a.model_dump() for a in request.attachments] if request.attachments else None
 
     # Route: intra-domain (@balizero.com) → Zoho SMTP, external → Brevo
     if request.to.endswith("@balizero.com"):
-        result = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list, bcc_list)
+        result = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list, bcc_list, attachments)
     else:
-        result = await _send_via_brevo(request.to, request.subject, request.body, cc_list, bcc_list)
+        result = await _send_via_brevo(request.to, request.subject, request.body, cc_list, bcc_list, attachments)
 
     if result:
         logger.info(f"Direct email sent to {request.to} — {request.subject!r}")
@@ -309,9 +319,9 @@ async def send_direct_email(
     # Fallback: if primary fails, try the other channel
     logger.warning(f"Primary channel failed for {request.to}, trying fallback")
     if request.to.endswith("@balizero.com"):
-        fallback = await _send_via_brevo(request.to, request.subject, request.body, cc_list, bcc_list)
+        fallback = await _send_via_brevo(request.to, request.subject, request.body, cc_list, bcc_list, attachments)
     else:
-        fallback = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list, bcc_list)
+        fallback = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list, bcc_list, attachments)
 
     if fallback:
         logger.info(f"Email sent to {request.to} via fallback — {request.subject!r}")
@@ -326,13 +336,17 @@ async def _send_via_zoho_smtp(
     body: str,
     cc_list: list[str] | None,
     bcc_list: list[str] | None = None,
+    attachments: list[dict] | None = None,
 ) -> bool:
     """Send via Zoho SMTP (for intra-domain @balizero.com delivery)."""
+    import base64
+    from email.mime.base import MIMEBase
+    from email import encoders
+
     try:
         from backend.app.modules.notifications.service import SMTPProvider
 
         provider = SMTPProvider()
-        # zantara@ is now an alias of zero@ (SMTP_USER), so Zoho allows sending as zantara@
         return await provider.send_email(
             to_email=to_email,
             subject=subject,
@@ -341,6 +355,7 @@ async def _send_via_zoho_smtp(
             from_name="Zantara",
             cc=cc_list,
             bcc=bcc_list,
+            attachments=attachments,
         )
     except Exception as e:
         logger.error(f"Zoho SMTP failed for {to_email}: {e}")
@@ -353,6 +368,7 @@ async def _send_via_brevo(
     body: str,
     cc_list: list[str] | None,
     bcc_list: list[str] | None = None,
+    attachments: list[dict] | None = None,
 ) -> bool:
     """Send via Brevo HTTP API (for external delivery)."""
     import os
@@ -373,6 +389,11 @@ async def _send_via_brevo(
         payload["cc"] = [{"email": e} for e in cc_list]
     if bcc_list:
         payload["bcc"] = [{"email": e} for e in bcc_list]
+    if attachments:
+        payload["attachment"] = [
+            {"name": a.get("name", "attachment"), "content": a.get("content", "")}
+            for a in attachments
+        ]
 
     is_brevo = api_key.startswith("xkeysib-")
     url = "https://api.brevo.com/v3/smtp/email" if is_brevo else "https://api.sendgrid.com/v3/mail/send"
