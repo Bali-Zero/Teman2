@@ -86,7 +86,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         Returns:
             Updated client record.
         """
-        return await _call(f"/api/crm/clients/{client_id}", method="PUT", json=updates)
+        return await _call(f"/api/crm/clients/{client_id}", method="PATCH", json=updates)
 
     @mcp.tool()
     async def get_client_stats() -> dict:
