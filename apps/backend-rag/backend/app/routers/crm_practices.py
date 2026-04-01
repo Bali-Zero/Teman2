@@ -46,10 +46,10 @@ router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
 MAX_LIMIT = 200
 
 # Module-level persistent httpx client (Golden Rule 10)
-_module_http_client: "httpx.AsyncClient | None" = None
+_module_http_client: Any = None
 
 
-def _get_http_client() -> "httpx.AsyncClient":
+def _get_http_client() -> Any:
     """Return a persistent module-level httpx.AsyncClient, creating it lazily."""
     import httpx as _httpx
 
@@ -379,6 +379,15 @@ async def create_practice(
             # Use base_price if no quoted price provided
             quoted_price = practice.quoted_price or practice_type_row["base_price"]
 
+            # Auto-assign: if not explicitly set, inherit from client or use creator
+            assigned_to = practice.assigned_to
+            if not assigned_to:
+                client_row = await conn.fetchrow(
+                    "SELECT assigned_to FROM clients WHERE id = $1",
+                    practice.client_id,
+                )
+                assigned_to = (client_row["assigned_to"] if client_row else None) or created_by
+
             # Insert practice — conditionally include start_date
             insert_columns = [
                 "client_id", "practice_type_id", "status", "priority",
@@ -391,7 +400,7 @@ async def create_practice(
                 practice.status,
                 practice.priority,
                 quoted_price,
-                practice.assigned_to,
+                assigned_to,
                 practice.notes,
                 practice.internal_notes,
                 datetime.now(tz=timezone.utc),

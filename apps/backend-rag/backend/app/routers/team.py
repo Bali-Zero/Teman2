@@ -70,7 +70,7 @@ async def get_team_members(
                    ORDER BY name""",
                 visible_emails,
             )
-        elif user_dept in ["board", "founders"]:
+        elif user_dept in ["board", "founders", "management"]:
             # Board and founders see everyone
             members = await conn.fetch(
                 """SELECT id, email, name, full_name, role, department, active, avatar

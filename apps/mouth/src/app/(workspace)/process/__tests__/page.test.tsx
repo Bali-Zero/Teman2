@@ -46,6 +46,14 @@ vi.mock('@/lib/api', () => ({
   },
 }));
 vi.mock('@/lib/analytics');
+vi.mock('@/hooks/useTeamMembers', () => ({
+  useTeamMemberOptions: () => ({
+    options: [
+      { value: 'zero@balizero.com', label: 'Zero' },
+      { value: 'ruslana@balizero.com', label: 'Ruslana' },
+    ],
+  }),
+}));
 vi.mock('@/components/ui/toast', () => ({
   useToast: () => ({
     success: vi.fn(),
