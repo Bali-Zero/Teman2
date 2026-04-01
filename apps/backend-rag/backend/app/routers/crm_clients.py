@@ -670,6 +670,8 @@ async def update_client(
                 "notes": "notes",
                 "tags": "tags",
                 "custom_fields": "custom_fields",
+                "lead_source": "lead_source",
+                "service_interest": "service_interest",
             }
 
             # Date fields that need empty string → None conversion

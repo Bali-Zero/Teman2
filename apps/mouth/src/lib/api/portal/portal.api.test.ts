@@ -235,15 +235,28 @@ describe("PortalApi", () => {
 
   describe("getVisaStatus", () => {
     it("should fetch visa status successfully", async () => {
-      const mockVisa = createMockVisaInfo();
-      mockRequest.mockResolvedValue({ data: mockVisa });
+      // Backend returns snake_case; getVisaStatus maps to camelCase VisaInfo
+      const backendResponse = {
+        summary: { days_until_expiry: 365, status: "active" },
+        current_visa: {
+          id: 1,
+          visa_type: "KITAS",
+          status: "active",
+          issue_date: "2024-01-01",
+          expiry_date: "2025-12-31",
+          visa_number: "PERMIT-001",
+          sponsor_name: "PT Test Company",
+        },
+        history: [],
+      };
+      mockRequest.mockResolvedValue(backendResponse);
 
       const result = await portalApi.getVisaStatus();
 
       expect(mockRequest).toHaveBeenCalledWith("/api/portal/visa", {
         method: "GET",
       });
-      expect(result).toEqual(mockVisa);
+      expect(result).toEqual(createMockVisaInfo());
     });
   });
 
