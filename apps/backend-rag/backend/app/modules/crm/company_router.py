@@ -832,8 +832,18 @@ async def sync_company_drive_folder(
 
     added: list[dict] = []
     skipped: list[str] = []
+    ocr_tasks: list[tuple[str, str, str, int]] = []  # (file_id, filename, doc_type, doc_id)
 
     async with db.acquire() as conn:
+        # Find primary client_id for OCR dispatcher (needs client context)
+        primary_client_id: int | None = await conn.fetchval(
+            "SELECT client_id FROM client_company_links WHERE company_id = $1 AND is_primary = true LIMIT 1",
+            company_id,
+        ) or await conn.fetchval(
+            "SELECT client_id FROM client_company_links WHERE company_id = $1 LIMIT 1",
+            company_id,
+        )
+
         for f in files:
             file_id = f["id"]
             filename = f["name"]
@@ -862,6 +872,39 @@ async def sync_company_drive_folder(
             added.append({"id": doc_id, "file_name": filename, "document_type": doc_type})
             logger.info(f"[sync-drive] Added doc {filename} ({doc_type}) → company {company_id}")
 
+            # Queue for OCR if applicable
+            if doc_type in ("npwp", "nib", "company_profile") and primary_client_id:
+                ocr_tasks.append((file_id, filename, doc_type, doc_id))
+
+    # Trigger OCR in background for newly added docs
+    if ocr_tasks and primary_client_id:
+        import asyncio
+
+        async def _run_ocr_tasks() -> None:
+            try:
+                from backend.app.routers.crm_enhanced import _dispatch_ocr_by_folder
+                from backend.app.dependencies import get_app_database_pool
+                ocr_pool = get_app_database_pool()
+                for fid, fname, dtype, did in ocr_tasks:
+                    try:
+                        await _dispatch_ocr_by_folder(
+                            db_pool=ocr_pool,
+                            client_id=primary_client_id,
+                            file_id=fid,
+                            folder_name="02_Company",
+                            filename=fname,
+                            doc_id=None,  # company_documents id, not documents id
+                            document_type=dtype,
+                        )
+                        logger.info(f"[sync-drive] OCR dispatched for {fname} ({dtype})")
+                    except Exception as e:
+                        logger.warning(f"[sync-drive] OCR failed for {fname}: {e}")
+            except Exception as e:
+                logger.error(f"[sync-drive] OCR background task error: {e}")
+
+        asyncio.create_task(_run_ocr_tasks())
+        logger.info(f"[sync-drive] Queued {len(ocr_tasks)} OCR tasks in background")
+
     return {
         "company_id": company_id,
         "folder_id": folder_id,
@@ -869,4 +912,5 @@ async def sync_company_drive_folder(
         "skipped": len(skipped),
         "total_in_folder": len(files),
         "docs": added,
+        "ocr_queued": len(ocr_tasks),
     }
