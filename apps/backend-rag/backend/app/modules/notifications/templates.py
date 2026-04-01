@@ -140,6 +140,36 @@ EMAIL_TEMPLATES: dict[str, dict[AlertType, dict[str, str]]] = {
 <p><strong>Bali Zero Team</strong></p>
 """,
         },
+        AlertType.VISA_EMERGENCY: {
+            "subject": "⛔ LAST WARNING: Visa Expires in {days_remaining} Days",
+            "body": """
+<h2>Hello {full_name},</h2>
+
+<div style="background: #721c24; color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+    <strong>⛔ LAST WARNING:</strong><br>
+    Your {visa_type} visa expires in <strong>{days_remaining} days</strong> ({expiry_date}).<br>
+    You must act TODAY or face overstay penalties.
+</div>
+
+<p><strong>Your options right now:</strong></p>
+<ol>
+    <li><strong>Renew immediately</strong> — contact us within hours, not days</li>
+    <li><strong>Depart Indonesia</strong> before {expiry_date} to avoid fines</li>
+    <li><strong>Do nothing</strong> — overstay fines apply from day 1 (Rp 1,000,000/day)</li>
+</ol>
+
+<p style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0;">
+    <strong>⚠️ Note:</strong> If your renewal is already in progress with our team, you can ignore this email.
+    Reply to confirm your status.
+</p>
+
+<p><strong>Emergency Contacts — respond immediately:</strong><br>
+📱 WhatsApp: <a href="https://wa.me/6282147451775">+62 821-4745-1775</a> (fastest)<br>
+📧 Email: support@balizero.com</p>
+
+<p><strong>Bali Zero Team</strong></p>
+""",
+        },
         AlertType.VISA_EXPIRED: {
             "subject": "CRITICAL: Your Visa Has Expired",
             "body": """
@@ -288,6 +318,36 @@ EMAIL_TEMPLATES: dict[str, dict[AlertType, dict[str, str]]] = {
 <p><strong>Team Bali Zero</strong></p>
 """,
         },
+        AlertType.VISA_EMERGENCY: {
+            "subject": "⛔ ULTIMO AVVISO: Il Visto Scade tra {days_remaining} Giorni",
+            "body": """
+<h2>Ciao {full_name},</h2>
+
+<div style="background: #721c24; color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+    <strong>⛔ ULTIMO AVVISO:</strong><br>
+    Il tuo visto {visa_type} scade tra <strong>{days_remaining} giorni</strong> ({expiry_date}).<br>
+    Devi agire OGGI o incorrere in sanzioni per overstay.
+</div>
+
+<p><strong>Le tue opzioni adesso:</strong></p>
+<ol>
+    <li><strong>Rinnova immediatamente</strong> — contattaci entro ore, non giorni</li>
+    <li><strong>Lascia l'Indonesia</strong> prima del {expiry_date} per evitare sanzioni</li>
+    <li><strong>Non fare nulla</strong> — sanzioni overstay dal giorno 1 (Rp 1.000.000/giorno)</li>
+</ol>
+
+<p style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0;">
+    <strong>⚠️ Nota:</strong> Se il rinnovo è già in corso con il nostro team, ignora questa email.
+    Rispondi per confermare il tuo stato.
+</p>
+
+<p><strong>Contatti di emergenza — rispondi subito:</strong><br>
+📱 WhatsApp: <a href="https://wa.me/6282147451775">+62 821-4745-1775</a> (più veloce)<br>
+📧 Email: support@balizero.com</p>
+
+<p><strong>Team Bali Zero</strong></p>
+""",
+        },
         AlertType.VISA_EXPIRED: {
             "subject": "CRITICO: Il Tuo Visto È Scaduto",
             "body": """
@@ -425,6 +485,36 @@ EMAIL_TEMPLATES: dict[str, dict[AlertType, dict[str, str]]] = {
     <li>Hubungi kami untuk memulai proses perpanjangan, ATAU</li>
     <li>Komunikasikan tanggal keberangkatan Anda dari Indonesia</li>
 </ul>
+
+<p><strong>Tim Bali Zero</strong></p>
+""",
+        },
+        AlertType.VISA_EMERGENCY: {
+            "subject": "⛔ PERINGATAN TERAKHIR: Visa Berakhir dalam {days_remaining} Hari",
+            "body": """
+<h2>Halo {full_name},</h2>
+
+<div style="background: #721c24; color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+    <strong>⛔ PERINGATAN TERAKHIR:</strong><br>
+    Visa {visa_type} Anda berakhir dalam <strong>{days_remaining} hari</strong> ({expiry_date}).<br>
+    Anda harus bertindak HARI INI atau menghadapi denda overstay.
+</div>
+
+<p><strong>Pilihan Anda sekarang:</strong></p>
+<ol>
+    <li><strong>Perpanjang segera</strong> — hubungi kami dalam hitungan jam, bukan hari</li>
+    <li><strong>Tinggalkan Indonesia</strong> sebelum {expiry_date} untuk menghindari denda</li>
+    <li><strong>Tidak melakukan apa-apa</strong> — denda overstay berlaku sejak hari pertama (Rp 1.000.000/hari)</li>
+</ol>
+
+<p style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 20px 0;">
+    <strong>⚠️ Catatan:</strong> Jika perpanjangan Anda sudah dalam proses bersama tim kami, abaikan email ini.
+    Balas untuk mengonfirmasi status Anda.
+</p>
+
+<p><strong>Kontak Darurat — segera hubungi:</strong><br>
+📱 WhatsApp: <a href="https://wa.me/6282147451775">+62 821-4745-1775</a> (tercepat)<br>
+📧 Email: support@balizero.com</p>
 
 <p><strong>Tim Bali Zero</strong></p>
 """,
