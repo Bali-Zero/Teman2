@@ -798,14 +798,34 @@ async def sync_company_drive_folder(
         logger.error(f"[sync-drive] Failed to build Drive service: {e}")
         raise HTTPException(status_code=503, detail=f"Drive auth error: {e}")
 
-    # List files in folder (non-trashed)
+    def _list_files_recursive(fid: str, depth: int = 0) -> list[dict]:
+        """Recursively list all non-folder files under a Drive folder (max depth 4)."""
+        if depth > 4:
+            return []
+        all_files: list[dict] = []
+        page_token = None
+        while True:
+            kwargs: dict = dict(
+                q=f"'{fid}' in parents and trashed=false",
+                fields="nextPageToken, files(id, name, mimeType, webViewLink)",
+                pageSize=100,
+            )
+            if page_token:
+                kwargs["pageToken"] = page_token
+            resp = service.files().list(**kwargs).execute()
+            for item in resp.get("files", []):
+                if item.get("mimeType") == "application/vnd.google-apps.folder":
+                    all_files.extend(_list_files_recursive(item["id"], depth + 1))
+                else:
+                    all_files.append(item)
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+        return all_files
+
+    # Collect all files recursively
     try:
-        results = service.files().list(
-            q=f"'{folder_id}' in parents and trashed=false",
-            fields="files(id, name, mimeType, size, webViewLink)",
-            pageSize=100,
-        ).execute()
-        files = results.get("files", [])
+        files = _list_files_recursive(folder_id)
     except Exception as e:
         logger.error(f"[sync-drive] Drive list error for folder {folder_id}: {e}")
         raise HTTPException(status_code=503, detail=f"Drive list error: {e}")
@@ -817,13 +837,7 @@ async def sync_company_drive_folder(
         for f in files:
             file_id = f["id"]
             filename = f["name"]
-            mime = f.get("mimeType", "application/octet-stream")
             web_url = f.get("webViewLink") or f"https://drive.google.com/file/d/{file_id}/view"
-
-            # Skip folders
-            if mime == "application/vnd.google-apps.folder":
-                skipped.append(filename)
-                continue
 
             # Check if already tracked
             existing = await conn.fetchval(
