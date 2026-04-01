@@ -7,6 +7,7 @@ document upload (Base64 + Google Drive), document soft-delete.
 """
 
 import base64
+import hashlib
 from datetime import date, datetime
 from typing import Any
 
@@ -527,6 +528,9 @@ async def upload_document_base64(
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid base64 file content")
 
+        # Compute content hash for dedup
+        content_hash = hashlib.md5(file_content).hexdigest()
+
         # Determine category — use explicit override or auto-categorize from filename
         if data.document_category:
             category = data.document_category
@@ -694,8 +698,8 @@ async def upload_document_base64(
                 INSERT INTO documents (
                     client_id, document_type, document_category,
                     file_name, file_id, file_url, google_drive_file_url,
-                    status, storage_type, notes, subfolder, expiry_date
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10)
+                    status, storage_type, notes, subfolder, expiry_date, content_hash
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10, $11)
                 RETURNING id
                 """,
                 client_id,
@@ -708,6 +712,7 @@ async def upload_document_base64(
                 data.notes,
                 subfolder_value,
                 _parse_date_or_none(data.expiry_date),
+                content_hash,
             )
 
             # Trigger OCR via dispatcher
