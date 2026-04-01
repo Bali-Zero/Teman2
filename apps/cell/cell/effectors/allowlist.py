@@ -21,6 +21,8 @@ _ACTIONS: dict[str, AllowedAction] = {
     "scale_down": AllowedAction(name="scale_down", description="Scale to 1 machine", command_template="fly scale count 1 -a {app}", cooldown_seconds=1800, max_per_day=5),
     "alert_human": AllowedAction(name="alert_human", description="Send Telegram alert to operator", command_template="telegram_send {message}", cooldown_seconds=300, max_per_day=20),
     "alert_silent": AllowedAction(name="alert_silent", description="Write to cell_alerts table", command_template="INSERT INTO cell_alerts ...", cooldown_seconds=0, max_per_day=1000),
+    "ollama_restart": AllowedAction(name="ollama_restart", description="Restart local Ollama daemon via brew services", command_template="brew services restart ollama", cooldown_seconds=1800, max_per_day=3),
+    "run_backup": AllowedAction(name="run_backup", description="Trigger fly-pg-backup.sh to backup Postgres to Tigris", command_template="bash ~/scripts/fly-pg-backup.sh", cooldown_seconds=3600, max_per_day=3),
 }
 
 class ActionRegistry:
