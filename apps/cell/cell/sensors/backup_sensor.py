@@ -18,7 +18,7 @@ from typing import Any
 
 logger = logging.getLogger("cell.sensors.backup")
 
-_DEFAULT_BACKUP_DIR = os.path.expanduser("~/backups/nuzantara")
+_DEFAULT_BACKUP_DIR = os.path.expanduser("~/backups/fly-postgres")
 _DEFAULT_LOG = os.path.expanduser("~/scripts/fly-pg-backup.log")
 _COMPLETE_RE = re.compile(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})")
 

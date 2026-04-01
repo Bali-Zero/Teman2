@@ -88,6 +88,9 @@ class VercelSensor:
 
             if code == 200:
                 status = "green"
+            elif code in (301, 302, 307, 308):
+                # SSO redirects = site is alive and auth is working — treat as green
+                status = "green"
             elif 300 <= code < 400:
                 status = "yellow"
             else:
