@@ -82,7 +82,20 @@ async def train_synthetic(dry_run: bool) -> None:
     logger.info(f"Synthetic training: {len(_SYNTHETIC_SITUATIONS)} situations, dry_run={dry_run}")
 
     db_url = os.environ.get("CELL_DATABASE_URL", settings.database_url)
-    reasoner = SlowReasoner()
+    # Use whichever model is already loaded in Ollama to avoid cold-swap overhead
+    import httpx as _httpx
+    _active_model = "qwen3.5:9b"
+    try:
+        async with _httpx.AsyncClient(timeout=3.0) as _c:
+            _ps = (await _c.get("http://localhost:11434/api/ps")).json()
+        _loaded = [m["name"] for m in _ps.get("models", [])]
+        if _loaded:
+            _active_model = _loaded[0]
+            logger.info(f"Ollama active model: {_active_model}")
+    except Exception:
+        pass
+
+    reasoner = SlowReasoner(ollama_model_fast=_active_model, ollama_model_heavy=_active_model)
     existing = await reasoner.bootstrap_memory()
     logger.info(f"Loaded {existing} existing patterns from DB")
 
@@ -115,7 +128,7 @@ async def train_synthetic(dry_run: bool) -> None:
                 db_ok=db_ok,
                 qdrant_ok=qdrant_ok,
                 error_rate_norm=error_rate,
-                max_tier=0,  # Qwen 9B only for speed
+                max_tier=1,  # allow heavy model if needed
             )
 
             if proposal.action == "none" or proposal.tier_used == -1:
