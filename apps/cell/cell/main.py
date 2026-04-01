@@ -18,10 +18,18 @@ from cell.effectors.fly_effector import FlyEffector
 from cell.effectors.logs_effector import LogsEffector
 from cell.effectors.telegram import TelegramAlerter
 from cell.metabolism.tracker import MetabolismTracker
+from cell.effectors.local_effector import LocalEffector
+from cell.fast.trend_detector import TrendDetector
+from cell.memory.long_term import LongTermMemory
+from cell.memory.short_term import ShortTermMemory
+from cell.sensors.backup_sensor import BackupSensor
+from cell.sensors.cron_sensor import CronSensor
 from cell.sensors.database_sensor import DatabaseSensor
 from cell.sensors.error_rate_sensor import ErrorRateSensor
 from cell.sensors.health_sensor import HealthSensor
+from cell.sensors.ollama_sensor import OllamaSensor
 from cell.sensors.qdrant_sensor import QdrantSensor
+from cell.sensors.vercel_sensor import VercelSensor
 from cell.slow.reasoner import SlowReasoner
 
 logging.basicConfig(
@@ -57,20 +65,21 @@ async def main() -> None:
         partitions=constraints["budget_partitions"],
     )
 
-    # SLOW layer — the brain
-    reasoner = SlowReasoner(
-        gemini_api_key=os.environ.get("GOOGLE_API_KEY", ""),
-    )
+    # SLOW layer — the brain (all local, zero API cost)
+    reasoner = SlowReasoner()
     patterns_loaded = await reasoner.bootstrap_memory()
     logger.info(f"PatternIndex: {patterns_loaded} patterns loaded from DB")
     interpreter = DNAInterpreter()
-    logger.info("SLOW layer initialized (Qwen local + Gemini Flash)")
+    logger.info("SLOW layer initialized (Qwen 9B fast + Qwen 27B deep, all local)")
 
     # Safety gate — real Redis kill switch
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     redis_client = aioredis.from_url(redis_url, decode_responses=True)
     safety_gate = SafetyGate(redis=redis_client)
     logger.info(f"Safety gate connected to Redis: {redis_url.split('@')[-1]}")
+
+    # STM (Short-Term Memory) — Redis-backed
+    stm = ShortTermMemory(redis=redis_client)
 
     async with httpx.AsyncClient() as http_client:
         health_sensor = HealthSensor(client=http_client, url=settings.backend_health_url)
@@ -81,7 +90,13 @@ async def main() -> None:
         # ErrorRateSensor calls /api/cell/metrics on the backend (1 query, 1x/min cooldown)
         metrics_url = settings.backend_health_url.replace("/health", "/api/cell/metrics")
         error_rate_sensor = ErrorRateSensor(client=http_client, metrics_url=metrics_url)
-        logger.info(f"Secondary sensors initialized (DB, Qdrant, ErrorRate → {metrics_url})")
+
+        # New sensors — local visibility
+        ollama_sensor = OllamaSensor()
+        backup_sensor = BackupSensor()
+        cron_sensor = CronSensor()
+        vercel_sensor = VercelSensor(client=http_client)
+        logger.info(f"Sensors initialized (DB, Qdrant, ErrorRate, Ollama, Backup, Cron, Vercel → {metrics_url})")
 
         # Telegram alerter — CELL's voice
         tg_token = os.environ.get("CELL_TELEGRAM_BOT_TOKEN", "")
@@ -102,6 +117,24 @@ async def main() -> None:
         else:
             logger.warning("FLY_API_TOKEN not set — restart/scale/logs actions will be no-ops")
 
+        # Local effector — ollama_restart, run_backup
+        local_effector = LocalEffector()
+        logger.info("LocalEffector initialized (ollama_restart, run_backup)")
+
+        # LTM (Long-Term Memory) — weekly condensation
+        from cell.core.db import get_pool as _get_pool  # noqa: PLC0415
+        ltm: LongTermMemory | None = None
+        try:
+            _db_pool = await _get_pool()
+            ltm = LongTermMemory(pool=_db_pool)
+            await ltm.ensure_table()
+            logger.info("LongTermMemory initialized")
+        except Exception as _e:
+            logger.warning(f"LTM init failed (non-fatal): {_e}")
+
+        # TrendDetector (FAST layer)
+        trend_detector = TrendDetector()
+
         engine = PulseEngine(
             dna_loader=dna_loader,
             safety_gate=safety_gate,
@@ -113,13 +146,22 @@ async def main() -> None:
             alerter=alerter,
             fly_effector=fly_effector,
             logs_effector=logs_effector,
+            local_effector=local_effector,
             db_sensor=db_sensor,
             qdrant_sensor=qdrant_sensor,
             error_rate_sensor=error_rate_sensor,
+            ollama_sensor=ollama_sensor,
+            backup_sensor=backup_sensor,
+            cron_sensor=cron_sensor,
+            vercel_sensor=vercel_sensor,
+            stm=stm,
+            ltm=ltm,
+            trend_detector=trend_detector,
         )
 
         logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")
         pulse_count = 0
+        _last_status = "green"
 
         while not _shutdown.is_set():
             pulse_count += 1
@@ -133,12 +175,17 @@ async def main() -> None:
                 action_str = f" → {result.action_taken}" if result.action_taken else ""
                 tier_str = f" (tier {result.thought_tier})" if result.thought_tier is not None else ""
                 logger.info(f"Pulse #{pulse_count} complete. Health: {status_str}{action_str}{tier_str}")
+                _last_status = status_str
 
             except Exception as e:
                 logger.error(f"Pulse #{pulse_count} error: {e}", exc_info=True)
 
+            # Adaptive interval: 15s during stress, 60s when healthy
+            interval = 15 if _last_status != "green" else settings.pulse_interval_seconds
+            if _last_status != "green":
+                logger.debug(f"Adaptive pulse: {interval}s (status={_last_status})")
             try:
-                await asyncio.wait_for(_shutdown.wait(), timeout=settings.pulse_interval_seconds)
+                await asyncio.wait_for(_shutdown.wait(), timeout=interval)
                 break
             except asyncio.TimeoutError:
                 pass

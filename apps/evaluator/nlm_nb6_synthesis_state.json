@@ -2,10 +2,14 @@
   "schema_version": 1,
   "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",
   "notebook_name": "NB-6: Operations & Compliance Indonesia",
-  "last_updated": "2026-03-31T18:35:01.073956+00:00",
-  "daily_sources": {},
+  "last_updated": "2026-04-01T06:31:35.656195+00:00",
+  "daily_sources": {
+    "2026-04-01": "ok"
+  },
   "weekly_sources": {},
   "monthly_sources": {},
-  "daily_texts": {},
+  "daily_texts": {
+    "2026-04-01": "Il 5 giugno 2025 è entrato in vigore il Regolamento Governativo (GR) n. 28/2025, un atto legislativo che ha sostituito la precedente normativa del 2021, innescando una profonda ristrutturazione del sistema Online Single Submission Risk-Based Approach (OSS-RBA) in Indonesia. Questa riforma segna una svolta strategica nell'ecosistema normativo indonesiano: per la prima volta viene abbracciato il principio dei \"fittizi positivi\", che sposta l'onere della conformità principalmente sulla fase post-concessione del titolo, abbassando di conseguenza le barriere all'ingresso iniziali per gli investitori esteri. Tuttavia, questo accesso più fluido si accompagna a un quadro ispettivo molto più severo una volta ottenuta la licenza, costringendo le aziende a mantenere standard operativi elevati sotto costante scrutinio statale.\n\nL'impatto più tangibile riguarda l'allargamento della portata regolatoria: il numero dei settori aziendali soggetti a vigilanza OSS-RBA è salito da 16 a 22, includendo nuove attività economiche precedentemente escluse o non disciplinate. Parallelamente, la griglia di classificazione KBLI (Classificazione Industriale Indonesiana) si è ampliata da 1.348 a 1.417 codici, offrendo una granularità molto più dettagliata per l'identificazione del rischio. Questa maggiore specificazione non è puramente burocratica; introduce complessità operative che richiedono agli analisti e ai legal team di rivedere immediatamente le classificazioni aziendali per evitare errori nella dichiarazione delle attività primarie e secondarie, poiché la precisione nel codice KBLI influisce direttamente sul livello di controllo amministrativo richiesto.\n\nLe implicazioni pratiche sono immediate: le aziende devono adottare protocolli di compliance continua post-apertura, con un forte accento sulla trasparenza finanziaria e operativa durante il monitoraggio statale. La transizione verso un modello basato sull'affidabilità dell'imprenditore, piuttosto che su verifiche preventive massicce, richiede investimenti significativi in sistemi di reporting digitale in tempo reale e formazione interna sulle nuove soglie di rischio. Chi opera in questi 22 settori espansi dovrà vigilare attentamente sulla corretta mappatura delle proprie attività per garantire allineamento con i nuovi criteri di valutazione del rischio, evitando sanzioni che possono derivare dall'inadeguata dichiarazione iniziale o dalla mancata dimostrazione della capacità di operare nel rispetto dei parametri stabiliti dal BKPM."
+  },
   "weekly_texts": {}
 }

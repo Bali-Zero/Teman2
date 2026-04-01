@@ -86,104 +86,142 @@ WELCOME_EMAIL_SUBJECT: dict[str, str] = {
 
 WELCOME_EMAIL_OPENING: dict[str, str] = {
     "en": (
-        "You've just made a courageous decision — choosing to build part of your life "
-        "in one of the most complex and rewarding jurisdictions in Southeast Asia. "
-        "That choice deserves a team that takes it as seriously as you do."
+        "Welcome to Bali Zero, {first_name}.\n\n"
+        "We're glad you're here. Whether you're setting up a business, sorting out your visa, "
+        "or making Bali your long-term home — you've come to the right place.\n\n"
+        "We handle the bureaucracy. You focus on Bali."
     ),
     "it": (
-        "Hai appena preso una decisione coraggiosa — scegliere di costruire una parte della tua vita "
-        "in una delle giurisdizioni più complesse e gratificanti del Sud-Est Asiatico. "
-        "Quella scelta merita un team che la prenda sul serio quanto te."
+        "Benvenuto in Bali Zero, {first_name}.\n\n"
+        "Siamo felici che tu sia qui. Che tu stia aprendo un'azienda, sistemando il visto "
+        "o facendo di Bali la tua casa a lungo termine — sei nel posto giusto.\n\n"
+        "Noi gestiamo la burocrazia. Tu goditi Bali."
     ),
     "ru": (
-        "Вы только что приняли смелое решение — выбрать одну из самых сложных "
-        "и перспективных юрисдикций Юго-Восточной Азии для построения своей жизни. "
-        "Это решение заслуживает команды, которая относится к нему так же серьёзно, как вы."
+        "Добро пожаловать в Bali Zero, {first_name}.\n\n"
+        "Рады, что вы здесь. Открываете бизнес, оформляете визу "
+        "или планируете остаться на Бали надолго — вы обратились по адресу.\n\n"
+        "Бюрократия — наша забота. Бали — ваша."
     ),
     "uk": (
-        "Ви щойно прийняли сміливе рішення — обрати одну з найскладніших "
-        "і найперспективніших юрисдикцій Південно-Східної Азії. "
-        "Це рішення заслуговує на команду, яка поставиться до нього так само серйозно, як ви."
+        "Ласкаво просимо до Bali Zero, {first_name}.\n\n"
+        "Раді, що ви тут. Відкриваєте бізнес, оформлюєте візу "
+        "або плануєте залишитися на Балі надовго — ви звернулися за адресою.\n\n"
+        "Бюрократія — наша турбота. Балі — ваше."
     ),
     "id": (
-        "Anda baru saja membuat keputusan berani — memilih untuk membangun sebagian hidup Anda "
-        "di salah satu yurisdiksi paling kompleks dan menguntungkan di Asia Tenggara. "
-        "Keputusan itu layak mendapatkan tim yang menganggapnya seserius Anda."
+        "Selamat datang di Bali Zero, {first_name}.\n\n"
+        "Senang Anda bergabung. Apakah Anda mendirikan bisnis, mengurus visa, "
+        "atau menjadikan Bali rumah jangka panjang — Anda datang ke tempat yang tepat.\n\n"
+        "Kami urus birokrasinya. Anda nikmati Bali-nya."
     ),
 }
 
 WELCOME_EMAIL_WHO_WE_ARE: dict[str, str] = {
     "en": (
-        "Bali Zero was founded as a traditional consulting firm — lawyers, immigration specialists, "
-        "and tax advisors based in Canggu. Over the past decade, we evolved into something different: "
-        "a hybrid human+AI system where specialized agents handle the deterministic work "
-        "(price lookups, document checklists, deadline tracking, legal database searches) "
-        "so our human experts can focus entirely on judgment, relationships, and complex problem-solving. "
-        "The vast majority of our processes run on rules, not memory — which means you get "
-        "consistent, reliable answers whether you reach us on a Monday morning or a Friday afternoon."
+        "Bali Zero is a legal and business services firm based in Kerobokan, Bali. "
+        "We specialize in immigration, company formation, tax compliance, and property — "
+        "everything a foreigner needs to live and work legally in Indonesia.\n\n"
+        "Our team combines experienced advisors with an AI system that keeps track of "
+        "deadlines, documents, and regulations — so nothing falls through the cracks.\n\n"
+        "Want to know more before your first call? Browse our services, pricing, and guides at "
+        "<a href=\"https://www.balizero.com\" style=\"color:#d4845a;\">www.balizero.com</a>."
     ),
     "it": (
-        "Bali Zero è nata come uno studio di consulenza tradizionale — avvocati, specialisti dell'immigrazione "
-        "e consulenti fiscali con base a Canggu. Negli ultimi dieci anni ci siamo evoluti in qualcosa di diverso: "
-        "un sistema ibrido umano+AI in cui agenti specializzati gestiscono il lavoro deterministico "
-        "(ricerche sui prezzi, checklist documenti, scadenze, database legali) "
-        "in modo che i nostri esperti umani possano concentrarsi completamente su giudizio, relazioni "
-        "e problem-solving complesso. "
-        "La grande maggioranza dei nostri processi funziona su regole, non sulla memoria — "
-        "il che significa che ricevi risposte coerenti e affidabili in ogni momento."
+        "Bali Zero è uno studio di consulenza legale e aziendale con sede a Kerobokan, Bali. "
+        "Ci specializziamo in immigrazione, costituzione di società, compliance fiscale e proprietà immobiliare — "
+        "tutto ciò di cui un straniero ha bisogno per vivere e lavorare legalmente in Indonesia.\n\n"
+        "Il nostro team unisce consulenti esperti a un sistema AI che tiene traccia di "
+        "scadenze, documenti e normative — così nulla va perso.\n\n"
+        "Vuoi saperne di più prima della prima chiamata? Esplora servizi, prezzi e guide su "
+        "<a href=\"https://www.balizero.com\" style=\"color:#d4845a;\">www.balizero.com</a>."
     ),
     "ru": (
-        "Bali Zero была основана как традиционная консалтинговая компания — юристы, специалисты по иммиграции "
-        "и налоговые консультанты в Чангу. За последнее десятилетие мы превратились в нечто иное: "
-        "гибридную систему «человек + ИИ», где специализированные агенты выполняют детерминированную работу "
-        "(запросы цен, чек-листы документов, отслеживание дедлайнов, юридические базы данных), "
-        "чтобы наши эксперты могли полностью сосредоточиться на суждениях, отношениях "
-        "и решении сложных задач. "
-        "Подавляющее большинство наших процессов работает по правилам, а не по памяти — "
-        "это означает, что вы получаете стабильные и надёжные ответы в любое время."
+        "Bali Zero — юридическая и бизнес-консалтинговая компания, базирующаяся в Керобокан, Бали. "
+        "Мы специализируемся на иммиграции, регистрации компаний, налоговом соответствии и недвижимости — "
+        "всём, что нужно иностранцу для легальной жизни и работы в Индонезии.\n\n"
+        "Наша команда объединяет опытных консультантов с AI-системой, которая отслеживает "
+        "сроки, документы и нормативные акты — чтобы ничего не упустить.\n\n"
+        "Хотите узнать больше перед первым звонком? Ознакомьтесь с услугами, ценами и гайдами на "
+        "<a href=\"https://www.balizero.com\" style=\"color:#d4845a;\">www.balizero.com</a>."
     ),
     "uk": (
-        "Bali Zero була заснована як традиційна консалтингова компанія — юристи, фахівці з імміграції "
-        "та податкові консультанти у Чангу. За останнє десятиліття ми перетворились на щось інше: "
-        "гібридну систему «людина + ШІ», де спеціалізовані агенти виконують детерміновану роботу "
-        "(запити цін, чек-листи документів, відстеження дедлайнів, юридичні бази даних), "
-        "щоб наші фахівці могли зосередитись на судженнях, стосунках і вирішенні складних завдань. "
-        "Переважна більшість наших процесів працює за правилами, а не за пам'яттю — "
-        "це означає, що ви отримуєте стабільні й надійні відповіді в будь-який час."
+        "Bali Zero — юридична та бізнес-консалтингова компанія, що базується в Керобокан, Балі. "
+        "Ми спеціалізуємося на імміграції, реєстрації компаній, податковому комплаєнсі та нерухомості — "
+        "всьому, що потрібно іноземцю для легального життя та роботи в Індонезії.\n\n"
+        "Наша команда поєднує досвідчених консультантів з AI-системою, яка відстежує "
+        "дедлайни, документи та нормативи — щоб нічого не загубилось.\n\n"
+        "Хочете дізнатися більше перед першим дзвінком? Перегляньте послуги, ціни та гайди на "
+        "<a href=\"https://www.balizero.com\" style=\"color:#d4845a;\">www.balizero.com</a>."
     ),
     "id": (
-        "Bali Zero didirikan sebagai firma konsultan tradisional — pengacara, spesialis imigrasi, "
-        "dan konsultan pajak yang berbasis di Canggu. Selama satu dekade terakhir, kami berkembang menjadi sesuatu "
-        "yang berbeda: sistem hybrid manusia+AI di mana agen-agen khusus menangani pekerjaan deterministik "
-        "(pencarian harga, daftar periksa dokumen, pelacakan tenggat waktu, database hukum) "
-        "sehingga para ahli manusia kami dapat sepenuhnya fokus pada penilaian, hubungan, dan pemecahan masalah. "
-        "Sebagian besar proses kami berjalan berdasarkan aturan, bukan ingatan — "
-        "yang berarti Anda mendapatkan jawaban yang konsisten dan dapat diandalkan kapan pun."
+        "Bali Zero adalah firma layanan hukum dan bisnis yang berbasis di Kerobokan, Bali. "
+        "Kami berspesialisasi dalam imigrasi, pendirian perusahaan, kepatuhan pajak, dan properti — "
+        "semua yang dibutuhkan warga asing untuk tinggal dan bekerja secara legal di Indonesia.\n\n"
+        "Tim kami menggabungkan konsultan berpengalaman dengan sistem AI yang melacak "
+        "tenggat waktu, dokumen, dan peraturan — agar tidak ada yang terlewat.\n\n"
+        "Ingin tahu lebih banyak sebelum panggilan pertama? Jelajahi layanan, harga, dan panduan di "
+        "<a href=\"https://www.balizero.com\" style=\"color:#d4845a;\">www.balizero.com</a>."
     ),
 }
 
 WELCOME_EMAIL_TEAM_ASSIGNED: dict[str, str] = {
-    "en": "Your dedicated advisor is {advisor_name}. They will reach out to you within 2 hours to introduce themselves and understand your goals.",
-    "it": "Il tuo consulente dedicato è {advisor_name}. Ti contatterà entro 2 ore per presentarsi e capire i tuoi obiettivi.",
-    "ru": "Ваш персональный консультант — {advisor_name}. Он свяжется с вами в течение 2 часов, чтобы представиться и понять ваши цели.",
-    "uk": "Ваш особистий консультант — {advisor_name}. Він зв'яжеться з вами протягом 2 годин, щоб представитися і зрозуміти ваші цілі.",
-    "id": "Konsultan pribadi Anda adalah {advisor_name}. Mereka akan menghubungi Anda dalam 2 jam untuk memperkenalkan diri dan memahami tujuan Anda.",
+    "en": (
+        "Your advisor is <strong>{advisor_name}</strong>. "
+        "They'll reach out within 2 hours via WhatsApp to introduce themselves and get your process started. "
+        "In the meantime, feel free to reply to this email with any questions."
+    ),
+    "it": (
+        "Il tuo consulente è <strong>{advisor_name}</strong>. "
+        "Ti contatterà entro 2 ore via WhatsApp per presentarsi e avviare il tuo percorso. "
+        "Nel frattempo, rispondi pure a questa email per qualsiasi domanda."
+    ),
+    "ru": (
+        "Ваш консультант — <strong>{advisor_name}</strong>. "
+        "Он свяжется с вами в течение 2 часов через WhatsApp, чтобы представиться и начать работу. "
+        "В любое время вы можете написать нам в ответ на это письмо."
+    ),
+    "uk": (
+        "Ваш консультант — <strong>{advisor_name}</strong>. "
+        "Він зв'яжеться з вами протягом 2 годин через WhatsApp, щоб представитися та розпочати роботу. "
+        "Будь-коли відповідайте на цей лист із запитаннями."
+    ),
+    "id": (
+        "Konsultan Anda adalah <strong>{advisor_name}</strong>. "
+        "Mereka akan menghubungi Anda dalam 2 jam via WhatsApp untuk memperkenalkan diri dan memulai prosesnya. "
+        "Sementara itu, balas email ini jika ada pertanyaan."
+    ),
 }
 
 WELCOME_EMAIL_TEAM_UNASSIGNED: dict[str, str] = {
-    "en": "Your advisor will be assigned by today. You will hear from them within 2 hours of assignment.",
-    "it": "Il tuo consulente verrà assegnato entro oggi. Sentirai da loro entro 2 ore dall'assegnazione.",
-    "ru": "Ваш консультант будет назначен сегодня. Вы получите от него сообщение в течение 2 часов после назначения.",
-    "uk": "Ваш консультант буде призначений сьогодні. Ви отримаєте від нього повідомлення протягом 2 годин після призначення.",
-    "id": "Konsultan Anda akan ditugaskan hari ini. Anda akan mendapat kabar dari mereka dalam 2 jam setelah penugasan.",
+    "en": (
+        "Your advisor will be assigned shortly — you'll hear from them via WhatsApp within 2 hours. "
+        "In the meantime, feel free to reply to this email with any questions."
+    ),
+    "it": (
+        "Il tuo consulente verrà assegnato a breve — ti contatterà via WhatsApp entro 2 ore. "
+        "Nel frattempo, rispondi pure a questa email per qualsiasi domanda."
+    ),
+    "ru": (
+        "Ваш консультант будет назначен в ближайшее время — он свяжется с вами через WhatsApp в течение 2 часов. "
+        "В любое время вы можете написать нам в ответ на это письмо."
+    ),
+    "uk": (
+        "Ваш консультант буде призначений найближчим часом — він зв'яжеться з вами через WhatsApp протягом 2 годин. "
+        "Будь-коли відповідайте на цей лист із запитаннями."
+    ),
+    "id": (
+        "Konsultan Anda akan segera ditugaskan — mereka akan menghubungi Anda via WhatsApp dalam 2 jam. "
+        "Sementara itu, balas email ini jika ada pertanyaan."
+    ),
 }
 
 WELCOME_EMAIL_CTA: dict[str, str] = {
-    "en": "Reply to this email directly — no forms, no waiting room.",
-    "it": "Rispondi direttamente a questa email — nessun modulo, nessuna attesa.",
-    "ru": "Ответьте прямо на это письмо — без форм, без ожидания.",
-    "uk": "Відповідайте прямо на цей лист — без форм, без очікування.",
-    "id": "Balas email ini langsung — tanpa formulir, tanpa ruang tunggu.",
+    "en": "Have a question right now? Reply to this email or WhatsApp us at +62 813 3805 1876",
+    "it": "Hai una domanda adesso? Rispondi a questa email o scrivici su WhatsApp al +62 813 3805 1876",
+    "ru": "Есть вопрос прямо сейчас? Ответьте на это письмо или напишите нам в WhatsApp: +62 813 3805 1876",
+    "uk": "Є питання зараз? Відповідайте на цей лист або пишіть у WhatsApp: +62 813 3805 1876",
+    "id": "Ada pertanyaan sekarang? Balas email ini atau hubungi kami di WhatsApp +62 813 3805 1876",
 }
 
 

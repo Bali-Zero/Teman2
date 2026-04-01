@@ -3,14 +3,58 @@ Deterministic Workflow Chains - 8 autopilot workflows.
 
 Each chain is a sequence of tool calls with IF/THEN/ELSE branching.
 NO LLM decisions — pure deterministic logic.
+
+NLM Grounding: Chains can optionally query NotebookLM for operational
+context (historical patterns, business intelligence). This enriches
+reports with data-driven insights instead of raw numbers only.
 """
 
 import asyncio
 import logging
+import os
+import subprocess
+import json as _json_mod
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
 logger = logging.getLogger("nuzantara-mcp.chains")
+
+# --- NLM Grounding Configuration ---
+_NLM_CLI = "nlm"
+_NB_OPS_ID = os.environ.get("NB_OPS_ID", "")
+_NB_INTEL_ID = os.environ.get("NB_INTEL_ID", "")
+_NB_TELEMETRY_ID = os.environ.get("NB_TELEMETRY_ID", "")
+
+
+async def _nlm_grounding(notebook_id: str, question: str, timeout: int = 60) -> str:
+    """Query NLM for operational grounding — non-blocking, best-effort.
+
+    Returns the answer string, or empty string on any failure.
+    Used by chains to enrich reports with historical context.
+    """
+    if not notebook_id:
+        return ""
+    try:
+        cmd = [_NLM_CLI, "query", "notebook", notebook_id, question, "--timeout", str(timeout)]
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout + 15)
+        if proc.returncode != 0:
+            logger.debug("NLM grounding query failed: %s", stderr.decode().strip()[:200])
+            return ""
+        data = _json_mod.loads(stdout.decode().strip())
+        if "value" in data and isinstance(data["value"], dict):
+            data = data["value"]
+        return data.get("answer", "")
+    except asyncio.TimeoutError:
+        logger.debug("NLM grounding timed out for: %s", question[:60])
+        return ""
+    except Exception:
+        logger.debug("NLM grounding unavailable", exc_info=True)
+        return ""
 
 
 async def _reflect_and_save(
@@ -147,7 +191,25 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception as e:
             log.append({"step": "metrics", "status": "error", "detail": str(e)})
 
-        # Step 5: Send daily report email
+        # Step 5: NLM grounding — enrich report with operational context
+        nlm_context = ""
+        try:
+            urgent_count = report.get("expiry_alerts", {}).get("urgent", 0)
+            if _NB_OPS_ID and urgent_count > 0:
+                nlm_context = await _nlm_grounding(
+                    _NB_OPS_ID,
+                    f"There are {urgent_count} urgent expiry alerts today. "
+                    "Are there recurring patterns? Which client segments are most affected?",
+                )
+            if nlm_context:
+                report["nlm_ops_context"] = nlm_context
+                log.append({"step": "nlm_grounding", "status": "ok", "answer_len": len(nlm_context)})
+            else:
+                log.append({"step": "nlm_grounding", "status": "skipped", "detail": "no NB_OPS_ID or no urgent alerts"})
+        except Exception as e:
+            log.append({"step": "nlm_grounding", "status": "error", "detail": str(e)})
+
+        # Step 6: Send daily report email
         try:
             summary_lines = [
                 f"Daily Ops Report — {report['date'][:10]}",
@@ -156,6 +218,8 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                 f"Agent Health: {report.get('agents', {}).get('stale', [])} stale",
                 f"Intel: {report.get('intel', {}).get('critical_alerts', 0)} critical, {report.get('intel', {}).get('articles_composed', 0)} articles auto-composed",
             ]
+            if nlm_context:
+                summary_lines.extend(["", "## Operational Insights (NLM)", nlm_context])
             await _call_safe("/api/zoho/emails", method="POST", json={
                 "to": send_report_to,
                 "subject": f"[Nuzantara] Daily Ops Report {report['date'][:10]}",
@@ -710,6 +774,19 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         if isinstance(intel, dict) and intel.get("high_activity_areas"):
             summary_lines.append(f"📋 High regulatory activity: {intel['high_activity_areas']}")
 
+        # NLM grounding — business intelligence context
+        nlm_intel = ""
+        if _NB_INTEL_ID:
+            nlm_intel = await _nlm_grounding(
+                _NB_INTEL_ID,
+                "Summarize this week's business performance: revenue trends, "
+                "top performing services, client acquisition rate, and any anomalies "
+                "compared to previous weeks.",
+            )
+        if nlm_intel:
+            summary_lines.extend(["", "## Business Intelligence (NLM)", nlm_intel])
+            report["nlm_intel_context"] = nlm_intel
+
         # Send email
         try:
             await _call_safe("/api/zoho/emails", method="POST", json={
@@ -720,10 +797,11 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception:
             pass
 
-        res = {"chain": "weekly_report", "report": report}
+        log: list[dict] = [{"step": "gather_data", "status": "ok"}, {"step": "nlm_grounding", "status": "ok" if nlm_intel else "skipped"}]
+        res = {"chain": "weekly_report", "report": report, "log": log}
         await _reflect_and_save(_call_safe, "weekly_report",
-            f"Week={report.get('week_of','?')}, sent to {send_to}",
-            "success", [])
+            f"Week={report.get('week_of','?')}, sent to {send_to}, nlm={'yes' if nlm_intel else 'no'}",
+            "success", log)
         return res
 
     # =========================================================================
@@ -816,9 +894,24 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception as e:
             log.append({"step": "stalled_practices", "status": "error", "detail": str(e)})
 
+        # Step 4: NLM grounding — churn pattern analysis
+        try:
+            if _NB_OPS_ID and stats["re_engagements"] > 0:
+                nlm_churn = await _nlm_grounding(
+                    _NB_OPS_ID,
+                    f"We sent {stats['re_engagements']} re-engagement messages today. "
+                    "What patterns exist for client churn? Which segments have highest "
+                    "churn risk and what retention strategies have worked?",
+                )
+                if nlm_churn:
+                    stats["nlm_churn_insights"] = nlm_churn
+                    log.append({"step": "nlm_churn_analysis", "status": "ok"})
+        except Exception as e:
+            log.append({"step": "nlm_churn_analysis", "status": "error", "detail": str(e)})
+
         res = {"chain": "client_health_monitor", "stats": stats, "log": log}
         await _reflect_and_save(_call_safe, "client_health_monitor",
-            f"At-risk={stats.get('at_risk_clients',0)}, stalled_reminders={stats.get('stalled_reminders',0)}",
+            f"Re-engagements={stats.get('re_engagements',0)}, stalled_reminders={stats.get('stalled_reminders',0)}",
             "success" if not any(s.get("status") == "error" for s in log) else "partial",
             log)
         return res
