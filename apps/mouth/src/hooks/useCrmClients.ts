@@ -268,6 +268,9 @@ export function useCrmStats() {
           total: number;
           by_status: Record<string, number>;
           by_team_member: Array<{ assigned_to: string; count: number }>;
+          passport_expired: number;
+          passport_expiring_soon: number;
+          silent_30d: number;
         }>("/api/crm/clients/stats/overview"),
         api.crm.getPracticeStats(),
         api.crm.getInteractionStats(),
@@ -283,6 +286,9 @@ export function useCrmStats() {
         },
         byStatus: clientStats.by_status,
         interactions: interactionStats,
+        passportExpired: clientStats.passport_expired ?? 0,
+        passportExpiringSoon: clientStats.passport_expiring_soon ?? 0,
+        silent30d: clientStats.silent_30d ?? 0,
       };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
