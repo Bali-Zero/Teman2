@@ -51,7 +51,10 @@ _EMAIL_API_URL = os.getenv(
 )
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
 
-# ─── BROCHURE PATH ───────────────────────────────────────
+# ─── BROCHURE ────────────────────────────────────────────
+# Served from Vercel (always available on Fly.io)
+_BROCHURE_URL = "https://kita.balizero.com/static/brochure_balizero_en.pdf"
+# Local path kept as fallback for dev/testing
 _BROCHURE_PATH = (
     Path(__file__).parent.parent.parent.parent.parent
     / "data"
@@ -203,24 +206,38 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
     if assigned_to and assigned_to != email:
         payload["cc"] = assigned_to
 
-    # Attach brochure if available
-    if _BROCHURE_PATH.exists():
-        try:
-            with open(_BROCHURE_PATH, "rb") as f:
-                brochure_b64 = base64.b64encode(f.read()).decode()
-            payload["attachments"] = [
-                {
-                    "name": "Bali_Zero_Introduction.pdf",
-                    "content": brochure_b64,
-                    "contentType": "application/pdf",
-                },
-            ]
-        except Exception:
-            logger.warning(
-                "WelcomeEmail: could not read brochure for client %d", client_id, exc_info=True,
-            )
-    else:
-        logger.warning("WelcomeEmail: brochure not found at %s", _BROCHURE_PATH)
+    # Attach brochure — fetch from public URL (works on Fly.io), fallback to local file in dev
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as fetch:
+            br = await fetch.get(_BROCHURE_URL)
+        br.raise_for_status()
+        brochure_b64 = base64.b64encode(br.content).decode()
+        payload["attachments"] = [
+            {
+                "name": "Bali_Zero_Introduction.pdf",
+                "content": brochure_b64,
+                "contentType": "application/pdf",
+            },
+        ]
+        logger.info("WelcomeEmail: brochure attached from URL (%d bytes)", len(br.content))
+    except Exception:
+        # Fallback: try local file (dev only)
+        if _BROCHURE_PATH.exists():
+            try:
+                with open(_BROCHURE_PATH, "rb") as f:
+                    brochure_b64 = base64.b64encode(f.read()).decode()
+                payload["attachments"] = [
+                    {
+                        "name": "Bali_Zero_Introduction.pdf",
+                        "content": brochure_b64,
+                        "contentType": "application/pdf",
+                    },
+                ]
+                logger.info("WelcomeEmail: brochure attached from local file")
+            except Exception:
+                logger.warning("WelcomeEmail: could not attach brochure for client %d", client_id, exc_info=True)
+        else:
+            logger.warning("WelcomeEmail: brochure unavailable for client %d", client_id)
 
     # Send
     async with httpx.AsyncClient(timeout=30.0) as http:
