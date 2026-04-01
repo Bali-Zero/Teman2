@@ -1350,6 +1350,7 @@ async def add_document_to_practice(
     drive_file_id: str = Query(...),
     uploaded_by: str = Query(...),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Add a document to a practice
