@@ -22,7 +22,7 @@ _STATE_DIR = os.path.expanduser("~/.agent/decisions/state")
 # (yellow = 1.5× period, red = 3× period)
 _JOB_PERIODS: dict[str, float] = {
     "fly_pg_backup":       24.0,   # daily
-    "fly_health_check":     0.5,   # every 5min — stale if >30min
+    "fly_health_check":    12.0,   # every 30min 7-19h only — stale if >12h
     "intel_scraper":       24.0,   # daily 03:00
     "nlm_deep_research":   24.0,   # daily 04:30
     "t4_monitor_daily":     6.0,   # every 6h
