@@ -8,6 +8,8 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
+pytest.importorskip("sentence_transformers", reason="sentence_transformers not installed — skipping local embedding tests")
+
 # ===== EMBEDDINGS TESTS =====
 
 

@@ -1,10 +1,9 @@
 """SLOW Reasoner — CELL's brain.
 
-Tiered LLM escalation:
+Tiered LLM escalation (all local, zero cost):
   Tier -1: PatternIndex FAISS match (free, <1ms) — reuses past decisions
-  Tier 0: Qwen 3.5 27B local (free, 1-2s)
-  Tier 1: Gemini Flash API (~$0.075/MTok, 2-5s)
-  Tier 2: Claude Opus API (~$15/MTok, 5-30s) — only for confirmed critical
+  Tier 0: Qwen 3.5 9B local (free, <1s) — fast triage
+  Tier 1: Qwen 3.5 27B local (free, ~5s) — deeper reasoning
 
 Given a situation, the reasoner proposes an action from the allowlist.
 """
@@ -32,6 +31,7 @@ Your DNA rules (priority order):
 AVAILABLE ACTIONS (you can ONLY choose from these):
 {actions}
 
+{ltm_context}
 RESPOND WITH EXACTLY ONE JSON OBJECT:
 {{"action": "<action_name>", "reason": "<why this action>", "confidence": <0.0-1.0>}}
 
@@ -47,34 +47,33 @@ class ReasonerProposal:
     action: str  # action name from allowlist, or "none"
     reason: str
     confidence: float
-    tier_used: int  # 0=qwen, 1=gemini, 2=opus
+    tier_used: int  # -1=pattern, 0=qwen9b, 1=qwen27b
     cost_usd: float
 
 
 class SlowReasoner:
-    """Tiered LLM reasoner. Starts cheap, escalates if needed."""
+    """Tiered LLM reasoner. All local models, zero API cost."""
 
     def __init__(
         self,
         ollama_url: str = "http://localhost:11434",
-        ollama_model: str = "deepseek-r1:32b",
-        gemini_api_key: str = "",
-        gemini_model: str = "gemini-2.5-flash",
+        ollama_model_fast: str = "qwen3.5:9b",
+        ollama_model_heavy: str = "qwen3.5:27b",
     ) -> None:
         self._ollama_url = ollama_url
-        self._ollama_model = ollama_model
-        self._gemini_key = gemini_api_key
-        self._gemini_model = gemini_model
+        self._model_fast = ollama_model_fast
+        self._model_heavy = ollama_model_heavy
         self._registry = ActionRegistry()
         self._patterns = PatternIndex()
 
-    def _build_system_prompt(self) -> str:
+    def _build_system_prompt(self, ltm_context: str = "") -> str:
         actions = self._registry.all()
         action_list = "\n".join(
             f"- {name}: {a.description} (cooldown: {a.cooldown_seconds}s, max: {a.max_per_day}/day)"
             for name, a in actions.items()
         )
-        return SYSTEM_PROMPT.format(actions=action_list)
+        ltm_block = (ltm_context + "\n") if ltm_context else ""
+        return SYSTEM_PROMPT.format(actions=action_list, ltm_context=ltm_block)
 
     def _build_user_prompt(
         self,
@@ -84,6 +83,8 @@ class SlowReasoner:
         recent_history: list[dict[str, Any]],
         budget_spent: float,
         budget_limit: float,
+        stm_context: str = "",
+        trend_context: str = "",
     ) -> str:
         history_str = ""
         if recent_history:
@@ -91,6 +92,12 @@ class SlowReasoner:
                 f"  Pulse #{h.get('pulse_number', '?')}: {h.get('health_status', '?')} ({h.get('response_time_ms', 0)}ms)"
                 for h in recent_history[:10]
             )
+
+        extra = ""
+        if stm_context:
+            extra += f"\nSHORT-TERM MEMORY (recent observations):\n{stm_context}"
+        if trend_context:
+            extra += f"\nDETECTED TRENDS:\n{trend_context}"
 
         return f"""CURRENT SITUATION:
 - Health: {health_status}
@@ -100,7 +107,7 @@ class SlowReasoner:
 
 RECENT HISTORY (last 10 pulses):
 {history_str or '  No history yet'}
-
+{extra}
 What action should I take?"""
 
     def _parse_response(self, text: str, tier: int, cost: float) -> ReasonerProposal:
@@ -155,48 +162,25 @@ What action should I take?"""
                 cost_usd=cost,
             )
 
-    async def _call_qwen(self, system: str, user: str) -> tuple[str, float]:
-        """Tier 0: DeepSeek-R1:32b local via Ollama. Free. (~32s for 256 tokens)"""
-        async with httpx.AsyncClient(timeout=60.0) as client:
+    async def _call_ollama(self, model: str, system: str, user: str, timeout: float = 30.0) -> tuple[str, float]:
+        """Call a local Ollama model. Free, no API cost."""
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(
                 f"{self._ollama_url}/api/chat",
                 json={
-                    "model": self._ollama_model,
+                    "model": model,
                     "messages": [
                         {"role": "system", "content": system},
                         {"role": "user", "content": user},
                     ],
                     "stream": False,
+                    "think": False,
                     "options": {"temperature": 0.3, "num_predict": 256},
                 },
             )
             response.raise_for_status()
             data = response.json()
-            return data["message"]["content"], 0.0  # Free
-
-    async def _call_gemini(self, system: str, user: str) -> tuple[str, float]:
-        """Tier 1: Gemini Flash via API. ~$0.075/MTok input."""
-        if not self._gemini_key:
-            raise ValueError("No Gemini API key configured")
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{self._gemini_model}:generateContent",
-                params={"key": self._gemini_key},
-                json={
-                    "system_instruction": {"parts": [{"text": system}]},
-                    "contents": [{"parts": [{"text": user}]}],
-                    "generationConfig": {
-                        "temperature": 0.3,
-                        "maxOutputTokens": 256,
-                    },
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
-            # Rough cost estimate: ~500 input tokens * $0.075/MTok
-            return text, 0.00004
+            return data["message"]["content"], 0.0
 
     async def bootstrap_memory(self) -> int:
         """Load persisted patterns from DB into the in-memory PatternIndex.
@@ -243,14 +227,18 @@ What action should I take?"""
         db_ok: float = 1.0,
         qdrant_ok: float = 1.0,
         error_rate_norm: float = 0.0,
+        stm_context: str = "",
+        trend_context: str = "",
+        ltm_context: str = "",
     ) -> ReasonerProposal:
         """Reason about the current situation and propose an action.
 
         Tier -1: PatternIndex FAISS match (free, <1ms)
-        Tier 0:  Qwen local. Escalates to Tier 1 (Gemini) if low confidence.
+        Tier 0:  Qwen 3.5 9B local (free, <1s). Escalates to Tier 1 if low confidence.
+        Tier 1:  Qwen 3.5 27B local (free, ~5s). Deeper reasoning.
 
         Args:
-            max_tier: Maximum tier to use (0=qwen only, 1=up to gemini, 2=up to opus)
+            max_tier: Maximum tier to use (0=9b only, 1=up to 27b)
         """
         budget_pct = (budget_spent / budget_limit) if budget_limit > 0 else 1.0
 
@@ -272,19 +260,20 @@ What action should I take?"""
                 cost_usd=0.0,
             )
 
-        system = self._build_system_prompt()
+        system = self._build_system_prompt(ltm_context=ltm_context)
         user = self._build_user_prompt(
             health_status, response_time_ms, error_message,
             recent_history or [], budget_spent, budget_limit,
+            stm_context=stm_context, trend_context=trend_context,
         )
 
-        # Tier 0: Qwen local
+        # Tier 0: Qwen 3.5 9B (fast)
         try:
-            text, cost = await self._call_qwen(system, user)
+            text, cost = await self._call_ollama(self._model_fast, system, user, timeout=15.0)
             proposal = self._parse_response(text, tier=0, cost=cost)
-            logger.info(f"Tier 0 (Qwen): action={proposal.action}, confidence={proposal.confidence:.2f}, reason={proposal.reason[:80]}")
+            logger.info(f"Tier 0 (Qwen 9B): action={proposal.action}, confidence={proposal.confidence:.2f}, reason={proposal.reason[:80]}")
 
-            # If Qwen is confident enough, use its answer
+            # If confident enough, use its answer
             if proposal.confidence >= 0.6 or proposal.action == "none":
                 self.record_pattern(health_status, response_time_ms, budget_pct, proposal,
                                     db_ok=db_ok, qdrant_ok=qdrant_ok, error_rate_norm=error_rate_norm)
@@ -292,35 +281,35 @@ What action should I take?"""
 
             # Low confidence — escalate if allowed
             if max_tier < 1:
-                logger.info("Qwen low confidence but max_tier=0, using anyway")
+                logger.info("Qwen 9B low confidence but max_tier=0, using anyway")
                 self.record_pattern(health_status, response_time_ms, budget_pct, proposal,
                                     db_ok=db_ok, qdrant_ok=qdrant_ok, error_rate_norm=error_rate_norm)
                 return proposal
 
-            logger.info(f"Qwen confidence {proposal.confidence:.2f} < 0.6, escalating to Tier 1")
+            logger.info(f"Qwen 9B confidence {proposal.confidence:.2f} < 0.6, escalating to Tier 1 (27B)")
 
         except Exception as e:
-            logger.warning(f"Tier 0 (Qwen) failed: {e}")
+            logger.warning(f"Tier 0 (Qwen 9B) failed: {e}")
             if max_tier < 1:
                 return ReasonerProposal(
                     action="alert_human",
-                    reason=f"Qwen unavailable: {e}. Cannot reason about: {health_status}",
+                    reason=f"Qwen 9B unavailable: {e}. Situation: {health_status}",
                     confidence=0.5, tier_used=0, cost_usd=0.0,
                 )
 
-        # Tier 1: Gemini Flash
+        # Tier 1: Qwen 3.5 27B (deeper reasoning)
         try:
-            text, cost = await self._call_gemini(system, user)
+            text, cost = await self._call_ollama(self._model_heavy, system, user, timeout=60.0)
             proposal = self._parse_response(text, tier=1, cost=cost)
-            logger.info(f"Tier 1 (Gemini): action={proposal.action}, confidence={proposal.confidence:.2f}, reason={proposal.reason[:80]}")
+            logger.info(f"Tier 1 (Qwen 27B): action={proposal.action}, confidence={proposal.confidence:.2f}, reason={proposal.reason[:80]}")
             self.record_pattern(health_status, response_time_ms, budget_pct, proposal,
                                 db_ok=db_ok, qdrant_ok=qdrant_ok, error_rate_norm=error_rate_norm)
             return proposal
 
         except Exception as e:
-            logger.warning(f"Tier 1 (Gemini) failed: {e}")
+            logger.warning(f"Tier 1 (Qwen 27B) failed: {e}")
             return ReasonerProposal(
                 action="alert_human",
-                reason=f"Both Qwen and Gemini failed. Situation: {health_status}, {error_message}",
+                reason=f"Both Qwen 9B and 27B failed. Situation: {health_status}, {error_message}",
                 confidence=0.5, tier_used=1, cost_usd=0.0,
             )

@@ -103,7 +103,7 @@ describe("NewsRoomPage", () => {
     expect(
       screen.getByText("Indonesia Opens New Immigration Office in Bali"),
     ).toBeInTheDocument();
-    expect(intelligenceApi.getPendingItems).toHaveBeenCalledWith("news");
+    expect(intelligenceApi.getPendingItems).toHaveBeenCalledWith("all");
   });
 
   it("should show empty state when no items", async () => {
