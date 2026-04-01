@@ -46,6 +46,7 @@ export default function LKPMReadyPackPage() {
     try {
       await lkpmApi.markSubmitted(draftId);
       success("Marked as submitted", "LKPM report marked as submitted to OSS");
+      await loadReadyPack();
     } catch (err) {
       error("Failed to mark submitted", "Please try again");
       logger.error(`LKPM mark submitted failed ${draftId}`, {}, err as Error);
@@ -64,6 +65,7 @@ export default function LKPMReadyPackPage() {
       success("Receipt uploaded", `Receipt ${receiptNumber} saved`);
       setShowReceiptForm(false);
       setReceiptNumber("");
+      await loadReadyPack();
     } catch (err) {
       error("Failed to upload receipt", "Please try again");
       logger.error(`LKPM receipt upload failed ${draftId}`, {}, err as Error);
