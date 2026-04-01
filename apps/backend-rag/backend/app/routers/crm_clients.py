@@ -295,6 +295,9 @@ async def create_client(
         creator_email = current_user.get("email", "").lower() if current_user else None
         if creator_email:
             client_data["created_by"] = creator_email
+            # Auto-assign to creator if not explicitly assigned
+            if not client_data.get("assigned_to"):
+                client_data["assigned_to"] = creator_email
 
         # Costruisce i dati opzionali per l'azienda se presenti nel payload
         company_data = None
