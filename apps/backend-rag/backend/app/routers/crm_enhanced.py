@@ -669,7 +669,7 @@ async def _dispatch_ocr_by_folder(
         "telex",
         "evisa",
     ]
-    if any(kw in fn_lower for kw in visa_keywords) or folder_lower.startswith("01_"):
+    if any(kw in fn_lower for kw in visa_keywords):
         # Only auto-OCR if filename suggests a visa document (not random immigration files)
         if (
             any(kw in fn_lower for kw in visa_keywords)

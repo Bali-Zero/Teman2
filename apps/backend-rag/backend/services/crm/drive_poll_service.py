@@ -7,6 +7,7 @@ then dispatches OCR via the central dispatcher.
 Runs every 5 minutes via the autonomous scheduler.
 """
 
+import hashlib
 import logging
 import os
 import time
@@ -294,6 +295,32 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     skipped += 1
                     continue
 
+            # Level 2 dedup: content hash (same file content uploaded with different file_id)
+            content_hash = None
+            try:
+                file_metadata = await drive_service.get_file_metadata(file_id)
+                file_size = int(file_metadata.get("size", 0))
+                # Only hash files under 20MB to avoid memory issues
+                if file_size > 0 and file_size < 20 * 1024 * 1024:
+                    request = drive_service.service.files().get_media(fileId=file_id)
+                    import asyncio
+                    file_content = await asyncio.to_thread(request.execute)
+                    content_hash = hashlib.md5(file_content).hexdigest()
+
+                    async with db_pool.acquire() as conn:
+                        hash_dup = await conn.fetchval(
+                            """SELECT id FROM documents
+                               WHERE client_id = $1 AND content_hash = $2
+                                 AND created_at > NOW() - INTERVAL '30 days'""",
+                            client_id, content_hash,
+                        )
+                        if hash_dup:
+                            logger.info(f"Drive poll: skipped duplicate content hash for {file_name} (matches doc {hash_dup})")
+                            skipped += 1
+                            continue
+            except Exception as e:
+                logger.debug(f"Could not compute content hash for {file_name}: {e}")
+
             logger.info(
                 f"Drive poll: new file '{file_name}' in {folder_name} for client {client_id}",
             )
@@ -301,6 +328,14 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
             # Create document record with auto-categorization
             cat_result = auto_categorize_document(file_name)
             doc_category = cat_result["document_category"]
+
+            # Folder hint: if categorizer returns "other" but file is in immigration folder,
+            # re-categorize as immigration (conservative — only for "other", not specific categories)
+            if doc_category == "other" and isinstance(folder_name, str):
+                folder_lower = folder_name.lower()
+                if folder_lower in ("01_immigration", "actual visa", "previous visa") or "immigration" in folder_lower:
+                    doc_category = "immigration"
+                    logger.info(f"Drive poll: folder hint upgraded '{file_name}' from 'other' to 'immigration'")
 
             # Detect if file is in Actual Visa / Previous Visa subfolder
             subfolder_value = None
@@ -330,8 +365,8 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                 doc_id = await conn.fetchval(
                     """INSERT INTO documents (
                         client_id, document_type, document_category, file_name, file_id,
-                        status, storage_type, ocr_status, subfolder
-                    ) VALUES ($1, $2, $3, $4, $5, 'active', 'google_drive', 'pending', $6)
+                        status, storage_type, ocr_status, subfolder, content_hash
+                    ) VALUES ($1, $2, $3, $4, $5, 'active', 'google_drive', 'pending', $6, $7)
                     RETURNING id""",
                     client_id,
                     _infer_document_type(file_name, folder_name),
@@ -339,6 +374,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     file_name,
                     file_id,
                     subfolder_value,
+                    content_hash,
                 )
 
             # Touch client updated_at so CRM reflects new document
