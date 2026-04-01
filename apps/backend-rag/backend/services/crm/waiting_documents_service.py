@@ -13,6 +13,7 @@ import asyncpg
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.crm.welcome.welcome_templates import PRACTICE_DOCUMENT_CHECKLISTS
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
@@ -160,24 +161,30 @@ Zantara CRM 🤖
         client_name: str,
         practice_data: dict,
     ) -> None:
-        """Send warm document request email to client."""
+        """Send document request email to client with practice-specific checklist."""
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
+        practice_type_code = (practice_data.get("practice_type_code") or "").upper()
 
         subject = f"[CLIENT] 📋 Documents Needed for Your {practice_type}"
+
+        # Use practice-specific checklist if available, fall back to generic
+        checklist = PRACTICE_DOCUMENT_CHECKLISTS.get(practice_type_code)
+        if checklist:
+            doc_list = "\n".join(f"• {item}" for item in checklist)
+            doc_section = f"""📄 Documents Required for {practice_type}:
+{doc_list}"""
+        else:
+            doc_section = """📄 General Documents (your advisor will confirm the exact list):
+• Valid passport (all pages)
+• Recent passport-size photos
+• Proof of address
+• Any relevant previous permits or visas"""
 
         body = f"""Dear {client_name},
 
 Thank you for choosing Zantara Indonesia! We're moving forward with your {practice_type} and we need a few documents from you to get started.
 
-What We Need From You:
-
-Our team will be in touch shortly with the specific list of documents required for your case. In the meantime, here are the most common documents we typically need:
-
-📄 General Documents (may vary by service):
-• Valid passport (all pages)
-• Recent passport-size photos
-• Proof of address
-• Any relevant previous permits or visas
+{doc_section}
 
 How to Submit Your Documents:
 

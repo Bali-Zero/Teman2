@@ -278,6 +278,7 @@ class NotificationService:
             if alert.alert_type in [
                 AlertType.PASSPORT_CRITICAL,
                 AlertType.PASSPORT_EXPIRED,
+                AlertType.VISA_EMERGENCY,
                 AlertType.VISA_CRITICAL,
                 AlertType.VISA_EXPIRED,
             ]:
