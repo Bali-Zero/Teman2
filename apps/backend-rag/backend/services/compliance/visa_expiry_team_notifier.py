@@ -48,7 +48,7 @@ _LABEL_COLOURS: dict[int, str] = {
 _DOC_QUERIES: list[tuple[str, str]] = [
     ("visa", "visa_expiry_date"),
     ("kitas", "kitas_expiry_date"),
-    ("passport", "passport_expiry_date"),
+    ("passport", "passport_expiry"),
 ]
 
 _BASE_SQL = """
@@ -64,7 +64,7 @@ SELECT
     (c.{col} - CURRENT_DATE)::int AS days_until_expiry,
     c.current_visa_type,
     c.current_visa_sponsor,
-    c.passport_expiry_date
+    c.passport_expiry
 FROM clients c
 WHERE c.{col} IS NOT NULL
   AND c.{col} BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '60 days'
@@ -379,7 +379,7 @@ def _build_client_row(client: dict[str, Any]) -> str:
 
     # Passport cross-check warning
     passport_warning = ""
-    passport_expiry = client.get("passport_expiry_date")
+    passport_expiry = client.get("passport_expiry")
     expiry = client.get("expiry_date")
     if passport_expiry and expiry and passport_expiry < expiry:
         passport_warning = (
