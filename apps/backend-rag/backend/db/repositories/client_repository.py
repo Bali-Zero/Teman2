@@ -51,7 +51,10 @@ class ClientRepository:
             raise
 
     async def create_client_with_details(
-        self, client_data: dict[str, Any], company_data: dict[str, Any] | None = None,
+        self,
+        client_data: dict[str, Any],
+        company_data: dict[str, Any] | None = None,
+        existing_company_id: int | None = None,
     ) -> asyncpg.Record:
         """
         2) ATOMICITÀ: Crea un cliente e, opzionalmente, la sua azienda associata.
@@ -103,30 +106,56 @@ class ClientRepository:
                 )
 
                 # Inserimento opzionale della Compagnia e collegamento (Multi-tabella)
-                if company_data and client_record:
-                    company_query = """
-                        INSERT INTO companies (company_name, kbli_code, status, created_at, updated_at)
-                        VALUES ($1, $2, $3, NOW(), NOW())
-                        RETURNING id
-                    """
-                    company_record = await conn.fetchrow(
-                        company_query,
-                        company_data.get("company_name"),
-                        company_data.get("kbli_code"),
-                        company_data.get("status", "active"),
+                # NIB-only dedup: if existing_company_id is set, skip INSERT and link directly
+                company_id = None
+                if existing_company_id and client_record:
+                    company_id = existing_company_id
+                    logger.info(
+                        f"Linking client {client_record['id']} to existing company {company_id} (NIB dedup)"
                     )
+                elif company_data and client_record:
+                    nib = company_data.get("nib")
+                    if nib:
+                        company_query = """
+                            INSERT INTO companies (company_name, kbli_code, nib, status, created_at, updated_at)
+                            VALUES ($1, $2, $3, $4, NOW(), NOW())
+                            RETURNING id
+                        """
+                        company_record = await conn.fetchrow(
+                            company_query,
+                            company_data.get("company_name"),
+                            company_data.get("kbli_code"),
+                            nib,
+                            company_data.get("status", "active"),
+                        )
+                    else:
+                        company_query = """
+                            INSERT INTO companies (company_name, kbli_code, status, created_at, updated_at)
+                            VALUES ($1, $2, $3, NOW(), NOW())
+                            RETURNING id
+                        """
+                        company_record = await conn.fetchrow(
+                            company_query,
+                            company_data.get("company_name"),
+                            company_data.get("kbli_code"),
+                            company_data.get("status", "active"),
+                        )
+                    company_id = company_record["id"]
 
+                if company_id and client_record:
                     # Collegamento Client-Company
                     link_query = """
                         INSERT INTO client_company_links (client_id, company_id, role, is_primary)
                         VALUES ($1, $2, $3, $4)
                     """
+                    role = company_data.get("role", "director") if company_data else "director"
+                    is_primary = company_data.get("is_primary", True) if company_data else True
                     await conn.execute(
                         link_query,
                         client_record["id"],
-                        company_record["id"],
-                        company_data.get("role", "director"),
-                        company_data.get("is_primary", True),
+                        company_id,
+                        role,
+                        is_primary,
                     )
 
                 return client_record
