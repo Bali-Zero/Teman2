@@ -32,7 +32,7 @@ except ImportError:
     logger.warning("faiss-cpu not installed — PatternIndex disabled")
 
 _VECTOR_DIM = 8  # [green, yellow, red, rt_norm, budget_norm, db_ok, qdrant_ok, error_rate_norm]
-_SIMILARITY_THRESHOLD = 0.97  # cosine similarity — very tight match required
+_SIMILARITY_THRESHOLD = 0.75  # cosine similarity — covers sensor variation (db_ok/qdrant_ok)
 
 
 @dataclass
