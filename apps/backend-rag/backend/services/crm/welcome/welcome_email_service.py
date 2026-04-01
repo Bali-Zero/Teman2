@@ -305,17 +305,20 @@ def _build_html(
     )
 
     return f"""<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" style="background-color:#0c0d0f;">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>Welcome to Bali Zero</title>
   <style>
+    html,body{{margin:0;padding:0;background-color:#0c0d0f !important;}}
     body,table,td,a{{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}}
     table,td{{mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;}}
     img{{border:0;height:auto;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;}}
     a[x-apple-data-detectors]{{color:inherit!important;text-decoration:none!important;}}
+    /* Force dark background on Zoho and other webmail clients */
+    div[style*="margin: 0px auto"]{{background-color:#0c0d0f !important;}}
     @media only screen and (max-width:600px){{
       .wrap{{width:100%!important;}}
       .pad{{padding-left:24px!important;padding-right:24px!important;}}
@@ -328,10 +331,11 @@ def _build_html(
 
   <div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#0c0d0f;">We handle the bureaucracy. You focus on Bali.</div>
 
-  <table cellspacing="0" cellpadding="0" border="0" width="100%" bgcolor="#0c0d0f">
+  <!-- Outer wrapper: full-page dark bg -->
+  <table cellspacing="0" cellpadding="0" border="0" width="100%" bgcolor="#0c0d0f" style="background-color:#0c0d0f;min-width:100%;">
     <tr>
-      <td align="center" style="padding:32px 16px 48px;">
-        <table cellspacing="0" cellpadding="0" border="0" width="580" class="wrap" style="max-width:580px;">
+      <td align="center" bgcolor="#0c0d0f" style="padding:32px 16px 48px;background-color:#0c0d0f;">
+        <table cellspacing="0" cellpadding="0" border="0" width="580" class="wrap" style="max-width:580px;background-color:#0c0d0f;" bgcolor="#0c0d0f">
 
           <!-- ══ HERO ══ -->
           <tr>
@@ -531,7 +535,7 @@ def _build_html(
 
           <!-- ══ FOOTER ══ -->
           <tr>
-            <td align="center" style="padding:28px 40px 0;" class="pad">
+            <td align="center" bgcolor="#0c0d0f" style="padding:28px 40px 0;background-color:#0c0d0f;" class="pad">
               <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#3a3428;line-height:20px;">
                 <strong style="color:#5a4a18;">Bali Zero</strong> &middot; Kerobokan, Bali, Indonesia<br>
                 <a href="https://www.balizero.com" style="color:#c8a040;text-decoration:none;">balizero.com</a>
