@@ -116,40 +116,53 @@ def test_backup_sensor_yellow_old_file():
 
 def test_cron_sensor_green():
     from cell.sensors.cron_sensor import CronSensor
-    now_iso = datetime.now(timezone.utc).isoformat()
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        json.dump({"intel_scraper": now_iso}, f)
-        fname = f.name
-    try:
-        sensor = CronSensor(last_run_file=fname, job_periods={"intel_scraper": 24.0})
+    import time
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_file = os.path.join(tmpdir, "intel_scraper.last.json")
+        with open(state_file, "w") as f:
+            json.dump({"job": "intel_scraper", "ts": int(time.time()), "status": "ok"}, f)
+        sensor = CronSensor(state_dir=tmpdir, job_periods={"intel_scraper": 24.0})
         reading = sensor.read()
         job = next(j for j in reading.jobs if j.name == "intel_scraper")
         assert job.status == "green"
-    finally:
-        os.unlink(fname)
 
 
 def test_cron_sensor_red_stale():
     from cell.sensors.cron_sensor import CronSensor
-    old_iso = (datetime.now(timezone.utc) - timedelta(hours=80)).isoformat()
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        json.dump({"intel_scraper": old_iso}, f)
-        fname = f.name
-    try:
-        sensor = CronSensor(last_run_file=fname, job_periods={"intel_scraper": 24.0})
+    import time
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_file = os.path.join(tmpdir, "intel_scraper.last.json")
+        old_ts = int(time.time()) - 80 * 3600
+        with open(state_file, "w") as f:
+            json.dump({"job": "intel_scraper", "ts": old_ts, "status": "ok"}, f)
+        sensor = CronSensor(state_dir=tmpdir, job_periods={"intel_scraper": 24.0})
         reading = sensor.read()
         job = next(j for j in reading.jobs if j.name == "intel_scraper")
         assert job.status == "red"
         assert reading.status == "red"
-    finally:
-        os.unlink(fname)
+
+
+def test_cron_sensor_yellow_failed_status():
+    from cell.sensors.cron_sensor import CronSensor
+    import time
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_file = os.path.join(tmpdir, "intel_scraper.last.json")
+        with open(state_file, "w") as f:
+            json.dump({"job": "intel_scraper", "ts": int(time.time()), "status": "failed"}, f)
+        sensor = CronSensor(state_dir=tmpdir, job_periods={"intel_scraper": 24.0})
+        reading = sensor.read()
+        job = next(j for j in reading.jobs if j.name == "intel_scraper")
+        # Recent but failed → yellow
+        assert job.status == "yellow"
+        assert reading.metadata["failed_jobs"] == ["intel_scraper"]
 
 
 def test_cron_sensor_unknown_no_file():
     from cell.sensors.cron_sensor import CronSensor
-    sensor = CronSensor(last_run_file="/nonexistent.json", job_periods={"some_job": 6.0})
-    reading = sensor.read()
-    assert reading.jobs[0].status == "unknown"
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sensor = CronSensor(state_dir=tmpdir, job_periods={"some_job": 6.0})
+        reading = sensor.read()
+        assert reading.jobs[0].status == "unknown"
 
 
 # ── TrendDetector ─────────────────────────────────────────────────────────────

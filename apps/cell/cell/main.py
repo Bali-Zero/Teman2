@@ -161,6 +161,7 @@ async def main() -> None:
 
         logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")
         pulse_count = 0
+        _last_status = "green"
 
         while not _shutdown.is_set():
             pulse_count += 1
@@ -174,12 +175,17 @@ async def main() -> None:
                 action_str = f" → {result.action_taken}" if result.action_taken else ""
                 tier_str = f" (tier {result.thought_tier})" if result.thought_tier is not None else ""
                 logger.info(f"Pulse #{pulse_count} complete. Health: {status_str}{action_str}{tier_str}")
+                _last_status = status_str
 
             except Exception as e:
                 logger.error(f"Pulse #{pulse_count} error: {e}", exc_info=True)
 
+            # Adaptive interval: 15s during stress, 60s when healthy
+            interval = 15 if _last_status != "green" else settings.pulse_interval_seconds
+            if _last_status != "green":
+                logger.debug(f"Adaptive pulse: {interval}s (status={_last_status})")
             try:
-                await asyncio.wait_for(_shutdown.wait(), timeout=settings.pulse_interval_seconds)
+                await asyncio.wait_for(_shutdown.wait(), timeout=interval)
                 break
             except asyncio.TimeoutError:
                 pass
