@@ -292,25 +292,54 @@ async def create_client(
         client_data = client.model_dump(exclude_unset=True)
 
         # Popola created_by con l'utente autenticato
-        creator_email = current_user.get("email", "").lower() if current_user else None
-        if creator_email:
-            client_data["created_by"] = creator_email
-            # Auto-assign to creator if not explicitly assigned
-            if not client_data.get("assigned_to"):
-                client_data["assigned_to"] = creator_email
+        creator_email = (current_user.get("email") or "").strip().lower() if current_user else None
+        if not creator_email:
+            logger.error(
+                f"create_client: missing email in current_user context. "
+                f"Keys: {list(current_user.keys()) if current_user else 'None'}, "
+                f"sub: {current_user.get('sub') if current_user else 'N/A'}"
+            )
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication error: user email not found in token. Please re-login.",
+            )
+        client_data["created_by"] = creator_email
+        # Auto-assign to creator if not explicitly assigned
+        if not client_data.get("assigned_to"):
+            client_data["assigned_to"] = creator_email
 
         # Costruisce i dati opzionali per l'azienda se presenti nel payload
+        # NIB-only dedup: match existing company by NIB (unique identifier)
+        # NEVER match by name — One Sponsor Policy (SE 3/836/2026) requires legal entity distinction
         company_data = None
+        existing_company_id = None
         if client.company_name:
-            company_data = {
-                "company_name": client.company_name,
-                "status": "active",
-                "kbli_code": client_data.pop("kbli_code", None),
-            }
+            nib = client_data.pop("nib", None)
+            if nib:
+                async with db_pool.acquire() as conn:
+                    existing_company_id = await conn.fetchval(
+                        "SELECT id FROM companies WHERE nib = $1 AND status = 'active' LIMIT 1",
+                        nib.strip(),
+                    )
+                    if existing_company_id:
+                        logger.info(
+                            f"Company dedup: found existing company {existing_company_id} by NIB {nib}"
+                        )
+
+            if not existing_company_id:
+                company_data = {
+                    "company_name": client.company_name,
+                    "status": "active",
+                    "kbli_code": client_data.pop("kbli_code", None),
+                }
+                if nib:
+                    company_data["nib"] = nib
 
         # Chiama il Business Logic Layer (gestisce transazioni e Domain Errors)
         created_record = await client_service.create_client(
-            client_data=client_data, company_data=company_data,
+            client_data=client_data,
+            company_data=company_data,
+            existing_company_id=existing_company_id,
         )
 
         new_client = dict(created_record)

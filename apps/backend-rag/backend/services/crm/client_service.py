@@ -28,7 +28,10 @@ class ClientService:
         self.repository = repository
 
     async def create_client(
-        self, client_data: dict[str, Any], company_data: dict[str, Any] | None = None,
+        self,
+        client_data: dict[str, Any],
+        company_data: dict[str, Any] | None = None,
+        existing_company_id: int | None = None,
     ) -> asyncpg.Record:
         """
         1. Valida l'input tramite Pydantic
@@ -43,7 +46,9 @@ class ClientService:
 
             # 2. Esecuzione tramite Repository (garantisce atomicità se c'è company_data)
             created_record = await self.repository.create_client_with_details(
-                client_data=validated_data, company_data=company_data,
+                client_data=validated_data,
+                company_data=company_data,
+                existing_company_id=existing_company_id,
             )
 
             # 3. Invalidazione della Cache
