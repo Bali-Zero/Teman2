@@ -121,13 +121,37 @@ export class PortalApi {
   // ============================================================================
 
   async getVisaStatus(): Promise<VisaInfo> {
-    const response = await this.client.request<PortalApiResponse<VisaInfo>>(
-      "/api/portal/visa",
-      {
-        method: "GET",
-      },
-    );
-    return response.data!;
+    // Backend returns {summary, current_visa, history} without PortalApiResponse wrapper
+    const response = await this.client.request<any>("/api/portal/visa", {
+      method: "GET",
+    });
+
+    // Handle both wrapped {success, data} and unwrapped responses
+    const raw = response.data ?? response;
+    const visa = raw.current_visa;
+
+    return {
+      current: visa
+        ? {
+            type: visa.visa_type ?? "",
+            status: visa.status ?? "expired",
+            issueDate: visa.issue_date ?? "",
+            expiryDate: visa.expiry_date ?? "",
+            daysRemaining: raw.summary?.days_until_expiry ?? 0,
+            permitNumber: visa.visa_number ?? "",
+            sponsor: visa.sponsor_name ?? "",
+          }
+        : null,
+      history: (raw.history ?? []).map(
+        (h: Record<string, unknown>) => ({
+          id: String(h.id ?? ""),
+          type: (h.visa_type as string) ?? "",
+          period: `${h.issue_date ?? ""} — ${h.expiry_date ?? ""}`,
+          status: h.status === "active" ? "completed" : "expired",
+        }),
+      ),
+      documents: [],
+    };
   }
 
   // ============================================================================
