@@ -554,6 +554,39 @@ export class CrmApi {
   }
 
   /**
+   * Upload a document via base64 with optional subfolder hint for visa rotation
+   */
+  async uploadDocumentBase64(
+    clientId: number,
+    data: {
+      file: string;
+      file_name: string;
+      document_type: string;
+      mime_type?: string;
+      notes?: string;
+      subfolder_hint?: string;
+      document_category?: string;
+      expiry_date?: string;
+      family_member_id?: number;
+    },
+  ): Promise<{
+    success: boolean;
+    document_id?: number;
+    file_url?: string;
+    ocr_triggered?: boolean;
+  }> {
+    return this.client.request<{
+      success: boolean;
+      document_id?: number;
+      file_url?: string;
+      ocr_triggered?: boolean;
+    }>(`/api/crm/clients/${clientId}/documents/upload`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
    * Update a document
    */
   async updateDocument(
