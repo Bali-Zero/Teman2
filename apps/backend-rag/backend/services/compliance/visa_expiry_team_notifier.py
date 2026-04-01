@@ -61,11 +61,15 @@ SELECT
     c.assigned_to,
     $1::text      AS document_type,
     c.{col}       AS expiry_date,
-    (c.{col} - CURRENT_DATE)::int AS days_until_expiry
+    (c.{col} - CURRENT_DATE)::int AS days_until_expiry,
+    c.current_visa_type,
+    c.current_visa_sponsor,
+    c.passport_expiry_date
 FROM clients c
 WHERE c.{col} IS NOT NULL
   AND c.{col} BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '60 days'
   AND c.assigned_to IS NOT NULL
+  AND c.deleted_at IS NULL
 """
 
 
@@ -347,9 +351,7 @@ Ogni team leader ha già ricevuto la propria notifica individuale.</p>
 
 
 def _build_client_row(client: dict[str, Any]) -> str:
-    """
-    Returns an HTML <tr> for one expiring document, colour-coded by urgency.
-    """
+    """Returns an HTML <tr> for one expiring document, colour-coded by urgency."""
     days: int = int(client.get("days_until_expiry") or 0)
     expiry_date: str = _fmt_date(client.get("expiry_date"))
     doc_type: str = str(client.get("document_type", "")).upper()
@@ -367,13 +369,31 @@ def _build_client_row(client: dict[str, Any]) -> str:
         bg = _ROW_COLOURS[60]
         label_color = _LABEL_COLOURS[60]
 
+    # Enhanced: show visa type if available
+    visa_type = client.get("current_visa_type")
+    if visa_type and doc_type in ("VISA", "KITAS"):
+        doc_type = f"{doc_type} ({visa_type})"
+
+    sponsor = client.get("current_visa_sponsor", "")
+    sponsor_html = f"<br><small style='color:#666;'>Sponsor: {sponsor}</small>" if sponsor else ""
+
+    # Passport cross-check warning
+    passport_warning = ""
+    passport_expiry = client.get("passport_expiry_date")
+    expiry = client.get("expiry_date")
+    if passport_expiry and expiry and passport_expiry < expiry:
+        passport_warning = (
+            f"<br><small style='color:#C62828;'>⚠️ Passaporto scade PRIMA "
+            f"({passport_expiry.strftime('%d/%m/%Y')})</small>"
+        )
+
     return (
         f'<tr style="background:{bg};">'
-        f"<td>{name}</td>"
-        f"<td>{doc_type}</td>"
-        f"<td>{expiry_date}</td>"
-        f'<td style="font-weight:bold; color:{label_color};">{days} giorni</td>'
-        f"<td>{phone}</td>"
+        f"<td style='padding:8px;'>{name}</td>"
+        f"<td style='padding:8px;'>{doc_type}{sponsor_html}</td>"
+        f"<td style='padding:8px;'>{expiry_date}{passport_warning}</td>"
+        f"<td style='padding:8px; font-weight:bold; color:{label_color};'>{days} giorni</td>"
+        f"<td style='padding:8px;'>{phone}</td>"
         f"</tr>"
     )
 
