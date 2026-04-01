@@ -1,14 +1,12 @@
-"""CronSensor — monitors local cron job freshness.
+"""CronSensor — monitors cron/agent job freshness.
 
-Reads a JSON file written by each cron script on completion:
-  ~/scripts/cron_last_run.json
-  { "job_name": "2026-04-01T03:10:00+08:00", ... }
+Reads ~/.agent/decisions/state/*.last.json files written by every
+OpenClaw agent and cron script on completion. Format:
+  {"job": "fly_pg_backup", "ts": 1774521542, "status": "ok", "host": "..."}
 
-If a job hasn't written its timestamp within its expected window,
-the sensor reports yellow or red.
-
-Also checks Air cron jobs by reading via SSH if reachable.
+ts is a Unix timestamp (seconds). status is "ok" or "failed".
 """
+import glob
 import json
 import logging
 import os
@@ -18,101 +16,122 @@ from typing import Any
 
 logger = logging.getLogger("cell.sensors.cron")
 
-_LAST_RUN_FILE = os.path.expanduser("~/scripts/cron_last_run.json")
+_STATE_DIR = os.path.expanduser("~/.agent/decisions/state")
 
-# Expected max age for each job in hours before going yellow/red
-# (yellow = 1.5× expected period, red = 3× expected period)
+# Expected max period in hours for each watched job.
+# (yellow = 1.5× period, red = 3× period)
 _JOB_PERIODS: dict[str, float] = {
-    "intel_scraper": 24.0,       # daily 03:00
-    "nlm_daily_refresh": 24.0,   # daily 04:30
-    "fly_pg_backup": 24.0,       # daily
-    "fly_health_check": 0.5,     # every 5min — stale if >30min
-    "t4_monitor": 6.0,           # every 6h
-    "drive_poll": 0.5,           # every 5min on Air
+    "fly_pg_backup":       24.0,   # daily
+    "fly_health_check":     0.5,   # every 5min — stale if >30min
+    "intel_scraper":       24.0,   # daily 03:00
+    "nlm_deep_research":   24.0,   # daily 04:30
+    "t4_monitor_daily":     6.0,   # every 6h
+    "war_room":            24.0,   # daily
+    "system_doctor":       24.0,   # daily 08:00
+    "core_guardian":        4.0,   # every 3h
+    "expiry_alerter":      24.0,   # daily
+    "knowledge_graph_builder": 24.0,
 }
 
 
 @dataclass
 class CronJobStatus:
     name: str
-    status: str  # "green", "yellow", "red", "unknown"
+    status: str          # "green", "yellow", "red", "unknown", "failed"
     age_hours: float | None = None
     last_run: str = ""
+    last_job_status: str = ""  # "ok" / "failed" as reported by the job
 
 
 @dataclass
 class CronReading:
-    status: str  # worst across all jobs
+    status: str          # worst across watched jobs
     jobs: list[CronJobStatus] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class CronSensor:
-    """Checks freshness of local cron jobs via last-run timestamp file.
+    """Reports freshness of watched cron jobs from state files.
 
-    Each cron script should write to ~/scripts/cron_last_run.json:
-        import json, datetime, os
-        _f = os.path.expanduser("~/scripts/cron_last_run.json")
-        data = json.load(open(_f)) if os.path.exists(_f) else {}
-        data["job_name"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        json.dump(data, open(_f, "w"))
+    Reads ~/.agent/decisions/state/<job>.last.json for each watched job.
+    A job is classified:
+      green   — ran within 1.5× expected period AND status=ok
+      yellow  — ran within 3× period, OR status=failed
+      red     — not run in 3× period
+      unknown — state file missing
     """
 
     def __init__(
         self,
-        last_run_file: str = _LAST_RUN_FILE,
+        state_dir: str = _STATE_DIR,
         job_periods: dict[str, float] | None = None,
     ) -> None:
-        self._file = last_run_file
+        self._dir = state_dir
         self._periods = job_periods or _JOB_PERIODS
 
     def read(self) -> CronReading:
         now = datetime.now(timezone.utc)
-        data: dict[str, str] = {}
-
-        if os.path.isfile(self._file):
-            try:
-                with open(self._file) as f:
-                    data = json.load(f)
-            except Exception as e:
-                logger.warning(f"CronSensor: failed to read {self._file}: {e}")
-
+        _severity = {"green": 0, "yellow": 1, "red": 2, "unknown": 1, "failed": 2}
         jobs: list[CronJobStatus] = []
-        _severity = {"green": 0, "yellow": 1, "red": 2, "unknown": 1}
 
         for job_name, period_hours in self._periods.items():
-            if job_name not in data:
+            # State file may use hyphens or underscores interchangeably
+            candidates = [
+                os.path.join(self._dir, f"{job_name}.last.json"),
+                os.path.join(self._dir, f"{job_name.replace('_', '-')}.last.json"),
+            ]
+            state: dict[str, Any] | None = None
+            for path in candidates:
+                if os.path.isfile(path):
+                    try:
+                        with open(path) as f:
+                            state = json.load(f)
+                        break
+                    except Exception as e:
+                        logger.debug(f"CronSensor: failed to read {path}: {e}")
+
+            if state is None:
                 jobs.append(CronJobStatus(name=job_name, status="unknown"))
                 continue
 
-            try:
-                last_run = datetime.fromisoformat(data[job_name])
-                if last_run.tzinfo is None:
-                    last_run = last_run.replace(tzinfo=timezone.utc)
-                age_hours = (now - last_run).total_seconds() / 3600.0
-            except Exception:
+            ts = state.get("ts")
+            job_ok = state.get("status", "ok") == "ok"
+
+            if not ts:
                 jobs.append(CronJobStatus(name=job_name, status="unknown"))
                 continue
 
-            if age_hours <= period_hours * 1.5:
-                status = "green"
+            age_hours = (now.timestamp() - float(ts)) / 3600.0
+            last_run_iso = datetime.fromtimestamp(float(ts), tz=timezone.utc).isoformat()
+
+            if not job_ok:
+                # Job ran but reported failure
+                cron_status = "yellow" if age_hours <= period_hours * 3.0 else "red"
+            elif age_hours <= period_hours * 1.5:
+                cron_status = "green"
             elif age_hours <= period_hours * 3.0:
-                status = "yellow"
+                cron_status = "yellow"
             else:
-                status = "red"
+                cron_status = "red"
 
             jobs.append(CronJobStatus(
                 name=job_name,
-                status=status,
+                status=cron_status,
                 age_hours=round(age_hours, 2),
-                last_run=data[job_name],
+                last_run=last_run_iso,
+                last_job_status=state.get("status", "?"),
             ))
 
-        worst = max((j.status for j in jobs), key=lambda s: _severity.get(s, 1), default="unknown")
+        worst = max(
+            (j.status for j in jobs),
+            key=lambda s: _severity.get(s, 1),
+            default="unknown",
+        )
         stale = [j.name for j in jobs if j.status in ("yellow", "red")]
+        failed = [j.name for j in jobs if j.last_job_status == "failed"]
 
         return CronReading(
             status=worst,
             jobs=jobs,
-            metadata={"stale_jobs": stale, "total": len(jobs)},
+            metadata={"stale_jobs": stale, "failed_jobs": failed, "total": len(jobs)},
         )
