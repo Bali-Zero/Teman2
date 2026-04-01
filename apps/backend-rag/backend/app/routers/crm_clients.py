@@ -439,7 +439,7 @@ async def list_clients(
                 SELECT
                     c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
                     c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
-                    c.passport_expiry, c.company_name,
+                    c.passport_number, c.passport_expiry, c.date_of_birth, c.company_name,
                     c.tags, c.created_at, c.updated_at,
                     i.sentiment as last_sentiment,
                     i.summary as last_interaction_summary

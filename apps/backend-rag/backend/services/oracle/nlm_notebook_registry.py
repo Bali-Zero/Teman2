@@ -27,7 +27,7 @@ NLM_NOTEBOOKS: dict[str, dict] = {
         },
     },
     "company": {
-        "notebook_id": "2e84b9b9-3b99-4bc5-8ec5-351a43c52df4",
+        "notebook_id": "933509f9-1561-403d-bd44-4a7a67a36df2",  # NB-3
         "primary_notebook_id": None,
         "label": "Company & Licensing",
         "keywords": {
@@ -44,7 +44,7 @@ NLM_NOTEBOOKS: dict[str, dict] = {
         },
     },
     "tax": {
-        "notebook_id": "837b620b-2aca-43ab-812e-97ca92bdad1d",
+        "notebook_id": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",  # NB-4
         "primary_notebook_id": None,
         "label": "Tax & Compliance",
         "keywords": {
@@ -61,7 +61,7 @@ NLM_NOTEBOOKS: dict[str, dict] = {
         },
     },
     "property": {
-        "notebook_id": "568ec624-ceb8-47d1-a2a2-5b2f793ea7ed",
+        "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",  # NB-5
         "primary_notebook_id": None,
         "label": "Property & Zoning",
         "keywords": {
@@ -77,13 +77,13 @@ NLM_NOTEBOOKS: dict[str, dict] = {
         },
     },
     "operations": {
-        "notebook_id": "3e1baa5f-680f-4499-9430-23a901576bcc",
+        "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",  # NB-6
         "primary_notebook_id": None,
         "label": "Operations",
         "keywords": {"sop", "team", "pricing", "crm", "workflow", "competitor"},
     },
     "editorial": {
-        "notebook_id": "dd464d8f-6b8e-4543-8647-f62c498589b1",
+        "notebook_id": "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8",  # NB-7
         "primary_notebook_id": None,
         "label": "Editorial & Market",
         "keywords": {
@@ -98,7 +98,7 @@ NLM_NOTEBOOKS: dict[str, dict] = {
         },
     },
     "lifestyle": {
-        "notebook_id": "1143b525-dd3f-40d7-a34d-2e9263b44460",
+        "notebook_id": "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c",  # NB-8
         "primary_notebook_id": None,
         "label": "Expat Life",
         "keywords": {
