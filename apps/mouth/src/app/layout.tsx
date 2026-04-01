@@ -135,10 +135,10 @@ export const metadata: Metadata = {
   },
   verification: {
     google: [
-      process.env.GOOGLE_SITE_VERIFICATION || "",
+      "tuGW8kCBjRE-ycNaFdotBkKfOIaunurqnj-XDAVlPWw",
       "S0SLRaoipW1uBChMmHSEdXW4REDgOzsyUv9CbAauao0",
       "QU1L-D6V0hYncjZHFMYrNbpqffCk8gwuvK4gTHz8Ph8",
-    ].filter(Boolean),
+    ],
     other: {
       "msvalidate.01": process.env.BING_SITE_VERIFICATION || "",
     },
