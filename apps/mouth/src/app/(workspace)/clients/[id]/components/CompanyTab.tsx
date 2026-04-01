@@ -458,6 +458,8 @@ export function CompanyTab({
             <PeopleColumn
               associates={associates}
               fallbackName={client.full_name}
+              customFields={co?.custom_fields}
+              totalShares={co?.shares_count}
             />
           </div>
         </>
