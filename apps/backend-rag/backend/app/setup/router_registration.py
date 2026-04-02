@@ -46,6 +46,7 @@ def include_routers(api: FastAPI) -> None:
         crm_enhanced_alerts,
         crm_enhanced_documents,
         crm_interactions,
+        crm_notifications,
         crm_portal_integration,
         crm_practices,
         crm_shared_memory,
@@ -154,6 +155,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_enhanced_documents.router)
     api.include_router(crm_enhanced_alerts.router)
     api.include_router(crm_interactions.router)
+    api.include_router(crm_notifications.router)
     api.include_router(crm_practices.router)
     api.include_router(crm_shared_memory.router)
     api.include_router(crm_analytics.router)  # [NEW] CRM Analytics dashboard

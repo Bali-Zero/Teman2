@@ -82,9 +82,7 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
       const [alerts, portalAlerts] = await Promise.all([
         api.crm.getExpiryAlerts({ limit: 50 }),
         api.crm
-          .request<
-            CrmAlert[]
-          >("/api/admin/notifications/alerts?alert_type=portal_document_upload&limit=20")
+          .request<CrmAlert[]>("/api/crm/notifications?limit=20")
           .catch(() => [] as CrmAlert[]),
       ]);
 
@@ -122,14 +120,13 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
         (alert: CrmAlert): Notification => ({
           id: `portal-${alert.id}`,
           type: "portal_upload",
-          title: "Portal Document Upload",
-          message:
-            alert.email_subject ||
-            alert.message ||
-            "Client uploaded a document",
+          title: (alert as any).client_name
+            ? `${(alert as any).client_name} uploaded a document`
+            : "Portal Document Upload",
+          message: alert.message || "Client uploaded a document via portal",
           severity: "medium",
           createdAt: alert.created_at,
-          read: !!alert.sent_at,
+          read: alert.status !== "pending",
           actionUrl: `/clients/${alert.client_id}`,
           metadata: { clientId: alert.client_id },
         }),
