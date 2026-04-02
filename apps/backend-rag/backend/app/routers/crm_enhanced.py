@@ -754,79 +754,20 @@ async def _dispatch_ocr_by_folder(
     doc_id: int | None = None,
     document_type: str | None = None,
 ) -> dict:
-    """
-    Central OCR dispatcher. Routes to the correct OCR handler based on
-    subfolder name, filename keywords, and document_type.
+    """Central OCR dispatcher — delegates to shared service."""
+    from backend.services.documents.ocr_dispatcher_service import (
+        dispatch_ocr_by_folder as _shared_dispatch,
+    )
 
-    Returns:
-        {"dispatched": True, "handler": "passport"} or {"dispatched": False}
-    """
-    fn_lower = filename.lower()
-    folder_lower = folder_name.lower() if folder_name else ""
-    dtype_lower = (document_type or "").lower().replace("_", " ")
-
-    # Passport detection
-    if "passport" in fn_lower or (folder_lower.startswith("00_") and "passport" in fn_lower):
-        logger.info(f"OCR dispatch: passport detected for client {client_id}, file {filename}")
-        return {
-            "dispatched": True,
-            "handler": "passport",
-            "result": await _auto_ocr_passport(db_pool, client_id, file_id),
-        }
-
-    # Visa / KITAS / KITAP detection
-    visa_keywords = [
-        "kitas",
-        "kitap",
-        "visa",
-        "voa",
-        "b211",
-        "c31",
-        "itas",
-        "itap",
-        "telex",
-        "evisa",
-    ]
-    if any(kw in fn_lower for kw in visa_keywords):
-        # Only auto-OCR if filename suggests a visa document (not random immigration files)
-        if (
-            any(kw in fn_lower for kw in visa_keywords)
-            or "permit" in fn_lower
-            or "stay" in fn_lower
-        ):
-            logger.info(f"OCR dispatch: visa detected for client {client_id}, file {filename}")
-            return {
-                "dispatched": True,
-                "handler": "visa",
-                "result": await _auto_ocr_visa(db_pool, client_id, file_id, doc_id),
-            }
-
-    # NIB detection
-    if "nib" in fn_lower or "berusaha" in fn_lower or "oss" in fn_lower:
-        logger.info(f"OCR dispatch: NIB detected for client {client_id}, file {filename}")
-        return {
-            "dispatched": True,
-            "handler": "nib",
-            "result": await _auto_ocr_nib(db_pool, client_id, file_id, doc_id),
-        }
-
-    # NPWP detection
-    if "npwp" in fn_lower or "tax" in fn_lower and "id" in fn_lower:
-        logger.info(f"OCR dispatch: NPWP detected for client {client_id}, file {filename}")
-        return {
-            "dispatched": True,
-            "handler": "npwp",
-            "result": await _auto_ocr_npwp(db_pool, client_id, file_id, doc_id),
-        }
-
-    # Company Profile / Profil Perseroan
-    profile_keywords = ["company profile", "profil perseroan", "profil pt", "profil perusahaan", "profile perseroan"]
-    if any(kw in fn_lower for kw in profile_keywords) or dtype_lower in ("company profile", "profile perseroan", "company_profile"):
-        logger.info(f"OCR dispatch: company_profile for client {client_id}")
-        return await _auto_ocr_company_profile(db_pool, client_id, file_id, doc_id)
-
-    logger.debug(f"OCR dispatch: no handler matched for file {filename} in {folder_name}")
-    return {"dispatched": False}
+    return await _shared_dispatch(
+        db_pool=db_pool,
+        client_id=client_id,
+        file_id=file_id,
+        folder_name=folder_name,
+        filename=filename,
+        doc_id=doc_id,
+        document_type=document_type,
+    )
 
 
 router = APIRouter(prefix="/api/crm", tags=["crm-enhanced"])
