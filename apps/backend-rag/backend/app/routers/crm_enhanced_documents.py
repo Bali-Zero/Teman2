@@ -6,6 +6,7 @@ Provides: document CRUD, categories, OCR status, visa extraction,
 document upload (Base64 + Google Drive), document soft-delete.
 """
 
+import asyncio
 import base64
 import hashlib
 from datetime import date, datetime
@@ -167,6 +168,24 @@ async def create_document(
                 doc_id,
             )
             ocr_triggered = True
+
+        # Notify client via portal that a new document was added
+        try:
+            from backend.services.portal.portal_notification_service import (
+                PortalNotificationService,
+            )
+
+            notif_service = PortalNotificationService(pool)
+            asyncio.create_task(
+                notif_service.notify_document_uploaded(
+                    client_id=client_id,
+                    document_type=data.document_type,
+                    sent_by=current_user.get("email", "system"),
+                    practice_id=data.practice_id,
+                ),
+            )
+        except Exception as e:
+            logger.error(f"Portal notification for doc upload failed: {e}")
 
         return {
             "id": doc_id,

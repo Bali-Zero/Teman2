@@ -1139,6 +1139,32 @@ async def update_practice(
                                     f"Could not create timeline event for status change: {e}",
                                 )
 
+            # Notify client via portal about status change
+            if (
+                updates.status is not None
+                and old_status is not None
+                and updates.status != old_status
+                and practice_client_id is not None
+            ):
+                try:
+                    from backend.services.portal.portal_notification_service import (
+                        PortalNotificationService,
+                    )
+
+                    notif_service = PortalNotificationService(db_pool)
+                    practice_type = updated_practice.get("practice_type", "Practice")
+                    asyncio.create_task(
+                        notif_service.notify_practice_status_changed(
+                            client_id=practice_client_id,
+                            practice_id=practice_id,
+                            practice_type=practice_type,
+                            new_status=updates.status,
+                            sent_by=user_email,
+                        ),
+                    )
+                except Exception as e:
+                    logger.error(f"Portal notification for practice status failed: {e}")
+
             # Log activity
             changed_fields = list(updates.dict(exclude_unset=True).keys())
             # Serialize changes dict to JSON string for asyncpg JSONB compatibility
