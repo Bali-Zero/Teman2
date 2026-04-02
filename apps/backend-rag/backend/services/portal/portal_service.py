@@ -556,6 +556,18 @@ class PortalService:
 
         return "other"
 
+    @staticmethod
+    def _get_drive_folder_for_category(category: str) -> str:
+        """Map document category to Drive folder name for OCR dispatch."""
+        category_map = {
+            "immigration": "01_Immigration",
+            "personal": "00_Profile",
+            "pma": "02_Company",
+            "tax": "03_Tax",
+            "family": "04_Family",
+        }
+        return category_map.get((category or "").lower(), "99_Misc")
+
     # ================================================
     # DASHBOARD
     # ================================================
@@ -1657,6 +1669,33 @@ class PortalService:
             )
 
             # =========================================================================
+            # STEP 6b: SMART OCR DISPATCH (passport/visa/npwp/nib extraction)
+            # =========================================================================
+            try:
+                from backend.services.documents.ocr_dispatcher_service import (
+                    dispatch_ocr_by_folder,
+                )
+
+                file_id_for_ocr = drive_result.get("file_id")
+                if file_id_for_ocr:
+                    doc_category = self._classify_document_category(document_type, file_name)
+                    folder_hint = self._get_drive_folder_for_category(doc_category)
+                    asyncio.create_task(
+                        dispatch_ocr_by_folder(
+                            db_pool=self.pool,
+                            client_id=client_id,
+                            file_id=file_id_for_ocr,
+                            folder_name=folder_hint,
+                            filename=file_name,
+                            doc_id=doc["id"],
+                            document_type=document_type,
+                        ),
+                    )
+                    logger.info(f"Smart OCR dispatch triggered for portal upload: {file_name}")
+            except Exception as e:
+                logger.error(f"Smart OCR dispatch failed for portal upload {file_name}: {e}")
+
+            # =========================================================================
             # STEP 7: NOTIFY ASSIGNED LEAD
             # =========================================================================
             asyncio.create_task(
@@ -2060,6 +2099,22 @@ Questa è una notifica automatica da Bali Zero CRM.
                     logger.info(
                         f"📧 Document upload notification sent to {lead_email} via Zoho",
                     )
+
+                # Also insert CRM notification alert for the bell
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO notification_alerts
+                            (client_id, alert_type, status, message, email_subject)
+                        VALUES ($1, 'portal_document_upload', 'sent', $2, $3)
+                        ON CONFLICT ON CONSTRAINT uq_notification_alert_daily DO NOTHING
+                        """,
+                        client_id,
+                        f"{client['full_name']} uploaded {document_type.replace('_', ' ')} via portal",
+                        f"[Portal] {client['full_name']} uploaded {document_type.replace('_', ' ').title()}",
+                    )
+                except Exception as alert_err:
+                    logger.debug(f"CRM alert insert failed (non-critical): {alert_err}")
 
         except Exception as e:
             # Don't fail upload if notification fails
