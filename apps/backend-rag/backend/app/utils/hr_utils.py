@@ -22,6 +22,7 @@ HR_ADMIN_EMAILS: set[str] = {
     "zero@balizero.com",
     "antonellosiano@gmail.com",
     "asya@balizero.com",
+    "ruslana@balizero.com",
 }
 
 
