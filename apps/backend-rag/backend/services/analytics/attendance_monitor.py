@@ -38,9 +38,18 @@ logger = get_logger(__name__)
 BALI_TZ = ZoneInfo("Asia/Makassar")
 
 LATE_THRESHOLD_HOUR: int = 9
-LATE_THRESHOLD_MINUTE: int = 30  # 09:30 Bali time
+LATE_THRESHOLD_MINUTE: int = 40  # 09:40 Bali time
 
 ADMIN_EMAIL: str = "zero@balizero.com"
+
+# These emails are exempt from late-arrival alerts (management / remote workers)
+LATE_EXEMPT_EMAILS: frozenset[str] = frozenset(
+    {
+        "zero@balizero.com",
+        "ruslana@balizero.com",
+        "veronika@balizero.com",
+    }
+)
 
 _EMAIL_API_URL: str = os.getenv(
     "INTERNAL_EMAIL_API_URL",
@@ -77,12 +86,20 @@ class AttendanceMonitor:
 
     async def check_late_checkin(self, email: str, checkin_time: datetime) -> None:
         """
-        Called immediately when a clock_in event is recorded after 09:30 Bali time.
+        Called immediately when a clock_in event is recorded after 09:40 Bali time.
+
+        Skips members in LATE_EXEMPT_EMAILS (zero, ruslana, veronika) and members
+        who have an approved leave request covering today.
 
         Args:
             email: The team member's email address.
             checkin_time: The clock-in datetime, already expressed in Bali timezone.
         """
+        # Skip exempt members (management / remote workers).
+        if email.lower() in LATE_EXEMPT_EMAILS:
+            logger.debug("check_late_checkin: %s is exempt — skipping", email)
+            return
+
         late_threshold = checkin_time.replace(
             hour=LATE_THRESHOLD_HOUR,
             minute=LATE_THRESHOLD_MINUTE,
@@ -91,11 +108,20 @@ class AttendanceMonitor:
         )
 
         if checkin_time <= late_threshold:
-            # Not late — nothing to do.
             logger.debug(
                 "check_late_checkin: %s checked in at %s — not late, skipping",
                 email,
                 checkin_time.strftime("%H:%M"),
+            )
+            return
+
+        # Skip if there is an approved leave request covering today.
+        today: date = checkin_time.date()
+        if await self._has_approved_leave(email, today):
+            logger.info(
+                "check_late_checkin: %s has approved leave for %s — skipping late alert",
+                email,
+                today,
             )
             return
 
@@ -107,7 +133,6 @@ class AttendanceMonitor:
             str(LATE_THRESHOLD_MINUTE).zfill(2),
         )
 
-        # Resolve the member's full name from team_members.
         member = await self._get_member_by_email(email)
         full_name: str = member["full_name"] if member else email
 
@@ -180,6 +205,32 @@ class AttendanceMonitor:
     # ------------------------------------------------------------------
     # Private DB helpers
     # ------------------------------------------------------------------
+
+    async def _has_approved_leave(self, email: str, check_date: date) -> bool:
+        """
+        Returns True if the team member has an approved leave request that covers
+        check_date (i.e. start_date <= check_date <= end_date).
+
+        Joins team_members → hr_employees → hr_leave_requests.
+        Returns False if the member has no HR employee record or no matching leave.
+        """
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT 1
+                FROM hr_leave_requests lr
+                JOIN hr_employees emp ON emp.id = lr.employee_id
+                JOIN team_members tm ON tm.id = emp.team_member_id
+                WHERE tm.email = $1
+                  AND lr.status = 'approved'
+                  AND lr.start_date <= $2
+                  AND lr.end_date   >= $2
+                LIMIT 1
+                """,
+                email,
+                check_date,
+            )
+        return row is not None
 
     async def _get_active_members(self) -> list[dict]:
         """
@@ -268,17 +319,18 @@ class AttendanceMonitor:
 
     async def _send_late_notification(self, email: str, full_name: str, checkin_time: str) -> None:
         """
-        Send a friendly late check-in email to the member (CC zero@balizero.com).
+        Send a late check-in email to the member (CC zero@balizero.com).
 
-        Subject: "Hey [name], tutto ok oggi? 👋"
-        Language: Italian, warm and caring tone.
+        Subject: "Late Check-In — [name], [time]"
+        Language: English.
+        Reminds the member to submit a leave request via HR portal if needed.
         """
         first_name: str = full_name.split()[0] if full_name else email
 
-        subject: str = f"Hey {first_name}, tutto ok oggi? 👋"
+        subject: str = f"Late Check-In — {first_name}, {checkin_time}"
 
         html_body: str = f"""<!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -298,7 +350,7 @@ class AttendanceMonitor:
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }}
         .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
             color: white;
             padding: 28px 32px;
             text-align: center;
@@ -315,12 +367,23 @@ class AttendanceMonitor:
             font-size: 15px;
         }}
         .highlight {{
-            background: #f0f4ff;
-            border-left: 4px solid #667eea;
+            background: #fffaf0;
+            border-left: 4px solid #ed8936;
             padding: 12px 16px;
             border-radius: 0 8px 8px 0;
             margin: 20px 0;
-            font-weight: 500;
+            font-size: 14px;
+        }}
+        .btn {{
+            display: inline-block;
+            background: #ed8936;
+            color: white;
+            text-decoration: none;
+            padding: 10px 22px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 8px;
         }}
         .footer {{
             text-align: center;
@@ -334,25 +397,25 @@ class AttendanceMonitor:
 <body>
     <div class="container">
         <div class="header">
-            <h1>Ciao {first_name}! 👋</h1>
+            <h1>Hi {first_name} — Late Check-In</h1>
         </div>
         <div class="content">
-            <p>Speriamo che tu stia bene!</p>
             <p>
-                Abbiamo notato che oggi hai fatto check-in alle
-                <strong>{checkin_time}</strong>,
-                un po' più tardi del solito.
+                Your check-in today was recorded at <strong>{checkin_time} WITA</strong>,
+                which is after the 09:40 start time.
             </p>
             <div class="highlight">
-                Tutto bene? Se c'è qualcosa di cui hai bisogno o se stai avendo
-                una giornata difficile, siamo qui. 😊
+                If you need to take time off or arrived late due to a planned reason,
+                please submit a leave request through the HR portal and wait for your
+                manager's approval before the absence or late arrival.
             </div>
             <p>
-                Nessun problema, volevamo solo assicurarci che tu stia bene!
-                Se hai avuto un imprevisto o hai bisogno di flessibilità,
-                faccelo sapere senza esitare.
+                <a href="https://kita.balizero.com/hr" class="btn">Submit Leave Request →</a>
             </p>
-            <p>Un abbraccio dal team,<br><strong>Zantara · Bali Zero</strong></p>
+            <p style="margin-top: 24px; color: #555;">
+                If this was an emergency or unexpected situation, just let your manager know.
+            </p>
+            <p>Bali Zero Management<br><strong>Zantara CRM</strong></p>
         </div>
         <div class="footer">
             Bali Zero · Zantara Team Management
