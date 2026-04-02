@@ -68,6 +68,7 @@ def ollama_generate(prompt: str, model: str, system: str = "", timeout: int = 36
         "prompt": prompt,
         "system": system,
         "stream": False,
+        "think": False,
         "options": {"temperature": 0.2, "num_predict": 8192},
     }).encode()
     req = urllib.request.Request(
@@ -184,7 +185,7 @@ def generate_low_tier(codes: list[dict], batch_size: int = 10) -> dict[str, dict
         print(f"  LOW batch {i // batch_size + 1}/{(total + batch_size - 1) // batch_size}...", end="", flush=True)
 
         try:
-            raw = ollama_generate(prompt, QWEN_MODEL, system=SYSTEM_PROMPT_MINIMAL, timeout=180)
+            raw = ollama_generate(prompt, QWEN_MODEL, system=SYSTEM_PROMPT_MINIMAL, timeout=600)
             parsed = parse_llm_response(raw)
             for item in parsed:
                 code_key = item.get("code")
