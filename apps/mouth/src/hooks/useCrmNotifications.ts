@@ -20,7 +20,7 @@ import type {
 
 interface Notification {
   id: string;
-  type: "expiry" | "overdue" | "new_client" | "status_change";
+  type: "expiry" | "overdue" | "new_client" | "status_change" | "portal_upload";
   title: string;
   message: string;
   severity: "low" | "medium" | "high" | "critical";
@@ -28,6 +28,17 @@ interface Notification {
   read: boolean;
   actionUrl?: string;
   metadata?: Record<string, any>;
+}
+
+interface CrmAlert {
+  id: number;
+  client_id: number;
+  alert_type: string;
+  status: string;
+  message: string | null;
+  email_subject: string | null;
+  created_at: string;
+  sent_at: string | null;
 }
 
 interface UseCrmNotificationsOptions {
@@ -41,6 +52,7 @@ const NOTIFICATION_ICONS = {
   overdue: "AlertTriangle",
   new_client: "UserPlus",
   status_change: "RefreshCw",
+  portal_upload: "Upload",
 } as const;
 
 const NOTIFICATION_COLORS = {
@@ -63,14 +75,21 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
   const queryClient = useQueryClient();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Use expiry alerts as notifications
+  // Use expiry alerts + portal upload alerts as notifications
   const query = useQuery({
-    queryKey: ["crm", "notifications", "expiry", { unreadOnly }],
+    queryKey: ["crm", "notifications", "all", { unreadOnly }],
     queryFn: async (): Promise<Notification[]> => {
-      const alerts = await api.crm.getExpiryAlerts({ limit: 50 });
+      const [alerts, portalAlerts] = await Promise.all([
+        api.crm.getExpiryAlerts({ limit: 50 }),
+        api.crm
+          .request<
+            CrmAlert[]
+          >("/api/admin/notifications/alerts?alert_type=portal_document_upload&limit=20")
+          .catch(() => [] as CrmAlert[]),
+      ]);
 
-      // Map alerts to notifications
-      return alerts.map(
+      // Map expiry alerts to notifications
+      const expiryNotifs: Notification[] = alerts.map(
         (alert: ExpiryAlert): Notification => ({
           id: `expiry-${alert.entity_id}-${alert.document_type}`,
           type: "expiry",
@@ -96,6 +115,30 @@ export function useCrmNotifications(options: UseCrmNotificationsOptions = {}) {
             daysUntilExpiry: alert.days_until_expiry,
           },
         }),
+      );
+
+      // Map portal upload alerts to notifications
+      const portalNotifs: Notification[] = (portalAlerts || []).map(
+        (alert: CrmAlert): Notification => ({
+          id: `portal-${alert.id}`,
+          type: "portal_upload",
+          title: "Portal Document Upload",
+          message:
+            alert.email_subject ||
+            alert.message ||
+            "Client uploaded a document",
+          severity: "medium",
+          createdAt: alert.created_at,
+          read: !!alert.sent_at,
+          actionUrl: `/clients/${alert.client_id}`,
+          metadata: { clientId: alert.client_id },
+        }),
+      );
+
+      // Merge and sort by date (newest first)
+      return [...expiryNotifs, ...portalNotifs].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
     },
     refetchInterval: autoRefresh ? refreshInterval : false,
