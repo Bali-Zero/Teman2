@@ -5,6 +5,11 @@ Cross-checks: risk levels, PMA status, hallucinated numbers.
 import json
 import re
 
+# Match "high risk" but NOT "medium-high risk" (negative lookbehind for "medium-")
+_HIGH_RISK_RE = re.compile(r"(?<!medium-)high\s+risk")
+# Match "low risk" but NOT "medium-low risk" (negative lookbehind for "medium-")
+_LOW_RISK_RE = re.compile(r"(?<!medium-)low\s+risk")
+
 OLLAMA_URL = "http://localhost:11434"
 GEMMA_MODEL = "gemma3:12b"
 
@@ -50,10 +55,11 @@ def validate_risk_consistency(generated: dict, source: dict) -> list[str]:
             valid_risks_en.add("high risk")
 
     # Check for contradictions (only if per_skala has data)
+    # Use word-boundary regex to avoid matching "medium-high risk" as "high risk"
     if valid_risks_en and per_skala:
-        if "high risk" in content_text and "high risk" not in valid_risks_en and "high" not in " ".join(valid_risks):
+        if _HIGH_RISK_RE.search(content_text) and "high risk" not in valid_risks_en and "high" not in " ".join(valid_risks):
             errors.append(f"RISK MISMATCH: Content says 'high risk' but source has {valid_risks}")
-        if "low risk" in content_text and "low risk" not in valid_risks_en and "rendah" not in " ".join(valid_risks):
+        if _LOW_RISK_RE.search(content_text) and "low risk" not in valid_risks_en and "rendah" not in " ".join(valid_risks):
             if "menengah rendah" not in " ".join(valid_risks):  # medium-low contains "low"
                 errors.append(f"RISK MISMATCH: Content says 'low risk' but source has {valid_risks}")
 
