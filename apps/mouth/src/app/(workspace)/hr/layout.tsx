@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 const ADMIN_EMAILS = [
   "zero@balizero.com",
   "asya@balizero.com",
+  "ruslana@balizero.com",
   "antonellosiano@gmail.com",
 ];
 
