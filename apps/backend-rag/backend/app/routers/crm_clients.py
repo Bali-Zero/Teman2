@@ -5,6 +5,7 @@ Endpoints for managing client data (anagrafica clienti)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
+import asyncio
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -378,6 +379,20 @@ async def create_client(
         except Exception as e:
             logger.error(f"Welcome communication setup failed: {e}")
 
+        # Auto-create portal profile (team_members with role='client')
+        try:
+            from backend.services.portal.portal_profile_service import PortalProfileService
+
+            portal_profile_service = PortalProfileService(db_pool)
+            background_tasks.add_task(
+                portal_profile_service.ensure_portal_profile,
+                client_id=new_client["id"],
+                email=new_client.get("email"),
+                full_name=new_client.get("full_name", ""),
+            )
+        except Exception as e:
+            logger.error(f"Portal profile creation setup failed: {e}")
+
         return ClientResponse(**new_client)
 
     except ResourceConflictError as e:
@@ -442,6 +457,7 @@ async def list_clients(
                     c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
                     c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
                     c.passport_number, c.passport_expiry, c.date_of_birth, c.gender, c.birthplace, c.company_name,
+                    c.custom_fields, c.address, c.notes, c.npwp, c.nib,
                     c.tags, c.created_at, c.updated_at,
                     i.sentiment as last_sentiment,
                     i.summary as last_interaction_summary
@@ -736,6 +752,24 @@ async def update_client(
                 user_email,
                 f"Updated fields: {updated_fields}",
             )
+
+            # Notify client via portal about significant profile changes
+            try:
+                updated_field_names = list(updates.dict(exclude_unset=True).keys())
+                from backend.services.portal.portal_notification_service import (
+                    PortalNotificationService,
+                )
+
+                notif_service = PortalNotificationService(db_pool)
+                asyncio.create_task(
+                    notif_service.notify_profile_updated(
+                        client_id=client_id,
+                        updated_fields=updated_field_names,
+                        sent_by=user_email,
+                    ),
+                )
+            except Exception as e:
+                logger.error(f"Portal notification for profile update failed: {e}")
 
             log_success(
                 logger,
