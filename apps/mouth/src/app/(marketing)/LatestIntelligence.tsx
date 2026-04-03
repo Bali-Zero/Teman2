@@ -134,6 +134,17 @@ export function LatestIntelligence() {
                   height: "100%",
                   objectFit: "cover",
                 }}
+                onError={(e) => {
+                  const el = e.currentTarget as HTMLImageElement;
+                  el.style.display = "none";
+                  const parent = el.parentElement;
+                  if (parent && !parent.querySelector(".li-img-fallback")) {
+                    const fb = document.createElement("div");
+                    fb.className = "li-img-fallback";
+                    fb.style.cssText = "position:absolute;inset:0;background:linear-gradient(135deg,#0a1520 0%,#1a2a3a 50%,#0f1e2d 100%)";
+                    parent.prepend(fb);
+                  }
+                }}
               />
               <div className="li-img-grad" />
               {i === 0 && (
