@@ -53,17 +53,15 @@ class TestResearchEndpoint:
     """POST /api/naga/research"""
 
     def test_research_endpoint_accepts_request(self, client: TestClient) -> None:
-        """Valid request body returns 200 with not_implemented status."""
+        """Valid request body returns 200 with completed or failed status."""
         resp = client.post(
             "/api/naga/research",
             json={"query": "What are the latest visa regulations?"},
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["status"] == "not_implemented"
+        assert data["status"] in ("completed", "failed")
         assert "session_id" in data
-        assert data["tier"] == "auto"
-        assert data["domain"] == "auto"
 
     def test_research_endpoint_with_all_fields(self, client: TestClient) -> None:
         """Request with all optional fields returns 200."""
@@ -71,18 +69,16 @@ class TestResearchEndpoint:
             "/api/naga/research",
             json={
                 "query": "PT PMA requirements",
-                "tier": "t2",
-                "domain": "company",
-                "mode": "deep",
+                "tier": "flash",
+                "domain": "indonesia",
+                "mode": "oneshot",
                 "trusted_mode": True,
                 "channel": "telegram",
             },
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["status"] == "not_implemented"
-        assert data["tier"] == "t2"
-        assert data["domain"] == "company"
+        assert data["status"] in ("completed", "failed")
 
     def test_research_endpoint_missing_query(self, client: TestClient) -> None:
         """Request without required query field returns 422."""

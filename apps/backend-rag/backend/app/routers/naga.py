@@ -2,12 +2,9 @@
 Naga Research Engine — FastAPI Router
 
 Endpoints for the Naga deep-research pipeline:
-- POST /api/naga/research      — Start a research session
-- GET  /api/naga/session/{id}  — Poll session status
-- GET  /api/naga/claims/search — Search the Claims DB
-
-V1: All endpoints return stub/placeholder responses.
-Wiring to the real orchestrator is deferred to Task 19.
+- POST /api/naga/research      — Start a research session (LIVE — calls real orchestrator)
+- GET  /api/naga/session/{id}  — Poll session status (stub — no session store yet)
+- GET  /api/naga/claims/search — Search the Claims DB (stub — wired in v1.1)
 """
 
 import logging
@@ -65,32 +62,61 @@ class ClaimSearchResponse(BaseModel):
 
 @router.post("/research", response_model=ResearchResponse)
 async def start_research(request: ResearchRequest) -> ResearchResponse:
-    """Start a Naga research session.
-
-    V1 stub: returns a placeholder response with status ``not_implemented``.
-    The real orchestrator will be wired in Task 19.
-    """
+    """Start a Naga research session using the real orchestrator."""
     session_id = str(uuid.uuid4())
     logger.info(
-        "naga research requested session_id=%s query=%s tier=%s domain=%s",
-        session_id,
+        "naga research session=%s query=%s tier=%s domain=%s",
+        session_id[:8],
         request.query[:80],
         request.tier,
         request.domain,
     )
-    return ResearchResponse(
-        session_id=session_id,
-        status="not_implemented",
-        tier=request.tier,
-        domain=request.domain,
-    )
+
+    try:
+        from backend.services.naga.deps import build_deps
+        from backend.services.naga.orchestrator import NagaOrchestrator
+
+        deps = build_deps(mode="server")
+        orch = NagaOrchestrator(deps=deps)
+
+        result = await orch.research(
+            query=request.query,
+            tier=request.tier,
+            domain=request.domain,
+            mode=request.mode,
+            channel=request.channel,
+            trusted_mode=request.trusted_mode,
+        )
+
+        return ResearchResponse(
+            session_id=result.get("session_id", session_id),
+            status=result.get("status", "completed"),
+            tier=result.get("tier", request.tier),
+            domain=result.get("domain", request.domain),
+            report=result.get("report_markdown", ""),
+            claims_count=result.get("claims_extracted", 0),
+            sources_count=len(result.get("search_results", [])),
+            avg_confidence=result.get("avg_confidence", 0.0),
+            duration_ms=result.get("duration_ms", 0),
+            action_items=result.get("action_items", []),
+        )
+
+    except Exception as e:
+        logger.error("naga research failed: %s", e, exc_info=True)
+        return ResearchResponse(
+            session_id=session_id,
+            status="failed",
+            tier=request.tier,
+            domain=request.domain,
+            report=f"Research failed: {e}",
+        )
 
 
 @router.get("/session/{session_id}", response_model=ResearchResponse)
 async def get_session(session_id: str) -> ResearchResponse:
     """Retrieve the status of a research session.
 
-    V1 stub: always returns 404 (no session store yet).
+    V1: always returns 404 (no session store yet — wired in v1.1 with PostgreSQL).
     """
     logger.info("naga session lookup session_id=%s", session_id)
     raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
@@ -105,7 +131,7 @@ async def search_claims(
 ) -> ClaimSearchResponse:
     """Search the Naga Claims DB.
 
-    V1 stub: returns an empty list.
+    V1: returns empty list (wired to PostgreSQL in v1.1).
     """
     logger.info(
         "naga claims search q=%s domain=%s verification=%s limit=%d",
