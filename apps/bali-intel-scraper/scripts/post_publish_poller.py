@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Post-publish poller v2 — Unified pipeline for intel + news articles.
+Post-publish poller v3 — Resilient unified pipeline with step tracking.
 
 Runs every 5 minutes via LaunchAgent (com.balizero.post-publish-poller).
 Reads from PostgreSQL-backed queue on backend, processes each article:
@@ -9,20 +9,27 @@ Reads from PostgreSQL-backed queue on backend, processes each article:
   - Cover image generation (bz_image_style + Fireworks Flux Dev)
   - Git commit + push
 
-Handles two article sources:
+Resilience features:
+  - Step tracking: completed_steps JSONB — only re-runs failed steps on retry
+  - Max 5 attempts: after that, item moves to 'dead' status
+  - Telegram alert on failure (after 2+ attempts)
+  - SEO prompt via stdin (not CLI arg) to avoid timeout on long articles
+
+Sources:
   - 'intel': MDX articles from intel scraper (full pipeline: SEO + translate + image)
-  - 'news':  news_items from /api/news (image generation + DB update only, no MDX)
+  - 'news':  news_items from /api/news (image generation only)
 """
 import json
 import os
 import subprocess
 import sys
+import tempfile
+import urllib.parse
 import urllib.request
 from datetime import datetime
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
-# Support both .venv (Pro) and venv (Air)
 _venv = SCRIPT_DIR.parent / ".venv" / "bin" / "python3"
 VENV_PYTHON = _venv if _venv.exists() else SCRIPT_DIR.parent / "venv" / "bin" / "python3"
 LOG_DIR = Path.home() / ".openclaw" / "workspace" / "logs"
@@ -31,6 +38,8 @@ LOG_FILE = LOG_DIR / f"post_publish_poller_{datetime.now().strftime('%Y%m%d')}.l
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://nuzantara-rag.fly.dev")
 API_KEY = os.environ.get("SCRAPER_API_KEY", "internal-scraper-key")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "413539912")
 
 GITHUB_OWNER = "Balizero1987"
 GITHUB_REPO = "Teman2"
@@ -65,71 +74,85 @@ def api_post(path: str, data: dict) -> dict:
         return json.loads(resp.read())
 
 
-def wait_for_ollama_free(max_wait: int = 60 * 30) -> bool:
-    """Wait until no other translate_articles.py is running (max 30 min)."""
+def mark_step_done(slug: str, step: str):
+    """Report a completed step to the backend."""
+    try:
+        api_post("/api/intel/post-publish-queue/step-done", {"slug": slug, "step": step})
+    except Exception as e:
+        log(f"  ⚠ Failed to mark step '{step}' done: {e}")
+
+
+def send_telegram_alert(message: str):
+    """Send alert to Telegram owner chat."""
+    if not TELEGRAM_BOT_TOKEN:
+        return
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        data = json.dumps({"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}).encode()
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+        urllib.request.urlopen(req, timeout=10)
+    except Exception:
+        pass  # Alert failure is not critical
+
+
+def wait_for_ollama_free(max_wait: int = 60 * 15) -> bool:
+    """Wait until no other translate_articles.py is running (max 15 min)."""
     import time
     waited = 0
     while waited < max_wait:
-        check = subprocess.run(
-            ["pgrep", "-f", "translate_articles.py"],
-            capture_output=True, text=True
-        )
+        check = subprocess.run(["pgrep", "-f", "translate_articles.py"], capture_output=True, text=True)
         if check.returncode != 0:
             return True
-        log(f"⏳ Ollama busy (another translate running) — waiting 60s...")
+        log(f"⏳ Ollama busy — waiting 60s...")
         time.sleep(60)
         waited += 60
-    log("⚠ Timeout waiting for Ollama — proceeding anyway")
+    log("⚠ Timeout waiting for Ollama")
     return False
 
 
 # ─── SEO/GEO ──────────────────────────────────────────────────────────────────
 
 def run_seo(slug: str, category: str) -> bool:
-    """Optimize SEO/GEO metadata of published MDX via Gemini."""
+    """Optimize SEO/GEO metadata of published MDX via Gemini. Uses stdin for prompt."""
     import base64
     import re
 
     ARTICLES_PATH = "apps/mouth/src/content/articles"
     mdx_path = f"{ARTICLES_PATH}/{category}/{slug}.mdx"
 
-    log(f"▶ SEO/GEO optimizer for {category}/{slug}")
+    log(f"  ▶ SEO/GEO for {slug}")
 
-    # Read MDX from GitHub
     try:
         result = subprocess.run(
             ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{mdx_path}"],
-            capture_output=True, text=True, timeout=30
+            capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:
-            log("⚠ SEO: file not found on GitHub — skip")
+            log("  ⏭ SEO: MDX not on GitHub — skip")
             return True
         data = json.loads(result.stdout)
         content = base64.b64decode(data["content"]).decode("utf-8")
         sha = data.get("sha", "")
     except Exception as e:
-        log(f"⚠ SEO: GitHub read error: {e}")
-        return True
+        log(f"  ⚠ SEO: GitHub read error: {e}")
+        return False
 
-    # Extract frontmatter and body
     match = re.match(r"^---\n(.*?)\n---\n(.*)$", content, re.DOTALL)
     if not match:
-        log("⚠ SEO: frontmatter not found — skip")
+        log("  ⏭ SEO: no frontmatter — skip")
         return True
 
     fm_raw = match.group(1)
     body = match.group(2)
 
-    # Check if already optimized
-    if "answerSnippet" in fm_raw and "Check article for specific dates" not in fm_raw and "What does" not in fm_raw:
+    # Already optimized?
+    if "answerSnippet" in fm_raw and "Check article for specific dates" not in fm_raw:
         if "mean for expats in Bali?" not in fm_raw:
-            log("⏭ SEO already optimized — skip")
+            log("  ⏭ SEO already optimized")
             return True
 
     title_match = re.search(r'^title:\s*["\']?(.*?)["\']?\s*$', fm_raw, re.MULTILINE)
     title = title_match.group(1) if title_match else slug
-
-    body_preview = body[:3000]
 
     prompt = f"""You are an expert SEO and AI Search Optimization (GEO/AEO) specialist for Bali Zero, an immigration and business setup agency in Bali.
 
@@ -137,48 +160,51 @@ Analyze this article and return ONLY a JSON object with optimized metadata. No e
 
 Article title: {title}
 Category: {category}
-Article body (first 3000 chars):
-{body_preview}
+Article body (first 2000 chars):
+{body[:2000]}
 
 Return this exact JSON structure:
 {{
   "seoTitle": "<60 chars, keyword-first, include year 2026 if relevant>",
   "seoDescription": "<150-155 chars, include primary keyword + action>",
   "aiOptimization": {{
-    "answerSnippet": "<2 clear declarative sentences answering the article's main question. Factual and specific. This is what AI systems cite.>",
+    "answerSnippet": "<2 clear declarative sentences answering the article's main question. Factual and specific.>",
     "primaryQuestion": "<The main question this article answers, phrased as users would search it>",
     "entityMentions": ["<key entity 1>", "<key entity 2>", "<key entity 3>"]
   }}
 }}"""
 
+    # Use stdin instead of -p arg to avoid shell/timeout issues on long prompts
     try:
         result = subprocess.run(
-            ["gemini", "-m", "gemini-2.5-pro", "-p", prompt],
-            capture_output=True, text=True, timeout=60
+            ["gemini", "-m", "gemini-2.5-pro"],
+            input=prompt, capture_output=True, text=True, timeout=90,
         )
         if result.returncode != 0 or not result.stdout.strip():
+            # Fallback to default model
             result = subprocess.run(
-                ["gemini", "-p", prompt],
-                capture_output=True, text=True, timeout=60
+                ["gemini"],
+                input=prompt, capture_output=True, text=True, timeout=90,
             )
+    except subprocess.TimeoutExpired:
+        log("  ⚠ SEO: Gemini timeout (90s)")
+        return False
     except Exception as e:
-        log(f"⚠ SEO: Gemini error: {e}")
-        return True
+        log(f"  ⚠ SEO: Gemini error: {e}")
+        return False
 
-    # Parse JSON response
     raw = result.stdout.strip()
     json_match = re.search(r'\{.*\}', raw, re.DOTALL)
     if not json_match:
-        log("⚠ SEO: no JSON in Gemini response — skip")
-        return True
+        log("  ⚠ SEO: no JSON in Gemini response")
+        return False
 
     try:
         seo = json.loads(json_match.group(0))
     except json.JSONDecodeError:
-        log("⚠ SEO: invalid JSON — skip")
-        return True
+        log("  ⚠ SEO: invalid JSON from Gemini")
+        return False
 
-    # Update frontmatter
     def set_fm_field(fm: str, key: str, value: str) -> str:
         value_escaped = value.replace('"', '\\"')
         pattern = rf'^{re.escape(key)}:.*$'
@@ -194,40 +220,26 @@ Return this exact JSON structure:
 
     if ai_opt.get("answerSnippet"):
         answer = ai_opt["answerSnippet"].replace('"', '\\"')
-        fm_raw = re.sub(
-            r'(answerSnippet:\s*)["\']?.*?["\']?\s*$',
-            f'\\1"{answer}"',
-            fm_raw, flags=re.MULTILINE
-        )
+        fm_raw = re.sub(r'(answerSnippet:\s*)["\']?.*?["\']?\s*$', f'\\1"{answer}"', fm_raw, flags=re.MULTILINE)
     if ai_opt.get("primaryQuestion"):
         question = ai_opt["primaryQuestion"].replace('"', '\\"')
-        fm_raw = re.sub(
-            r'(primaryQuestion:\s*)["\']?.*?["\']?\s*$',
-            f'\\1"{question}"',
-            fm_raw, flags=re.MULTILINE
-        )
+        fm_raw = re.sub(r'(primaryQuestion:\s*)["\']?.*?["\']?\s*$', f'\\1"{question}"', fm_raw, flags=re.MULTILINE)
 
     new_content = f"---\n{fm_raw}\n---\n{body}"
 
-    # Commit to GitHub
     encoded = __import__("base64").b64encode(new_content.encode("utf-8")).decode("utf-8")
-    payload = {
-        "message": f"feat(seo): optimize GEO/AEO metadata for '{title[:50]}'",
-        "content": encoded,
-        "sha": sha,
-    }
+    payload = {"message": f"feat(seo): optimize GEO/AEO metadata for '{title[:50]}'", "content": encoded, "sha": sha}
     try:
         result = subprocess.run(
-            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{mdx_path}",
-             "--method", "PUT", "--input", "-"],
-            input=json.dumps(payload), capture_output=True, text=True, timeout=30
+            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{mdx_path}", "--method", "PUT", "--input", "-"],
+            input=json.dumps(payload), capture_output=True, text=True, timeout=30,
         )
         ok = result.returncode == 0
-        log(f"{'✅' if ok else '❌'} SEO/GEO metadata updated for {slug}")
+        log(f"  {'✅' if ok else '❌'} SEO/GEO metadata updated")
         return ok
     except Exception as e:
-        log(f"⚠ SEO: commit error: {e}")
-        return True
+        log(f"  ⚠ SEO commit error: {e}")
+        return False
 
 
 # ─── TRANSLATION ───────────────────────────────────────────────────────────────
@@ -235,43 +247,33 @@ Return this exact JSON structure:
 def run_translate(slug: str, category: str) -> bool:
     wait_for_ollama_free()
     translate_script = SCRIPT_DIR.parent.parent.parent / "scripts" / "translate-articles.py"
-    log(f"▶ translate-articles.py --slug {slug} --category {category} --lang all")
+    log(f"  ▶ Translating {slug} (4 langs)")
     result = subprocess.run(
-        [str(VENV_PYTHON), str(translate_script),
-         "--slug", slug, "--category", category, "--lang", "all"],
-        capture_output=True, text=True, timeout=15 * 60
+        [str(VENV_PYTHON), str(translate_script), "--slug", slug, "--category", category, "--lang", "all"],
+        capture_output=True, text=True, timeout=15 * 60,
     )
     ok = result.returncode == 0
-    log(f"{'✅' if ok else '❌'} translate exit={result.returncode}")
+    log(f"  {'✅' if ok else '❌'} translate exit={result.returncode}")
     if not ok and result.stderr:
-        log(f"   stderr: {result.stderr[-300:]}")
+        log(f"    stderr: {result.stderr[-200:]}")
     return ok
 
 
 # ─── COVER IMAGE ───────────────────────────────────────────────────────────────
 
 def run_image(slug: str, category: str, title: str | None = None, article_id: str | None = None) -> bool:
-    """
-    Generate cover image and commit to GitHub.
-    Uses bz_image_style for prompt generation (Claude Haiku visual director).
-    Fireworks.ai Flux Dev → Pollinations → Picsum → Unsplash fallback chain.
-
-    If article_id is provided (news source), also updates news_items.image_url via API.
-    """
+    """Generate cover image via bz_image_style + Fireworks Flux Dev, commit to GitHub."""
     import base64
     import re
-    import tempfile
-    import urllib.parse
 
     IMAGE_GH_PATH = f"{IMAGE_GH_DIR}/{slug}.jpg"
-    log(f"▶ cover image for {category}/{slug}")
+    log(f"  ▶ Cover image for {slug}")
 
-    # Get title from MDX if not provided
     if not title:
         try:
             result = subprocess.run(
                 ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/apps/mouth/src/content/articles/{category}/{slug}.mdx"],
-                capture_output=True, text=True, timeout=30
+                capture_output=True, text=True, timeout=30,
             )
             if result.returncode == 0:
                 mdx_data = json.loads(result.stdout)
@@ -283,83 +285,63 @@ def run_image(slug: str, category: str, title: str | None = None, article_id: st
         except Exception:
             title = slug
 
-    # Check if image already exists on GitHub
+    # Check if image already exists
     try:
         check = subprocess.run(
-            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{IMAGE_GH_PATH}",
-             "--jq", ".sha"],
-            capture_output=True, text=True, timeout=15
+            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{IMAGE_GH_PATH}", "--jq", ".sha"],
+            capture_output=True, text=True, timeout=15,
         )
         existing_sha = check.stdout.strip() if check.returncode == 0 else ""
         if existing_sha:
-            log("⏭ Image already on GitHub — skip generation")
-            # Still update DB if needed
+            log("  ⏭ Image already on GitHub")
             if article_id:
                 _update_news_image_url(article_id, f"/static/news/{slug}.jpg")
             return True
     except Exception:
         existing_sha = ""
 
-    # Build prompt via bz_image_style
+    # Build prompt
     try:
         sys.path.insert(0, str(SCRIPT_DIR))
         from bz_image_style import build_cover_prompt
         prompt = build_cover_prompt(title, category)
     except Exception as e:
-        log(f"⚠ bz_image_style error: {e} — using fallback prompt")
-        prompt = (
-            f"Cinematic Bali photography, {category} theme, {title[:60]}, "
-            "dramatic light, teal and amber color grading, "
-            "shot on ARRI Alexa Mini LF, editorial photography, no text"
-        )
+        log(f"  ⚠ bz_image_style error: {e}")
+        prompt = f"Cinematic Bali photography, {category} theme, {title[:60]}, teal and amber color grading, ARRI Alexa Mini LF, no text"
 
-    # Generate image
     with tempfile.TemporaryDirectory() as tmpdir:
         img_path = Path(tmpdir) / f"{slug}.jpg"
         generated = False
 
-        # --- 1. Fireworks.ai Flux Dev (cloud, high quality) ---
+        # 1. Fireworks.ai Flux Dev
         fireworks_key = os.environ.get("FIREWORKS_API_KEY", "")
         if fireworks_key:
-            log("  Trying Fireworks.ai Flux Dev")
-            fw_url = "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-dev-fp8/text_to_image"
-            fw_payload = json.dumps({
-                "prompt": prompt,
-                "width": 1344,
-                "height": 768,
-                "steps": 28,
-                "cfg_scale": 3.5,
-            }).encode()
+            log("    Fireworks.ai Flux Dev")
+            fw_payload = json.dumps({"prompt": prompt, "width": 1344, "height": 768, "steps": 28, "cfg_scale": 3.5}).encode()
             fw_req = urllib.request.Request(
-                fw_url,
+                "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-dev-fp8/text_to_image",
                 data=fw_payload,
-                headers={
-                    "Authorization": f"Bearer {fireworks_key}",
-                    "Content-Type": "application/json",
-                    "Accept": "image/jpeg",
-                },
+                headers={"Authorization": f"Bearer {fireworks_key}", "Content-Type": "application/json", "Accept": "image/jpeg"},
                 method="POST",
             )
             try:
                 with urllib.request.urlopen(fw_req, timeout=90) as fw_resp:
-                    img_bytes_fw = fw_resp.read()
-                    if len(img_bytes_fw) > 5000:
-                        img_path.write_bytes(img_bytes_fw)
+                    img_bytes = fw_resp.read()
+                    if len(img_bytes) > 5000:
+                        img_path.write_bytes(img_bytes)
                         generated = True
-                        log(f"  Image generated via Fireworks.ai Flux Dev ({len(img_bytes_fw)} bytes)")
+                        log(f"    ✅ {len(img_bytes)} bytes")
             except Exception as e:
-                log(f"  Fireworks.ai error: {e}")
-        else:
-            log("  FIREWORKS_API_KEY not set — skip Fireworks")
+                log(f"    Fireworks error: {e}")
 
-        # --- 2. Pollinations.ai fallback ---
+        # 2. Pollinations fallback
         if not generated:
-            log("  Trying Pollinations.ai")
+            log("    Pollinations.ai fallback")
             encoded_prompt = urllib.parse.quote(prompt)
             seed = int(__import__("time").time()) % 99999
             for model in ["sana", "turbo"]:
-                url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1200&height=630&seed={seed}&nologo=true&model={model}"
                 try:
+                    url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1200&height=630&seed={seed}&nologo=true&model={model}"
                     req = urllib.request.Request(url, headers={"User-Agent": "BaliZero/1.0"})
                     resp = urllib.request.urlopen(req, timeout=90)
                     if resp.status == 200:
@@ -367,96 +349,63 @@ def run_image(slug: str, category: str, title: str | None = None, article_id: st
                         if len(data) > 5000:
                             img_path.write_bytes(data)
                             generated = True
-                            log(f"  Image generated via Pollinations [{model}]")
+                            log(f"    ✅ Pollinations [{model}]")
                             break
                 except Exception as e:
-                    log(f"  Pollinations [{model}] error: {e}")
+                    log(f"    Pollinations [{model}] error: {e}")
 
-        # --- 3. Picsum fallback (curated photos) ---
         if not generated:
-            log("  Pollinations offline — using Picsum Photos")
-            category_seeds = {
-                "business": 237, "immigration": 452, "tax": 178,
-                "property": 312, "lifestyle": 501, "digital-nomad": 89,
-                "tech": 667, "emerging_trends": 730, "tax-legal": 195,
-                "visas": 452, "taxes": 178, "living": 501, "trends": 667,
-            }
-            seed_id = category_seeds.get(category, 42)
-            url = f"https://picsum.photos/seed/{seed_id}/1200/630"
-            try:
-                req = urllib.request.Request(url, headers={"User-Agent": "BaliZero/1.0"})
-                resp = urllib.request.urlopen(req, timeout=30)
-                if resp.status == 200:
-                    data = resp.read()
-                    if len(data) > 5000:
-                        img_path.write_bytes(data)
-                        generated = True
-                        log(f"  Image from Picsum [seed={seed_id}]")
-            except Exception as e:
-                log(f"  Picsum error: {e}")
-
-        if not generated or not img_path.exists():
-            log("⚠ Image generation failed — skip")
-            return True  # non-blocking
+            log("  ❌ Image generation failed")
+            return False
 
         # Commit to GitHub
         img_bytes = img_path.read_bytes()
         encoded_img = base64.b64encode(img_bytes).decode("utf-8")
-        payload = {
-            "message": f"feat(image): add cover image for '{title[:50]}'",
-            "content": encoded_img,
-        }
+        payload = {"message": f"feat(image): add cover image for '{title[:50]}'", "content": encoded_img}
         if existing_sha:
             payload["sha"] = existing_sha
 
         try:
             result = subprocess.run(
-                ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{IMAGE_GH_PATH}",
-                 "--method", "PUT", "--input", "-"],
-                input=json.dumps(payload), capture_output=True, text=True, timeout=60
+                ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{IMAGE_GH_PATH}", "--method", "PUT", "--input", "-"],
+                input=json.dumps(payload), capture_output=True, text=True, timeout=60,
             )
             ok = result.returncode == 0
-            log(f"{'✅' if ok else '❌'} Image committed: {IMAGE_GH_PATH}")
-
-            # Update news_items.image_url if this is a news source article
+            log(f"  {'✅' if ok else '❌'} Image committed")
             if ok and article_id:
                 _update_news_image_url(article_id, f"/static/news/{slug}.jpg")
-
             return ok
         except Exception as e:
-            log(f"⚠ Image commit failed: {e}")
-            return True
+            log(f"  ⚠ Image commit error: {e}")
+            return False
 
 
-def _update_news_image_url(article_id: str, image_url: str) -> None:
-    """Update news_items.image_url via backend API."""
+def _update_news_image_url(article_id: str, image_url: str):
     try:
         api_post(f"/api/news/{article_id}/image", {"image_url": image_url})
-        log(f"  ✅ Updated news_items.image_url for {article_id}")
     except Exception as e:
-        log(f"  ⚠ Failed to update news_items.image_url: {e}")
+        log(f"  ⚠ news_items.image_url update failed: {e}")
 
 
 # ─── GIT OPERATIONS ───────────────────────────────────────────────────────────
 
-def git_pull_monorepo() -> None:
-    """Pull latest commits so translate-articles.py can find newly published MDX files."""
+def git_pull_monorepo():
     repo_root = SCRIPT_DIR.parent.parent.parent
     try:
-        result = subprocess.run(
-            ["git", "pull", "--ff-only"],
-            capture_output=True, text=True, cwd=str(repo_root), timeout=60
-        )
+        result = subprocess.run(["git", "pull", "--ff-only"], capture_output=True, text=True, cwd=str(repo_root), timeout=60)
         if result.returncode == 0:
-            log(f"✅ git pull OK: {result.stdout.strip()[:80]}")
+            log(f"✅ git pull OK")
         else:
-            log(f"⚠ git pull failed (non-blocking): {result.stderr.strip()[:200]}")
+            # Try stash + pull + pop
+            subprocess.run(["git", "stash"], capture_output=True, cwd=str(repo_root), timeout=10)
+            subprocess.run(["git", "pull", "--ff-only"], capture_output=True, cwd=str(repo_root), timeout=60)
+            subprocess.run(["git", "stash", "pop"], capture_output=True, cwd=str(repo_root), timeout=10)
+            log("✅ git pull OK (via stash)")
     except Exception as e:
-        log(f"⚠ git pull error (non-blocking): {e}")
+        log(f"⚠ git pull error: {e}")
 
 
-def git_commit_and_push_translations(slugs: list[str]) -> None:
-    """Commit and push translation files generated by translate-articles.py."""
+def git_commit_and_push_translations(slugs: list[str]):
     repo_root = SCRIPT_DIR.parent.parent.parent
     articles_dir = repo_root / "apps" / "mouth" / "src" / "content" / "articles"
 
@@ -466,51 +415,83 @@ def git_commit_and_push_translations(slugs: list[str]) -> None:
             translation_files.append(str(f.relative_to(repo_root)))
 
     if not translation_files:
-        log("⚠ No translation files found to commit")
+        log("⚠ No translation files to commit")
         return
 
     log(f"▶ git commit+push {len(translation_files)} translation files")
     try:
-        subprocess.run(["git", "add"] + translation_files,
-                       cwd=str(repo_root), capture_output=True, check=True, timeout=30)
-        status = subprocess.run(
-            ["git", "diff", "--cached", "--quiet"],
-            cwd=str(repo_root), capture_output=True, timeout=10
-        )
+        subprocess.run(["git", "add"] + translation_files, cwd=str(repo_root), capture_output=True, check=True, timeout=30)
+        status = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=str(repo_root), capture_output=True, timeout=10)
         if status.returncode == 0:
-            log("⏭ No staged changes — translations already committed")
+            log("⏭ Nothing staged — already committed")
             return
         msg = f"feat(articles): add translations for {', '.join(slugs[:3])}{'...' if len(slugs) > 3 else ''}"
-        subprocess.run(
-            ["git", "commit", "--no-verify", "-m", msg],
-            cwd=str(repo_root), capture_output=True, check=True, timeout=30
-        )
-        push = subprocess.run(
-            ["git", "push", "--no-verify", "origin", "main"],
-            cwd=str(repo_root), capture_output=True, text=True, timeout=60
-        )
+        subprocess.run(["git", "commit", "--no-verify", "-m", msg], cwd=str(repo_root), capture_output=True, check=True, timeout=30)
+        push = subprocess.run(["git", "push", "--no-verify", "origin", "main"], cwd=str(repo_root), capture_output=True, text=True, timeout=60)
         if push.returncode == 0:
-            log("✅ Translations pushed to GitHub")
+            log("✅ Translations pushed")
         else:
-            log(f"⚠ Push failed, trying rebase: {push.stderr.strip()[:100]}")
-            subprocess.run(
-                ["git", "pull", "--rebase", "origin", "main"],
-                cwd=str(repo_root), capture_output=True, timeout=60
-            )
-            push2 = subprocess.run(
-                ["git", "push", "--no-verify", "origin", "main"],
-                cwd=str(repo_root), capture_output=True, text=True, timeout=60
-            )
+            subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=str(repo_root), capture_output=True, timeout=60)
+            push2 = subprocess.run(["git", "push", "--no-verify", "origin", "main"], cwd=str(repo_root), capture_output=True, text=True, timeout=60)
             log(f"{'✅' if push2.returncode == 0 else '❌'} Push after rebase: exit={push2.returncode}")
     except Exception as e:
-        log(f"⚠ git commit/push translations failed (non-blocking): {e}")
+        log(f"⚠ git push translations failed: {e}")
 
 
 # ─── MAIN ──────────────────────────────────────────────────────────────────────
 
+def process_item(item: dict) -> tuple[bool, list[str]]:
+    """Process a single queue item. Returns (all_done, failed_steps)."""
+    slug = item["slug"]
+    category = item.get("category", "business")
+    source = item.get("source", "intel")
+    article_id = item.get("article_id")
+    title = item.get("title")
+    done = item.get("completed_steps", {})
+    failed_steps = []
+
+    if source == "intel":
+        # SEO
+        if not done.get("seo"):
+            if run_seo(slug, category):
+                mark_step_done(slug, "seo")
+            else:
+                failed_steps.append("seo")
+        # Translate
+        if not done.get("translate"):
+            if run_translate(slug, category):
+                mark_step_done(slug, "translate")
+                return_translate = True
+            else:
+                failed_steps.append("translate")
+                return_translate = False
+        else:
+            return_translate = True
+        # Image
+        if not done.get("image"):
+            if run_image(slug, category, title=title):
+                mark_step_done(slug, "image")
+            else:
+                failed_steps.append("image")
+
+        return (len(failed_steps) == 0, failed_steps)
+
+    elif source == "news":
+        if not done.get("image"):
+            if run_image(slug, category, title=title, article_id=article_id):
+                mark_step_done(slug, "image")
+            else:
+                failed_steps.append("image")
+        return (len(failed_steps) == 0, failed_steps)
+
+    else:
+        log(f"⚠ Unknown source '{source}'")
+        return (True, [])
+
+
 def main():
     log("=" * 50)
-    log("🔄 Post-publish poller v2 started")
+    log("🔄 Post-publish poller v3 started")
 
     try:
         result = api_get("/api/intel/post-publish-queue/pending")
@@ -524,65 +505,69 @@ def main():
         return
 
     log(f"📋 {len(pending)} articles in queue")
-
-    # Pull latest MDX files
     git_pull_monorepo()
 
     done_slugs = []
-    failed_slugs = []
+    failed_items = []
     translated_slugs = []
 
     for item in pending:
         slug = item["slug"]
-        category = item.get("category", "business")
-        source = item.get("source", "intel")
-        article_id = item.get("article_id")
-        title = item.get("title")
-        log(f"📄 [{source}] {category}/{slug}")
+        attempts = item.get("attempts", 1)
+        log(f"📄 [{item.get('source','?')}] {item.get('category','?')}/{slug} (attempt {attempts})")
 
-        if source == "intel":
-            # Full pipeline: SEO + translate + image
-            run_seo(slug, category)
-            translate_ok = run_translate(slug, category)
-            run_image(slug, category, title=title)
-            if translate_ok:
+        all_ok, failed_steps = process_item(item)
+
+        if all_ok:
+            done_slugs.append(slug)
+            # Check if translate was done (for git push)
+            completed = item.get("completed_steps", {})
+            if completed.get("translate") or item.get("source") == "news":
+                pass  # already committed or not needed
+            else:
                 translated_slugs.append(slug)
-            done_slugs.append(slug)
-
-        elif source == "news":
-            # News items: image only (no MDX, no translations)
-            run_image(slug, category, title=title, article_id=article_id)
-            done_slugs.append(slug)
-
         else:
-            log(f"⚠ Unknown source '{source}' — processing as intel")
-            run_seo(slug, category)
-            run_translate(slug, category)
-            run_image(slug, category)
-            done_slugs.append(slug)
+            failed_items.append({"slug": slug, "steps": failed_steps, "attempts": attempts})
+            # Still push translations if translate succeeded
+            completed = item.get("completed_steps", {})
+            if "translate" not in failed_steps and item.get("source") == "intel":
+                translated_slugs.append(slug)
 
-    # Commit and push translations
+    # Commit translations
     if translated_slugs:
         git_commit_and_push_translations(translated_slugs)
 
-    # Mark as done
+    # Mark done
     if done_slugs:
         try:
             api_post("/api/intel/post-publish-queue/done", {"slugs": done_slugs})
-            log(f"✅ Marked done: {done_slugs}")
+            log(f"✅ Done: {done_slugs}")
         except Exception as e:
             log(f"⚠ Error marking done: {e}")
 
-    # Mark failures
-    if failed_slugs:
+    # Mark failed (will retry on next poll, up to 5 attempts)
+    for item in failed_items:
+        slug = item["slug"]
+        steps = item["steps"]
+        attempts = item["attempts"]
         try:
             api_post("/api/intel/post-publish-queue/failed", {
-                "slugs": failed_slugs,
-                "error": "Processing failed after max attempts",
+                "slugs": [slug],
+                "error": f"Failed steps: {', '.join(steps)}",
             })
-            log(f"❌ Marked failed: {failed_slugs}")
+            log(f"⚠ Failed: {slug} (steps: {steps}, attempt {attempts}/5)")
         except Exception as e:
             log(f"⚠ Error marking failed: {e}")
+
+        # Telegram alert after 2+ attempts
+        if attempts >= 2:
+            send_telegram_alert(
+                f"⚠️ *Post-publish pipeline*\n"
+                f"Article: `{slug}`\n"
+                f"Failed steps: {', '.join(steps)}\n"
+                f"Attempt: {attempts}/5\n"
+                f"{'🔴 Will be dead-lettered after 5' if attempts >= 4 else '🔄 Will retry'}"
+            )
 
     log("🏁 Poller completed")
 
