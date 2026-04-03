@@ -72,7 +72,7 @@ nav {
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 .logo-wrap { display: flex; align-items: center; text-decoration: none; }
-.logo-img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.logo-img { width: 92px; height: 92px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .nav-links { display: flex; align-items: center; gap: 28px; }
 .nav-dropdown { position: relative; }
 .nav-drop-trigger {
@@ -149,7 +149,7 @@ nav {
   display: flex; align-items: center; gap: 16px;
 }
 .brand-logo {
-  width: 52px; height: 52px;
+  width: 104px; height: 104px;
   border-radius: 50%; object-fit: cover;
   flex-shrink: 0;
 }
@@ -618,7 +618,7 @@ nav {
 }
 .footer-brand { display: flex; flex-direction: column; gap: 14px; }
 .footer-logo-wrap { display: flex; align-items: center; gap: 12px; }
-.footer-logo-img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.footer-logo-img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
 .footer-logo-text {
   font-family: 'DM Serif Display', serif;
   font-size: 16px; color: var(--cream);
@@ -680,7 +680,7 @@ body::after {
 <!-- ════════ NAVBAR ════════ -->
 <nav>
   <a class="logo-wrap" href="/">
-    <img class="logo-img" src="/static/homepage/bali-zero.png" alt="Bali Zero logo">
+    <img class="logo-img" src="/static/homepage/bali-zero-logo.png" alt="Bali Zero logo">
   </a>
   <div class="nav-links">
     <div class="nav-dropdown">
@@ -714,7 +714,7 @@ body::after {
 <div class="brand-entrance">
   <div class="brand-inner">
     <div class="brand-left">
-      <img class="brand-logo" src="/static/homepage/bali-zero.png" alt="Bali Zero">
+      <img class="brand-logo" src="/static/homepage/bali-zero-logo.png" alt="Bali Zero">
       <div class="brand-divider"></div>
       <div class="brand-text">
         <h2 class="brand-tagline">Your Bali, from <em>Zero</em></h2>
@@ -1110,7 +1110,7 @@ body::after {
     <div class="footer-top">
       <div class="footer-brand">
         <div class="footer-logo-wrap">
-          <img class="footer-logo-img" src="/static/homepage/bali-zero.png" alt="Bali Zero">
+          <img class="footer-logo-img" src="/static/homepage/bali-zero-logo.png" alt="Bali Zero">
         </div>
         <p class="footer-desc">Your trusted partner for business, immigration, and investment in Indonesia since 2020. Trusted by 5,000+ clients.</p>
       </div>
