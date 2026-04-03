@@ -158,37 +158,33 @@ nav {
   background: rgba(255,255,255,0.1);
   margin: 0 12px; flex-shrink: 0;
 }
-.brand-text { display: flex; flex-direction: column; gap: 2px; }
-.brand-logo-text {
-  display: flex; flex-direction: column; gap: 0;
-  line-height: 1; margin: 0;
-}
-.brand-logo-row {
+.brand-text { display: flex; flex-direction: column; gap: 3px; }
+.brand-tagline {
   font-family: 'Arial Black', 'Impact', 'Franklin Gothic Heavy', sans-serif;
   font-weight: 900; font-style: normal;
-  font-size: 30px; letter-spacing: 0.06em;
-  color: #fff; line-height: 1; display: flex; align-items: baseline; gap: 0;
+  font-size: 26px; letter-spacing: 0.04em;
+  color: #fff; line-height: 1; margin: 0;
+  display: flex; align-items: center; gap: 0;
 }
 .brand-logo-3 {
   color: #cc1a1a;
-  font-size: 1.35em;
+  font-size: 1.3em;
   line-height: 0.85;
   display: inline-block;
-  transform: translateY(3px);
+  transform: translateY(2px);
   text-shadow: 1px 2px 4px rgba(0,0,0,0.6);
 }
 .brand-om-circle {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 1em; height: 1em;
-  border: 2.5px solid #fff;
+  width: 0.9em; height: 0.9em;
+  border: 2px solid #fff;
   border-radius: 50%;
   position: relative;
-  vertical-align: middle;
-  margin-bottom: 2px;
+  flex-shrink: 0;
 }
 .brand-om-circle::after {
   content: 'ॐ';
-  font-size: 0.55em;
+  font-size: 0.52em;
   font-family: serif;
   color: #111;
   background: #fff;
@@ -744,10 +740,7 @@ body::after {
   <div class="brand-inner">
     <div class="brand-left">
       <div class="brand-text">
-        <div class="brand-logo-text">
-          <div class="brand-logo-row"><span class="brand-logo-3">3</span>ALI</div>
-          <div class="brand-logo-row">ZER<span class="brand-om-circle"></span></div>
-        </div>
+        <h2 class="brand-tagline">Your <span class="brand-logo-3">3</span>ali, from Zer<span class="brand-om-circle"></span></h2>
         <p class="brand-sub">Visa · Company · Tax · Property · Intelligence</p>
       </div>
     </div>
