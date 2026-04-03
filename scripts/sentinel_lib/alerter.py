@@ -75,7 +75,7 @@ def send_alert(message: str, level: str = "INFO") -> bool:
     level: INFO | WARNING | CRITICAL | DEADMAN
     """
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", os.getenv("TELEGRAM_CHAT_ID", "413539912"))
+    chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", os.getenv("TELEGRAM_CHAT_ID", "1125336968"))
 
     if not bot_token:
         print(f"[ALERT-NO-TOKEN] {level}: {message[:100]}")

@@ -38,7 +38,7 @@ FROM_EMAIL = "zantara@balizero.com"
 FROM_NAME = "Zantara AI"
 
 # Telegram config
-TELEGRAM_OWNER_CHAT_ID = "413539912"
+TELEGRAM_OWNER_CHAT_ID = "1125336968"
 
 # Thresholds (days)
 CRITICAL_DAYS = 14   # 🔴

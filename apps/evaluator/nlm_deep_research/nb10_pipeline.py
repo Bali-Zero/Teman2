@@ -25,6 +25,7 @@ from .claim_extractor import (
     load_claims_count,
 )
 from .registry import SourceRegistry
+from .source_snapshot import take_snapshot
 from .source_management import (
     compute_nhs,
     classify_nhs,
@@ -304,6 +305,14 @@ class NB10Pipeline:
                 self._phase = PipelinePhase.HALTED
                 summary["halted_at"] = "preflight"
                 return summary
+            # ARCH-8: snapshot before any mutation
+            if not self.dry_run:
+                try:
+                    snap = take_snapshot(NB10_NOTEBOOK_ID, "nb10_team_guides")
+                    logger.info("ARCH-8 snapshot: %s", snap.name)
+                except Exception as snap_err:
+                    logger.warning("ARCH-8 snapshot failed (continuing): %s", snap_err)
+
 
             cluster_key, cluster_name = self._today_cluster()
             summary["cluster"] = cluster_key

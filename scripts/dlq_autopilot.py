@@ -141,7 +141,7 @@ def load_registry() -> dict:
 def send_telegram(message: str) -> None:
     import urllib.request, urllib.parse
     token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "413539912")
+    chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "1125336968")
     if not token:
         return
     try:

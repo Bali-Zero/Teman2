@@ -26,6 +26,7 @@ from .claim_extractor import (
     load_claims_count,
 )
 from .registry import SourceRegistry
+from .source_snapshot import take_snapshot
 from .source_management import (
     compute_nhs,
     classify_nhs,
@@ -274,6 +275,14 @@ class NB4Pipeline:
                 return summary
 
             # Determine today's cluster
+            # ARCH-8: snapshot before any mutation
+            if not self.dry_run:
+                try:
+                    snap = take_snapshot(NB4_NOTEBOOK_ID, "nb4_tax")
+                    logger.info("ARCH-8 snapshot: %s", snap.name)
+                except Exception as snap_err:
+                    logger.warning("ARCH-8 snapshot failed (continuing): %s", snap_err)
+
             cluster_key, cluster_name = self._today_cluster()
             summary["cluster"] = cluster_key
             summary["cluster_name"] = cluster_name
