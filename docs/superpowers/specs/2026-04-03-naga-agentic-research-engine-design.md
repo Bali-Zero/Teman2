@@ -321,13 +321,16 @@ CREATE TABLE naga_sessions (
 
     -- Output
     report_markdown TEXT,
-    report_drive_path TEXT,
+    report_drive_path TEXT,           -- /Naga/reports/YYYY-MM/slug.md
     action_items JSONB DEFAULT '[]',
 
-    -- Conversational state
-    evidence_map JSONB,
-    sub_questions JSONB,
-    url_history TEXT[],
+    -- Conversational state (Pointer State Pattern — NO large JSONB blobs)
+    evidence_map_uri TEXT,            -- pointer to Drive/disk file, NOT inline JSONB
+    sub_questions JSONB,              -- small array of strings, OK inline
+    url_history TEXT[],               -- grows linearly, acceptable
+
+    -- LangGraph checkpoint
+    langgraph_thread_id TEXT,         -- for AsyncPostgresSaver resume
 
     created_at TIMESTAMPTZ DEFAULT NOW(),
     completed_at TIMESTAMPTZ
@@ -443,59 +446,66 @@ CREATE INDEX idx_naga_sessions_status ON naga_sessions(status);
 
 ## 8. Infrastructure
 
-### 8.1 Code Location
+### 8.1 Code Location (revised after NB-1 validation)
+
+**CRITICAL:** Naga lives INSIDE `apps/backend-rag/backend/`, NOT as a separate `apps/naga/` app. Reason: the Fly.io Dockerfile only copies `backend/`, `config/`, `scripts/` — a separate `apps/naga/` would not exist in the deployed container, causing `ModuleNotFoundError` on Fly.io.
 
 ```
-apps/naga/                         ← New app in monorepo
-├── engine/
-│   ├── gateway.py                 # Router + classifier
-│   ├── orchestrator.py            # Main loop (Opus)
+apps/backend-rag/backend/
+├── services/naga/                   ← Naga engine lives here
+│   ├── __init__.py
+│   ├── gateway.py                   # Tier/domain/mode classifier
+│   ├── orchestrator.py              # LangGraph StateGraph (NOT custom state machine)
 │   ├── search_agents/
-│   │   ├── exa_agent.py
-│   │   ├── brave_agent.py
-│   │   ├── domain_agent.py        # Indonesia specialist
-│   │   ├── academic_agent.py
-│   │   └── crawl_agent.py         # Deep crawl (reactive, cycle 2+)
+│   │   ├── __init__.py
+│   │   ├── base.py                  # BaseSearchAgent ABC + SearchResult
+│   │   ├── exa_agent.py             # Exa neural search
+│   │   ├── brave_agent.py           # Brave web search
+│   │   ├── domain_agent.py          # Indonesia domain (RAG + NLM + .go.id)
+│   │   └── academic_agent.py        # Semantic Scholar + OpenAlex + arXiv
 │   ├── quality/
-│   │   ├── source_scorer.py
-│   │   ├── crag_light.py          # Fast relevance gate
-│   │   ├── crag_deep.py           # Full claim verification
-│   │   ├── claim_extractor.py
-│   │   └── convergence.py
+│   │   ├── __init__.py
+│   │   ├── source_scorer.py         # Configurable domain credibility
+│   │   ├── crag_light.py            # Fast relevance gate
+│   │   └── convergence.py           # Coverage + novelty + adversarial
 │   ├── synthesis/
-│   │   ├── report_writer.py       # Opus synthesis
-│   │   ├── perspectives.py        # Multi-perspective gen
-│   │   └── templates/             # Report templates per tier
+│   │   ├── __init__.py
+│   │   └── report_writer.py         # Multi-tier report generation
 │   ├── actions/
-│   │   ├── action_engine.py       # Trigger detector
-│   │   ├── crm_actions.py         # Client impact alerts
-│   │   ├── intel_actions.py       # Publish/compose
-│   │   └── followup_actions.py    # Self-healing gaps
+│   │   ├── __init__.py
+│   │   └── action_engine.py         # Deterministic trigger + action proposals
 │   ├── readers/
-│   │   ├── gemini_reader.py       # Bulk read via Gemini CLI
-│   │   └── academic_apis.py       # Semantic Scholar, OpenAlex, arXiv
+│   │   ├── __init__.py
+│   │   ├── gemini_reader.py         # Bulk read via Gemini SDK
+│   │   └── academic_apis.py         # Semantic Scholar, OpenAlex, arXiv
 │   ├── state/
-│   │   ├── session.py             # NagaSession object
-│   │   ├── budget_tracker.py      # Cost + calls tracker
-│   │   ├── url_history.py         # Cross-iteration dedup
-│   │   └── domain_weights.py      # Loads source_weights.json
+│   │   ├── __init__.py
+│   │   ├── budget_tracker.py        # Cost + calls + TTL tracker
+│   │   └── url_history.py           # Cross-iteration dedup (simhash)
 │   └── config/
-│       ├── naga_config.py         # Tier budgets, TTLs, thresholds
-│       └── source_weights.json    # Configurable domain credibility
-├── db/
-│   ├── models.py                  # SQLAlchemy models
-│   └── migrations/                # Alembic
-├── tests/
-│   ├── test_gateway.py
-│   ├── test_orchestrator.py
-│   ├── test_quality.py
-│   └── test_integration.py
-└── README.md
+│       ├── naga_config.py           # Tier budgets, TTLs, thresholds
+│       └── source_weights.json      # Configurable domain credibility (seed only)
+│
+├── core/claims/                     ← Shared claim library (extracted from nlm_deep_research)
+│   ├── __init__.py
+│   ├── extractor.py                 # Claim extraction (extended from nlm_deep_research)
+│   ├── models.py                    # ClaimRecord, NagaClaim dataclasses
+│   └── confidence.py                # 6-factor confidence scoring
+│
+├── app/routers/naga.py              # FastAPI endpoints
+└── migrations/migration_078_naga_tables.py
 ```
 
-MCP tool registration in `apps/nuzantara-mcp/` (imports from `apps/naga/engine/`).
+**Key architectural patterns (from NB-1 validation):**
+
+- **Orchestrator uses LangGraph** `StateGraph` + `AsyncPostgresSaver` for checkpoint/resume, following the pattern in `services/rag/kg_langgraph_orchestrator.py` and `services/workflow/queue.py`.
+- **Pointer State Pattern:** `evidence_map` is NOT stored as JSONB in PostgreSQL. It is saved as a file on Google Drive (`/Naga/sessions/{id}/evidence.json`) or local disk. Only the URI pointer is stored in DB. This prevents TOAST bloat on the 2GB Fly.io database. Same pattern as `services/workflow/chains/intel.py`.
+- **Claim extractor is shared:** `backend/core/claims/` is promoted from `nlm_deep_research/claim_extractor.py`. Both Naga and the NLM pipeline use the same ontology, confidence formula, and ClaimRecord format. No split-brain.
+- **MCP tools use HTTP `_call()`**, never direct Python imports from `backend/`. Pattern: `apps/nuzantara-mcp/nuzantara_mcp/tools/naga.py` calls `_call("/api/naga/research")`.
+- **All HTTP via `httpx.AsyncClient`** — never `requests`, never sync. DB via `asyncpg` pool from DI (`get_database_pool`). Config via `backend.app.core.config.settings`.
 
 FastAPI router in `apps/backend-rag/backend/app/routers/naga.py`.
+MCP tool registration in `apps/nuzantara-mcp/nuzantara_mcp/tools/naga.py` (HTTP calls only).
 
 ### 8.2 Entry Points
 
@@ -790,17 +800,17 @@ The complete spec was independently reviewed by three AI systems. Findings were 
 
 ### Accepted and Integrated
 
-| Finding                                           | Source                  | Change                                                                                                                                                                         |
-| ------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Claims DB needs normalized identity + join tables | Codex, Gemini           | Replaced `source_ids UUID[]` with `naga_claim_evidence` join table. Replaced `superseded_by` with `naga_claim_transitions` many-to-many. Added `claim_key` for semantic dedup. |
-| Human review gate mandatory                       | Gemini, Codex           | Added `review_status` field: `auto_extracted → pending_review → human_verified → active`. No claim enters active knowledge base without review in v1-v2.                       |
-| Convergence needs adversarial pass                | Codex                   | Added adversarial retrieval before CONVERGED: Opus searches for contradictions to top claims. Normative claims require .go.id source for VERIFIED.                             |
-| Opus needs raw source access for CONTESTED        | Codex                   | For CONTESTED claims, Opus reads original source content directly, not just Gemini evidence_map.                                                                               |
-| Action Engine needs deterministic matching        | Codex                   | Client impact via explicit rule table, not LLM inference. Dedup, audit trail, alert suppression added.                                                                         |
-| Auto-calibration needs safety caps                | Gemini, Codex, DeepSeek | Moved to v3+. Cap ±0.05/mo, DB-versioned weights, human approval for delta >0.1.                                                                                               |
-| Orchestrator as coded state machine               | Gemini                  | Loop is hard-coded state machine. LLM only for semantic decisions (decompose, verify, synthesize).                                                                             |
-| Topic Graph premature                             | Gemini, Codex           | Removed from concrete roadmap. Kept as v5 experimental vision.                                                                                                                 |
-| Roadmap needs stability gates                     | Codex                   | "When stable" replaces fixed timelines for v3+. Stability = >100 sessions, <5% error, zero false alerts.                                                                       |
+| Finding                                            | Source                  | Change                                                                                                                                                                         |
+| -------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Claims DB needs normalized identity + join tables  | Codex, Gemini           | Replaced `source_ids UUID[]` with `naga_claim_evidence` join table. Replaced `superseded_by` with `naga_claim_transitions` many-to-many. Added `claim_key` for semantic dedup. |
+| Human review gate mandatory                        | Gemini, Codex           | Added `review_status` field: `auto_extracted → pending_review → human_verified → active`. No claim enters active knowledge base without review in v1-v2.                       |
+| Convergence needs adversarial pass                 | Codex                   | Added adversarial retrieval before CONVERGED: Opus searches for contradictions to top claims. Normative claims require .go.id source for VERIFIED.                             |
+| Opus needs raw source access for CONTESTED         | Codex                   | For CONTESTED claims, Opus reads original source content directly, not just Gemini evidence_map.                                                                               |
+| Action Engine needs deterministic matching         | Codex                   | Client impact via explicit rule table, not LLM inference. Dedup, audit trail, alert suppression added.                                                                         |
+| Auto-calibration needs safety caps                 | Gemini, Codex, DeepSeek | Moved to v3+. Cap ±0.05/mo, DB-versioned weights, human approval for delta >0.1.                                                                                               |
+| Orchestrator as deterministic loop with LLM policy | Gemini, NB-1            | LangGraph StateGraph with deterministic transitions + VETO gates. LLM only for semantic decisions (decompose, verify, synthesize). AsyncPostgresSaver for checkpoint/resume.   |
+| Topic Graph premature                              | Gemini, Codex           | Removed from concrete roadmap. Kept as v5 experimental vision.                                                                                                                 |
+| Roadmap needs stability gates                      | Codex                   | "When stable" replaces fixed timelines for v3+. Stability = >100 sessions, <5% error, zero false alerts.                                                                       |
 
 ### Rejected with Rationale
 
@@ -812,3 +822,36 @@ The complete spec was independently reviewed by three AI systems. Findings were 
 | "Remove Gemini from verification path" | Codex  | Gemini stays for bulk reading (1M context justified). Added Opus raw access as SUPPLEMENTARY for contested claims.                                 |
 | "Zero-cost is strategically unserious" | Codex  | Same subscriptions used for all other Nuzantara work. No additional risk from Naga. System works with pay-per-use APIs too, just costs more.       |
 | "Five agents are too many, use three"  | Codex  | Reduced to 4 in v1 (Deep Crawl merged into Exa/Brave). But Domain and Academic agents earn their existence through specialized tool access.        |
+
+---
+
+## 15. NB-1 Architecture Validation (2026-04-03)
+
+The post-review spec was uploaded to NB-1 (Nuzantara Codebase & Architecture Oracle) for validation against the real codebase. NB-1 identified **2 NO-GO issues** and **3 pattern corrections** that external reviewers could not find because they lack codebase access.
+
+### NO-GO Issues (both fixed in this revision)
+
+**1. evidence_map JSONB → TOAST bloat (CRITICAL)**
+The `evidence_map JSONB` column in `naga_sessions` could grow to megabytes per session. On our Fly.io PostgreSQL (2GB RAM, shared-cpu-2x), this causes TOAST bloat and potential OOM. The codebase already solved this: `services/workflow/chains/intel.py` uses the **Pointer State Pattern** — state holds only item_ids and URIs, full content fetched on-demand.
+
+**Fix:** `evidence_map` is now `evidence_map_uri TEXT` — a pointer to a file on Google Drive or local disk (`/Naga/sessions/{id}/evidence.json`). No large JSONB in PostgreSQL.
+
+**2. `apps/naga/` violates Dockerfile container isolation (CRITICAL)**
+The Fly.io Dockerfile copies only `backend/`, `config/`, `scripts/`. A separate `apps/naga/` directory would not exist in the deployed container, causing `ModuleNotFoundError` on Fly.io. Cross-app communication in Nuzantara is always via HTTP (`_call()` in MCP, `api_post()` in intel scraper), never via direct Python imports.
+
+**Fix:** Naga engine moved to `backend/services/naga/`. MCP tools use `_call("/api/naga/...")` HTTP wrapper, not imports.
+
+### Pattern Corrections (integrated)
+
+**3. Claim extractor: extend, don't rewrite**
+The existing `nlm_deep_research/claim_extractor.py` has 15 categories, 6-factor confidence scoring, and `ClaimRecord` dataclass. Creating a new extractor for Naga would cause "split-brain" — same fact could be VERIFIED by one system and UNVERIFIED by the other.
+
+**Fix:** Shared claim library promoted to `backend/core/claims/`. Both Naga and NLM pipeline use identical ontology, confidence formula, and data model.
+
+**4. Orchestrator must use LangGraph**
+The codebase already uses LangGraph `StateGraph` + `AsyncPostgresSaver` for iterative LLM workflows (`kg_langgraph_orchestrator.py`, `workflow/queue.py`). Building a custom state machine ignores validated infrastructure.
+
+**Fix:** Naga orchestrator uses LangGraph with `NagaResearchState` TypedDict and PostgreSQL checkpoint for resume. Deterministic VETO gates (from the "Zantara Order" OBSERVE→DECIDE→VALIDATE→ACT pattern) prevent LLM from making unchecked routing decisions.
+
+**5. Golden Rules compliance**
+All Naga code must use: `asyncpg` pool via `get_database_pool` DI (Rule 4), `httpx.AsyncClient` for all HTTP (Rule 10), `backend.app.core.config.settings` for config (Rule 6), full type hints (Rule 5), `logger` not `print()` (Rule 8).
