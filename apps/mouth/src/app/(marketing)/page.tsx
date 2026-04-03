@@ -142,14 +142,14 @@ nav {
 .brand-inner {
   max-width: 1400px; margin: 0 auto;
   padding: 0 60px;
-  height: 80px;
+  height: 90px;
   display: flex; align-items: center; justify-content: space-between;
 }
 .brand-left {
   display: flex; align-items: center; gap: 16px;
 }
 .brand-logo {
-  width: 104px; height: 104px;
+  width: 72px; height: 72px;
   border-radius: 50%; object-fit: cover;
   flex-shrink: 0;
 }
