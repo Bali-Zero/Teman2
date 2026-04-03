@@ -568,13 +568,21 @@ async def get_pending_queue(
     if api_key != settings.intel_scraper_api_key:
         raise HTTPException(status_code=401, detail="Unauthorized")
     async with pool.acquire() as conn:
-        # Mark as processing and return
+        # Mark as processing and return (max 5 attempts, then dead-letter)
+        await conn.execute(
+            """
+            UPDATE post_publish_queue
+            SET status = 'dead'
+            WHERE status = 'pending' AND attempts >= 5
+            """,
+        )
         rows = await conn.fetch(
             """
             UPDATE post_publish_queue
             SET status = 'processing', started_at = NOW(), attempts = attempts + 1
-            WHERE status = 'pending'
-            RETURNING slug, title, category, source, article_id, created_at
+            WHERE status = 'pending' AND attempts < 5
+            RETURNING slug, title, category, source, article_id, created_at,
+                      completed_steps, attempts
             """,
         )
         pending = [
@@ -585,6 +593,8 @@ async def get_pending_queue(
                 "source": r["source"],
                 "article_id": r["article_id"],
                 "queued_at": r["created_at"].isoformat() if r["created_at"] else None,
+                "completed_steps": r["completed_steps"] or {},
+                "attempts": r["attempts"],
             }
             for r in rows
         ]
@@ -638,5 +648,31 @@ async def mark_queue_failed(
         )
     logger.info("❌ Post-publish queue: marked failed", extra={"slugs": slugs, "error": error})
     return {"ok": True, "failed": slugs}
+
+
+@router.post("/api/intel/post-publish-queue/step-done")
+async def mark_step_done(
+    request: Request,
+    pool: Any = Depends(get_database_pool),
+) -> dict:
+    """Poller endpoint: mark a specific step as completed for a slug."""
+    api_key = request.headers.get("X-API-Key")
+    if api_key != settings.intel_scraper_api_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    slug = body.get("slug", "")
+    step = body.get("step", "")
+    if not slug or not step:
+        raise HTTPException(status_code=400, detail="slug and step required")
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE post_publish_queue
+            SET completed_steps = COALESCE(completed_steps, '{}'::jsonb) || jsonb_build_object($2, true)
+            WHERE slug = $1
+            """,
+            slug, step,
+        )
+    return {"ok": True, "slug": slug, "step": step}
 
 # METRICS, SEARCH, TRENDS → intel_analytics.py
