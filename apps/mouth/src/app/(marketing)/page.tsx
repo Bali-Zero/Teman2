@@ -26,8 +26,6 @@ export const revalidate = 3600;
 export default function HomePage() {
   return (
     <>
-      {/* Reset body styles from globals.css to match draft design */}
-      <style>{`body { background: #060D14 !important; color: #F2EDE6 !important; }`}</style>
       <link
         rel="preconnect"
         href="https://fonts.googleapis.com"
@@ -905,7 +903,7 @@ body::after {
     </div>
 
     <div class="slide " data-index="3">
-      <img class="slide-bg" src="/static/homepage/bali-business-climate-2026-what-foreigners-actually-face.jpg" alt="Indonesia's Golden Visa: What the 2026 Rules Mean for HNW Investors">
+      <img class="slide-bg" src="/static/homepage/indonesias-golden-visa-what-the-2026-rules-mean-for-hnw-inve.jpg" alt="Indonesia's Golden Visa: What the 2026 Rules Mean for HNW Investors">
       <div class="slide-grain"></div>
       <div class="slide-leak"></div>
       <div class="slide-leak2"></div>
@@ -1183,13 +1181,20 @@ body::after {
     dots.forEach(function(d, i) { d.classList.toggle('active', i === current); });
   }
 
+  // Expose globally for onclick handlers in static HTML
+  window.goTo = function(n) { goTo(n); resetTimer(); };
+
   function nextSlide() {
     goTo((current + 1) % slides.length);
   }
 
-  function startTimer() {
+  function resetTimer() {
     if (timer) clearInterval(timer);
     timer = setInterval(nextSlide, 6000);
+  }
+
+  function startTimer() {
+    resetTimer();
   }
 
   var carousel = document.getElementById('carousel');
@@ -1199,7 +1204,7 @@ body::after {
   }
 
   dots.forEach(function(dot, i) {
-    dot.addEventListener('click', function() { goTo(i); startTimer(); });
+    dot.addEventListener('click', function() { goTo(i); resetTimer(); });
   });
 
   startTimer();
