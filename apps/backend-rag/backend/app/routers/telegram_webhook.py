@@ -3,9 +3,11 @@ Telegram Webhook Router - Multi-Channel Architecture.
 
 Handles incoming Telegram Bot API updates using ChannelRouter.
 Intercepts callback_query updates for intel approval voting.
+Supports Agent Mesh: routes team member messages with role context.
 
 Author: Claude Sonnet 4.5
 Date: 2026-02-10
+Updated: 2026-04-03 (Agent Mesh team member routing)
 """
 
 import json
@@ -23,6 +25,63 @@ from backend.channels.router import ChannelRouter
 from backend.services.integrations.telegram_bot_service import telegram_bot
 
 logger = logging.getLogger(__name__)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Agent Mesh — Team Member Lookup
+# ═══════════════════════════════════════════════════════════════════
+
+async def _resolve_team_agent(request: Request, chat_id: int | None) -> dict[str, Any] | None:
+    """
+    Resolve a Telegram chat_id to a team member agent context.
+
+    Lookup chain: chat_id → messaging_users.user_id → user_profiles.email → TEAM_AGENTS config
+
+    Returns:
+        Agent context dict or None if not a registered team member.
+    """
+    if not chat_id:
+        return None
+
+    db_pool = getattr(request.app.state, "db_pool", None)
+    if not db_pool:
+        return None
+
+    try:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT mu.user_id, mu.display_name, up.email, up.full_name
+                FROM messaging_users mu
+                JOIN user_profiles up ON up.id = mu.user_id
+                WHERE mu.telegram_chat_id = $1
+                  AND mu.channel = 'telegram'
+                  AND mu.active = TRUE
+                """,
+                chat_id,
+            )
+
+        if not row:
+            return None
+
+        from backend.services.agents.team_agent_config import build_agent_context
+
+        ctx = build_agent_context(
+            email=row["email"],
+            full_name=row["full_name"] or row["display_name"] or "Team Member",
+        )
+
+        if ctx:
+            logger.info(
+                f"🤖 Agent Mesh: {row['email']} → role={ctx['agent_role']}, "
+                f"scope={ctx['agent_client_scope']}",
+            )
+
+        return ctx
+
+    except Exception as e:
+        logger.warning(f"Agent mesh lookup failed for chat_id={chat_id}: {e}")
+        return None
 
 router = APIRouter(prefix="/webhook", tags=["telegram"])
 
@@ -213,6 +272,12 @@ async def telegram_webhook(
         text = message.get("text", "")
 
         logger.info(f"📨 Telegram update {update_id}: chat_id={chat_id}, text={text[:50]}...")
+
+        # ── Agent Mesh: resolve team member context ──
+        agent_context = await _resolve_team_agent(request, chat_id)
+        if agent_context:
+            # Inject into update so TelegramChannelAdapter copies it to metadata
+            update["_agent_context"] = agent_context
 
         # Handle cover image uploads from Damar
         from_id = message.get("from", {}).get("id")
