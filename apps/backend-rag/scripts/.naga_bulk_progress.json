@@ -13,9 +13,18 @@
     "visa::E23A investor visa Indonesia requirements",
     "visa::Visit visa extension Indonesia 2025",
     "visa::Visa on arrival Indonesia duration extension",
-    "visa::Work permit IMTA requirements Indonesia"
+    "visa::Work permit IMTA requirements Indonesia",
+    "visa::RPTKA foreign worker quota Indonesia",
+    "visa::KITAS sponsor requirements employer Indonesia",
+    "visa::ITAS social kemanusiaan requirements Indonesia",
+    "visa::Ministry of Immigration Indonesia digital services",
+    "visa::Imigrasi online application Indonesia 2025",
+    "visa::Blacklist deportation Indonesia visa consequences",
+    "company::PT PMA requirements minimum capital 2025",
+    "company::PT PMA vs CV vs PT differences Indonesia",
+    "company::PT PMA foreign ownership restrictions Indonesia"
   ],
   "failed": [],
-  "total_claims": 207,
+  "total_claims": 324,
   "started_at": "2026-04-03T14:14:54.245989"
 }
