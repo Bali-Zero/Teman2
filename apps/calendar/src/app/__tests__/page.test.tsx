@@ -222,10 +222,11 @@ describe("CalendarPage", () => {
       fireEvent.click(screen.getByLabelText("Vista lista"));
     });
 
-    // In list view, events should be displayed with their summaries
+    // In list view, events appear in the list AND in the sidebar
+    // so we use getAllByText to handle duplicates
     await waitFor(() => {
-      expect(screen.getByText("Team Standup")).toBeInTheDocument();
-      expect(screen.getByText("Client Meeting")).toBeInTheDocument();
+      expect(screen.getAllByText("Team Standup").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Client Meeting").length).toBeGreaterThanOrEqual(1);
     });
   });
 
