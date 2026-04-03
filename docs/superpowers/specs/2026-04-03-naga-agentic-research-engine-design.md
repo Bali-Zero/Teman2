@@ -37,16 +37,17 @@ NAGA GATEWAY — Complexity classifier + Domain router + TTL
   Output: { tier, domain, mode, ttl_seconds }
        │
        ▼
-NAGA ORCHESTRATOR (Claude Opus) — Iterative research loop
-  1. Decompose query → sub-questions
-  2. Plan search strategy per sub-question
-  3. Dispatch to Search Agents (parallel)
-  4. Receive results → CRAG-light evaluation
-  5. If gaps → refine queries → re-dispatch
-  6. Convergence check → stop or iterate
-  7. Send accumulated sources to Gemini Bulk Reader
-  8. Synthesize final report (multi-perspective for exhaustive)
-  9. Generate artefacts + actionable items
+NAGA ORCHESTRATOR — Coded state machine + LLM policy
+  States (hard-coded transitions, deterministic):
+    DECOMPOSE → DISPATCH → COLLECT → EVALUATE → CONVERGE? → SYNTHESIZE → OUTPUT
+  LLM calls (semantic decisions only):
+    - Opus: decompose query → sub-questions
+    - Haiku: CRAG-light relevance gate
+    - Gemini: bulk read sources → evidence_map
+    - Opus: claim verification (with raw source access for CONTESTED)
+    - Opus: adversarial check (actively seek contradictions before convergence)
+    - Opus: synthesize final report
+  The loop, dispatch logic, convergence check, and budget tracking are CODE, not LLM.
        │
        ▼
 OUTPUT LAYER — Report + Claims DB + Drive archive + Actions
@@ -198,9 +199,15 @@ Metrics:
 
 Decision:
 
-- **CONVERGED**: coverage >80% AND novelty <10% → proceed to synthesis
+- **CONVERGED**: coverage >80% AND novelty <10% AND adversarial pass → proceed to synthesis
 - **ITERATE**: coverage <80% AND budget remaining → return to Orchestrator with gap list
 - **TIMEOUT**: budget exhausted OR TTL reached → proceed with disclaimer
+
+**Additional convergence requirements (post-review hardening):**
+
+- For **normative/regulatory claims** (domain=indonesia): convergence requires at least 1 source from `.go.id` domain. No gov source = cannot mark claim as VERIFIED, max LIKELY.
+- **Adversarial retrieval pass**: Before declaring CONVERGED, Opus performs one targeted search attempting to CONTRADICT the top VERIFIED claims. If contradictions found, status reverts to ITERATE. This prevents premature convergence on echo-chamber results.
+- **Opus raw source access**: For any claim marked CONTESTED, Opus reads the original source content directly (not just Gemini's evidence_map summary) before assigning final verification level. Prevents lossy translation from Gemini abstracting away nuance.
 
 ---
 
@@ -260,6 +267,13 @@ Opus analyzes claims and decides if actions are needed.
 - `publish` / `send` (email send, intel publish): always requires approval
 
 All actions output as `action_items[]` with type + payload + rationale.
+
+**Action Engine hardening (post-review):**
+
+- **Client impact matching is deterministic**: claim.topic_tags matched against client.visa_type / client.company_type via explicit rule table, NOT LLM inference. Rules auditable in `naga_action_rules` config.
+- **Dedup**: no duplicate alerts for same claim+client combination within 7 days. Tracked in `naga_action_log`.
+- **Audit trail**: every proposed and executed action logged with claim_id, matched_rule, timestamp, approval_status.
+- **Alert suppression**: max 5 Telegram alerts per hour per channel. Overflow queued for batch digest.
 
 ---
 
@@ -341,35 +355,67 @@ CREATE TABLE naga_sources (
 );
 ```
 
-### naga_claims
+### naga_claims (revised after external review)
 
 ```sql
 CREATE TABLE naga_claims (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID REFERENCES naga_sessions(id),
+
+    -- Identity: normalized subject-predicate-object for dedup
     claim_text TEXT NOT NULL,
+    claim_key VARCHAR(255),           -- normalized hash for semantic dedup
     domain VARCHAR(20),
     topic_tags TEXT[],
+    jurisdiction VARCHAR(50),         -- e.g., 'ID-national', 'ID-bali', 'global'
 
     -- Verification
     verification_level VARCHAR(20),   -- VERIFIED/LIKELY/CONTESTED/UNVERIFIED
     confidence FLOAT,
-    source_ids UUID[],
     cross_ref_count INTEGER,
 
+    -- Human review gate (MANDATORY for v1-v2)
+    review_status VARCHAR(20) DEFAULT 'auto_extracted',
+        -- auto_extracted → pending_review → human_verified → active / rejected
+
     -- Temporal
-    valid_as_of DATE,                 -- MANDATORY for normative claims
+    valid_as_of DATE,                 -- MANDATORY for normative claims (no date = UNVERIFIED)
     expires_at DATE,
 
     -- Contestation
     resolution_hint TEXT,
-    contradicting_source_ids UUID[],
-
-    -- Lifecycle
-    superseded_by UUID REFERENCES naga_claims(id),
-    superseded_at TIMESTAMPTZ,
 
     created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### naga_claim_evidence (replaces source_ids array — proper join table)
+
+```sql
+CREATE TABLE naga_claim_evidence (
+    id SERIAL PRIMARY KEY,
+    claim_id UUID REFERENCES naga_claims(id) ON DELETE CASCADE,
+    source_id UUID REFERENCES naga_sources(id) ON DELETE CASCADE,
+    relation VARCHAR(20) NOT NULL,    -- supports / contradicts / mentions
+    extraction_method VARCHAR(30),    -- gemini_bulk / opus_direct / manual
+    source_span_hint TEXT,            -- approximate location in source content
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(claim_id, source_id, relation)
+);
+```
+
+### naga_claim_transitions (replaces superseded_by — many-to-many)
+
+```sql
+CREATE TABLE naga_claim_transitions (
+    id SERIAL PRIMARY KEY,
+    from_claim_id UUID REFERENCES naga_claims(id) ON DELETE CASCADE,
+    to_claim_id UUID REFERENCES naga_claims(id) ON DELETE CASCADE,
+    transition_type VARCHAR(30) NOT NULL, -- supersedes / narrows / broadens / corrects / splits_into
+    reason TEXT,                          -- why this transition happened
+    detected_by VARCHAR(30),             -- auto / human
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(from_claim_id, to_claim_id, transition_type)
 );
 ```
 
@@ -381,6 +427,12 @@ CREATE INDEX idx_naga_claims_topic ON naga_claims USING GIN(topic_tags);
 CREATE INDEX idx_naga_claims_confidence ON naga_claims(confidence DESC);
 CREATE INDEX idx_naga_claims_valid ON naga_claims(valid_as_of DESC);
 CREATE INDEX idx_naga_claims_verification ON naga_claims(verification_level);
+CREATE INDEX idx_naga_claims_review ON naga_claims(review_status);
+CREATE INDEX idx_naga_claims_key ON naga_claims(claim_key);
+CREATE INDEX idx_naga_claim_evidence_claim ON naga_claim_evidence(claim_id);
+CREATE INDEX idx_naga_claim_evidence_source ON naga_claim_evidence(source_id);
+CREATE INDEX idx_naga_claim_transitions_from ON naga_claim_transitions(from_claim_id);
+CREATE INDEX idx_naga_claim_transitions_to ON naga_claim_transitions(to_claim_id);
 CREATE INDEX idx_naga_sources_url ON naga_sources(url);
 CREATE INDEX idx_naga_sources_hash ON naga_sources(content_hash);
 CREATE INDEX idx_naga_sessions_parent ON naga_sessions(parent_session_id);
@@ -570,7 +622,13 @@ Event: Naga finds claim D from Source Y (confidence 0.6)
   → Source Y was wrong → credibility_adjustment -= 0.05
 ```
 
-Implementation: `naga_source_track` table tracks per-domain accuracy over time. Monthly recalculation updates `source_weights.json`. Human review gate: auto-adjustments > 0.1 require approval.
+Implementation (v3+ only — NOT in v1/v2):
+
+- `naga_source_track` table tracks per-domain accuracy over time
+- Weights stored as versioned rows in DB, NOT mutated in `source_weights.json` (JSON file = initial seed only)
+- Adjustment cap: max ±0.05 per month per domain. Prevents runaway feedback loops.
+- Human approval required for any cumulative adjustment > 0.1 from initial seed
+- Cold start: first 100 claims per domain use only human-configured weights. Auto-calibration activates after sufficient data.
 
 ```sql
 CREATE TABLE naga_source_track (
@@ -679,13 +737,15 @@ CREATE TABLE naga_claim_relations (
 
 ## 12. Autonomy Roadmap
 
-| Version | Capability                                                                                                                           | Dependencies                                     | Timeline  |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ | --------- |
-| **v1**  | On-demand research. Claims DB passive storage. Gateway + Orchestrator + 5 agents + Quality Pipeline + Report Writer + Action Engine. | Phase 1-4 of implementation plan                 | Week 1-2  |
-| **v2**  | T4 as trigger. Gap follow-up (48h auto-schedule). Watchlist table.                                                                   | v1 complete + naga_watchlist table               | Week 3-4  |
-| **v3**  | Source weight auto-calibration. Claim supersession detection. Intel Scraper as Naga agent.                                           | v2 + naga_source_track table                     | Month 2   |
-| **v4**  | War Room briefing from Claims DB. Audio briefing via NLM. Qdrant naga_research collection for semantic claim search.                 | v3 + NLM integration + Qdrant collection         | Month 2-3 |
-| **v5**  | Full autonomy: proactive research, expiring claim re-verification, client portfolio monitoring, morning briefing, topic graph.       | v4 + naga_claim_relations + autonomous scheduler | Month 3-4 |
+| Version | Capability                                                                                                                                                                              | Dependencies                                   | Timeline          |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------- |
+| **v1**  | On-demand research. Gateway + Orchestrator (state machine) + 4 agents (Exa, Brave, Domain, Academic) + Quality Pipeline + Report Writer + Action Engine. Claims with human review gate. | Implementation plan Phase 1-4                  | Week 1-3          |
+| **v2**  | T4 as trigger. Gap follow-up (48h). Watchlist. Deep Crawl as separate agent. Claim transitions (many-to-many supersession).                                                             | v1 stable + naga_watchlist + claim_transitions | Week 4-6          |
+| **v3**  | Source weight auto-calibration (capped, DB-versioned). Intel Scraper as Naga agent. Claim review queue UI.                                                                              | v2 stable + naga_source_track + admin UI       | When v2 is stable |
+| **v4**  | War Room briefing from Claims DB. Audio via NLM. Qdrant naga_research collection.                                                                                                       | v3 stable + NLM + Qdrant                       | When v3 is stable |
+| **v5**  | Proactive research, expiring claim re-verification, client portfolio monitoring, morning briefing. Topic graph (experimental).                                                          | v4 stable + autonomous scheduler               | When v4 is stable |
+
+**Roadmap discipline (post-review):** No version ships until the previous is stable and human-reviewed. No timeline promises for v3+. "When stable" means: >100 sessions completed, <5% claim error rate measured against human-verified gold set, zero false-positive client alerts.
 
 ---
 
@@ -713,3 +773,42 @@ CREATE TABLE naga_claim_relations (
 | $200/mo | + You.com ($100) + Jina Reranker ($20) | Flash tier accuracy boost + neural reranking          |
 
 Recommendation: Start at $0. After 2 weeks of real usage, evaluate where Naga fails. Most likely gap: general web search quality → add Exa at $49/mo.
+
+---
+
+## 14. External Review Findings (2026-04-03)
+
+The complete spec was independently reviewed by three AI systems. Findings were evaluated by the design team (Claude Opus + Zero) with explicit accept/reject decisions.
+
+### Reviewers
+
+| Reviewer        | Model            | Focus                                                                 |
+| --------------- | ---------------- | --------------------------------------------------------------------- |
+| Gemini 2.5 Pro  | via CLI          | Distributed systems, scalability                                      |
+| GPT-5.4         | via Codex CLI    | AI systems engineering, feasibility                                   |
+| DeepSeek R1:32b | via Ollama local | Deep reasoning (shallow output — known limitation of Q4 quantization) |
+
+### Accepted and Integrated
+
+| Finding                                           | Source                  | Change                                                                                                                                                                         |
+| ------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Claims DB needs normalized identity + join tables | Codex, Gemini           | Replaced `source_ids UUID[]` with `naga_claim_evidence` join table. Replaced `superseded_by` with `naga_claim_transitions` many-to-many. Added `claim_key` for semantic dedup. |
+| Human review gate mandatory                       | Gemini, Codex           | Added `review_status` field: `auto_extracted → pending_review → human_verified → active`. No claim enters active knowledge base without review in v1-v2.                       |
+| Convergence needs adversarial pass                | Codex                   | Added adversarial retrieval before CONVERGED: Opus searches for contradictions to top claims. Normative claims require .go.id source for VERIFIED.                             |
+| Opus needs raw source access for CONTESTED        | Codex                   | For CONTESTED claims, Opus reads original source content directly, not just Gemini evidence_map.                                                                               |
+| Action Engine needs deterministic matching        | Codex                   | Client impact via explicit rule table, not LLM inference. Dedup, audit trail, alert suppression added.                                                                         |
+| Auto-calibration needs safety caps                | Gemini, Codex, DeepSeek | Moved to v3+. Cap ±0.05/mo, DB-versioned weights, human approval for delta >0.1.                                                                                               |
+| Orchestrator as coded state machine               | Gemini                  | Loop is hard-coded state machine. LLM only for semantic decisions (decompose, verify, synthesize).                                                                             |
+| Topic Graph premature                             | Gemini, Codex           | Removed from concrete roadmap. Kept as v5 experimental vision.                                                                                                                 |
+| Roadmap needs stability gates                     | Codex                   | "When stable" replaces fixed timelines for v3+. Stability = >100 sessions, <5% error, zero false alerts.                                                                       |
+
+### Rejected with Rationale
+
+| Finding                                | Source | Why Rejected                                                                                                                                       |
+| -------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Scrap auto-calibration entirely"      | Gemini | Too valuable long-term. Moved to v3+ with safety caps instead of deletion.                                                                         |
+| "Use single universal agent"           | Gemini | 5 agents = 5 Python classes with common interface. Minimal complexity cost. Domain Agent specialization has measurable value for Indonesia domain. |
+| "6-9 months for v1"                    | Gemini | Overestimate. Core v1 is a monolithic Python app with TDD. 2-3 weeks realistic for experienced dev.                                                |
+| "Remove Gemini from verification path" | Codex  | Gemini stays for bulk reading (1M context justified). Added Opus raw access as SUPPLEMENTARY for contested claims.                                 |
+| "Zero-cost is strategically unserious" | Codex  | Same subscriptions used for all other Nuzantara work. No additional risk from Naga. System works with pay-per-use APIs too, just costs more.       |
+| "Five agents are too many, use three"  | Codex  | Reduced to 4 in v1 (Deep Crawl merged into Exa/Brave). But Domain and Academic agents earn their existence through specialized tool access.        |
