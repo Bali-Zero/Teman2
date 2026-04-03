@@ -56,7 +56,8 @@ describe("KnowledgeApi", () => {
       expect(result.results[0].text).toContain("KITAS");
       expect(result.query).toBe("visa");
 
-      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       expect(url).toContain("/api/search/");
       expect(options.method).toBe("POST");
       const body = JSON.parse(options.body);
@@ -67,8 +68,7 @@ describe("KnowledgeApi", () => {
     it("clamps level between 0 and 3", async () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
-        json: () =>
-          Promise.resolve({ results: [], total: 0, query: "test" }),
+        json: () => Promise.resolve({ results: [], total: 0, query: "test" }),
       });
 
       await api.searchDocs({ query: "test", level: 10 });
@@ -82,8 +82,7 @@ describe("KnowledgeApi", () => {
     it("clamps limit between 1 and 50", async () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
-        json: () =>
-          Promise.resolve({ results: [], total: 0, query: "test" }),
+        json: () => Promise.resolve({ results: [], total: 0, query: "test" }),
       });
 
       await api.searchDocs({ query: "test", limit: 100 });
@@ -109,8 +108,7 @@ describe("KnowledgeApi", () => {
     it("uses default values for optional params", async () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
-        json: () =>
-          Promise.resolve({ results: [], total: 0, query: "test" }),
+        json: () => Promise.resolve({ results: [], total: 0, query: "test" }),
       });
 
       await api.searchDocs({ query: "test" });
@@ -144,7 +142,8 @@ describe("KnowledgeActivityApi", () => {
 
       await activityApi.logView("knowledge_hub", "doc-1", "Title", "visa");
 
-      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       expect(url).toContain("/api/knowledge/activity/log");
       const body = JSON.parse(options.body);
       expect(body.action_type).toBe("view");

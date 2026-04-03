@@ -23,9 +23,7 @@ import { LicensingSection } from "@/components/kbli/LicensingSection";
 import { getRelatedArticle } from "@/lib/kbli-articles";
 import { GOLD_HERO_IMAGES } from "@/lib/kbli-hero-images";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-
-const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
+import { MarkdownClient } from "@/components/kbli/MarkdownClient";
 
 const ZantaraChat = lazy(() =>
   import("@/components/kbli/ZantaraChat").then((mod) => ({
@@ -382,7 +380,7 @@ export default async function KBLICodePage({
                           </div>
                         )}
                         <div className="kbli-prose">
-                          <ReactMarkdown>{bodyText}</ReactMarkdown>
+                          <MarkdownClient>{bodyText}</MarkdownClient>
                         </div>
                       </div>
                     );
@@ -577,26 +575,9 @@ export default async function KBLICodePage({
                 </span>
               </div>
               <div className="px-5 py-4 kbli-prose">
-                <ReactMarkdown
-                  components={{
-                    a: ({ href, children }) => {
-                      if (href?.startsWith("/kbli/")) {
-                        return (
-                          <Link
-                            href={href}
-                            className="inline-flex items-center gap-1 font-mono font-bold text-[var(--kbli-accent)] transition-colors hover:text-[var(--kbli-accent-hover)]"
-                          >
-                            {children}
-                            <span className="text-[10px] opacity-50">→</span>
-                          </Link>
-                        );
-                      }
-                      return <a href={href}>{children}</a>;
-                    },
-                  }}
-                >
+                <MarkdownClient withKbliLinks>
                   {gold.youllAlsoNeed}
-                </ReactMarkdown>
+                </MarkdownClient>
               </div>
             </section>
           </div>
