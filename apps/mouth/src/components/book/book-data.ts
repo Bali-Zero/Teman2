@@ -139,12 +139,6 @@ export const TEAM_MEMBERS: TeamMember[] = [
     photo: "/static/team/adit.png",
   },
   {
-    name: "Anton",
-    role: "Executive Consultant",
-    department: "setup",
-    photo: "/static/team/batik_kawung_diamond.jpg",
-  },
-  {
     name: "Krisna",
     role: "Executive Consultant",
     department: "setup",
@@ -167,24 +161,6 @@ export const TEAM_MEMBERS: TeamMember[] = [
     role: "Specialist Consultant",
     department: "setup",
     photo: "/static/team/batik_kawung_organic.jpg",
-  },
-  {
-    name: "Anna",
-    role: "Specialist Advisor",
-    department: "setup",
-    photo: "/static/team/anna.jpeg",
-  },
-  {
-    name: "Marta",
-    role: "Setup Consultant",
-    department: "setup",
-    photo: "/static/team/marta.jpeg",
-  },
-  {
-    name: "Olena",
-    role: "Setup Consultant",
-    department: "setup",
-    photo: "/static/team/olena.jpeg",
   },
   {
     name: "Vino",
