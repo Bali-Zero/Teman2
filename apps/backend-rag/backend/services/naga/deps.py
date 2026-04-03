@@ -236,12 +236,17 @@ async def _recall_similar(**kwargs: Any) -> dict:  # noqa: ARG001
 # ---------------------------------------------------------------------------
 
 
-def build_deps(mode: str = "server") -> SimpleNamespace:
+def build_deps(
+    mode: str = "server",
+    db_pool: Any = None,
+) -> SimpleNamespace:
     """Build dependency namespace for NagaOrchestrator.
 
     Args:
         mode: "server" for Fly.io (self-call localhost:8080),
               "local" for CLI testing (call Fly.io externally).
+        db_pool: asyncpg.Pool for persisting sessions/claims. If None,
+                 persistence is skipped (orchestrator handles gracefully).
     """
     base_url = _BACKEND_URL_SERVER if mode == "server" else _BACKEND_URL_LOCAL
 
@@ -254,4 +259,5 @@ def build_deps(mode: str = "server") -> SimpleNamespace:
         notebook_query=_notebook_query,
         recall_similar=_recall_similar,
         gemini_generate=_gemini_generate,
+        db_pool=db_pool,
     )
