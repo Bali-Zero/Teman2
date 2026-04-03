@@ -98,6 +98,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "www.datocms-assets.com",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+      },
     ],
   },
   // ⚡ Performance: Add cache headers for static assets
