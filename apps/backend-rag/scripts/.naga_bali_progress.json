@@ -1,0 +1,33 @@
+{
+  "completed": [
+    "permits::IMB izin mendirikan bangunan Bali requirements 2025",
+    "permits::PBG persetujuan bangunan gedung Bali replace IMB",
+    "permits::SLF sertifikat laik fungsi bangunan Bali",
+    "permits::villa construction permit Bali residential zone",
+    "permits::Bali commercial building permit requirements",
+    "permits::SIUP surat izin usaha perdagangan Bali",
+    "permits::izin usaha pariwisata Bali villa homestay",
+    "permits::TDUP tanda daftar usaha pariwisata Bali",
+    "permits::Bali restaurant cafe operating license",
+    "permits::izin ganguan HO Bali neighborhood disturbance permit",
+    "permits::SIPA surat izin pengambilan air Bali water permit",
+    "permits::Bali swimming pool construction permit requirements",
+    "permits::izin reklame billboard signage Bali permit",
+    "permits::Bali event organizer permit requirements",
+    "permits::wedding venue license requirements Bali",
+    "zoning::Bali tata ruang spatial planning zones 2025",
+    "zoning::RTRW Bali regional spatial plan regulations",
+    "zoning::Bali green zone hijau agricultural land restrictions",
+    "zoning::Bali tourism zone pariwisata building rules",
+    "zoning::Bali residential zone perumahan permitted uses",
+    "zoning::Bali coastal setback rules sempadan pantai",
+    "zoning::Bali river setback sempadan sungai regulations",
+    "zoning::Bali height restriction bangunan tinggi",
+    "zoning::Bali heritage zone kawasan warisan budaya",
+    "zoning::Bali mangrove protected zone restrictions",
+    "zoning::FAR floor area ratio KDB KLB Bali"
+  ],
+  "failed": [],
+  "total_claims": 339,
+  "started_at": "2026-04-03T19:06:37.606473"
+}

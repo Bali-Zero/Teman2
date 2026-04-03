@@ -100,8 +100,7 @@ describe("emailApi", () => {
         ok: true,
         status: 200,
         headers: new Headers({ "content-type": "application/json" }),
-        json: () =>
-          Promise.resolve({ success: true, message_id: "new-msg-1" }),
+        json: () => Promise.resolve({ success: true, message_id: "new-msg-1" }),
       });
 
       const result = await emailApi.sendEmail({
@@ -113,7 +112,8 @@ describe("emailApi", () => {
       expect(result.success).toBe(true);
       expect(result.message_id).toBe("new-msg-1");
 
-      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       expect(url).toContain("/emails");
       expect(options.method).toBe("POST");
     });
@@ -133,7 +133,8 @@ describe("emailApi", () => {
         is_read: true,
       });
 
-      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       expect(url).toContain("/mark-read");
       expect(options.method).toBe("PATCH");
       const body = JSON.parse(options.body as string);
@@ -153,7 +154,8 @@ describe("emailApi", () => {
 
       await emailApi.toggleFlag("msg-1", true);
 
-      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       expect(url).toContain("/msg-1/flag");
       expect(options.method).toBe("PATCH");
     });
@@ -170,7 +172,8 @@ describe("emailApi", () => {
 
       await emailApi.deleteEmails(["msg-1", "msg-2"]);
 
-      const [, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const [, options] = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       const body = JSON.parse(options.body as string);
       expect(body.message_ids).toEqual(["msg-1", "msg-2"]);
     });
@@ -187,7 +190,8 @@ describe("emailApi", () => {
 
       await emailApi.disconnect();
 
-      const [, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const [, options] = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       expect(options.method).toBe("DELETE");
     });
   });
