@@ -420,14 +420,15 @@ class PulseEngine:
 
         # 8. SELF-MODEL — record pulse
         if self._self_model is not None:
-            self._self_model.record_pulse()
-            if action:
-                self._self_model.record_action()
-            # Update sensor reliability based on reachability
-            self._self_model.update_sensor_reliability("health_sensor", reading.reachable)
-            # Save every 60 pulses (~1h)
-            if pulse_number % 60 == 0:
-                self._self_model.save()
+            try:
+                self._self_model.record_pulse()
+                if action:
+                    self._self_model.record_action()
+                self._self_model.update_sensor_reliability("health_sensor", reading.reachable)
+                if pulse_number > 0 and pulse_number % 60 == 0:
+                    self._self_model.save()
+            except Exception as e:
+                logger.warning(f"Self-model update failed: {e}")
 
         # 9. EPISODIC MEMORY — record significant events
         if self._episodic is not None and self._episodic.should_record(
@@ -450,12 +451,12 @@ class PulseEngine:
                     },
                     emotion=emotion,
                     action_taken=action or "observe",
-                    outcome="partial",
+                    outcome="partial",  # actual outcome updated in future phase (post-action feedback loop)
                     lesson=action_reason or "no action needed",
                 )
                 await self._episodic.store(ep)
             except Exception as e:
-                logger.debug(f"Episodic memory store failed: {e}")
+                logger.warning(f"Episodic memory store failed: {e}")
 
         return PulseResult(
             timestamp=now,
