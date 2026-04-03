@@ -13,7 +13,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import dynamic from "next/dynamic";
+
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 
 // ── Types ──────────────────────────────────────────────────────────────
 
