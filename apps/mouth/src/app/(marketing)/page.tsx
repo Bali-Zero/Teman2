@@ -148,23 +148,10 @@ nav {
 .brand-left {
   display: flex; align-items: center; gap: 16px;
 }
-.brand-rule {
-  display: block; width: 28px; height: 1px;
-  background: var(--gold); flex-shrink: 0;
-}
-.brand-wordmark {
-  display: flex; align-items: baseline; gap: 3px;
+.brand-logo {
+  width: 52px; height: 52px;
+  border-radius: 50%; object-fit: cover;
   flex-shrink: 0;
-}
-.wm-bali {
-  font-family: 'DM Serif Display', Georgia, serif;
-  font-size: 20px; font-weight: 400;
-  color: var(--cream); letter-spacing: 0.06em;
-}
-.wm-zero {
-  font-family: 'DM Serif Display', Georgia, serif;
-  font-size: 20px; font-weight: 400; font-style: italic;
-  color: var(--gold); letter-spacing: 0.03em;
 }
 .brand-divider {
   width: 1px; height: 32px;
@@ -729,10 +716,7 @@ body::after {
 <div class="brand-entrance">
   <div class="brand-inner">
     <div class="brand-left">
-      <span class="brand-rule"></span>
-      <div class="brand-wordmark">
-        <span class="wm-bali">BALI</span><span class="wm-zero">ZERO</span>
-      </div>
+      <img class="brand-logo" src="/static/homepage/bali-zero.png" alt="Bali Zero">
       <div class="brand-divider"></div>
       <div class="brand-text">
         <h2 class="brand-tagline">Your Bali, from <em>Zero</em></h2>
