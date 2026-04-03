@@ -90,6 +90,7 @@ class PulseEngine:
         self._ltm_cache_pulse: int = -999  # refresh every 60 pulses (~1h)
 
     async def single_pulse(self, pulse_number: int = 0) -> PulseResult:
+        from cell.metabolism.attention_allocator import AttentionCost
         now = datetime.now(timezone.utc)
 
         # 1. DNA INTEGRITY
@@ -255,9 +256,12 @@ class PulseEngine:
             and self._maturation is not None
             and self._maturation.can_dream()
         ):
+            _did_dream = False
+
             if self._dreamer is not None:
                 try:
                     dream_result = await self._dreamer.dream()
+                    _did_dream = True
                     if dream_result.episodes_count > 0:
                         logger.info(
                             f"Dream: {dream_result.episodes_count} episodes -> "
@@ -276,10 +280,11 @@ class PulseEngine:
                         actions_taken=self._self_model.model.total_actions if self._self_model else 0,
                         lessons_count=len(lessons),
                     )
+                    _did_dream = True
                 except Exception as e:
                     logger.warning(f"Journal write failed: {e}")
 
-            if self._attention is not None:
+            if self._attention is not None and _did_dream:
                 self._attention.reset()
 
             return PulseResult(
@@ -332,7 +337,6 @@ class PulseEngine:
         # Attention gating — limit reasoning tier based on available budget
         max_tier = 1
         if self._attention is not None:
-            from cell.metabolism.attention_allocator import AttentionCost
             if not self._attention.can_afford(AttentionCost.DEEP_REASONING):
                 max_tier = 0
                 logger.debug("Attention budget low — restricting to tier 0 reasoning")
@@ -360,7 +364,6 @@ class PulseEngine:
 
                 # Spend attention for reasoning
                 if self._attention is not None:
-                    from cell.metabolism.attention_allocator import AttentionCost
                     cost = AttentionCost.DEEP_REASONING if proposal.tier_used >= 1 else AttentionCost.FAST_REASONING
                     self._attention.spend(cost)
 
