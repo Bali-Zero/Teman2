@@ -795,47 +795,14 @@ async def _init_background_services(
         logger.error(f"❌ Failed to initialize Autonomous Scheduler: {e}")
 
 
-async def _init_generals(app: FastAPI, db_pool: asyncpg.Pool | None) -> None:
-    """
-    Initialize The Generals Multi-Agent System.
 
-    Starts CodingGeneral and IntelligenceGeneral as background polling loops
-    and registers the TaskCoordinator for API access.
+# NOTE: The Generals (CodingGeneral, IntelligenceGeneral) were removed 2026-04-03.
+# backend/generals/ directory never existed — imports always failed silently.
+# Their responsibilities are covered by:
+#   - CodingGeneral → Core Guardian V3 (external, runs every 3h)
+#   - IntelligenceGeneral → Intel Pipeline (Chain 4) + War Room
+# See: docs/superpowers/specs/2026-04-03-agent-mesh-vision.md §8
 
-    Args:
-        app: FastAPI application instance
-        db_pool: Database pool instance (may be None)
-    """
-    if not db_pool:
-        logger.warning("⚠️ Generals: Skipped - no database pool available")
-        service_registry.register("generals", ServiceStatus.UNAVAILABLE, critical=False)
-        return
-
-    try:
-        from backend.generals.coding_general import CodingGeneral
-        from backend.generals.intelligence_general import IntelligenceGeneral
-
-        coding_general = CodingGeneral(poll_interval=5)
-        intelligence_general = IntelligenceGeneral(poll_interval=5)
-
-        await coding_general.initialize()
-        await intelligence_general.initialize()
-
-        # Start polling loops as background tasks
-        coding_task = asyncio.create_task(coding_general.run_loop())
-        intelligence_task = asyncio.create_task(intelligence_general.run_loop())
-
-        # Store references for graceful shutdown
-        app.state.coding_general = coding_general
-        app.state.intelligence_general = intelligence_general
-        app.state.generals_tasks = [coding_task, intelligence_task]
-
-        service_registry.register("generals", ServiceStatus.HEALTHY, critical=False)
-        logger.info("✅ Generals: CodingGeneral + IntelligenceGeneral polling started")
-
-    except Exception as e:
-        service_registry.register("generals", ServiceStatus.DEGRADED, error=str(e), critical=False)
-        logger.error(f"❌ Failed to initialize Generals: {e}")
 
 
 async def initialize_channel_router(
@@ -1085,8 +1052,7 @@ async def initialize_services(app: FastAPI) -> None:
     # 10. Background services (DISABLED for omnichannel stabilization)
     # await _init_background_services(app, search_service, ai_client, db_pool)
 
-    # 11. The Generals Multi-Agent System (DISABLED for omnichannel stabilization)
-    # await _init_generals(app, db_pool)
+    # 11. The Generals — REMOVED (code dead, see note at line ~798)
 
     # 10b. Health Monitor (extracted from _init_background_services)
     try:
