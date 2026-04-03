@@ -10,7 +10,6 @@ import pytest
 
 from backend.services.naga.quality.crag_light import CragDecision, crag_evaluate
 
-
 # ---------------------------------------------------------------------------
 # CragDecision frozen invariant
 # ---------------------------------------------------------------------------
