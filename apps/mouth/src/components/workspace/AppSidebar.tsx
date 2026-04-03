@@ -175,8 +175,8 @@ export function AppSidebar({
           <Image
             src="/static/balizero-logo-clean.png"
             alt="Bali Zero"
-            width={72}
-            height={72}
+            width={144}
+            height={144}
             className="rounded-full"
             priority
           />
