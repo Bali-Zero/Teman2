@@ -89,8 +89,7 @@ describe("driveApi", () => {
     it("includes folder_id and page_size in query params", async () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
-        json: () =>
-          Promise.resolve({ files: [], next_page_token: null }),
+        json: () => Promise.resolve({ files: [], next_page_token: null }),
       });
 
       await driveApi.listFiles({
@@ -146,7 +145,8 @@ describe("driveApi", () => {
 
       await driveApi.createFolder({ name: "New Folder", parent_id: "root" });
 
-      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       expect(url).toContain("/api/drive/folders");
       expect(options.method).toBe("POST");
       expect(JSON.parse(options.body)).toEqual({
@@ -165,7 +165,8 @@ describe("driveApi", () => {
 
       await driveApi.deleteFile("file-to-delete");
 
-      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       expect(url).toContain("/api/drive/files/file-to-delete");
       expect(options.method).toBe("DELETE");
     });
@@ -180,7 +181,8 @@ describe("driveApi", () => {
 
       await driveApi.renameFile("file-1", "new-name.pdf");
 
-      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const [url, options] = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       expect(url).toContain("/api/drive/files/file-1/rename");
       expect(options.method).toBe("PATCH");
       expect(JSON.parse(options.body)).toEqual({ new_name: "new-name.pdf" });
