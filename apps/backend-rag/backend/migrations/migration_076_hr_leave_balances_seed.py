@@ -30,7 +30,6 @@ BALIZERO_TEAM: list[tuple[str, str]] = [
     ("asya@balizero.com",       "Asya Nadia Firdauzi"),
     ("ruslana@balizero.com",    "Ruslana"),
     ("zero@balizero.com",       "Zero"),
-    ("anton@balizero.com",      "Anton"),
     ("dea@balizero.com",        "Dea"),
     ("veronika@balizero.com",   "Veronika"),
 ]

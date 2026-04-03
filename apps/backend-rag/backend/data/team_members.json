@@ -57,33 +57,11 @@
     "expertise_level": "expert",
     "pin": "293518",
     "traits": ["dreamer", "strategic"],
-    "notes": "Board member. Ukrainian. A woman who loves to dream. Manages the Ukrainian setup team (Marta, Olena, Anna).",
+    "notes": "Board member. Ukrainian. A woman who loves to dream.",
     "location": "Ukraine",
     "avatar": "/images/team/ruslana.jpg",
     "emotional_preferences": {
       "tone": "inspiring_visionary",
-      "formality": "medium",
-      "humor": "light"
-    }
-  },
-  {
-    "id": "anton",
-    "name": "Anton",
-    "email": "anton@balizero.com",
-    "role": "Executive Consultant",
-    "department": "setup",
-    "team": "setup",
-    "age": 31,
-    "religion": "Islam",
-    "languages": ["id", "jv"],
-    "preferred_language": "id",
-    "expertise_level": "advanced",
-    "pin": "538147",
-    "traits": ["javanese", "consultant"],
-    "notes": "Executive Consultant in Setup Team. Javanese/Jakarta. Not very proactive.",
-    "location": "Jakarta",
-    "emotional_preferences": {
-      "tone": "encouraging_direct",
       "formality": "medium",
       "humor": "light"
     }
@@ -267,54 +245,6 @@
     }
   },
   {
-    "id": "olena",
-    "name": "Olena",
-    "email": "olena@balizero.com",
-    "role": "Setup Consultant",
-    "department": "setup",
-    "team": "setup",
-    "age": 39,
-    "religion": "Christian",
-    "languages": ["uk", "en"],
-    "preferred_language": "ua",
-    "expertise_level": "advanced",
-    "pin": "809928",
-    "traits": ["analytical", "direct"],
-    "notes": "Ukrainian consultant in Setup team under Ruslana. Sharp analytical insights.",
-    "location": "Ukraine",
-    "reports_to": "ruslana",
-    "avatar": "/images/team/olena.jpg",
-    "emotional_preferences": {
-      "tone": "advisory_professional",
-      "formality": "high",
-      "humor": "subtle"
-    }
-  },
-  {
-    "id": "marta",
-    "name": "Marta",
-    "email": "marta@balizero.com",
-    "role": "Setup Consultant",
-    "department": "setup",
-    "team": "setup",
-    "age": 29,
-    "religion": "Christian",
-    "languages": ["uk", "en"],
-    "preferred_language": "ua",
-    "expertise_level": "advanced",
-    "pin": "918220",
-    "traits": ["empathetic", "structured"],
-    "notes": "Ukrainian consultant in Setup team under Ruslana. Brings structure and empathy.",
-    "location": "Ukraine",
-    "reports_to": "ruslana",
-    "avatar": "/images/team/marta.jpg",
-    "emotional_preferences": {
-      "tone": "advisory_professional",
-      "formality": "medium",
-      "humor": "light"
-    }
-  },
-  {
     "id": "angel",
     "name": "Angel",
     "email": "angel.tax@balizero.com",
@@ -464,30 +394,6 @@
     "location": "Jakarta",
     "emotional_preferences": {
       "tone": "creative_strategic",
-      "formality": "medium",
-      "humor": "light"
-    }
-  },
-  {
-    "id": "anna",
-    "name": "Anna",
-    "email": "anna@balizero.com",
-    "role": "Setup Consultant",
-    "department": "setup",
-    "team": "setup",
-    "age": 28,
-    "religion": "Christian",
-    "languages": ["uk", "en"],
-    "preferred_language": "ua",
-    "expertise_level": "intermediate",
-    "pin": "215373",
-    "traits": ["organized", "detail_oriented"],
-    "notes": "Ukrainian consultant in Setup team under Ruslana. Organized and detail-oriented.",
-    "location": "Ukraine",
-    "reports_to": "ruslana",
-    "avatar": "/images/team/anna.jpg",
-    "emotional_preferences": {
-      "tone": "professional_warm",
       "formality": "medium",
       "humor": "light"
     }
