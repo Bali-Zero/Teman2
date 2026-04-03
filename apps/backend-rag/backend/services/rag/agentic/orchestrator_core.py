@@ -727,7 +727,7 @@ class OrchestratorCore:
             multi_matches = resolve_multi_notebook(query)
             if len(multi_matches) >= 2:
                 try:
-                    from apps.evaluator.nlm_deep_research.cross_notebook_correlator import (
+                    from backend.services.oracle.cross_notebook_correlator import (
                         get_correlator,
                     )
                     cross_task = asyncio.create_task(
