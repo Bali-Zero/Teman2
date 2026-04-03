@@ -1,6 +1,7 @@
-"""Tests for Naga search agents base types."""
+"""Tests for Naga search agents base types and concrete agents."""
 
 from datetime import date
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -9,6 +10,7 @@ from backend.services.naga.search_agents.base import (
     BaseSearchAgent,
     SearchResult,
 )
+from backend.services.naga.search_agents.exa_agent import ExaSearchAgent
 
 # ---------------------------------------------------------------------------
 # SearchResult dataclass
@@ -293,3 +295,123 @@ class TestBaseSearchAgent:
         assert isinstance(response, AgentResponse)
         assert len(response.results) == 1
         assert response.search_calls_used == 1
+
+
+# ---------------------------------------------------------------------------
+# ExaSearchAgent
+# ---------------------------------------------------------------------------
+
+
+class TestExaSearchAgent:
+    """Tests for the Exa neural search agent."""
+
+    def _make_mcp_response(self, results: list[dict]) -> dict:
+        """Build a mock MCP response matching Exa's web_search_advanced shape."""
+        return {"results": results}
+
+    @pytest.mark.asyncio()
+    async def test_exa_search_returns_results(self) -> None:
+        """Mock returns 2 results — verify SearchResult mapping."""
+        raw_results = [
+            {
+                "url": "https://imigrasi.go.id/kitas",
+                "title": "KITAS Requirements",
+                "text": "Requirements for a temporary stay permit.",
+                "score": 0.92,
+                "highlights": ["temporary stay permit"],
+                "summary": "KITAS overview from immigration.",
+            },
+            {
+                "url": "https://pajak.go.id/npwp",
+                "title": "NPWP Registration",
+                "text": "Tax ID registration guide.",
+                "score": 0.78,
+                "highlights": ["tax ID"],
+                "summary": "NPWP guide.",
+            },
+        ]
+        mcp_call = AsyncMock(return_value=self._make_mcp_response(raw_results))
+        agent = ExaSearchAgent(mcp_call=mcp_call)
+
+        response = await agent.search(
+            query="Indonesia visa requirements",
+            sub_question="What documents are needed for KITAS?",
+        )
+
+        assert response.agent_name == "exa"
+        assert response.error is None
+        assert len(response.results) == 2
+
+        first = response.results[0]
+        assert first.url == "https://imigrasi.go.id/kitas"
+        assert first.title == "KITAS Requirements"
+        assert first.content == "Requirements for a temporary stay permit."
+        assert first.relevance_score == 0.92
+        assert first.source_type == "web"
+        assert first.metadata["highlights"] == ["temporary stay permit"]
+        assert first.metadata["summary"] == "KITAS overview from immigration."
+
+        second = response.results[1]
+        assert second.url == "https://pajak.go.id/npwp"
+        assert second.relevance_score == 0.78
+
+    @pytest.mark.asyncio()
+    async def test_exa_search_with_domain_filter(self) -> None:
+        """Verify includeDomains and excludeDomains are forwarded to mcp_call."""
+        mcp_call = AsyncMock(return_value=self._make_mcp_response([]))
+        agent = ExaSearchAgent(mcp_call=mcp_call)
+
+        await agent.search(
+            query="tax regulations",
+            sub_question="NPWP requirements",
+            include_domains=["pajak.go.id"],
+            exclude_domains=["spam.com"],
+        )
+
+        mcp_call.assert_called_once()
+        call_kwargs = mcp_call.call_args[1] if mcp_call.call_args[1] else {}
+        call_args_pos = mcp_call.call_args[0] if mcp_call.call_args[0] else ()
+
+        # The mcp_call receives keyword arguments for the Exa tool parameters.
+        # Check that domain filters were included.
+        all_args = {**dict(enumerate(call_args_pos)), **call_kwargs}
+        # Flatten: the agent should pass includeDomains / excludeDomains
+        raw_call = mcp_call.call_args
+        assert raw_call is not None
+        # Verify the kwargs contain domain filters
+        kw = raw_call.kwargs
+        assert kw.get("includeDomains") == ["pajak.go.id"]
+        assert kw.get("excludeDomains") == ["spam.com"]
+
+    @pytest.mark.asyncio()
+    async def test_exa_search_counts_calls(self) -> None:
+        """Verify search_calls_used >= 1 after a successful search."""
+        mcp_call = AsyncMock(
+            return_value=self._make_mcp_response(
+                [{"url": "https://x.com", "title": "X", "text": "body", "score": 0.5}]
+            )
+        )
+        agent = ExaSearchAgent(mcp_call=mcp_call)
+
+        response = await agent.search(
+            query="test query",
+            sub_question="sub question",
+        )
+
+        assert response.search_calls_used >= 1
+
+    @pytest.mark.asyncio()
+    async def test_exa_search_handles_error(self) -> None:
+        """When mcp_call raises, agent returns AgentResponse with error field."""
+        mcp_call = AsyncMock(side_effect=RuntimeError("Exa API timeout"))
+        agent = ExaSearchAgent(mcp_call=mcp_call)
+
+        response = await agent.search(
+            query="test query",
+            sub_question="sub question",
+        )
+
+        assert response.agent_name == "exa"
+        assert response.results == []
+        assert response.error is not None
+        assert "Exa API timeout" in response.error
