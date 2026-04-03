@@ -27,10 +27,7 @@ export const revalidate = 3600;
 export default function HomePage() {
   return (
     <>
-      <link
-        rel="preconnect"
-        href="https://fonts.googleapis.com"
-      />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap"
         rel="stylesheet"
@@ -142,49 +139,40 @@ nav {
 .brand-inner {
   max-width: 1400px; margin: 0 auto;
   padding: 0 60px;
-  height: 90px;
+  height: 110px;
   display: flex; align-items: center; justify-content: space-between;
 }
 .brand-left {
   display: flex; align-items: center; gap: 16px;
 }
-.brand-logo {
-  width: 72px; height: 72px;
-  border-radius: 50%; object-fit: cover;
-  flex-shrink: 0;
-}
-.brand-divider {
-  width: 1px; height: 32px;
-  background: rgba(255,255,255,0.1);
-  margin: 0 12px; flex-shrink: 0;
-}
-.brand-text { display: flex; flex-direction: column; gap: 3px; }
+.brand-text { display: flex; flex-direction: column; gap: 5px; }
 .brand-tagline {
   font-family: 'Arial Black', 'Impact', 'Franklin Gothic Heavy', sans-serif;
   font-weight: 900; font-style: normal;
-  font-size: 26px; letter-spacing: 0.04em;
+  font-size: 46px; letter-spacing: 0.03em;
   color: #fff; line-height: 1; margin: 0;
   display: flex; align-items: center; gap: 0;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.4);
 }
 .brand-logo-3 {
   color: #cc1a1a;
-  font-size: 1.3em;
+  font-size: 1.25em;
   line-height: 0.85;
   display: inline-block;
-  transform: translateY(2px);
-  text-shadow: 1px 2px 4px rgba(0,0,0,0.6);
+  transform: translateY(3px);
+  text-shadow: 2px 3px 8px rgba(0,0,0,0.7);
 }
 .brand-om-circle {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 0.9em; height: 0.9em;
-  border: 2px solid #fff;
+  width: 0.85em; height: 0.85em;
+  border: 3px solid #fff;
   border-radius: 50%;
   position: relative;
   flex-shrink: 0;
 }
 .brand-om-circle::after {
   content: 'ॐ';
-  font-size: 0.52em;
+  font-size: 0.5em;
   font-family: serif;
   color: #111;
   background: #fff;
@@ -195,7 +183,7 @@ nav {
 }
 .brand-sub {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; letter-spacing: 0.12em;
+  font-size: 10px; letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--w35); margin: 0;
 }
@@ -212,8 +200,8 @@ nav {
   font-size: 8px; color: rgba(212,168,83,0.4);
 }
 @media (max-width: 768px) {
-  .brand-inner { padding: 0 20px; height: 68px; }
-  .brand-tagline { font-size: 18px; }
+  .brand-inner { padding: 0 20px; height: 80px; }
+  .brand-tagline { font-size: 28px; }
   .brand-right { display: none; }
 }
 
@@ -701,7 +689,8 @@ body::after {
 `,
         }}
       />
-      <HomepageStaticContent html={`
+      <HomepageStaticContent
+        html={`
 <!-- ════════ NAVBAR ════════ -->
 <nav>
   <a class="logo-wrap" href="/">
@@ -1062,7 +1051,8 @@ body::after {
     <a href="/news?category=visas&q=work+permit" class="topic-pill">Work Permits</a>
   </div>
 
-`} />
+`}
+      />
 
       {/* ── Latest Intelligence (client-side, always fresh) ── */}
       <LatestIntelligence />
@@ -1071,22 +1061,33 @@ body::after {
       <div className="kbli-section">
         <div className="kbli-left">
           <span className="kbli-badge">Featured Intelligence Tool</span>
-          <h2 className="kbli-title">KBLI 2025<br />Navigator</h2>
-          <p className="kbli-desc">Instant access to all 1,563 KBLI 2025 codes with intelligent search, 4-level risk assessment, PMA status tracking, and AI-powered guidance.</p>
+          <h2 className="kbli-title">
+            KBLI 2025
+            <br />
+            Navigator
+          </h2>
+          <p className="kbli-desc">
+            Instant access to all 1,563 KBLI 2025 codes with intelligent search,
+            4-level risk assessment, PMA status tracking, and AI-powered
+            guidance.
+          </p>
           <div className="kbli-features">
             <span className="kbli-feat">Smart bilingual search</span>
             <span className="kbli-feat">4-level risk system</span>
             <span className="kbli-feat">PMA status tracking</span>
             <span className="kbli-feat">AI assistant</span>
           </div>
-          <a href="/kbli" className="kbli-btn">▶ Explore Navigator</a>
+          <a href="/kbli" className="kbli-btn">
+            ▶ Explore Navigator
+          </a>
         </div>
         <div className="kbli-right">
           <KbliSearchBox />
         </div>
       </div>
 
-      <HomepageStaticContent html={`
+      <HomepageStaticContent
+        html={`
   <!-- Services -->
   <div class="services-section">
     <div class="services-top">
@@ -1173,7 +1174,8 @@ body::after {
   </footer>
 </div>
 
-`} />
+`}
+      />
       <ZantaraWidget />
       <Script id="balizero-homepage-js" strategy="afterInteractive">{`
 // ════════ CAROUSEL ENGINE ════════
