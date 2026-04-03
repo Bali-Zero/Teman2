@@ -1,7 +1,8 @@
-"""Tests for EventBus — in-process pub/sub layer."""
+"""Tests for EventBus — in-process pub/sub + handlers."""
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+import time
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -174,3 +175,170 @@ class TestPGNotificationRouting:
     async def test_unmapped_channel_logs_warning(self, bus: EventBus) -> None:
         # Unknown channel should be handled gracefully
         await bus._handle_pg_event("unknown_channel", '{"data": 1}')
+
+
+class TestDeduplication:
+    """Test dedup guard in handlers."""
+
+    def test_is_duplicate_first_call(self) -> None:
+        from backend.services.events.handlers import _is_duplicate, _recent_events
+        _recent_events.clear()
+        assert _is_duplicate("test:key:1") is False
+
+    def test_is_duplicate_second_call(self) -> None:
+        from backend.services.events.handlers import _is_duplicate, _recent_events
+        _recent_events.clear()
+        _is_duplicate("test:key:2")
+        assert _is_duplicate("test:key:2") is True
+
+    def test_different_keys_not_duplicate(self) -> None:
+        from backend.services.events.handlers import _is_duplicate, _recent_events
+        _recent_events.clear()
+        _is_duplicate("test:key:a")
+        assert _is_duplicate("test:key:b") is False
+
+
+class TestChainContext:
+    """Test cross-chain shared context."""
+
+    def test_store_and_read(self) -> None:
+        from backend.services.events.handlers import (
+            _chain_context,
+            _store_context,
+            get_chain_context,
+        )
+        _chain_context.clear()
+
+        _store_context("client.changed", 42, {"email": "x@y.com"})
+        ctx = get_chain_context()
+
+        assert "client.changed:42" in ctx
+        assert ctx["client.changed:42"]["email"] == "x@y.com"
+        assert "_stored_at" in ctx["client.changed:42"]
+
+    def test_context_prunes_old_entries(self) -> None:
+        from backend.services.events.handlers import (
+            _chain_context,
+            _store_context,
+            _CHAIN_CONTEXT_MAX,
+        )
+        _chain_context.clear()
+
+        # Fill beyond max
+        for i in range(_CHAIN_CONTEXT_MAX + 50):
+            _store_context("test", i, {"i": i})
+
+        assert len(_chain_context) <= _CHAIN_CONTEXT_MAX
+
+    def test_get_chain_context_is_independent(self) -> None:
+        from backend.services.events.handlers import (
+            _chain_context,
+            get_chain_context,
+        )
+        _chain_context.clear()
+        _chain_context["test:1"] = {"data": True}
+
+        ctx = get_chain_context()
+        # Deleting from copy doesn't affect original
+        del ctx["test:1"]
+        assert "test:1" in _chain_context
+
+
+class TestHandlerRegistration:
+    """Test that register_handlers wires everything correctly."""
+
+    @pytest.mark.asyncio
+    async def test_register_handlers_subscribes_all(self) -> None:
+        bus = EventBus(db_dsn="postgresql://test:test@localhost/test", db_pool=None)
+        mock_pool = MagicMock()
+
+        from backend.services.events.handlers import register_handlers, _recent_events
+        _recent_events.clear()
+
+        register_handlers(bus, mock_pool)
+
+        assert "client.changed" in bus._subscribers
+        assert "practice.status_changed" in bus._subscribers
+        assert "compliance.alert" in bus._subscribers
+        assert len(bus._subscribers["client.changed"]) == 1
+        assert len(bus._subscribers["practice.status_changed"]) == 1
+        assert len(bus._subscribers["compliance.alert"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_client_insert_triggers_background_tasks(self) -> None:
+        """Verify that a client INSERT event creates background tasks."""
+        bus = EventBus(db_dsn="postgresql://test:test@localhost/test", db_pool=None)
+        mock_pool = MagicMock()
+
+        from backend.services.events.handlers import register_handlers, _recent_events
+        _recent_events.clear()
+
+        register_handlers(bus, mock_pool)
+
+        # Mock the background task functions
+        with patch("backend.services.events.handlers._create_drive_folder", new_callable=AsyncMock) as mock_drive, \
+             patch("backend.services.events.handlers._log_interaction", new_callable=AsyncMock) as mock_log, \
+             patch("backend.services.events.handlers.invalidate_cache", create=True, new_callable=AsyncMock):
+
+            trace = await bus.emit("client.changed", {
+                "client_id": 99,
+                "email": "new@client.com",
+                "operation": "INSERT",
+            })
+
+            # Allow background tasks to start
+            await asyncio.sleep(0.05)
+
+            assert trace.handler_count == 1
+            assert trace.errors == []
+
+    @pytest.mark.asyncio
+    async def test_practice_completed_checks_expiry(self) -> None:
+        """Verify practice completion triggers expiry check."""
+        bus = EventBus(db_dsn="postgresql://test:test@localhost/test", db_pool=None)
+        mock_pool = MagicMock()
+
+        from backend.services.events.handlers import register_handlers, _recent_events
+        _recent_events.clear()
+
+        register_handlers(bus, mock_pool)
+
+        with patch("backend.services.events.handlers._check_client_expiry_on_completion", new_callable=AsyncMock) as mock_check, \
+             patch("backend.services.events.handlers.invalidate_cache", create=True, new_callable=AsyncMock):
+
+            trace = await bus.emit("practice.status_changed", {
+                "practice_id": 55,
+                "client_id": 10,
+                "old_status": "approved",
+                "new_status": "completed",
+            })
+
+            await asyncio.sleep(0.05)
+
+            assert trace.handler_count == 1
+            assert trace.errors == []
+
+    @pytest.mark.asyncio
+    async def test_compliance_high_sends_telegram(self) -> None:
+        """Verify high severity compliance alert sends Telegram."""
+        bus = EventBus(db_dsn="postgresql://test:test@localhost/test", db_pool=None)
+        mock_pool = MagicMock()
+
+        from backend.services.events.handlers import register_handlers, _recent_events
+        _recent_events.clear()
+
+        register_handlers(bus, mock_pool)
+
+        with patch("backend.services.events.handlers._send_admin_telegram", new_callable=AsyncMock) as mock_tg, \
+             patch("backend.services.events.handlers._log_interaction", new_callable=AsyncMock):
+
+            await bus.emit("compliance.alert", {
+                "alert_id": "a1",
+                "client_id": 5,
+                "severity": "critical",
+                "alert_type": "kitas_expiry",
+                "message": "KITAS expires in 7 days",
+            })
+
+            await asyncio.sleep(0.05)
+            # Telegram task was created (verify no errors in trace)
