@@ -1,7 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Suspense, lazy } from "react";
+import {
+  Suspense,
+  lazy,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -57,19 +64,27 @@ export default function NewsPageClient({
   const mainNews4 = articles.find((a) => a.slug === homepageLayout.hero_4);
   const mainNews5 = articles.find((a) => a.slug === homepageLayout.hero_5);
 
-  // Get insight articles from layout config
-  const kbliInsight1 = articles.find(
-    (a) => a.slug === homepageLayout.insight_1,
-  );
-  const kbliInsight2 = articles.find(
-    (a) => a.slug === homepageLayout.insight_2,
-  );
-  const kbliInsight3 = articles.find(
-    (a) => a.slug === homepageLayout.insight_3,
-  );
-  const kbliInsights = [kbliInsight1, kbliInsight2, kbliInsight3].filter(
-    Boolean,
-  ) as ArticleListItem[];
+  // CASCADE ARCHITECTURE: Latest Intelligence tier (5 articles from previous hero cycle)
+  // These are different from hero articles — they've graduated from hero to the next tier
+  const layout = homepageLayout as Record<string, string>;
+  const latestArticles = (
+    ["latest_1", "latest_2", "latest_3", "latest_4", "latest_5"] as const
+  )
+    .map((key) => articles.find((a) => a.slug === layout[key]))
+    .filter(Boolean) as ArticleListItem[];
+
+  // Fallback: if latest_* not configured, use articles not in hero (auto-cascade)
+  const heroSlugs = new Set([
+    homepageLayout.hero_main,
+    homepageLayout.hero_2,
+    homepageLayout.hero_3,
+    homepageLayout.hero_4,
+    homepageLayout.hero_5,
+  ]);
+  const kbliInsights =
+    latestArticles.length >= 3
+      ? latestArticles
+      : articles.filter((a) => !heroSlugs.has(a.slug)).slice(0, 5);
 
   // Get IDs of main news articles to exclude them from other sections
   const mainNewsIds = new Set(
@@ -89,125 +104,16 @@ export default function NewsPageClient({
     <>
       <HomepageSEOSchemas />
 
-      <div className="min-h-screen bg-[#051C2C]">
-        {/* McKinsey-Style Asymmetric Hero Collage */}
-        <section className="border-b border-white/10">
-          <div className="max-w-[1400px] mx-auto px-4 lg:px-6">
-            {/* Asymmetric Grid Layout - Enlarged for strong first impression */}
-            <div className="grid grid-cols-12 gap-3 min-h-[850px] lg:min-h-[950px]">
-              {/* LEFT COLUMN: Headline + News 2 + News 5 */}
-              <div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
-                {/* Headline Area with Indonesian Flag Drape */}
-                <div className="py-8 lg:py-12 relative overflow-hidden">
-                  {/* Indonesian Flag Drape - Actual Image */}
-                  <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                    <Image
-                      src="/assets/static/indonesian-flag-drape.jpg"
-                      alt="Indonesian flag background"
-                      fill
-                      className="object-cover opacity-30"
-                      style={{
-                        mixBlendMode: "screen",
-                        transform: "scale(1.3) rotate(-5deg)",
-                        transformOrigin: "center center",
-                      }}
-                      priority
-                      fetchPriority="high"
-                      sizes="(max-width: 1024px) 100vw, 40vw"
-                    />
-                  </div>
-                  <div className="relative z-10">
-                    <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-4">
-                      {t("home.hero.title")}{" "}
-                      <span className="text-red-500">
-                        {t("home.hero.titleAccent")}
-                      </span>{" "}
-                      {t("home.hero.titleSuffix")}
-                    </h1>
-                    <p className="text-lg text-white/70">
-                      {t("home.hero.subtitle")}{" "}
-                      <span className="text-[#2251ff]">
-                        {t("home.hero.subtitleAccent")}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Main News 2 - Taller - NO MONEY NO BALI */}
-                {mainNews2 && (
-                  <CollageCard article={mainNews2} className="flex-[1.4]" />
-                )}
-
-                {/* Main News 5 - Under News 2, shorter than News 4 */}
-                {mainNews5 && (
-                  <CollageCard article={mainNews5} className="flex-[1.1]" />
-                )}
-              </div>
-
-              {/* MIDDLE COLUMN: News 3 (offset top) + News 4 (extends down) */}
-              <div className="col-span-12 lg:col-span-4 flex flex-col gap-3 lg:pt-28">
-                {/* Main News 3 - Gemini 3, offset from top */}
-                {mainNews3 && (
-                  <CollageCard article={mainNews3} className="flex-[1]" />
-                )}
-
-                {/* Main News 4 - Coretax, extends down past newsletter */}
-                {mainNews4 && (
-                  <CollageCard article={mainNews4} className="flex-[1.6]" />
-                )}
-              </div>
-
-              {/* RIGHT COLUMN: News 1 (large) + Newsletter */}
-              <div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
-                {/* Main News 1 - Large, Global Citizenship - extends to headline height */}
-                {mainNews1 && (
-                  <CollageCard
-                    article={mainNews1}
-                    className="flex-[2.4]"
-                    showCTA
-                  />
-                )}
-
-                {/* Newsletter Box */}
-                <div className="bg-[rgba(10,37,64,0.6)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] p-6 flex-[0.6] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-                  <p className="text-white font-medium mb-2">
-                    {t("home.newsletter.title")}
-                  </p>
-                  <p className="text-white/60 text-sm mb-4">
-                    {t("home.newsletter.subtitle")}
-                  </p>
-                  <form className="flex gap-2">
-                    <input
-                      type="email"
-                      placeholder={t("home.newsletter.placeholder")}
-                      aria-label="Email address"
-                      className="flex-1 px-4 py-2.5 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-[#2251ff] transition-colors text-sm"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2.5 rounded bg-[#2251ff] text-white hover:bg-[#1a3fcc] transition-colors"
-                    >
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </form>
-                  <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/10">
-                    <span className="text-white/40 text-xs">
-                      {t("home.newsletter.orContinueWith")}
-                    </span>
-                    <div className="flex gap-2">
-                      <button className="px-3 py-1.5 rounded bg-white/10 text-white/70 text-xs hover:bg-white/20 transition-colors">
-                        Google
-                      </button>
-                      <button className="px-3 py-1.5 rounded bg-white/10 text-white/70 text-xs hover:bg-white/20 transition-colors">
-                        LinkedIn
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+      <div className="min-h-screen bg-[#060D14]">
+        {/* Bali Noir Hero Carousel */}
+        <HeroCarousel
+          slides={
+            [mainNews1, mainNews2, mainNews3, mainNews4, mainNews5].filter(
+              Boolean,
+            ) as ArticleListItem[]
+          }
+          t={t}
+        />
 
         {/* Topics Grid */}
         <section className="border-b border-white/10">
@@ -247,59 +153,92 @@ export default function NewsPageClient({
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {kbliInsights.map((article, index) => (
-                <div
-                  key={article.id}
-                  className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <Link href="/kbli">
-                    <article className="group">
-                      <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5 bg-[rgba(10,22,40,0.6)] backdrop-blur-sm border border-[rgba(255,255,255,0.03)]">
-                        {article.coverImage &&
-                        typeof article.coverImage === "string" ? (
-                          <Image
-                            src={article.coverImage}
-                            alt={article.title || ""}
-                            fill
-                            className="object-cover group-hover:scale-[1.05] transition-transform duration-700"
-                            style={{
-                              objectPosition: "center 25%", // Show only top portion with graphs
-                              transform: "scale(1.8)", // Zoom in to crop out text at bottom
-                              transformOrigin: "center 25%",
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-white/20">
-                            <Building2 className="w-12 h-12" />
-                          </div>
-                        )}
-                      </div>
+            {/* CASCADE: asymmetric bento grid — card 1 featured (2 cols), cards 2-3 standard, cards 4-5 compact row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-auto">
+              {kbliInsights.map((article, index) => {
+                const isFeatured = index === 0;
+                const isCompact = index >= 3;
+                return (
+                  <div
+                    key={article.id}
+                    className={[
+                      "animate-in fade-in slide-in-from-bottom-4 duration-500",
+                      isFeatured ? "md:col-span-2 lg:col-span-2" : "",
+                      isCompact ? "lg:col-span-1" : "",
+                    ].join(" ")}
+                    style={{ animationDelay: `${index * 80}ms` }}
+                  >
+                    <Link href={`/${article.category}/${article.slug}`}>
+                      <article className="group h-full">
+                        <div
+                          className={[
+                            "relative overflow-hidden rounded-xl mb-4 bg-[rgba(10,22,40,0.6)] backdrop-blur-sm border border-[rgba(255,255,255,0.04)]",
+                            isFeatured
+                              ? "aspect-[2.4/1]"
+                              : isCompact
+                                ? "aspect-[16/7]"
+                                : "aspect-[16/10]",
+                          ].join(" ")}
+                        >
+                          {article.coverImage &&
+                          typeof article.coverImage === "string" ? (
+                            <Image
+                              src={article.coverImage}
+                              alt={article.title || ""}
+                              fill
+                              className="object-cover group-hover:scale-[1.04] transition-transform duration-700"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-white/20">
+                              <Building2 className="w-12 h-12" />
+                            </div>
+                          )}
+                          {/* Glass overlay on hover */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#060D14]/80 via-transparent to-transparent opacity-70" />
+                          {isFeatured && (
+                            <span className="absolute top-3 left-3 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-[#2E6FD4]/80 backdrop-blur-sm text-white">
+                              Latest Intelligence
+                            </span>
+                          )}
+                        </div>
 
-                      <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-2 block">
-                        {formatCategory(article.category, t)}
-                      </span>
-
-                      <h3 className="font-serif text-xl text-white mb-3 leading-snug group-hover:text-[#2251ff] transition-colors line-clamp-2">
-                        {article.title}
-                      </h3>
-
-                      <p className="text-white/60 text-sm leading-relaxed mb-4 line-clamp-2">
-                        {article.excerpt}
-                      </p>
-
-                      <div className="flex items-center gap-3 text-white/40 text-sm">
-                        <span>
-                          {article.readingTime} {t("news.minuteRead")}
+                        <span className="text-[#2E6FD4] text-xs font-semibold uppercase tracking-wider mb-2 block">
+                          {formatCategory(article.category, t)}
                         </span>
-                        <span>•</span>
-                        <span>{formatViewCount(article.viewCount)} views</span>
-                      </div>
-                    </article>
-                  </Link>
-                </div>
-              ))}
+
+                        <h3
+                          className={[
+                            "font-serif text-white leading-snug group-hover:text-[#2E6FD4] transition-colors",
+                            isFeatured
+                              ? "text-2xl mb-3 line-clamp-2"
+                              : isCompact
+                                ? "text-base mb-2 line-clamp-2"
+                                : "text-xl mb-3 line-clamp-2",
+                          ].join(" ")}
+                        >
+                          {article.title}
+                        </h3>
+
+                        {!isCompact && (
+                          <p className="text-white/55 text-sm leading-relaxed mb-3 line-clamp-2">
+                            {article.excerpt}
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-3 text-white/35 text-xs">
+                          <span>
+                            {article.readingTime} {t("news.minuteRead")}
+                          </span>
+                          <span>•</span>
+                          <span>
+                            {formatViewCount(article.viewCount)} views
+                          </span>
+                        </div>
+                      </article>
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -368,8 +307,7 @@ export default function NewsPageClient({
                       <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                     </svg>
                     <span>
-                      Visas consultants, tax specialists, business
-                      advisors
+                      Visas consultants, tax specialists, business advisors
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -447,68 +385,277 @@ export default function NewsPageClient({
   );
 }
 
-/**
- * Collage Card Component - McKinsey asymmetric style
- */
-function CollageCard({
-  article,
-  className = "",
-  showCTA = false,
-  imagePosition = "center",
+// ─── Bali Noir Hero Carousel ────────────────────────────────────────────────
+
+const CAROUSEL_INTERVAL = 6000;
+
+const SLIDE_CATEGORIES: Record<number, string> = {
+  0: "REAL ESTATE",
+  1: "INVESTMENT",
+  2: "LIFESTYLE",
+  3: "TAXATION",
+  4: "BUSINESS",
+};
+
+function HeroCarousel({
+  slides,
+  t,
 }: {
-  article: ArticleListItem;
-  className?: string;
-  showCTA?: boolean;
-  imagePosition?: "center" | "top" | "bottom";
+  slides: ArticleListItem[];
+  t: (key: string) => string;
 }) {
-  const { t } = useTranslation();
-  const positionClass =
-    imagePosition === "top"
-      ? "object-top"
-      : imagePosition === "bottom"
-        ? "object-bottom"
-        : "object-center";
+  const [current, setCurrent] = useState(0);
+  const [prev, setPrev] = useState<number | null>(null);
+  const [animating, setAnimating] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const goTo = useCallback(
+    (index: number) => {
+      if (animating || index === current || slides.length === 0) return;
+      setPrev(current);
+      setCurrent(index);
+      setAnimating(true);
+      setTimeout(() => {
+        setPrev(null);
+        setAnimating(false);
+      }, 900);
+    },
+    [animating, current, slides.length],
+  );
+
+  useEffect(() => {
+    if (paused || slides.length === 0) return;
+    timerRef.current = setTimeout(() => {
+      goTo((current + 1) % slides.length);
+    }, CAROUSEL_INTERVAL);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [current, paused, goTo, slides.length]);
+
+  if (slides.length === 0) return null;
+
+  const slide = slides[current];
+  const prevSlide = prev !== null ? slides[prev] : null;
+  const categoryLabel = slide.category
+    ? slide.category.toUpperCase()
+    : (SLIDE_CATEGORIES[current] ?? "INTELLIGENCE");
+
   return (
-    <Link
-      href={`/${article.category}/${article.slug}`}
-      className={`block group relative overflow-hidden ${className}`}
-    >
-      <article className="relative w-full h-full min-h-[220px]">
-        <Image
-          src={article.coverImage}
-          alt={article.title}
-          fill
-          className={`object-cover ${positionClass} group-hover:scale-105 transition-transform duration-700`}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+    <>
+      {/* Carousel keyframes injected once */}
+      <style>{`
+        @keyframes kenBurns {
+          0%   { transform: scale(1.0) translate(0, 0); }
+          100% { transform: scale(1.08) translate(-1%, -1%); }
+        }
+        @keyframes dustAway {
+          0%   { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); opacity: 1; }
+          40%  { clip-path: polygon(0 0, 100% 0, 100% 0, 30% 0); opacity: 0.6; }
+          100% { clip-path: polygon(0 0, 0 0, 0 100%, 0 100%); opacity: 0; }
+        }
+        @keyframes dustIn {
+          0%   { clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%); opacity: 0.4; }
+          60%  { clip-path: polygon(20% 0, 100% 0, 100% 100%, 0 100%); opacity: 0.8; }
+          100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); opacity: 1; }
+        }
+        .slide-leaving { animation: dustAway 0.9s cubic-bezier(0.4,0,0.2,1) forwards; }
+        .slide-entering { animation: dustIn 0.9s cubic-bezier(0.4,0,0.2,1) forwards; }
+        .hero-ken-burns {
+          animation: kenBurns 14s ease-in-out infinite alternate;
+        }
+        .hero-dots button { transition: all 0.3s ease; }
+      `}</style>
 
-        <div className="absolute inset-0 p-5 lg:p-6 flex flex-col justify-end">
-          <span className="text-[#2251ff] text-[10px] font-bold uppercase tracking-wider mb-2">
-            {formatCategory(article.category, t)}
-          </span>
-          <h3 className="font-serif text-white leading-tight group-hover:text-[#2251ff] transition-colors text-base lg:text-lg">
-            {article.title}
-            <ChevronRight className="inline-block w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
-          </h3>
-
-          {showCTA && (
-            <div className="mt-4">
-              <span className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#051C2C] text-sm font-medium rounded hover:bg-white/90 transition-colors">
-                Read the case study
-                <ArrowRight className="w-4 h-4" />
-              </span>
+      <section
+        className="relative overflow-hidden border-b border-white/10"
+        style={{ height: "min(92vh, 820px)" }}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        {/* Slides stack */}
+        <div className="absolute inset-0">
+          {/* Leaving slide */}
+          {prevSlide && (
+            <div
+              key={`prev-${prev}`}
+              className="absolute inset-0 slide-leaving"
+              style={{ zIndex: 1 }}
+            >
+              <div className="relative w-full h-full hero-ken-burns">
+                <Image
+                  src={
+                    prevSlide.coverImage ||
+                    "/assets/static/indonesian-flag-drape.jpg"
+                  }
+                  alt={prevSlide.title}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-[#060D14]/85 via-[#060D14]/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#060D14]/70 via-transparent to-transparent" />
             </div>
           )}
+
+          {/* Entering/Active slide */}
+          <div
+            key={`curr-${current}`}
+            className={`absolute inset-0 ${animating ? "slide-entering" : ""}`}
+            style={{ zIndex: 2 }}
+          >
+            <div className="relative w-full h-full hero-ken-burns">
+              <Image
+                src={
+                  slide.coverImage || "/assets/static/indonesian-flag-drape.jpg"
+                }
+                alt={slide.title}
+                fill
+                className="object-cover"
+                priority
+                sizes="100vw"
+              />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#060D14]/85 via-[#060D14]/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#060D14]/70 via-transparent to-transparent" />
+          </div>
         </div>
 
-        {article.aiGenerated && (
-          <div className="absolute top-4 left-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2251ff] text-white text-[10px] font-medium">
-            <Sparkles className="w-3 h-3" />
-            AI
+        {/* Content overlay */}
+        <div className="relative z-10 h-full flex flex-col justify-between max-w-[1400px] mx-auto px-6 lg:px-12 py-10 lg:py-14">
+          {/* Top bar */}
+          <div className="flex items-center justify-between">
+            <span
+              className="text-[10px] font-bold uppercase tracking-[0.25em] px-3 py-1.5 rounded"
+              style={{
+                color: "#D4A853",
+                border: "1px solid rgba(212,168,83,0.35)",
+                background: "rgba(212,168,83,0.08)",
+              }}
+            >
+              {categoryLabel}
+            </span>
+            <span className="text-white/30 text-xs font-mono">
+              {String(current + 1).padStart(2, "0")} /{" "}
+              {String(slides.length).padStart(2, "0")}
+            </span>
           </div>
-        )}
-      </article>
-    </Link>
+
+          {/* Main content */}
+          <div className="max-w-[680px]">
+            <h1
+              className="font-serif leading-[1.08] mb-5 text-white"
+              style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}
+            >
+              {slide.title}
+            </h1>
+
+            {slide.excerpt && (
+              <p className="text-white/60 text-base lg:text-lg leading-relaxed mb-8 line-clamp-2">
+                {slide.excerpt}
+              </p>
+            )}
+
+            <Link
+              href={`/${slide.category}/${slide.slug}`}
+              className="inline-flex items-center gap-3 px-6 py-3 rounded font-semibold text-sm transition-all"
+              style={{
+                background: "rgba(212,168,83,0.12)",
+                border: "1px solid rgba(212,168,83,0.4)",
+                color: "#D4A853",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(212,168,83,0.22)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(212,168,83,0.12)";
+              }}
+            >
+              Read Full Analysis
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {/* Bottom nav */}
+          <div className="hero-dots flex items-center gap-6">
+            {/* Dot nav */}
+            <div className="flex items-center gap-2">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goTo(i)}
+                  aria-label={`Slide ${i + 1}`}
+                  style={{
+                    width: i === current ? "32px" : "8px",
+                    height: "8px",
+                    borderRadius: "4px",
+                    background:
+                      i === current ? "#D4A853" : "rgba(242,237,230,0.25)",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Slide mini-titles */}
+            <div className="hidden lg:flex items-center gap-1 flex-1 overflow-hidden">
+              {slides.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => goTo(i)}
+                  className="flex-1 min-w-0 text-left px-3 py-2 rounded transition-all"
+                  style={{
+                    background:
+                      i === current ? "rgba(212,168,83,0.1)" : "transparent",
+                    borderLeft:
+                      i === current
+                        ? "2px solid #D4A853"
+                        : "2px solid transparent",
+                  }}
+                >
+                  <p
+                    className="text-[11px] font-mono uppercase tracking-wider truncate"
+                    style={{
+                      color:
+                        i === current ? "#D4A853" : "rgba(242,237,230,0.35)",
+                    }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </p>
+                  <p
+                    className="text-xs truncate leading-tight mt-0.5"
+                    style={{
+                      color:
+                        i === current
+                          ? "rgba(242,237,230,0.9)"
+                          : "rgba(242,237,230,0.35)",
+                    }}
+                  >
+                    {s.title}
+                  </p>
+                </button>
+              ))}
+            </div>
+
+            {/* Progress bar */}
+            <div className="hidden lg:block w-32 h-px bg-white/10 relative overflow-hidden">
+              <div
+                className="absolute left-0 top-0 h-full"
+                style={{
+                  background: "#D4A853",
+                  width: `${((current + 1) / slides.length) * 100}%`,
+                  transition: "width 0.4s ease",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -517,7 +664,7 @@ function formatCategory(category: string, t?: (key: string) => string): string {
     const keyMap: Record<string, string> = {
       immigration: "home.categories.immigration",
       business: "home.categories.business",
-      "taxes": "home.categories.taxLegal",
+      taxes: "home.categories.taxLegal",
       property: "home.categories.property",
       lifestyle: "home.categories.lifestyle",
     };
@@ -528,7 +675,7 @@ function formatCategory(category: string, t?: (key: string) => string): string {
   const categoryMap: Record<string, string> = {
     visas: "Visas",
     business: "Business",
-    "taxes": "Taxes",
+    taxes: "Taxes",
     property: "Property",
     living: "Living",
     trends: "Tech & AI",
