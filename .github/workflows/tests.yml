@@ -90,7 +90,7 @@ jobs:
       - name: Check coverage threshold
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. coverage report --fail-under=5 || echo "⚠️ Coverage below 5% — CRITICAL: check report"
+          PYTHONPATH=. coverage report --fail-under=40 || echo "⚠️ Coverage below 40% — CRITICAL: check report"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -144,7 +144,7 @@ jobs:
       - name: Check coverage threshold
         run: |
           cd apps/${{ matrix.app }}
-          npm run test:coverage:check || true
+          npm run test:coverage:check
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -173,10 +173,9 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run E2E tests
-        continue-on-error: true
         run: |
           cd apps/mouth
-          npm run test:e2e || true
+          npm run test:e2e
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
