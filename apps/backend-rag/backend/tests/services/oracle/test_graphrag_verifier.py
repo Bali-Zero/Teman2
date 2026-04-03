@@ -8,15 +8,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from backend.services.oracle.graphrag_verifier import (
+    STRONG_EDGE_TYPES,
     ClaimVerification,
     GraphRAGResult,
     GraphRAGVerifier,
-    STRONG_EDGE_TYPES,
     extract_claims_for_verification,
     extract_keywords,
     get_verifier,
@@ -171,7 +171,7 @@ class TestGraphRAGVerifierNoPool:
     def test_none_pool_returns_unknown(self):
         verifier = GraphRAGVerifier(db_pool=None)
         import asyncio
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             verifier.verify("Some NLM response about KITAS requirements.")
         )
         assert result.overall_status == "UNKNOWN"
@@ -180,7 +180,7 @@ class TestGraphRAGVerifierNoPool:
     def test_empty_text_returns_unknown(self):
         verifier = GraphRAGVerifier(db_pool=MagicMock())
         import asyncio
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             verifier.verify("")
         )
         assert result.overall_status == "UNKNOWN"
