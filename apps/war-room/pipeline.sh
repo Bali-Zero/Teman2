@@ -34,10 +34,12 @@ WAR_ROOM="${WAR_ROOM:-$(cd "$(dirname "$0")" && pwd)}"
 mkdir -p "$WAR_ROOM/logs"
 LOG_FILE="$WAR_ROOM/logs/pipeline_$(date +%Y%m%d_%H%M%S).log"
 
+FORCE_MODE=false
 for arg in "$@"; do
   case $arg in
     --dry-run) DRY_RUN=true ;;
     --auto)    AUTO_MODE=true ;;
+    --force)   FORCE_MODE=true ;;
     --skip-legacy) true ;;  # legacy flag, ignored
   esac
 done
@@ -100,7 +102,7 @@ INTEL_LATEST="$HOME/Desktop/nuzantara/apps/bali-intel-scraper/data/intel_output_
 INTEL_FRESH=false
 if [[ -f "$INTEL_LATEST" ]]; then
   INTEL_AGE=$(( $(date +%s) - $(date -r "$INTEL_LATEST" +%s) ))
-  if (( INTEL_AGE < 28800 )); then
+  if (( INTEL_AGE < 28800 )) || $FORCE_MODE; then
     INTEL_FRESH=true
     log "✅ Intel Scraper output fresco (${INTEL_AGE}s fa)"
 
@@ -351,7 +353,7 @@ if ! $DRY_RUN; then
     export OPENROUTER_API_KEY=$(grep '^OPENROUTER_API_KEY=' "$WAR_ROOM/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
   fi
 
-  run_phase "image_brainstorm" 600 \
+  run_phase "image_brainstorm" 900 \
     "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/05_image_brainstorm.py" \
     --slides "$OUTPUT/strategy/claude_slides.json" \
     --output "$OUTPUT/images/" \
