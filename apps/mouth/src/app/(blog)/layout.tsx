@@ -127,8 +127,8 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
               <Image
                 src="/assets/logo/balizero-logo-clean.png"
                 alt="Bali Zero"
-                width={52}
-                height={52}
+                width={104}
+                height={104}
                 className="rounded-full"
               />
             </Link>
