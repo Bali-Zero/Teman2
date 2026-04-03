@@ -168,13 +168,13 @@ nav {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0.78em;
-  height: 0.78em;
-  border: 3px solid #fff;
+  width: 0.72em;
+  height: 0.72em;
+  border: 2.5px solid #fff;
   border-radius: 50%;
   position: relative;
   flex-shrink: 0;
-  margin-left: 0.04em;
+  vertical-align: middle;
 }
 .brand-om-circle::after {
   content: "ॐ";
