@@ -129,6 +129,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/webhook/twitter",  # BUSINESS: X/Twitter Account Activity webhook - verified by HMAC signature
             "/api/telegram/webhook",  # BUSINESS: Telegram bot webhook (legacy path)
             "/webhook/telegram",  # BUSINESS: Telegram bot webhook (multi-channel architecture)
+            "/api/webhook/telegram",  # BUSINESS: Telegram bot webhook (api-prefixed path)
             # ========================================================================
             # OAUTH CALLBACK ENDPOINTS (Public by OAuth 2.0 specification)
             # ========================================================================
