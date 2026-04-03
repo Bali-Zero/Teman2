@@ -146,7 +146,7 @@ class EpisodicMemory:
                             ids,
                         )
             except Exception as e:
-                logger.warning(f"Failed to update recall_count: {e}")
+                logger.debug(f"Failed to update recall_count: {e}")
 
         return top
 
