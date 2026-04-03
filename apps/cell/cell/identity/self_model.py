@@ -26,6 +26,7 @@ class SelfModel:
     preferences: list[str] = field(default_factory=list)
     weaknesses: list[str] = field(default_factory=list)
     personality_traits: dict[str, float] = field(default_factory=dict)
+    sensor_history: dict[str, list[bool]] = field(default_factory=dict)
     age_days: int = 0
     total_pulses: int = 0
     total_actions: int = 0
@@ -41,6 +42,7 @@ class SelfModel:
             "preferences": self.preferences,
             "weaknesses": self.weaknesses,
             "personality_traits": self.personality_traits,
+            "sensor_history": self.sensor_history,
             "age_days": self.age_days,
             "total_pulses": self.total_pulses,
             "total_actions": self.total_actions,
@@ -54,6 +56,7 @@ class SelfModel:
             preferences=data.get("preferences", []),
             weaknesses=data.get("weaknesses", []),
             personality_traits=data.get("personality_traits", {}),
+            sensor_history=data.get("sensor_history", {}),
             age_days=data.get("age_days", 0),
             total_pulses=data.get("total_pulses", 0),
             total_actions=data.get("total_actions", 0),
@@ -77,6 +80,7 @@ class SelfModelManager:
         try:
             data = json.loads(self._path.read_text())
             self.model = SelfModel.from_dict(data)
+            self._sensor_history = {k: list(v) for k, v in self.model.sensor_history.items()}
             logger.info(
                 f"Self-model loaded: age={self.model.age_days}d "
                 f"pulses={self.model.total_pulses} "
@@ -87,6 +91,8 @@ class SelfModelManager:
 
     def save(self) -> None:
         """Persist self-model to JSON file."""
+        if str(self._path) == "/dev/null":
+            return
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             self._path.write_text(json.dumps(self.model.to_dict(), indent=2))
@@ -122,6 +128,8 @@ class SelfModelManager:
             self._sensor_history[sensor_name] = history[-100:]
         # Reliability = success rate
         self.model.capabilities[sensor_name] = sum(history) / len(history)
+        # Sync history back to model for persistence
+        self.model.sensor_history = dict(self._sensor_history)
 
     def add_preference(self, preference: str) -> None:
         """Add a learned preference (deduplicated)."""
