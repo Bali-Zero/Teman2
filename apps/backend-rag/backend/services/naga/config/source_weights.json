@@ -1,0 +1,31 @@
+{
+  "default": {
+    "gov": 0.9,
+    "academic": 0.85,
+    "major_news": 0.6,
+    "blog": 0.4,
+    "forum": 0.2,
+    "unknown": 0.3
+  },
+  "domain_overrides": {
+    "pajak.go.id": 0.95,
+    "imigrasi.go.id": 0.95,
+    "kemenkumham.go.id": 0.9,
+    "ahu.go.id": 0.9,
+    "oss.go.id": 0.9,
+    "bkpm.go.id": 0.9,
+    "peraturan.bpk.go.id": 0.95,
+    "jdih.kemenkumham.go.id": 0.95,
+    "arxiv.org": 0.85,
+    "semanticscholar.org": 0.85,
+    "reuters.com": 0.75,
+    "thejakartapost.com": 0.65,
+    "kompas.com": 0.6
+  },
+  "freshness_weights": {
+    "days_30": 1.0,
+    "days_365": 0.7,
+    "days_1095": 0.5,
+    "older": 0.3
+  }
+}
