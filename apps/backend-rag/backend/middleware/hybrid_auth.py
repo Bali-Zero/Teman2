@@ -165,6 +165,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # ========================================================================
             # BLOG & MARKETING ENDPOINTS (Public for website visitors)
             # ========================================================================
+            "/api/news",  # BUSINESS: Public news/intel feed - approved articles for balizero.com homepage and blog
             "/api/blog/",  # BUSINESS: Public blog articles and content
             "/api/vitals",  # BUSINESS: Frontend performance telemetry
             "/api/blog/newsletter/subscribe",  # BUSINESS: Newsletter subscription - public marketing endpoint
