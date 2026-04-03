@@ -1,19 +1,26 @@
 """
-Cover Image Generator — Automatic pipeline for article cover images.
+Cover Image Generator v2 — High-quality editorial cover images using Bali Zero visual identity.
 
 Flow:
-  1. Article approved (status → approved) with no image_url
-  2. Generator called async (non-blocking) from news router
-  3. Generates image via Ideogram v2 API (best quality/cost)
-  4. Uploads to Fly.io volume /data/covers/ OR returns Ideogram CDN URL
-  5. Updates news_items.image_url in DB
+  1. Article published (news_items or intel scraper)
+  2. bz_image_style generates cinematic prompt (Claude Haiku visual director + mood + camera/lens)
+  3. Fireworks.ai Flux Dev generates image (1344x768) → downloaded as JPG
+  4. Image committed to GitHub via post_publish_poller OR saved to DB as /static/news/{slug}.jpg
+  5. news_items.image_url updated in DB
 
-Fallback chain: Ideogram → Unsplash topic search → category default
+Primary:   Fireworks.ai Flux Dev (high quality, 1344x768)
+Fallback:  Pollinations.ai (free, decent quality)
+Last:      Category default static images
+
+v1 used Ideogram V_2 with weak generic prompts and stored CDN URLs that expire.
+v2 uses bz_image_style (Claude Haiku + mood classification + camera/lens + teal/amber brand identity).
 """
 
+import hashlib
 import logging
 import os
-import re
+import urllib.parse
+import urllib.request
 from typing import Any
 
 import httpx
@@ -21,39 +28,102 @@ import httpx
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Category → Unsplash topic mapping (fallback)
+# Category fallback images (static, always available)
 # ---------------------------------------------------------------------------
-UNSPLASH_TOPICS: dict[str, str] = {
-    "business": "business-work",
-    "visas": "travel",
-    "taxes": "finance",
-    "property": "architecture",
-    "living": "nature",
-    "trends": "technology",
-    "general": "business-work",
+CATEGORY_DEFAULTS: dict[str, str] = {
+    "business": "/static/blog/business-cover.jpg",
+    "visas": "/static/blog/visas-cover.jpg",
+    "immigration": "/static/blog/visas-cover.jpg",
+    "taxes": "/static/blog/taxes-cover.jpg",
+    "tax": "/static/blog/taxes-cover.jpg",
+    "tax-legal": "/static/blog/taxes-cover.jpg",
+    "property": "/static/blog/property-cover.jpg",
+    "living": "/static/blog/living-cover.jpg",
+    "lifestyle": "/static/blog/living-cover.jpg",
+    "trends": "/static/blog/trends-cover.jpg",
+    "general": "/static/blog/business-cover.jpg",
 }
 
-# Category → safe visual concept for Ideogram prompt
-CATEGORY_VISUAL: dict[str, str] = {
-    "business": "modern office building Bali Indonesia, cinematic golden hour, aerial view",
-    "visas": "passport stamps travel documents, cinematic moody lighting, shallow depth of field",
-    "taxes": "Indonesian Rupiah banknotes, financial documents, dramatic studio lighting",
-    "property": "luxury villa Bali rice terraces, drone aerial shot, sunset glow",
-    "living": "Bali sunrise temple silhouette, dramatic sky, long exposure",
-    "trends": "modern coworking space Bali, overhead cinematic, warm light",
-    "general": "Jakarta skyline Bali Indonesia, cinematic wide angle, blue hour",
-}
+
+def _build_prompt_fallback(title: str, category: str, summary: str | None) -> str:
+    """Build a decent prompt without bz_image_style (e.g., on Fly.io where Claude CLI is absent).
+
+    Uses the same teal/amber brand identity and cinematic style but without LLM prompt generation.
+    """
+    import re
+
+    # Category visual concepts (teal/amber brand-aligned)
+    visuals: dict[str, str] = {
+        "business": "modern glass office in Bali with jungle views, golden hour streaming through windows",
+        "visas": "Indonesian KITAS permit card on dark teak desk beside Balinese canang sari offering",
+        "immigration": "crowded airport immigration hall, documentary realism, overhead fluorescent",
+        "taxes": "cascade of Indonesian Rupiah banknotes on dark volcanic stone, macro shot",
+        "tax": "Indonesian tax documents spread on mahogany desk, laptop screen glow",
+        "tax-legal": "ancient brass scales on dark surface, Balinese offering flowers as counterweight",
+        "property": "stunning luxury Bali villa with infinity pool merging into rice terrace valley",
+        "living": "digital nomad in bamboo coworking space, golden afternoon light through bamboo walls",
+        "lifestyle": "mixed family walking on Bali black sand beach at golden hour",
+        "trends": "aerial Canggu district at golden hour, motorbike light trails below",
+        "regulation": "massive stack of Indonesian government forms, single golden beam from skylight",
+        "general": "ornate Balinese temple gate at golden hour, mist and volumetric light",
+    }
+
+    visual = visuals.get(category, visuals["general"])
+
+    # Extract meaningful words from title
+    stop = {
+        "the", "a", "an", "in", "of", "for", "and", "or", "to", "is", "are",
+        "was", "were", "what", "how", "why", "when", "who", "which", "with",
+        "from", "that", "this", "will", "have", "has", "its", "do", "does",
+        "new", "your", "must", "now", "can",
+    }
+    words = [w for w in re.sub(r"[^\w\s]", "", title.lower()).split() if w not in stop]
+    keywords = " ".join(words[:5])
+
+    return (
+        f"{visual}, {keywords}, "
+        "shot on ARRI Alexa Mini LF with 35mm lens, "
+        "cinematic teal and amber color grading, "
+        "golden hour warm amber sunlight, volumetric light rays, "
+        "hyper-realistic, editorial photography, subtle film grain, "
+        "no text, no watermark, no logo, no illustration"
+    )
+
+
+def build_prompt(title: str, category: str, summary: str | None) -> str:
+    """Build image generation prompt. Tries bz_image_style first, fallback if unavailable."""
+    try:
+        # bz_image_style lives in bali-intel-scraper/scripts/
+        import importlib
+        import sys
+        from pathlib import Path
+
+        scraper_scripts = Path(__file__).parent.parent.parent.parent.parent / "bali-intel-scraper" / "scripts"
+        if str(scraper_scripts) not in sys.path:
+            sys.path.insert(0, str(scraper_scripts))
+
+        bz = importlib.import_module("bz_image_style")
+        prompt = bz.build_cover_prompt(
+            title=title,
+            category=category,
+            summary=summary,
+        )
+        logger.info(f"[CoverImage] bz_image_style prompt generated ({len(prompt)} chars)")
+        return prompt
+    except Exception as exc:
+        logger.info(f"[CoverImage] bz_image_style unavailable ({exc}), using fallback prompt")
+        return _build_prompt_fallback(title, category, summary)
 
 
 class CoverImageGenerator:
     """
-    Generates cover images for news articles that lack one.
+    Generates high-quality cover images for articles using Bali Zero visual identity.
     Called asynchronously; never blocks the article API response.
     """
 
     def __init__(self) -> None:
+        self._fireworks_key = os.getenv("FIREWORKS_API_KEY")
         self._ideogram_key = os.getenv("IDEOGRAM_API_KEY")
-        self._unsplash_key = os.getenv("UNSPLASH_ACCESS_KEY")
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -66,136 +136,140 @@ class CoverImageGenerator:
         title: str,
         summary: str | None,
         category: str,
+        slug: str | None = None,
         pool: Any,  # asyncpg.Pool
     ) -> str | None:
         """
-        Generate cover image for an article and persist image_url to DB.
-        Returns the final image URL, or None on failure.
-        Non-blocking — called via asyncio.create_task().
+        Generate cover image and persist image_url to DB.
+        Returns the final image URL/path, or None on failure.
         """
         try:
-            image_url = await self._generate(title=title, summary=summary, category=category)
-            if image_url:
+            result = await self._generate(
+                title=title, summary=summary, category=category, slug=slug,
+            )
+            if result:
+                image_url = result["url"]
                 await self._save_to_db(article_id=article_id, image_url=image_url, pool=pool)
-                logger.info(f"[CoverImage] Set image for {article_id}: {image_url[:60]}...")
-            return image_url
+                logger.info(f"[CoverImage] Set image for {article_id}: {image_url[:80]}")
+            return result["url"] if result else None
         except Exception as exc:
             logger.warning(f"[CoverImage] Failed for article {article_id}: {exc}")
             return None
+
+    async def generate_bytes(
+        self,
+        *,
+        title: str,
+        summary: str | None,
+        category: str,
+        slug: str | None = None,
+    ) -> dict | None:
+        """Generate cover image and return bytes + metadata (no DB write).
+
+        Used by post_publish_poller to get the raw image for GitHub commit.
+        Returns: {"bytes": b"...", "prompt": "...", "provider": "fireworks|pollinations"}
+        or None on failure.
+        """
+        prompt = build_prompt(title, category, summary)
+
+        # 1. Fireworks.ai Flux Dev
+        if self._fireworks_key:
+            img_bytes = await self._fireworks(prompt)
+            if img_bytes:
+                return {"bytes": img_bytes, "prompt": prompt, "provider": "fireworks"}
+
+        # 2. Pollinations.ai fallback (free)
+        img_bytes = await self._pollinations(prompt)
+        if img_bytes:
+            return {"bytes": img_bytes, "prompt": prompt, "provider": "pollinations"}
+
+        logger.warning(f"[CoverImage] All generators failed for: {title[:50]}")
+        return None
 
     # ------------------------------------------------------------------
     # Generation pipeline
     # ------------------------------------------------------------------
 
-    async def _generate(self, *, title: str, summary: str | None, category: str) -> str | None:
-        """Try Ideogram, then Unsplash, return URL or None."""
-        # 1. Ideogram v2 (best quality)
-        if self._ideogram_key:
-            url = await self._ideogram(title=title, summary=summary, category=category)
-            if url:
-                return url
+    async def _generate(
+        self,
+        *,
+        title: str,
+        summary: str | None,
+        category: str,
+        slug: str | None = None,
+    ) -> dict | None:
+        """Generate image, return {"url": ..., "bytes": ..., "prompt": ...} or None."""
+        result = await self.generate_bytes(
+            title=title, summary=summary, category=category, slug=slug,
+        )
+        if not result:
+            return None
 
-        # 2. Unsplash topic search (free, no generation cost)
-        if self._unsplash_key:
-            url = await self._unsplash(title=title, category=category)
-            if url:
-                return url
+        # For DB-only path (news router), store as path reference
+        # The actual file is committed to GitHub by post_publish_poller
+        if slug:
+            url = f"/static/news/{slug}.jpg"
+        else:
+            # Fallback: use a hash-based filename
+            name_hash = hashlib.md5(title.encode()).hexdigest()[:12]
+            url = f"/static/news/{name_hash}.jpg"
 
-        logger.warning(f"[CoverImage] All generators failed for: {title[:50]}")
-        return None
+        return {"url": url, "bytes": result["bytes"], "prompt": result["prompt"]}
 
-    async def _ideogram(self, *, title: str, summary: str | None, category: str) -> str | None:
-        """Generate via Ideogram v2 API."""
+    async def _fireworks(self, prompt: str) -> bytes | None:
+        """Generate via Fireworks.ai Flux Dev API. Returns raw JPEG bytes."""
         try:
-            prompt = self._build_prompt(title=title, summary=summary, category=category)
-            async with httpx.AsyncClient(timeout=45) as client:
+            async with httpx.AsyncClient(timeout=90) as client:
                 resp = await client.post(
-                    "https://api.ideogram.ai/generate",
+                    "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-dev-fp8/text_to_image",
                     headers={
-                        "Api-Key": self._ideogram_key,
+                        "Authorization": f"Bearer {self._fireworks_key}",
                         "Content-Type": "application/json",
+                        "Accept": "image/jpeg",
                     },
                     json={
-                        "image_request": {
-                            "prompt": prompt,
-                            "aspect_ratio": "ASPECT_16_9",
-                            "model": "V_2",
-                            "magic_prompt_option": "AUTO",
-                            "style_type": "REALISTIC",
-                            "negative_prompt": "text, watermark, logo, title overlay, person face, nsfw",
-                        }
+                        "prompt": prompt,
+                        "width": 1344,
+                        "height": 768,
+                        "steps": 28,
+                        "cfg_scale": 3.5,
                     },
                 )
                 resp.raise_for_status()
-                data = resp.json()
-                images = data.get("data", [])
-                if images:
-                    return images[0].get("url")
+                img_bytes = resp.content
+                if len(img_bytes) > 5000:
+                    logger.info(f"[CoverImage] Fireworks Flux Dev: {len(img_bytes)} bytes")
+                    return img_bytes
+                logger.warning(f"[CoverImage] Fireworks response too small: {len(img_bytes)} bytes")
         except Exception as exc:
-            logger.debug(f"[CoverImage] Ideogram error: {exc}")
+            logger.debug(f"[CoverImage] Fireworks error: {exc}")
         return None
 
-    async def _unsplash(self, *, title: str, category: str) -> str | None:
-        """Search Unsplash for a relevant landscape/editorial photo."""
-        try:
-            topic = UNSPLASH_TOPICS.get(category, "business-work")
-            # Use key terms from title for better relevance
-            keywords = self._extract_keywords(title)
-            query = f"{keywords} {topic} Bali Indonesia" if keywords else f"Bali Indonesia {topic}"
+    async def _pollinations(self, prompt: str) -> bytes | None:
+        """Fallback: Pollinations.ai free image generation."""
+        import time
 
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(
-                    "https://api.unsplash.com/photos/random",
-                    headers={"Authorization": f"Client-ID {self._unsplash_key}"},
-                    params={
-                        "query": query,
-                        "orientation": "landscape",
-                        "content_filter": "high",
-                    },
+        encoded_prompt = urllib.parse.quote(prompt)
+        seed = int(time.time()) % 99999
+
+        for model in ["sana", "turbo"]:
+            try:
+                url = (
+                    f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+                    f"?width=1200&height=630&seed={seed}&nologo=true&model={model}"
                 )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    # Use regular size (1080px wide, free license)
-                    return data.get("urls", {}).get("regular")
-        except Exception as exc:
-            logger.debug(f"[CoverImage] Unsplash error: {exc}")
+                async with httpx.AsyncClient(timeout=90) as client:
+                    resp = await client.get(url, headers={"User-Agent": "BaliZero/1.0"})
+                    if resp.status_code == 200 and len(resp.content) > 5000:
+                        logger.info(f"[CoverImage] Pollinations [{model}]: {len(resp.content)} bytes")
+                        return resp.content
+            except Exception as exc:
+                logger.debug(f"[CoverImage] Pollinations [{model}] error: {exc}")
         return None
 
     # ------------------------------------------------------------------
-    # Helpers
+    # DB persistence
     # ------------------------------------------------------------------
-
-    def _build_prompt(self, *, title: str, summary: str | None, category: str) -> str:
-        """Craft a photorealistic Ideogram prompt from article metadata."""
-        visual_base = CATEGORY_VISUAL.get(category, CATEGORY_VISUAL["general"])
-        # Strip common filler words from title for cleaner prompt
-        clean_title = re.sub(
-            r"\b(what|how|why|when|the|a|an|in|of|for|and|or|to|is|are|was|were)\b",
-            "",
-            title.lower(),
-            flags=re.IGNORECASE,
-        ).strip()
-        # Take first 6 significant words
-        title_keywords = " ".join(clean_title.split()[:6])
-
-        parts = [
-            f"Editorial magazine cover photo: {title_keywords},",
-            visual_base + ",",
-            "ultra-high resolution, professional photography, cinematic color grading,",
-            "dramatic contrast, no text overlay, no watermark",
-        ]
-        return " ".join(parts)
-
-    @staticmethod
-    def _extract_keywords(title: str) -> str:
-        """Extract 3-5 significant nouns from a title for Unsplash search."""
-        stop = {
-            "the", "a", "an", "in", "of", "for", "and", "or", "to", "is", "are",
-            "was", "were", "what", "how", "why", "when", "who", "which", "with",
-            "from", "that", "this", "will", "have", "has", "its", "do", "does",
-        }
-        words = [w for w in re.sub(r"[^\w\s]", "", title.lower()).split() if w not in stop]
-        return " ".join(words[:4])
 
     @staticmethod
     async def _save_to_db(*, article_id: str, image_url: str, pool: Any) -> None:
@@ -208,7 +282,7 @@ class CoverImageGenerator:
             )
 
 
-# Module-level singleton — imported by news router
+# Module-level singleton
 _generator: CoverImageGenerator | None = None
 
 
@@ -225,6 +299,7 @@ async def trigger_cover_generation(
     title: str,
     summary: str | None,
     category: str,
+    slug: str | None = None,
     image_url: str | None,
     pool: Any,
 ) -> None:
@@ -240,5 +315,6 @@ async def trigger_cover_generation(
         title=title,
         summary=summary,
         category=category,
+        slug=slug,
         pool=pool,
     )
