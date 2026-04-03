@@ -10,17 +10,22 @@ from pathlib import Path
 
 def call_claude(prompt: str, timeout: int = 300) -> str:
     """Chiama Claude via CLI (claude -p "prompt"). Uses OAuth (Max subscription).
-    MUST strip ANTHROPIC_API_KEY from env — otherwise CLI uses the (invalid) API key
-    instead of the OAuth token.
+    Strips ANTHROPIC_API_KEY: conflicts with Max subscription OAuth.
+    Sets CLAUDE_PLUGIN_ROOT=/dev/null: disables thedotmack SessionEnd hook
+    which fires on every subprocess call and causes rc=1 even on success.
     Uses absolute path so launchd (limited PATH, no ~/.local/bin) can find the binary."""
     import os, shutil
     env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    env["CLAUDE_PLUGIN_ROOT"] = "/dev/null"
     claude_bin = shutil.which("claude") or "/Users/nuzantara/.local/bin/claude"
     result = subprocess.run(
         [claude_bin, "-p", prompt],
         capture_output=True, text=True, timeout=timeout, env=env
     )
     if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    # rc=1 from SessionEnd hook failure is harmless if we have output
+    if result.stdout.strip():
         return result.stdout.strip()
     raise RuntimeError(f"Claude CLI error (rc={result.returncode}): {result.stderr[:300]}")
 

@@ -119,10 +119,14 @@ def call_gemini(prompt: str, timeout: int = 120) -> str:
     raise RuntimeError(f"Gemini error: {result.stderr[:200]}")
 
 
-def call_claude(prompt: str, timeout: int = 120) -> str:
-    """Claude CLI — synthesis."""
+def call_claude(prompt: str, timeout: int = 90) -> str:
+    """Claude CLI — synthesis.
+    Strips ANTHROPIC_API_KEY (conflicts with Max subscription OAuth).
+    Sets CLAUDE_PLUGIN_ROOT to /dev/null to disable thedotmack SessionEnd hook,
+    which otherwise fires on every subprocess call and causes rc=1."""
     import shutil
     env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    env["CLAUDE_PLUGIN_ROOT"] = "/dev/null"
     claude_bin = shutil.which("claude") or "/Users/nuzantara/.local/bin/claude"
     result = subprocess.run(
         [claude_bin, "-p", prompt],
@@ -130,7 +134,10 @@ def call_claude(prompt: str, timeout: int = 120) -> str:
     )
     if result.returncode == 0 and result.stdout.strip():
         return result.stdout.strip()
-    raise RuntimeError(f"Claude error: {result.stderr[:200]}")
+    # rc=1 from SessionEnd hook failure is harmless if we got output
+    if result.stdout.strip():
+        return result.stdout.strip()
+    raise RuntimeError(f"Claude error (rc={result.returncode}): {result.stderr[:200]}")
 
 
 def call_deepseek(prompt: str, timeout: int = 120) -> str:
@@ -162,16 +169,17 @@ def call_deepseek(prompt: str, timeout: int = 120) -> str:
 
 def brainstorm_prompt(slide: dict, topic: str, slide_type: str) -> str:
     """
-    Multi-agent brainstorm → Claude synthesizes best Fireworks prompt.
-    Returns final optimized prompt string.
+    Multi-agent brainstorm (Gemini + DeepSeek in PARALLEL) → Claude synthesizes.
+    Parallel execution keeps total time per slide under 2 minutes.
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     raw_prompt = slide.get("image_prompt", "")
     headline = slide.get("headline", "")
     is_cover = slide.get("is_cover", False)
     placement = slide.get("image_placement", "full_bleed")
 
-    brainstorm_brief = f"""
-You are a world-class editorial art director for Bali Zero, an Indonesian business services firm.
+    brainstorm_brief = f"""You are a world-class editorial art director for Bali Zero, an Indonesian business services firm.
 
 SLIDE CONTEXT:
 - Topic: {topic}
@@ -194,26 +202,31 @@ The prompt must:
 - End with: "Hyper-realistic, editorial photography, cinematic teal and amber color grading, film grain, no text, no logos."
 - NO Midjourney flags (--ar, --v, --style) — this is for Flux/Fireworks
 
-Return ONLY the prompt text, nothing else.
-"""
+Return ONLY the prompt text, nothing else."""
 
-    variants = []
-
-    # Agent 1: Gemini — visual/compositional angle
-    try:
+    def run_gemini() -> tuple[str, str]:
         g_prompt = f"You are a cinematographer. {brainstorm_brief}\nFocus on: composition, lighting, camera movement, visual metaphor."
-        variants.append(("Gemini", call_gemini(g_prompt, timeout=90)))
-        print("   ✅ Gemini variant OK", file=sys.stderr)
-    except Exception as e:
-        print(f"   ⚠️  Gemini: {e}", file=sys.stderr)
+        return ("Gemini", call_gemini(g_prompt, timeout=60))
 
-    # Agent 2: DeepSeek — conceptual/symbolic angle
-    try:
+    def run_deepseek() -> tuple[str, str]:
         ds_prompt = f"You are a conceptual photographer. {brainstorm_brief}\nFocus on: symbolic meaning, emotional tension, narrative subtext."
-        variants.append(("DeepSeek", call_deepseek(ds_prompt, timeout=90)))
-        print("   ✅ DeepSeek variant OK", file=sys.stderr)
-    except Exception as e:
-        print(f"   ⚠️  DeepSeek: {e}", file=sys.stderr)
+        return ("DeepSeek", call_deepseek(ds_prompt, timeout=60))
+
+    # Run Gemini + DeepSeek in parallel (max 60s each)
+    variants = []
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = {
+            executor.submit(run_gemini): "Gemini",
+            executor.submit(run_deepseek): "DeepSeek",
+        }
+        for future in as_completed(futures, timeout=70):
+            try:
+                name, text = future.result()
+                variants.append((name, text))
+                print(f"   ✅ {name} variant OK", file=sys.stderr)
+            except Exception as e:
+                agent_name = futures[future]
+                print(f"   ⚠️  {agent_name}: {e}", file=sys.stderr)
 
     # If no variants, use raw prompt + BZ style suffix
     if not variants:
@@ -225,10 +238,9 @@ Return ONLY the prompt text, nothing else.
             "Hyper-realistic, editorial photography, cinematic teal and amber color grading, film grain, no text, no logos."
         )
 
-    # Claude synthesizes
+    # Claude synthesizes (90s max)
     variants_text = "\n\n".join([f"VARIANT {i+1} ({name}):\n{v}" for i, (name, v) in enumerate(variants)])
-    synthesis_prompt = f"""
-You are Claude, creative director at Bali Zero. You have {len(variants)} image prompt variants for a slide.
+    synthesis_prompt = f"""You are Claude, creative director at Bali Zero. You have {len(variants)} image prompt variants for a slide.
 
 SLIDE: "{headline}" | Topic: {topic} | Cover: {is_cover}
 
@@ -245,11 +257,10 @@ Synthesize the SINGLE best Fireworks/Flux prompt by:
 4. Keeping it 3-5 sentences, ultra-specific
 5. Ending with: "Hyper-realistic, editorial photography, cinematic teal and amber color grading, film grain, no text, no logos."
 
-Return ONLY the final prompt. No explanation, no preamble.
-"""
+Return ONLY the final prompt. No explanation, no preamble."""
 
     try:
-        final = call_claude(synthesis_prompt, timeout=120)
+        final = call_claude(synthesis_prompt, timeout=90)
         print("   ✅ Claude synthesis OK", file=sys.stderr)
         return final.strip()
     except Exception as e:
