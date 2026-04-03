@@ -8,6 +8,7 @@ Circadian rhythm: awake → drowsy → asleep cycle.
 Inspired by Bio-RegNet (Bayesian homeostatic framework).
 Runs in FAST layer: no LLM, no network, <1ms per update.
 """
+import dataclasses
 import logging
 import math
 from dataclasses import dataclass, field
@@ -74,6 +75,8 @@ class HomeostaticController:
     ) -> HomeostaticState:
         """Process one pulse reading and update internal state."""
         rt = float(response_time_ms)
+        # Normalize: accept HealthStatus enum or string
+        status = health_status.value if hasattr(health_status, "value") else health_status
 
         # Track history for variance calculation
         self._rt_history.append(rt)
@@ -111,12 +114,12 @@ class HomeostaticController:
             self.state.stress_level = _clamp(self.state.stress_level - _STRESS_DECAY)
 
         # Non-green status adds stress regardless of RT
-        if health_status != "green":
-            bump = 0.1 if health_status == "yellow" else 0.25
+        if status != "green":
+            bump = 0.1 if status == "yellow" else 0.25
             self.state.stress_level = _clamp(self.state.stress_level + bump)
 
         # 4. Update energy (recovers during green, stable otherwise)
-        if health_status == "green":
+        if status == "green":
             self.state.energy_level = _clamp(self.state.energy_level + _ENERGY_RECOVERY)
 
         # 5. Update arousal (trends toward 0.5 baseline, stress pushes up)
@@ -146,7 +149,7 @@ class HomeostaticController:
             f"zone={self.state.comfort_zone[0]:.0f}-{self.state.comfort_zone[1]:.0f}ms"
         )
 
-        return self.state
+        return dataclasses.replace(self.state)
 
     def record_action_cost(self, cost: float) -> None:
         """Drain energy when an action is taken."""
