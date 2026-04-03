@@ -36,7 +36,6 @@ def include_routers(api: FastAPI) -> None:
         autonomous_execution,
         blog_ask,
         cell_status,  # [CELL] CELL organism dashboard status
-        event_bus,  # [EVENT] EventBus monitoring
         collective_memory,
         conversations,
         crm_analytics,  # [NEW] CRM Analytics dashboard
@@ -58,6 +57,7 @@ def include_routers(api: FastAPI) -> None:
         documents_proxy,
         dream,
         episodic_memory,
+        event_bus,  # [EVENT] EventBus monitoring
         federation,
         feedback,
         google_drive,
@@ -80,6 +80,7 @@ def include_routers(api: FastAPI) -> None:
         media,
         messaging_identity,
         monitoring_rag,  # [NEW] RAG Retrieval Quality Monitoring
+        naga,  # [NAGA] Deep research engine
         news,
         newsletter,
         nusantara_health,
@@ -195,6 +196,9 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(ingest.router)
     api.include_router(legal_ingest.router)
     api.include_router(oracle_ingest.router)
+
+    # Naga deep research engine
+    api.include_router(naga.router)
 
     # Intelligence & Oracle routers
     api.include_router(intel.router)
