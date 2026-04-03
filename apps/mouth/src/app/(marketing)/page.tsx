@@ -706,7 +706,7 @@ body::after {
     <a class="nav-simple" href="/contact">Contact</a>
     <div class="nav-divider"></div>
     <a class="nav-simple" href="/kbli" style="font-size:11px;letter-spacing:0.05em;color:var(--blue-light);">KBLI</a>
-    <button class="btn-consult" onclick="window.location.href='/contact'">Consultation</button>
+    <a class="btn-consult" href="/contact">Consultation</a>
   </div>
 </nav>
 
