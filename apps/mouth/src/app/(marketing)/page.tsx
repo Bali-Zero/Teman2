@@ -3,6 +3,7 @@ import Script from "next/script";
 import { ZantaraWidget } from "@/components/ZantaraWidget";
 import { KbliSearchBox } from "./KbliSearchBox";
 import { LatestIntelligence } from "./LatestIntelligence";
+import { HomepageStaticContent } from "./HomepageStaticContent";
 
 export const metadata: Metadata = {
   title: {
@@ -675,10 +676,7 @@ body::after {
 `,
         }}
       />
-      <div
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{
-          __html: `
+      <HomepageStaticContent html={`
 <!-- ════════ NAVBAR ════════ -->
 <nav>
   <a class="logo-wrap" href="/">
@@ -1041,8 +1039,7 @@ body::after {
     <a href="/news?category=visas&q=work+permit" class="topic-pill">Work Permits</a>
   </div>
 
-`, }}
-      />
+`} />
 
       {/* ── Latest Intelligence (client-side, always fresh) ── */}
       <LatestIntelligence />
@@ -1066,10 +1063,7 @@ body::after {
         </div>
       </div>
 
-      <div
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{
-          __html: `
+      <HomepageStaticContent html={`
   <!-- Services -->
   <div class="services-section">
     <div class="services-top">
@@ -1156,9 +1150,7 @@ body::after {
   </footer>
 </div>
 
-`,
-        }}
-      />
+`} />
       <ZantaraWidget />
       <Script id="balizero-homepage-js" strategy="afterInteractive">{`
 // ════════ CAROUSEL ENGINE ════════
