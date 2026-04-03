@@ -127,7 +127,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/whatsapp/webhook",  # ALIAS: Meta WhatsApp webhook (legacy URL configured in Meta Dashboard)
             "/webhook/instagram",  # BUSINESS: Meta Instagram webhook - verified by INSTAGRAM_VERIFY_TOKEN
             "/webhook/twitter",  # BUSINESS: X/Twitter Account Activity webhook - verified by HMAC signature
-            "/api/telegram/webhook",  # BUSINESS: Telegram bot webhook - verified by TELEGRAM_WEBHOOK_SECRET header
+            "/api/telegram/webhook",  # BUSINESS: Telegram bot webhook (legacy path)
+            "/webhook/telegram",  # BUSINESS: Telegram bot webhook (multi-channel architecture)
             # ========================================================================
             # OAUTH CALLBACK ENDPOINTS (Public by OAuth 2.0 specification)
             # ========================================================================
