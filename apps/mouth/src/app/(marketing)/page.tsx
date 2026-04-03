@@ -151,7 +151,8 @@ nav {
   font-weight: 900;
   font-style: normal;
   font-size: 46px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: #fff;
   line-height: 1;
   margin: 0;
@@ -159,18 +160,15 @@ nav {
 }
 .brand-logo-3 {
   color: #cc1a1a;
-  font-size: 0.88em;
-  line-height: 1;
-  display: inline-block;
   text-shadow: 2px 3px 8px rgba(0, 0, 0, 0.7);
 }
 .brand-om-circle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0.76em;
-  height: 0.76em;
-  border: 2.5px solid #fff;
+  width: 0.82em;
+  height: 0.82em;
+  border: 3px solid #fff;
   border-radius: 50%;
   position: relative;
   flex-shrink: 0;
@@ -178,7 +176,7 @@ nav {
 }
 .brand-om-circle::after {
   content: "ॐ";
-  font-size: 0.5em;
+  font-size: 0.52em;
   font-family: serif;
   color: #111;
   background: #fff;
