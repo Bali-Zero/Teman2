@@ -1,7 +1,7 @@
 {
-  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) → Latest Intelligence (5 older) → Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
+  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) \u2192 Latest Intelligence (5 older) \u2192 Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
   "hero_main": "balis-2026-short-term-rental-rules-what-owners-must-do-now",
-  "hero_2": "bali-defies-global-headwinds-with-70-occupancy-and-rising-foreign-investment",
+  "hero_2": "indonesia-bets-on-green-tourism-to-triple-arrivals-by-2045",
   "hero_3": "balis-cost-surge-who-is-this-island-actually-growing-for",
   "hero_4": "indonesia-tax-for-expats-who-owes-what-in-2026",
   "hero_5": "bali-business-climate-2026-what-foreigners-actually-face",
