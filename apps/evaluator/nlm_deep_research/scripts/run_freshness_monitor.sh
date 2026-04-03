@@ -46,10 +46,17 @@ cd "$PROJECT_ROOT"
 PYTHONPATH=. python -m apps.evaluator.nlm_deep_research.freshness_monitor "$ACTION" 2>&1 | tee -a "$LOG_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
 
-# Record heartbeat
 if [ "$EXIT_CODE" -eq 0 ]; then
     PYTHONPATH=. python -m apps.evaluator.nlm_deep_research.heartbeat_monitor \
         --record "freshness_monitor" 2>/dev/null || true
+else
+    echo "$(date '+%H:%M:%S') [FreshnessMonitor] FAILED (exit=$EXIT_CODE)" | tee -a "$LOG_FILE"
+    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]; then
+        MSG="🚨 FreshnessMonitor FAILED ($ACTION, exit $EXIT_CODE) — check $LOG_FILE"
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
+            -d "text=${MSG}" >/dev/null 2>&1 || true
+    fi
 fi
 
 echo "$(date '+%H:%M:%S') [FreshnessMonitor] Done (exit=$EXIT_CODE)" | tee -a "$LOG_FILE"
