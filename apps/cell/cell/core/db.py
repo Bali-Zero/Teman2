@@ -141,3 +141,33 @@ async def log_alert(
         )
     except Exception as e:
         logger.error(f"Failed to log alert to DB: {e}")
+
+
+async def create_episodes_table() -> None:
+    """Create cell_episodes table for episodic memory."""
+    try:
+        pool = await get_pool()
+        await pool.execute("""
+            CREATE TABLE IF NOT EXISTS cell_episodes (
+                id              SERIAL PRIMARY KEY,
+                timestamp       DOUBLE PRECISION NOT NULL,
+                situation       JSONB NOT NULL,
+                emotion         VARCHAR(16) NOT NULL,
+                action_taken    VARCHAR(64) NOT NULL,
+                outcome         VARCHAR(16) NOT NULL,
+                lesson          TEXT NOT NULL,
+                recall_count    INTEGER NOT NULL DEFAULT 0,
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await pool.execute("""
+            CREATE INDEX IF NOT EXISTS idx_cell_episodes_timestamp
+            ON cell_episodes (timestamp DESC)
+        """)
+        await pool.execute("""
+            CREATE INDEX IF NOT EXISTS idx_cell_episodes_emotion
+            ON cell_episodes (emotion)
+        """)
+        logger.info("cell_episodes table ready.")
+    except Exception as e:
+        logger.error(f"Failed to create cell_episodes table: {e}")
