@@ -316,6 +316,7 @@ export function ArticleClient({ category, slug, initialArticle }: ArticleClientP
               <div
                 className="prose prose-invert prose-xl max-w-none"
                 style={{ fontSize: '1.3rem', lineHeight: '1.8' }}
+                suppressHydrationWarning
               >
                 {article.mdxSource ? (
                   <MDXContent source={article.mdxSource} />
