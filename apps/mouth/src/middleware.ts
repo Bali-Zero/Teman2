@@ -375,8 +375,13 @@ export function middleware(request: NextRequest) {
       return crossOriginRedirect(request, publicUrl);
     }
 
-    // Redirect /contact and /team to public domain (with RSC/prefetch protection)
-    if (pathname === "/contact" || pathname === "/team") {
+    // Redirect /contact, /team, /news to public domain (with RSC/prefetch protection)
+    if (
+      pathname === "/contact" ||
+      pathname === "/team" ||
+      pathname === "/news" ||
+      pathname.startsWith("/news/")
+    ) {
       const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
       publicUrl.search = request.nextUrl.search;
       return crossOriginRedirect(request, publicUrl);

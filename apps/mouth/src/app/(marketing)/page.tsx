@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { ZantaraWidget } from "@/components/ZantaraWidget";
 
 export const metadata: Metadata = {
   title: {
@@ -1158,32 +1159,7 @@ body::after {
 `,
         }}
       />
-      {/* Ask Zantara FAB — links to kita.balizero.com */}
-      <a
-        href="https://kita.balizero.com/chat"
-        className="ask-zantara-fab"
-        style={{
-          position: "fixed",
-          bottom: 24,
-          right: 24,
-          zIndex: 999,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          background: "#2E6FD4",
-          color: "#fff",
-          borderRadius: 50,
-          padding: "12px 20px",
-          fontSize: 14,
-          fontWeight: 600,
-          textDecoration: "none",
-          boxShadow: "0 8px 32px rgba(46,111,212,0.4)",
-          fontFamily: "Inter, sans-serif",
-        }}
-      >
-        <span style={{ fontSize: 18 }}>✦</span>
-        <span>Ask Zantara</span>
-      </a>
+      <ZantaraWidget />
       <Script id="balizero-homepage-js" strategy="afterInteractive">
         {`<script>
 // ════════ CAROUSEL ENGINE ════════
