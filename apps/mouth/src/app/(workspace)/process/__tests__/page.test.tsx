@@ -97,7 +97,7 @@ const mockPractices: Practice[] = [
     id: 3,
     client_id: 103,
     client_name: 'Bob Johnson',
-    client_lead: 'anton@balizero.com',
+    client_lead: 'krisna@balizero.com',
     practice_type_id: 3,
     practice_type_code: 'property_purchase',
     status: 'on_process',
