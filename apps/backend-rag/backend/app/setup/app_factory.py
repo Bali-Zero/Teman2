@@ -162,6 +162,23 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"⚠️ Failed to initialize Practice Status Listener: {e}")
 
+        # Initialize EventBus (PG LISTEN/NOTIFY + in-process pub/sub)
+        # Extends PracticeStatusListener pattern to client_changed, compliance_alert
+        try:
+            from backend.services.events.event_bus import EventBus
+            from backend.services.events.handlers import register_handlers
+
+            event_bus = EventBus(
+                db_dsn=settings.database_url,
+                db_pool=app.state.db_pool,
+            )
+            await event_bus.start()
+            register_handlers(event_bus, app.state.db_pool)
+            app.state.event_bus = event_bus
+            logger.info("✅ EventBus started (client_changed, compliance_alert)")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to initialize EventBus: {e}")
+
     # Schedule background initialization
     init_task = asyncio.create_task(_background_init())
     app.state._init_task = init_task
@@ -280,6 +297,12 @@ async def lifespan(app: FastAPI):
     if practice_listener:
         await practice_listener.stop()
         logger.info("✅ Practice Status Listener stopped")
+
+    # Shutdown EventBus
+    event_bus = getattr(app.state, "event_bus", None)
+    if event_bus:
+        await event_bus.stop()
+        logger.info("✅ EventBus stopped")
 
     # Shutdown X Monitor
     x_monitor = getattr(app.state, "x_monitor_service", None)
