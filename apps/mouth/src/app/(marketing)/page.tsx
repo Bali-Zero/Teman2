@@ -158,32 +158,44 @@ nav {
   background: rgba(255,255,255,0.1);
   margin: 0 12px; flex-shrink: 0;
 }
-.brand-text { display: flex; flex-direction: column; gap: 4px; }
-.brand-tagline {
-  font-family: 'DM Serif Display', Georgia, serif;
-  font-size: 22px; font-weight: 400;
-  color: var(--cream); letter-spacing: -0.01em;
-  line-height: 1.2; margin: 0;
+.brand-text { display: flex; flex-direction: column; gap: 2px; }
+.brand-logo-text {
+  display: flex; flex-direction: column; gap: 0;
+  line-height: 1; margin: 0;
 }
-.brand-tagline em {
-  color: var(--gold); font-style: italic;
+.brand-logo-row {
+  font-family: 'Arial Black', 'Impact', 'Franklin Gothic Heavy', sans-serif;
+  font-weight: 900; font-style: normal;
+  font-size: 20px; letter-spacing: 0.04em;
+  color: #fff; line-height: 1; display: flex; align-items: baseline; gap: 1px;
 }
-.brand-3 { color: #d32f2f; font-style: normal; font-weight: 700; }
-.brand-om-o {
+.brand-logo-3 {
+  color: #cc1a1a;
+  font-size: 1.4em;
+  line-height: 0.85;
+  display: inline-block;
+  transform: translateY(2px);
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+}
+.brand-om-circle {
   display: inline-flex; align-items: center; justify-content: center;
-  position: relative; font-style: italic; color: var(--gold);
+  width: 1.05em; height: 1.05em;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  position: relative;
+  vertical-align: middle;
+  margin-bottom: 1px;
 }
-.brand-om-o::after {
+.brand-om-circle::after {
   content: 'ॐ';
-  position: absolute;
-  font-size: 0.45em;
-  font-style: normal;
-  color: var(--gold);
-  line-height: 1;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
+  font-size: 0.58em;
   font-family: serif;
-  opacity: 0.9;
+  color: #111;
+  background: #fff;
+  border-radius: 50%;
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  position: absolute; top: 0; left: 0;
 }
 .brand-sub {
   font-family: 'JetBrains Mono', monospace;
@@ -734,7 +746,10 @@ body::after {
       <img class="brand-logo" src="/static/homepage/bali-zero-logo.png" alt="Bali Zero">
       <div class="brand-divider"></div>
       <div class="brand-text">
-        <h2 class="brand-tagline">Your <span class="brand-3">3</span>ali, from <em>Zer<span class="brand-om-o">O</span></em></h2>
+        <div class="brand-logo-text">
+          <div class="brand-logo-row"><span class="brand-logo-3">3</span>ALI</div>
+          <div class="brand-logo-row">ZER<span class="brand-om-circle"></span></div>
+        </div>
         <p class="brand-sub">Visa · Company · Tax · Property · Intelligence</p>
       </div>
     </div>
