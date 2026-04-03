@@ -107,3 +107,16 @@ class TestHomeostaticController:
             ctrl2.update(response_time_ms=rt, health_status="green")
         wide_zone = ctrl2.state.comfort_zone
         assert (wide_zone[1] - wide_zone[0]) > (narrow_zone[1] - narrow_zone[0])
+
+    def test_to_dict_has_correct_keys(self) -> None:
+        ctrl = HomeostaticController()
+        d = ctrl.to_dict()
+        expected_keys = {"stress_level", "energy_level", "arousal",
+                         "comfort_zone_low", "comfort_zone_high",
+                         "setpoint_rt_ms", "circadian_phase"}
+        assert set(d.keys()) == expected_keys
+
+    def test_record_action_cost_clamps_to_zero(self) -> None:
+        ctrl = HomeostaticController()
+        ctrl.record_action_cost(5.0)  # way more than energy level of 1.0
+        assert ctrl.state.energy_level == 0.0
