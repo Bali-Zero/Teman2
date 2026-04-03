@@ -168,6 +168,23 @@ nav {
 .brand-tagline em {
   color: var(--gold); font-style: italic;
 }
+.brand-3 { color: #d32f2f; font-style: normal; font-weight: 700; }
+.brand-om-o {
+  display: inline-flex; align-items: center; justify-content: center;
+  position: relative; font-style: italic; color: var(--gold);
+}
+.brand-om-o::after {
+  content: 'ॐ';
+  position: absolute;
+  font-size: 0.45em;
+  font-style: normal;
+  color: var(--gold);
+  line-height: 1;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: serif;
+  opacity: 0.9;
+}
 .brand-sub {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px; letter-spacing: 0.12em;
@@ -717,7 +734,7 @@ body::after {
       <img class="brand-logo" src="/static/homepage/bali-zero-logo.png" alt="Bali Zero">
       <div class="brand-divider"></div>
       <div class="brand-text">
-        <h2 class="brand-tagline">Your Bali, from <em>Zero</em></h2>
+        <h2 class="brand-tagline">Your <span class="brand-3">3</span>ali, from <em>Zer<span class="brand-om-o">O</span></em></h2>
         <p class="brand-sub">Visa · Company · Tax · Property · Intelligence</p>
       </div>
     </div>
