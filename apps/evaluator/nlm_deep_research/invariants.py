@@ -399,6 +399,47 @@ def check_claims_append_only(
     )
 
 
+def check_gap_coverage(
+    gap_pct: float,
+    domain_label: str = "unknown",
+    warn_threshold: float = 40.0,
+    critical_threshold: float = 70.0,
+) -> InvariantResult:
+    """INV-GAP: Warn when a domain has too many GAP topics in coverage matrix.
+
+    gap_pct: percentage of topics classified as GAP (0-100).
+    warn_threshold: warn if gap_pct > this value.
+    critical_threshold: critical if gap_pct > this value.
+    """
+    severity = InvariantSeverity.INFO
+    passed = True
+    msg = f"{domain_label}: {gap_pct:.0f}% GAP topics (OK)"
+
+    if gap_pct > critical_threshold:
+        severity = InvariantSeverity.CRITICAL
+        passed = False
+        msg = (
+            f"{domain_label}: {gap_pct:.0f}% topics are GAP "
+            f"(>{critical_threshold}% — notebook critically under-sourced)"
+        )
+    elif gap_pct > warn_threshold:
+        severity = InvariantSeverity.WARNING
+        passed = False
+        msg = (
+            f"{domain_label}: {gap_pct:.0f}% topics are GAP "
+            f"(>{warn_threshold}% — consider adding sources)"
+        )
+
+    return InvariantResult(
+        invariant_id="GAP_COVERAGE",
+        passed=passed,
+        severity=severity,
+        message=msg,
+        current_value=gap_pct,
+        threshold=warn_threshold,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Aggregate runner
 # ---------------------------------------------------------------------------

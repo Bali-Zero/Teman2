@@ -46,6 +46,9 @@ from backend.services.tools.definitions import AgentState
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # Info level for core orchestration
 
+# ARCH-7: GraphRAG verification timeout (seconds)
+KG_VERIFICATION_TIMEOUT = 4.0
+
 
 class OrchestratorCore:
     """
@@ -711,8 +714,32 @@ class OrchestratorCore:
         nlm_cached_result: dict | None = None
         nlm_domain: dict | None = None
 
+        # ARCH-4: Cross-notebook correlator task (multi-domain queries only)
+        cross_task: asyncio.Task | None = None
+
         if self.nlm_enrichment_service:
-            from backend.services.oracle.nlm_notebook_registry import resolve_notebook
+            from backend.services.oracle.nlm_notebook_registry import (
+                resolve_notebook,
+                resolve_multi_notebook,
+            )
+
+            # ARCH-4: Check for multi-domain query first
+            multi_matches = resolve_multi_notebook(query)
+            if len(multi_matches) >= 2:
+                try:
+                    from apps.evaluator.nlm_deep_research.cross_notebook_correlator import (
+                        get_correlator,
+                    )
+                    cross_task = asyncio.create_task(
+                        get_correlator().query_async(query),
+                    )
+                    logger.debug(
+                        "ARCH-4: cross-notebook task launched for %d domains: %s",
+                        len(multi_matches),
+                        [m["domain"] for m in multi_matches],
+                    )
+                except Exception as exc:
+                    logger.debug("ARCH-4: cross-notebook import failed: %s", exc)
 
             nlm_match = resolve_notebook(query)
             if nlm_match:
@@ -901,6 +928,87 @@ class OrchestratorCore:
                     )
                 except Exception as e:
                     logger.debug(f"NLM cache set skipped: {e}")
+
+        # ARCH-7: GraphRAG verification of NLM enrichment (only in CAUTIOUS zone)
+        if cautious and nlm_result:
+            try:
+                from backend.services.oracle.graphrag_verifier import get_verifier
+                db_pool = getattr(self, "db_pool", None)
+                verifier = get_verifier(db_pool)
+                nlm_text = nlm_result.get("answer", "")
+                if nlm_text:
+                    kg_result = await asyncio.wait_for(
+                        verifier.verify(nlm_text), timeout=KG_VERIFICATION_TIMEOUT
+                    )
+                    result.kg_verification = {
+                        "status": kg_result.overall_status,
+                        "score": kg_result.score,
+                        "claims_verified": kg_result.claims_verified,
+                        "claims_total": kg_result.claims_total,
+                        "evidence": kg_result.evidence[:5],
+                        "hallucination_risk": kg_result.hallucination_risk,
+                    }
+                    # If KG says LOW → suppress NLM enrichment from result
+                    if kg_result.overall_status == "LOW":
+                        logger.warning(
+                            "ARCH-7: NLM enrichment suppressed (LOW KG verification, "
+                            "hallucination risk) for domain=%s",
+                            nlm_domain.get("domain") if nlm_domain else "unknown",
+                        )
+                        result.nlm_enrichment = None
+                    else:
+                        logger.info(
+                            "ARCH-7: KG verification=%s score=%.2f claims=%d/%d",
+                            kg_result.overall_status,
+                            kg_result.score,
+                            kg_result.claims_verified,
+                            kg_result.claims_total,
+                        )
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                logger.debug("ARCH-7: GraphRAG verification timed out, skipping")
+            except Exception as exc:
+                logger.debug("ARCH-7: GraphRAG verification error: %s", exc)
+
+        # ARCH-4: Cross-notebook correlation result (only in CAUTIOUS zone)
+        if cross_task is not None:
+            if cautious:
+                try:
+                    cross_result = await asyncio.wait_for(cross_task, timeout=5.0)
+                    if cross_result and cross_result.successful_domains:
+                        result.cross_notebook_result = {
+                            "domains": cross_result.domains_matched,
+                            "successful_domains": cross_result.successful_domains,
+                            "synthesis": cross_result.synthesis,
+                            "synthesis_source": cross_result.synthesis_source,
+                            "has_contradictions": cross_result.has_contradictions,
+                            "contradictions": [
+                                {
+                                    "domain_a": c.domain_a,
+                                    "domain_b": c.domain_b,
+                                    "claim_a": c.claim_a[:200],
+                                    "claim_b": c.claim_b[:200],
+                                    "confidence": c.confidence,
+                                }
+                                for c in cross_result.contradictions[:3]
+                            ],
+                            "total_latency_ms": cross_result.total_latency_ms,
+                        }
+                        logger.info(
+                            "ARCH-4: cross-notebook result merged — domains=%s contradictions=%d",
+                            cross_result.successful_domains,
+                            len(cross_result.contradictions),
+                        )
+                except (asyncio.TimeoutError, asyncio.CancelledError):
+                    logger.debug("ARCH-4: cross-notebook task timed out (5s), skipping")
+                except Exception as exc:
+                    logger.debug("ARCH-4: cross-notebook merge error: %s", exc)
+            else:
+                # Not CAUTIOUS — cancel the speculative cross task
+                cross_task.cancel()
+                try:
+                    await cross_task
+                except (asyncio.CancelledError, Exception):
+                    pass
 
         return result
 
