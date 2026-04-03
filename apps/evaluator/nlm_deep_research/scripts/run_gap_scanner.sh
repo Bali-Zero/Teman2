@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# ARCH-5 Layer A: Daily gap discovery (05:30 WITA = 21:30 UTC)
-# Cron: 30 21 * * *
+# ARCH-5 Gap Scanner — Layer A / Layer B / Remediation Loop
 #
-# Queries each domain notebook for unanswerable questions.
-# Results stored in coverage_matrix.json.
+# Cron schedule (Pro, UTC):
+#   Layer A  (daily 05:30 WITA):       30 21 * * *   run_gap_scanner.sh --layer-a
+#   Layer B  (Sunday 03:00 WITA):       0 19 * * 0   run_gap_scanner.sh --layer-b
+#   Remediate (Sunday 04:30 WITA):     30 20 * * 0   run_gap_scanner.sh --remediate
 #
-# Layer B (coverage matrix) runs separately:
-# Cron: 0 19 * * 0  (Sunday 03:00 WITA = 19:00 UTC)
-# Invoked with --layer-b flag.
+# Layer A: query each notebook for unanswerable questions → coverage_matrix.json
+# Layer B: test freshness of each topic (FRESH/AGING/STALE/GAP) → coverage_matrix.json
+# Remediate: for each GAP/STALE topic → Gemini search → nlm source add (fills the gap)
 
 set -euo pipefail
 
@@ -48,14 +49,24 @@ cd "$PROJECT_ROOT"
 PYTHONPATH=. python -m apps.evaluator.nlm_deep_research.gap_scanner "$LAYER" 2>&1 | tee -a "$LOG_FILE"
 EXIT_CODE=${PIPESTATUS[0]}
 
-# Record heartbeat
 PIPELINE_NAME="gap_scanner"
 if [ "$LAYER" = "--layer-b" ]; then
     PIPELINE_NAME="gap_scanner_layer_b"
+elif [ "$LAYER" = "--remediate" ]; then
+    PIPELINE_NAME="gap_scanner_remediation"
 fi
+
 if [ "$EXIT_CODE" -eq 0 ]; then
     PYTHONPATH=. python -m apps.evaluator.nlm_deep_research.heartbeat_monitor \
         --record "$PIPELINE_NAME" 2>/dev/null || true
+else
+    echo "$(date '+%H:%M:%S') [GapScanner] FAILED ($LAYER, exit=$EXIT_CODE)" | tee -a "$LOG_FILE"
+    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]; then
+        MSG="🚨 GapScanner FAILED ($LAYER, exit $EXIT_CODE) — check $LOG_FILE"
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
+            -d "text=${MSG}" >/dev/null 2>&1 || true
+    fi
 fi
 
 echo "$(date '+%H:%M:%S') [GapScanner] Done (exit=$EXIT_CODE)" | tee -a "$LOG_FILE"

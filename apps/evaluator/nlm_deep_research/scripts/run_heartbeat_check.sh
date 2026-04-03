@@ -37,6 +37,12 @@ if [ $EXIT_CODE -eq 0 ]; then
     echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [DONE] Heartbeat monitor ($MODE) completed" >>"$LOG_FILE"
 else
     echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [FAIL] Heartbeat monitor ($MODE) failed (exit $EXIT_CODE)" >>"$LOG_FILE"
+    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]; then
+        MSG="🚨 HeartbeatMonitor itself FAILED ($MODE, exit $EXIT_CODE) — check $LOG_FILE"
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
+            -d "text=${MSG}" >/dev/null 2>&1 || true
+    fi
 fi
 
 exit $EXIT_CODE
