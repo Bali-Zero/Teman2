@@ -57,3 +57,27 @@ async def test_pulse_healthy_system(mock_deps: dict) -> None:
     assert result.skipped is False
     assert result.health_status == HealthStatus.GREEN
     assert result.action_taken is None
+
+
+@pytest.mark.asyncio
+async def test_pulse_updates_homeostatic_state(mock_deps: dict) -> None:
+    """Homeostatic controller gets updated each pulse."""
+    from cell.fast.homeostatic_controller import HomeostaticController
+    homeo = HomeostaticController()
+    initial_setpoint = homeo.state.setpoint_rt_ms
+
+    mock_deps["dna_loader"].verify_integrity.return_value = True
+    safety_result = MagicMock()
+    safety_result.can_proceed = True
+    mock_deps["safety_gate"].check.return_value = safety_result
+    health_reading = MagicMock()
+    health_reading.reachable = True
+    health_reading.status_code = 200
+    health_reading.response_time_seconds = 0.5
+    mock_deps["health_sensor"].read.return_value = health_reading
+
+    engine = PulseEngine(**mock_deps, dna_expected_hash="somehash", homeostatic=homeo)
+    await engine.single_pulse(pulse_number=1)
+
+    # Setpoint should have moved toward 500ms (from default ~100ms)
+    assert homeo.state.setpoint_rt_ms != initial_setpoint
