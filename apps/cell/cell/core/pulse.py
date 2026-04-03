@@ -52,6 +52,10 @@ class PulseEngine:
         homeostatic: Any = None,
         episodic: Any = None,
         self_model: Any = None,
+        dreamer: Any = None,
+        journal: Any = None,
+        attention: Any = None,
+        maturation: Any = None,
     ) -> None:
         self._dna = dna_loader
         self._safety = safety_gate
@@ -77,6 +81,10 @@ class PulseEngine:
         self._homeostatic = homeostatic
         self._episodic = episodic
         self._self_model = self_model
+        self._dreamer = dreamer
+        self._journal = journal
+        self._attention = attention
+        self._maturation = maturation
         self._recent_pulses: list[dict] = []
         self._ltm_cache: str = ""
         self._ltm_cache_pulse: int = -999  # refresh every 60 pulses (~1h)
@@ -240,6 +248,47 @@ class PulseEngine:
             if trend_context:
                 logger.info(f"TrendDetector: {trend_context}")
 
+        # SLEEP PHASE — dream and consolidate instead of reasoning when asleep
+        if (
+            self._homeostatic is not None
+            and self._homeostatic.is_sleeping()
+            and self._maturation is not None
+            and self._maturation.can_dream()
+        ):
+            if self._dreamer is not None:
+                try:
+                    dream_result = await self._dreamer.dream()
+                    if dream_result.episodes_count > 0:
+                        logger.info(
+                            f"Dream: {dream_result.episodes_count} episodes -> "
+                            f"{len(dream_result.rules_extracted)} rules, "
+                            f"{len(dream_result.gaps_identified)} gaps"
+                        )
+                except Exception as e:
+                    logger.warning(f"Dreamer failed: {e}")
+
+            if self._journal is not None and self._episodic is not None:
+                try:
+                    lessons = await self._episodic.recent_lessons(limit=5)
+                    await self._journal.write(
+                        episodes=[],
+                        emotion_summary=self._homeostatic.state.circadian_phase,
+                        actions_taken=self._self_model.model.total_actions if self._self_model else 0,
+                        lessons_count=len(lessons),
+                    )
+                except Exception as e:
+                    logger.warning(f"Journal write failed: {e}")
+
+            if self._attention is not None:
+                self._attention.reset()
+
+            return PulseResult(
+                timestamp=now,
+                health_status=status,
+                skipped=True,
+                skip_reason="sleeping — dreaming and consolidating",
+            )
+
         # LTM context — refresh every 60 pulses (~1h)
         ltm_context = self._ltm_cache
         if self._ltm is not None and (pulse_number - self._ltm_cache_pulse) >= 60:
@@ -251,6 +300,14 @@ class PulseEngine:
                     self._ltm_cache_pulse = pulse_number
             except Exception as e:
                 logger.debug(f"LTM load failed: {e}")
+
+        # Journal context — last 3 days narrative
+        journal_context = ""
+        if self._journal is not None:
+            try:
+                journal_context = await self._journal.recent_days(limit=3)
+            except Exception as e:
+                logger.debug(f"Journal context fetch failed: {e}")
 
         # STM context for reasoner — last 5 observations
         stm_context = ""
@@ -272,6 +329,14 @@ class PulseEngine:
             except Exception as e:
                 logger.debug(f"STM read failed: {e}")
 
+        # Attention gating — limit reasoning tier based on available budget
+        max_tier = 1
+        if self._attention is not None:
+            from cell.metabolism.attention_allocator import AttentionCost
+            if not self._attention.can_afford(AttentionCost.DEEP_REASONING):
+                max_tier = 0
+                logger.debug("Attention budget low — restricting to tier 0 reasoning")
+
         if status != HealthStatus.GREEN and self._reasoner and self._interpreter:
             try:
                 proposal = await self._reasoner.think(
@@ -281,15 +346,23 @@ class PulseEngine:
                     recent_history=self._recent_pulses,
                     budget_spent=self._metabolism.daily_spend,
                     budget_limit=self._metabolism._daily_limit,
+                    max_tier=max_tier,
                     db_ok=db_ok,
                     qdrant_ok=qdrant_ok,
                     error_rate_norm=error_rate_norm,
                     stm_context=stm_context,
                     trend_context=trend_context,
                     ltm_context=ltm_context,
+                    journal_context=journal_context,
                 )
 
                 thought_tier = proposal.tier_used
+
+                # Spend attention for reasoning
+                if self._attention is not None:
+                    from cell.metabolism.attention_allocator import AttentionCost
+                    cost = AttentionCost.DEEP_REASONING if proposal.tier_used >= 1 else AttentionCost.FAST_REASONING
+                    self._attention.spend(cost)
 
                 # Record LLM cost
                 if proposal.cost_usd > 0:
@@ -305,90 +378,107 @@ class PulseEngine:
                     )
 
                     if validation.approved:
-                        action = proposal.action
-                        action_reason = proposal.reason
-                        self._interpreter.record_action(proposal.action)
-                        logger.info(
-                            f"THINK → ACT: {proposal.action} "
-                            f"(confidence={proposal.confidence:.2f}, tier={proposal.tier_used}, "
-                            f"reason={proposal.reason[:60]})"
-                        )
-                        # Execute Fly.io actions (restart, scale up/down)
-                        fly_actions = {"restart_service", "scale_up", "scale_down"}
-                        if proposal.action in fly_actions and self._fly:
-                            result = await self._fly.execute(proposal.action)
-                            if result.success:
-                                logger.info(f"FlyEffector OK: {result.detail}")
-                                action_reason = f"{proposal.reason} | executed: {result.detail}"
-                            else:
-                                logger.error(f"FlyEffector FAILED: {result.detail}")
-                                action_reason = f"{proposal.reason} | FAILED: {result.detail}"
-                            # Notify via Telegram on Fly.io actions
-                            if self._alerter:
-                                status_emoji = "✅" if result.success else "❌"
-                                await self._alerter.send(
-                                    f"{status_emoji} *{proposal.action.upper()}*\n"
-                                    f"{result.detail}\n"
-                                    f"Health: {status.value.upper()} | Confidence: {proposal.confidence:.0%}"
+                        # Lifecycle confidence gate
+                        _lifecycle_ok = True
+                        if self._maturation is not None:
+                            min_confidence = self._maturation.action_confidence_threshold()
+                            if proposal.confidence < min_confidence:
+                                _lifecycle_ok = False
+                                logger.info(
+                                    f"Lifecycle gate blocked {proposal.action}: "
+                                    f"confidence {proposal.confidence:.2f} < {min_confidence:.2f} "
+                                    f"(phase={self._maturation.phase.value})"
                                 )
-                        # Execute read_logs — fetch Fly.io logs, store summary to DB
-                        elif proposal.action == "read_logs" and self._logs:
-                            logs_result = await self._logs.read_logs(limit=50)
-                            if logs_result.success:
-                                logger.info(f"LogsEffector: {logs_result.detail}")
-                                action_reason = f"{proposal.reason} | {logs_result.summary}"
-                            else:
-                                logger.warning(f"LogsEffector failed: {logs_result.detail}")
-                                action_reason = f"{proposal.reason} | logs unavailable: {logs_result.detail}"
-                            # Write to cell_alerts for dashboard visibility
-                            await cell_db.log_alert(
-                                level="info",
-                                action="read_logs",
-                                message=logs_result.summary or logs_result.detail,
-                                health_status=status.value,
-                                pulse_number=pulse_number,
-                            )
-                        # Execute local actions (ollama_restart, run_backup)
-                        elif proposal.action in {"ollama_restart", "run_backup"} and self._local:
-                            local_result = await self._local.execute(proposal.action)
-                            if local_result.success:
-                                logger.info(f"LocalEffector {proposal.action} OK: {local_result.detail[:80]}")
-                                action_reason = f"{proposal.reason} | executed: {local_result.detail}"
-                            else:
-                                logger.error(f"LocalEffector {proposal.action} FAILED: {local_result.detail[:80]}")
-                                action_reason = f"{proposal.reason} | FAILED: {local_result.detail}"
-                            if self._alerter:
-                                emoji = "✅" if local_result.success else "❌"
-                                await self._alerter.send(
-                                    f"{emoji} *{proposal.action.upper()}*\n"
-                                    f"{local_result.detail[:200]}\n"
-                                    f"Health: {status.value.upper()} | Confidence: {proposal.confidence:.0%}"
+                                action_reason = (
+                                    f"Proposed {proposal.action} but lifecycle gate blocked: "
+                                    f"confidence {proposal.confidence:.2f} < {min_confidence:.2f} "
+                                    f"({self._maturation.phase.value} phase)"
                                 )
-                        # Execute alert_silent — write to cell_alerts (no Telegram)
-                        elif proposal.action == "alert_silent":
-                            await cell_db.log_alert(
-                                level="warn",
-                                action="alert_silent",
-                                message=proposal.reason[:500],
-                                health_status=status.value,
-                                pulse_number=pulse_number,
+                        if _lifecycle_ok:
+                            action = proposal.action
+                            action_reason = proposal.reason
+                            self._interpreter.record_action(proposal.action)
+                            logger.info(
+                                f"THINK → ACT: {proposal.action} "
+                                f"(confidence={proposal.confidence:.2f}, tier={proposal.tier_used}, "
+                                f"reason={proposal.reason[:60]})"
                             )
-                            logger.info(f"alert_silent written to DB: {proposal.reason[:80]}")
-                        # Execute alert_human — Telegram + DB
-                        elif proposal.action == "alert_human" and self._alerter:
-                            msg = (
-                                f"*Health: {status.value.upper()}*\n"
-                                f"Reason: {proposal.reason[:200]}\n"
-                                f"Confidence: {proposal.confidence:.0%} | Tier: {proposal.tier_used}"
-                            )
-                            await self._alerter.send(msg)
-                            await cell_db.log_alert(
-                                level="critical",
-                                action="alert_human",
-                                message=proposal.reason[:500],
-                                health_status=status.value,
-                                pulse_number=pulse_number,
-                            )
+                            # Execute Fly.io actions (restart, scale up/down)
+                            fly_actions = {"restart_service", "scale_up", "scale_down"}
+                            if proposal.action in fly_actions and self._fly:
+                                result = await self._fly.execute(proposal.action)
+                                if result.success:
+                                    logger.info(f"FlyEffector OK: {result.detail}")
+                                    action_reason = f"{proposal.reason} | executed: {result.detail}"
+                                else:
+                                    logger.error(f"FlyEffector FAILED: {result.detail}")
+                                    action_reason = f"{proposal.reason} | FAILED: {result.detail}"
+                                # Notify via Telegram on Fly.io actions
+                                if self._alerter:
+                                    status_emoji = "✅" if result.success else "❌"
+                                    await self._alerter.send(
+                                        f"{status_emoji} *{proposal.action.upper()}*\n"
+                                        f"{result.detail}\n"
+                                        f"Health: {status.value.upper()} | Confidence: {proposal.confidence:.0%}"
+                                    )
+                            # Execute read_logs — fetch Fly.io logs, store summary to DB
+                            elif proposal.action == "read_logs" and self._logs:
+                                logs_result = await self._logs.read_logs(limit=50)
+                                if logs_result.success:
+                                    logger.info(f"LogsEffector: {logs_result.detail}")
+                                    action_reason = f"{proposal.reason} | {logs_result.summary}"
+                                else:
+                                    logger.warning(f"LogsEffector failed: {logs_result.detail}")
+                                    action_reason = f"{proposal.reason} | logs unavailable: {logs_result.detail}"
+                                # Write to cell_alerts for dashboard visibility
+                                await cell_db.log_alert(
+                                    level="info",
+                                    action="read_logs",
+                                    message=logs_result.summary or logs_result.detail,
+                                    health_status=status.value,
+                                    pulse_number=pulse_number,
+                                )
+                            # Execute local actions (ollama_restart, run_backup)
+                            elif proposal.action in {"ollama_restart", "run_backup"} and self._local:
+                                local_result = await self._local.execute(proposal.action)
+                                if local_result.success:
+                                    logger.info(f"LocalEffector {proposal.action} OK: {local_result.detail[:80]}")
+                                    action_reason = f"{proposal.reason} | executed: {local_result.detail}"
+                                else:
+                                    logger.error(f"LocalEffector {proposal.action} FAILED: {local_result.detail[:80]}")
+                                    action_reason = f"{proposal.reason} | FAILED: {local_result.detail}"
+                                if self._alerter:
+                                    emoji = "✅" if local_result.success else "❌"
+                                    await self._alerter.send(
+                                        f"{emoji} *{proposal.action.upper()}*\n"
+                                        f"{local_result.detail[:200]}\n"
+                                        f"Health: {status.value.upper()} | Confidence: {proposal.confidence:.0%}"
+                                    )
+                            # Execute alert_silent — write to cell_alerts (no Telegram)
+                            elif proposal.action == "alert_silent":
+                                await cell_db.log_alert(
+                                    level="warn",
+                                    action="alert_silent",
+                                    message=proposal.reason[:500],
+                                    health_status=status.value,
+                                    pulse_number=pulse_number,
+                                )
+                                logger.info(f"alert_silent written to DB: {proposal.reason[:80]}")
+                            # Execute alert_human — Telegram + DB
+                            elif proposal.action == "alert_human" and self._alerter:
+                                msg = (
+                                    f"*Health: {status.value.upper()}*\n"
+                                    f"Reason: {proposal.reason[:200]}\n"
+                                    f"Confidence: {proposal.confidence:.0%} | Tier: {proposal.tier_used}"
+                                )
+                                await self._alerter.send(msg)
+                                await cell_db.log_alert(
+                                    level="critical",
+                                    action="alert_human",
+                                    message=proposal.reason[:500],
+                                    health_status=status.value,
+                                    pulse_number=pulse_number,
+                                )
                     else:
                         logger.info(
                             f"THINK → BLOCKED: {proposal.action} — {validation.reason} "
