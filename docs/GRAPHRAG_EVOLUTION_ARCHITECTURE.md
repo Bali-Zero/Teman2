@@ -10,48 +10,50 @@
 ## MULTI-AGENT VALIDATION RESULTS (2026-04-03)
 
 ### Round 1: NB-1 Oracolo (codebase grounding)
+
 Revealed **critical corrections**:
 
-| # | Original Claim | NB-1 Verdict | Action Taken |
-|---|---------------|-------------|-------------|
-| 1 | KG: 56K nodes, 161K edges | ❌ **Stale**: actual is **87,198 nodes, 210,354 edges** | Updated all references |
-| 2 | `ENABLE_KG_LANGGRAPH` flag | ❌ NB-1 says absent | **Verified in code**: exists at `orchestrator.py:200`. NB-1 snapshot predates addition |
-| 3 | 16 Qdrant collections | ⚠️ Registry has 8 canonical, manager defines 18 | Corrected to "18 defined, ~12 effective" |
-| 4 | Auto-expand from response text | ❌ **DANGEROUS feedback loop** | **REDESIGNED**: extract from source chunks, NOT LLM output |
-| 5 | Lazy subgraph loading saves memory | ❌ StateGraph compile = ~5MB, not bottleneck | **REVISED**: focus on LLM client + connection pool optimization |
-| 6 | Merge tiny Qdrant collections | ⚠️ Breaks scalar quantization + brute-force scan | **REVISED**: keep tiny collections, only merge non-hybrid duplicates |
-| 7 | Replace ChatOpenAI with httpx | ❌ Breaks LangChain `.ainvoke()` in KG nodes | **REVISED**: keep LangChain for KG, optimize elsewhere |
+| #   | Original Claim                     | NB-1 Verdict                                            | Action Taken                                                                           |
+| --- | ---------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 1   | KG: 56K nodes, 161K edges          | ❌ **Stale**: actual is **87,198 nodes, 210,354 edges** | Updated all references                                                                 |
+| 2   | `ENABLE_KG_LANGGRAPH` flag         | ❌ NB-1 says absent                                     | **Verified in code**: exists at `orchestrator.py:200`. NB-1 snapshot predates addition |
+| 3   | 16 Qdrant collections              | ⚠️ Registry has 8 canonical, manager defines 18         | Corrected to "18 defined, ~12 effective"                                               |
+| 4   | Auto-expand from response text     | ❌ **DANGEROUS feedback loop**                          | **REDESIGNED**: extract from source chunks, NOT LLM output                             |
+| 5   | Lazy subgraph loading saves memory | ❌ StateGraph compile = ~5MB, not bottleneck            | **REVISED**: focus on LLM client + connection pool optimization                        |
+| 6   | Merge tiny Qdrant collections      | ⚠️ Breaks scalar quantization + brute-force scan        | **REVISED**: keep tiny collections, only merge non-hybrid duplicates                   |
+| 7   | Replace ChatOpenAI with httpx      | ❌ Breaks LangChain `.ainvoke()` in KG nodes            | **REVISED**: keep LangChain for KG, optimize elsewhere                                 |
 
 ### Round 1: Gemini Redteam + Codex GPT-5.3 + DeepSeek R1
 
-| # | Finding | Source | Action |
-|---|---------|--------|--------|
-| 8 | Auto-expansion race conditions on concurrent INSERT | Gemini | Quarantine pattern (staging tables) |
-| 9 | Write to quarantine graph, promote after validation | Codex | Implemented kg_nodes_staging/kg_edges_staging |
-| 10 | Growth rate 30-50/day not 180 (regex recall 20-30%) | DeepSeek | Corrected estimates |
-| 11 | PPh brackets wrong for PT PMA (flat 22%, not progressive) | Gemini | Tax schema redesigned |
-| 12 | Shadow mode for QueryPlanner + kill-switch | Codex+DeepSeek | Dual-run for 2 weeks |
-| 13 | source_collection orphans after Qdrant delete | Gemini | UPDATE before delete + rollback column |
+| #   | Finding                                                   | Source         | Action                                        |
+| --- | --------------------------------------------------------- | -------------- | --------------------------------------------- |
+| 8   | Auto-expansion race conditions on concurrent INSERT       | Gemini         | Quarantine pattern (staging tables)           |
+| 9   | Write to quarantine graph, promote after validation       | Codex          | Implemented kg_nodes_staging/kg_edges_staging |
+| 10  | Growth rate 30-50/day not 180 (regex recall 20-30%)       | DeepSeek       | Corrected estimates                           |
+| 11  | PPh brackets wrong for PT PMA (flat 22%, not progressive) | Gemini         | Tax schema redesigned                         |
+| 12  | Shadow mode for QueryPlanner + kill-switch                | Codex+DeepSeek | Dual-run for 2 weeks                          |
+| 13  | source_collection orphans after Qdrant delete             | Gemini         | UPDATE before delete + rollback column        |
 
 ### Round 2: Gemini Redteam + DeepSeek R1
 
-| # | Finding | Source | Action |
-|---|---------|--------|--------|
-| 14 | Dangling edges if node rate-limited but edge promoted | Gemini | Atomic promotion: nodes BEFORE edges |
-| 15 | Fasilitas Pasal 31E: 11% effective for PMI <50B IDR | Gemini | Added to tax schema |
-| 16 | UMKM 0.5% has time limits (3/4/7 years) + 500M exemption | Gemini | Added validity_period + threshold |
-| 17 | PTKP (non-taxable income) missing from tax schema | Gemini | Added PTKP node with TK/K variants |
-| 18 | Shadow mode must be async (not in critical path) | Gemini | Clarified as fire-and-forget |
-| 19 | 48h Qdrant monitoring insufficient → extend to 30 days | DeepSeek | Extended with rollback column |
-| 20 | 75% precision too low for legal → risk-tiered (90/80/75) | DeepSeek | Bumped to 85% overall, 90% high-risk |
-| 21 | Staging tables need retention policy (prune after 30 days) | DeepSeek | Auto-prune + alerting added |
-| 22 | Promotion validation: schema + referential + business logic | DeepSeek | 5-check validation pipeline |
+| #   | Finding                                                     | Source   | Action                               |
+| --- | ----------------------------------------------------------- | -------- | ------------------------------------ |
+| 14  | Dangling edges if node rate-limited but edge promoted       | Gemini   | Atomic promotion: nodes BEFORE edges |
+| 15  | Fasilitas Pasal 31E: 11% effective for PMI <50B IDR         | Gemini   | Added to tax schema                  |
+| 16  | UMKM 0.5% has time limits (3/4/7 years) + 500M exemption    | Gemini   | Added validity_period + threshold    |
+| 17  | PTKP (non-taxable income) missing from tax schema           | Gemini   | Added PTKP node with TK/K variants   |
+| 18  | Shadow mode must be async (not in critical path)            | Gemini   | Clarified as fire-and-forget         |
+| 19  | 48h Qdrant monitoring insufficient → extend to 30 days      | DeepSeek | Extended with rollback column        |
+| 20  | 75% precision too low for legal → risk-tiered (90/80/75)    | DeepSeek | Bumped to 85% overall, 90% high-risk |
+| 21  | Staging tables need retention policy (prune after 30 days)  | DeepSeek | Auto-prune + alerting added          |
+| 22  | Promotion validation: schema + referential + business logic | DeepSeek | 5-check validation pipeline          |
 
 ---
 
 ## 0. Executive Summary
 
 Nuzantara's RAG pipeline currently operates as three loosely coupled systems:
+
 1. **Vector Search** (Qdrant, 16 collections, ~93K docs)
 2. **Knowledge Graph** (PostgreSQL, 56K nodes, 161K edges) — disabled on Fly.io (OOM)
 3. **LangGraph KG Orchestrator** (5 nodes, 4 subgraphs) — `ENABLE_KG_LANGGRAPH=false` in prod
@@ -62,14 +64,14 @@ user queries, and the whole thing runs within 2GB RAM on Fly.io.
 
 ### Target Metrics
 
-| Metric | Current | Target | How |
-|--------|---------|--------|-----|
-| Query latency (p95) | ~4.5s | <3.0s | Unified planner eliminates redundant routing |
-| KG coverage | 56K nodes (static) | +500 nodes/week | Auto-expansion from high-confidence responses |
-| KG in prod | ❌ Disabled (OOM) | ✅ Active | Lazy subgraph loading, no full graph in memory |
-| Qdrant collections | 16 (fragmented) | 5 (consolidated) | Merge small collections, keep large ones |
-| Evidence score | 6-factor static | Graph-augmented | KG context boosts confidence scoring |
-| Property/Tax subgraphs | ❓ Incomplete | ✅ Complete | Data extraction pipeline from legal_unified_hybrid |
+| Metric                 | Current            | Target           | How                                                |
+| ---------------------- | ------------------ | ---------------- | -------------------------------------------------- |
+| Query latency (p95)    | ~4.5s              | <3.0s            | Unified planner eliminates redundant routing       |
+| KG coverage            | 56K nodes (static) | +500 nodes/week  | Auto-expansion from high-confidence responses      |
+| KG in prod             | ❌ Disabled (OOM)  | ✅ Active        | Lazy subgraph loading, no full graph in memory     |
+| Qdrant collections     | 16 (fragmented)    | 5 (consolidated) | Merge small collections, keep large ones           |
+| Evidence score         | 6-factor static    | Graph-augmented  | KG context boosts confidence scoring               |
+| Property/Tax subgraphs | ❓ Incomplete      | ✅ Complete      | Data extraction pipeline from legal_unified_hybrid |
 
 ---
 
@@ -124,14 +126,14 @@ User Query
 
 ### 1.2 Problems Identified
 
-| # | Problem | Impact | Root Cause |
-|---|---------|--------|------------|
-| P1 | KG disabled in prod | No graph reasoning on Fly.io | Full graph load → OOM on 2GB |
-| P2 | Fragmented routing | 3 classifiers run independently | EntityExtractor + IntentClassifier + RoutingManager not coordinated |
-| P3 | KG is static | 56K nodes from batch extraction, never grows | No feedback loop from RAG responses to KG |
-| P4 | 16 Qdrant collections | Query routing complexity, some tiny (29 docs) | Historical accumulation, no consolidation |
-| P5 | Property/Tax subgraphs incomplete | Graph traversal misses property/tax domains | No extraction pipeline for these domains |
-| P6 | Evidence scoring ignores graph | High-confidence KG paths don't boost score | Scoring uses only tool call heuristics |
+| #   | Problem                           | Impact                                        | Root Cause                                                          |
+| --- | --------------------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
+| P1  | KG disabled in prod               | No graph reasoning on Fly.io                  | Full graph load → OOM on 2GB                                        |
+| P2  | Fragmented routing                | 3 classifiers run independently               | EntityExtractor + IntentClassifier + RoutingManager not coordinated |
+| P3  | KG is static                      | 56K nodes from batch extraction, never grows  | No feedback loop from RAG responses to KG                           |
+| P4  | 16 Qdrant collections             | Query routing complexity, some tiny (29 docs) | Historical accumulation, no consolidation                           |
+| P5  | Property/Tax subgraphs incomplete | Graph traversal misses property/tax domains   | No extraction pipeline for these domains                            |
+| P6  | Evidence scoring ignores graph    | High-confidence KG paths don't boost score    | Scoring uses only tool call heuristics                              |
 
 ### 1.3 Current KG Schema (PostgreSQL)
 
@@ -169,24 +171,24 @@ CREATE TABLE kg_edges (
 
 ### 1.4 Current Qdrant Collections
 
-| Collection | Docs | Priority | Purpose |
-|-----------|------|----------|---------|
-| legal_unified_hybrid | 47,959 | HIGH | Main legal KB (BM25+Dense) |
-| kbli_2025_final | 8,886 | HIGH | KBLI business codes |
-| zantara_books | 8,923 | MEDIUM | Reference books |
-| training_conversations_hybrid | 2,898 | HIGH | Conversation training data |
-| visa_oracle | 1,612 | HIGH | Visa/immigration docs |
-| legal_architect | 5,041 | HIGH | Legal structured docs |
-| legal_unified | 5,041 | HIGH | Legal (non-hybrid, legacy) |
-| tax_genius | 895 | HIGH | Tax docs |
-| tax_genius_hybrid | 332 | HIGH | Tax (hybrid) |
-| balizero_news | 175 | HIGH | Intel articles |
-| bali_zero_pricing_hybrid | 29 | HIGH | Pricing data |
-| property_listings | 29 | MEDIUM | Property data |
-| property_knowledge | 29 | MEDIUM | Property KB |
-| bali_zero_team | 22 | HIGH | Team info |
-| immigration_circulars | 4 | HIGH | Immigration circulars |
-| collective_memories | 0 | HIGH | User shared knowledge |
+| Collection                    | Docs   | Priority | Purpose                    |
+| ----------------------------- | ------ | -------- | -------------------------- |
+| legal_unified_hybrid          | 47,959 | HIGH     | Main legal KB (BM25+Dense) |
+| kbli_2025_final               | 8,886  | HIGH     | KBLI business codes        |
+| zantara_books                 | 8,923  | MEDIUM   | Reference books            |
+| training_conversations_hybrid | 2,898  | HIGH     | Conversation training data |
+| visa_oracle                   | 1,612  | HIGH     | Visa/immigration docs      |
+| legal_architect               | 5,041  | HIGH     | Legal structured docs      |
+| legal_unified                 | 5,041  | HIGH     | Legal (non-hybrid, legacy) |
+| tax_genius                    | 895    | HIGH     | Tax docs                   |
+| tax_genius_hybrid             | 332    | HIGH     | Tax (hybrid)               |
+| balizero_news                 | 175    | HIGH     | Intel articles             |
+| bali_zero_pricing_hybrid      | 29     | HIGH     | Pricing data               |
+| property_listings             | 29     | MEDIUM   | Property data              |
+| property_knowledge            | 29     | MEDIUM   | Property KB                |
+| bali_zero_team                | 22     | HIGH     | Team info                  |
+| immigration_circulars         | 4      | HIGH     | Immigration circulars      |
+| collective_memories           | 0      | HIGH     | User shared knowledge      |
 
 **Total: ~81,875 documents across 16 collections** (some overlap between legacy and hybrid versions).
 
@@ -345,18 +347,21 @@ Query → Legacy pipeline (IntentClassifier + EntityExtractor + RoutingManager)
 ```
 
 Metrics collected (DeepSeek Round 2 composite metric — weighted 40/30/30):
-  - retrieval_precision: compare top-10 chunks from legacy vs planner collections (40%)
-  - collection_overlap: Jaccard similarity of collection sets (30%)
-  - abstain_rate_delta: change in ABSTAIN rate if planner's collections were used (30%)
-  - Also log: planner_match_rate, planner_fallback_rate per domain
+
+- retrieval_precision: compare top-10 chunks from legacy vs planner collections (40%)
+- collection_overlap: Jaccard similarity of collection sets (30%)
+- abstain_rate_delta: change in ABSTAIN rate if planner's collections were used (30%)
+- Also log: planner_match_rate, planner_fallback_rate per domain
 
 Switch criteria (all must pass for 7 consecutive days):
-  - composite_score > 0.85
-  - planner_match_rate > 92%
-  - abstain_rate_delta < +2% (planner doesn't cause more ABSTAINs)
-  - No regressions in evidence_score distribution
+
+- composite_score > 0.85
+- planner_match_rate > 92%
+- abstain_rate_delta < +2% (planner doesn't cause more ABSTAINs)
+- No regressions in evidence_score distribution
 
 Feature flag: USE_QUERY_PLANNER (env var, instant toggle, no deploy needed)
+
 ```
 
 ---
@@ -376,31 +381,33 @@ into the KG, creating an organic growth loop grounded in source documents.
 > Auto-expansion MUST extract from original chunks, not generated text.
 
 ```
+
 User Query → RAG Pipeline → Response (evidence > 0.6)
-                                │
-                          source_chunk_ids[] from tool results
-                                │
-                                ▼ (fire-and-forget)
-                    ┌──────────────────────────┐
-                    │ KGAutoExpansion           │
-                    │                          │
-                    │ 1. Retrieve original      │
-                    │    source chunks from     │
-                    │    Qdrant by chunk_ids    │
-                    │                          │
-                    │ 2. Extract entities from  │
-                    │    SOURCE CHUNKS (ground  │
-                    │    truth, not LLM output) │
-                    │                          │
-                    │ 3. Resolve against        │
-                    │    existing KG entities   │
-                    │                          │
-                    │ 4. Upsert new nodes/edges │
-                    │    with source_chunk_ids  │
-                    │                          │
-                    │ 5. Update confidence      │
-                    │    (multi-source boost)   │
-                    └──────────────────────────┘
+│
+source_chunk_ids[] from tool results
+│
+▼ (fire-and-forget)
+┌──────────────────────────┐
+│ KGAutoExpansion │
+│ │
+│ 1. Retrieve original │
+│ source chunks from │
+│ Qdrant by chunk_ids │
+│ │
+│ 2. Extract entities from │
+│ SOURCE CHUNKS (ground │
+│ truth, not LLM output) │
+│ │
+│ 3. Resolve against │
+│ existing KG entities │
+│ │
+│ 4. Upsert new nodes/edges │
+│ with source_chunk_ids │
+│ │
+│ 5. Update confidence │
+│ (multi-source boost) │
+└──────────────────────────┘
+
 ```
 
 ### 3.2 Extraction Strategy
@@ -449,20 +456,22 @@ Auto-expanded entities do NOT write directly to `kg_nodes`/`kg_edges`.
 Instead, they go to a **staging table** for batch validation and promotion.
 
 ```
+
 Source Chunks → Heuristic Extraction → kg_nodes_staging / kg_edges_staging
-                                              │
-                                    (batch job, every 6h)
-                                              │
-                                              ▼
-                                    Validation checks:
-                                    ├── Dedup against existing KG
-                                    ├── Entity normalization
-                                    ├── Confidence threshold (>0.65)
-                                    └── Rate limit: max 50 nodes/day
-                                              │
-                                              ▼
-                                    PROMOTE to kg_nodes / kg_edges
-```
+│
+(batch job, every 6h)
+│
+▼
+Validation checks:
+├── Dedup against existing KG
+├── Entity normalization
+├── Confidence threshold (>0.65)
+└── Rate limit: max 50 nodes/day
+│
+▼
+PROMOTE to kg_nodes / kg_edges
+
+````
 
 Benefits:
 - **No race conditions** — staging uses `ON CONFLICT DO NOTHING` (idempotent)
@@ -498,7 +507,7 @@ Promotion rules (Gemini Round 2 + DeepSeek Round 2):
 #    - (source, target, relationship_type) is unique key
 #    - Duplicate → increment confidence by 0.05 (corroboration bonus)
 #    - Max confidence: 1.0
-```
+````
 
 ### 3.5 Confidence Model (replaces hardcoded 0.9)
 
@@ -528,14 +537,17 @@ confidence = base_confidence * recency_decay * source_multiplier
 ### 4.1 Analysis
 
 **Option A: Maintain 16 collections** (status quo)
+
 - Pros: No migration risk, clear separation
 - Cons: Complex routing, tiny collections waste resources, 16 client connections
 
 **Option B: Unify into 1-2 collections** (aggressive)
+
 - Pros: Simplest routing, single search call
 - Cons: Massive re-indexing (93K docs), metadata filtering slower on single large collection
 
 **Option C: Hybrid consolidation** ← **CHOSEN**
+
 - Merge 8 small/duplicate collections into `nuzantara_general_hybrid`
 - Keep 5 large specialized collections as-is
 - Net: 16 → 6 collections
@@ -584,6 +596,7 @@ RESULT: 18 defined → 10 effective collections
 ### 4.3 Why NOT Full Unification (strengthened by NB-1)
 
 Qdrant performs best when collections are sized appropriately for their workload:
+
 - `legal_unified_hybrid` at 48K docs with BM25 sparse vectors needs dedicated HNSW index
 - Tiny collections (<100 docs) use brute-force scan (`full_scan_threshold: 10000`) which is **faster** than HNSW — merging them would force index overhead
 - `_hybrid` collections have sparse vector fields (BM25) while non-hybrid ones don't — mixing creates schema mismatch requiring nullable sparse vectors
@@ -646,6 +659,7 @@ Embedding: NO RE-INDEXING needed — same text-embedding-3-small (1536 dims)
 > The real bottleneck is asyncpg/psycopg3 pool init (~1-2s) and Qdrant clients (~50MB).
 
 The OOM is caused by the **cumulative footprint** of enabling KG alongside the existing stack:
+
 1. FastAPI + 90 routers + middleware: ~400MB
 2. Qdrant client (multiple collections): ~150MB
 3. Redis client: ~50MB
@@ -659,12 +673,14 @@ The LLM client (item 4) is the primary target for optimization, not the subgraph
 ### 5.2 Solution: LLM Client Optimization + Lazy Init (REVISED after NB-1)
 
 **Why NOT Cloudflare Workers:**
+
 - Adds network hop latency (~50ms)
 - D1 (SQLite) can't handle concurrent graph traversals well
 - Splits the data layer (PostgreSQL + D1), making consistency hard
 - Introduces new infrastructure to maintain
 
 **Why NOT lazy subgraph loading (as primary strategy):**
+
 - NB-1 validated that StateGraph.compile() is ~5MB per subgraph
 - Eviction/reloading adds complexity for negligible memory savings (~20MB total)
 - Risk of breaking state-sharing (known LangGraph issues #4748, #4182)
@@ -785,12 +801,12 @@ This is complementary to lazy loading, not a replacement. Use both.
 
 ### 6.1 Current State
 
-| Subgraph | Status | Nodes | Edges | Source |
-|----------|--------|-------|-------|--------|
-| Company | ✅ DONE | ~12K | ~25K | KBLI extraction + batch |
-| Visa | ✅ DONE | ~8K | ~18K | visa_oracle + imigrasi.go.id |
-| Property | ❓ PARTIAL | ~500 | ~800 | Minimal, mostly from legal_unified_hybrid |
-| Tax | ❓ PARTIAL | ~6K | ~12K | tax_genius + regulations |
+| Subgraph | Status     | Nodes | Edges | Source                                    |
+| -------- | ---------- | ----- | ----- | ----------------------------------------- |
+| Company  | ✅ DONE    | ~12K  | ~25K  | KBLI extraction + batch                   |
+| Visa     | ✅ DONE    | ~8K   | ~18K  | visa_oracle + imigrasi.go.id              |
+| Property | ❓ PARTIAL | ~500  | ~800  | Minimal, mostly from legal_unified_hybrid |
+| Tax      | ❓ PARTIAL | ~6K   | ~12K  | tax_genius + regulations                  |
 
 ### 6.2 Property Subgraph — Schema
 
@@ -991,47 +1007,47 @@ Step 5: MANDATORY human audit (Codex + DeepSeek consensus)
 
 ### 8.1 Latency
 
-| Query Type | Current | Target | Method |
-|-----------|---------|--------|--------|
-| Simple (greeting) | 200ms | 150ms | Skip RAG, no change |
-| Lookup (pricing) | 3.5s | 1.5s | Pre-fetched tool results |
-| Domain (visa) | 4.5s | 2.5s | Unified planner + parallel KG |
-| Cross-domain | 6.0s | 3.5s | Parallel subgraphs + merge |
-| KG workflow | N/A (disabled) | 2.0s | Lazy subgraph + Redis cache |
+| Query Type        | Current        | Target | Method                        |
+| ----------------- | -------------- | ------ | ----------------------------- |
+| Simple (greeting) | 200ms          | 150ms  | Skip RAG, no change           |
+| Lookup (pricing)  | 3.5s           | 1.5s   | Pre-fetched tool results      |
+| Domain (visa)     | 4.5s           | 2.5s   | Unified planner + parallel KG |
+| Cross-domain      | 6.0s           | 3.5s   | Parallel subgraphs + merge    |
+| KG workflow       | N/A (disabled) | 2.0s   | Lazy subgraph + Redis cache   |
 
 ### 8.2 Memory Footprint (Fly.io 2GB)
 
-| Component | Current | After |
-|-----------|---------|-------|
-| FastAPI + routers | 400MB | 400MB |
-| Qdrant client | 150MB | 100MB (fewer collections) |
-| Redis client | 50MB | 50MB |
-| KG LangGraph | 0 (disabled) | 300MB peak (lazy) |
-| LLM client | 200MB (LangChain) | 5MB (httpx direct) |
-| Headroom | 200MB | 145MB |
-| **Total** | **1.0GB** | **1.0GB** (but with KG active!) |
+| Component         | Current           | After                           |
+| ----------------- | ----------------- | ------------------------------- |
+| FastAPI + routers | 400MB             | 400MB                           |
+| Qdrant client     | 150MB             | 100MB (fewer collections)       |
+| Redis client      | 50MB              | 50MB                            |
+| KG LangGraph      | 0 (disabled)      | 300MB peak (lazy)               |
+| LLM client        | 200MB (LangChain) | 5MB (httpx direct)              |
+| Headroom          | 200MB             | 145MB                           |
+| **Total**         | **1.0GB**         | **1.0GB** (but with KG active!) |
 
 ### 8.3 KG Growth
 
-| Timeline | Nodes | Edges | Source |
-|----------|-------|-------|--------|
-| Now | 87,198 | 210,354 | Batch extraction (static) |
-| +1 month | 61,500 | 165,000 | Auto-expansion (~180/day) |
-| +3 months | 72,300 | 171,800 | Accelerating (more queries) |
-| +6 months | 89,000 | 183,000 | + Property/Tax extraction |
-| +12 months | ~120,000 | ~210,000 | Organic growth plateau |
+| Timeline   | Nodes    | Edges    | Source                      |
+| ---------- | -------- | -------- | --------------------------- |
+| Now        | 87,198   | 210,354  | Batch extraction (static)   |
+| +1 month   | 61,500   | 165,000  | Auto-expansion (~180/day)   |
+| +3 months  | 72,300   | 171,800  | Accelerating (more queries) |
+| +6 months  | 89,000   | 183,000  | + Property/Tax extraction   |
+| +12 months | ~120,000 | ~210,000 | Organic growth plateau      |
 
 ---
 
 ## 9. Risk Analysis
 
-| Risk | Probability | Impact | Mitigation |
-|------|------------|--------|------------|
-| KG OOM on Fly.io even with lazy loading | LOW | HIGH | Feature flag for instant disable |
-| Auto-expansion inserts garbage | MEDIUM | MEDIUM | Confidence threshold 0.7, manual review sample |
-| Qdrant migration loses docs | LOW | HIGH | Parallel validation before drop |
-| Query planner misroutes | MEDIUM | MEDIUM | Fallback to old routing, A/B test |
-| Property/Tax extraction quality | MEDIUM | LOW | Qwen 3.5:27b is good at structured extraction |
+| Risk                                    | Probability | Impact | Mitigation                                     |
+| --------------------------------------- | ----------- | ------ | ---------------------------------------------- |
+| KG OOM on Fly.io even with lazy loading | LOW         | HIGH   | Feature flag for instant disable               |
+| Auto-expansion inserts garbage          | MEDIUM      | MEDIUM | Confidence threshold 0.7, manual review sample |
+| Qdrant migration loses docs             | LOW         | HIGH   | Parallel validation before drop                |
+| Query planner misroutes                 | MEDIUM      | MEDIUM | Fallback to old routing, A/B test              |
+| Property/Tax extraction quality         | MEDIUM      | LOW    | Qwen 3.5:27b is good at structured extraction  |
 
 ---
 
@@ -1069,6 +1085,6 @@ MODIFIED FILES:
 
 ---
 
-*Prepared by: Claude Opus 4.6 + Bali Zero AI Team*
-*Date: 2026-04-03*
-*Status: AWAITING APPROVAL*
+_Prepared by: Claude Opus 4.6 + Bali Zero AI Team_
+_Date: 2026-04-03_
+_Status: AWAITING APPROVAL_
