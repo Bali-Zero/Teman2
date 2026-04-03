@@ -62,14 +62,14 @@ A full-screen interactive web experience at `balizero.com/book` — part magazin
 
 ### Team reale (da `apps/mouth/src/app/(blog)/team/page.tsx`)
 
-| Dipartimento      | Persone | Nomi                                                                         |
-| ----------------- | ------- | ---------------------------------------------------------------------------- |
-| Leadership        | 2       | Zainal Abidin (CEO), Ruslana (Board Member)                                  |
-| Setup/Company     | 11      | Anton, Vino, Krisna, Adit (Lead), Ari, Dea, Surya, Damar, Marta, Olena, Anna |
-| Tax               | 5       | Veronika (Manager), Angel, Kadek, Dewa Ayu, Faisha                           |
-| Accounting        | 1       | Asya Nadia                                                                   |
-| Support/Marketing | 3       | Rina, Nina (ext.), Sahira                                                    |
-| **Totale**        | **~22** | —                                                                            |
+| Dipartimento      | Persone | Nomi                                               |
+| ----------------- | ------- | -------------------------------------------------- |
+| Leadership        | 2       | Zainal Abidin (CEO), Ruslana (Board Member)        |
+| Setup/Company     | 7       | Vino, Krisna, Adit (Lead), Ari, Dea, Surya, Damar  |
+| Tax               | 5       | Veronika (Manager), Angel, Kadek, Dewa Ayu, Faisha |
+| Accounting        | 1       | Asya Nadia                                         |
+| Support/Marketing | 3       | Rina, Nina (ext.), Sahira                          |
+| **Totale**        | **~22** | —                                                  |
 
 **⚠️ NON USARE "35 specialisti" — era inventato. Il numero reale è ~22.**
 
