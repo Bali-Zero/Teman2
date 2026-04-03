@@ -186,45 +186,81 @@ def create_bundle(bundle_name: str, patterns: list[str], excludes: list[str]) ->
     return output_path
 
 
-def get_nb1_sources() -> dict[str, str]:
-    """Get current NB-1 sources mapping: title → source_id."""
+def get_nb1_sources() -> dict[str, list[str]]:
+    """Get current NB-1 sources mapping: title -> list of source_ids.
+
+    Uses `nlm source list` which returns proper JSON.
+    Multiple source_ids per title means duplicates exist.
+    The list is ordered by position (last = newest).
+    """
     try:
         result = subprocess.run(
-            [str(NLM_BIN), "notebook", "get", NB1_ID],
-            capture_output=True, text=True, timeout=30,
+            [str(NLM_BIN), "source", "list", NB1_ID],
+            capture_output=True, text=True, timeout=60,
         )
-        # Parse the output to find source IDs
-        # nlm CLI outputs a table, we need to extract title→id mapping
-        # Fallback: use the MCP tool via Python
-        sources = {}
-        # Try JSON parsing if available
-        for line in result.stdout.split("\n"):
-            # Look for source entries in the output
-            line = line.strip()
-            if ".txt" in line and "-" in line:
-                # Heuristic: lines with bundle names
-                parts = line.split()
-                for part in parts:
-                    if len(part) == 36 and part.count("-") == 4:  # UUID pattern
-                        title = [p for p in parts if ".txt" in p or ".md" in p]
-                        if title:
-                            sources[title[0]] = part
-        return sources
+        if result.returncode != 0:
+            log.warning(f"nlm source list failed: {result.stderr[:200]}")
+            return {}
+
+        raw = result.stdout.strip()
+        if not raw:
+            return {}
+
+        data = json.loads(raw)
+
+        # nlm CLI may wrap in {"value": [...]} or return a list directly
+        sources_raw: list[dict]
+        if isinstance(data, list):
+            sources_raw = data
+        elif isinstance(data, dict) and "value" in data:
+            sources_raw = data["value"] if isinstance(data["value"], list) else []
+        elif isinstance(data, dict) and "sources" in data:
+            sources_raw = data["sources"] if isinstance(data["sources"], list) else []
+        else:
+            sources_raw = []
+
+        # Build title -> [source_ids] mapping (preserving order = position)
+        title_to_ids: dict[str, list[str]] = {}
+        for s in sources_raw:
+            source_id = s.get("source_id") or s.get("id") or s.get("sourceId", "")
+            title = s.get("title") or s.get("name", "")
+            if source_id and title:
+                title_to_ids.setdefault(title, []).append(str(source_id))
+
+        log.info(f"NB-1 has {sum(len(v) for v in title_to_ids.values())} sources across {len(title_to_ids)} unique titles")
+        return title_to_ids
     except Exception as e:
         log.warning(f"Could not get NB-1 sources: {e}")
         return {}
 
 
-def nlm_replace_source(bundle_name: str, bundle_path: Path, old_source_id: str | None) -> bool:
-    """Delete old source and add new bundle to NB-1."""
+def nlm_replace_source(bundle_name: str, bundle_path: Path, old_source_ids: list[str] | None) -> bool:
+    """Delete ALL old sources with the same title, then add the new bundle to NB-1.
+
+    Implements delete-before-add to prevent duplicate accumulation.
+
+    Args:
+        bundle_name: Bundle filename (used for logging).
+        bundle_path: Path to the regenerated bundle file.
+        old_source_ids: List of existing source IDs to delete before adding.
+                        Can be None or empty if no existing sources found.
+
+    Returns:
+        True if upload succeeded, False otherwise.
+    """
     try:
-        # Delete old source if exists
-        if old_source_id:
-            log.info(f"  Deleting old: {old_source_id}")
-            subprocess.run(
-                [str(NLM_BIN), "source", "delete", NB1_ID, old_source_id, "--confirm"],
-                capture_output=True, text=True, timeout=30,
-            )
+        # Delete ALL old sources with the same title
+        if old_source_ids:
+            for old_id in old_source_ids:
+                log.info(f"  Deleting old source: {old_id}")
+                try:
+                    subprocess.run(
+                        [str(NLM_BIN), "source", "delete", NB1_ID, old_id],
+                        capture_output=True, text=True, timeout=30,
+                    )
+                    time.sleep(1.0)  # Rate limiting between deletes
+                except Exception as del_err:
+                    log.warning(f"  Failed to delete {old_id}: {del_err} (continuing)")
 
         # Add new source
         log.info(f"  Uploading: {bundle_name}")
@@ -233,17 +269,42 @@ def nlm_replace_source(bundle_name: str, bundle_path: Path, old_source_id: str |
             capture_output=True, text=True, timeout=120,
         )
         if result.returncode == 0:
-            log.info(f"  ✅ {bundle_name} uploaded")
+            log.info(f"  {bundle_name} uploaded OK")
             return True
         else:
-            log.error(f"  ❌ Upload failed: {result.stderr[:200]}")
+            log.error(f"  Upload failed: {result.stderr[:200]}")
             return False
     except subprocess.TimeoutExpired:
-        log.error(f"  ❌ Upload timeout for {bundle_name}")
+        log.error(f"  Upload timeout for {bundle_name}")
         return False
     except Exception as e:
-        log.error(f"  ❌ Upload error: {e}")
+        log.error(f"  Upload error: {e}")
         return False
+
+
+MAX_SOURCES_THRESHOLD = 60
+
+
+def _check_source_count_invariant() -> None:
+    """Post-refresh invariant: warn if NB-1 source count exceeds threshold.
+
+    If total sources > MAX_SOURCES_THRESHOLD, log a WARNING.
+    This catches runaway duplication early.
+    """
+    try:
+        sources = get_nb1_sources()
+        total = sum(len(ids) for ids in sources.values())
+        if total > MAX_SOURCES_THRESHOLD:
+            log.warning(
+                "INVARIANT VIOLATION: NB-1 has %d sources (threshold: %d). "
+                "Possible duplicate accumulation — run nlm_nb1_dedup_cleanup.py",
+                total,
+                MAX_SOURCES_THRESHOLD,
+            )
+        else:
+            log.info(f"Source count OK: {total}/{MAX_SOURCES_THRESHOLD}")
+    except Exception as e:
+        log.warning(f"Could not check source count invariant: {e}")
 
 
 def main():
@@ -298,16 +359,29 @@ def main():
         log.warning(f"nlm CLI not found at {NLM_BIN} — bundles regenerated but NOT uploaded")
         log.info("Upload manually: nlm source add NB1_ID --type file --file <bundle>")
     else:
-        log.info("Uploading to NB-1...")
-        # Note: source replacement is complex because we need to match by title.
-        # For now, we just add new sources. The old ones can be cleaned periodically.
-        # TODO: implement source matching by title for delete+replace
+        log.info("Uploading to NB-1 (delete-before-add)...")
+
+        # Fetch current sources to find existing IDs by title
+        existing_sources = get_nb1_sources()
+
         uploaded = 0
+        total_deleted = 0
         for bundle_name, bundle_path in regenerated:
-            if nlm_replace_source(bundle_name, bundle_path, old_source_id=None):
+            # Find all existing source IDs matching this bundle title
+            old_ids = existing_sources.get(bundle_name, [])
+            if old_ids:
+                log.info(f"  Found {len(old_ids)} existing source(s) for {bundle_name} — will delete before add")
+                total_deleted += len(old_ids)
+            else:
+                log.info(f"  No existing source for {bundle_name} — adding fresh")
+
+            if nlm_replace_source(bundle_name, bundle_path, old_source_ids=old_ids):
                 uploaded += 1
 
-        log.info(f"Uploaded: {uploaded}/{len(regenerated)}")
+        log.info(f"Uploaded: {uploaded}/{len(regenerated)}, deleted {total_deleted} old sources")
+
+        # Invariant check: warn if total source count exceeds threshold
+        _check_source_count_invariant()
 
     # Step 5: Log summary
     duration = time.time() - start_time

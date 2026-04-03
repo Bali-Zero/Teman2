@@ -120,6 +120,53 @@ _PRIMARY_LAW_KEYWORDS = frozenset(
 )
 
 
+def resolve_multi_notebook(
+    query: str,
+    threshold: int = 1,
+    max_notebooks: int = 4,
+) -> list[dict[str, object]]:
+    """Resolve a query to multiple matching notebooks (ARCH-4 cross-notebook).
+
+    Returns ordered list (by match score) of matching domains.
+    Returns empty list if fewer than 2 domains match.
+
+    Args:
+        query: Free-text user query.
+        threshold: Minimum keyword hits to include a domain.
+        max_notebooks: Maximum notebooks to include in fan-out.
+
+    Returns:
+        List of dicts with keys ``domain``, ``notebook_id``, ``label``, ``score``.
+        Empty list if < 2 domains match (single-domain query).
+    """
+    if not query:
+        return []
+
+    query_lower = query.lower()
+    scored: list[tuple[int, str]] = []
+
+    for domain, data in NLM_NOTEBOOKS.items():
+        score = sum(1 for kw in data["keywords"] if kw in query_lower)
+        if score >= threshold:
+            scored.append((score, domain))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = scored[:max_notebooks]
+
+    if len(top) < 2:
+        return []  # Not a multi-domain query
+
+    return [
+        {
+            "domain": domain,
+            "notebook_id": NLM_NOTEBOOKS[domain]["notebook_id"],
+            "label": NLM_NOTEBOOKS[domain]["label"],
+            "score": score,
+        }
+        for score, domain in top
+    ]
+
+
 def resolve_notebook(query: str) -> dict[str, object] | None:
     """Resolve a user query to the best-matching NLM notebook.
 

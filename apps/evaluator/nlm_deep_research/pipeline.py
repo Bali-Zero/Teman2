@@ -26,6 +26,7 @@ from .claim_extractor import (
 )
 from .handoff import generate_handoff, save_handoff, validate_handoff_schema
 from .invariants import check_all_invariants, InvariantSeverity
+from .query_decomposer import QueryDecomposer
 from .registry import SourceRegistry
 from .source_management import (
     compute_svs,
@@ -129,6 +130,10 @@ class NLMPipeline:
         # NLM query function — injected for testability
         # In production, this wraps mcp__notebooklm-mcp__notebook_query
         self._nlm_query = nlm_query_fn
+
+        # ARCH-3: Query Decomposer — replaces static L1/L2 templates
+        # Falls back to static templates if Ollama unavailable
+        self._decomposer = QueryDecomposer()
 
         # Pipeline state
         self._state: dict = {}
@@ -417,33 +422,14 @@ class NLMPipeline:
     def _build_query(self, level: str, cluster: str) -> str:
         """Build query text for given level and cluster.
 
-        In production, this selects from 20 template queries based on
-        cluster and level. For MVP, uses simplified templates.
+        ARCH-3: Uses QueryDecomposer (Ollama qwen3.5:9b) to generate adaptive queries.
+        Falls back to static templates if Ollama is unavailable.
         """
-        # L1: monitoring query in Bahasa Indonesia
-        if level == "L1":
-            templates = {
-                "A": "Berikan update terbaru tentang peraturan RPTKA, DKP-TKA, dan izin kerja TKA di Indonesia tahun 2025-2026. Apakah ada perubahan prosedur, tarif, atau persyaratan baru? Jawab hanya berdasarkan dokumen sumber. Cantumkan nama file referensi.",
-                "B": "Berikan update terbaru tentang konversi KITAS ke KITAP, perpanjangan izin tinggal terbatas, dan penyatuan keluarga WNA di Indonesia tahun 2025-2026. Apakah ada perubahan persyaratan? Jawab hanya berdasarkan dokumen sumber. Cantumkan nama file referensi.",
-                "C": "Berikan update terbaru tentang Visa Kunjungan (VOA, e-VOA, C1, C2), perpanjangan izin tinggal kunjungan, dan aturan visa run di Indonesia tahun 2025-2026. Jawab hanya berdasarkan dokumen sumber. Cantumkan nama file referensi.",
-                "D": "Berikan update terbaru tentang visa Second Home, Golden Visa E28, visa pensiun E33E/E33F, dan visa Digital Nomad E33G di Indonesia tahun 2025-2026. Jawab hanya berdasarkan dokumen sumber. Cantumkan nama file referensi.",
-                "E": "Berikan update terbaru tentang sanksi overstay, deportasi, Tim Pora, dan penegakan hukum keimigrasian di Bali tahun 2025-2026. Jawab hanya berdasarkan dokumen sumber. Cantumkan nama file referensi.",
-            }
-            return templates.get(cluster, templates["A"])
-
-        # L2: comparative query in mixed language
-        if level == "L2":
-            templates = {
-                "A": "Bandingkan prosedur RPTKA dan DKP-TKA sebelum dan sesudah PP 34/2021. Apa yang berubah untuk perusahaan PT PMA yang ingin mempekerjakan TKA di Bali? Jawab hanya berdasarkan dokumen sumber. Cantumkan nama file referensi.",
-                "B": "Bandingkan persyaratan konversi KITAS ke KITAP untuk kategori pekerja (E23), investor (E28), dan keluarga (E31). Apa perbedaan utama dalam durasi, dokumen, dan biaya? Jawab hanya berdasarkan dokumen sumber.",
-                "C": "Bandingkan hak dan pembatasan pemegang VOA, C1, dan C2 di Indonesia. Aktivitas apa yang legal dan ilegal untuk masing-masing? Jawab hanya berdasarkan dokumen sumber.",
-                "D": "Bandingkan syarat investasi antara Golden Visa E28B 5 tahun dan 10 tahun, serta Second Home E33B. Berapa minimum investasi dan deposit untuk masing-masing? Jawab hanya berdasarkan dokumen sumber.",
-                "E": "Jelaskan perbedaan antara pencegahan (cekal), penangkalan, dan deportasi dalam hukum keimigrasian Indonesia. Kapan masing-masing diterapkan? Jawab hanya berdasarkan dokumen sumber.",
-            }
-            return templates.get(cluster, templates["A"])
-
-        # L3/L4: deep analysis
-        return f"Analisis mendalam tentang Cluster {cluster} — dampak perubahan regulasi keimigrasian 2024-2026 terhadap operasi di Bali. Jawab hanya berdasarkan dokumen sumber."
+        return self._decomposer.decompose_first(
+            cluster=cluster,
+            level=level,
+            domain="immigration",  # NB-2 is immigration domain
+        )
 
     def _consolidate(self, claims: list[dict], cluster: str) -> dict:
         """Consolidation phase: save claims, recalculate SVS/NHS, generate handoff."""
