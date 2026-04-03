@@ -35,6 +35,7 @@ export default function HomePage() {
         rel="stylesheet"
       />
       <style
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{
           __html: `:root {
   --navy: #060D14;
@@ -675,6 +676,7 @@ body::after {
         }}
       />
       <div
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{
           __html: `
 <!-- ════════ NAVBAR ════════ -->
@@ -1065,6 +1067,7 @@ body::after {
       </div>
 
       <div
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{
           __html: `
   <!-- Services -->
