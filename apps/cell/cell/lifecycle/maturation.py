@@ -50,7 +50,9 @@ class Maturation:
 
     def can_reason_deep(self) -> bool:
         """Can CELL use Qwen 27B deep reasoning?"""
-        return self.phase != LifecyclePhase.EMBRIONE
+        return self.phase in (
+            LifecyclePhase.GIOVANE, LifecyclePhase.ADULTO, LifecyclePhase.ANZIANO
+        )
 
     def action_confidence_threshold(self) -> float:
         """Minimum confidence required to execute an action.
@@ -74,7 +76,7 @@ class Maturation:
             LifecyclePhase.EMBRIONE: "Embrione (day 0-3): observe and log only, no autonomous actions.",
             LifecyclePhase.NEONATO: "Neonato (day 4-14): act only with confidence >= 0.8, building episodic memory.",
             LifecyclePhase.GIOVANE: "Giovane (day 15-30): autonomous actions, dreams active, confidence >= 0.5.",
-            LifecyclePhase.ADULTO: "Adulto (day 31+): full autonomy, all capabilities unlocked.",
+            LifecyclePhase.ADULTO: "Adulto (day 31-179): full autonomy, all capabilities unlocked.",
             LifecyclePhase.ANZIANO: "Anziano (day 180+): stability priority, reduced mutation rate.",
         }
         return (
