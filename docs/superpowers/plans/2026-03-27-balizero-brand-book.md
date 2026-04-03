@@ -192,7 +192,6 @@ export const TEAM_MEMBERS: TeamMember[] = [
     department: "setup",
     photo: "/static/team/adit.png",
   },
-  { name: "Anton", role: "Executive Consultant", department: "setup" },
   {
     name: "Krisna",
     role: "Executive Consultant",
@@ -212,24 +211,6 @@ export const TEAM_MEMBERS: TeamMember[] = [
     photo: "/static/team/ari.png",
   },
   { name: "Surya", role: "Specialist Consultant", department: "setup" },
-  {
-    name: "Anna",
-    role: "Specialist Advisor",
-    department: "setup",
-    photo: "/static/team/anna.jpeg",
-  },
-  {
-    name: "Marta",
-    role: "Setup Consultant",
-    department: "setup",
-    photo: "/static/team/marta.jpeg",
-  },
-  {
-    name: "Olena",
-    role: "Setup Consultant",
-    department: "setup",
-    photo: "/static/team/olena.jpeg",
-  },
   { name: "Vino", role: "Junior Consultant", department: "setup" },
   { name: "Damar", role: "Junior Consultant", department: "setup" },
   // Tax
