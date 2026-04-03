@@ -252,9 +252,10 @@ class IntelStagingService:
                 try:
                     with open(file_path) as f:
                         data = json.load(f)
-                        # Infer published status from published_at field
+                        # Only trust explicit status field (set by publish endpoint)
                         status = data.get("status", "pending")
-                        if status != "published" and data.get("published_at"):
+                        # published_url is set ONLY by the publish endpoint, not by scraper
+                        if status != "published" and data.get("published_url"):
                             status = "published"
                         items.append(
                             {
