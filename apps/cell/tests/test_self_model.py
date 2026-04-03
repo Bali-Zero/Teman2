@@ -89,3 +89,22 @@ class TestSelfModelManager:
         ctx = mgr.to_prompt_context()
         assert "age_days: 3" in ctx
         assert "health_sensor" in ctx
+
+    def test_sensor_reliability_persists_across_restart(self) -> None:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        try:
+            mgr = SelfModelManager(path=path)
+            for _ in range(10):
+                mgr.update_sensor_reliability("health_sensor", success=True)
+            mgr.save()
+
+            # Simulate restart
+            mgr2 = SelfModelManager(path=path)
+            mgr2.load()
+            # Should continue with 10 True readings already in history
+            mgr2.update_sensor_reliability("health_sensor", success=False)
+            # 10 True + 1 False = 10/11 ≈ 0.909
+            assert mgr2.model.capabilities["health_sensor"] > 0.8
+        finally:
+            os.unlink(path)
