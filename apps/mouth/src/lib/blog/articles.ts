@@ -55,6 +55,18 @@ function normalizeCategory(rawCategory: string): ArticleCategory {
   return CATEGORY_MAP[rawCategory] || "living";
 }
 
+/** Strip markdown headings and formatting from excerpt text */
+function cleanExcerpt(text: string | null): string {
+  if (!text) return "";
+  return text
+    .replace(/^#{1,6}\s+/gm, "") // ## Headings
+    .replace(/\*\*(.*?)\*\*/g, "$1") // **bold**
+    .replace(/\*(.*?)\*/g, "$1") // *italic*
+    .replace(/\[(.*?)\]\(.*?\)/g, "$1") // [link](url)
+    .replace(/`(.*?)`/g, "$1") // `code`
+    .trim();
+}
+
 /** Default cover images per normalized category (files that actually exist in public/static/blog/) */
 const CATEGORY_COVER_DEFAULTS: Record<string, string> = {
   visas: "/static/blog/kitas-guide.jpg",
@@ -97,7 +109,7 @@ function backendToArticleListItem(item: BackendNewsItem): ArticleListItem {
     id: item.id,
     slug: item.slug,
     title: item.title,
-    excerpt: item.summary || item.ai_summary || "",
+    excerpt: cleanExcerpt(item.summary || item.ai_summary),
     coverImage:
       item.image_url || defaultCoverImage(normalizeCategory(item.category)),
     category: normalizeCategory(item.category),
@@ -126,7 +138,7 @@ function backendToArticle(item: BackendNewsItem): Article {
     id: item.id,
     slug: item.slug,
     title: item.title,
-    excerpt: item.summary || item.ai_summary || "",
+    excerpt: cleanExcerpt(item.summary || item.ai_summary),
     content: item.content || "",
     coverImage:
       item.image_url || defaultCoverImage(normalizeCategory(item.category)),
