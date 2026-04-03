@@ -49,6 +49,9 @@ class PulseEngine:
         stm: Any = None,
         ltm: Any = None,
         trend_detector: Any = None,
+        homeostatic: Any = None,
+        episodic: Any = None,
+        self_model: Any = None,
     ) -> None:
         self._dna = dna_loader
         self._safety = safety_gate
@@ -71,6 +74,9 @@ class PulseEngine:
         self._stm = stm
         self._ltm = ltm
         self._trend = trend_detector
+        self._homeostatic = homeostatic
+        self._episodic = episodic
+        self._self_model = self_model
         self._recent_pulses: list[dict] = []
         self._ltm_cache: str = ""
         self._ltm_cache_pulse: int = -999  # refresh every 60 pulses (~1h)
@@ -101,6 +107,14 @@ class PulseEngine:
             http_status = HealthStatus.RED
 
         response_ms = int(reading.response_time_seconds * 1000) if reading.reachable else 0
+
+        # Update homeostasis with actual reading
+        if self._homeostatic is not None:
+            self._homeostatic.update(
+                response_time_ms=response_ms,
+                health_status=http_status.value,
+                hour_utc=datetime.now(timezone.utc).hour,
+            )
 
         # Secondary sensors (reuse /health body, no extra HTTP)
         sensor_metadata: dict[str, Any] = {}
@@ -203,6 +217,9 @@ class PulseEngine:
                         "ollama": ollama_status,
                         "backup": backup_status,
                         "vercel": vercel_status,
+                        "stress": self._homeostatic.state.stress_level if self._homeostatic else 0.0,
+                        "energy": self._homeostatic.state.energy_level if self._homeostatic else 1.0,
+                        "circadian": self._homeostatic.state.circadian_phase if self._homeostatic else "awake",
                     },
                 ))
             except Exception as e:
@@ -400,6 +417,45 @@ class PulseEngine:
             )
         except Exception as e:
             logger.error(f"Pulse DB log failed: {e}")
+
+        # 8. SELF-MODEL — record pulse
+        if self._self_model is not None:
+            self._self_model.record_pulse()
+            if action:
+                self._self_model.record_action()
+            # Update sensor reliability based on reachability
+            self._self_model.update_sensor_reliability("health_sensor", reading.reachable)
+            # Save every 60 pulses (~1h)
+            if pulse_number % 60 == 0:
+                self._self_model.save()
+
+        # 9. EPISODIC MEMORY — record significant events
+        if self._episodic is not None and self._episodic.should_record(
+            health_status=status.value, action_taken=action
+        ):
+            from cell.memory.episodic import Episode
+            emotion = "calm"
+            if status == HealthStatus.RED:
+                emotion = "stressed"
+            elif status == HealthStatus.YELLOW:
+                emotion = "alert"
+            if self._homeostatic and self._homeostatic.state.stress_level > 0.8:
+                emotion = "panic"
+            try:
+                ep = Episode(
+                    situation={
+                        "health_status": status.value,
+                        "response_time_ms": response_ms,
+                        "sensors": sensor_metadata,
+                    },
+                    emotion=emotion,
+                    action_taken=action or "observe",
+                    outcome="partial",
+                    lesson=action_reason or "no action needed",
+                )
+                await self._episodic.store(ep)
+            except Exception as e:
+                logger.debug(f"Episodic memory store failed: {e}")
 
         return PulseResult(
             timestamp=now,
