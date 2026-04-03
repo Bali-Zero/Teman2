@@ -32,8 +32,6 @@ from backend.app.routers.intel import (
     PublishToSiteRequest,
     RegisterNotificationRequest,
     ScraperSubmission,
-    _post_publish_lock,
-    _post_publish_queue,
     classification_service,
     embedder,
     staging_service,
@@ -983,17 +981,21 @@ async def publish_staging_item(
                 extra={"type": type, "item_id": item_id},
             )
 
-        # Step 4b: Enqueue for post-processing (translate + image) — non-blocking
+        # Step 4b: Enqueue for post-processing (translate + image + SEO) — DB-backed
         try:
-            async with _post_publish_lock:
-                if not any(item["slug"] == article_slug for item in _post_publish_queue):
-                    _post_publish_queue.append(
-                        {
-                            "slug": article_slug,
-                            "category": category,
-                            "queued_at": datetime.now(timezone.utc).isoformat(),
-                        },
-                    )
+            if not pool:
+                pool = getattr(request.app.state, "db_pool", None) if request else None
+            if not pool:
+                raise RuntimeError("No DB pool available")
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO post_publish_queue (slug, category, source)
+                    VALUES ($1, $2, 'intel')
+                    ON CONFLICT (slug) DO NOTHING
+                    """,
+                    article_slug, category,
+                )
             logger.info(
                 "📥 Enqueued for post-processing",
                 extra={"slug": article_slug, "category": category},
