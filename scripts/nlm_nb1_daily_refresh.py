@@ -22,8 +22,20 @@ import os
 import subprocess
 import sys
 import time
+import urllib.parse
+import urllib.request
 from datetime import datetime
 from pathlib import Path
+
+# ── ARCH-8 snapshot import (optional — graceful if evaluator not in sys.path) ──
+try:
+    _EVAL_DIR = Path(__file__).resolve().parent.parent / "apps" / "evaluator"
+    if str(_EVAL_DIR) not in sys.path:
+        sys.path.insert(0, str(_EVAL_DIR))
+    from nlm_deep_research.source_snapshot import take_snapshot as _take_snapshot
+    _SNAPSHOT_AVAILABLE = True
+except Exception:
+    _SNAPSHOT_AVAILABLE = False
 
 # ── Config ──────────────────────────────────────────────
 NB1_ID = "f6ecd115-dd89-4c9b-b3dd-071e0e2f1876"
@@ -255,7 +267,7 @@ def nlm_replace_source(bundle_name: str, bundle_path: Path, old_source_ids: list
                 log.info(f"  Deleting old source: {old_id}")
                 try:
                     subprocess.run(
-                        [str(NLM_BIN), "source", "delete", NB1_ID, old_id],
+                        [str(NLM_BIN), "source", "delete", old_id, "--confirm"],
                         capture_output=True, text=True, timeout=30,
                     )
                     time.sleep(1.0)  # Rate limiting between deletes
@@ -295,12 +307,24 @@ def _check_source_count_invariant() -> None:
         sources = get_nb1_sources()
         total = sum(len(ids) for ids in sources.values())
         if total > MAX_SOURCES_THRESHOLD:
-            log.warning(
-                "INVARIANT VIOLATION: NB-1 has %d sources (threshold: %d). "
-                "Possible duplicate accumulation — run nlm_nb1_dedup_cleanup.py",
-                total,
-                MAX_SOURCES_THRESHOLD,
+            msg = (
+                f"⚠️ NB-1 source count ALERT: {total} sources "
+                f"(threshold: {MAX_SOURCES_THRESHOLD}). "
+                f"Possible duplicate accumulation — run nlm_nb1_dedup_cleanup.py"
             )
+            log.warning(msg)
+            bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+            chat_id = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+            if bot_token:
+                try:
+                    data = urllib.parse.urlencode({"chat_id": chat_id, "text": msg}).encode()
+                    urllib.request.urlopen(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        data=data,
+                        timeout=10,
+                    )
+                except Exception:
+                    pass
         else:
             log.info(f"Source count OK: {total}/{MAX_SOURCES_THRESHOLD}")
     except Exception as e:
@@ -360,6 +384,16 @@ def main():
         log.info("Upload manually: nlm source add NB1_ID --type file --file <bundle>")
     else:
         log.info("Uploading to NB-1 (delete-before-add)...")
+
+        # ARCH-8: snapshot before any mutation
+        if _SNAPSHOT_AVAILABLE:
+            try:
+                snap_path = _take_snapshot(NB1_ID, "nb1_codebase")
+                log.info(f"ARCH-8 snapshot saved: {snap_path.name}")
+            except Exception as snap_err:
+                log.warning(f"ARCH-8 snapshot failed (continuing): {snap_err}")
+        else:
+            log.debug("ARCH-8 snapshot not available (evaluator not in path)")
 
         # Fetch current sources to find existing IDs by title
         existing_sources = get_nb1_sources()
@@ -423,7 +457,7 @@ def _check_staleness_alert(log_file: Path) -> None:
 
     threshold_hours = 48
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "413539912")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "1125336968")
 
     if not log_file.exists():
         return

@@ -28,6 +28,7 @@ from .handoff import generate_handoff, save_handoff, validate_handoff_schema
 from .invariants import check_all_invariants, InvariantSeverity
 from .query_decomposer import QueryDecomposer
 from .registry import SourceRegistry
+from .source_snapshot import take_snapshot
 from .source_management import (
     compute_svs,
     compute_nhs,
@@ -207,6 +208,14 @@ class NLMPipeline:
             cluster_letter, cluster_name = self._today_cluster()
             summary["cluster"] = cluster_letter
             summary["cluster_name"] = cluster_name
+
+            # ARCH-8: snapshot before any mutation
+            if not self.dry_run:
+                try:
+                    snap = take_snapshot(NB2_NOTEBOOK_ID, "nb2_immigration")
+                    logger.info("ARCH-8 snapshot: %s", snap.name)
+                except Exception as snap_err:
+                    logger.warning("ARCH-8 snapshot failed (continuing): %s", snap_err)
 
             # Phase 2: L1 Query
             self._phase = PipelinePhase.RUNNING_L1

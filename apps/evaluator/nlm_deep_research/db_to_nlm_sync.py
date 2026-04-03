@@ -60,7 +60,7 @@ NLM_CLI = "nlm"
 
 # Telegram alert config
 TG_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TG_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "413539912")
+TG_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
 
 
 # ---------------------------------------------------------------------------
