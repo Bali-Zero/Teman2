@@ -247,17 +247,21 @@ class IntelStagingService:
                 )
                 continue
 
-            # Pending/approved items in staging root
+            # Pending/approved/published items in staging root
             for file_path in directory.glob("*.json"):
                 try:
                     with open(file_path) as f:
                         data = json.load(f)
+                        # Infer published status from published_at field
+                        status = data.get("status", "pending")
+                        if status != "published" and data.get("published_at"):
+                            status = "published"
                         items.append(
                             {
                                 "id": file_path.stem,
                                 "type": category,
                                 "title": data.get("title", "Untitled"),
-                                "status": data.get("status", "pending"),
+                                "status": status,
                                 "detected_at": data.get("detected_at"),
                                 "source": data.get("source_url", data.get("url", "")),
                                 "detection_type": data.get("detection_type", "NEW"),
