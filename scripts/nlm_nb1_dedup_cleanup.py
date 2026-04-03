@@ -214,7 +214,7 @@ def execute_deletions(
                     i, len(to_delete), title, sid,
                 )
                 _run_nlm(
-                    ["source", "delete", NB1_ID, sid, "--confirm"],
+                    ["source", "delete", sid, "--confirm"],
                     timeout=SOURCE_DELETE_TIMEOUT,
                 )
                 deleted += 1

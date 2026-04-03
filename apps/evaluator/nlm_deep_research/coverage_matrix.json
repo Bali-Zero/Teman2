@@ -1,0 +1,79 @@
+{
+  "immigration": {
+    "gaps": [
+      "\"answer\": \"Il testo integrale della circolare SE Kemnaker No. 3/836/PK.04/I/2026 definisce ufficialmente la regola della \\\"One Sponsor Policy\\\"?\\nL'integrazione automatica del MERP stabilita dalla UU ",
+      "\"conversation_id\": \"3e8fe6db-8873-4689-9bff-226ee875c09d\",",
+      "\"sources_used\": [],",
+      "\"citations\": {},",
+      "\"references\": []"
+    ],
+    "gaps_updated": "2026-04-03T13:43:12.586016+00:00",
+    "label": "Immigration & Visa"
+  },
+  "company": {
+    "gaps": [
+      "\"answer\": \"Quali sono i requisiti esatti di esperienza pregressa per l'ottenimento del Sertifikat Badan Usaha (SBU) per una PT PMA di nuova costituzione nei KBLI di costruzione post-Omnibus Law?\\nQual",
+      "\"conversation_id\": \"cd8add2e-e29c-4bc3-ae11-45d6f2cc0bd4\",",
+      "\"sources_used\": [],",
+      "\"citations\": {},",
+      "\"references\": []"
+    ],
+    "gaps_updated": "2026-04-03T13:44:08.066122+00:00",
+    "label": "Company Setup & KBLI"
+  },
+  "tax": {
+    "gaps": [
+      "\"answer\": \"Quando verr\u00e0 ufficialmente firmata dal Presidente Prabowo la revisione del PP 55/2022 per il regime UMKM dello 0,5%?\\nCome verr\u00e0 ristrutturato il Tax Holiday per rimanere compatibile con la",
+      "\"conversation_id\": \"542c5155-af86-4a43-94b8-58ceada047fe\",",
+      "\"sources_used\": [],",
+      "\"citations\": {},",
+      "\"references\": []"
+    ],
+    "gaps_updated": "2026-04-03T13:44:58.388821+00:00",
+    "label": "Tax & Fiscal"
+  },
+  "property": {
+    "gaps": [
+      "\"answer\": \"Qual \u00e8 il prezzo medio di mercato attuale per are per terreni in leasehold rispetto all'acquisto tramite PT PMA con titolo HGB nelle sotto-zone di Canggu per il 2026\\nQuali sono i costi leg",
+      "\"conversation_id\": \"73bcd55c-d360-4f28-b112-dfbe44aef542\",",
+      "\"sources_used\": [],",
+      "\"citations\": {},",
+      "\"references\": []"
+    ],
+    "gaps_updated": "2026-04-03T13:45:40.574414+00:00",
+    "label": "Property & Real Estate"
+  },
+  "operations": {
+    "gaps": [
+      "\"answer\": \"Qual \u00e8 la formula esatta e il tariffario aggiornato al 2026 per il calcolo della retribusi del PBG (Persetujuan Bangunan Gedung) per le strutture commerciali a Bali?\\nQuali sono le procedur",
+      "\"conversation_id\": \"4fabb6ba-10af-4158-bb5a-1e5280ad4e6e\",",
+      "\"sources_used\": [],",
+      "\"citations\": {},",
+      "\"references\": []"
+    ],
+    "gaps_updated": "2026-04-03T13:46:39.484521+00:00",
+    "label": "Operations & Compliance"
+  },
+  "editorial": {
+    "gaps": [
+      "\"answer\": \"Qual \u00e8 il budget mensile esatto destinato all'amplificazione a pagamento dei contenuti editoriali in lingua inglese\\nCome deve essere adattato culturalmente il tono di voce Zantara per mass",
+      "\"conversation_id\": \"6ac08048-f29f-4428-a078-bb6a59f6f88a\",",
+      "\"sources_used\": [],",
+      "\"citations\": {},",
+      "\"references\": []"
+    ],
+    "gaps_updated": "2026-04-03T13:47:21.489072+00:00",
+    "label": "Editorial & Content"
+  },
+  "lifestyle": {
+    "gaps": [
+      "\"answer\": \"Quali sono i costi esatti e le procedure doganali per importare i propri mobili e beni personali dall'Italia a Bali?\\nQual \u00e8 la procedura legale completa per registrare un matrimonio misto ",
+      "\"conversation_id\": \"6d6bec41-1395-472f-a6fe-1c61e3810c97\",",
+      "\"sources_used\": [],",
+      "\"citations\": {},",
+      "\"references\": []"
+    ],
+    "gaps_updated": "2026-04-03T13:48:04.668193+00:00",
+    "label": "Expat Life & Bali"
+  }
+}

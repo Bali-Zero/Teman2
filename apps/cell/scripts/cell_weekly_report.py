@@ -15,7 +15,7 @@ DATABASE_URL = os.environ.get(
     "postgresql://nuzantara@localhost:5432/nuzantara_dev",
 )
 TELEGRAM_BOT_TOKEN = os.environ.get("CELL_TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("CELL_TELEGRAM_CHAT_ID", "413539912")
+TELEGRAM_CHAT_ID = os.environ.get("CELL_TELEGRAM_CHAT_ID", "1125336968")
 
 
 async def fetch_stats(conn: asyncpg.Connection) -> dict:
