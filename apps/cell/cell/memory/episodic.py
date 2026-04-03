@@ -11,7 +11,7 @@ import json
 import logging
 import math
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger("cell.memory.episodic")
@@ -146,7 +146,7 @@ class EpisodicMemory:
                             ids,
                         )
             except Exception as e:
-                logger.debug(f"Failed to update recall_count: {e}")
+                logger.warning(f"Failed to update recall_count: {e}")
 
         return top
 
@@ -156,8 +156,10 @@ class EpisodicMemory:
             return await conn.fetchval("SELECT COUNT(*) FROM cell_episodes") or 0
 
     async def forget_weak(self) -> int:
-        """Remove episodes with lowest activation when over capacity.
+        """Remove episodes when over capacity.
 
+        Uses recall_count ASC, timestamp ASC as a proxy for low activation —
+        oldest episodes with lowest recall count are dropped first.
         Returns number of episodes deleted.
         """
         async with self._pool.acquire() as conn:
