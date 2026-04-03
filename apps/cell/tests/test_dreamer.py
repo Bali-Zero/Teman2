@@ -115,3 +115,34 @@ class TestDreamerRun:
         assert result.episodes_count == 1
         assert len(result.rules_extracted) == 1
         assert len(result.gaps_identified) == 1
+
+    @pytest.mark.asyncio
+    async def test_dream_llm_failure_still_returns_result(self):
+        """When LLM fails, dream() returns result with empty rules/gaps (graceful degradation)."""
+        rows = [
+            {
+                "id": 1, "timestamp": 1743700000.0,
+                "situation": json.dumps({"health_status": "yellow"}),
+                "emotion": "alert", "action_taken": "observe",
+                "outcome": "partial", "lesson": "Watched and waited",
+                "recall_count": 0,
+            }
+        ]
+        acquire_ctx = AsyncMock()
+        acquire_ctx.__aenter__ = AsyncMock(return_value=acquire_ctx)
+        acquire_ctx.__aexit__ = AsyncMock(return_value=None)
+        acquire_ctx.fetch = AsyncMock(return_value=rows)
+        acquire_ctx.execute = AsyncMock()
+        pool = MagicMock()
+        pool.acquire = MagicMock(return_value=acquire_ctx)
+
+        dreamer = Dreamer(pool=pool, ollama_url="http://localhost:11434")
+
+        with patch.object(dreamer, "_extract_rules_with_llm", new_callable=AsyncMock) as mock_extract:
+            mock_extract.return_value = ([], [])  # LLM returned nothing
+            result = await dreamer.dream()
+
+        assert result.episodes_count == 1
+        assert result.rules_extracted == []
+        assert result.gaps_identified == []
+        assert "episode" in result.summary.lower() or "rule" in result.summary.lower()

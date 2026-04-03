@@ -134,8 +134,7 @@ class Dreamer:
                 """INSERT INTO cell_dreams
                    (dream_date, episodes_count, rules_extracted, merged_count,
                     gaps_identified, summary)
-                   VALUES ($1, $2, $3, $4, $5, $6)
-                   ON CONFLICT DO NOTHING""",
+                   VALUES ($1, $2, $3, $4, $5, $6)""",
                 result.dream_date,
                 result.episodes_count,
                 json.dumps(result.rules_extracted),
