@@ -147,39 +147,50 @@ nav {
 }
 .brand-text { display: flex; flex-direction: column; gap: 5px; }
 .brand-tagline {
-  font-family: 'Arial Black', 'Impact', 'Franklin Gothic Heavy', sans-serif;
-  font-weight: 900; font-style: normal;
-  font-size: 46px; letter-spacing: 0.03em;
-  color: #fff; line-height: 1; margin: 0;
-  display: flex; align-items: center; gap: 0;
-  text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  font-family: "Arial Black", "Impact", "Franklin Gothic Heavy", sans-serif;
+  font-weight: 900;
+  font-style: normal;
+  font-size: 46px;
+  letter-spacing: 0.03em;
+  color: #fff;
+  line-height: 1;
+  margin: 0;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
 .brand-logo-3 {
   color: #cc1a1a;
-  font-size: 1.25em;
-  line-height: 0.85;
+  font-size: 1em;
+  line-height: 1;
   display: inline-block;
-  transform: translateY(3px);
-  text-shadow: 2px 3px 8px rgba(0,0,0,0.7);
+  text-shadow: 2px 3px 8px rgba(0, 0, 0, 0.7);
 }
 .brand-om-circle {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 0.85em; height: 0.85em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.78em;
+  height: 0.78em;
   border: 3px solid #fff;
   border-radius: 50%;
   position: relative;
   flex-shrink: 0;
+  margin-left: 0.04em;
 }
 .brand-om-circle::after {
-  content: 'ॐ';
+  content: "ॐ";
   font-size: 0.5em;
   font-family: serif;
   color: #111;
   background: #fff;
   border-radius: 50%;
-  width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  position: absolute; top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 .brand-sub {
   font-family: 'JetBrains Mono', monospace;
