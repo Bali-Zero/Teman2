@@ -159,7 +159,7 @@ nav {
 }
 .brand-logo-3 {
   color: #cc1a1a;
-  font-size: 1em;
+  font-size: 0.88em;
   line-height: 1;
   display: inline-block;
   text-shadow: 2px 3px 8px rgba(0, 0, 0, 0.7);
@@ -168,8 +168,8 @@ nav {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0.72em;
-  height: 0.72em;
+  width: 0.76em;
+  height: 0.76em;
   border: 2.5px solid #fff;
   border-radius: 50%;
   position: relative;
