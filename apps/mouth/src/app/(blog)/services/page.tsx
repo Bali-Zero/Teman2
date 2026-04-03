@@ -599,33 +599,6 @@ const TEAM_MEMBERS = [
     image: "/static/team/ruslana.jpg",
   },
   {
-    name: "Anna",
-    initials: "AN",
-    role: "Advisor",
-    gradient: "bg-gradient-to-br from-sky-500 to-blue-600",
-    image: "/static/team/anna.jpeg",
-  },
-  {
-    name: "Marta",
-    initials: "MA",
-    role: "Advisor",
-    gradient: "bg-gradient-to-br from-fuchsia-500 to-pink-600",
-    image: "/static/team/marta.jpeg",
-  },
-  {
-    name: "Olena",
-    initials: "OL",
-    role: "Advisor",
-    gradient: "bg-gradient-to-br from-cyan-500 to-teal-600",
-    image: "/static/team/olena.jpeg",
-  },
-  {
-    name: "Anton",
-    initials: "AN",
-    role: "Consultant",
-    gradient: "bg-gradient-to-br from-emerald-500 to-teal-600",
-  },
-  {
     name: "Vino",
     initials: "VI",
     role: "Consultant",

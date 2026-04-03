@@ -355,12 +355,6 @@ const LEADERSHIP: TeamMember[] = [
 
 const SETUP_TEAM: TeamMember[] = [
   {
-    name: "Anton",
-    initials: "AN",
-    role: "Executive Consultant",
-    gradient: "bg-gradient-to-br from-emerald-500 to-teal-600",
-  },
-  {
     name: "Vino",
     initials: "VI",
     role: "Junior Consultant",
@@ -405,27 +399,6 @@ const SETUP_TEAM: TeamMember[] = [
     initials: "DM",
     role: "Junior Consultant",
     gradient: "bg-gradient-to-br from-teal-500 to-emerald-600",
-  },
-  {
-    name: "Marta",
-    initials: "MA",
-    role: "Setup Consultant",
-    gradient: "bg-gradient-to-br from-fuchsia-500 to-pink-600",
-    photo: "/static/team/marta.jpeg",
-  },
-  {
-    name: "Olena",
-    initials: "OL",
-    role: "Setup Consultant",
-    gradient: "bg-gradient-to-br from-cyan-500 to-teal-600",
-    photo: "/static/team/olena.jpeg",
-  },
-  {
-    name: "Anna",
-    initials: "AN",
-    role: "Specialist Advisor",
-    gradient: "bg-gradient-to-br from-sky-500 to-blue-600",
-    photo: "/static/team/anna.jpeg",
   },
 ];
 
