@@ -209,7 +209,7 @@ class TestSaveConversation:
                 "/api/bali-zero/conversations/save",
                 json={
                     "messages": [{"role": "user", "content": "Test"}],
-                    "metadata": {"team_member": "Anton", "source": "web"},
+                    "metadata": {"team_member": "Krisna", "source": "web"},
                 },
                 headers={"Authorization": f"Bearer {valid_jwt_token}"},
             )
