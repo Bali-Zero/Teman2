@@ -377,11 +377,14 @@ class TestGetClientsStats:
             {"practice_type": "KITAS", "count": 7},
         )
         mock_count_row = TestCreateClient._create_mock_row({"count": 3})
+        mock_passport_health_row = TestCreateClient._create_mock_row(
+            {"expired": 2, "expiring_soon": 5, "silent_30d": 1},
+        )
 
         conn.fetch = AsyncMock(
             side_effect=[[mock_status_row], [mock_team_row], [mock_practice_type_row]],
         )
-        conn.fetchrow = AsyncMock(return_value=mock_count_row)
+        conn.fetchrow = AsyncMock(side_effect=[mock_count_row, mock_passport_health_row])
 
         response = client.get("/api/crm/clients/stats/overview")
 
