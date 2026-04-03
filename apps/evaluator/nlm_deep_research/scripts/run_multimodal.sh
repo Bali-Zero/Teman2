@@ -51,5 +51,19 @@ cd "$PROJECT_ROOT"
 $PYTHON -m apps.evaluator.nlm_deep_research.multimodal_pipeline --run "$@" 2>&1 | tee -a "$LOG_FILE"
 
 EXIT_CODE="${PIPESTATUS[0]}"
+
+if [ "$EXIT_CODE" -eq 0 ]; then
+    PYTHONPATH=. "$PYTHON" -m apps.evaluator.nlm_deep_research.heartbeat_monitor \
+        --record "multimodal_pipeline" 2>/dev/null || true
+else
+    echo "[$(date '+%Y-%m-%d %H:%M:%S WITA')] Multimodal pipeline FAILED (exit=$EXIT_CODE)" | tee -a "$LOG_FILE"
+    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]; then
+        MSG="🚨 Multimodal pipeline FAILED (exit $EXIT_CODE) — check $LOG_FILE"
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
+            -d "text=${MSG}" >/dev/null 2>&1 || true
+    fi
+fi
+
 echo "[$(date '+%Y-%m-%d %H:%M:%S WITA')] Multimodal pipeline finished (exit=$EXIT_CODE)" | tee -a "$LOG_FILE"
 exit $EXIT_CODE
