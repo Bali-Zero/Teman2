@@ -43,11 +43,17 @@ from backend.services.rag.multi_agent_coordinator import MultiAgentCoordinator, 
 from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import AgentState
 
+# GraphRAG v6.0 — Unified Query Planner + KG Auto-Expansion
+from backend.services.rag.agentic.query_planner import QueryPlanner
+from backend.services.rag.kg_auto_expansion import KGAutoExpansion
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # Info level for core orchestration
 
-# ARCH-7: GraphRAG verification timeout (seconds)
-KG_VERIFICATION_TIMEOUT = 4.0
+# Feature flag: USE_QUERY_PLANNER (shadow mode — logs plan but doesn't route)
+import os
+
+_USE_QUERY_PLANNER = os.getenv("USE_QUERY_PLANNER", "false").lower() in ("true", "1", "yes")
 
 
 class OrchestratorCore:
@@ -116,6 +122,18 @@ class OrchestratorCore:
         self.routing_manager = OrchestratorRoutingManager()
         self.metrics_manager = OrchestratorMetricsManager()
         self.response_builder = OrchestratorResponseBuilder(entity_extractor=entity_extractor)
+
+        # GraphRAG v6.0: Unified Query Planner (shadow mode)
+        self._query_planner = QueryPlanner()
+
+        # GraphRAG v6.0: KG Auto-Expansion (quarantine pattern)
+        self._kg_auto_expansion: KGAutoExpansion | None = None
+        if db_pool:
+            try:
+                self._kg_auto_expansion = KGAutoExpansion(db_pool=db_pool)
+                logger.info("✅ [GraphRAG v6] KGAutoExpansion ready (quarantine pattern)")
+            except Exception as e:
+                logger.warning(f"⚠️ [GraphRAG v6] KGAutoExpansion init skipped: {e}")
 
         # Phase 6: Multi-Agent Coordinator (lazy-initialized)
         self._multi_agent_coordinator: MultiAgentCoordinator | None = None
@@ -657,6 +675,14 @@ class OrchestratorCore:
             session_id=session_id,
         )
 
+        # 1b. [GraphRAG v6] Shadow mode: run QueryPlanner async (fire-and-forget)
+        # Planner result is LOGGED but NOT used for routing (shadow mode).
+        # Switch to active mode when USE_QUERY_PLANNER=true after validation.
+        if self._query_planner:
+            asyncio.create_task(
+                self._run_query_planner_shadow(query, user_context),
+            )
+
         # 2. Check gates (security, greeting, etc.)
         gate_result = self.query_gates.run_all_gates(
             query=query,
@@ -713,9 +739,6 @@ class OrchestratorCore:
         nlm_task: asyncio.Task | None = None
         nlm_cached_result: dict | None = None
         nlm_domain: dict | None = None
-
-        # ARCH-4: Cross-notebook correlator task (multi-domain queries only)
-        cross_task: asyncio.Task | None = None
 
         if self.nlm_enrichment_service:
             from backend.services.oracle.nlm_notebook_registry import (
@@ -929,88 +952,80 @@ class OrchestratorCore:
                 except Exception as e:
                     logger.debug(f"NLM cache set skipped: {e}")
 
-        # ARCH-7: GraphRAG verification of NLM enrichment (only in CAUTIOUS zone)
-        if cautious and nlm_result:
-            try:
-                from backend.services.oracle.graphrag_verifier import get_verifier
-                db_pool = getattr(self, "db_pool", None)
-                verifier = get_verifier(db_pool)
-                nlm_text = nlm_result.get("answer", "")
-                if nlm_text:
-                    kg_result = await asyncio.wait_for(
-                        verifier.verify(nlm_text), timeout=KG_VERIFICATION_TIMEOUT
-                    )
-                    result.kg_verification = {
-                        "status": kg_result.overall_status,
-                        "score": kg_result.score,
-                        "claims_verified": kg_result.claims_verified,
-                        "claims_total": kg_result.claims_total,
-                        "evidence": kg_result.evidence[:5],
-                        "hallucination_risk": kg_result.hallucination_risk,
-                    }
-                    # If KG says LOW → suppress NLM enrichment from result
-                    if kg_result.overall_status == "LOW":
-                        logger.warning(
-                            "ARCH-7: NLM enrichment suppressed (LOW KG verification, "
-                            "hallucination risk) for domain=%s",
-                            nlm_domain.get("domain") if nlm_domain else "unknown",
-                        )
-                        result.nlm_enrichment = None
-                    else:
-                        logger.info(
-                            "ARCH-7: KG verification=%s score=%.2f claims=%d/%d",
-                            kg_result.overall_status,
-                            kg_result.score,
-                            kg_result.claims_verified,
-                            kg_result.claims_total,
-                        )
-            except (asyncio.TimeoutError, asyncio.CancelledError):
-                logger.debug("ARCH-7: GraphRAG verification timed out, skipping")
-            except Exception as exc:
-                logger.debug("ARCH-7: GraphRAG verification error: %s", exc)
-
-        # ARCH-4: Cross-notebook correlation result (only in CAUTIOUS zone)
-        if cross_task is not None:
-            if cautious:
-                try:
-                    cross_result = await asyncio.wait_for(cross_task, timeout=5.0)
-                    if cross_result and cross_result.successful_domains:
-                        result.cross_notebook_result = {
-                            "domains": cross_result.domains_matched,
-                            "successful_domains": cross_result.successful_domains,
-                            "synthesis": cross_result.synthesis,
-                            "synthesis_source": cross_result.synthesis_source,
-                            "has_contradictions": cross_result.has_contradictions,
-                            "contradictions": [
-                                {
-                                    "domain_a": c.domain_a,
-                                    "domain_b": c.domain_b,
-                                    "claim_a": c.claim_a[:200],
-                                    "claim_b": c.claim_b[:200],
-                                    "confidence": c.confidence,
-                                }
-                                for c in cross_result.contradictions[:3]
-                            ],
-                            "total_latency_ms": cross_result.total_latency_ms,
-                        }
-                        logger.info(
-                            "ARCH-4: cross-notebook result merged — domains=%s contradictions=%d",
-                            cross_result.successful_domains,
-                            len(cross_result.contradictions),
-                        )
-                except (asyncio.TimeoutError, asyncio.CancelledError):
-                    logger.debug("ARCH-4: cross-notebook task timed out (5s), skipping")
-                except Exception as exc:
-                    logger.debug("ARCH-4: cross-notebook merge error: %s", exc)
-            else:
-                # Not CAUTIOUS — cancel the speculative cross task
-                cross_task.cancel()
-                try:
-                    await cross_task
-                except (asyncio.CancelledError, Exception):
-                    pass
+        # 14. [GraphRAG v6] KG Auto-Expansion (fire-and-forget)
+        # Extract from SOURCE CHUNKS, not from LLM response — avoids feedback loop.
+        evidence_score_val = getattr(state, "evidence_score", evidence_score)
+        if self._kg_auto_expansion and evidence_score_val and evidence_score_val > 0.6:
+            # Collect source chunk texts from tool results
+            source_chunks_text = self._extract_source_chunks_text(state)
+            source_chunk_ids = [
+                s.get("chunk_id", s.get("id", ""))
+                for s in sources
+                if isinstance(s, dict)
+            ]
+            asyncio.create_task(
+                self._kg_auto_expansion.expand_from_response(
+                    response_text=result.answer,  # NOT used for extraction
+                    evidence_score=evidence_score_val,
+                    source_chunks_text=source_chunks_text,
+                    source_chunk_ids=source_chunk_ids,
+                    query=query,
+                ),
+            )
 
         return result
+
+    async def _run_query_planner_shadow(
+        self,
+        query: str,
+        user_context: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Run QueryPlanner in shadow mode (async fire-and-forget).
+
+        Logs the plan but does NOT use it for routing.
+        Used to collect planner_match_rate metrics before switching.
+        """
+        try:
+            plan = self._query_planner.plan(query, user_context)
+            logger.info(
+                f"📋 [GraphRAG v6 SHADOW] Plan: domain={plan.domain.value}, "
+                f"collections={plan.collections}, kg={plan.kg_strategy.value}, "
+                f"complexity={plan.complexity.value}",
+            )
+        except Exception as e:
+            logger.debug(f"⚠️ [GraphRAG v6 SHADOW] Planner error: {e}")
+
+    def _extract_source_chunks_text(self, state: AgentState) -> list[str]:
+        """
+        Extract source chunk texts from tool results in AgentState.
+
+        Used by KG auto-expansion to extract from GROUND TRUTH documents,
+        not from LLM-generated response text.
+        """
+        chunks: list[str] = []
+        steps = getattr(state, "steps", [])
+        if not steps:
+            return chunks
+
+        for step in steps:
+            observation = getattr(step, "observation", None) or (
+                step.get("observation") if isinstance(step, dict) else None
+            )
+            if not observation:
+                continue
+
+            # Vector search results typically have 'content' or 'text' fields
+            if isinstance(observation, list):
+                for item in observation:
+                    if isinstance(item, dict):
+                        text = item.get("content") or item.get("text") or ""
+                        if text and len(text) > 50:  # Skip tiny fragments
+                            chunks.append(text)
+            elif isinstance(observation, str) and len(observation) > 50:
+                chunks.append(observation)
+
+        return chunks[:10]  # Max 10 chunks per response
 
     async def _log_query_analytics(
         self,
