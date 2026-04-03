@@ -10,6 +10,7 @@ import { useTeamStatus } from '@/hooks/useTeamStatus';
 import { logger } from '@/lib/logger';
 import { ErrorBoundary } from '@/components/optimization';
 import { CellWidget } from '@/components/cell/CellWidget';
+import { WorkspaceAssistant } from '@/components/workspace/WorkspaceAssistant';
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -249,6 +250,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         </div>
       </div>
       <CellWidget />
+      <WorkspaceAssistant />
     </ToastProvider>
   );
 }

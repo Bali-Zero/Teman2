@@ -77,9 +77,37 @@ class ConversationEngine:
             # 2. Build conversation history
             conversation_history = context.get("history", [])
 
+            # 2.5. Agent Mesh: inject team member context into conversation
+            query_text = message.text
+            agent_ctx = message.metadata.get("agent_mesh")
+            if agent_ctx:
+                agent_name = message.metadata.get("agent_name", "Team Member")
+                agent_role = message.metadata.get("agent_role_display", "")
+                agent_system = message.metadata.get("agent_system_context", "")
+                agent_scope = message.metadata.get("agent_client_scope", "all")
+                agent_email = message.metadata.get("agent_email", "")
+
+                # Prepend agent context so the LLM knows who it's talking to
+                scope_instruction = ""
+                if agent_scope == "assigned":
+                    scope_instruction = (
+                        f" When querying client data, filter by assigned_to='{agent_email}'. "
+                        f"Only show clients assigned to {agent_name}."
+                    )
+
+                context_prefix = (
+                    f"[AGENT CONTEXT] Speaking with {agent_name} ({agent_role}). "
+                    f"{agent_system}{scope_instruction}\n\n"
+                )
+                query_text = context_prefix + message.text
+
+                logger.info(
+                    f"🤖 Agent Mesh context injected for {agent_name} ({agent_role})",
+                )
+
             # 3. Stream through orchestrator
             async for event in self.orchestrator.stream_query(
-                query=message.text,
+                query=query_text,
                 user_id=message.user_id,
                 session_id=message.session_id,
                 conversation_history=conversation_history,
