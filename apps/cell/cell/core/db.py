@@ -171,3 +171,52 @@ async def create_episodes_table() -> None:
         logger.info("cell_episodes table ready.")
     except Exception as e:
         logger.error(f"Failed to create cell_episodes table: {e}")
+
+
+async def create_dreams_table() -> None:
+    """Create cell_dreams table for Dreamer nocturnal consolidation."""
+    try:
+        pool = await get_pool()
+        await pool.execute("""
+            CREATE TABLE IF NOT EXISTS cell_dreams (
+                id              SERIAL PRIMARY KEY,
+                dream_date      DATE NOT NULL,
+                episodes_count  INTEGER NOT NULL DEFAULT 0,
+                rules_extracted JSONB NOT NULL DEFAULT '[]',
+                merged_count    INTEGER NOT NULL DEFAULT 0,
+                gaps_identified JSONB NOT NULL DEFAULT '[]',
+                summary         TEXT NOT NULL DEFAULT '',
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await pool.execute("""
+            CREATE INDEX IF NOT EXISTS idx_cell_dreams_date
+            ON cell_dreams (dream_date DESC)
+        """)
+        logger.info("cell_dreams table ready.")
+    except Exception as e:
+        logger.error(f"Failed to create cell_dreams table: {e}")
+
+
+async def create_journal_table() -> None:
+    """Create cell_journal table for daily narrative entries."""
+    try:
+        pool = await get_pool()
+        await pool.execute("""
+            CREATE TABLE IF NOT EXISTS cell_journal (
+                id              SERIAL PRIMARY KEY,
+                journal_date    DATE NOT NULL UNIQUE,
+                narrative       TEXT NOT NULL,
+                emotion_summary VARCHAR(32) NOT NULL DEFAULT 'calm',
+                actions_taken   INTEGER NOT NULL DEFAULT 0,
+                lessons_count   INTEGER NOT NULL DEFAULT 0,
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await pool.execute("""
+            CREATE INDEX IF NOT EXISTS idx_cell_journal_date
+            ON cell_journal (journal_date DESC)
+        """)
+        logger.info("cell_journal table ready.")
+    except Exception as e:
+        logger.error(f"Failed to create cell_journal table: {e}")
