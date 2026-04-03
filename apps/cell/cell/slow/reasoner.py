@@ -31,7 +31,7 @@ Your DNA rules (priority order):
 AVAILABLE ACTIONS (you can ONLY choose from these):
 {actions}
 
-{ltm_context}
+{journal_context}{ltm_context}
 RESPOND WITH EXACTLY ONE JSON OBJECT:
 {{"action": "<action_name>", "reason": "<why this action>", "confidence": <0.0-1.0>}}
 
@@ -66,14 +66,15 @@ class SlowReasoner:
         self._registry = ActionRegistry()
         self._patterns = PatternIndex()
 
-    def _build_system_prompt(self, ltm_context: str = "") -> str:
+    def _build_system_prompt(self, ltm_context: str = "", journal_context: str = "") -> str:
         actions = self._registry.all()
         action_list = "\n".join(
             f"- {name}: {a.description} (cooldown: {a.cooldown_seconds}s, max: {a.max_per_day}/day)"
             for name, a in actions.items()
         )
         ltm_block = (ltm_context + "\n") if ltm_context else ""
-        return SYSTEM_PROMPT.format(actions=action_list, ltm_context=ltm_block)
+        journal_block = (journal_context + "\n") if journal_context else ""
+        return SYSTEM_PROMPT.format(actions=action_list, ltm_context=ltm_block, journal_context=journal_block)
 
     def _build_user_prompt(
         self,
@@ -230,6 +231,7 @@ What action should I take?"""
         stm_context: str = "",
         trend_context: str = "",
         ltm_context: str = "",
+        journal_context: str = "",
     ) -> ReasonerProposal:
         """Reason about the current situation and propose an action.
 
@@ -260,7 +262,7 @@ What action should I take?"""
                 cost_usd=0.0,
             )
 
-        system = self._build_system_prompt(ltm_context=ltm_context)
+        system = self._build_system_prompt(ltm_context=ltm_context, journal_context=journal_context)
         user = self._build_user_prompt(
             health_status, response_time_ms, error_message,
             recent_history or [], budget_spent, budget_limit,
