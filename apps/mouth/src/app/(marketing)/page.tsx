@@ -160,21 +160,19 @@ nav {
 }
 .brand-logo-3 {
   color: #cc1a1a;
-  font-size: 1.55em;
-  line-height: 0.85;
+  font-size: 1.5em;
+  line-height: 1;
   display: inline-block;
-  vertical-align: middle;
-  text-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 100, 100, 0.4);
+  vertical-align: top;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
   filter: drop-shadow(0 2px 4px rgba(180, 0, 0, 0.5));
 }
 .brand-om-circle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0.9em;
-  height: 0.9em;
+  width: 0.95em;
+  height: 0.95em;
   background: #fff;
   border-radius: 50%;
   position: relative;
@@ -183,7 +181,7 @@ nav {
 }
 .brand-om-circle::after {
   content: "ॐ";
-  font-size: 0.6em;
+  font-size: 0.65em;
   font-family: serif;
   color: #111;
   display: flex;
