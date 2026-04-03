@@ -464,6 +464,179 @@ def run_layer_b(dry_run: bool = False) -> dict[str, Any]:
     return result
 
 
+# ── Layer C: Gap Remediation Loop ────────────────────────────────────────────
+
+# Max remediation targets per run (NLM rate limiting)
+MAX_REMEDIATIONS_PER_RUN = 3
+
+# Gemini search timeout
+GEMINI_TIMEOUT = 120
+
+# Delay between NLM source_add calls
+REMEDIATION_DELAY = 15  # seconds
+
+
+def _run_gemini_search(query: str) -> str | None:
+    """Use Gemini CLI (built-in web search) to find content for a gap topic."""
+    prompt = (
+        f"Search the web for: {query}\n\n"
+        "Provide a comprehensive 300-500 word summary of the most recent and authoritative "
+        "information found. Include dates, regulation numbers, and official sources. "
+        "Write in English. If you find nothing relevant, respond ONLY with: NO_RESULT"
+    )
+    try:
+        result = subprocess.run(
+            ["gemini", "-p", prompt, "--model", "gemini-3-flash-preview"],
+            capture_output=True, text=True, timeout=GEMINI_TIMEOUT,
+        )
+        if result.returncode != 0:
+            logger.warning("Gemini CLI error: %s", result.stderr.strip()[:200])
+            return None
+        output = result.stdout.strip()
+        if not output or "NO_RESULT" in output.upper():
+            return None
+        return output
+    except subprocess.TimeoutExpired:
+        logger.warning("Gemini search timeout for: %s", query[:60])
+        return None
+    except FileNotFoundError:
+        logger.error("gemini CLI not found in PATH")
+        return None
+    except Exception as exc:
+        logger.error("Gemini search error: %s", exc)
+        return None
+
+
+def _add_source_to_notebook(notebook_id: str, title: str, content: str, timeout: int = 60) -> bool:
+    """Add a text source to a NLM notebook via nlm CLI."""
+    try:
+        result = subprocess.run(
+            ["nlm", "source", "add", notebook_id, "--text", content, "--title", title],
+            capture_output=True, text=True, timeout=timeout,
+        )
+        if result.returncode != 0:
+            logger.error("nlm source add failed for %s: %s", notebook_id[:8], result.stderr.strip()[:200])
+            return False
+        logger.info("Added source '%s' to notebook %s", title[:50], notebook_id[:8])
+        return True
+    except subprocess.TimeoutExpired:
+        logger.warning("nlm source add timeout for notebook %s", notebook_id[:8])
+        return False
+    except Exception as exc:
+        logger.error("Source add error: %s", exc)
+        return False
+
+
+def run_remediation(dry_run: bool = False) -> dict[str, Any]:
+    """Gap Remediation Loop: find GAP/STALE topics → Gemini search → nlm source add.
+
+    This is the 'close the loop' step that was missing from the original ARCH-5.
+    Instead of only detecting gaps, it actively fills them:
+    1. Read coverage_matrix.json for GAP and STALE topics
+    2. For each topic (up to MAX_REMEDIATIONS_PER_RUN): search via Gemini CLI
+    3. Add the result as a new source directly to the notebook
+
+    Priority: GAP topics first, then STALE.
+    """
+    result: dict[str, Any] = {
+        "status": "ok",
+        "gap_topics_found": 0,
+        "stale_topics_found": 0,
+        "sources_added": 0,
+        "search_failed": 0,
+        "dry_run": dry_run,
+        "errors": [],
+        "remediated": [],
+    }
+
+    if not COVERAGE_MATRIX_FILE.exists():
+        logger.warning("coverage_matrix.json not found — run --layer-b first")
+        result["status"] = "skipped"
+        return result
+
+    matrix = _load_matrix()
+
+    # Collect targets sorted by priority: GAP first, then STALE
+    targets: list[tuple[str, str, str, str]] = []  # (priority, domain, topic, nb_id)
+    for domain, data in matrix.items():
+        coverage = data.get("coverage", {})
+        nb_id = DOMAIN_TOPICS.get(domain, {}).get("notebook_id", "")
+        if not nb_id:
+            continue
+        for topic, classification in coverage.items():
+            if classification == "GAP":
+                result["gap_topics_found"] += 1
+                targets.append(("1_gap", domain, topic, nb_id))
+            elif classification == "STALE":
+                result["stale_topics_found"] += 1
+                targets.append(("2_stale", domain, topic, nb_id))
+
+    targets.sort(key=lambda x: x[0])
+    to_process = targets[:MAX_REMEDIATIONS_PER_RUN]
+
+    logger.info(
+        "Remediation: %d GAP + %d STALE topics found. Processing %d.",
+        result["gap_topics_found"], result["stale_topics_found"], len(to_process),
+    )
+
+    for priority, domain, topic, nb_id in to_process:
+        search_query = f"{topic} Indonesia 2025 2026 latest regulations official"
+        label = DOMAIN_TOPICS.get(domain, {}).get("label", domain)
+        logger.info("[%s] Remediating: %s — %s", priority.split("_")[1].upper(), label, topic[:60])
+
+        if dry_run:
+            logger.info("  DRY RUN: would search '%s' → add to %s", topic[:60], nb_id[:8])
+            result["sources_added"] += 1
+            result["remediated"].append({"domain": domain, "topic": topic, "status": "dry_run"})
+            continue
+
+        content = _run_gemini_search(search_query)
+        if not content:
+            logger.warning("  No content found for: %s", topic[:60])
+            result["search_failed"] += 1
+            result["errors"].append(f"{domain}/{topic[:40]}: no search result")
+            continue
+
+        # Title includes domain label and topic for easy identification
+        source_title = f"[{label}] {topic[:80]} — {_now_iso()[:10]}"
+        added = _add_source_to_notebook(nb_id, source_title, content)
+
+        if added:
+            result["sources_added"] += 1
+            result["remediated"].append({
+                "domain": domain,
+                "topic": topic,
+                "status": "added",
+                "title": source_title,
+            })
+            # Update matrix: mark as FRESH since we just added content
+            if domain in matrix and "coverage" in matrix[domain]:
+                matrix[domain]["coverage"][topic] = "FRESH"
+                matrix[domain]["coverage_updated"] = _now_iso()
+            time.sleep(REMEDIATION_DELAY)
+        else:
+            result["errors"].append(f"{domain}/{topic[:40]}: source add failed")
+
+    # Save updated matrix
+    if not dry_run and result["sources_added"] > 0:
+        _save_matrix(matrix)
+
+        msg_lines = ["🔧 <b>Gap Remediation Loop</b>"]
+        msg_lines.append(f"GAP trovati: {result['gap_topics_found']} | STALE: {result['stale_topics_found']}")
+        msg_lines.append(f"✅ Fonti aggiunte: {result['sources_added']}")
+        if result["search_failed"] > 0:
+            msg_lines.append(f"⚠️ Ricerche fallite: {result['search_failed']}")
+        for item in result["remediated"]:
+            if item["status"] == "added":
+                msg_lines.append(f"  • {item['domain']}: {item['topic'][:50]}")
+        _send_telegram("\n".join(msg_lines))
+
+    if result["errors"]:
+        result["status"] = "partial"
+
+    return result
+
+
 # ── Status report ─────────────────────────────────────────────────────────────
 
 def get_status() -> dict[str, Any]:
@@ -517,6 +690,8 @@ def main() -> None:
                        help="Layer A: essential questions gap discovery (daily)")
     group.add_argument("--layer-b", action="store_true",
                        help="Layer B: coverage matrix freshness assessment (weekly)")
+    group.add_argument("--remediate", action="store_true",
+                       help="Gap remediation loop: Gemini search → nlm source add for GAP/STALE topics")
     group.add_argument("--status", action="store_true",
                        help="Show current coverage matrix status")
     parser.add_argument("--dry-run", action="store_true",
@@ -558,6 +733,17 @@ def main() -> None:
         if result["errors"]:
             print(f"  Errors: {result['errors']}")
         sys.exit(0 if result["status"] == "ok" else 1)
+
+    elif args.remediate:
+        result = run_remediation(dry_run=args.dry_run)
+        print(f"\nRemediation: {result['status']}")
+        print(f"  GAP topics found: {result['gap_topics_found']}")
+        print(f"  STALE topics found: {result['stale_topics_found']}")
+        print(f"  Sources added: {result['sources_added']}")
+        print(f"  Search failed: {result['search_failed']}")
+        if result["errors"]:
+            print(f"  Errors: {result['errors']}")
+        sys.exit(0 if result["status"] in ("ok", "partial") else 1)
 
 
 if __name__ == "__main__":
