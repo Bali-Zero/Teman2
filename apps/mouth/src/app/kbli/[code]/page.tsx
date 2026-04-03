@@ -23,7 +23,9 @@ import { LicensingSection } from "@/components/kbli/LicensingSection";
 import { getRelatedArticle } from "@/lib/kbli-articles";
 import { GOLD_HERO_IMAGES } from "@/lib/kbli-hero-images";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
+import dynamic from "next/dynamic";
+
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 
 const ZantaraChat = lazy(() =>
   import("@/components/kbli/ZantaraChat").then((mod) => ({

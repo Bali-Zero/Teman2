@@ -8,7 +8,9 @@ import type {
   KBLILicenseByScale,
   KBLIPmaInfo,
 } from "@/lib/kbli-types";
-import ReactMarkdown from "react-markdown";
+import dynamic from "next/dynamic";
+
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 
 // =============================================================================
 // Types
