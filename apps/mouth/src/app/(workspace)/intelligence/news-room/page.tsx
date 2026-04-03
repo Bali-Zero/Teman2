@@ -288,8 +288,12 @@ export default function NewsRoomPage() {
         `"${response.title}" published${position !== "latest" ? ` to ${position.replace("_", " ")}` : ""}`,
       );
 
-      // Reload news list to remove published item
-      loadNews();
+      // Mark as published locally (keep card visible with "Published" ribbon)
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === item.id ? { ...i, status: "published" as const } : i,
+        ),
+      );
     } catch (error) {
       logger.error(
         "Failed to publish item",
@@ -609,6 +613,36 @@ export default function NewsRoomPage() {
                   </div>
                 )}
 
+                {/* Published diagonal ribbon */}
+                {item.status === "published" && (
+                  <div
+                    className="absolute z-20 pointer-events-none"
+                    style={{
+                      top: 18,
+                      right: -32,
+                      width: 120,
+                      transform: "rotate(45deg)",
+                      background: "linear-gradient(135deg, rgba(16,185,129,0.85), rgba(5,150,105,0.85))",
+                      backdropFilter: "blur(8px)",
+                      textAlign: "center",
+                      padding: "2px 0",
+                      boxShadow: "0 2px 8px rgba(16,185,129,0.3)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "#fff",
+                        fontSize: 7,
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Published
+                    </span>
+                  </div>
+                )}
+
                 {/* Checkbox */}
                 <div className="absolute top-2.5 left-2.5 z-10">
                   <button
@@ -736,69 +770,87 @@ export default function NewsRoomPage() {
                   </button>
                 </div>
 
-                {/* Footer — position select + publish */}
+                {/* Footer — position select + publish (or published badge) */}
                 <div className="px-3 pb-3 space-y-1.5">
-                  <Select
-                    value={getPosition(item.id)}
-                    onValueChange={(v) =>
-                      setPublishPosition((prev) => ({ ...prev, [item.id]: v }))
-                    }
-                  >
-                    <SelectTrigger
-                      className="h-7 text-[10px] rounded-lg font-medium"
+                  {item.status === "published" ? (
+                    <div
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold tracking-wide"
                       style={{
-                        background: "rgba(20,20,24,0.9)",
-                        borderColor: "rgba(255,255,255,0.1)",
-                        color: "var(--bz-text-1)",
+                        background: "rgba(16,185,129,0.1)",
+                        color: "rgba(52,211,153,0.8)",
+                        border: "1px solid rgba(16,185,129,0.2)",
                       }}
                     >
-                      <MapPin
-                        className="w-3 h-3 mr-1"
-                        style={{ color: pal.accent }}
-                      />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      className="rounded-xl"
-                      style={{
-                        background: "rgba(20,20,24,0.98)",
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        backdropFilter: "blur(20px)",
-                      }}
-                    >
-                      <SelectItem value="latest">Latest</SelectItem>
-                      <SelectItem value="hero_main">Hero Main</SelectItem>
-                      <SelectItem value="hero_2">Hero 2</SelectItem>
-                      <SelectItem value="hero_3">Hero 3</SelectItem>
-                      <SelectItem value="hero_4">Hero 4</SelectItem>
-                      <SelectItem value="hero_5">Hero 5</SelectItem>
-                      <SelectItem value="insight_1">Insight 1</SelectItem>
-                      <SelectItem value="insight_2">Insight 2</SelectItem>
-                      <SelectItem value="insight_3">Insight 3</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <button
-                    onClick={() => handlePublish(item)}
-                    disabled={publishingIds.has(item.id)}
-                    className="w-full flex items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 disabled:opacity-50"
-                    style={{
-                      background: `linear-gradient(135deg, ${pal.accent}30, ${pal.accent}15)`,
-                      color: pal.accent,
-                      border: `1px solid ${pal.border}`,
-                      boxShadow: `0 2px 12px -2px ${pal.glow}`,
-                    }}
-                  >
-                    {publishingIds.has(item.id) ? (
-                      <>
-                        <Loader2 className="w-3 h-3 animate-spin" />{" "}
-                        Publishing...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3 h-3" /> Publish
-                      </>
-                    )}
-                  </button>
+                      <Check className="w-3 h-3" /> Published
+                    </div>
+                  ) : (
+                    <>
+                      <Select
+                        value={getPosition(item.id)}
+                        onValueChange={(v) =>
+                          setPublishPosition((prev) => ({
+                            ...prev,
+                            [item.id]: v,
+                          }))
+                        }
+                      >
+                        <SelectTrigger
+                          className="h-7 text-[10px] rounded-lg font-medium"
+                          style={{
+                            background: "rgba(20,20,24,0.9)",
+                            borderColor: "rgba(255,255,255,0.1)",
+                            color: "var(--bz-text-1)",
+                          }}
+                        >
+                          <MapPin
+                            className="w-3 h-3 mr-1"
+                            style={{ color: pal.accent }}
+                          />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          className="rounded-xl"
+                          style={{
+                            background: "rgba(20,20,24,0.98)",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            backdropFilter: "blur(20px)",
+                          }}
+                        >
+                          <SelectItem value="latest">Latest</SelectItem>
+                          <SelectItem value="hero_main">Hero Main</SelectItem>
+                          <SelectItem value="hero_2">Hero 2</SelectItem>
+                          <SelectItem value="hero_3">Hero 3</SelectItem>
+                          <SelectItem value="hero_4">Hero 4</SelectItem>
+                          <SelectItem value="hero_5">Hero 5</SelectItem>
+                          <SelectItem value="insight_1">Insight 1</SelectItem>
+                          <SelectItem value="insight_2">Insight 2</SelectItem>
+                          <SelectItem value="insight_3">Insight 3</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <button
+                        onClick={() => handlePublish(item)}
+                        disabled={publishingIds.has(item.id)}
+                        className="w-full flex items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 disabled:opacity-50"
+                        style={{
+                          background: `linear-gradient(135deg, ${pal.accent}30, ${pal.accent}15)`,
+                          color: pal.accent,
+                          border: `1px solid ${pal.border}`,
+                          boxShadow: `0 2px 12px -2px ${pal.glow}`,
+                        }}
+                      >
+                        {publishingIds.has(item.id) ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />{" "}
+                            Publishing...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3 h-3" /> Publish
+                          </>
+                        )}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );
