@@ -97,9 +97,11 @@
     "government::surat keterangan domisili Bali address certificate",
     "government::Bali local government DPRD regulations business",
     "government::Bali governor regulation pergub requirements",
-    "government::Bali regency kabupaten permit vs provincial"
+    "government::Bali regency kabupaten permit vs provincial",
+    "government::Denpasar city mayor regulation business",
+    "government::Badung regency Bali investment requirements"
   ],
   "failed": [],
-  "total_claims": 1258,
+  "total_claims": 1291,
   "started_at": "2026-04-03T19:06:37.606473"
 }
