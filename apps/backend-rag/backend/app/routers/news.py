@@ -3,6 +3,7 @@ News Router - API endpoints for Intel Feed news system
 Handles CRUD operations, search, and subscriptions
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -12,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_database_pool
+from backend.services.article_composer.cover_image_generator import trigger_cover_generation
 
 logger = logging.getLogger(__name__)
 
@@ -298,7 +300,20 @@ async def create_news(
                 item.external_id,
             )
 
-            return {"success": True, "data": {"id": str(row["id"]), "slug": row["slug"]}}
+            result = {"success": True, "data": {"id": str(row["id"]), "slug": row["slug"]}}
+
+        # Fire-and-forget: auto-generate cover if missing
+        asyncio.create_task(
+            trigger_cover_generation(
+                article_id=str(row["id"]),
+                title=item.title,
+                summary=item.summary,
+                category=item.category,
+                image_url=item.image_url,
+                pool=pool,
+            )
+        )
+        return result
 
     except Exception as e:
         logger.error(f"Error creating news: {e}")
@@ -326,7 +341,7 @@ async def create_news_bulk(
                         duplicates += 1
                         continue
 
-                await conn.execute(
+                inserted = await conn.fetchrow(
                     """
                     INSERT INTO news_items (
                         title, summary, content, source, source_url,
@@ -334,6 +349,7 @@ async def create_news_bulk(
                         source_feed, external_id, status
                     )
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'approved')
+                    RETURNING id
                 """,
                     item.title,
                     item.summary,
@@ -348,6 +364,18 @@ async def create_news_bulk(
                     item.external_id,
                 )
                 created += 1
+                # Fire-and-forget cover generation for articles without image
+                if not item.image_url and inserted:
+                    asyncio.create_task(
+                        trigger_cover_generation(
+                            article_id=str(inserted["id"]),
+                            title=item.title,
+                            summary=item.summary,
+                            category=item.category,
+                            image_url=item.image_url,
+                            pool=pool,
+                        )
+                    )
 
         return {"success": True, "created": created, "duplicates": duplicates, "total": len(items)}
 
