@@ -1003,7 +1003,7 @@ async def publish_staging_item(
         except Exception as e:
             logger.warning(f"Failed to enqueue post-processing (non-blocking): {e}")
 
-        # Step 5: Update staging file with publish timestamp
+        # Step 5: Update staging file with publish timestamp and persist to disk
         data["published_at"] = datetime.now(timezone.utc).isoformat()
         data["published_url"] = published_url
         data["status"] = "published"
@@ -1012,8 +1012,15 @@ async def publish_staging_item(
         if mdx_path:
             data["mdx_path"] = mdx_path
 
-        # Note: The file has already been moved to archived/approved by ingest_intel_to_qdrant
-        # We don't need to move it again
+        # Persist updated status to staging file so news-room shows "Published" ribbon
+        try:
+            staging_dir = staging_service.get_staging_dir(type)
+            staging_file = staging_dir / f"{item_id}.json"
+            if staging_file.exists():
+                staging_file.write_text(json.dumps(data, indent=2, default=str))
+                logger.info(f"✅ Staging file updated with published status: {item_id}")
+        except Exception as e:
+            logger.warning(f"Failed to update staging file (non-blocking): {e}")
 
         logger.info(
             "✅ Publish completed successfully",
