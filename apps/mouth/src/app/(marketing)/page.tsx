@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia",
+  title: {
+    absolute: "Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia",
+  },
   description:
     "Indonesia's AI-powered visa agency. KITAS, KITAP, Golden Visa, PT PMA company setup, tax compliance. 24/7 AI assistant. Trusted by 5000+ clients since 2020.",
   alternates: {
