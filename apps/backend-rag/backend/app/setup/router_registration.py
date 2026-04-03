@@ -36,6 +36,7 @@ def include_routers(api: FastAPI) -> None:
         autonomous_execution,
         blog_ask,
         cell_status,  # [CELL] CELL organism dashboard status
+        event_bus,  # [EVENT] EventBus monitoring
         collective_memory,
         conversations,
         crm_analytics,  # [NEW] CRM Analytics dashboard
@@ -322,3 +323,6 @@ def include_routers(api: FastAPI) -> None:
 
     # CELL organism dashboard
     api.include_router(cell_status.router)
+
+    # EventBus monitoring
+    api.include_router(event_bus.router)
