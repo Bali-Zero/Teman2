@@ -10,7 +10,7 @@ Endpoints for the Naga deep-research pipeline:
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/naga", tags=["naga"])
@@ -61,7 +61,7 @@ class ClaimSearchResponse(BaseModel):
 
 
 @router.post("/research", response_model=ResearchResponse)
-async def start_research(request: ResearchRequest) -> ResearchResponse:
+async def start_research(request: ResearchRequest, req: Request) -> ResearchResponse:
     """Start a Naga research session using the real orchestrator."""
     session_id = str(uuid.uuid4())
     logger.info(
@@ -76,7 +76,9 @@ async def start_research(request: ResearchRequest) -> ResearchResponse:
         from backend.services.naga.deps import build_deps
         from backend.services.naga.orchestrator import NagaOrchestrator
 
-        deps = build_deps(mode="server")
+        # Get db_pool from app state (set during lifespan)
+        db_pool = getattr(req.app.state, "db_pool", None)
+        deps = build_deps(mode="server", db_pool=db_pool)
         orch = NagaOrchestrator(deps=deps)
 
         result = await orch.research(

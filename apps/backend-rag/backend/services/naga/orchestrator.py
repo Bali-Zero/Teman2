@@ -421,7 +421,21 @@ class NagaOrchestrator:
             "action_items": [],
             "status": "completed",
             "error": "",
+            # Internal (not serialized to API, used by persist)
+            "_claims": all_claims,
         }
+
+        # ---- 7. Persist to PostgreSQL (non-blocking) ------------------
+        db_pool = getattr(self._deps, "db_pool", None)
+        if db_pool is not None:
+            try:
+                from backend.services.naga.persist import save_session
+
+                saved_id = await save_session(db_pool, state)
+                if saved_id:
+                    state["session_id"] = saved_id
+            except Exception as exc:
+                logger.warning("Naga DB persist failed (non-fatal): %s", exc)
 
         logger.info(
             "Naga research completed: session=%s tier=%s iterations=%d claims=%d duration=%dms",
