@@ -127,7 +127,32 @@ Escape: `SKIP_PREFLIGHT=1` (logged in `audit.jsonl`)
 
 Check `shared/escalations.json` at session start — handle pending before other work.
 
-## 3. Golden Rules (ENFORCE STRICTLY)
+## 3. MOS — Memory Operating System
+
+Il SessionStart hook carica automaticamente le ultime 5 memorie importanti (importance >= 7) da SQLite.
+
+**CLI `mem`** (`~/.claude/scripts/mem`) per operazioni manuali:
+
+| Comando                                    | Cosa fa                   | Latenza |
+| ------------------------------------------ | ------------------------- | ------- |
+| `mem recent`                               | Ultime memorie importanti | <10ms   |
+| `mem query "testo"`                        | Cerca per testo (FTS5)    | <10ms   |
+| `mem save decision "scelta X perché Y" 8`  | Salva decisione           | <10ms   |
+| `mem save discovery "trovato bug in X" 7`  | Salva scoperta            | <10ms   |
+| `mem save unresolved "da investigare Z" 6` | Salva TODO                | <10ms   |
+| `mem entities "nome"`                      | Cerca entità              | <10ms   |
+| `mem sessions`                             | Ultime sessioni           | <10ms   |
+| `mem stats`                                | Statistiche DB            | <10ms   |
+
+Per dominio (visa, tax, KBLI): `notebook_query` su NB-2..8 (3-8s)
+Per architettura deep: `notebook_query` su NB-1 (3-8s)
+Per sessioni storiche: `notebook_query` su NB-14 (3-8s)
+
+**Regola:** `mem` PRIMA di NotebookLM. NLM solo per dominio o cross-query.
+**Quando salvare:** Dopo ogni decisione architetturale, scoperta non ovvia, o problema irrisolto.
+File changes tracciati automaticamente via PostToolUse hook — non serve salvarli manualmente.
+
+## 4. Golden Rules (ENFORCE STRICTLY)
 
 1. **Virtualenv Mandatory** — Never system Python. Always activate venv.
 2. **No Root Execution** — `PYTHONPATH=. python -m backend.module`
@@ -142,7 +167,7 @@ Check `shared/escalations.json` at session start — handle pending before other
 11. **Flat Qdrant Payloads** — Never nested. Use `kode_kbli`, `judul`, `content`, `pma_status` etc.
 12. **PricingTool Only** — All prices from `PricingTool`. Never hardcode/guess.
 
-## 4. Critical Paths
+## 5. Critical Paths
 
 ### Backend Structure
 
@@ -173,7 +198,7 @@ apps/backend-rag/
 Edit ONLY `backend/prompts/zantara_core.py`. All consumers import from it.
 Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` · `KNOWLEDGE_GOVERNANCE` · `LANGUAGE_PROTOCOL` · `GREETING_RULES` · `CITATION_RULES` · `INTERNAL_MONOLOGUE` · `ESCALATION_PROTOCOL` · `CRASH_PROTOCOL` · `CLOSING_PHRASES` · `CREATOR_PERSONA` · `TEAM_PERSONA` · `ZANTARA_MASTER_TEMPLATE`
 
-## 5. Domain-Specific Knowledge
+## 6. Domain-Specific Knowledge
 
 ### KBLI — Flat payload, fields: `kode_kbli`, `judul`, `content`, `sektor_id`, `pma_status`, `skala_usaha`, `kategori_risiko`
 
@@ -187,7 +212,7 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 
 <!-- DOCSYNC:EMBEDDING_FROZEN_END -->
 
-## 6. MCP Servers
+## 7. MCP Servers
 
 - **Primary:** `apps/nuzantara-mcp/` (v2.1, 131 tools, 10 prompts, 5 resources, 8 chains)
 - **Advanced:** `apps/nuzantara-mcp-advanced/` (Fly.io ops, 14 tools)
@@ -197,7 +222,7 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 - **OCR:** tesseract with Indonesian support
 - **Bridge (OpenClaw):** 129 tools via mcporter wrappers
 
-## 7. Deployment Architecture
+## 8. Deployment Architecture
 
 ### Fly.io — 3 APP ONLY
 
@@ -217,7 +242,7 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 
 `OPENAI_API_KEY` · `DATABASE_URL` · `QDRANT_URL` · `QDRANT_API_KEY` · `REDIS_URL` · `JWT_SECRET` · `FLY_API_TOKEN`
 
-## 8. Language Protocol
+## 9. Language Protocol
 
 The user writes in **colloquial Italian**. Translate intent into precise technical action.
 
@@ -227,7 +252,7 @@ The user writes in **colloquial Italian**. Translate intent into precise technic
 
 **Owner:** Zero (codename). Real name PRIVATE. Italian with owner, client's language otherwise.
 
-## 9. Resources & Routes
+## 10. Resources & Routes
 
 - **API Docs:** `http://localhost:8000/docs`
 - **Pricing:** `PRICING_REFERENCE.md` · **Visa:** `VISA_TYPES_REFERENCE.md`
