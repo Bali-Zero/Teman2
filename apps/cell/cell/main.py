@@ -31,6 +31,10 @@ from cell.sensors.ollama_sensor import OllamaSensor
 from cell.sensors.qdrant_sensor import QdrantSensor
 from cell.sensors.vercel_sensor import VercelSensor
 from cell.slow.reasoner import SlowReasoner
+from cell.core.db import create_episodes_table
+from cell.fast.homeostatic_controller import HomeostaticController
+from cell.memory.episodic import EpisodicMemory
+from cell.identity.self_model import SelfModelManager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,6 +57,7 @@ async def main() -> None:
 
     # Persistent memory bootstrap (create table before reasoner uses it)
     await create_patterns_table()
+    await create_episodes_table()
 
     dna_loader = DNALoader()
     dna_hash = dna_loader.compute_hash()
@@ -135,6 +140,26 @@ async def main() -> None:
         # TrendDetector (FAST layer)
         trend_detector = TrendDetector()
 
+        # Homeostatic Controller — CELL's body regulation
+        # Sleep 2-6 UTC = 10:00-14:00 WITA (low traffic window)
+        homeostatic = HomeostaticController(sleep_hours=(2, 6))
+        logger.info("HomeostaticController initialized (sleep 02:00-06:00 UTC)")
+
+        # Episodic Memory — moments, not statistics
+        _db_pool_ep = await _get_pool()
+        episodic = EpisodicMemory(pool=_db_pool_ep, max_episodes=1000)
+        ep_count = await episodic.count()
+        logger.info(f"EpisodicMemory initialized ({ep_count} episodes)")
+
+        # Self-Model — persistent identity
+        self_model_path = settings.cell_root / "data" / "self_model.json"
+        self_model = SelfModelManager(path=self_model_path)
+        self_model.load()
+        logger.info(
+            f"SelfModel loaded: age={self_model.model.age_days}d "
+            f"pulses={self_model.model.total_pulses} actions={self_model.model.total_actions}"
+        )
+
         engine = PulseEngine(
             dna_loader=dna_loader,
             safety_gate=safety_gate,
@@ -157,6 +182,9 @@ async def main() -> None:
             stm=stm,
             ltm=ltm,
             trend_detector=trend_detector,
+            homeostatic=homeostatic,
+            episodic=episodic,
+            self_model=self_model,
         )
 
         logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")
@@ -177,18 +205,29 @@ async def main() -> None:
                 logger.info(f"Pulse #{pulse_count} complete. Health: {status_str}{action_str}{tier_str}")
                 _last_status = status_str
 
+                # Episodic forgetting — every 1000 pulses (~17h at 60s intervals)
+                if pulse_count % 1000 == 0 and pulse_count > 0:
+                    try:
+                        forgotten = await episodic.forget_weak()
+                        if forgotten > 0:
+                            logger.info(f"Episodic forgetting: {forgotten} weak episodes removed")
+                    except Exception as e:
+                        logger.debug(f"Episodic forgetting failed: {e}")
+
             except Exception as e:
                 logger.error(f"Pulse #{pulse_count} error: {e}", exc_info=True)
 
-            # Adaptive interval: 15s during stress, 60s when healthy
-            interval = 15 if _last_status != "green" else settings.pulse_interval_seconds
-            if _last_status != "green":
-                logger.debug(f"Adaptive pulse: {interval}s (status={_last_status})")
+            # Adaptive interval: homeostatic controller decides (circadian + stress-aware)
+            interval = homeostatic.recommended_pulse_interval()
             try:
                 await asyncio.wait_for(_shutdown.wait(), timeout=interval)
                 break
             except asyncio.TimeoutError:
                 pass
+
+    # Persist self-model before shutdown
+    self_model.save()
+    logger.info(f"Self-model saved: pulses={self_model.model.total_pulses}")
 
     await redis_client.aclose()
     from cell.core.db import close_pool
