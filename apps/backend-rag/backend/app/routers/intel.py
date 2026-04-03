@@ -4,7 +4,6 @@ Intel News API - Search and manage Bali intelligence news
 Refactored router using service layer architecture.
 """
 
-import asyncio
 import base64
 import logging
 import os
@@ -522,55 +521,122 @@ async def reject_staging_item(type: str, item_id: str) -> dict[str, Any]:
 
 # INGEST & PUBLISH → intel_scraper.py
 
-# ─── Post-publish queue ───────────────────────────────────────────────────────
-# In-memory queue (persists across requests, resets on deploy — acceptable for
-# this use case since the poller runs every 5 minutes and deploy is rare).
-_post_publish_queue: list[dict] = []
-_post_publish_lock = asyncio.Lock()
+# ─── Post-publish queue (PostgreSQL-backed, survives deploys) ────────────────
+
+from backend.app.dependencies import get_database_pool
 
 
 @router.post("/api/intel/post-publish-queue")
-async def enqueue_post_publish(request: Request) -> dict:
-    """Internal: add a slug to the post-processing queue (translate + image)."""
+async def enqueue_post_publish(
+    request: Request,
+    pool: Any = Depends(get_database_pool),
+) -> dict:
+    """Internal: add a slug to the post-processing queue (translate + image + SEO)."""
     body = await request.json()
     slug = body.get("slug", "")
     category = body.get("category", "business")
+    source = body.get("source", "intel")
+    article_id = body.get("article_id")
+    title = body.get("title")
     if not slug:
         raise HTTPException(status_code=400, detail="slug required")
-    async with _post_publish_lock:
-        # avoid duplicates
-        if not any(item["slug"] == slug for item in _post_publish_queue):
-            _post_publish_queue.append(
-                {"slug": slug, "category": category, "queued_at": datetime.now(timezone.utc).isoformat()},
-            )
-    logger.info("📥 Post-publish queue: added", extra={"slug": slug, "category": category})
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO post_publish_queue (slug, title, category, source, article_id)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (slug) DO UPDATE SET
+                status = CASE WHEN post_publish_queue.status = 'failed'
+                              THEN 'pending' ELSE post_publish_queue.status END,
+                attempts = CASE WHEN post_publish_queue.status = 'failed'
+                                THEN 0 ELSE post_publish_queue.attempts END,
+                error_message = NULL
+            """,
+            slug, title, category, source, article_id,
+        )
+    logger.info("📥 Post-publish queue: added", extra={"slug": slug, "category": category, "source": source})
     return {"ok": True, "slug": slug}
 
 
 @router.get("/api/intel/post-publish-queue/pending")
-async def get_pending_queue(x_api_key: str | None = None, request: Request = None) -> dict:
+async def get_pending_queue(
+    request: Request,
+    pool: Any = Depends(get_database_pool),
+) -> dict:
     """Poller endpoint: returns pending slugs for post-processing."""
-    # Simple API key auth
-    api_key = (request.headers.get("X-API-Key") if request else None) or x_api_key
+    api_key = request.headers.get("X-API-Key")
     if api_key != settings.intel_scraper_api_key:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    async with _post_publish_lock:
-        pending = list(_post_publish_queue)
+    async with pool.acquire() as conn:
+        # Mark as processing and return
+        rows = await conn.fetch(
+            """
+            UPDATE post_publish_queue
+            SET status = 'processing', started_at = NOW(), attempts = attempts + 1
+            WHERE status = 'pending'
+            RETURNING slug, title, category, source, article_id, created_at
+            """,
+        )
+        pending = [
+            {
+                "slug": r["slug"],
+                "title": r["title"],
+                "category": r["category"],
+                "source": r["source"],
+                "article_id": r["article_id"],
+                "queued_at": r["created_at"].isoformat() if r["created_at"] else None,
+            }
+            for r in rows
+        ]
     return {"pending": pending, "count": len(pending)}
 
 
 @router.post("/api/intel/post-publish-queue/done")
-async def mark_queue_done(request: Request) -> dict:
-    """Poller endpoint: mark slugs as processed and remove from queue."""
+async def mark_queue_done(
+    request: Request,
+    pool: Any = Depends(get_database_pool),
+) -> dict:
+    """Poller endpoint: mark slugs as processed."""
     api_key = request.headers.get("X-API-Key")
     if api_key != settings.intel_scraper_api_key:
         raise HTTPException(status_code=401, detail="Unauthorized")
     body = await request.json()
     slugs = body.get("slugs", [])
-    async with _post_publish_lock:
-        global _post_publish_queue
-        _post_publish_queue = [item for item in _post_publish_queue if item["slug"] not in slugs]
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE post_publish_queue
+            SET status = 'done', completed_at = NOW()
+            WHERE slug = ANY($1::text[])
+            """,
+            slugs,
+        )
     logger.info("✅ Post-publish queue: marked done", extra={"slugs": slugs})
     return {"ok": True, "removed": slugs}
+
+
+@router.post("/api/intel/post-publish-queue/failed")
+async def mark_queue_failed(
+    request: Request,
+    pool: Any = Depends(get_database_pool),
+) -> dict:
+    """Poller endpoint: mark slugs as failed with error message."""
+    api_key = request.headers.get("X-API-Key")
+    if api_key != settings.intel_scraper_api_key:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    slugs = body.get("slugs", [])
+    error = body.get("error", "Unknown error")
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE post_publish_queue
+            SET status = 'failed', error_message = $2
+            WHERE slug = ANY($1::text[])
+            """,
+            slugs, error,
+        )
+    logger.info("❌ Post-publish queue: marked failed", extra={"slugs": slugs, "error": error})
+    return {"ok": True, "failed": slugs}
 
 # METRICS, SEARCH, TRENDS → intel_analytics.py

@@ -3,7 +3,6 @@ News Router - API endpoints for Intel Feed news system
 Handles CRUD operations, search, and subscriptions
 """
 
-import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -13,9 +12,32 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_database_pool
-from backend.services.article_composer.cover_image_generator import trigger_cover_generation
 
 logger = logging.getLogger(__name__)
+
+
+async def _enqueue_post_publish(
+    *,
+    slug: str,
+    title: str,
+    category: str,
+    article_id: str,
+    pool: asyncpg.Pool,
+) -> None:
+    """Enqueue article in post-publish pipeline (cover image, translations, SEO/GEO)."""
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO post_publish_queue (slug, title, category, source, article_id)
+                VALUES ($1, $2, $3, 'news', $4)
+                ON CONFLICT (slug) DO NOTHING
+                """,
+                slug, title, category, article_id,
+            )
+        logger.info(f"📥 Enqueued {slug} for post-publish processing")
+    except Exception as exc:
+        logger.warning(f"Failed to enqueue {slug} for post-publish: {exc}")
 
 router = APIRouter(prefix="/api/news", tags=["News"])
 
@@ -302,17 +324,15 @@ async def create_news(
 
             result = {"success": True, "data": {"id": str(row["id"]), "slug": row["slug"]}}
 
-        # Fire-and-forget: auto-generate cover if missing
-        asyncio.create_task(
-            trigger_cover_generation(
-                article_id=str(row["id"]),
+        # Enqueue for post-publish pipeline (cover image + translations + SEO)
+        if not item.image_url:
+            await _enqueue_post_publish(
+                slug=row["slug"],
                 title=item.title,
-                summary=item.summary,
                 category=item.category,
-                image_url=item.image_url,
+                article_id=str(row["id"]),
                 pool=pool,
             )
-        )
         return result
 
     except Exception as e:
@@ -349,7 +369,7 @@ async def create_news_bulk(
                         source_feed, external_id, status
                     )
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'approved')
-                    RETURNING id
+                    RETURNING id, slug
                 """,
                     item.title,
                     item.summary,
@@ -364,23 +384,46 @@ async def create_news_bulk(
                     item.external_id,
                 )
                 created += 1
-                # Fire-and-forget cover generation for articles without image
+                # Enqueue for post-publish pipeline (cover image + translations + SEO)
                 if not item.image_url and inserted:
-                    asyncio.create_task(
-                        trigger_cover_generation(
-                            article_id=str(inserted["id"]),
-                            title=item.title,
-                            summary=item.summary,
-                            category=item.category,
-                            image_url=item.image_url,
-                            pool=pool,
-                        )
+                    await _enqueue_post_publish(
+                        slug=inserted["slug"],
+                        title=item.title,
+                        category=item.category,
+                        article_id=str(inserted["id"]),
+                        pool=pool,
                     )
 
         return {"success": True, "created": created, "duplicates": duplicates, "total": len(items)}
 
     except Exception as e:
         logger.error(f"Error bulk creating news: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/{news_id}/image")
+async def update_news_image(
+    news_id: str,
+    body: dict,
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Update cover image URL for a news item (called by post-publish poller)."""
+    image_url = body.get("image_url")
+    if not image_url:
+        raise HTTPException(status_code=400, detail="image_url required")
+    try:
+        async with pool.acquire() as conn:
+            result = await conn.execute(
+                "UPDATE news_items SET image_url = $1 WHERE id = $2",
+                image_url, news_id,
+            )
+            if result == "UPDATE 0":
+                raise HTTPException(status_code=404, detail="News item not found")
+            return {"success": True, "image_url": image_url}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating news image: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
