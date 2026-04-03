@@ -1,6 +1,79 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import Image from "next/image";
 import { ZantaraWidget } from "@/components/ZantaraWidget";
+import { KbliSearchBox } from "./KbliSearchBox";
+
+const BACKEND_URL =
+  process.env.BACKEND_RAG_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "https://nuzantara-rag.fly.dev";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  visas: "VISAS",
+  business: "BUSINESS",
+  taxes: "TAXES",
+  property: "PROPERTY",
+  living: "LIVING",
+  trends: "TRENDS",
+};
+
+interface HomeArticle {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  coverImage: string;
+  category: string;
+  readingTime: number;
+  viewCount: number;
+}
+
+async function fetchLatestArticles(): Promise<HomeArticle[]> {
+  try {
+    const url = `${BACKEND_URL}/api/news?status=approved&limit=5`;
+    const res = await fetch(url, {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items: Array<{
+      id: string;
+      slug: string;
+      title: string;
+      summary: string | null;
+      ai_summary: string | null;
+      image_url: string | null;
+      category: string;
+      content: string | null;
+      view_count: number;
+    }> = data.data || [];
+    return items.slice(0, 5).map((item) => ({
+      id: item.id,
+      slug: item.slug,
+      title: item.title,
+      excerpt: cleanExcerpt(item.summary || item.ai_summary),
+      coverImage: item.image_url || `/static/blog/${item.category || "business"}-cover.jpg`,
+      category: item.category || "business",
+      readingTime: item.content ? Math.ceil(item.content.split(/\s+/).length / 200) : 5,
+      viewCount: item.view_count || 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function cleanExcerpt(text: string | null): string {
+  if (!text) return "";
+  return text
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+    .replace(/`(.*?)`/g, "$1")
+    .trim();
+}
 
 export const metadata: Metadata = {
   title: {
@@ -19,10 +92,10 @@ export const metadata: Metadata = {
   },
 };
 
-export const dynamic = "force-static";
 export const revalidate = 3600;
 
-export default function HomePage() {
+export default async function HomePage() {
+  const articles = await fetchLatestArticles();
   return (
     <>
       {/* Reset body styles from globals.css to match draft design */}
@@ -961,115 +1034,73 @@ body::after {
     <a href="#" class="topic-pill">Work Permits</a>
   </div>
 
-  <!-- Latest Intelligence -->
-  <div class="glass-section">
-    <div class="section-header">
-      <h2 class="section-title">Latest Intelligence</h2>
-      <a href="#" class="section-link">View all →</a>
-    </div>
-    <div class="li-grid">
+`, }}
+      />
 
-            <a href="#" class="li-card li-featured">
-              <div class="li-img-wrap">
-                <img src="/static/homepage/bali-aparthotels-the-only-asset-class-hitting-1720-returns.jpg" alt="Bali Aparthotels: The Only Asset Class Hitting 17–20% Returns">
-                <div class="li-img-grad"></div>
-                <span class='li-badge'>Latest Intelligence</span>
+      {/* ── Latest Intelligence (dynamic) ── */}
+      <div className="glass-section">
+        <div className="section-header">
+          <h2 className="section-title">Latest Intelligence</h2>
+          <a href="/news" className="section-link">View all →</a>
+        </div>
+        <div className="li-grid">
+          {articles.map((article, i) => (
+            <a
+              key={article.id}
+              href={`/news/${article.slug}`}
+              className={`li-card${i === 0 ? " li-featured" : i >= 3 ? " li-compact" : ""}`}
+            >
+              <div className="li-img-wrap">
+                <Image
+                  src={article.coverImage}
+                  alt={article.title}
+                  fill
+                  sizes={i === 0 ? "40vw" : "25vw"}
+                  style={{ objectFit: "cover" }}
+                  priority={i === 0}
+                />
+                <div className="li-img-grad" />
+                {i === 0 && <span className="li-badge">Latest Intelligence</span>}
               </div>
-              <div class="li-body">
-                <span class="li-cat">PROPERTY</span>
-                <h3 class="li-title">Bali Aparthotels: The Only Asset Class Hitting 17–20% Returns</h3>
-                <p class="li-desc">Yield-chasing investors are finding that Bali's aparthotel segment outperforms every other Indonesian real estate category by a wide margin.</p>
-                <span class="li-meta">5 min read · 0 views</span>
+              <div className="li-body">
+                <span className="li-cat">
+                  {CATEGORY_LABELS[article.category] ?? article.category.toUpperCase()}
+                </span>
+                <h3 className="li-title">{article.title}</h3>
+                {i < 3 && article.excerpt && (
+                  <p className="li-desc">{article.excerpt}</p>
+                )}
+                <span className="li-meta">
+                  {article.readingTime} min read · {article.viewCount} views
+                </span>
               </div>
             </a>
-
-            <a href="#" class="li-card">
-              <div class="li-img-wrap">
-                <img src="/static/homepage/bali-aparthotels-the-only-asset-class-hitting-1720-returns-08.jpg" alt="Bali Cements Status as World-Class Leisure Hub with New Record Arrivals">
-                <div class="li-img-grad"></div>
-                
-              </div>
-              <div class="li-body">
-                <span class="li-cat">TOURISM</span>
-                <h3 class="li-title">Bali Cements Status as World-Class Leisure Hub with New Record Arrivals</h3>
-                <p class="li-desc">International arrivals breach 6 million for the first time since 2019 as Bali's infrastructure investment begins to pay off.</p>
-                <span class="li-meta">5 min read · 0 views</span>
-              </div>
-            </a>
-
-            <a href="#" class="li-card">
-              <div class="li-img-wrap">
-                <img src="/static/homepage/bali-cements-status-as-world-class-leisure-hub-with-new-reco.jpg" alt="2026 Guide to Company Registration in Indonesia for Foreigners">
-                <div class="li-img-grad"></div>
-                
-              </div>
-              <div class="li-body">
-                <span class="li-cat">BUSINESS</span>
-                <h3 class="li-title">2026 Guide to Company Registration in Indonesia for Foreigners</h3>
-                <p class="li-desc">Everything you need to know about PT PMA, capital requirements, KBLI selection, and the OSS-RBA approval timeline.</p>
-                <span class="li-meta">5 min read · 0 views</span>
-              </div>
-            </a>
-
-            <a href="#" class="li-card li-compact">
-              <div class="li-img-wrap">
-                <img src="/static/homepage/2026-guide-to-company-registration-in-indonesia-for-foreigne.jpg" alt="Bali to Screen Tourist Bank Balances and Activity History from 2026">
-                <div class="li-img-grad"></div>
-                
-              </div>
-              <div class="li-body">
-                <span class="li-cat">REGULATION</span>
-                <h3 class="li-title">Bali to Screen Tourist Bank Balances and Activity History from 2026</h3>
-                
-                <span class="li-meta">5 min read · 0 views</span>
-              </div>
-            </a>
-
-            <a href="#" class="li-card li-compact">
-              <div class="li-img-wrap">
-                <img src="/static/homepage/bali-to-screen-tourist-bank-balances-and-activity-history-fr.jpg" alt="Bali Immigration Law: What Expats Need to Know in 2026">
-                <div class="li-img-grad"></div>
-                
-              </div>
-              <div class="li-body">
-                <span class="li-cat">IMMIGRATION</span>
-                <h3 class="li-title">Bali Immigration Law: What Expats Need to Know in 2026</h3>
-                
-                <span class="li-meta">5 min read · 0 views</span>
-              </div>
-            </a>
-    </div>
-  </div>
-
-  <!-- KBLI Navigator -->
-  <div class="kbli-section">
-    <div class="kbli-left">
-      <span class="kbli-badge">Featured Intelligence Tool</span>
-      <h2 class="kbli-title">KBLI 2025<br>Navigator</h2>
-      <p class="kbli-desc">Instant access to all 1,563 KBLI 2025 codes with intelligent search, 4-level risk assessment, PMA status tracking, and AI-powered guidance.</p>
-      <div class="kbli-features">
-        <span class="kbli-feat">Smart bilingual search</span>
-        <span class="kbli-feat">4-level risk system</span>
-        <span class="kbli-feat">PMA status tracking</span>
-        <span class="kbli-feat">AI assistant</span>
-      </div>
-      <a href="/kbli" class="kbli-btn">▶ Explore Navigator</a>
-    </div>
-    <div class="kbli-right">
-      <div class="kbli-search-box">
-        <span class="kbli-search-label">Search KBLI codes</span>
-        <input class="kbli-input" type="text" placeholder="Search KBLI (e.g. villa, restaurant)...">
-        <div class="kbli-tags">
-          <span class="kbli-tag">Villa rental</span>
-          <span class="kbli-tag">Restaurant</span>
-          <span class="kbli-tag">Tech startup</span>
-          <span class="kbli-tag">Property</span>
-          <span class="kbli-tag">Education</span>
+          ))}
         </div>
       </div>
-    </div>
-  </div>
 
+      {/* ── KBLI Navigator ── */}
+      <div className="kbli-section">
+        <div className="kbli-left">
+          <span className="kbli-badge">Featured Intelligence Tool</span>
+          <h2 className="kbli-title">KBLI 2025<br />Navigator</h2>
+          <p className="kbli-desc">Instant access to all 1,563 KBLI 2025 codes with intelligent search, 4-level risk assessment, PMA status tracking, and AI-powered guidance.</p>
+          <div className="kbli-features">
+            <span className="kbli-feat">Smart bilingual search</span>
+            <span className="kbli-feat">4-level risk system</span>
+            <span className="kbli-feat">PMA status tracking</span>
+            <span className="kbli-feat">AI assistant</span>
+          </div>
+          <a href="/kbli" className="kbli-btn">▶ Explore Navigator</a>
+        </div>
+        <div className="kbli-right">
+          <KbliSearchBox />
+        </div>
+      </div>
+
+      <div
+        dangerouslySetInnerHTML={{
+          __html: `
   <!-- Services -->
   <div class="services-section">
     <div class="services-top">
