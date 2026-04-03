@@ -6,34 +6,38 @@
  * Uses same SSE streaming as ZantaraWidget but with team member identity.
  */
 
-'use client';
+"use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import { api } from '@/lib/api';
+import { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { MessageCircle, X, Send, Loader2 } from "lucide-react";
+import dynamic from "next/dynamic";
+
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
+import { api } from "@/lib/api";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
 interface ChatMsg {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   isStreaming?: boolean;
 }
 
-const genId = () => `wa_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+const genId = () =>
+  `wa_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://nuzantara-rag.fly.dev';
+const BACKEND =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://nuzantara-rag.fly.dev";
 
 // ── Component ──────────────────────────────────────────────────────────
 
 export function WorkspaceAssistant() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -41,15 +45,15 @@ export function WorkspaceAssistant() {
 
   // Get user profile from API client cache
   const profile = api.getUserProfile();
-  const userName = profile?.name || profile?.email?.split('@')[0] || 'Team';
-  const userEmail = profile?.email || '';
-  const userRole = profile?.role || 'member';
+  const userName = profile?.name || profile?.email?.split("@")[0] || "Team";
+  const userEmail = profile?.email || "";
+  const userRole = profile?.role || "member";
 
   // Auto-scroll on new messages
   useEffect(() => {
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
-      behavior: 'smooth',
+      behavior: "smooth",
     });
   }, [messages]);
 
@@ -61,26 +65,26 @@ export function WorkspaceAssistant() {
   // Keyboard shortcut: Cmd+J to toggle
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
         e.preventDefault();
         setOpen((prev) => !prev);
       }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
   // Send message
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text || isStreaming) return;
-    setInput('');
+    setInput("");
 
-    const userMsg: ChatMsg = { id: genId(), role: 'user', content: text };
+    const userMsg: ChatMsg = { id: genId(), role: "user", content: text };
     const assistantMsg: ChatMsg = {
       id: genId(),
-      role: 'assistant',
-      content: '',
+      role: "assistant",
+      content: "",
       isStreaming: true,
     };
 
@@ -93,19 +97,19 @@ export function WorkspaceAssistant() {
         .map((m) => ({ role: m.role, content: m.content }));
 
       // Build context-enriched query
-      const pageContext = pathname ? `[User is on page: ${pathname}] ` : '';
+      const pageContext = pathname ? `[User is on page: ${pathname}] ` : "";
 
       const res = await fetch(`${BACKEND}/api/agentic-rag/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Send httpOnly cookie for auth
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // Send httpOnly cookie for auth
         body: JSON.stringify({
           query: `${pageContext}${text}`,
           user_id: userEmail || `workspace_${genId()}`,
-          session_id: `ws_${userEmail.replace('@', '_')}`,
+          session_id: `ws_${userEmail.replace("@", "_")}`,
           enable_vision: false,
           conversation_history: history,
-          channel: 'workspace',
+          channel: "workspace",
           // Agent Mesh context — backend will use this for personalized responses
           metadata: {
             agent_mesh: true,
@@ -121,28 +125,31 @@ export function WorkspaceAssistant() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let accumulated = '';
+      let accumulated = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        const lines = chunk.split("\n");
 
         for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
+          if (!line.startsWith("data: ")) continue;
           const data = line.slice(6).trim();
-          if (data === '[DONE]') continue;
+          if (data === "[DONE]") continue;
 
           try {
             const parsed = JSON.parse(data);
-            if (parsed.type === 'token' && typeof parsed.data === 'string') {
+            if (parsed.type === "token" && typeof parsed.data === "string") {
               accumulated += parsed.data;
               setMessages((prev) => {
                 const last = prev[prev.length - 1];
-                if (last?.role !== 'assistant') return prev;
-                return [...prev.slice(0, -1), { ...last, content: accumulated }];
+                if (last?.role !== "assistant") return prev;
+                return [
+                  ...prev.slice(0, -1),
+                  { ...last, content: accumulated },
+                ];
               });
             }
           } catch {
@@ -154,12 +161,12 @@ export function WorkspaceAssistant() {
       // Finalize
       setMessages((prev) => {
         const last = prev[prev.length - 1];
-        if (last?.role !== 'assistant') return prev;
+        if (last?.role !== "assistant") return prev;
         return [
           ...prev.slice(0, -1),
           {
             ...last,
-            content: accumulated || 'Maaf, ada masalah koneksi. Coba lagi.',
+            content: accumulated || "Maaf, ada masalah koneksi. Coba lagi.",
             isStreaming: false,
           },
         ];
@@ -167,12 +174,12 @@ export function WorkspaceAssistant() {
     } catch {
       setMessages((prev) => {
         const last = prev[prev.length - 1];
-        if (last?.role !== 'assistant') return prev;
+        if (last?.role !== "assistant") return prev;
         return [
           ...prev.slice(0, -1),
           {
             ...last,
-            content: 'Koneksi bermasalah. Silakan coba lagi.',
+            content: "Koneksi bermasalah. Silakan coba lagi.",
             isStreaming: false,
           },
         ];
@@ -183,7 +190,7 @@ export function WorkspaceAssistant() {
   }, [input, isStreaming, messages, userEmail, userName, userRole, pathname]);
 
   // Don't render for clients (portal users)
-  if (userRole === 'client') return null;
+  if (userRole === "client") return null;
 
   return (
     <>
@@ -207,7 +214,9 @@ export function WorkspaceAssistant() {
               />
               <div>
                 <p className="text-sm font-medium text-white">Zantara</p>
-                <p className="text-[10px] text-white/40">Assistant for {userName} &middot; Cmd+J</p>
+                <p className="text-[10px] text-white/40">
+                  Assistant for {userName} &middot; Cmd+J
+                </p>
               </div>
             </div>
             <button
@@ -220,7 +229,10 @@ export function WorkspaceAssistant() {
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+          >
             {messages.length === 0 && (
               <div className="text-center py-8 text-white/30 text-sm">
                 <p>Halo {userName}! Tanya apa saja.</p>
@@ -232,25 +244,33 @@ export function WorkspaceAssistant() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[85%] rounded-xl px-3.5 py-2 text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-[var(--bz-accent,#d4845a)] text-white'
-                      : 'bg-white/5 text-white/90 border border-white/5'
+                    msg.role === "user"
+                      ? "bg-[var(--bz-accent,#d4845a)] text-white"
+                      : "bg-white/5 text-white/90 border border-white/5"
                   }`}
                 >
-                  {msg.role === 'assistant' ? (
+                  {msg.role === "assistant" ? (
                     <ReactMarkdown
                       components={{
-                        p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
-                        ul: ({ children }) => <ul className="list-disc ml-4 mb-1.5">{children}</ul>,
+                        p: ({ children }) => (
+                          <p className="mb-1.5 last:mb-0">{children}</p>
+                        ),
+                        ul: ({ children }) => (
+                          <ul className="list-disc ml-4 mb-1.5">{children}</ul>
+                        ),
                         ol: ({ children }) => (
-                          <ol className="list-decimal ml-4 mb-1.5">{children}</ol>
+                          <ol className="list-decimal ml-4 mb-1.5">
+                            {children}
+                          </ol>
                         ),
                         strong: ({ children }) => (
-                          <strong className="font-semibold text-white">{children}</strong>
+                          <strong className="font-semibold text-white">
+                            {children}
+                          </strong>
                         ),
                         code: ({ children }) => (
                           <code className="bg-white/10 px-1 py-0.5 rounded text-xs">
@@ -259,7 +279,7 @@ export function WorkspaceAssistant() {
                         ),
                       }}
                     >
-                      {msg.content || (msg.isStreaming ? '...' : '')}
+                      {msg.content || (msg.isStreaming ? "..." : "")}
                     </ReactMarkdown>
                   ) : (
                     msg.content
@@ -312,10 +332,10 @@ export function WorkspaceAssistant() {
         onClick={() => setOpen((prev) => !prev)}
         className={`fixed bottom-4 right-4 sm:right-6 z-50 w-12 h-12 rounded-full shadow-lg shadow-black/30 flex items-center justify-center transition-all duration-200 ${
           open
-            ? 'bg-white/10 border border-white/20'
-            : 'bg-[var(--bz-accent,#d4845a)] hover:scale-105'
+            ? "bg-white/10 border border-white/20"
+            : "bg-[var(--bz-accent,#d4845a)] hover:scale-105"
         }`}
-        aria-label={open ? 'Close Zantara' : 'Open Zantara (Cmd+J)'}
+        aria-label={open ? "Close Zantara" : "Open Zantara (Cmd+J)"}
         title="Cmd+J"
       >
         {open ? (

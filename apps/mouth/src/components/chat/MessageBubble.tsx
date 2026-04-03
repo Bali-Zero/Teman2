@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, memo } from "react";
-import ReactMarkdown from "react-markdown";
+import dynamic from "next/dynamic";
 import remarkGfm from "remark-gfm";
+
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 import {
   User,
   Copy,
