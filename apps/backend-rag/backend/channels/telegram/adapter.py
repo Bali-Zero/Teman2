@@ -134,6 +134,11 @@ class TelegramChannelAdapter(BaseChannel):
                 "date": message.get("date"),
             }
 
+            # Agent Mesh: inject team member context if present
+            agent_context = raw_event.get("_agent_context")
+            if agent_context:
+                metadata.update(agent_context)
+
             logger.info(
                 f"📨 Telegram message received: chat_id={chat_id}, "
                 f"user={first_name} (@{username}), text={text[:50]}...",
