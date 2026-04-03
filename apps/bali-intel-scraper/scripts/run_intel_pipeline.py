@@ -590,7 +590,7 @@ class IntelPipeline:
                             query=search_query,
                             num_results=5,
                             include_domains=t1_domains,
-                            use_autoprompt=False,  # Precise matching, no semantic expansion
+                            type="keyword",  # Precise matching, no semantic expansion
                         )
                         # Filter results: only count those with title overlap >= 0.15
                         # (at least a few shared keywords with the article)
