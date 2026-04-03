@@ -247,11 +247,11 @@ class IntelStagingService:
                 )
                 continue
 
+            # Pending/approved items in staging root
             for file_path in directory.glob("*.json"):
                 try:
                     with open(file_path) as f:
                         data = json.load(f)
-                        # Add metadata useful for list view
                         items.append(
                             {
                                 "id": file_path.stem,
@@ -271,6 +271,37 @@ class IntelStagingService:
                         exc_info=True,
                         extra={"file": str(file_path), "category": category},
                     )
+
+            # Published items from archived/approved (last 50 only)
+            approved_dir = directory / "archived" / "approved"
+            if approved_dir.exists():
+                archived_files = sorted(
+                    approved_dir.glob("*.json"),
+                    key=lambda f: f.stat().st_mtime,
+                    reverse=True,
+                )[:50]
+                for file_path in archived_files:
+                    try:
+                        with open(file_path) as f:
+                            data = json.load(f)
+                            items.append(
+                                {
+                                    "id": file_path.stem,
+                                    "type": category,
+                                    "title": data.get("title", "Untitled"),
+                                    "status": "published",
+                                    "detected_at": data.get("detected_at"),
+                                    "source": data.get("source_url", data.get("url", "")),
+                                    "detection_type": data.get("detection_type", "NEW"),
+                                    "content": data.get("content"),
+                                    "cover_image": data.get("cover_image"),
+                                },
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"Error reading archived file {file_path}: {e}",
+                            extra={"file": str(file_path), "category": category},
+                        )
 
         # Sort by date (newest first)
         items.sort(key=lambda x: x.get("detected_at", ""), reverse=True)
