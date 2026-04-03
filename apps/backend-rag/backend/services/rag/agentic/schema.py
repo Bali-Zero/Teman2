@@ -61,3 +61,9 @@ class CoreResult(BaseModel):
 
     # NLM Knowledge Fabric enrichment (CAUTIOUS zone)
     nlm_enrichment: dict[str, Any] | None = None  # NLM citations/summary when evidence is CAUTIOUS
+
+    # ARCH-4: Cross-notebook correlation (multi-domain queries)
+    cross_notebook_result: dict[str, Any] | None = None  # Domains, synthesis, contradictions
+
+    # ARCH-7: GraphRAG verification of NLM enrichment claims
+    kg_verification: dict[str, Any] | None = None  # status, score, evidence, hallucination_risk

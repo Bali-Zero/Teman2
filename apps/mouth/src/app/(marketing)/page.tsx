@@ -619,38 +619,34 @@ body::after {
           __html: `
 <!-- ════════ NAVBAR ════════ -->
 <nav>
-  <a class="logo-wrap" href="#">
+  <a class="logo-wrap" href="/">
     <img class="logo-img" src="/static/homepage/bali-zero.png" alt="Bali Zero logo">
   </a>
   <div class="nav-links">
     <div class="nav-dropdown">
-      <a class="nav-drop-trigger" href="#">News <span class="nav-arrow">↓</span></a>
+      <a class="nav-drop-trigger" href="/news">News <span class="nav-arrow">↓</span></a>
       <div class="nav-dropdown-menu">
-        <a href="#">Visas</a>
-        <a href="#">Business</a>
-        <a href="#">Taxes</a>
-        <a href="#">Property</a>
-        <a href="#">Intelligence</a>
+        <a href="/news?category=visas">Visas</a>
+        <a href="/news?category=business">Business</a>
+        <a href="/news?category=taxes">Taxes</a>
+        <a href="/news?category=property">Property</a>
+        <a href="/news">All Intelligence</a>
       </div>
     </div>
     <div class="nav-dropdown">
-      <a class="nav-drop-trigger" href="#">Services <span class="nav-arrow">↓</span></a>
+      <a class="nav-drop-trigger" href="/services">Services <span class="nav-arrow">↓</span></a>
       <div class="nav-dropdown-menu">
-        <a href="#">Visa &amp; Immigration</a>
-        <a href="#">Company Setup</a>
-        <a href="#">Tax &amp; Compliance</a>
-        <a href="#">Property</a>
+        <a href="/services#visa">Visa &amp; Immigration</a>
+        <a href="/services#company">Company Setup</a>
+        <a href="/services#tax">Tax &amp; Compliance</a>
+        <a href="/services#property">Property</a>
       </div>
     </div>
-    <a class="nav-simple" href="#">Team</a>
-    <a class="nav-simple" href="#">Contact</a>
+    <a class="nav-simple" href="/team">Team</a>
+    <a class="nav-simple" href="/contact">Contact</a>
     <div class="nav-divider"></div>
-    <button class="nav-icon-btn" aria-label="Search">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    </button>
-    <button class="nav-icon-btn nav-cmd">⌘K</button>
-    <button class="nav-lang">EN ↓</button>
-    <button class="btn-consult">Consultation</button>
+    <a class="nav-simple" href="/kbli" style="font-size:11px;letter-spacing:0.05em;color:var(--blue-light);">KBLI</a>
+    <button class="btn-consult" onclick="window.location.href='/contact'">Consultation</button>
   </div>
 </nav>
 
@@ -674,7 +670,7 @@ body::after {
           <h1 class="slide-headline">Bali Defies Global Headwinds with 70% Occupancy and <em>Rising</em> Foreign Investment</h1>
           <p class="slide-deck">Foreign capital inflows reach a post-pandemic peak as institutional investors pivot from Southeast Asian competitors to Bali's proven asset classes.</p>
           <div class="slide-actions">
-            <a href="#" class="btn-read">READ STORY</a>
+            <a href="/news/bali-defies-global-headwinds-with-70-occupancy-and-rising-foreign-investment" class="btn-read">READ STORY</a>
             <span class="slide-num">01 / 05</span>
           </div>
         </div>
@@ -730,7 +726,7 @@ body::after {
           <h1 class="slide-headline">Bali's 2026 Short-Term Rental Rules: <em>What Owners</em> Must Do Now</h1>
           <p class="slide-deck">New licensing frameworks, occupancy caps, and environmental levies reshape the short-term rental market.</p>
           <div class="slide-actions">
-            <a href="#" class="btn-read">READ STORY</a>
+            <a href="/news/balis-2026-short-term-rental-rules-what-owners-must-do-now" class="btn-read">READ STORY</a>
             <span class="slide-num">02 / 05</span>
           </div>
         </div>
@@ -786,7 +782,7 @@ body::after {
           <h1 class="slide-headline">Indonesia Tax for Expats: <em>Who Owes</em> What in 2026</h1>
           <p class="slide-deck">The new DGT guidelines clarify residency triggers, worldwide income rules, and the 183-day threshold.</p>
           <div class="slide-actions">
-            <a href="#" class="btn-read">READ STORY</a>
+            <a href="/news/indonesia-tax-for-expats-who-owes-what-in-2026" class="btn-read">READ STORY</a>
             <span class="slide-num">03 / 05</span>
           </div>
         </div>
@@ -842,7 +838,7 @@ body::after {
           <h1 class="slide-headline">Indonesia's Golden Visa: <em>What the 2026 Rules</em> Mean for HNW Investors</h1>
           <p class="slide-deck">Updated capital thresholds, asset class eligibility, and new fast-track processing reshape Indonesia's premium residency program.</p>
           <div class="slide-actions">
-            <a href="#" class="btn-read">READ STORY</a>
+            <a href="/news/indonesias-golden-visa-what-the-2026-rules-mean-for-high-net-worth-investors" class="btn-read">READ STORY</a>
             <span class="slide-num">04 / 05</span>
           </div>
         </div>
@@ -898,7 +894,7 @@ body::after {
           <h1 class="slide-headline">Bali Business Climate 2026: <em>What Foreigners</em> Actually Face</h1>
           <p class="slide-deck">Bureaucratic friction, cultural complexity, and regulatory opacity versus real returns.</p>
           <div class="slide-actions">
-            <a href="#" class="btn-read">READ STORY</a>
+            <a href="/news/bali-business-climate-2026-what-foreigners-actually-face" class="btn-read">READ STORY</a>
             <span class="slide-num">05 / 05</span>
           </div>
         </div>
@@ -951,15 +947,15 @@ body::after {
   <!-- Topic Pills -->
   <div class="topics-strip">
     <span class="topic-label">Latest</span>
-    <a href="#" class="topic-pill">AI &amp; Tech</a>
-    <a href="#" class="topic-pill">Visas</a>
-    <a href="#" class="topic-pill">Golden Visa</a>
-    <a href="#" class="topic-pill">PT PMA</a>
-    <a href="#" class="topic-pill">Tax 2026</a>
-    <a href="#" class="topic-pill">KITAS</a>
-    <a href="#" class="topic-pill">Digital Nomad</a>
-    <a href="#" class="topic-pill">Property</a>
-    <a href="#" class="topic-pill">Work Permits</a>
+    <a href="/news?category=trends" class="topic-pill">AI &amp; Tech</a>
+    <a href="/news?category=visas" class="topic-pill">Visas</a>
+    <a href="/news?category=visas&q=golden+visa" class="topic-pill">Golden Visa</a>
+    <a href="/news?category=business&q=pt+pma" class="topic-pill">PT PMA</a>
+    <a href="/news?category=taxes" class="topic-pill">Tax 2026</a>
+    <a href="/news?category=visas&q=kitas" class="topic-pill">KITAS</a>
+    <a href="/news?category=living" class="topic-pill">Digital Nomad</a>
+    <a href="/news?category=property" class="topic-pill">Property</a>
+    <a href="/news?category=visas&q=work+permit" class="topic-pill">Work Permits</a>
   </div>
 
 `, }}
@@ -997,7 +993,7 @@ body::after {
         <h2 class="services-title">Our Services</h2>
         <p class="services-sub">Expert assistance for your Indonesia journey</p>
       </div>
-      <a href="#" class="services-view">View all services →</a>
+      <a href="/contact" class="services-view">View all services →</a>
     </div>
     <div class="services-grid">
       <div class="service-card">
@@ -1042,35 +1038,35 @@ body::after {
       </div>
       <div class="footer-col">
         <h4>Services</h4>
-        <a href="#">Visa &amp; Immigration</a>
-        <a href="#">Company Setup</a>
-        <a href="#">Tax &amp; Compliance</a>
-        <a href="#">Property</a>
-        <a href="#">Golden Visa</a>
+        <a href="/services#visa">Visa &amp; Immigration</a>
+        <a href="/services#company">Company Setup</a>
+        <a href="/services#tax">Tax &amp; Compliance</a>
+        <a href="/services#property">Property</a>
+        <a href="/news?category=visas&q=golden+visa">Golden Visa</a>
       </div>
       <div class="footer-col">
         <h4>News</h4>
-        <a href="#">Visas</a>
-        <a href="#">Business</a>
-        <a href="#">Taxes</a>
-        <a href="#">Property</a>
-        <a href="#">Living</a>
+        <a href="/news?category=visas">Visas</a>
+        <a href="/news?category=business">Business</a>
+        <a href="/news?category=taxes">Taxes</a>
+        <a href="/news?category=property">Property</a>
+        <a href="/news?category=living">Living</a>
       </div>
       <div class="footer-col">
         <h4>Contact</h4>
-        <a href="#">info@balizero.com</a>
-        <a href="#">+62 859 0426 0571</a>
-        <a href="#">Bali, Indonesia</a>
-        <a href="#">WhatsApp</a>
-        <a href="#">Telegram</a>
+        <a href="mailto:info@balizero.com">info@balizero.com</a>
+        <a href="tel:+6285904260571">+62 859 0426 0571</a>
+        <a href="/contact">Bali, Indonesia</a>
+        <a href="https://wa.me/6285904260571" target="_blank" rel="noopener">WhatsApp</a>
+        <a href="https://t.me/Balizerobot" target="_blank" rel="noopener">Telegram</a>
       </div>
     </div>
     <div class="footer-bottom">
       <span class="footer-copy">© 2026 Bali Zero. All rights reserved.</span>
       <div class="footer-links">
-        <a href="#">Privacy</a>
-        <a href="#">Terms</a>
-        <a href="#">Cookies</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="/cookies">Cookies</a>
       </div>
     </div>
   </footer>
@@ -1080,48 +1076,58 @@ body::after {
         }}
       />
       <ZantaraWidget />
-      <Script id="balizero-homepage-js" strategy="afterInteractive">
-        {`<script>
+      <Script id="balizero-homepage-js" strategy="afterInteractive">{`
 // ════════ CAROUSEL ENGINE ════════
-const slides = document.querySelectorAll('.slide');
-const dots = document.querySelectorAll('.dot');
-let current = 0;
-let timer = null;
+(function() {
+  var slides = document.querySelectorAll('.slide');
+  var dots = document.querySelectorAll('.dot');
+  if (!slides.length) return;
+  var current = 0;
+  var timer = null;
 
-function goTo(n) {
-  if (n === current) return;
-  const prev = current;
-  current = n;
-  slides[prev].classList.remove('active');
-  slides[prev].classList.add('leaving');
-  slides[current].classList.add('entering');
-  setTimeout(() => {
-    slides[prev].classList.remove('leaving');
-    slides[current].classList.remove('entering');
-    slides[current].classList.add('active');
-  }, 850);
-  dots.forEach((d, i) => d.classList.toggle('active', i === current));
-}
+  function goTo(n) {
+    if (n === current) return;
+    var prev = current;
+    current = n;
+    slides[prev].classList.remove('active');
+    slides[prev].classList.add('leaving');
+    slides[current].classList.add('entering');
+    setTimeout(function() {
+      slides[prev].classList.remove('leaving');
+      slides[current].classList.remove('entering');
+      slides[current].classList.add('active');
+    }, 850);
+    dots.forEach(function(d, i) { d.classList.toggle('active', i === current); });
+  }
 
-function nextSlide() {
-  goTo((current + 1) % slides.length);
-}
+  function nextSlide() {
+    goTo((current + 1) % slides.length);
+  }
 
-function startTimer() {
-  timer = setInterval(nextSlide, 6000);
-}
+  function startTimer() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(nextSlide, 6000);
+  }
 
-document.getElementById('carousel').addEventListener('mouseenter', () => clearInterval(timer));
-document.getElementById('carousel').addEventListener('mouseleave', startTimer);
-startTimer();
+  var carousel = document.getElementById('carousel');
+  if (carousel) {
+    carousel.addEventListener('mouseenter', function() { clearInterval(timer); });
+    carousel.addEventListener('mouseleave', startTimer);
+  }
+
+  dots.forEach(function(dot, i) {
+    dot.addEventListener('click', function() { goTo(i); startTimer(); });
+  });
+
+  startTimer();
+})();
 
 // ════════ MOUSE SPOTLIGHT ════════
-document.addEventListener('mousemove', e => {
+document.addEventListener('mousemove', function(e) {
   document.body.style.setProperty('--mouse-x', e.clientX + 'px');
   document.body.style.setProperty('--mouse-y', e.clientY + 'px');
 });
-`}
-      </Script>
+`}</Script>
     </>
   );
 }
