@@ -179,37 +179,28 @@ def brainstorm_prompt(slide: dict, topic: str, slide_type: str) -> str:
     is_cover = slide.get("is_cover", False)
     placement = slide.get("image_placement", "full_bleed")
 
-    brainstorm_brief = f"""You are a world-class editorial art director for Bali Zero, an Indonesian business services firm.
+    # Short prompt for fast agents (Gemini/DeepSeek) — avoids CLI timeout
+    short_brief = (
+        f'Slide: "{headline}" | Topic: {topic} | Cover: {is_cover} | Type: {slide_type}\n'
+        f'Concept: {raw_prompt[:200]}\n'
+        f'Style: cinematic editorial, teal+amber grading, ARRI Alexa or Hasselblad, 85mm f/1.4, '
+        f'{"golden hour" if slide_type != "risk" else "moody overcast"}, hyper-realistic, film grain.\n'
+        f'Return ONLY a 3-sentence Flux image prompt. End with: '
+        f'"Hyper-realistic, editorial photography, cinematic teal and amber color grading, film grain, no text, no logos."'
+    )
 
-SLIDE CONTEXT:
-- Topic: {topic}
-- Headline: {headline}
-- Is cover: {is_cover}
-- Image placement: {placement}
-- Slide type: {slide_type}
-- Raw image concept: {raw_prompt}
-
-BZ VISUAL IDENTITY:
-{BZ_STYLE}
-
-YOUR TASK:
-Generate ONE ultra-precise Fireworks/Flux image generation prompt for this slide.
-The prompt must:
-- Follow BZ visual identity strictly (teal+amber, cinematic, hyper-realistic)
-- Specify camera + lens
-- Specify lighting (golden hour or moody overcast)
-- Be 2-4 sentences max, dense with visual specifics
-- End with: "Hyper-realistic, editorial photography, cinematic teal and amber color grading, film grain, no text, no logos."
-- NO Midjourney flags (--ar, --v, --style) — this is for Flux/Fireworks
-
-Return ONLY the prompt text, nothing else."""
+    # Full brief kept for Claude synthesis only
+    full_brief = (
+        f'SLIDE: "{headline}" | Topic: {topic} | Cover: {is_cover} | Placement: {placement} | Type: {slide_type}\n'
+        f'Concept: {raw_prompt}\nBZ STYLE: {BZ_STYLE}'
+    )
 
     def run_gemini() -> tuple[str, str]:
-        g_prompt = f"You are a cinematographer. {brainstorm_brief}\nFocus on: composition, lighting, camera movement, visual metaphor."
+        g_prompt = f"You are a cinematographer for Bali Zero editorial. {short_brief}\nFocus on: composition, lighting, visual metaphor."
         return ("Gemini", call_gemini(g_prompt, timeout=60))
 
     def run_deepseek() -> tuple[str, str]:
-        ds_prompt = f"You are a conceptual photographer. {brainstorm_brief}\nFocus on: symbolic meaning, emotional tension, narrative subtext."
+        ds_prompt = f"You are a conceptual photographer for Bali Zero editorial. {short_brief}\nFocus on: symbolic meaning, emotional tension."
         return ("DeepSeek", call_deepseek(ds_prompt, timeout=60))
 
     # Run Gemini + DeepSeek in parallel (max 60s each)
@@ -240,24 +231,18 @@ Return ONLY the prompt text, nothing else."""
 
     # Claude synthesizes (90s max)
     variants_text = "\n\n".join([f"VARIANT {i+1} ({name}):\n{v}" for i, (name, v) in enumerate(variants)])
-    synthesis_prompt = f"""You are Claude, creative director at Bali Zero. You have {len(variants)} image prompt variants for a slide.
-
-SLIDE: "{headline}" | Topic: {topic} | Cover: {is_cover}
-
-VARIANTS:
-{variants_text}
-
-BZ STYLE RULES:
-{BZ_STYLE}
-
-Synthesize the SINGLE best Fireworks/Flux prompt by:
-1. Taking the strongest visual idea from each variant
-2. Ensuring strict BZ style compliance (teal+amber, cinematic, hyper-realistic)
-3. Specifying camera (ARRI Alexa Mini LF or Hasselblad X2D) + lens (85mm f/1.4 or 35mm anamorphic)
-4. Keeping it 3-5 sentences, ultra-specific
-5. Ending with: "Hyper-realistic, editorial photography, cinematic teal and amber color grading, film grain, no text, no logos."
-
-Return ONLY the final prompt. No explanation, no preamble."""
+    synthesis_prompt = (
+        f'You are Claude, creative director at Bali Zero.\n'
+        f'{full_brief}\n\n'
+        f'VARIANTS:\n{variants_text}\n\n'
+        f'Synthesize the SINGLE best Fireworks/Flux prompt:\n'
+        f'1. Best visual idea from each variant\n'
+        f'2. Strict BZ style (teal+amber, cinematic, hyper-realistic)\n'
+        f'3. Camera: ARRI Alexa Mini LF or Hasselblad X2D + lens 85mm f/1.4\n'
+        f'4. 3-5 sentences, ultra-specific\n'
+        f'5. End with: "Hyper-realistic, editorial photography, cinematic teal and amber color grading, film grain, no text, no logos."\n'
+        f'Return ONLY the final prompt.'
+    )
 
     try:
         final = call_claude(synthesis_prompt, timeout=90)
