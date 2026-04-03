@@ -131,11 +131,86 @@ nav {
 .btn-consult:hover { background: var(--gold); color: var(--navy); }
 
 /* ══════════════════════════════════════════
+   BRAND ENTRANCE
+══════════════════════════════════════════ */
+.brand-entrance {
+  margin-top: 62px;
+  border-bottom: 1px solid rgba(212,168,83,0.15);
+  background: var(--navy);
+  position: relative;
+}
+.brand-inner {
+  max-width: 1400px; margin: 0 auto;
+  padding: 0 60px;
+  height: 80px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.brand-left {
+  display: flex; align-items: center; gap: 16px;
+}
+.brand-rule {
+  display: block; width: 28px; height: 1px;
+  background: var(--gold); flex-shrink: 0;
+}
+.brand-wordmark {
+  display: flex; align-items: baseline; gap: 3px;
+  flex-shrink: 0;
+}
+.wm-bali {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 20px; font-weight: 400;
+  color: var(--cream); letter-spacing: 0.06em;
+}
+.wm-zero {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 20px; font-weight: 400; font-style: italic;
+  color: var(--gold); letter-spacing: 0.03em;
+}
+.brand-divider {
+  width: 1px; height: 32px;
+  background: rgba(255,255,255,0.1);
+  margin: 0 12px; flex-shrink: 0;
+}
+.brand-text { display: flex; flex-direction: column; gap: 4px; }
+.brand-tagline {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 22px; font-weight: 400;
+  color: var(--cream); letter-spacing: -0.01em;
+  line-height: 1.2; margin: 0;
+}
+.brand-tagline em {
+  color: var(--gold); font-style: italic;
+}
+.brand-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--w35); margin: 0;
+}
+.brand-right {
+  display: flex; align-items: center; gap: 8px;
+}
+.brand-stat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--w35);
+}
+.brand-stat-sep {
+  font-size: 8px; color: rgba(212,168,83,0.4);
+}
+@media (max-width: 768px) {
+  .brand-inner { padding: 0 20px; height: 68px; }
+  .brand-tagline { font-size: 18px; }
+  .brand-right { display: none; }
+}
+
+/* ══════════════════════════════════════════
    CAROUSEL HERO
 ══════════════════════════════════════════ */
 .hero-carousel {
   position: relative; height: 100vh; overflow: hidden;
-  background: var(--navy); margin-top: 62px;
+  background: var(--navy);
 }
 .slide {
   position: absolute; inset: 0;
@@ -649,6 +724,30 @@ body::after {
     <button class="btn-consult" onclick="window.location.href='/contact'">Consultation</button>
   </div>
 </nav>
+
+<!-- ════════ BRAND ENTRANCE ════════ -->
+<div class="brand-entrance">
+  <div class="brand-inner">
+    <div class="brand-left">
+      <span class="brand-rule"></span>
+      <div class="brand-wordmark">
+        <span class="wm-bali">BALI</span><span class="wm-zero">ZERO</span>
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-text">
+        <h2 class="brand-tagline">Your Bali, from <em>Zero</em></h2>
+        <p class="brand-sub">Visa · Company · Tax · Property · Intelligence</p>
+      </div>
+    </div>
+    <div class="brand-right">
+      <span class="brand-stat">5,000+ clients</span>
+      <span class="brand-stat-sep">·</span>
+      <span class="brand-stat">Since 2020</span>
+      <span class="brand-stat-sep">·</span>
+      <span class="brand-stat">Bali, Indonesia</span>
+    </div>
+  </div>
+</div>
 
 <!-- ════════ HERO CAROUSEL ════════ -->
 <div id="carousel" class="hero-carousel">
