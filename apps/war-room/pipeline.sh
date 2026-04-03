@@ -372,13 +372,15 @@ fi
 
 # ══════════════════════════════════════════════════════════
 # FASE 4 — CANVA CAROUSEL BUILDER
-# Bridge: claude -p → MCP Canva → design DAHE6lx1lf8
+# In AUTO_MODE: genera solo canva_pending.json + Telegram notify
+# In modalità interattiva: usa MCP Canva via Claude Desktop
 # ══════════════════════════════════════════════════════════
 log ""
 log "━━━ FASE 4: CANVA CAROUSEL (T+07:00) ━━━"
 log "   Design: $CANVA_DESIGN"
 
 if ! $DRY_RUN; then
+  # Genera sempre canva_pending.json (non richiede MCP)
   run_phase "canva_builder" 600 \
     "$WAR_ROOM/.venv/bin/python3" "$WAR_ROOM/agents/06_canva_builder.py" \
     --slides    "$OUTPUT/strategy/claude_slides.json" \
@@ -387,7 +389,47 @@ if ! $DRY_RUN; then
     --design-id "$CANVA_DESIGN" \
     || log "⚠️  Canva builder fallito — continua senza carousel (non bloccante)"
 
-  if [[ -f "$OUTPUT/canva/carousel_canva.json" ]]; then
+  # In AUTO_MODE: canva_pending.json è pronto, MCP Canva va fatto da Claude Desktop
+  # Manda notifica Telegram con istruzioni
+  if $AUTO_MODE && [[ -f "$OUTPUT/canva/canva_pending.json" ]]; then
+    TOPIC_LABEL=$(python3 -c "import json; d=json.load(open('$OUTPUT/canva/canva_pending.json')); print(d.get('topic','?')[:80])" 2>/dev/null || echo "$TOPIC")
+    SLIDES_N=$(python3 -c "import json; d=json.load(open('$OUTPUT/canva/canva_pending.json')); print(len(d.get('slides',[])))" 2>/dev/null || echo "?")
+    TG_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+    TG_CHAT="${TELEGRAM_GROUP_ID:-}"
+    DAMAR_CHAT_ID="1813875994"
+
+    _tg_send() {
+      local chat="$1" msg="$2"
+      curl -sf "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+        -d "chat_id=${chat}" \
+        --data-urlencode "text=${msg}" \
+        -d "parse_mode=HTML" > /dev/null 2>&1
+    }
+
+    if [[ -n "$TG_TOKEN" ]]; then
+      # Zero (IT)
+      if [[ -n "$TG_CHAT" ]]; then
+        MSG_ZERO="🎨 <b>War Room pronta per Canva</b>
+
+📌 <b>Topic:</b> ${TOPIC_LABEL}
+🖼️  Slide: ${SLIDES_N} | Immagini: ${IMG_GENERATED:-?}/${IMG_TOTAL:-?}
+
+<b>Apri Claude Desktop</b> e lancia:
+<code>APPLICA_WAR_ROOM</code>"
+        _tg_send "$TG_CHAT" "$MSG_ZERO" && log "   📱 Telegram → Zero" || log "   ⚠️  Telegram → Zero fallito"
+      fi
+      # Damar (ID)
+      MSG_DAMAR="🎨 <b>War Room siap untuk Canva</b>
+
+📌 <b>Topik:</b> ${TOPIC_LABEL}
+🖼️  Slide: ${SLIDES_N} | Gambar: ${IMG_GENERATED:-?}/${IMG_TOTAL:-?}
+
+Buka <b>Claude Desktop</b> (Pro) dan jalankan:
+<code>APPLICA_WAR_ROOM</code>"
+      _tg_send "$DAMAR_CHAT_ID" "$MSG_DAMAR" && log "   📱 Telegram → Damar" || log "   ⚠️  Telegram → Damar fallito"
+    fi
+    log "✅ canva_pending.json pronto — applica via Claude Desktop (APPLICA_WAR_ROOM)"
+  elif [[ -f "$OUTPUT/canva/carousel_canva.json" ]]; then
     CANVA_URL=$(python3 -c "import json; d=json.load(open('$OUTPUT/canva/carousel_canva.json')); print(d.get('design_url',''))" 2>/dev/null || echo "")
     [[ -n "$CANVA_URL" ]] && log "   🔗 $CANVA_URL"
     log "✅ Canva carousel aggiornato"
