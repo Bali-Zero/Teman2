@@ -25,6 +25,10 @@ class TestMaturationPhases:
         m = Maturation(age_days=15)
         assert m.phase == LifecyclePhase.GIOVANE
 
+    def test_giovane_day30(self):
+        m = Maturation(age_days=30)
+        assert m.phase == LifecyclePhase.GIOVANE
+
     def test_adulto_day31(self):
         m = Maturation(age_days=31)
         assert m.phase == LifecyclePhase.ADULTO
@@ -43,7 +47,7 @@ class TestMaturationCapabilities:
 
     def test_neonato_can_reason_not_act_autonomously(self):
         m = Maturation(age_days=5)
-        assert m.can_reason_deep() is True
+        assert m.can_reason_deep() is False  # neonato cannot use Qwen 27B
         assert m.can_dream() is False
         assert m.can_act() is True
 
@@ -70,10 +74,14 @@ class TestMaturationCapabilities:
         m = Maturation(age_days=40)
         assert m.action_confidence_threshold() == 0.0
 
+    def test_confidence_threshold_giovane(self):
+        m = Maturation(age_days=20)
+        assert m.action_confidence_threshold() == 0.5
+
 
 class TestMaturationPromptContext:
     def test_to_prompt_context_includes_phase(self):
         m = Maturation(age_days=20)
         ctx = m.to_prompt_context()
         assert "giovane" in ctx
-        assert "15" in ctx or "day" in ctx.lower()
+        assert "age=20d" in ctx
