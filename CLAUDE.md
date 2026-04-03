@@ -54,7 +54,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
-- **Knowledge Graph:** 56,113 nodes, 161,173 edges
+- **Knowledge Graph:** 108,068 nodes, 242,827 edges
 <!-- DOCSYNC:VECTOR_STATS_START -->
 - **Vector Collections:** 10 live on Fly.io (93,283 documents), 11 defined in code
 <!-- DOCSYNC:VECTOR_STATS_END -->
@@ -149,8 +149,19 @@ Per architettura deep: `notebook_query` su NB-1 (3-8s)
 Per sessioni storiche: `notebook_query` su NB-14 (3-8s)
 
 **Regola:** `mem` PRIMA di NotebookLM. NLM solo per dominio o cross-query.
-**Quando salvare:** Dopo ogni decisione architetturale, scoperta non ovvia, o problema irrisolto.
-File changes tracciati automaticamente via PostToolUse hook — non serve salvarli manualmente.
+
+### Salvataggio proattivo (OBBLIGATORIO)
+
+Claude DEVE salvare proattivamente in MOS senza che l'utente lo chieda. Esegui `~/.claude/scripts/mem save` immediatamente quando:
+
+- **decision**: scelta architetturale, tecnologia selezionata, approccio scelto tra alternative
+- **discovery**: bug trovato, comportamento inatteso, insight tecnico non ovvio
+- **fact**: configurazione infra verificata, credenziali/endpoint confermati, versioni accertate
+- **unresolved**: problema non risolto, TODO da investigare, workaround temporaneo
+
+Importance: 8-10 decisioni architetturali, 7-8 scoperte e fatti, 5-6 unresolved.
+File changes tracciati automaticamente — non serve salvarli.
+**NON chiedere all'utente se salvare. Salva e basta.**
 
 ## 4. Golden Rules (ENFORCE STRICTLY)
 
