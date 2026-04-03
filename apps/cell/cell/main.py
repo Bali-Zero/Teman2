@@ -35,6 +35,11 @@ from cell.core.db import create_episodes_table
 from cell.fast.homeostatic_controller import HomeostaticController
 from cell.memory.episodic import EpisodicMemory
 from cell.identity.self_model import SelfModelManager
+from cell.memory.dreamer import Dreamer
+from cell.identity.journal import Journal
+from cell.metabolism.attention_allocator import AttentionAllocator
+from cell.lifecycle.maturation import Maturation
+from cell.core.db import create_dreams_table, create_journal_table
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,6 +63,8 @@ async def main() -> None:
     # Persistent memory bootstrap (create table before reasoner uses it)
     await create_patterns_table()
     await create_episodes_table()
+    await create_dreams_table()
+    await create_journal_table()
 
     dna_loader = DNALoader()
     dna_hash = dna_loader.compute_hash()
@@ -151,6 +158,18 @@ async def main() -> None:
         ep_count = await episodic.count()
         logger.info(f"EpisodicMemory initialized ({ep_count} episodes)")
 
+        # Dreamer — nocturnal consolidation
+        dreamer = Dreamer(pool=_db_pool_ep, ollama_url="http://localhost:11434")
+        logger.info("Dreamer initialized")
+
+        # Journal — daily narrative
+        journal = Journal(pool=_db_pool_ep, ollama_url="http://localhost:11434")
+        logger.info("Journal initialized")
+
+        # Attention Allocator — scarce cognitive budget
+        attention = AttentionAllocator(daily_units=100)
+        logger.info("AttentionAllocator initialized (100 units/day)")
+
         # Self-Model — persistent identity
         self_model_path = settings.cell_root / "data" / "self_model.json"
         self_model = SelfModelManager(path=self_model_path)
@@ -159,6 +178,10 @@ async def main() -> None:
             f"SelfModel loaded: age={self_model.model.age_days}d "
             f"pulses={self_model.model.total_pulses} actions={self_model.model.total_actions}"
         )
+
+        # Maturation — lifecycle phase gate
+        maturation = Maturation(age_days=self_model.model.age_days)
+        maturation.log_phase()
 
         engine = PulseEngine(
             dna_loader=dna_loader,
@@ -185,6 +208,10 @@ async def main() -> None:
             homeostatic=homeostatic,
             episodic=episodic,
             self_model=self_model,
+            dreamer=dreamer,
+            journal=journal,
+            attention=attention,
+            maturation=maturation,
         )
 
         logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")
