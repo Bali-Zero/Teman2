@@ -554,7 +554,7 @@ function HeroCarousel({
 
             {slide.excerpt && (
               <p className="text-white/60 text-base lg:text-lg leading-relaxed mb-8 line-clamp-2">
-                {slide.excerpt}
+                {slide.excerpt.replace(/^#+\s*/gm, "").replace(/\*\*|__|\*|_/g, "").trim()}
               </p>
             )}
 
