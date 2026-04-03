@@ -5,7 +5,7 @@ export interface StagingItem {
   id: string;
   type: "visa" | "news";
   title: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "published";
   detected_at: string;
   source: string;
   detection_type: "NEW" | "UPDATED";
