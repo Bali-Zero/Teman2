@@ -166,29 +166,29 @@ nav {
 .brand-logo-row {
   font-family: 'Arial Black', 'Impact', 'Franklin Gothic Heavy', sans-serif;
   font-weight: 900; font-style: normal;
-  font-size: 20px; letter-spacing: 0.04em;
-  color: #fff; line-height: 1; display: flex; align-items: baseline; gap: 1px;
+  font-size: 30px; letter-spacing: 0.06em;
+  color: #fff; line-height: 1; display: flex; align-items: baseline; gap: 0;
 }
 .brand-logo-3 {
   color: #cc1a1a;
-  font-size: 1.4em;
+  font-size: 1.35em;
   line-height: 0.85;
   display: inline-block;
-  transform: translateY(2px);
-  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+  transform: translateY(3px);
+  text-shadow: 1px 2px 4px rgba(0,0,0,0.6);
 }
 .brand-om-circle {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 1.05em; height: 1.05em;
-  border: 2px solid #fff;
+  width: 1em; height: 1em;
+  border: 2.5px solid #fff;
   border-radius: 50%;
   position: relative;
   vertical-align: middle;
-  margin-bottom: 1px;
+  margin-bottom: 2px;
 }
 .brand-om-circle::after {
   content: 'ॐ';
-  font-size: 0.58em;
+  font-size: 0.55em;
   font-family: serif;
   color: #111;
   background: #fff;
@@ -743,8 +743,6 @@ body::after {
 <div class="brand-entrance">
   <div class="brand-inner">
     <div class="brand-left">
-      <img class="brand-logo" src="/static/homepage/bali-zero-logo.png" alt="Bali Zero">
-      <div class="brand-divider"></div>
       <div class="brand-text">
         <div class="brand-logo-text">
           <div class="brand-logo-row"><span class="brand-logo-3">3</span>ALI</div>

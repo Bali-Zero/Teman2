@@ -25,9 +25,15 @@
     "zoning::Bali height restriction bangunan tinggi",
     "zoning::Bali heritage zone kawasan warisan budaya",
     "zoning::Bali mangrove protected zone restrictions",
-    "zoning::FAR floor area ratio KDB KLB Bali"
+    "zoning::FAR floor area ratio KDB KLB Bali",
+    "zoning::Bali adat village tanah desa rights restrictions",
+    "zoning::Bali airport noise zone IMB restrictions Ngurah Rai",
+    "zoning::Bali Seminyak Canggu villa development rules",
+    "zoning::Bali Ubud cultural zone building restrictions",
+    "land::sertifikat hak milik SHM process Bali BPN",
+    "land::SHGB sertifikat hak guna bangunan conversion Bali"
   ],
   "failed": [],
-  "total_claims": 339,
+  "total_claims": 414,
   "started_at": "2026-04-03T19:06:37.606473"
 }
