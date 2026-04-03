@@ -12,11 +12,63 @@ Design rules:
 
 import asyncio
 import logging
+import time
+from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
 
 logger = logging.getLogger(__name__)
+
+# ── Deduplication guard ──────────────────────────────────────────────────
+# PG triggers fire on every UPDATE, including no-op updates (SET x = x).
+# This prevents duplicate processing within a short window.
+_recent_events: dict[str, float] = {}
+_DEDUP_WINDOW_S = 10  # ignore same event within 10 seconds
+
+
+def _is_duplicate(event_key: str) -> bool:
+    """Check if this event was already processed recently."""
+    now = time.monotonic()
+    # Prune old entries
+    stale = [k for k, t in _recent_events.items() if now - t > _DEDUP_WINDOW_S]
+    for k in stale:
+        del _recent_events[k]
+    if event_key in _recent_events:
+        return True
+    _recent_events[event_key] = now
+    return False
+
+
+# ── Cross-chain shared context ───────────────────────────────────────────
+# In-memory store of recent events so chains can check what already happened.
+# Key: "{event_type}:{entity_id}", Value: payload + timestamp.
+# Max 200 entries, auto-pruned.
+_chain_context: dict[str, dict[str, Any]] = {}
+_CHAIN_CONTEXT_MAX = 200
+
+
+def get_chain_context() -> dict[str, dict[str, Any]]:
+    """Read-only access to recent event context for chains."""
+    return dict(_chain_context)
+
+
+def _store_context(event_type: str, entity_id: str | int, payload: dict[str, Any]) -> None:
+    """Store event in cross-chain context."""
+    key = f"{event_type}:{entity_id}"
+    _chain_context[key] = {
+        **payload,
+        "_stored_at": datetime.now(timezone.utc).isoformat(),
+    }
+    # Prune if too many
+    if len(_chain_context) > _CHAIN_CONTEXT_MAX:
+        oldest_keys = sorted(
+            _chain_context,
+            key=lambda k: _chain_context[k].get("_stored_at", ""),
+        )[:50]
+        for k in oldest_keys:
+            del _chain_context[k]
 
 
 def register_handlers(
@@ -34,13 +86,18 @@ def register_handlers(
         """React to client creation or update.
 
         Actions:
-          - Log interaction for audit trail
+          - Dedup guard (PG fires on every UPDATE, even no-ops)
           - Invalidate CRM cache
-          - On INSERT: trigger lead assignment check
+          - Store in cross-chain context
+          - On INSERT: create Drive folder + log CRM interaction
         """
         client_id = payload.get("client_id")
         operation = payload.get("operation", "UPDATE")
         email = payload.get("email", "unknown")
+
+        dedup_key = f"client:{client_id}:{operation}"
+        if _is_duplicate(dedup_key):
+            return
 
         logger.info(
             f"🔔 Event client.changed: {operation} client_id={client_id} "
@@ -54,26 +111,48 @@ def register_handlers(
         except Exception as e:
             logger.debug(f"Cache invalidation skipped: {e}")
 
-        # On new client: log and potentially trigger onboarding
+        # Store in cross-chain context
+        _store_context("client.changed", client_id, payload)
+
+        # On new client: create Drive folder + log interaction
         if operation == "INSERT":
             logger.info(
-                f"🆕 New client created via event bus: "
-                f"id={client_id}, email={email}"
+                f"🆕 New client created: id={client_id}, email={email}"
+            )
+            # Create Drive folder in background (non-blocking)
+            asyncio.create_task(
+                _create_drive_folder(db_pool, client_id),
+                name=f"drive_folder_{client_id}",
+            )
+            # Log CRM interaction
+            asyncio.create_task(
+                _log_interaction(
+                    db_pool, client_id,
+                    "system",
+                    "Client created — auto-provisioning started",
+                    "internal",
+                ),
+                name=f"log_interaction_{client_id}",
             )
 
     # ── practice.status_changed ────────────────────────────────────────
     async def on_practice_status_changed(payload: dict[str, Any]) -> None:
         """React to practice status changes.
 
-        The existing PracticeStatusListener already handles M4/M5 emails.
-        This handler adds cross-chain awareness: stores the event so
-        other chains (daily_ops, compliance) can read recent changes.
-
-        We write to a lightweight in-memory store that chains can query.
+        PracticeStatusListener handles M4/M5 emails.
+        This handler adds:
+          - Cross-chain context (so daily_ops knows what changed)
+          - Compliance check on completion
+          - Cache invalidation
         """
         practice_id = payload.get("practice_id")
         old_status = payload.get("old_status")
         new_status = payload.get("new_status")
+        client_id = payload.get("client_id")
+
+        dedup_key = f"practice:{practice_id}:{old_status}:{new_status}"
+        if _is_duplicate(dedup_key):
+            return
 
         logger.info(
             f"🔔 Event practice.status_changed: "
@@ -87,27 +166,75 @@ def register_handlers(
         except Exception as e:
             logger.debug(f"Cache invalidation skipped: {e}")
 
+        # Store in cross-chain context
+        _store_context("practice.status_changed", practice_id, payload)
+
+        # On completion: check if client has other expiring docs
+        if new_status == "completed" and client_id:
+            asyncio.create_task(
+                _check_client_expiry_on_completion(db_pool, client_id, practice_id),
+                name=f"expiry_check_{client_id}",
+            )
+
+        # On cancellation: log for analytics
+        if new_status == "cancelled":
+            asyncio.create_task(
+                _log_interaction(
+                    db_pool, client_id,
+                    "system",
+                    f"Practice #{practice_id} cancelled (was: {old_status})",
+                    "internal",
+                ),
+                name=f"cancel_log_{practice_id}",
+            )
+
     # ── compliance.alert ───────────────────────────────────────────────
     async def on_compliance_alert(payload: dict[str, Any]) -> None:
         """React to compliance alerts.
 
         Actions:
-          - Log for audit
-          - High severity: notify via Telegram
+          - Store in cross-chain context
+          - High/critical: send Telegram alert to admin
+          - Log CRM interaction for affected client
         """
         alert_id = payload.get("alert_id")
         severity = payload.get("severity", "low")
         message = payload.get("message", "")
         client_id = payload.get("client_id")
+        alert_type = payload.get("alert_type", "unknown")
+
+        dedup_key = f"compliance:{alert_id}"
+        if _is_duplicate(dedup_key):
+            return
 
         logger.info(
             f"🔔 Event compliance.alert: severity={severity} "
-            f"client_id={client_id} alert_id={alert_id}"
+            f"client_id={client_id} type={alert_type}"
         )
 
+        # Store in cross-chain context
+        _store_context("compliance.alert", alert_id or client_id, payload)
+
+        # High/critical: Telegram alert
         if severity in ("high", "critical"):
-            logger.warning(
-                f"⚠️ HIGH severity compliance alert: {message[:200]}"
+            asyncio.create_task(
+                _send_admin_telegram(
+                    f"⚠️ Compliance Alert [{severity.upper()}]",
+                    f"Client #{client_id}\nType: {alert_type}\n{message[:300]}",
+                ),
+                name=f"telegram_compliance_{alert_id}",
+            )
+
+        # Log in CRM
+        if client_id:
+            asyncio.create_task(
+                _log_interaction(
+                    db_pool, client_id,
+                    "compliance",
+                    f"[{severity}] {alert_type}: {message[:200]}",
+                    "internal",
+                ),
+                name=f"compliance_log_{client_id}",
             )
 
     # ── Register all handlers ──────────────────────────────────────────
@@ -119,3 +246,121 @@ def register_handlers(
         f"✅ EventBus handlers registered: "
         f"{len(bus._subscribers)} event types"
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Background action functions — called via asyncio.create_task from handlers
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def _create_drive_folder(db_pool: asyncpg.Pool, client_id: int) -> None:
+    """Create a Google Drive folder for a new client."""
+    try:
+        from backend.services.integrations.service_account_drive_service import (
+            ServiceAccountDriveService,
+        )
+        drive_svc = ServiceAccountDriveService()
+
+        # Fetch client name for folder
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT full_name FROM clients WHERE id = $1", client_id,
+            )
+        if not row:
+            return
+
+        client_name = row["full_name"]
+        folder_name = f"Individual_{client_name.replace(' ', '_')}"
+
+        # Check if folder already exists (idempotency)
+        async with db_pool.acquire() as conn:
+            existing = await conn.fetchval(
+                "SELECT drive_folder_id FROM clients WHERE id = $1", client_id,
+            )
+        if existing:
+            logger.debug(f"Drive folder already exists for client {client_id}")
+            return
+
+        folder_id = drive_svc.create_folder(folder_name)
+        if folder_id:
+            async with db_pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE clients SET drive_folder_id = $1 WHERE id = $2",
+                    folder_id, client_id,
+                )
+            logger.info(f"📁 Drive folder created for client {client_id}: {folder_id}")
+    except Exception as e:
+        logger.error(f"Drive folder creation failed for client {client_id}: {e}")
+
+
+async def _log_interaction(
+    db_pool: asyncpg.Pool,
+    client_id: int | None,
+    interaction_type: str,
+    summary: str,
+    channel: str,
+) -> None:
+    """Insert a CRM interaction record."""
+    if not client_id:
+        return
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """INSERT INTO interactions (client_id, type, summary, channel, created_at)
+                   VALUES ($1, $2, $3, $4, NOW())""",
+                client_id, interaction_type, summary, channel,
+            )
+    except Exception as e:
+        logger.debug(f"Interaction log failed: {e}")
+
+
+async def _check_client_expiry_on_completion(
+    db_pool: asyncpg.Pool, client_id: int, completed_practice_id: int,
+) -> None:
+    """When a practice completes, check if the client has other expiring documents.
+
+    This replaces the need for a separate cron job to scan all clients —
+    we check proactively at the moment of completion.
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            expiring = await conn.fetch(
+                """SELECT id, practice_type_code, expiry_date,
+                          (expiry_date - CURRENT_DATE) AS days_remaining
+                   FROM practices
+                   WHERE client_id = $1
+                     AND id != $2
+                     AND status NOT IN ('completed', 'cancelled', 'archived')
+                     AND expiry_date IS NOT NULL
+                     AND expiry_date - CURRENT_DATE < 90
+                   ORDER BY expiry_date""",
+                client_id, completed_practice_id,
+            )
+
+        if expiring:
+            items = ", ".join(
+                f"{r['practice_type_code']}(#{r['id']}, {r['days_remaining']}d)"
+                for r in expiring
+            )
+            logger.info(
+                f"📋 Client {client_id} has {len(expiring)} expiring items "
+                f"after practice #{completed_practice_id} completed: {items}"
+            )
+            # Log for CRM visibility
+            await _log_interaction(
+                db_pool, client_id, "system",
+                f"Practice #{completed_practice_id} completed. "
+                f"Note: {len(expiring)} other items expiring within 90 days: {items}",
+                "internal",
+            )
+    except Exception as e:
+        logger.debug(f"Expiry check failed for client {client_id}: {e}")
+
+
+async def _send_admin_telegram(title: str, message: str) -> None:
+    """Send alert to admin via Telegram."""
+    try:
+        from backend.services.monitoring.alert_service import AlertService, AlertLevel
+        svc = AlertService()
+        await svc.send_alert(title=title, message=message, level=AlertLevel.WARNING)
+    except Exception as e:
+        logger.debug(f"Telegram alert failed: {e}")
