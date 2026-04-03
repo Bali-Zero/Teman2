@@ -124,7 +124,7 @@ Be the trusted Italian advisor who combines expertise with human understanding."
         }
 
         # PROFESSIONAL PERSONALITY (Standard multilingual)
-        professional_members = ["zainal", "ruslana", "olena", "marta"]
+        professional_members = ["zainal", "ruslana"]
 
         profiles["professional"] = {
             "name": "Zantara Professional",

@@ -147,9 +147,6 @@ INSERT INTO folder_access_rules (role, allowed_folders, context_folder, priority
 INSERT INTO folder_access_rules (user_email, allowed_folders, context_folder, priority, description) VALUES
 ('ruslana@balizero.com', ARRAY['Ruslana'], 'BALI ZERO', 20, 'Ruslana: personal folder at BALI ZERO level');
 
--- Anton (Board): hospitality projects
-INSERT INTO folder_access_rules (user_email, allowed_folders, context_folder, priority, description) VALUES
-('anton@balizero.com', ARRAY['Anton', 'Anton - Hospitality'], 'BALI ZERO', 20, 'Anton: personal folders at BALI ZERO level');
 """
 
 
