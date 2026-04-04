@@ -51,6 +51,7 @@ const APP_DOMAIN = "kita.balizero.com";
 const PORTAL_DOMAIN = "my.balizero.com";
 const MOBILE_DOMAIN = "mo.balizero.com";
 const ZANTARA_DOMAIN = "zantara.balizero.com";
+const VISA_DOMAIN = "visa.balizero.com";
 // SSO subdomains: all *.balizero.com apps that share auth via cookie
 const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
 
@@ -163,10 +164,13 @@ export function middleware(request: NextRequest) {
   // Determine if we're on the public domain
   const subdomain = hostname.split(".")[0]; // e.g. "mail", "calendar", "kita", "balizero"
   const isSSOSubdomain = SSO_SUBDOMAINS.includes(subdomain);
+  const isVisaDomain =
+    hostname.includes("visa.balizero") || hostname === VISA_DOMAIN;
   const isPublicDomain =
     hostname.includes(PUBLIC_DOMAIN) &&
     !hostname.includes("kita") &&
     !hostname.includes("my") &&
+    !hostname.includes("visa") &&
     !isSSOSubdomain &&
     subdomain !== "prime";
   const isAppDomain =
@@ -207,6 +211,13 @@ export function middleware(request: NextRequest) {
     const publicUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
     publicUrl.search = request.nextUrl.search;
     return crossOriginRedirect(request, publicUrl);
+  }
+
+  // === VISA DOMAIN (visa.balizero.com) ===
+  // Dedicated Visa Oracle webapp — serves (visa-oracle) route group directly.
+  if (isVisaDomain) {
+    // visa.balizero.com serves (visa-oracle) route group directly
+    return response;
   }
 
   // === ZANTARA DOMAIN (zantara.balizero.com) ===
