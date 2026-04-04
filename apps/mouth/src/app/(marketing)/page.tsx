@@ -160,12 +160,12 @@ nav {
 }
 .brand-logo-3 {
   color: #cc1a1a;
-  font-size: 1.85em;
+  font-size: 1.8em;
   line-height: 1;
   display: inline-block;
-  vertical-align: top;
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
-  filter: drop-shadow(0 2px 4px rgba(180, 0, 0, 0.5));
+  vertical-align: bottom;
+  margin-bottom: -0.08em;
+  text-shadow: 0 2px 0 #7a0000, 0 4px 8px rgba(0, 0, 0, 0.7), 0 0 20px rgba(200, 0, 0, 0.3);
 }
 .brand-om-circle {
   display: inline-flex;
