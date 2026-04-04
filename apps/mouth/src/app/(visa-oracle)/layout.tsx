@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ConsentBanner } from "@/components/visa-oracle/ConsentBanner";
 
 export const metadata: Metadata = {
   title: "Visa Oracle — What visa do you need for Indonesia?",
@@ -22,20 +23,23 @@ export default function VisaOracleLayout({
     >
       {/* Header */}
       <header
-        style={{ backgroundColor: "var(--bz-elevated)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+        style={{
+          backgroundColor: "var(--bz-elevated)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+        }}
       >
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Link
+            href="/"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <span
               className="text-xl font-semibold tracking-tight"
               style={{ color: "var(--bz-accent)" }}
             >
               Visa Oracle
             </span>
-            <span
-              className="text-sm"
-              style={{ color: "var(--tx-secondary)" }}
-            >
+            <span className="text-sm" style={{ color: "var(--tx-secondary)" }}>
               by Bali Zero
             </span>
           </Link>
@@ -87,6 +91,8 @@ export default function VisaOracleLayout({
           </div>
         </div>
       </footer>
+
+      <ConsentBanner />
     </div>
   );
 }
