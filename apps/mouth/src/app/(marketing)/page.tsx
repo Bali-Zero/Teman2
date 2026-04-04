@@ -158,14 +158,13 @@ nav {
   margin: 0;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
-.brand-logo-3 {
-  color: #cc1a1a;
-  font-size: 1.8em;
-  line-height: 1;
+.brand-logo-3-svg {
   display: inline-block;
   vertical-align: bottom;
-  margin-bottom: -0.08em;
-  text-shadow: 0 2px 0 #7a0000, 0 4px 8px rgba(0, 0, 0, 0.7), 0 0 20px rgba(200, 0, 0, 0.3);
+  width: 0.95em;
+  height: 1.25em;
+  margin-bottom: -0.18em;
+  overflow: visible;
 }
 .brand-om-circle {
   display: inline-flex;
@@ -741,7 +740,7 @@ body::after {
   <div class="brand-inner">
     <div class="brand-left">
       <div class="brand-text">
-        <h2 class="brand-tagline">Your <span class="brand-logo-3">3</span>ali, from Zer<span class="brand-om-circle"></span></h2>
+        <h2 class="brand-tagline">Your <svg class="brand-logo-3-svg" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg" aria-label="B"><defs><linearGradient id="g3-body" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e83030"/><stop offset="50%" stop-color="#c01010"/><stop offset="100%" stop-color="#7a0000"/></linearGradient><linearGradient id="g3-shine" x1="0%" y1="0%" x2="40%" y2="100%"><stop offset="0%" stop-color="rgba(255,255,255,0.55)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></linearGradient><filter id="f3-shadow"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.6)"/></filter></defs><text x="5" y="72" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="76" fill="url(#g3-body)" filter="url(#f3-shadow)">3</text><text x="5" y="72" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="76" fill="url(#g3-shine)">3</text></svg>ali, from Zer<span class="brand-om-circle"></span></h2>
         <p class="brand-sub">Visa · Company · Tax · Property · Intelligence</p>
       </div>
     </div>
