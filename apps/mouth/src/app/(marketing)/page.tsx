@@ -161,9 +161,9 @@ nav {
 .brand-logo-3-svg {
   display: inline-block;
   vertical-align: bottom;
-  width: 0.95em;
-  height: 1.25em;
-  margin-bottom: -0.18em;
+  width: 0.8em;
+  height: 1.3em;
+  margin-bottom: -0.25em;
   overflow: visible;
 }
 .brand-om-circle {
@@ -740,7 +740,7 @@ body::after {
   <div class="brand-inner">
     <div class="brand-left">
       <div class="brand-text">
-        <h2 class="brand-tagline">Your <svg class="brand-logo-3-svg" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg" aria-label="B"><defs><linearGradient id="g3-body" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e83030"/><stop offset="50%" stop-color="#c01010"/><stop offset="100%" stop-color="#7a0000"/></linearGradient><linearGradient id="g3-shine" x1="0%" y1="0%" x2="40%" y2="100%"><stop offset="0%" stop-color="rgba(255,255,255,0.55)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></linearGradient><filter id="f3-shadow"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.6)"/></filter></defs><text x="5" y="72" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="76" fill="url(#g3-body)" filter="url(#f3-shadow)">3</text><text x="5" y="72" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="76" fill="url(#g3-shine)">3</text></svg>ali, from Zer<span class="brand-om-circle"></span></h2>
+        <h2 class="brand-tagline">Your <svg class="brand-logo-3-svg" viewBox="0 0 55 80" xmlns="http://www.w3.org/2000/svg" aria-label="B"><defs><linearGradient id="g3-body" x1="15%" y1="0%" x2="85%" y2="100%"><stop offset="0%" stop-color="#ee2222"/><stop offset="45%" stop-color="#c01010"/><stop offset="100%" stop-color="#6a0000"/></linearGradient><linearGradient id="g3-shine" x1="0%" y1="0%" x2="50%" y2="80%"><stop offset="0%" stop-color="rgba(255,255,255,0.5)"/><stop offset="60%" stop-color="rgba(255,255,255,0)"/></linearGradient><filter id="f3-shadow" x="-20%" y="-20%" width="150%" height="150%"><feDropShadow dx="1" dy="4" stdDeviation="3" flood-color="rgba(0,0,0,0.65)"/></filter></defs><path d="M8,4 Q32,4 46,16 Q56,25 50,37 Q47,43 40,46 Q47,49 51,57 Q57,70 46,77 Q34,85 12,78 Q4,75 4,68 L14,68 Q14,73 26,73 Q40,73 43,64 Q46,55 36,50 L22,50 L22,42 L34,42 Q44,42 45,33 Q46,24 36,18 Q26,12 10,14 Z" fill="url(#g3-body)" filter="url(#f3-shadow)"/><path d="M8,4 Q32,4 46,16 Q56,25 50,37 Q47,43 40,46 Q47,49 51,57 Q57,70 46,77 Q34,85 12,78 Q4,75 4,68 L14,68 Q14,73 26,73 Q40,73 43,64 Q46,55 36,50 L22,50 L22,42 L34,42 Q44,42 45,33 Q46,24 36,18 Q26,12 10,14 Z" fill="url(#g3-shine)"/></svg>ali, from Zer<span class="brand-om-circle"></span></h2>
         <p class="brand-sub">Visa · Company · Tax · Property · Intelligence</p>
       </div>
     </div>
