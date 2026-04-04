@@ -20,12 +20,26 @@ ENRICHMENT_PROMPT_TEMPLATE = """You are a senior editor at Bali Zero, a business
 
 Enrich this article for our intelligence news room. Write in English, editorial style.
 
-ARTICLE:
+<notizia_scraped>
 Title: {title}
 Source: {source}
 Category: {category}
 Published: {published_date}
 Content: {content}
+</notizia_scraped>
+
+<base_legale_certificata>
+{nlm_legal_basis}
+</base_legale_certificata>
+
+<fonti_web_non_verificate>
+{nlm_web_findings}
+</fonti_web_non_verificate>
+
+IMPORTANT: The <base_legale_certificata> section contains VERIFIED Indonesian law from our legal database.
+The <fonti_web_non_verificate> section may contain errors — use with caution and always
+prefer the certified legal basis. Never present web findings as verified law.
+If both sections are empty, write based on the news article alone.
 
 OUTPUT FORMAT (strict JSON only, no markdown):
 {{
@@ -73,13 +87,29 @@ def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
     """
     logger.info(f"Enriching: {article.get('title', 'Unknown')[:50]}...")
     
-    # Build prompt
+    # Extract NLM context if available (from step 2.9)
+    nlm_ctx = article.get('nlm_context') or {}
+    nlm_legal = nlm_ctx.get('legal_basis', '')
+    nlm_web = nlm_ctx.get('web_findings', '')
+    # nlm_legal and nlm_web default to '' from .get() above — no extra guard needed
+
+    def _escape_for_prompt(s: str) -> str:
+        """Escape curly braces (for str.format) and XML tag chars (prevent tag injection)."""
+        return s.replace('{', '{{').replace('}', '}}').replace('<', '&lt;').replace('>', '&gt;')
+
+    # Escape NLM output and article content for safe prompt injection
+    nlm_legal = _escape_for_prompt(str(nlm_legal or '')[:3000])
+    nlm_web = _escape_for_prompt(str(nlm_web or '')[:2000])
+
+    # Build prompt — ALL article fields escaped to prevent XML tag spoofing
     prompt = ENRICHMENT_PROMPT_TEMPLATE.format(
-        title=article.get('title', 'Unknown'),
-        source=article.get('source', 'Unknown'),
-        category=article.get('category', 'general'),
-        published_date=article.get('published_date', 'Unknown'),
-        content=article.get('content', '')[:4000]  # Enough for quality enrichment
+        title=_escape_for_prompt(str(article.get('title') or 'Unknown')[:300]),
+        source=_escape_for_prompt(article.get('source_name', article.get('source', 'Unknown'))),
+        category=_escape_for_prompt(article.get('qwen_category', article.get('category', 'general'))),
+        published_date=_escape_for_prompt(article.get('published_date', 'Unknown')),
+        content=_escape_for_prompt(str(article.get('content') or '')[:4000]),
+        nlm_legal_basis=nlm_legal,
+        nlm_web_findings=nlm_web,
     )
     
     try:
