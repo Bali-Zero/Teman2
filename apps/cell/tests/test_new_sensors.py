@@ -237,7 +237,8 @@ async def test_vercel_sensor_all_green():
 
 
 @pytest.mark.asyncio
-async def test_vercel_sensor_redirect_yellow():
+async def test_vercel_sensor_redirect_green():
+    """SSO redirects (301/302/307/308) are treated as green — site is alive and auth is working."""
     from cell.sensors.vercel_sensor import VercelSensor
     mock_client = AsyncMock()
     mock_response = MagicMock()
@@ -245,7 +246,7 @@ async def test_vercel_sensor_redirect_yellow():
     mock_client.head = AsyncMock(return_value=mock_response)
     sensor = VercelSensor(client=mock_client, urls=["https://kita.balizero.com"])
     reading = await sensor.read()
-    assert reading.subdomains[0].status == "yellow"
+    assert reading.subdomains[0].status == "green"
 
 
 @pytest.mark.asyncio
