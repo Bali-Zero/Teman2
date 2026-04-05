@@ -140,14 +140,14 @@ nav {
 .brand-inner {
   max-width: 1400px; margin: 0 auto;
   padding: 0 60px;
-  height: 110px;
+  height: 80px;
   display: flex; align-items: center; justify-content: space-between;
   overflow: visible;
 }
 .brand-left {
   display: flex; align-items: center; gap: 16px;
 }
-.brand-text { display: flex; flex-direction: column; gap: 16px; overflow: visible; }
+.brand-text { display: flex; flex-direction: column; gap: 5px; }
 .brand-tagline {
   font-family: "Arial Black", "Impact", "Franklin Gothic Heavy", sans-serif;
   font-weight: 900;
@@ -156,16 +156,17 @@ nav {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #fff;
-  line-height: 1;
+  line-height: 1.4;
   margin: 0;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
   overflow: visible;
 }
 .brand-logo-3-img {
   display: inline-block;
-  vertical-align: -0.3em;
-  height: 2em;
+  vertical-align: bottom;
+  height: 1.5em;
   width: auto;
+  margin-bottom: -0.4em;
   margin-right: -0.02em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
@@ -216,7 +217,7 @@ nav {
   font-size: 8px; color: rgba(212,168,83,0.4);
 }
 @media (max-width: 768px) {
-  .brand-inner { padding: 0 20px; height: 90px; }
+  .brand-inner { padding: 0 20px; height: 80px; }
   .brand-tagline { font-size: 22px; }
   .brand-right { display: none; }
 }
