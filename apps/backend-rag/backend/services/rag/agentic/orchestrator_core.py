@@ -15,6 +15,7 @@ Mantiene il flusso principale pulito e leggibile (target: 300-400 righe).
 
 import asyncio
 import logging
+import os
 import time
 import uuid
 from typing import Any
@@ -36,22 +37,19 @@ from backend.services.rag.agentic.orchestrator_routing import OrchestratorRoutin
 from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
 from backend.services.rag.agentic.query_gates import QueryGates
 from backend.services.rag.agentic.query_helpers import wrap_query_with_language_instruction
+from backend.services.rag.agentic.query_planner import QueryPlanner  # GraphRAG v6.0
 from backend.services.rag.agentic.reasoning import ReasoningEngine
 from backend.services.rag.agentic.schema import CoreResult
+from backend.services.rag.kg_auto_expansion import KGAutoExpansion
 from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 from backend.services.rag.multi_agent_coordinator import MultiAgentCoordinator, requires_multi_agent
 from backend.services.search.semantic_cache import SemanticCache
 from backend.services.tools.definitions import AgentState
 
-# GraphRAG v6.0 — Unified Query Planner + KG Auto-Expansion
-from backend.services.rag.agentic.query_planner import QueryPlanner
-from backend.services.rag.kg_auto_expansion import KGAutoExpansion
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # Info level for core orchestration
 
 # Feature flag: USE_QUERY_PLANNER (shadow mode — logs plan but doesn't route)
-import os
 
 _USE_QUERY_PLANNER = os.getenv("USE_QUERY_PLANNER", "false").lower() in ("true", "1", "yes")
 
@@ -83,6 +81,7 @@ class OrchestratorCore:
         kg_langgraph_orchestrator: Any = None,  # KGLangGraphOrchestrator
         nlm_enrichment_service: Any = None,  # NLMEnrichmentService
         retriever: Any = None,  # SearchService — used for embedding-based semantic cache
+        specialized_service_router: Any = None,  # SpecializedServiceRouter
     ) -> None:
         """
         Inizializza OrchestratorCore.
@@ -101,6 +100,7 @@ class OrchestratorCore:
             db_pool: Optional database pool
             kg_langgraph_orchestrator: Optional KGLangGraphOrchestrator (Phase 3)
             nlm_enrichment_service: Optional NLMEnrichmentService for CAUTIOUS-zone enrichment
+            specialized_service_router: Optional SpecializedServiceRouter for complex query routing
         """
         self.llm_gateway = llm_gateway
         self.reasoning_engine = reasoning_engine
@@ -114,6 +114,7 @@ class OrchestratorCore:
         self.nlm_enrichment_service = nlm_enrichment_service  # NLM CAUTIOUS-zone enrichment
         self.db_pool = db_pool  # Store for later use
         self.retriever = retriever  # SearchService — for embedding-based semantic cache lookup
+        self._specialized_router = specialized_service_router  # Complex query fast-path
 
         # Initialize specialized managers
         self.context_manager = OrchestratorContextManager(
@@ -751,6 +752,30 @@ class OrchestratorCore:
             except Exception as e:
                 logger.warning(f"⚠️ [Phase 6] Multi-agent failed, falling back to ReAct: {e}")
 
+        # 3b.5. SpecializedServiceRouter — complex query fast-path
+        # Routes to AutonomousResearch, CrossOracleSynthesis, or ClientJourney
+        # before entering the heavy ReAct pipeline.
+        if self._specialized_router:
+            intent_category = extracted_entities.get("intent_category", "")
+            ssr_result = None
+            if self._specialized_router.detect_autonomous_research(query, intent_category):
+                ssr_result = await self._specialized_router.route_autonomous_research(query)
+            elif self._specialized_router.detect_cross_oracle(query, intent_category):
+                ssr_result = await self._specialized_router.route_cross_oracle(query)
+            elif self._specialized_router.detect_client_journey(query, intent_category):
+                ssr_result = await self._specialized_router.route_client_journey(
+                    query, user_id or "anonymous",
+                )
+            if ssr_result and ssr_result.get("response"):
+                return CoreResult(
+                    answer=ssr_result["response"],
+                    sources=[],
+                    model_used=ssr_result.get("model", "specialized-router"),
+                    entities=extracted_entities,
+                    timings={"total": time.time() - start_time},
+                    tools_called=[ssr_result.get("category", "specialized_service")],
+                )
+
         # 3c. NLM Speculative Fire — launch in parallel with the rest of the pipeline.
         # Placed AFTER all early-return gates/cache checks to avoid task leaks.
         # The result is consumed only if evidence lands in the CAUTIOUS zone (0.15–0.60).
@@ -760,8 +785,8 @@ class OrchestratorCore:
 
         if self.nlm_enrichment_service:
             from backend.services.oracle.nlm_notebook_registry import (
-                resolve_notebook,
                 resolve_multi_notebook,
+                resolve_notebook,
             )
 
             # ARCH-4: Check for multi-domain query first
@@ -771,7 +796,7 @@ class OrchestratorCore:
                     from backend.services.oracle.cross_notebook_correlator import (
                         get_correlator,
                     )
-                    cross_task = asyncio.create_task(
+                    asyncio.create_task(
                         get_correlator().query_async(query),
                     )
                     logger.debug(
