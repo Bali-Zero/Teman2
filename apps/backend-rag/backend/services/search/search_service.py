@@ -855,12 +855,12 @@ class SearchService:
             apply_filters=True,  # Enable filters for reranked search
         )
 
-        # PERFORMANCE FIX: Early exit for high-confidence results (>0.9 score)
+        # PERFORMANCE FIX: Early exit for high-confidence results (>0.85 score)
         # See: docs/debug/performance/rag_pipeline_report.md
         # Skip reranking if top result already has high confidence
-        if results["results"] and results["results"][0].get("score", 0) > 0.9:
+        if results["results"] and results["results"][0].get("score", 0) > 0.85:
             logger.info(
-                f"⚡ Early exit: Top result score {results['results'][0]['score']:.3f} > 0.9, "
+                f"⚡ Early exit: Top result score {results['results'][0]['score']:.3f} > 0.85, "
                 f"skipping reranking for query: '{query}'",
             )
             if METRICS_AVAILABLE:
@@ -1047,9 +1047,9 @@ class SearchService:
         )
 
         # 2. Early exit for high-confidence results
-        if results["results"] and results["results"][0].get("score", 0) > 0.9:
+        if results["results"] and results["results"][0].get("score", 0) > 0.85:
             logger.info(
-                f"⚡ Early exit: Top result score {results['results'][0]['score']:.3f} > 0.9",
+                f"⚡ Early exit: Top result score {results['results'][0]['score']:.3f} > 0.85",
             )
             if METRICS_AVAILABLE:
                 rag_early_exit_total.inc()
