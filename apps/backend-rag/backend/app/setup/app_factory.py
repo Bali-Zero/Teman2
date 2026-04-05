@@ -341,6 +341,7 @@ async def lifespan(app: FastAPI):
         "scraper",
         "enrichment_service",
         "nlm_enrichment_service",
+        "prime_nexus_service",
     ]
 
     for attr_name in services_to_close:

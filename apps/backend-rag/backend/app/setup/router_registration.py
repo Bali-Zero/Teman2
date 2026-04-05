@@ -97,6 +97,7 @@ def include_routers(api: FastAPI) -> None:
         portal_taxes,
         portal_visa,
         prime,
+        prime_v2,
         query_analytics,
         session,
         sheets,
@@ -275,6 +276,7 @@ def include_routers(api: FastAPI) -> None:
     # Performance router (productivity removed - will be MCP)
     api.include_router(performance.router)
     api.include_router(prime.router)
+    api.include_router(prime_v2.router)  # Prime Nexus v2 — layered geospatial API
 
     # Dynamic scenario pricing
     api.include_router(dynamic_pricing.router)
