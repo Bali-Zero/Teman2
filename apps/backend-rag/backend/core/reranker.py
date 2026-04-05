@@ -48,11 +48,24 @@ class ReRanker:
         self.api_url = settings.zerank_api_url
         self.model_name = model_name or "zerank-2"
         self.enabled = bool(self.api_key)
+        # Persistent client — avoids TCP/TLS overhead per call (Golden Rule #10)
+        self._client: httpx.AsyncClient | None = None
 
         if not self.enabled:
             logger.warning("⚠️ ZERANK_API_KEY not set. Re-ranking will be disabled (pass-through).")
         else:
             logger.info(f"✅ Ze-Rank 2 initialized with endpoint: {self.api_url}")
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Return persistent httpx client, creating it lazily on first use."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=10.0)
+        return self._client
+
+    async def aclose(self) -> None:
+        """Close the persistent HTTP client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
 
     async def rerank(
         self, query: str, documents: list[dict[str, Any]], top_k: int = 5,
@@ -117,65 +130,61 @@ class ReRanker:
                     "Content-Type": "application/json",
                 }
 
-                # Call Ze-Rank 2 API (async)
+                # Call Ze-Rank 2 API (async) — reuses persistent client
                 start_time = time.perf_counter()
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    response = await client.post(self.api_url, json=payload, headers=headers)
-                    api_latency_ms = (time.perf_counter() - start_time) * 1000
-                    set_span_attribute("api_latency_ms", round(api_latency_ms, 2))
-                    set_span_attribute("http_status_code", response.status_code)
+                client = self._get_client()
+                response = await client.post(self.api_url, json=payload, headers=headers)
+                api_latency_ms = (time.perf_counter() - start_time) * 1000
+                set_span_attribute("api_latency_ms", round(api_latency_ms, 2))
+                set_span_attribute("http_status_code", response.status_code)
 
-                    if response.status_code != 200:
-                        logger.error(
-                            f"❌ Ze-Rank 2 API Error: {response.status_code} - {response.text}",
-                        )
-                        set_span_status("error", f"API returned {response.status_code}")
-                        return documents[:top_k]
+                if response.status_code != 200:
+                    logger.error(
+                        f"❌ Ze-Rank 2 API Error: {response.status_code} - {response.text}",
+                    )
+                    set_span_status("error", f"API returned {response.status_code}")
+                    return documents[:top_k]
 
-                    data = response.json()
+                data = response.json()
 
-                    # Assume standard rerank response format:
-                    # { "results": [ { "index": 0, "relevance_score": 0.98 }, ... ] }
-                    # Adjust parsing logic if the actual API format differs
-                    results = data.get("results", [])
+                # Assume standard rerank response format:
+                # { "results": [ { "index": 0, "relevance_score": 0.98 }, ... ] }
+                # Adjust parsing logic if the actual API format differs
+                results = data.get("results", [])
 
-                    if not results:
-                        logger.warning("⚠️ Ze-Rank 2 returned no results")
-                        set_span_attribute("results_count", 0)
-                        set_span_status("ok")
-                        return documents[:top_k]
-
-                    # Map results back to documents
-                    reranked_docs = []
-                    for res in results:
-                        idx = res.get("index")
-                        score = res.get("relevance_score", 0.0)
-
-                        if idx is not None and 0 <= idx < len(valid_docs):
-                            doc = valid_docs[idx]
-                            doc["rerank_score"] = float(score)
-
-                            # Preserve original score if needed
-                            if "score" in doc and "vector_score" not in doc:
-                                doc["vector_score"] = doc["score"]
-
-                            # Update main score
-                            doc["score"] = float(score)
-                            reranked_docs.append(doc)
-
-                    # If API returned fewer docs than requested or something went wrong with mapping,
-                    # we might want to fill with remaining original docs (rare)
-                    # For now, just return what was successfully reranked
-
-                    # Sort explicitly just in case API didn't
-                    reranked_docs.sort(key=lambda x: x["score"], reverse=True)
-
-                    set_span_attribute("results_count", len(reranked_docs))
-                    if reranked_docs:
-                        set_span_attribute("top_score", round(reranked_docs[0]["score"], 4))
+                if not results:
+                    logger.warning("⚠️ Ze-Rank 2 returned no results")
+                    set_span_attribute("results_count", 0)
                     set_span_status("ok")
+                    return documents[:top_k]
 
-                    return reranked_docs[:top_k]
+                # Map results back to documents
+                reranked_docs = []
+                for res in results:
+                    idx = res.get("index")
+                    score = res.get("relevance_score", 0.0)
+
+                    if idx is not None and 0 <= idx < len(valid_docs):
+                        doc = valid_docs[idx]
+                        doc["rerank_score"] = float(score)
+
+                        # Preserve original score if needed
+                        if "score" in doc and "vector_score" not in doc:
+                            doc["vector_score"] = doc["score"]
+
+                        # Update main score
+                        doc["score"] = float(score)
+                        reranked_docs.append(doc)
+
+                # Sort explicitly just in case API didn't
+                reranked_docs.sort(key=lambda x: x["score"], reverse=True)
+
+                set_span_attribute("results_count", len(reranked_docs))
+                if reranked_docs:
+                    set_span_attribute("top_score", round(reranked_docs[0]["score"], 4))
+                set_span_status("ok")
+
+                return reranked_docs[:top_k]
 
             except Exception as e:
                 logger.error(f"❌ Re-ranking failed (Ze-Rank 2): {e}")
