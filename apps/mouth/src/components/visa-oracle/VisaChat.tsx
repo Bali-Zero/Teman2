@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { QuizAnswers, ChatMessage, VisaRecommendation } from '@/lib/visa-oracle/types';
 import { sendChatMessage, triggerHandoff } from '@/lib/visa-oracle/api';
 import { getSession, incrementQuestions, getRemainingQuestions } from '@/lib/visa-oracle/storage';
+import ReactMarkdown from 'react-markdown';
 import { QuestionCounter } from './QuestionCounter';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { WhatsAppCTA } from './WhatsAppCTA';
@@ -189,7 +190,9 @@ export function VisaChat({ quizAnswers, initialSessionId, visas }: VisaChatProps
                 {msg.confidence && msg.confidence !== 'NORMAL' && (
                   <ConfidenceBadge confidence={msg.confidence} />
                 )}
-                <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                <div className="leading-relaxed [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:pl-5 [&_ul]:list-disc [&_li]:mb-1 [&_strong]:font-semibold [&_strong]:text-white [&_a]:underline [&_a]:opacity-80">
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
                 {msg.sources && msg.sources.length > 0 && (
                   <div
                     className="text-xs mt-1 flex flex-wrap gap-1"
