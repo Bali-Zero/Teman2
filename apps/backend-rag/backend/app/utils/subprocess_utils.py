@@ -56,7 +56,7 @@ def secure_subprocess_run(
     logger.debug(f"Executing command: {command if isinstance(command, str) else ' '.join(command)}")
 
     try:
-        return subprocess.run(
+        return subprocess.run(  # nosec B602 — shell=True validated via dangerous_chars check above
             command,
             shell=shell,
             cwd=cwd,
