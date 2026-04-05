@@ -364,7 +364,6 @@ def include_light_routers(api: FastAPI) -> None:
         analytics,
         article_composer,
         auth,
-        autonomous_execution,
         cell_status,
         crm_analytics,
         crm_clients_documents,
@@ -391,7 +390,6 @@ def include_light_routers(api: FastAPI) -> None:
         lkpm,
         media,
         messaging_identity,
-        monitoring_rag,
         newsletter,
         nusantara_health,
         performance,
@@ -437,9 +435,6 @@ def include_light_routers(api: FastAPI) -> None:
     if settings.environment.lower() != "production" or settings.admin_api_key:
         api.include_router(debug.router)
         api.include_router(debug.v1_router)
-
-    # Autonomous execution
-    api.include_router(autonomous_execution.router)
 
     # Conversation & Memory (light subset)
     api.include_router(session.router)
@@ -548,9 +543,6 @@ def include_light_routers(api: FastAPI) -> None:
     # Workflow Queue router
     api.include_router(workflow_queue.router)
 
-    # RAG Monitoring router
-    api.include_router(monitoring_rag.router)
-
     # Admin Conversation Cleanup router
     api.include_router(admin_conversation_cleanup.router)
 
@@ -590,6 +582,7 @@ def include_heavy_routers(api: FastAPI) -> None:
         agentic_rag,
         agents,
         autonomous_agents,
+        autonomous_execution,
         blog_ask,
         collective_memory,
         conversations,
@@ -613,6 +606,7 @@ def include_heavy_routers(api: FastAPI) -> None:
         knowledge_visa,
         lam_memory,
         legal_ingest,
+        monitoring_rag,
         naga,
         news,
         oracle_ingest,
@@ -631,6 +625,7 @@ def include_heavy_routers(api: FastAPI) -> None:
     api.include_router(lam_memory.router)
     api.include_router(agents.router)
     api.include_router(autonomous_agents.router)
+    api.include_router(autonomous_execution.router)  # Phase 7 POC: Autonomous task execution
     api.include_router(agentic_rag.router)
     api.include_router(kg_agentic.router)
 
@@ -693,6 +688,9 @@ def include_heavy_routers(api: FastAPI) -> None:
     # Dashboard aggregation routers (RAG-heavy)
     api.include_router(dashboard.router)
     api.include_router(dashboard_summary.router)
+
+    # RAG Monitoring router (Retrieval quality metrics and alerts)
+    api.include_router(monitoring_rag.router)
 
     # Visa Oracle — public product (no auth required)
     api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
