@@ -158,16 +158,16 @@ nav {
   color: #fff;
   line-height: 1.4;
   margin: 0;
-  padding-bottom: 0.3em;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
   overflow: visible;
 }
 .brand-logo-3-img {
   display: inline-block;
-  vertical-align: bottom;
-  height: 1.6em;
+  vertical-align: baseline;
+  height: 1.8em;
   width: auto;
-  margin-bottom: -0.5em;
+  position: relative;
+  top: 0.35em;
   margin-right: -0.02em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
