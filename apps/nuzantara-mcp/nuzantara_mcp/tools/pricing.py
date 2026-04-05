@@ -25,7 +25,7 @@ def register(mcp, _call, _call_safe):
         Returns:
             Pricing breakdown: base_price, surcharges, total, currency, validity.
         """
-        return await _call(
+        return await _call_safe(
             "/api/agents/pricing/calculate",
             method="POST",
             json={
@@ -46,7 +46,7 @@ def register(mcp, _call, _call_safe):
         Returns:
             Complete pricing catalog with all service types and tiers.
         """
-        return await _call("/pricing/all")
+        return await _call_safe("/api/pricing/all")
 
     @mcp.tool()
     async def search_service_pricing(query: str) -> dict:
@@ -63,4 +63,4 @@ def register(mcp, _call, _call_safe):
         Returns:
             Matching services with pricing details.
         """
-        return await _call("/pricing/search", params={"q": query})
+        return await _call_safe("/api/pricing/search", params={"q": query})
